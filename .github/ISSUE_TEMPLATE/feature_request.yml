@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues).
+        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues). Below, * denotes a required field.
   - type: textarea
     attributes:
       label: "Is your proposal related to a problem?"
@@ -16,7 +16,7 @@ body:
       required: false
   - type: textarea
     attributes:
-      label: "Describe the solution you would like"
+      label: "Describe the solution you would like*"
       description: "Provide a clear and concise description of what you want to happen."
     validations:
       required: true
@@ -35,7 +35,7 @@ body:
   - type: checkboxes
     id: terms
     attributes:
-      label: "Code of Conduct"
+      label: "Code of Conduct*"
       description: "By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/gchq/coreax/blob/main/CODE_OF_CONDUCT.md)"
       options:
         - label: "I agree to follow this project's Code of Conduct"
