@@ -28,21 +28,21 @@ body:
   - type: input
     attributes:
       label: "Python version*"
-      placeholder: "3.11"
+      placeholder: "3.10"
     validations:
       required: true
   - type: input
     attributes:
       label: "Package version*"
       description: "Detail the version of coreax you are using"
-      placeholder: "1.0"
+      placeholder: "1.0.0"
     validations:
       required: true
   - type: textarea
     attributes:
       label: "Operating system*"
       description: "Detail the operating system you are using (Windows, Linux, Mac, as-well as version)"
-      placeholder: "Windows 11 Pro 22H2"
+      placeholder: "Ubuntu 23.04.2"
     validations:
       required: true
   - type: textarea
