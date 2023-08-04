@@ -12,9 +12,9 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 from jax import jit, vmap
-from .utils import calculate_K_sum
-from .kernel_herding import kernel_herding_block
-from .refine import refine, refine_rand, refine_rev
+from coreax.utils import calculate_K_sum
+from coreax.kernel_herding import kernel_herding_block
+from coreax.refine import refine, refine_rand, refine_rev
 
 #
 # Kernel Herding Refine Functions 

@@ -17,7 +17,7 @@ import jax.lax as lax
 from jax import vmap, jit
 
 from coreax.kernel import rbf_grad_log_f_X, stein_kernel_pc_imq_element
-from .utils import calculate_K_sum
+from coreax.utils import calculate_K_sum
 from functools import partial
 
 from sklearn.neighbors import KDTree
