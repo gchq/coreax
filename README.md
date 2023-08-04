@@ -7,9 +7,10 @@ A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ po
 
 ## Quick example
 Here are $n=10,000$ points drawn from $6$ $2$-D Gaussians. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
-
-<img src="examples/data/coreset_seq/coreset_seq.gif" width="40%"/>
-<img src="examples/data/random_seq/random_seq.gif" width="40%"/>
+<p float="left">
+<img src="examples/data/coreset_seq/coreset_seq.gif" width="50%"/>
+<img src="examples/data/random_seq/random_seq.gif" width="50%"/>
+</p>
 
 The key property to observe is the maximum mean discrepancy (MMD) between the coreset and full set. This is an integral probability metric, which measures the distance between the empirical distributions of the full dataset and the coreset. For coreset algorithms, we would like this to be significantly smaller than random sampling (as above).
 
@@ -18,8 +19,10 @@ The key property to observe is the maximum mean discrepancy (MMD) between the co
 <img src="examples/data/david_coreset.png" width="100%">
 
 **Video event detection**: Here we identify representative frames such that most of the useful information in a video is preserved. Run `examples/pounce.py` to replicate.
-<img src="examples/pounce/pounce.gif" width="40%">
-<img src="examples/pounce/pounce_coreset.gif" width="40%">
+<p float="left">
+<img src="examples/pounce/pounce.gif" width="50%">
+<img src="examples/pounce/pounce_coreset.gif" width="50%">
+</p>
 
 # Setup 
 Be sure to install Jax, and to install the preferred version for your system.
