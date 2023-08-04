@@ -6,7 +6,7 @@ Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.rea
 A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ points whilst attempting to preserve the statistical properties of the full data set. Some algorithms return the $m$ points with weights, such that importance can be attributed to each point. These are often chosen from the simplex, i.e. such that they are non-negative and sum to 1.
 
 ## Quick example
-Here are $n=10,000$ points drawn from $6$ $2$-D Gaussians. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
+Here are $n=10,000$ points drawn from six $2$-D Gaussians. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
 <p align="middle">
 <img src="examples/data/coreset_seq/coreset_seq.gif" width="49%"/>
 <img src="examples/data/random_seq/random_seq.gif" width="49%"/>
@@ -33,7 +33,7 @@ Be sure to install Jax, and to install the preferred version for your system.
 Here are some of the most commonly used functions in the library.
 
 ## Kernel herding
-Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
+Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are curerntly variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
 
 ```python
 from coreax.kernel_herding import kernel_herding_block
@@ -97,3 +97,9 @@ For some idea of performance, `scalable_herding` on a `ml.p3.8xlarge` gives the 
 |10^8|1hr7m |
 ```
 For large $d$, it is usually worth reducing dimensionality using PCA.
+
+# Coming soon
+Some of the features coming soon include
+- Score matching to estimate $\nabla \log f_X(\mathbf{x})$ in the Stein kernel.
+- Coordinate bootstrapping for high-dimensional data.
+- Other coreset-style algorithms, including kernel thinning and recombination.
