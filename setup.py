@@ -6,5 +6,5 @@ setup(
     description = "Jax coreset algorithms.",
     author = "GCHQ",
     packages = ["coreax"],
-    install_requires = ["jax", "numpy", "jaxopt", "scikit-learn"]
+    install_requires = ["jax", "numpy", "jaxopt", "scikit-learn", "matplotlib", "imageio", "typing-extensions", "opencv-python"]
 )
