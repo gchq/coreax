@@ -9,7 +9,7 @@ A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ po
 Here are $n=10,000$ points drawn from $6$ $2$-D Gaussians. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
 
 <img src="examples/data/coreset_seq/coreset_seq.gif" width="40%"/>
-<img src="examples/data/coreset_seq/random_seq.gif" width="40%"/>
+<img src="examples/data/random_seq/random_seq.gif" width="40%"/>
 
 The key property to observe is the maximum mean discrepancy (MMD) between the coreset and full set. This is an integral probability metric, which measures the distance between the empirical distributions of the full dataset and the coreset. For coreset algorithms, we would like this to be significantly smaller than random sampling (as above).
 
