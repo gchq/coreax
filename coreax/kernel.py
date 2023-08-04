@@ -301,23 +301,6 @@ def median_heuristic(X):
     return jnp.sqrt(h / 2.)
 
 
-# @jit
-# def rbf_kde(X, Y, nu):
-#     """Takes in data set and computes the RBF KDE value at each of the n points
-
-#     Args:
-#         X (array_like): First argument, n x d.
-#         Y (array_like): Second argument, m x d.
-#         nu (float, optional): Kernel bandwidth (std dev).
-
-#     Returns:
-#         ndarray: Gram matrix mean over Y, n x 1.
-#         ndarray: Gram matrix, n x m
-#     """
-#     K = normalised_rbf(Y, X, nu=nu)
-#     k = K.mean(axis=1)
-#     return k, K
-
 
 @jit
 def rbf_f_X(X, D, nu):
@@ -394,30 +377,6 @@ def grad_rbf_y(X, Y, nu, K=None):
     """
     return -jnp.transpose(grad_rbf_x(X, Y, nu, K), (1, 0, 2))
 
-
-# @jit
-# def grad_kde(X, Y, nu, K=None, Km=None):
-#     """Gradient of an RBF KDE wrt X
-
-#     Args:
-#         X (_type_): _description_
-#         Y (_type_): _description_
-#         kernel (_type_): _description_
-#         nu (_type_): _description_
-#         K (_type_, optional): _description_. Defaults to None.
-#         Km (_type_, optional): _description_. Defaults to None.
-
-#     Returns:
-#         _type_: _description_
-#     """
-#     if K is None:
-#         Km, K = rbf_kde(X, Y, nu)
-#     Km = Km.reshape(-1, 1)
-#     n = X.shape[0]
-#     Z = pdiff(Y, X)
-#     J = idot(jnp.transpose(Z, (0, 2, 1)), K)
-#     J /= -jnp.sqrt(2 * jnp.pi) * nu
-#     return J / (n*Km)
 
 
 @jit
