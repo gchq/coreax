@@ -100,41 +100,11 @@ def pdiff(X, Y):
         Y (array_like): Second argument, m x d
 
     Returns:
-        ndarray: Pairwise differences, n x m
+        ndarray: Pairwise differences, n x m x d
     """
     d1 = vmap(diff, in_axes=(0, None), out_axes=0)
     d2 = vmap(d1, in_axes=(None, 0), out_axes=1)
     return d2(X, Y)
-
-
-@jit
-def pdot(X, Y):
-    """Efficient pairwise dot product for two arrays of vectors
-
-    Args:
-        X (array_like): First argument, n x d
-        Y (array_like): Second argument, m x d
-
-    Returns:
-        ndarray: Pairwise dot products, n x m
-    """
-    d1 = vmap(jnp.dot, in_axes=(0, None), out_axes=0)
-    d2 = vmap(d1, in_axes=(None, 0), out_axes=0)
-    return d2(X, Y)
-
-
-@jit
-def idot(X, Y):
-    """Dot product function for two tensors, over inner axes (preserving first axis)
-
-    Args:
-        X (array_like): First argument, d x n x m
-        Y (array_like): Second argument, d x m x p
-
-    Returns:
-        TypeVar(F, bound=Callable): Function for inner axes dot products. f(X, Y) -> d x n x p
-    """
-    return vmap(jnp.dot, in_axes=(0, 0), out_axes=0)(X, Y)
 
 
 @jit

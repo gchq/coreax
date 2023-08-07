@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from scipy.stats import ortho_group
+from scipy.stats import ortho_group, norm
+from sklearn.metrics.pairwise import rbf_kernel as sk_rbf
 import numpy as np
 
 from coreax.kernel import *
@@ -48,7 +49,68 @@ class TestKernels(unittest.TestCase):
         self.assertAlmostEqual(td, 0., places=3)
 
     def test_rbf_kernel(self):
-        pass
+        """RBF kernel. Bandwidth is the 'variance' of the sq exp"""
+        bandwidth = np.float32(np.pi) / 2.
+        x = np.arange(10)
+        y = x + 1.
+        ans = np.exp(-np.linalg.norm(x - y)**2 / (2. * bandwidth))
+        tst = rbf_kernel(x, y, bandwidth)
+        self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0., places=3)
+
+    def test_laplace_kernel(self):
+        """Laplace kernel. Norm isn't squared"""
+        bandwidth = np.float32(np.pi) / 2.
+        x = np.arange(10)
+        y = x + 1.
+        ans = np.exp(-np.linalg.norm(x - y) / (2. * bandwidth))
+        tst = laplace_kernel(x, y, bandwidth)
+        self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0., places=3)
+
+    def test_pdiff(self):
+        """Efficient pairwise differences"""
+        m = 10
+        n = 10
+        d = 3
+        X = np.random.random((n, d))
+        Y = np.random.random((m, d))
+        Z = []
+        for x in X:
+            row = []
+            for y in Y:
+                row.append(x - y)
+            Z.append(list(row))
+        Z = np.array(Z)
+        tst = pdiff(X, Y)
+        self.assertAlmostEqual(jnp.linalg.norm(tst - Z), 0., places=3)
+
+    def test_gaussian_kernel(self):
+        """RBF kernel. Bandwidth is the 'variance' of the sq exp"""
+        std_dev = np.e
+        n = 10
+        X = np.arange(n)
+        Y = X + 1.
+        K = np.zeros((n, n))
+        for i, x in enumerate(X):
+            for j, y in enumerate(Y):
+                K[i, j] = norm(y, std_dev).pdf(x)
+        tst = normalised_rbf(X, Y, std_dev)
+        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0., places=3)
+
+
+    def test_pc_imq(self):
+        """Inverse multi-quadric (pre-conditioned). Bandwidth is the 'variance' of the sq exp"""
+        std_dev = np.e
+        n = 10
+        X = np.arange(n)
+        Y = X + 1.
+        K = np.zeros((n, n))
+        for i, x in enumerate(X):
+            for j, y in enumerate(Y):
+                K[i, j] = 1. / np.sqrt(1. + ((x - y)/std_dev)**2 / 2.)
+        tst = pc_imq (X, Y, std_dev)
+        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0., places=3)
+
+
 
 if __name__ == "__main__":
     unittest.main()
