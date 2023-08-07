@@ -1,15 +1,15 @@
-Contributing to Coreax
+Contributing to coreax
 ======================
 
 Getting started
 ---------------
 
-If you would like to contribute to the development of Coreax, you can do so in a number of ways:
-- Highlight any bugs you encounter during usage, or any feature requests that would improve Coreax by raising appropriate issues.
+If you would like to contribute to the development of coreax, you can do so in a number of ways:
+- Highlight any bugs you encounter during usage, or any feature requests that would improve coreax by raising appropriate issues.
 - Develop solutions to open issues and create pull requests (PRs) for the development team to review.
 - Implement optimisations in the codebase to improve performance.
 - Contribute example usages & documentation improvements.
-- Increase awareness of CoreAX with other potential users.
+- Increase awareness of coreax with other potential users.
 
 All contributors must sign the [GCHQ Contributor Licence Agreement][cla]. 
 
@@ -17,7 +17,7 @@ Reporting issues
 --------------
 
 - [Search existing issues][github-issues] (both open **and** closed).
-- Make sure you are using the latest version of CoreAX.
+- Make sure you are using the latest version of coreax.
 - Open a new issue:
   - For bugs use the [bug report issue template][gh-bug-report].
   - For features use the [feature request issue template][gh-feature-request].
@@ -31,7 +31,7 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
   - If the pull request addresses something not currently covered by an issue, create a new issue first.
-- Make changes on a [feature branch][git-feature-branch] instead of the master branch.
+- Make changes on a [feature branch][git-feature-branch] instead of the main branch.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests]. 
@@ -42,8 +42,7 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
 - Pull in changes from upstream often to minimise merge conflicts.
 - Make any required changes. 
-- [Change your PR to ready][pr-ready] when the PR is ready for review.
-    - You can convert back to Draft at any time.
+- [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert back to Draft at any time.
  
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
 Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
@@ -99,7 +98,7 @@ from mymodule import (
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
 ### Testing
-[Unittest][unittest] is used for testing in CoreAX. As much effort should be put into developing tests as the code. Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
+[Unittest][unittest] is used for testing in coreax. As much effort should be put into developing tests as the code. Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
@@ -121,12 +120,13 @@ As many paragraphs as is required to document the object.
 :param a: Description of parameter a
 :param b: Description of parameter b
 :raises SyntaxError: Description of why a SyntaxError might be raised
-:return: Description of return from function, or “Nothing” if function returns None
+:return: Description of return from function
 """
 ```
+If the function does not return anything, the return line above can be omitted.
 
 ### Documentation and references
-The CoreAX documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`. 
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`. 
 
 ### Generating docs with Sphinx
 
