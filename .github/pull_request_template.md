@@ -1,16 +1,16 @@
 ### PR Type
 <!--
-    What kind of change does this PR introduce? 
+    What kind of change does this PR introduce? Remove any that do not apply.
 -->
 
-- [ ] Bugfix
-- [ ] Feature
-- [ ] Code style update (formatting, local variables)
-- [ ] Refactoring (no functional changes)
-- [ ] Build related changes
-- [ ] CI related changes
-- [ ] Documentation content changes
-- [ ] Tests
+- Bugfix
+- Feature
+- Code style update (formatting, local variables)
+- Refactoring (no functional changes)
+- Build related changes
+- CI related changes
+- Documentation content changes
+- Tests
 
 ### Description
 <!--
