@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import jax.numpy as jnp
 from sklearn.datasets import make_blobs
 
-from weights import qp
+from coreax.weights import qp
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
@@ -29,7 +29,8 @@ X, _ = make_blobs(N, n_features=2, centers=6, random_state=32)
 # ask for 100 coreset points
 C = 100
 
-# set the bandwidth parameter of the kernel using a median heuristic derived from at most 1000 random samples in the data.
+# set the bandwidth parameter of the kernel using a median heuristic derived from at most 1000 random samples
+# in the data.
 n = min(N, 1000)
 idx = np.random.choice(N, n, replace=False)
 nu = median_heuristic(X[idx])
@@ -49,7 +50,8 @@ weighted = True
 # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
 # Stein kernel herding uses the Stein kernel derived from the RBF above.
 # Block mode processes the Gram matrix in blocks to avoid GPU memory issues.
-# rbf_grad_log_f_X is the score function derived from a KDE. This could be replaced by any score-function approximation, e.g. score matching.
+# rbf_grad_log_f_X is the score function derived from a KDE. This could be replaced by any score-function
+# approximation, e.g. score matching.
 # max_size sets the block processing size
 
 # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the coreset Gram mean (Kbar)

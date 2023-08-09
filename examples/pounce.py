@@ -18,7 +18,6 @@ import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
 
-from coreax.weights import qp
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 
@@ -31,7 +30,8 @@ os.makedirs(f"{dir}/coreset", exist_ok=True)
 Y_ = np.array(imageio.v2.mimread(f"{dir}/{fn}")[1:])
 Y = Y_.reshape(Y_.shape[0], -1)
 
-# run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical properties, i.e. variance.
+# run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
+# properties, i.e. variance.
 p = 25
 pca = PCA(p)
 X = pca.fit_transform(Y)
@@ -49,11 +49,12 @@ k = lambda x, y : rbf_kernel(x, y, jnp.float32(nu)**2)/(nu * jnp.sqrt(2. * jnp.p
 weighted = True
 
 # run Stein kernel herding in block mode to avoid GPU memory issues
-coreset, Kc, Kbar = stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+coreset, Kc, Kbar = \
+    stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
 
 # sort the coreset ready for producing the output video
 coreset = jnp.sort(coreset)
-print(coreset)
+print('Coreset:', coreset)
 
 # Save a new video. Y_ is the original sequence with dimensions preserved
 coreset_images = Y_[coreset]
