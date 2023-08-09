@@ -13,17 +13,16 @@
 # limitations under the License.
 import unittest
 from scipy.stats import ortho_group, norm
-from sklearn.metrics.pairwise import rbf_kernel as sk_rbf
 import numpy as np
 
 from coreax.kernel import *
+
 
 class TestKernels(unittest.TestCase):
 
     def test_sq_dist(self):
         """Test square distance under float32
         """
-        d = 2
         m = ortho_group.rvs(dim=2)
         x = m[0]
         y = m[1]
@@ -96,7 +95,6 @@ class TestKernels(unittest.TestCase):
         tst = normalised_rbf(X, Y, std_dev)
         self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0., places=3)
 
-
     def test_pc_imq(self):
         """Inverse multi-quadric (pre-conditioned). Bandwidth is the 'variance' of the sq exp"""
         std_dev = np.e
@@ -109,7 +107,6 @@ class TestKernels(unittest.TestCase):
                 K[i, j] = 1. / np.sqrt(1. + ((x - y)/std_dev)**2 / 2.)
         tst = pc_imq (X, Y, std_dev)
         self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0., places=3)
-
 
 
 if __name__ == "__main__":
