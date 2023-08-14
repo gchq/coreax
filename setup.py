@@ -13,5 +13,7 @@ setup(
                         "matplotlib", 
                         "imageio", 
                         "typing-extensions", 
-                        "opencv-python"]
+                        "opencv-python",
+                        "optax",
+                        "flax"]
 )
