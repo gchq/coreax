@@ -11,46 +11,63 @@
  # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  # See the License for the specific language governing permissions and
  # limitations under the License.
-import jax.numpy as jnp 
-from jax import vmap, jit
+
+import jax.numpy as jnp
+from jax.typing import ArrayLike
+from jax import vmap, jit, Array
 from jaxopt import OSQP
 
-def calculate_BQ_weights(x,x_c,kernel):
+from coreax.utils import Kernel
+
+
+def calculate_BQ_weights(
+        x: ArrayLike,
+        x_c: ArrayLike,
+        kernel: Kernel,
+) -> Array:
     """Weights from sequential Bayesian quadrature (SBQ). See https://arxiv.org/pdf/1204.1664.pdf
 
     These are equivalent to the unconstrained weighted MMD optimum.
 
     Args:
-        x (array_like): n x d original data
-        x_c (array_like): m x d coreset
-        kernel (callable): kernel function k: R^d x R^d \to R
+        x: n x d original data
+        x_c: m x d coreset
+        kernel: kernel function k: R^d x R^d \to R
 
     Returns:
-        ndarray: optimal solution
+        optimal solution
     """
+    x = jnp.asarray(x)
+    x_c = jnp.asarray(x_c)
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     z = k_pairwise(x_c, x).sum(axis=1)/len(x)
     K = k_pairwise(x_c,x_c) + 1e-10*jnp.identity(len(x_c))
     return jnp.linalg.solve(K, z)
 
-def simplex_weights(x, x_c, kernel):
+def simplex_weights(
+        x: ArrayLike,
+        x_c: ArrayLike,
+        kernel: Kernel,
+) -> Array:
     """Compute optimal weights given the simplex constraint.
 
     Args:
-        x (array_like): n x d original data
-        x_c (array_like): m x d coreset
-        kernel (callable): kernel function k: R^d x R^d \to R
+        x: n x d original data
+        x_c: m x d coreset
+        kernel: kernel function k: R^d x R^d \to R
 
     Returns:
-        ndarray: optimal solution
+        optimal solution
     """
+    x = jnp.asarray(x)
+    x_c = jnp.asarray(x_c)
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0))
     kbar = k_pairwise(x_c, x).sum(axis=1)/len(x)
     Kmm = k_pairwise(x_c, x_c) + 1e-10*jnp.identity(len(x_c))
     sol = qp(Kmm, kbar)
     return sol
 
-def qp(Kmm, Kbar):
+def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
     """Quadratic programming solver from jaxopt. Solves simplex weight problems of the form
 
     .. math::
@@ -62,15 +79,15 @@ def qp(Kmm, Kbar):
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     Args:
-        Kmm (array_like): m x m coreset Gram matrix
-        Kbar (array_like): m x d array of Gram matrix means
+        Kmm: m x m coreset Gram matrix
+        Kbar: m x d array of Gram matrix means
 
     Returns:
-        ndarray: optimal solution
+        optimal solution
     """
-    m = Kmm.shape[0]
     Q = jnp.array(Kmm)
     c = -jnp.array(Kbar)
+    m = Q.shape[0]
     A = jnp.ones((1, m))
     b = jnp.array([1.0])
     G = jnp.eye(m) * -1.

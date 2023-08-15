@@ -13,24 +13,35 @@
  # limitations under the License.
 
 import jax.numpy as jnp
-from jax import vmap, jit, random, lax
+from jax.typing import ArrayLike
+from jax import vmap, jit, random, lax, Array
 from functools import partial
 
-def K_mean_rand_approx(key, x, kernel, n_points=1000, n_train=2000):
+from coreax.utils import Kernel
+
+
+def K_mean_rand_approx(
+        key: random.PRNGKeyArray,
+        x: ArrayLike,
+        kernel: Kernel,
+        n_points: int = 1000,
+        n_train: int = 2000,
+) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
     randomly
 
     Args:
         key: key for random number generation
-        x (array_like): n X d original data 
-        kernel (callable): kernel function k: R^d x R^d \to R
-        n_points (int): number of kernel evaluations points
-        n_train (int): number of training points to use to fit kernel regression 
+        x: n X d original data
+        kernel: kernel function k: R^d x R^d \to R
+        n_points: number of kernel evaluations points
+        n_train: number of training points to use to fit kernel regression
  
     Returns:
-        array: kernel matrix row sum divide by n approximation 
+        kernel matrix row sum divide by n approximation
     """
+    x = jnp.asarray(x)
     n = len(x)
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
@@ -49,23 +60,31 @@ def K_mean_rand_approx(key, x, kernel, n_points=1000, n_train=2000):
     return features@params
 
 
-def K_mean_ANNchor_approx(key, x, kernel, n_points=1000, n_train=2000):
+def K_mean_ANNchor_approx(
+        key: random.PRNGKeyArray,
+        x: ArrayLike,
+        kernel: Kernel,
+        n_points: int = 1000,
+        n_train: int = 2000,
+) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
     by ANNchor construction
 
     Args:
         key: key for random number generation
-        x (array_like): n X d original data 
-        kernel (callable): kernel function k: R^d x R^d \to R
-        n_points (int): number of kernel evaluations points
-        n_train (int): number of training points to use to fit kernel regression 
+        x: n X d original data
+        kernel: kernel function k: R^d x R^d \to R
+        n_points: number of kernel evaluations points
+        n_train: number of training points to use to fit kernel regression
  
     Returns:
-        array: kernel matrix row sum divide by n approximation 
+        kernel matrix row sum divide by n approximation
     """
+    x = jnp.asarray(x)
     n = len(x)
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
+    # k_vec is a function R^d x R^d \to R^d
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
 
     # Select point for kernel regression using ANNchor construction
@@ -83,27 +102,40 @@ def K_mean_ANNchor_approx(key, x, kernel, n_points=1000, n_train=2000):
     return features@params
 
 @partial(jit, static_argnames=["k_vec"])
-def anchor_body(i, features, x, k_vec):
+def anchor_body(
+        i: int,
+        features: ArrayLike,
+        x: ArrayLike,
+        k_vec: Kernel,
+) -> Array:
+    features = jnp.asarray(features)
+    x = jnp.asarray(x)
     
     j  = features.max(axis=1).argmin()
     features = features.at[:,i].set(k_vec(x,x[j]))
     
     return features
 
-def K_mean_nystrom_approx(key, x, kernel, n_points=1000):
+def K_mean_nystrom_approx(
+        key: random.PRNGKeyArray,
+        x: ArrayLike,
+        kernel: Kernel,
+        n_points: int = 1000,
+) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using nystrom approximation 
     https://arxiv.org/abs/2201.13055
 
     Args:
         key: key for random number generation
-        x (array_like): n X d original data 
-        kernel (callable): kernel function k: R^d x R^d \to R
-        n_points (int): number of kernel evaluations points
+        x: n X d original data
+        kernel: kernel function k: R^d x R^d \to R
+        n_points: number of kernel evaluations points
  
     Returns:
-        array: kernel matrix row sum divide by n approximation 
+        kernel matrix row sum divide by n approximation
     """
+    x = jnp.asarray(x)
     n = len(x)
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     S = random.choice(key, n, (n_points,))
@@ -111,4 +143,3 @@ def K_mean_nystrom_approx(key, x, kernel, n_points=1000):
     K_mm = k_pairwise(x[S],x[S])
     alpha = (jnp.linalg.pinv(K_mm)@K_mn).sum(axis=1)/n
     return K_mn.T @ alpha
-

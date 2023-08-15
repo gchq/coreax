@@ -47,8 +47,9 @@ if weighted:
     m = mmd_weight_block(X, X[coreset], jnp.ones(X.shape[0]), weights, k, max_size=1000)
 else:
     m = mmd_block(X, X[coreset], k, max_size=1000)
+m = m.item()
 
-rm = mmd_block(X, X[rsample], k, max_size=1000)
+rm = mmd_block(X, X[rsample], k, max_size=1000).item()
 
 plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
 plt.scatter(X[coreset, 0], X[coreset, 1], s=weights*1000, color="red")
