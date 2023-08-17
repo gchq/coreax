@@ -116,7 +116,7 @@ def kernel_herding_block(X, n_core, kernel, max_size=10000, K_mean=None, unique=
     return S, Kc, Kbar
 
 
-def stein_kernel_herding_block(X, n_core, kernel, grad_log_f_X, K_mean=None, max_size=10000, nu=1., unique=True):
+def stein_kernel_herding_block(X, n_core, kernel, grad_log_f_X, K_mean=None, max_size=10000, nu=1., unique=True, sm=False):
     """Stein herding
 
     Args:
@@ -128,12 +128,16 @@ def stein_kernel_herding_block(X, n_core, kernel, grad_log_f_X, K_mean=None, max
         max_size: Size of matrix block to process
         nu (float): Base kernel for Stein kernel, bandwidth parameter.
         unique (bool): insist on unique elements
+        sm (bool, optional): treat grad_log_f_X as a score-matched function. Defaults to False
 
     Returns:
         tuple: (coreset indices, coreset Gram matrix, coreset kernel mean)
     """
-    g = vmap(grad_log_f_X, (0, None, None), 0)
-    grads = g(X, X, nu).squeeze()
+    if sm:
+        grads = grad_log_f_X(X)
+    else:
+        g = vmap(grad_log_f_X, (0, None, None), 0)
+        grads = g(X, X, nu).squeeze()
     k_pairwise = jit(vmap(vmap(kernel, (None, 0, None, 0, None,
                                         None), 0), (0, None, 0, None, None, None), 0))
     n = X.shape[0]
