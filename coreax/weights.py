@@ -17,13 +17,13 @@ from jax.typing import ArrayLike
 from jax import vmap, jit, Array
 from jaxopt import OSQP
 
-from coreax.utils import Kernel
+from coreax.utils import KernelFunction
 
 
 def calculate_BQ_weights(
         x: ArrayLike,
         x_c: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
 ) -> Array:
     """Weights from sequential Bayesian quadrature (SBQ). See https://arxiv.org/pdf/1204.1664.pdf
 
@@ -47,7 +47,7 @@ def calculate_BQ_weights(
 def simplex_weights(
         x: ArrayLike,
         x_c: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
 ) -> Array:
     """Compute optimal weights given the simplex constraint.
 

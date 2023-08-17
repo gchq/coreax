@@ -19,7 +19,7 @@ from jax.typing import ArrayLike
 from jax import jit, vmap, random, Array
 from functools import partial
 
-from coreax.utils import Kernel
+from coreax.utils import KernelFunction
 
 
 #
@@ -30,7 +30,7 @@ from coreax.utils import Kernel
 def refine(
         x: ArrayLike,
         S: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
     """
@@ -66,8 +66,8 @@ def refine_body(
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> Array:
     S = jnp.asarray(S)
     S = S.at[i].set(comparison(S[i], S, x, K_mean, K_diag, k_pairwise, k_vec).argmax())
@@ -81,8 +81,8 @@ def comparison(
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> Array:
     """
     Calculate the change the mmd delta from replacing i in S with any point in x. 
@@ -101,7 +101,7 @@ def comparison(
 def refine_rand(
         x: ArrayLike,
         S: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         K_mean: ArrayLike,
         p: float = 0.1,
 ) -> Array:
@@ -145,8 +145,8 @@ def refine_rand_body(
         n_cand: int,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> tuple[random.PRNGKeyArray, Array]:
 
     key, S = val
@@ -169,8 +169,8 @@ def comparison_cand(
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> Array:
     """
     Calculate the change the mmd delta from replacing i in S with any point in x. 
@@ -200,7 +200,7 @@ def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 def refine_rev(
         x: ArrayLike,
         S: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
     """
@@ -238,8 +238,8 @@ def refine_rev_body(
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> Array:
 
     comps = comparison_rev(i,S,x,K_mean,K_diag, k_pairwise, k_vec)
@@ -254,8 +254,8 @@ def comparison_rev(
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: Kernel,
-        k_vec: Kernel,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
 ) -> Array:
     """
     Calculate the change the mmd delta from replacing any point in S with x[i]. 

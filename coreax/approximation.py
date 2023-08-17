@@ -17,13 +17,13 @@ from jax.typing import ArrayLike
 from jax import vmap, jit, random, lax, Array
 from functools import partial
 
-from coreax.utils import Kernel
+from coreax.utils import KernelFunction
 
 
 def K_mean_rand_approx(
         key: random.PRNGKeyArray,
         x: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         n_points: int = 1000,
         n_train: int = 2000,
 ) -> Array:
@@ -57,13 +57,13 @@ def K_mean_rand_approx(
     # Solve regression problem.
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
     
-    return features@params
+    return features @ params
 
 
 def K_mean_ANNchor_approx(
         key: random.PRNGKeyArray,
         x: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         n_points: int = 1000,
         n_train: int = 2000,
 ) -> Array:
@@ -99,14 +99,14 @@ def K_mean_ANNchor_approx(
     # solve regression problem
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
     
-    return features@params
+    return features @ params
 
 @partial(jit, static_argnames=["k_vec"])
 def anchor_body(
         i: int,
         features: ArrayLike,
         x: ArrayLike,
-        k_vec: Kernel,
+        k_vec: KernelFunction,
 ) -> Array:
     features = jnp.asarray(features)
     x = jnp.asarray(x)
@@ -119,7 +119,7 @@ def anchor_body(
 def K_mean_nystrom_approx(
         key: random.PRNGKeyArray,
         x: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         n_points: int = 1000,
 ) -> Array:
     """

@@ -15,7 +15,7 @@
 from jax import jit, vmap, Array
 import jax.numpy as jnp
 from jax.typing import ArrayLike
-from coreax.utils import calculate_K_sum, Kernel
+from coreax.utils import calculate_K_sum, KernelFunction
 from .kernel_herding import kernel_herding_block
 from .refine import refine, refine_rand, refine_rev
 
@@ -27,7 +27,7 @@ from .refine import refine, refine_rand, refine_rev
 def kernel_herding_refine_block(
         x: ArrayLike,
         n_core: int,
-        kernel: Kernel,
+        kernel: KernelFunction,
         max_size: int = 10000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
@@ -56,7 +56,7 @@ def kernel_herding_refine_block(
 def kernel_herding_refine_rand_block(
         x: ArrayLike,
         n_core: int,
-        kernel: Kernel,
+        kernel: KernelFunction,
         p: float = 0.1,
         max_size: int = 10000,
         K_mean: ArrayLike | None = None,
@@ -77,9 +77,9 @@ def kernel_herding_refine_rand_block(
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
     n = len(x)
-    if K_mean == None:
+    if K_mean is None:
         K_mean = calculate_K_sum(x, k_pairwise, max_size)/n
-    S = kernel_herding_block(x, n_core, kernel, max_size, K_mean)[0]
+    S, _, _ = kernel_herding_block(x, n_core, kernel, max_size, K_mean)
     S = refine_rand(x, S, kernel, K_mean, p)
 
     return S
@@ -87,7 +87,7 @@ def kernel_herding_refine_rand_block(
 def kernel_herding_refine_rev_block(
         x: ArrayLike,
         n_core: int,
-        kernel: Kernel,
+        kernel: KernelFunction,
         max_size: int = 10000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
@@ -108,7 +108,7 @@ def kernel_herding_refine_rev_block(
     n = len(x)
     if K_mean is None:
         K_mean = calculate_K_sum(x, k_pairwise, max_size)/n
-    S = kernel_herding_block(x, n_core, kernel, max_size, K_mean)[0]
+    S, _, _ = kernel_herding_block(x, n_core, kernel, max_size, K_mean)
     S = refine_rev(x, S, kernel, K_mean)
 
     return S
