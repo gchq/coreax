@@ -18,7 +18,13 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 
-Kernel = Callable[[ArrayLike, ArrayLike], Array]
+KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+
+# Pairwise kernel evaluation if grads and nu are defined
+KernelFunctionWithGrads = Callable[
+    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float],
+    Array
+]
 
 
 def update_K_sum(
@@ -27,13 +33,7 @@ def update_K_sum(
         i: int,
         j: int,
         max_size: int,
-        k_pairwise: (
-                Kernel
-                | Callable[
-                    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float],
-                    Array
-                ]
-        ),
+        k_pairwise: KernelFunction | KernelFunctionWithGrads,
         grads: ArrayLike | None = None,
         nu: float | None = None,
 ) -> Array:
@@ -74,13 +74,7 @@ def update_K_sum(
 
 def calculate_K_sum(
         X: ArrayLike,
-        k_pairwise: (
-                Kernel
-                | Callable[
-                    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float],
-                    Array
-                ]
-        ),
+        k_pairwise: KernelFunction | KernelFunctionWithGrads,
         max_size: int,
         grads: ArrayLike | None = None,
         nu: ArrayLike | None = None,

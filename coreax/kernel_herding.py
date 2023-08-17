@@ -21,7 +21,7 @@ from jax.typing import ArrayLike
 from jax import vmap, jit, Array
 
 from coreax.kernel import rbf_grad_log_f_X, stein_kernel_pc_imq_element
-from coreax.utils import calculate_K_sum, Kernel
+from coreax.utils import calculate_K_sum, KernelFunction, KernelFunctionWithGrads
 from functools import partial
 
 from sklearn.neighbors import KDTree
@@ -33,7 +33,7 @@ def greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike],
         X: ArrayLike,
-        k_vec: Kernel,
+        k_vec: KernelFunction,
         K_mean: ArrayLike,
         unique: bool,
 ) -> tuple[Array, Array, Array]:
@@ -70,8 +70,7 @@ def stein_greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike],
         X: ArrayLike,
-        k_vec:
-            Callable[[ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array],
+        k_vec: KernelFunctionWithGrads,
         K_mean: ArrayLike,
         grads: ArrayLike,
         n: int,
@@ -112,7 +111,7 @@ def stein_greedy_body(
 def kernel_herding_block(
         X: ArrayLike,
         n_core: int,
-        kernel: Kernel,
+        kernel: KernelFunction,
         max_size: int = 10000,
         K_mean: ArrayLike | None = None,
         unique: bool = True,
@@ -156,7 +155,7 @@ def kernel_herding_block(
 def stein_kernel_herding_block(
         X: ArrayLike,
         n_core: int,
-        kernel: Kernel,
+        kernel: KernelFunction,
         grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array],
         K_mean: ArrayLike | None = None,
         max_size: int = 10000,
@@ -308,7 +307,7 @@ def fw_herding_body(
 #         X: ArrayLike,
 #         m: int,
 #         method: str = "herding",
-#         kernel: Kernel | None = None,
+#         kernel: KernelFunction | None = None,
 #         K: ArrayLike | None = None,
 # ) -> Array:
 #     if kernel is not None and K is None:
@@ -351,7 +350,7 @@ def scalable_herding(
         indices: ArrayLike,
         n_core: int,
         function: Callable[..., Array],
-        w_function: Kernel | None,
+        w_function: KernelFunction | None,
         size: int = 1000,
         parallel: bool = True,
         **kwargs,

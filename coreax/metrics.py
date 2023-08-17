@@ -12,15 +12,14 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
-from collections.abc import Callable
-import jax.numpy as jnp 
+import jax.numpy as jnp
 from jax import vmap, jit, Array
 from jax.typing import ArrayLike
 
-from coreax.utils import Kernel
+from coreax.utils import KernelFunction
 
 
-def mmd(x: ArrayLike, x_c: ArrayLike, kernel: Kernel) -> Array:
+def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
     """
     Calculates maximum mean discrepancy
 
@@ -40,7 +39,7 @@ def mmd(x: ArrayLike, x_c: ArrayLike, kernel: Kernel) -> Array:
 def wmmd(
         x: ArrayLike,
         x_c: ArrayLike,
-        kernel: Kernel,
+        kernel: KernelFunction,
         weights: ArrayLike,
 ) -> float:
     """One sided, weighted MMD, where weights are on the coreset points only.
@@ -65,8 +64,8 @@ def wmmd(
 def sum_K(
         x: ArrayLike,
         y: ArrayLike,
-        k_pairwise: Kernel,
-        max_size: int = 10000,
+        k_pairwise: KernelFunction,
+        max_size: int = 10_000,
 ) -> float:
     x = jnp.asarray(x)
     y = jnp.asarray(y)
@@ -85,8 +84,8 @@ def sum_K(
 def mmd_block(
         x: ArrayLike,
         x_c: ArrayLike,
-        kernel: Kernel,
-        max_size: int = 10000,
+        kernel: KernelFunction,
+        max_size: int = 10_000,
 ) -> Array:
     """
     Calculates maximum mean discrepancy limiting memory requirements
@@ -118,8 +117,8 @@ def sum_weight_K(
         y: ArrayLike,
         w_x: ArrayLike,
         w_y: ArrayLike,
-        k_pairwise: Callable[[ArrayLike, ArrayLike], Array],
-        max_size: int = 10000,
+        k_pairwise: KernelFunction,
+        max_size: int = 10_000,
 ) -> float:
     x = jnp.asarray(x)
     y = jnp.asarray(y)
@@ -139,8 +138,8 @@ def mmd_weight_block(
         x_c: ArrayLike,
         w: ArrayLike,
         w_c: ArrayLike,
-        kernel: Kernel,
-        max_size: int = 10000,
+        kernel: KernelFunction,
+        max_size: int = 10_000,
 ) -> Array:
     """
     Calculates weighted maximum mean discrepancy limiting memory requirements
