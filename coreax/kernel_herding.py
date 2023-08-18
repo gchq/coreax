@@ -112,7 +112,7 @@ def kernel_herding_block(
         X: ArrayLike,
         n_core: int,
         kernel: KernelFunction,
-        max_size: int = 10000,
+        max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
@@ -158,7 +158,7 @@ def stein_kernel_herding_block(
         kernel: KernelFunction,
         grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array],
         K_mean: ArrayLike | None = None,
-        max_size: int = 10000,
+        max_size: int = 10_000,
         nu: float = 1.,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
