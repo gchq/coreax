@@ -28,7 +28,7 @@ def kernel_herding_refine_block(
         x: ArrayLike,
         n_core: int,
         kernel: KernelFunction,
-        max_size: int = 10000,
+        max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
@@ -58,7 +58,7 @@ def kernel_herding_refine_rand_block(
         n_core: int,
         kernel: KernelFunction,
         p: float = 0.1,
-        max_size: int = 10000,
+        max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
@@ -88,7 +88,7 @@ def kernel_herding_refine_rev_block(
         x: ArrayLike,
         n_core: int,
         kernel: KernelFunction,
-        max_size: int = 10000,
+        max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
