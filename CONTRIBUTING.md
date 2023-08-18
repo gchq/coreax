@@ -36,7 +36,7 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests]. 
  
- **TODO: detail CI/CD workflows executred once a PR has been opened.**
+ **TODO: detail CI/CD workflows executed once a PR has been opened.**
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
