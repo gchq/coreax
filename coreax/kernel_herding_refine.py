@@ -12,6 +12,10 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from jax import jit, vmap, Array
 import jax.numpy as jnp
 from jax.typing import ArrayLike
