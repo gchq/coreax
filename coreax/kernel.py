@@ -101,41 +101,11 @@ def pdiff(X: ArrayLike, Y: ArrayLike) -> Array:
         Y: Second argument, m x d
 
     Returns:
-        Pairwise differences, n x m
+        Pairwise differences, n x m x d
     """
     d1 = vmap(diff, in_axes=(0, None), out_axes=0)
     d2 = vmap(d1, in_axes=(None, 0), out_axes=1)
     return d2(X, Y)
-
-
-@jit
-def pdot(X: ArrayLike, Y: ArrayLike) -> Array:
-    """Efficient pairwise dot product for two arrays of vectors
-
-    Args:
-        X: First argument, n x d
-        Y: Second argument, m x d
-
-    Returns:
-        Pairwise dot products, n x m
-    """
-    d1 = vmap(jnp.dot, in_axes=(0, None), out_axes=0)
-    d2 = vmap(d1, in_axes=(None, 0), out_axes=0)
-    return d2(X, Y)
-
-
-@jit
-def idot(X: ArrayLike, Y: ArrayLike) -> Array:
-    """Dot product function for two tensors, over inner axes (preserving first axis)
-
-    Args:
-        X: First argument, d x n x m
-        Y: Second argument, d x m x p
-
-    Returns:
-        Dot product over inner axes, d x n x p
-    """
-    return vmap(jnp.dot, in_axes=(0, 0), out_axes=0)(X, Y)
 
 
 @jit
@@ -342,24 +312,6 @@ def median_heuristic(X: ArrayLike) -> Array:
     return jnp.sqrt(h / 2.)
 
 
-# @jit
-# def rbf_kde(X: ArrayLike, Y: ArrayLike, nu: float) -> tuple[Array, Array]:
-#     """Takes in data set and computes the RBF KDE value at each of the n points
-
-#     Args:
-#         X: First argument, n x d.
-#         Y: Second argument, m x d.
-#         nu: Kernel bandwidth (std dev).
-
-#     Returns:
-#         ndarray: Gram matrix mean over Y, n x 1.
-#         ndarray: Gram matrix, n x m
-#     """
-#     K = normalised_rbf(Y, X, nu=nu)
-#     k = K.mean(axis=1)
-#     return k, K
-
-
 @jit
 def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
     """PDF of X, as constructed by an RBF KDE using data set D
@@ -454,38 +406,6 @@ def grad_rbf_y(
         Array of gradients evaluated at values of Y, m x d.
     """
     return -jnp.transpose(grad_rbf_x(X, Y, nu, K), (1, 0, 2))
-
-
-# @jit
-# def grad_kde(
-#     X: ArrayLike,
-#     Y: ArrayLike,
-#     nu: float,
-#     K: Array | None = None,
-#     Km: Array | None = None,
-# ) -> Array:
-#     """Gradient of an RBF KDE wrt X
-
-#     Args:
-#         X (_type_): _description_
-#         Y (_type_): _description_
-#         kernel (_type_): _description_
-#         nu (_type_): _description_
-#         K (_type_, optional): _description_. Defaults to None.
-#         Km (_type_, optional): _description_. Defaults to None.
-
-#     Returns:
-#         _type_: _description_
-#     """
-#     X = jnp.asarray(X)
-#     if K is None:
-#         Km, K = rbf_kde(X, Y, nu)
-#     Km = Km.reshape(-1, 1)
-#     n = X.shape[0]
-#     Z = pdiff(Y, X)
-#     J = idot(jnp.transpose(Z, (0, 2, 1)), K)
-#     J /= -jnp.sqrt(2 * jnp.pi) * nu
-#     return J / (n*Km)
 
 
 @jit

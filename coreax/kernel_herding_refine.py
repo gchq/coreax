@@ -16,8 +16,8 @@ from jax import jit, vmap, Array
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 from coreax.utils import calculate_K_sum, KernelFunction
-from .kernel_herding import kernel_herding_block
-from .refine import refine, refine_rand, refine_rev
+from coreax.kernel_herding import kernel_herding_block
+from coreax.refine import refine, refine_rand, refine_rev
 
 #
 # Kernel Herding Refine Functions 
