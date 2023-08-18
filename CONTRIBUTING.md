@@ -35,7 +35,6 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - Branch names should take one of the following forms:
   - `feature/<feature-name>`: for adding, removing or refactoring a feature.
   - `bugfix/<bug-name>`: for bug fixes.
-  - `hotfix/<hotfix-_name>`: for changing the code with a temporary solution, usually because of an emergency. 
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests]. 
