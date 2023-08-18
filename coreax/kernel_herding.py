@@ -12,6 +12,10 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import jax.numpy as jnp

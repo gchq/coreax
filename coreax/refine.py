@@ -12,6 +12,10 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
+# Support annotations with tuple in Python < 3.9
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 import jax.numpy as jnp
 import jax.lax as lax
 from jax.typing import ArrayLike
