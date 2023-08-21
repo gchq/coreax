@@ -18,6 +18,7 @@ from unittest.mock import patch, call
 
 from examples.david import main as d
 from examples.pounce import main as p
+from examples.weighted_herding import main as wh
 
 
 def assertisfile(path):
@@ -71,3 +72,19 @@ class TestExamples(unittest.TestCase):
 
             assertisfile(dir_ / Path('coreset/coreset.gif'))
             assertisfile(dir_ / Path('coreset/frames.png'))
+
+    def test_weighted_herding(self):
+        """
+        Test weighted_herding.py example
+        """
+
+        with tempfile.TemporaryDirectory() as tmp_dir, \
+                patch('builtins.print'), \
+                patch("matplotlib.pyplot.show") as mock_show:
+
+            outpath_ = Path(tmp_dir) / 'weighted_herding.png'
+            wh(outpath=outpath_)
+
+            mock_show.assert_has_calls([call(), call()])
+
+            assertisfile(outpath_)
