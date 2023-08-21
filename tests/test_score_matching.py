@@ -19,6 +19,7 @@ from optax import sgd
 from coreax.score_matching import *
 from flax.training.train_state import TrainState
 from flax import linen as nn
+import matplotlib.pyplot as plt
 
 class TestNetwork(nn.Module):
     """A network for use in sliced score matching."""
@@ -96,34 +97,53 @@ class TestKernels(unittest.TestCase):
         out = sliced_score_matching_loss(score_fn, analytic_obj)(X, V)
         ans = np.ones((10, 1), dtype=float) * 1226.5
         self.assertAlmostEqual(np.linalg.norm(out - ans), 0., places=3)
-        # np.testing.assert_almost_equal(out, ans, decimal=3)
 
     def test_train_step(self):
+        # simple linear model that we can compute the gradients for by hand
         score_network = TestNetwork(2, 2)
+
         # setting the PRNG with fixed seed means initialisation is consistent for testing
+        # using SGD
         state = create_train_state(score_network, random.PRNGKey(0), 1e-3, 2, sgd)
-        # assert that we know the initialisation from the PRNG
-        W = jnp.array([[-0.27880254, -0.7407797], [-0.47987297,  0.2552868]])
-        self.assertAlmostEqual(jnp.linalg.norm(state.params['Dense_0']['kernel'] - W), 0., 3)
 
-        x = np.array([[2., 7.]])
-        v = np.ones((1, 1, 2), dtype=float)
-        s = W @ x[0, :]
+        # Jax is row-based, so we have to work with the kernel transpose
+        W = state.params['Dense_0']['kernel'].T
+        b = state.params['Dense_0']['bias']
 
-        # to write
-        grad_L = None
-        new_params = W - 1e-3 * grad_L
+        x = np.array([2., 7.])
+        v = np.ones((1, 2), dtype=float)
+        s = W @ x.T + b
 
-        def loss(params): return sliced_score_matching_loss(
-            lambda x: state.apply_fn({'params': params}, x), analytic_obj)(x, v).mean()
-        print(loss(state.params))
-        pass
+        # for the vector mapped input to loss
+        X = np.array([x])
+        V = np.ones((1, 1, 2), dtype=float)
 
-    def test_sliced_score_matching(self):
-        pass
+        # we can compute these gradients by hand
+        grad_W = jnp.outer(v, v) + jnp.outer(s, x)
+        grad_b = s
+
+        W_ = W - 1e-3 * grad_W
+        b_ = b - 1e-3 * grad_b
+
+        state = train_step(state, X, V, analytic_obj)
+
+        # Jax is row based, so transpose W_
+        self.assertAlmostEqual(np.linalg.norm(W_.T - state.params["Dense_0"]["kernel"]), 0., places=3)
+        self.assertAlmostEqual(np.linalg.norm(b_ - state.params["Dense_0"]["bias"]), 0., places=3)
 
     def test_univariate_gaussian_score(self):
-        pass
+        mu = 6.
+        std_dev = 1.6
+        N = 1000
+        np.random.seed(0)
+        samples = np.random.normal(mu, std_dev, size=(N, 1))
+        learned_score = sliced_score_matching(samples, random.normal, use_analytic=True, epochs=10)
+        true_score = lambda x: -(x - mu) / std_dev**2
+        x = np.linspace(-10, 10).reshape(-1, 1)
+        y_t = true_score(x)
+        y_l = learned_score(x)
+        mae = np.abs(y_t - y_l).mean()
+        self.assertLessEqual(mae, 1.)
 
     def test_multivariate_gaussian_score(self):
         pass
