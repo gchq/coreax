@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from examples.david import main as d
+from examples.pounce import main as p
 
 
 def assertisfile(path):
@@ -42,3 +43,24 @@ class TestExamples(unittest.TestCase):
                 mock_show.assert_called_once()
 
                 assertisfile(outpath_)
+
+    def test_pounce(self):
+        """
+        Test pounce.py example
+        """
+
+        dir_ = Path.cwd().parent / Path("examples/data/pounce")
+
+        # delete output files if already present
+        out_dir = dir_ / "coreset"
+        if out_dir.exists():
+            for sub in out_dir.iterdir():
+                if sub.name in ["coreset.gif", "frames.png"]:
+                    sub.unlink()
+
+        with patch('builtins.print'):
+            # run pounce.py
+            p(dir_=str(dir_))
+
+            assertisfile(dir_ / Path('coreset/coreset.gif'))
+            assertisfile(dir_ / Path('coreset/frames.png'))
