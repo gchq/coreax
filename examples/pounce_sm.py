@@ -17,6 +17,7 @@ import imageio
 import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
+from jax.random import rademacher
 
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element
 from coreax.kernel_herding import stein_kernel_herding_block
@@ -50,7 +51,8 @@ k = lambda x, y : rbf_kernel(x, y, jnp.float32(nu)**2)/(nu * jnp.sqrt(2. * jnp.p
 weighted = True
 
 # learn a score function
-score_function = sliced_score_matching(X, epochs=200, rtype="rademacher")
+score_function = sliced_score_matching(X, rademacher, use_analytic=True, epochs=200)
+
 # run Stein kernel herding in block mode to avoid GPU memory issues
 coreset, Kc, Kbar = \
     stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, score_function, nu=nu, max_size=1000, sm=True)
