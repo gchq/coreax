@@ -186,6 +186,7 @@ def comparison_cand(
     :param K_diag: *TODO*
     :param k_pairwise: *TODO*
     :param k_vec: *TODO*
+    :return: *TODO*
     """
     S = jnp.asarray(S)
     x = jnp.asarray(x)
@@ -215,30 +216,16 @@ def refine_rev(
         K_mean: ArrayLike,
 ) -> Array:
     """
-    Refine a coreset iteratively, replacing random elements with the best candidate point.
+    Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    The candidate points are a random sample of :math:`n \times p` points from among the
-    original data.
+    The iteration is carred out over points in `x`.
 
     :param x: :math:`n \times d` original data.
     :param S: Coreset point indices.
     :param kernel:  Kernel function
                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
     :param K_mean: Kernel matrix row sum divided by n.
-    :param p: Proportion of original data to use as candidates.
     :return: Refined coreset point indices.
-
-    Given a coreset S refines the coreset by iterativing over point in x and replacing point in S which gives
-    the most improvement. 
-
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
     """
     x = jnp.asarray(x)
     S = jnp.asarray(S)
@@ -282,8 +269,16 @@ def comparison_rev(
         k_vec: KernelFunction,
 ) -> Array:
     """
-    Calculate the change the mmd delta from replacing any point in S with x[i]. 
-    Returns a vector o f deltas.
+    Calculate the change in MMD delta from replacing a point in `S` with `x[i]`.
+
+    :param i: Index for original data.
+    :param S: Coreset point indices.
+    :param x: :math:`n \times d` original data.
+    :param K_mean: Kernel matrix row sum divided by n.
+    :param K_diag: *TODO*
+    :param k_pairwise: *TODO*
+    :param k_vec: *TODO*
+    :return: *TODO*
     """
     S = jnp.asarray(S)
     x = jnp.asarray(x)
