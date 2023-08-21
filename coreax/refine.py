@@ -38,17 +38,16 @@ def refine(
         K_mean: ArrayLike,
 ) -> Array:
     """
-    Given a coreset S refine the coreset by iteratively replacing each element of S with the point in 
-    x which gives greatest reduction in mmd.
+    Refine a coreset iteratively, replacing elements with points most reducing MMD.
 
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    MMD here is maximum mean discrepancy.
+
+    :param x: :math:`n \times d` original data.
+    :param S: Coreset point indices.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param K_mean: Kernel matrix row sum divided by n.
+    :return: Refined coreset point indices.
     """
     
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
@@ -110,18 +109,18 @@ def refine_rand(
         p: float = 0.1,
 ) -> Array:
     """
-    Given a coreset S refines the coreset by iteratively replacing a random element of S with the best 
-    point in a random sample of n*p candidate points. 
+    Refine a coreset iteratively, replacing random elements with the best candidate point.
 
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-        p: proportion of original data to use as candidates.
-    
-    Returns:
-        coreset point indices
+    The candidate points are a random sample of :math:`n \times p` points from among the
+    original data.
+
+    :param x: :math:`n \times d` original data.
+    :param S: Coreset point indices.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param K_mean: Kernel matrix row sum divided by n.
+    :param p: Proportion of original data to use as candidates.
+    :return: Refined coreset point indices.
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
@@ -177,8 +176,16 @@ def comparison_cand(
         k_vec: KernelFunction,
 ) -> Array:
     """
-    Calculate the change the mmd delta from replacing i in S with any point in x. 
-    Returns a vector o f deltas.
+    Calculate the change in MMD delta from replacing `i` in `S` with `x`.
+
+    :param i: A coreset index.
+    :param cand: Indices for randomly sampled candidate points among the original data.
+    :param S: Coreset point indices.
+    :param x: :math:`n \times d` original data.
+    :param K_mean: Kernel matrix row sum divided by n.
+    :param K_diag: *TODO*
+    :param k_pairwise: *TODO*
+    :param k_vec: *TODO*
     """
     S = jnp.asarray(S)
     x = jnp.asarray(x)
@@ -208,7 +215,20 @@ def refine_rev(
         K_mean: ArrayLike,
 ) -> Array:
     """
-    Given a coreset S refines the coreset by iterativing over point in x and replacing point in S which gives 
+    Refine a coreset iteratively, replacing random elements with the best candidate point.
+
+    The candidate points are a random sample of :math:`n \times p` points from among the
+    original data.
+
+    :param x: :math:`n \times d` original data.
+    :param S: Coreset point indices.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param K_mean: Kernel matrix row sum divided by n.
+    :param p: Proportion of original data to use as candidates.
+    :return: Refined coreset point indices.
+
+    Given a coreset S refines the coreset by iterativing over point in x and replacing point in S which gives
     the most improvement. 
 
     Args:
@@ -270,7 +290,7 @@ def comparison_rev(
     K_mean = jnp.asarray(K_mean)
     K_diag = jnp.asarray(K_diag)
     m = len(S)
-    
+
     return (
         (k_pairwise(x[S], x[S]).sum(axis=1) - k_vec(x[S],x[i]).sum() + k_vec(x[S],x[i]) - K_diag[S])/(m*m) - 
         (K_mean[S] - K_mean[i])/m
