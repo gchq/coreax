@@ -14,7 +14,7 @@
 import unittest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from examples.david import main as d
 from examples.pounce import main as p
@@ -33,12 +33,19 @@ class TestExamples(unittest.TestCase):
         """
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
+                patch('builtins.print') as mock_print, \
                 patch("matplotlib.pyplot.show") as mock_show:
 
                 # run david.py
                 inpath_ = Path.cwd().parent / Path("examples/data/david_orig.png")
                 outpath_ = Path(tmp_dir) / 'david_coreset.png'
                 d(inpath=str(inpath_), outpath=outpath_)
+
+                mock_print.assert_has_calls([call("Image dimensions:"),
+                                             call((215, 180)),
+                                             call("Computing coreset..."),
+                                             call("Choosing random subset..."),
+                                             call("Plotting")])
 
                 mock_show.assert_called_once()
 
