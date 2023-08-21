@@ -15,5 +15,6 @@ setup(
                         "typing-extensions", 
                         "opencv-python",
                         "optax",
-                        "flax"]
+                        "flax",
+                        "tqdm"]
 )

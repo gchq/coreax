@@ -13,6 +13,7 @@
 # limitations under the License.
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
+from jax.random import normal
 from sklearn.datasets import make_blobs
 
 from coreax.weights import qp
@@ -48,8 +49,8 @@ def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
 # lower dimensions.
 weighted = True
 
-# learn a score function
-score_function = sliced_score_matching(X, epochs=100)
+# learn a score function with normal random variables, which use the analytic form of the loss
+score_function = sliced_score_matching(X, normal, use_analytic=True, epochs=100)
 
 # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
 # Stein kernel herding uses the Stein kernel derived from the RBF above.
