@@ -32,6 +32,9 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - All pull requests should relate to an existing issue.
   - If the pull request addresses something not currently covered by an issue, create a new issue first.
 - Make changes on a [feature branch][git-feature-branch] instead of the main branch.
+- Branch names should take one of the following forms:
+  - `feature/<feature-name>`: for adding, removing or refactoring a feature.
+  - `bugfix/<bug-name>`: for bug fixes.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests]. 
