@@ -23,28 +23,24 @@ from jax import jit, vmap, Array
 
 @jit
 def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
-    """ Squared distance between two vectors
+    """
+    Squared distance between two vectors.
 
-    Args:
-        x: First argument
-        y: Second argument
-
-    Returns:
-        ndarray: same format as numpy.dot
+    :param x: First vector argument.
+    :param y: Second vector argument.
+    :return: Dot product of `x-y` and `x-y`, the square distance between `x` and `y`.
     """
     return jnp.dot(x - y, x - y)
 
 
 @jit
 def sq_dist_pairwise(X: ArrayLike, Y: ArrayLike) -> Array:
-    """ Efficient pairwise square distance
+    """
+    Efficient pairwise square distance.
 
-    Args:
-        X: First argument, n x d
-        Y: Second argument, m x d
-
-    Returns:
-        Pairwise squared distances, n x m
+    :param X: First $n \times d$ array argument.
+    :param Y: Second $m \times d$ array argument.
+    :return: Pairwise squared distances between `X` and `Y` as an $n \times m$ array.
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     d1 = vmap(sq_dist, in_axes=(None, 0), out_axes=0)
