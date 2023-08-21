@@ -45,8 +45,6 @@ def main(inpath="./examples/data/david_orig.png", outpath=None):
     if nu == 0.:
         nu = 100.
 
-    # define an RBF base kernel
-    k = lambda x, y: rbf_kernel(x, y, np.float32(nu)**2)/(nu * jnp.sqrt(2. * jnp.pi))
     indices = np.arange(n)
 
     print("Computing coreset...")

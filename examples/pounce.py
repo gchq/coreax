@@ -46,10 +46,6 @@ def main(dir_="./examples/data/pounce"):
     idx = np.random.choice(X.shape[0], N, replace=False)
     nu = median_heuristic(X[idx])
 
-    # define the kernel
-    k = lambda x, y : rbf_kernel(x, y, jnp.float32(nu)**2)/(nu * jnp.sqrt(2. * jnp.pi))
-    weighted = True
-
     # run Stein kernel herding in block mode to avoid GPU memory issues
     coreset, Kc, Kbar = \
         stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
