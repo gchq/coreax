@@ -14,6 +14,7 @@
 
 import jax
 from jax import random, vmap, numpy as jnp, jvp, jit
+from jax.lax import fori_loop
 from flax.training import train_state
 from functools import partial
 from coreax.networks import ScoreNetwork
@@ -81,7 +82,7 @@ def create_train_state(module, rng, learning_rate, dimension, optimiser):
 
 
 @partial(jit, static_argnames=["obj_fn"])
-def train_step(state, X, V, obj_fn):
+def sliced_score_matching_train_step(state, X, V, obj_fn):
     """A single training step that updates model parameters using loss gradient.
 
     Args:
@@ -100,7 +101,55 @@ def train_step(state, X, V, obj_fn):
     return state
 
 
-def sliced_score_matching(X, rgenerator, use_analytic=False, M=1, lr=1e-3, epochs=10, batch_size=64, hidden_dim=128, optimiser=optax.adam):
+@partial(jit, static_argnames=["obj_fn"])
+def noise_conditional_loop_body(i, obj, state, params, X, V, sigmas, obj_fn):
+    """Noise conditioning objective function summand. See https://arxiv.org/pdf/2006.09011.pdf for details.
+
+    Args:
+        i (int): loop index
+        obj (float): running objective, i.e. the current partial sum
+        state (flax.train_state.TrainState): the TrainState object
+        params (dict): the current iterate parameter settings
+        X (arraylike): the n x d data vectors
+        V (arraylike): the n x m x d random vectors
+        sigmas (arraylike): the geometric progression of noise standard deviations
+        obj_fn (callable): element objective function (vector, vector, vector) -> real
+
+    Returns:
+        float: the updated objective, i.e. partial sum
+    """
+    # perturb X
+    X_ = X + sigmas[i] * random.normal(random.PRNGKey(0), X.shape)
+    obj = obj + sigmas[i]**2 * sliced_score_matching_loss(
+        lambda x: state.apply_fn({'params': params}, x), obj_fn)(X_, V).mean()
+    return obj
+
+
+@partial(jit, static_argnames=["obj_fn", "L"])
+def noise_conditional_train_step(state, X, V, obj_fn, sigmas, L):
+    """A single training step that updates model parameters using loss gradient.
+
+    Args:
+        state (flax.train_state.TrainState): the TrainState object.
+        X (arraylike): the n x d data vectors
+        V (arraylike): the n x m x d random vectors
+        obj_fn (callable): objective function (vector, vector, vector) -> real
+        sigmas (arraylike): length L array of noise standard deviations to use in objective function.
+        L (int): the static number of terms in the geometric progression. (Required for reverse mode autodiff.)
+
+    Returns:
+        flax.train_state.TrainState: the updated TrainState object 
+    """
+    def loss(params):
+        body = partial(noise_conditional_loop_body, state=state,
+                       params=params, X=X, V=V, sigmas=sigmas, obj_fn=obj_fn)
+        return fori_loop(0, L, body, 0.)
+    grads = jax.grad(loss)(state.params)
+    state = state.apply_gradients(grads=grads)
+    return state
+
+
+def sliced_score_matching(X, rgenerator, noise_conditioning=True, use_analytic=False, M=1, lr=1e-3, epochs=10, batch_size=64, hidden_dim=128, optimiser=optax.adam, L=100, sigma=1., gamma=.95):
     """Learn a sliced score matching function from Song et al.'s paper: https://arxiv.org/pdf/1905.07088.pdf.
 
     Currently uses the ScoreNetwork network in coreax.networks.
@@ -108,6 +157,7 @@ def sliced_score_matching(X, rgenerator, use_analytic=False, M=1, lr=1e-3, epoch
     Args:
         X (arraylike): the n x d data vectors
         rgenerator (callable): distribution sampler (key, shape, dtype) -> jax._src.typing.Array, e.g. distributions in jax.random
+        noise_conditioning (bool, optional): use the noise conditioning version of score matching. Defaults to True.
         use_analytic (bool, optional): use the analytic (reduced variance) objective or not. Defaults to False.
         M (int, optional): the number of random vectors to use per data vector. Defaults to 1.
         lr (float, optional): optimiser learning rate. Defaults to 1e-3.
@@ -115,6 +165,9 @@ def sliced_score_matching(X, rgenerator, use_analytic=False, M=1, lr=1e-3, epoch
         batch_size (int, optional): size of minibatch. Defaults to 64.
         hidden_dim (int, optional): the ScoreNetwork hidden dimension. Defaults to 128.
         optimiser (callable, optional): the optax optimiser to use. Defaults to optax.adam.
+        L (int, optional): number of noise models to use in noise conditional score matching. Defaults to 100.
+        sigma (float, optional): initial noise standard deviation for noise geometric progression in noise conditional score matching. Defaults to 1.
+        gamma (float, optional); geometric progression ratio. Defaults to 0.95.
 
     Returns:
         callable: a function that applies the learned score function to input x
@@ -123,6 +176,13 @@ def sliced_score_matching(X, rgenerator, use_analytic=False, M=1, lr=1e-3, epoch
     n, d = X.shape
     sn = ScoreNetwork(hidden_dim, d)
     obj_fn = analytic_obj if use_analytic else general_obj
+    if noise_conditioning:
+        gammas = gamma**jnp.arange(L)
+        sigmas = sigma * gammas
+        train_step = partial(noise_conditional_train_step,
+                             obj_fn=obj_fn, sigmas=sigmas, L=L)
+    else:
+        train_step = partial(sliced_score_matching_train_step, obj_fn=obj_fn)
 
     # random vector setup
     k1, k2 = random.split(random.PRNGKey(0))
@@ -135,5 +195,5 @@ def sliced_score_matching(X, rgenerator, use_analytic=False, M=1, lr=1e-3, epoch
     # main training loop
     for _ in tqdm(range(epochs)):
         idx = random.randint(batch_key, (batch_size,), 0, n)
-        state = train_step(state, X[idx, :], V[idx, :], obj_fn)
+        state = train_step(state, X[idx, :], V[idx, :])
     return lambda x: state.apply_fn({'params': state.params}, x)
