@@ -279,14 +279,12 @@ def pc_imq_div_x_grad_y(
 
 @jit
 def median_heuristic(X: ArrayLike) -> Array:
-    """Compute the median heuristic for setting kernel bandwidth
+    """
+    Compute the median heuristic for setting kernel bandwidth.
 
-    Args:
-        X: Input array of vectors.
-
-    Returns:
-        Bandwidth parameter, computed from the median heuristic, as a zero-dimensional
-        array
+    :param X: Input array of vectors.
+    :return:    Bandwidth parameter, computed from the median heuristic, as a
+                0-dimensional array
     """
     D = jnp.triu(sq_dist_pairwise(X, X), k=1)
     h = jnp.median(D[jnp.triu_indices_from(D, k=1)])
@@ -295,15 +293,13 @@ def median_heuristic(X: ArrayLike) -> Array:
 
 @jit
 def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
-    """PDF of X, as constructed by an RBF KDE using data set D
+    """
+    Construct PDF of `X` by kernel density estimation for a radial basis function.
 
-    Args:
-        X: Random variable values, n x d
-        D: KDE data set, m x d
-        nu: Kernel bandwidth (std dev).
-
-    Returns:
-        Gram matrix mean over Y, n x 1; Gram matrix, n x m
+    :param X: An $n \times d$ array of random variable values.
+    :param D: The $m \times d$ kernel density estimation set.
+    :param nu: Kernel bandwidth (standard deviation).
+    :return: Gram matrix mean over Y as an $n \times 1$ array; Gram matrix as an $n \times m$ array.
     """
     K = normalised_rbf(X, D, nu)
     k = K.mean(axis=1)
@@ -318,17 +314,16 @@ def rbf_grad_log_f_X(
         K: ArrayLike | None = None,
         Kbar: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of log PDF of X, where the PDF is a KDE induced by data set D.
+    """
+    Compute gradient of log-PDF of `X`, with the PDF constructed from kernel density
+    estimation.
 
-    Args:
-        X: Random variable values, n x d
-        D: KDE data set, m x d
-        nu: Kernel bandwidth (std dev).
-        K: Gram matrix, if available, n x m. Defaults to None.
-        Kbar: Kernel mean, if available, n x 1. Defaults to None.
-
-    Returns:
-        Array of gradients evaluated at values of X, n x d.
+    :param X: An $n \times d$ array of random variable values.
+    :param D: The $m \times d$ kernel density estimation set.
+    :param nu: Kernel bandwidth (standard deviation).
+    :param K: Gram matrix, an $n \times m$ array. Optional, defaults to `None`.
+    :param Kbar: Kernel mean, an $n \times 1$ array. Optional, defaults to `None`.
+    :return: An $n \times d$ array of gradients evaluated at values of `X`.
     """
     X = jnp.atleast_2d(X)
     D = jnp.atleast_2d(D)
@@ -348,16 +343,14 @@ def grad_rbf_x(
         nu: float,
         K: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of the RBF kernel, wrt X
+    """
+    Compute gradient of the radial basis function kernel with respect to `X`.
 
-    Args:
-        X: First argument, n x d.
-        Y: Second argument, m x d.
-        nu: Kernel bandwidth (std dev).
-        K: Gram matrix, if available, n x m. Defaults to None.
-
-    Returns:
-        Array of gradients evaluated at values of X, n x d.
+    :param X: First $n \times d$ array argument.
+    :param Y: Second $m \times d$ array argument.
+    :param nu: Kernel bandwidth (standard deviation).
+    :param K: Gram matrix, an $n \times m$ array. Optional, defaults to `None`.
+    :return: Gradient evaluated at values of `X`, as an $n \times d$ array.
     """
     if K is None:
         K = normalised_rbf(X, Y, nu)
@@ -375,31 +368,28 @@ def grad_rbf_y(
         nu: float,
         K: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of the RBF kernel, wrt Y
+    """
+    Compute gradient of the radial basis function kernel with respect to `Y`.
 
-    Args:
-        X: First argument, n x d.
-        Y: Second argument, m x d.
-        nu: Kernel bandwidth (std dev).
-        K: Gram matrix, if available, n x m. Defaults to None.
-
-    Returns:
-        Array of gradients evaluated at values of Y, m x d.
+    :param X: First $n \times d$ array argument.
+    :param Y: Second $m \times d$ array argument.
+    :param nu: Kernel bandwidth (standard deviation).
+    :param K: Gram matrix, an $n \times m$ array. Optional, defaults to `None`.
+    :return: Gradient evaluated at values of `Y`, as an $m \times d$ array.
     """
     return -jnp.transpose(grad_rbf_x(X, Y, nu, K), (1, 0, 2))
 
 
 @jit
 def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """Compute the kernel induced by the canonical Stein operator on an RBF base kernel.
+    """
+    Compute a kernel from a radial basis function kernel with the canonical Stein
+    operator.
 
-    Args:
-        X: First argument, n x d.
-        Y: Second argument, m x d.
-        nu: Base kernel bandwidth (std dev).
-
-    Returns:
-        Gram matrix, n x m
+    :param X: First $n \times d$ array argument.
+    :param Y: Second $m \times d$ array argument.
+    :param nu: Kernel bandwidth (standard deviation). Optional, defaults to 1.
+    :return: Gram matrix, an $n \times m$ array.
     """
     X = jnp.atleast_2d(X)
     Y = jnp.atleast_2d(Y)
@@ -432,17 +422,17 @@ def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
 
 @jit
 def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """Compute the kernel Gram matrix induced by the canonical Stein operator on a pre-conditioned inverse multi-quadric base kernel.
+    """
+    Compute a kernel from a pre-conditioned inverse multi-quadric kernel with the
+    canonical Stein operator.
 
-    The log PDF is assumed to be a KDE induced by the data in Y.
+    The log-PDF is assumed to be induced by kernel density estimation with the
+    data in `Y`.
 
-    Args:
-        X: First argument, n x d.
-        Y: Second argument, m x d.
-        nu: Base kernel bandwidth (std dev). Defaults to 1
-
-    Returns:
-        Gram matrix, n x m
+    :param X: First $n \times d$ array argument.
+    :param Y: Second $m \times d$ array argument.
+    :param nu: Kernel bandwidth (standard deviation). Optional, defaults to 1.
+    :return: Gram matrix, an $n \times m$ array.
     """
     X = jnp.atleast_2d(X)
     Y = jnp.atleast_2d(Y)
@@ -482,20 +472,19 @@ def stein_kernel_pc_imq_element(
         n: int,
         nu: float = 1.,
 ) -> Array:
-    """Compute the kernel element at x, y induced by the canonical Stein operator on a pre-conditioned inverse multi-quadric base kernel.
+    """
+    Evaluate the kernel element at `(x,y)` induced from a pre-conditioned inverse
+    multi-quadric kernel with the canonical Stein operator.
 
-    The log PDF can be arbitrary, as only the gradients are supplied.
+    The log-PDF can be arbitrary as only gradients are supplied.
 
-    Args:
-        x: First argument, 1 x d.
-        y: Second argument, 1 x d.
-        g_log_p_x: Gradient of log PDF evaluated at x, 1 x d.
-        g_log_p_y: Gradient of log PDF evaluated at y, 1 x d.
-        n: Number of data points in the
-        nu: Base kernel bandwidth (std dev). Defaults to 1
-
-    Returns:
-        Kernel evaluation at x, y as zero-dimensional array
+    :param x: First $1 \times d$ array argument.
+    :param y: Second $1 \times d$ array argument.
+    :param g_log_p_x: Gradient of log-PDF evaluated at `x`, a $1 \times d$ array.
+    :param g_log_p_y: Gradient of log-PDF evaluated at `y`, a $1 \times d$ array.
+    :param nu: Kernel bandwidth (standard deviation). Optional, defaults to 1.
+    :param n: *TODO*
+    :return: Kernel evaluation at `(x,y)`, 0-dimensional array.
     """
     x = jnp.atleast_2d(x)
     y = jnp.atleast_2d(y)
