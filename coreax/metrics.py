@@ -41,7 +41,8 @@ def wmmd(
         weights: ArrayLike,
 ) -> float:
     """
-    Calculate one-sided, weighted MMD with weights on coreset points only.
+    Calculate one-sided, weighted maximum mean discrepancy (MMD) with weights on
+    coreset points only.
 
     :param x: The original :math:`n \times d` data.
     :param x_c: :math:`m \times d` coreset.
@@ -85,7 +86,7 @@ def mmd_block(
         max_size: int = 10_000,
 ) -> Array:
     """
-    Calculate MMD whilst limiting memory requirements.
+    Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
     :param x: The original :math:`n \times d` data.
     :param x_c: :math:`m \times d` coreset.
@@ -137,7 +138,8 @@ def mmd_weight_block(
         max_size: int = 10_000,
 ) -> Array:
     """
-    Calculate weighted MMD whilst limiting memory requirements.
+    Calculate weighted maximum mean discrepancy (MMD) whilst limiting memory
+    requirements.
 
     :param x: The original :math:`n \times d` data.
     :param x_c: :math:`m \times d` coreset.
