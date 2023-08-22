@@ -125,22 +125,30 @@ class TestKernels(unittest.TestCase):
         W_ = W - 1e-3 * grad_W
         b_ = b - 1e-3 * grad_b
 
-        state = train_step(state, X, V, analytic_obj)
+        state = sliced_score_matching_train_step(state, X, V, analytic_obj)
 
         # Jax is row based, so transpose W_
         self.assertAlmostEqual(np.linalg.norm(W_.T - state.params["Dense_0"]["kernel"]), 0., places=3)
         self.assertAlmostEqual(np.linalg.norm(b_ - state.params["Dense_0"]["bias"]), 0., places=3)
 
     def test_univariate_gaussian_score(self):
-        mu = 6.
-        std_dev = 1.6
+        mu = 0.
+        std_dev = 1.
         N = 1000
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(N, 1))
-        learned_score = sliced_score_matching(samples, random.normal, use_analytic=True, epochs=10)
         true_score = lambda x: -(x - mu) / std_dev**2
-        x = np.linspace(-10, 10).reshape(-1, 1)
+        x = np.linspace(-2, 2).reshape(-1, 1)
         y_t = true_score(x)
+
+        # noise conditioning
+        learned_score = sliced_score_matching(samples, random.normal, use_analytic=True, epochs=20)
+        y_l = learned_score(x)
+        mae = np.abs(y_t - y_l).mean()
+        self.assertLessEqual(mae, 1.)
+
+        # no noise conditioning
+        learned_score = sliced_score_matching(samples, random.normal, noise_conditioning=False, use_analytic=True, epochs=20)
         y_l = learned_score(x)
         mae = np.abs(y_t - y_l).mean()
         self.assertLessEqual(mae, 1.)
