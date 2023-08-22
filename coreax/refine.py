@@ -38,9 +38,8 @@ def refine(
         K_mean: ArrayLike,
 ) -> Array:
     """
-    Refine a coreset iteratively, replacing elements with points most reducing MMD.
-
-    MMD here is maximum mean discrepancy.
+    Refine a coreset iteratively, replacing elements with points most reducing maximum
+    mean discrepancy (MMD).
 
     :param x: :math:`n \times d` original data.
     :param S: Coreset point indices.
@@ -176,7 +175,8 @@ def comparison_cand(
         k_vec: KernelFunction,
 ) -> Array:
     """
-    Calculate the change in MMD delta from replacing `i` in `S` with `x`.
+    Calculate the change in maximum mean discrepancy (MMD) delta from replacing `i` in
+    `S` with `x`.
 
     :param i: A coreset index.
     :param cand: Indices for randomly sampled candidate points among the original data.
@@ -269,7 +269,8 @@ def comparison_rev(
         k_vec: KernelFunction,
 ) -> Array:
     """
-    Calculate the change in MMD delta from replacing a point in `S` with `x[i]`.
+    Calculate the change in maximum mean discrepancy (MMD) delta from replacing a point
+    in `S` with `x[i]`.
 
     :param i: Index for original data.
     :param S: Coreset point indices.
