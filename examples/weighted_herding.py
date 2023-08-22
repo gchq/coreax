@@ -23,7 +23,7 @@ from coreax.metrics import mmd_block, mmd_weight_block
 import numpy as np
 
 
-def main(outpath=None):
+def main(outpath=None, weighted=True):
 
     # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D for plotting below.
     N = 10000
@@ -42,11 +42,6 @@ def main(outpath=None):
     def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
         (nu * jnp.sqrt(2. * jnp.pi))
 
-    # turn the coreset weights on or off. If on, a quadratic program is invoked to solve the weights' vector.
-    # This buys some increase in integration error, but at a computational cost. Likely to most effective in
-    # lower dimensions.
-    weighted = True
-
     # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
     # Stein kernel herding uses the Stein kernel derived from the RBF above.
     # Block mode processes the Gram matrix in blocks to avoid GPU memory issues.
@@ -61,6 +56,9 @@ def main(outpath=None):
     # get a random sample of points to compare against
     rsample = np.random.choice(N, size=C, replace=False)
 
+    # the weighted bool turns the coreset weights on or off. If on, a quadratic program is invoked to solve
+    # the weights' vector. This buys some increase in integration error, but at a computational cost. Likely
+    # to most effective in lower dimensions.
     if weighted:
         # find the weights. Solves a QP
         weights = qp(Kc + 1e-10, Kbar)
@@ -98,6 +96,8 @@ def main(outpath=None):
     print(rm)
     print("Coreset")
     print(m)
+
+    return m, rm
 
 
 if __name__ == '__main__':

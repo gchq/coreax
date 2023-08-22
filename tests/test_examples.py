@@ -21,7 +21,7 @@ from examples.pounce import main as p
 from examples.weighted_herding import main as wh
 
 
-def assertisfile(path):
+def assert_is_file(path):
     if not Path(path).resolve().is_file():
         raise AssertionError("File does not exist: %s" % str(path))
 
@@ -56,7 +56,7 @@ class TestExamples(unittest.TestCase):
             mock_show.assert_called_once()
 
             # check the file was generated and saved
-            assertisfile(outpath_)
+            assert_is_file(outpath_)
 
     def test_pounce(self):
         """
@@ -80,8 +80,8 @@ class TestExamples(unittest.TestCase):
             p(dir_=str(dir_))
 
             # check files were generated and saved
-            assertisfile(dir_ / Path('coreset/coreset.gif'))
-            assertisfile(dir_ / Path('coreset/frames.png'))
+            assert_is_file(dir_ / Path('coreset/coreset.gif'))
+            assert_is_file(dir_ / Path('coreset/frames.png'))
 
     def test_weighted_herding(self):
         """
@@ -95,12 +95,32 @@ class TestExamples(unittest.TestCase):
                 patch('builtins.print'), \
                 patch("matplotlib.pyplot.show") as mock_show:
 
-            # run weighted herding example
-            outpath_ = Path(tmp_dir) / 'weighted_herding.png'
-            wh(outpath=outpath_)
+            with self.subTest(msg='Weighted herding'):
 
-            # check that the patched plt.show has been called twice
-            mock_show.assert_has_calls([call(), call()])
+                # run weighted herding example
+                outpath_ = Path(tmp_dir) / 'weighted_herding.png'
+                mmd_coreset, mmd_random = wh(outpath=outpath_, weighted=True)
 
-            # check a plot file has been generated
-            assertisfile(outpath_)
+                # check that the patched plt.show has been called twice
+                mock_show.assert_has_calls([call(), call()])
+
+                # check a plot file has been generated
+                assert_is_file(outpath_)
+
+                # assert coreset had better MMD than random
+                self.assertLess(mmd_coreset, mmd_random)
+
+            with self.subTest(msg='Unweighted herding'):
+
+                # run weighted herding example
+                outpath_ = Path(tmp_dir) / 'unweighted_herding.png'
+                mmd_coreset, mmd_random = wh(outpath=outpath_, weighted=False)
+
+                # check that the patched plt.show has been called twice
+                mock_show.assert_has_calls([call(), call()])
+
+                # check a plot file has been generated
+                assert_is_file(outpath_)
+
+                # assert coreset had better MMD than random
+                self.assertLess(mmd_coreset, mmd_random)
