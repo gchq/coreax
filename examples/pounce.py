@@ -18,7 +18,7 @@ import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
 
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
+from coreax.kernel import median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 
 

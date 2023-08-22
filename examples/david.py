@@ -13,11 +13,10 @@
 # limitations under the License.
 import matplotlib.pyplot as plt
 import numpy as np
-import jax.numpy as jnp
 import cv2
 
 from coreax.weights import qp
-from coreax.kernel import rbf_kernel, median_heuristic
+from coreax.kernel import median_heuristic
 from coreax.kernel_herding import stein_kernel_herding_block, scalable_herding, scalable_rbf_grad_log_f_X, \
     scalable_stein_kernel_pc_imq_element
 
