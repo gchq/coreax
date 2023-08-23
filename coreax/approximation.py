@@ -69,7 +69,8 @@ def K_mean_ANNchor_approx(
     """
     Approximate kernel row mean by regression on points chosen by ANNchor construction.
 
-    Here, the kernel row mean is the matrix row sum divided by n.
+    Here, the kernel row mean is the matrix row sum divided by n. The ANNchor
+    implementation used can be found `here<https://github.com/gchq/annchor>`_.
 
     :param key: Key for random number generation.
     :param x: The original :math:`n \times d` data.

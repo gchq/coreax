@@ -299,7 +299,7 @@ def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
     :param X: An $n \times d$ array of random variable values.
     :param D: The $m \times d$ kernel density estimation set.
     :param nu: Kernel bandwidth (standard deviation).
-    :return: Gram matrix mean over Y as an $n \times 1$ array; Gram matrix as an $n \times m$ array.
+    :return: Gram matrix mean over X as an $n \times 1$ array; Gram matrix as an $n \times m$ array.
     """
     K = normalised_rbf(X, D, nu)
     k = K.mean(axis=1)
