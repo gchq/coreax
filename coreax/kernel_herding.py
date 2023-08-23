@@ -387,7 +387,7 @@ def scalable_herding(
     :param w_function: Weights function. If unweighted, this is `None`.
     :param size: Region size in number of points. Optional, defaults to `1000`.
     :param parallel: Use multiprocessing. Optional, defaults to `True`.
-    :returns: Coreset and weights, where weights is empty if unweighted. 
+    :returns: Coreset and weights, where weights is empty if unweighted.
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
     if n_core >= size:

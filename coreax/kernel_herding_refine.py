@@ -36,16 +36,15 @@ def kernel_herding_refine_block(
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
-    Implementation of kernel herding refine algorithm using jax. 
-    Args:
-        x: n x d original data
-        n_core: number of coreset points to calculate
-        kernel: kernel function k: R^d x R^d \to R
-        max_size: size of matrix block to process
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    Execute kernel herding refine algorithm using `Jax`.
+
+    :param x: Original :math:`n \times d` dataset.
+    :param n_core: Number of coreset points to calcualte.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param max_size: Size of matrix blocks to process.
+    :param K_mean: Row sum of kernel matrix divided by `n`.
+    :returns: Coreset point indices.
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -66,17 +65,16 @@ def kernel_herding_refine_rand_block(
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
-    Implementation of kernel herding random refine algorithm using jax. 
-    Args:
-        x: n x d original data
-        n_core: number of coreset points to calculate
-        kernel: kernel function k: R^d x R^d \to R
-        p: proportion of original data to use as candidates
-        max_size: size of matrix block to process
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    Execute kernel herding random refine algorithm using `Jax`.
+
+    :param x: Original :math:`n \times d` dataset.
+    :param n_core: Number of coreset points to calcualte.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param p: Proportion of original data to use as candidates.
+    :param max_size: Size of matrix blocks to process.
+    :param K_mean: Row sum of kernel matrix divided by `n`.
+    :returns: Coreset point indices.
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -96,16 +94,17 @@ def kernel_herding_refine_rev_block(
         K_mean: ArrayLike | None = None,
 ) -> Array:
     """
-    Implementation of kernel herding random refine algorithm using jax. 
-    Args:
-        x: n x d original data
-        n_core: number of coreset points to calculate
-        kernel: kernel function k: R^d x R^d \to R
-        max_size: size of matrix block to process
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    Execute kernel herding random refine algorithm using `Jax`.
+
+    TODO: what differentiates this from kernel_herding_refine_rand_block?
+
+    :param x: Original :math:`n \times d` dataset.
+    :param n_core: Number of coreset points to calcualte.
+    :param kernel:  Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param max_size: Size of matrix blocks to process.
+    :param K_mean: Row sum of kernel matrix divided by `n`.
+    :returns: Coreset point indices.
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
