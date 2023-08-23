@@ -15,7 +15,7 @@ from jax import random, vmap, numpy as jnp, jvp, jit
 from jax.random import PRNGKey
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 from flax.linen import Module
 from flax.training.train_state import TrainState
 from functools import partial
@@ -90,7 +90,7 @@ def create_train_state(
 @partial(jit, static_argnames=["obj_fn"])
 def sliced_score_matching_train_step(
     state: TrainState, X: ArrayLike, V: ArrayLike, obj_fn: Callable
-) -> TrainState:
+) -> Tuple[TrainState, float]:
     """A single training step that updates model parameters using loss gradient.
 
     :param state: the TrainState object.
@@ -105,9 +105,9 @@ def sliced_score_matching_train_step(
             lambda x: state.apply_fn({"params": params}, x), obj_fn
         )(X, V).mean()
 
-    grads = jax.grad(loss)(state.params)
+    val, grads = jax.value_and_grad(loss)(state.params)
     state = state.apply_gradients(grads=grads)
-    return state
+    return state, val
 
 
 @partial(jit, static_argnames=["obj_fn"])
@@ -155,7 +155,7 @@ def noise_conditional_train_step(
     obj_fn: Callable,
     sigmas: ArrayLike,
     L: int,
-) -> TrainState:
+) -> Tuple[TrainState, float]:
     """A single training step that updates model parameters using loss gradient.
 
     :param state: the TrainState object.
@@ -181,9 +181,9 @@ def noise_conditional_train_step(
         )
         return fori_loop(0, L, body, 0.0)
 
-    grads = jax.grad(loss)(state.params)
+    val, grads = jax.value_and_grad(loss)(state.params)
     state = state.apply_gradients(grads=grads)
-    return state
+    return state, val
 
 
 def sliced_score_matching(
@@ -196,7 +196,7 @@ def sliced_score_matching(
     epochs: Optional[int] = 10,
     batch_size: Optional[int] = 64,
     hidden_dim: Optional[int] = 128,
-    optimiser: Optional[Callable] = optax.adam,
+    optimiser: Optional[Callable] = optax.adamw,
     L: Optional[int] = 100,
     sigma: Optional[float] = 1.0,
     gamma: Optional[float] = 0.95,
@@ -247,7 +247,9 @@ def sliced_score_matching(
     batch_key = random.PRNGKey(1)
 
     # main training loop
-    for _ in tqdm(range(epochs)):
+    for i in tqdm(range(epochs)):
         idx = random.randint(batch_key, (batch_size,), 0, n)
-        state = train_step(state, X[idx, :], V[idx, :])
+        state, val = train_step(state, X[idx, :], V[idx, :])
+        if i % 10 == 0:
+            tqdm.write(f"{i:>6}/{epochs}: loss {val:<.5f}")
     return lambda x: state.apply_fn({"params": state.params}, x)

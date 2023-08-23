@@ -13,11 +13,12 @@ import unittest
 import numpy as np
 from jax import random, numpy as jnp
 from jax.typing import ArrayLike
+from typing import Callable
+from jax.scipy.stats import norm, multivariate_normal
 from optax import sgd
 
 from coreax.score_matching import *
 from flax import linen as nn
-import matplotlib.pyplot as plt
 
 
 class TestNetwork(nn.Module):
@@ -33,7 +34,7 @@ class TestNetwork(nn.Module):
 
 
 class TestScoreMatching(unittest.TestCase):
-    def test_analytic_objective(self):
+    def test_analytic_objective(self) -> None:
         """Tests the core objective function, analytic version"""
         # orthogonal u and v vectors should give back half length squared s
         u = np.array([0.0, 1.0])
@@ -51,7 +52,7 @@ class TestScoreMatching(unittest.TestCase):
         ans = 165.0
         self.assertAlmostEqual(out, ans, places=3)
 
-    def test_general_objective(self):
+    def test_general_objective(self) -> None:
         """Tests the core objective function."""
         # orthogonal u and v vectors should give back half squared dot product of v and
         # s
@@ -70,7 +71,9 @@ class TestScoreMatching(unittest.TestCase):
         ans = 7456.0
         self.assertAlmostEqual(out, ans, places=3)
 
-    def test_sliced_score_matching_loss_element(self):
+    def test_sliced_score_matching_loss_element(self) -> None:
+        """Tests the loss function elementwise."""
+
         # basic score function, implictly multivariate vector valued
         def score_fn(x):
             return x**2
@@ -87,9 +90,11 @@ class TestScoreMatching(unittest.TestCase):
         ans = analytic_obj(v, H @ v, s)
         self.assertAlmostEqual(out, ans, places=3)
 
-    def test_sliced_score_matching_loss(self):
+    def test_sliced_score_matching_loss(self) -> None:
+        """Tests the loss function vmapped function."""
+
         # basic score function, implictly multivariate vector valued
-        def score_fn(x):
+        def score_fn(x: ArrayLike) -> ArrayLike:
             return x**2
 
         x = np.array([2.0, 7.0])
@@ -101,7 +106,8 @@ class TestScoreMatching(unittest.TestCase):
         ans = np.ones((10, 1), dtype=float) * 1226.5
         self.assertAlmostEqual(np.linalg.norm(out - ans), 0.0, places=3)
 
-    def test_train_step(self):
+    def test_train_step(self) -> None:
+        """Tests the basic training step."""
         # simple linear model that we can compute the gradients for by hand
         score_network = TestNetwork(2, 2)
 
@@ -128,7 +134,7 @@ class TestScoreMatching(unittest.TestCase):
         W_ = W - 1e-3 * grad_W
         b_ = b - 1e-3 * grad_b
 
-        state = sliced_score_matching_train_step(state, X, V, analytic_obj)
+        state, _ = sliced_score_matching_train_step(state, X, V, analytic_obj)
 
         # Jax is row based, so transpose W_
         self.assertAlmostEqual(
@@ -139,13 +145,14 @@ class TestScoreMatching(unittest.TestCase):
         )
 
     def test_univariate_gaussian_score(self):
+        """Tests a simple univariate Gaussian known score function."""
         mu = 0.0
         std_dev = 1.0
-        N = 1000
+        N = 500
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(N, 1))
 
-        def true_score(x):
+        def true_score(x: ArrayLike) -> ArrayLike:
             return -(x - mu) / std_dev**2
 
         x = np.linspace(-2, 2).reshape(-1, 1)
@@ -153,7 +160,11 @@ class TestScoreMatching(unittest.TestCase):
 
         # noise conditioning
         learned_score = sliced_score_matching(
-            samples, random.normal, use_analytic=True, epochs=20
+            samples,
+            random.normal,
+            hidden_dim=32,
+            use_analytic=True,
+            epochs=100,
         )
         y_l = learned_score(x)
         mae = np.abs(y_t - y_l).mean()
@@ -164,20 +175,174 @@ class TestScoreMatching(unittest.TestCase):
             samples,
             random.normal,
             noise_conditioning=False,
+            hidden_dim=32,
             use_analytic=True,
-            epochs=20,
+            epochs=100,
         )
         y_l = learned_score(x)
         mae = np.abs(y_t - y_l).mean()
         self.assertLessEqual(mae, 1.0)
 
-    def test_multivariate_gaussian_score(self):
-        pass
+    def test_multivariate_gaussian_score(self) -> None:
+        """Tests a simple multivariate Gaussian known score function."""
+        d = 2
+        mu = np.zeros(d)
+        Sigma = np.eye(d)
+        Lambda = np.linalg.pinv(Sigma)
+        N = 500
+        np.random.seed(0)
+        samples = np.random.multivariate_normal(mu, Sigma, size=N)
+
+        def true_score(x: ArrayLike) -> ArrayLike:
+            y = np.array(list(map(lambda z: -Lambda @ (z - mu), x)))
+            return y
+
+        x, y = np.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
+        X = np.vstack([x.ravel(), y.ravel()]).T
+        y_t = true_score(X)
+
+        # noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            hidden_dim=32,
+            use_analytic=True,
+            epochs=100,
+        )
+        y_l = learned_score(X)
+        err = np.linalg.norm(y_t - y_l, axis=1).mean()
+        self.assertLessEqual(err, 1.0)
+
+        # no noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            noise_conditioning=False,
+            hidden_dim=32,
+            use_analytic=True,
+            epochs=100,
+        )
+        y_l = learned_score(X)
+        err = np.linalg.norm(y_t - y_l, axis=1).mean()
+        self.assertLessEqual(err, 1.0)
 
     def test_univariate_gmm_score(self):
-        pass
+        """Tests a univariate Gaussian mixture model known score function."""
+        mus = np.array([-4.0, 4.0])
+        std_devs = np.array([1.0, 2.0])
+        p = 0.7
+        mix = np.array([1 - p, p])
+        N = 1000
+        np.random.seed(0)
+        comp = np.random.binomial(1, p, size=N)
+        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+
+        def egrad(g: Callable) -> Callable:
+            def wrapped(x, *rest):
+                y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
+                (x_bar,) = g_vjp(np.ones_like(y))
+                return x_bar
+
+            return wrapped
+
+        def true_score(x: ArrayLike) -> ArrayLike:
+            logpdf = lambda y: jnp.log(norm.pdf(y, mus, std_devs) @ mix)
+            return egrad(logpdf)(x)
+
+        x = np.linspace(-10, 10).reshape(-1, 1)
+        y_t = true_score(x)
+
+        # noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            hidden_dim=128,
+            use_analytic=True,
+            batch_size=128,
+            sigma=1.0,
+            epochs=100,
+        )
+        y_l = learned_score(x)
+        mae = np.abs(y_t - y_l).mean()
+        self.assertLessEqual(mae, 1.0)
+
+        # no noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            noise_conditioning=False,
+            hidden_dim=128,
+            use_analytic=True,
+            batch_size=128,
+            epochs=100,
+        )
+        y_l = learned_score(x)
+        mae = np.abs(y_t - y_l).mean()
+        self.assertLessEqual(mae, 1.0)
 
     def test_multivariate_gmm_score(self):
+        """Tests a multivariate Gaussian mixture model known socre function."""
+        np.random.seed(0)
+        # we don't want to go much higher than 2
+        d = 2
+        K = 10
+        mus = np.random.multivariate_normal(np.zeros(d), np.eye(d), size=K)
+        Sigmas = np.array([np.random.gamma(2.0, 1.0) * np.eye(d) for _ in range(K)])
+        mix = np.random.dirichlet(np.ones(K))
+        N = 500
+        comp = np.random.choice(K, size=N, p=mix)
+        samples = np.array(
+            [np.random.multivariate_normal(mus[c], Sigmas[c]) for c in comp]
+        )
+
+        def egrad(g: Callable) -> Callable:
+            def wrapped(x, *rest):
+                y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
+                (x_bar,) = g_vjp(np.ones_like(y))
+                return x_bar
+
+            return wrapped
+
+        def true_score(x: ArrayLike) -> ArrayLike:
+            def logpdf(y: ArrayLike) -> ArrayLike:
+                lpdf = 0.0
+                for k in range(K):
+                    lpdf += multivariate_normal.pdf(y, mus[k], Sigmas[k]) * mix[k]
+                return jnp.log(lpdf)
+
+            return egrad(logpdf)(x)
+
+        coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(d)])
+        X = np.vstack([c.ravel() for c in coords]).T
+        y_t = true_score(X)
+
+        # noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            hidden_dim=128,
+            use_analytic=True,
+            batch_size=128,
+            sigma=1.0,
+            epochs=100,
+        )
+        y_l = learned_score(X)
+        err = np.linalg.norm(y_t - y_l, axis=1).mean()
+        self.assertLessEqual(err, d)
+
+        # no noise conditioning
+        learned_score = sliced_score_matching(
+            samples,
+            random.normal,
+            noise_conditioning=False,
+            hidden_dim=128,
+            batch_size=128,
+            use_analytic=True,
+            epochs=100,
+        )
+        y_l = learned_score(X)
+        err = np.linalg.norm(y_t - y_l, axis=1).mean()
+        self.assertLessEqual(err, d)
         pass
 
 
