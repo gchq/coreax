@@ -61,6 +61,9 @@ def main(outpath=None, weighted=True):
     if weighted:
         # find the weights. Solves a QP
         weights = qp(Kc + 1e-10, Kbar)
+        # check minimum weight is not negative by more than a reasonable tolerance
+        if weights.min() < -1e-5:
+            raise ValueError(f"Minimum weight was {weights.min()} but should have been >=0")
         # compute the MMD between X and the coreset, weighted version
         m = mmd_weight_block(X, X[coreset], jnp.ones(N), weights, k, max_size=1000)
     else:
@@ -72,6 +75,10 @@ def main(outpath=None, weighted=True):
 
     # compute the MMD between X and the random sample
     rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+
+    # nudge the weights to avoid negative entries for plotting
+    if weights.min() < 0:
+        weights -= weights.min()
 
     # produce some scatter plots
     plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
