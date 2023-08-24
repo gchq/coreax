@@ -13,14 +13,13 @@
 # limitations under the License.
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
+import numpy as np
 from sklearn.datasets import make_blobs
 
 from coreax.weights import qp
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
-
-import numpy as np
 
 
 def main(outpath=None, weighted=True):
@@ -92,9 +91,9 @@ def main(outpath=None, weighted=True):
     plt.show()
 
     # print the MMDs
-    print("Random")
+    print("Random MMD")
     print(rm)
-    print("Coreset")
+    print("Coreset MMD")
     print(m)
 
     return m, rm

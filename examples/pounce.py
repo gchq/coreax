@@ -18,8 +18,9 @@ import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
 
-from coreax.kernel import median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
+from coreax.metrics import mmd_block
 
 
 def main(dir_="./examples/data/pounce"):
@@ -54,6 +55,24 @@ def main(dir_="./examples/data/pounce"):
     coreset = jnp.sort(coreset)
     print('Coreset:', coreset)
 
+    # define a reference kernel to use for comparisons of MMD. We'll use an RBF
+    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
+        (nu * jnp.sqrt(2. * jnp.pi))
+
+    # compute the MMD between X and the coreset
+    m = mmd_block(X, X[coreset], k, max_size=1000)
+
+    # get a random sample of points to compare against
+    rsample = np.random.choice(N, size=C, replace=False)
+    # compute the MMD between X and the random sample
+    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+
+    # print the MMDs
+    print("Random MMD")
+    print(rm)
+    print("Coreset MMD")
+    print(m)
+
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = Y_[coreset]
     imageio.mimsave(f"{dir_}/coreset/coreset.gif", coreset_images)
@@ -74,6 +93,8 @@ def main(dir_="./examples/data/pounce"):
     plt.tight_layout()
     plt.savefig(f"{dir_}/coreset/frames.png")
     plt.close()
+
+    return m, rm
 
 
 if __name__ == '__main__':

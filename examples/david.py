@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import matplotlib.pyplot as plt
+import jax.numpy as jnp
 import numpy as np
 import cv2
 
 from coreax.weights import qp
-from coreax.kernel import median_heuristic
+from coreax.kernel import rbf_kernel, median_heuristic
 from coreax.kernel_herding import stein_kernel_herding_block, scalable_herding, scalable_rbf_grad_log_f_X, \
     scalable_stein_kernel_pc_imq_element
+from coreax.metrics import mmd_block
 
 
 def main(inpath="./examples/data/david_orig.png", outpath=None):
@@ -60,6 +62,23 @@ def main(inpath="./examples/data/david_orig.png", outpath=None):
     # choose a random subset of C points from the original image
     rpoints = np.random.choice(n, C, replace=False)
 
+    # define a reference kernel to use for comparisons of MMD. We'll use an RBF
+    def k(x, y):
+        return rbf_kernel(x, y, jnp.float32(nu) ** 2) / \
+            (nu * jnp.sqrt(2. * jnp.pi))
+
+    # compute the MMD between X and the coreset
+    m = mmd_block(X, X[coreset], k, max_size=1000)
+
+    # compute the MMD between X and the random sample
+    rm = mmd_block(X, X[rpoints], k, max_size=1000).item()
+
+    # print the MMDs
+    print("Random MMD")
+    print(rm)
+    print("Coreset MMD")
+    print(m)
+
     print("Plotting")
     # plot the original image
     plt.figure(figsize=(10, 5))
@@ -87,6 +106,8 @@ def main(inpath="./examples/data/david_orig.png", outpath=None):
         plt.savefig(outpath)
 
     plt.show()
+
+    return m, rm
 
 
 if __name__ == '__main__':
