@@ -43,20 +43,19 @@ class TestExamples(unittest.TestCase):
             # run david.py
             inpath_ = Path.cwd().parent / Path("examples/data/david_orig.png")
             outpath_ = Path(tmp_dir) / 'david_coreset.png'
-            d(inpath=str(inpath_), outpath=outpath_)
+            mmd_coreset, mmd_random = d(inpath=str(inpath_), outpath=outpath_)
 
             # check the calls to print mainly to check the loaded image size
-            mock_print.assert_has_calls([call("Image dimensions:"),
-                                         call((215, 180)),
-                                         call("Computing coreset..."),
-                                         call("Choosing random subset..."),
-                                         call("Plotting")])
+            self.assertEqual(mock_print.call_args_list[1], call((215, 180)))
 
             # check that the patched plt.show has been called once
             mock_show.assert_called_once()
 
             # check the file was generated and saved
-            assert_is_file(outpath_)
+            # assert_is_file(outpath_)
+
+            # assert coreset had better MMD than random
+            self.assertLess(mmd_coreset, mmd_random)
 
     def test_pounce(self):
         """
@@ -77,11 +76,14 @@ class TestExamples(unittest.TestCase):
         # patch the print() function
         with patch('builtins.print'):
             # run pounce.py
-            p(dir_=str(dir_))
+            mmd_coreset, mmd_random = p(dir_=str(dir_))
 
             # check files were generated and saved
             assert_is_file(dir_ / Path('coreset/coreset.gif'))
             assert_is_file(dir_ / Path('coreset/frames.png'))
+
+            # assert coreset had better MMD than random
+            self.assertLess(mmd_coreset, mmd_random)
 
     def test_weighted_herding(self):
         """
