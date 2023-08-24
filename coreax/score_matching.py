@@ -12,14 +12,12 @@
 
 import jax
 from jax import random, vmap, numpy as jnp, jvp, jit
-from jax.random import PRNGKey
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
 from typing import Callable, Optional, Tuple
-from flax.linen import Module
 from flax.training.train_state import TrainState
 from functools import partial
-from coreax.networks import ScoreNetwork
+from coreax.networks import ScoreNetwork, create_train_state
 import optax
 from tqdm import tqdm
 
@@ -64,27 +62,6 @@ def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Cal
         0,
     )
     return vmap(inner, (0, 0), 0)
-
-
-def create_train_state(
-    module: Module,
-    rng: PRNGKey,
-    learning_rate: float,
-    dimension: int,
-    optimiser: Callable,
-) -> TrainState:
-    """Creates a flax TrainState for learning with
-
-    :param module: flax network class that inherits flax.nn.Module
-    :param rng: random number generator
-    :param learning_rate: optimiser learning rate
-    :param dimension: data dimension
-    :param optimiser: optax optimiser, e.g. optax.adam
-    :return: TrainState object
-    """
-    params = module.init(rng, jnp.ones((1, dimension)))["params"]
-    tx = optimiser(learning_rate)
-    return TrainState.create(apply_fn=module.apply, params=params, tx=tx)
 
 
 @partial(jit, static_argnames=["obj_fn"])
