@@ -23,11 +23,11 @@ def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
     """
     Calculate maximum mean discrepancy (MMD).
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m \times d` coreset.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :return: Maximum mean discrepancy as a 0-dimensional array.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
 
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
@@ -44,12 +44,12 @@ def wmmd(
     Calculate one-sided, weighted maximum mean discrepancy (MMD) with weights on
     coreset points only.
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m \times d` coreset.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param weights: Weights vector.
-    :return: Maximum mean discrepancy as a 0-dimensional array.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param weights: Weights vector
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -88,12 +88,12 @@ def mmd_block(
     """
     Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m \times d` coreset.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param max_size: Size of matrix blocks to process.
-    :return: Maximum mean discrepancy as a 0-dimensional array.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param max_size: Size of matrix blocks to process
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
 
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
@@ -141,14 +141,14 @@ def mmd_weight_block(
     Calculate weighted maximum mean discrepancy (MMD) whilst limiting memory
     requirements.
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m \times d` coreset.
-    :param w: :math:`n` weights of original data.
-    :param w_c: :math:`m` weights of coreset points.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param w: :math:`n` weights of original data
+    :param w_c: :math:`m` weights of coreset points
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param max_size: Size of matrix blocks to process.
-    :return: Maximum mean discrepancy as a 0-dimensional array.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param max_size: Size of matrix blocks to process
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
 
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))

@@ -53,11 +53,11 @@ def simplex_weights(
     """
     Compute optimal weights given the simplex constraint.
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m times d` coreset.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m times d` coreset
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :return: Optimal weights.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Optimal weights
     """
     x = jnp.asarray(x)
     x_c = jnp.asarray(x_c)
@@ -81,9 +81,9 @@ def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
     .. math::
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
-    :param Kmm: :math:`m \times m` coreset Gram matrix.
-    :param Kbar: :math`m \times d` array of Gram matrix means.
-    :return: Optimised solution for the quadratic program.
+    :param Kmm: :math:`m \times m` coreset Gram matrix
+    :param Kbar: :math`m \times d` array of Gram matrix means
+    :return: Optimised solution for the quadratic program
     """
     Q = jnp.array(Kmm)
     c = -jnp.array(Kbar)
