@@ -52,17 +52,17 @@ def update_K_sum(
     are `None`. Else, `k_pairwise` should be of the form
     :math:`k(x,y, grads, grads, n, nu)`.
 
-    :param X: Data matrix, :math:`n \times d`.
-    :param K_sum: Full data structure for Gram matrix row sum, :math:`1 \times n`.
-    :param i: Kernel matrix block start.
-    :param j: Kernel matrix block end.
-    :param max_size: Size of matrix block to process.
-    :param k_pairwise: Pairwise kernel evaluation function.
-    :param grads:   Array of gradients, if applicable, :math:`n \times d`.
-                    Optional, defaults to `None`.
-    :param nu: Base kernel bandwidth. Optional, defaults to `None`.
+    :param X: Data matrix, :math:`n \times d`
+    :param K_sum: Full data structure for Gram matrix row sum, :math:`1 \times n`
+    :param i: Kernel matrix block start
+    :param j: Kernel matrix block end
+    :param max_size: Size of matrix block to process
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param grads:   Array of gradients, if applicable, :math:`n \times d`;
+                    Optional, defaults to `None`
+    :param nu: Base kernel bandwidth. Optional, defaults to `None`
     :return:    Gram matrix row sum, with elements :math:`i: i + max_size` and
-                :math:`j: j + max_size` populated.
+                :math:`j: j + max_size` populated
     """
     X = jnp.asarray(X)
     K_sum = jnp.asarray(K_sum)

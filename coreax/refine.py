@@ -41,12 +41,12 @@ def refine(
     Refine a coreset iteratively, replacing elements with points most reducing maximum
     mean discrepancy (MMD).
 
-    :param x: :math:`n \times d` original data.
-    :param S: Coreset point indices.
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param K_mean: Kernel matrix row sum divided by n.
-    :return: Refined coreset point indices.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :return: Refined coreset point indices
     """
     
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
@@ -88,7 +88,7 @@ def comparison(
 ) -> Array:
     """
     Calculate the change the mmd delta from replacing i in S with any point in x. 
-    Returns a vector o f deltas.
+    Returns a vector of deltas.
     """
     S = jnp.asarray(S)
     m = len(S)
@@ -113,13 +113,13 @@ def refine_rand(
     The candidate points are a random sample of :math:`n \times p` points from among the
     original data.
 
-    :param x: :math:`n \times d` original data.
-    :param S: Coreset point indices.
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param K_mean: Kernel matrix row sum divided by n.
-    :param p: Proportion of original data to use as candidates.
-    :return: Refined coreset point indices.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :param p: Proportion of original data to use as candidates
+    :return: Refined coreset point indices
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
@@ -178,11 +178,11 @@ def comparison_cand(
     Calculate the change in maximum mean discrepancy (MMD) delta from replacing `i` in
     `S` with `x`.
 
-    :param i: A coreset index.
-    :param cand: Indices for randomly sampled candidate points among the original data.
-    :param S: Coreset point indices.
-    :param x: :math:`n \times d` original data.
-    :param K_mean: Kernel matrix row sum divided by n.
+    :param i: A coreset index
+    :param cand: Indices for randomly sampled candidate points among the original data
+    :param S: Coreset point indices
+    :param x: :math:`n \times d` original data
+    :param K_mean: Kernel matrix row sum divided by n
     :param K_diag: *TODO*
     :param k_pairwise: *TODO*
     :param k_vec: *TODO*
@@ -220,12 +220,12 @@ def refine_rev(
 
     The iteration is carred out over points in `x`.
 
-    :param x: :math:`n \times d` original data.
-    :param S: Coreset point indices.
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
     :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param K_mean: Kernel matrix row sum divided by n.
-    :return: Refined coreset point indices.
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :return: Refined coreset point indices
     """
     x = jnp.asarray(x)
     S = jnp.asarray(S)
@@ -272,10 +272,10 @@ def comparison_rev(
     Calculate the change in maximum mean discrepancy (MMD) delta from replacing a point
     in `S` with `x[i]`.
 
-    :param i: Index for original data.
-    :param S: Coreset point indices.
-    :param x: :math:`n \times d` original data.
-    :param K_mean: Kernel matrix row sum divided by n.
+    :param i: Index for original data
+    :param S: Coreset point indices
+    :param x: :math:`n \times d` original data
+    :param K_mean: Kernel matrix row sum divided by n
     :param K_diag: *TODO*
     :param k_pairwise: *TODO*
     :param k_vec: *TODO*
