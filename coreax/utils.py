@@ -58,11 +58,11 @@ def update_K_sum(
     :param j: Kernel matrix block end
     :param max_size: Size of matrix block to process
     :param k_pairwise: Pairwise kernel evaluation function
-    :param grads:   Array of gradients, if applicable, :math:`n \times d`;
-                    Optional, defaults to `None`
+    :param grads: Array of gradients, if applicable, :math:`n \times d`;
+                  Optional, defaults to `None`
     :param nu: Base kernel bandwidth. Optional, defaults to `None`
-    :return:    Gram matrix row sum, with elements :math:`i: i + max_size` and
-                :math:`j: j + max_size` populated
+    :return: Gram matrix row sum, with elements :math:`i: i + max_size` and
+             :math:`j: j + max_size` populated
     """
     X = jnp.asarray(X)
     K_sum = jnp.asarray(K_sum)
@@ -102,11 +102,11 @@ def calculate_K_sum(
     :param X: Data matrix, :math:`n \times d`.
     :param k_pairwise: Pairwise kernel evaluation function.
     :param max_size: Size of matrix block to process.
-    :param grads:   Array of gradients, if applicable, :math:`n \times d`.
-                    Optional, defaults to `None`.
-    :param nu:  Base kernel bandwidth, if applicable, :math:`n \times d`.
-                Optional, defaults to `None`.
-    :return:    Kernel matrix row sum.
+    :param grads: Array of gradients, if applicable, :math:`n \times d`.
+                  Optional, defaults to `None`.
+    :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`.
+               Optional, defaults to `None`.
+    :return: Kernel matrix row sum.
     """
     X = jnp.asarray(X)
     n = len(X)

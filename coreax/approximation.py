@@ -34,8 +34,8 @@ def K_mean_rand_approx(
 
     :param key: Key for random number generation
     :param x: The original :math:`n \times d` data
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param n_points: Number of kernel evaluation points
     :param n_train: Number of training points used to fit kernel regression
     :return: Approximation of the kernel matrix row sum divided by n
@@ -74,8 +74,8 @@ def K_mean_ANNchor_approx(
 
     :param key: Key for random number generation
     :param x: The original :math:`n \times d` data
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param n_points: Number of kernel evaluation points
     :param n_train: Number of training points used to fit kernel regression
     :return: Approximation of the kernel matrix row sum divided by n
@@ -129,8 +129,8 @@ def K_mean_nystrom_approx(
 
     :param key: Key for random number generation
     :param x: The original :math:`n \times d` data
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param n_points: Number of kernel evaluation points
     :return: Approximation of the kernel matrix row sum divided by n
     """

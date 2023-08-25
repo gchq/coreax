@@ -285,8 +285,8 @@ def median_heuristic(X: ArrayLike) -> Array:
     Compute the median heuristic for setting kernel bandwidth.
 
     :param X: Input array of vectors
-    :return:    Bandwidth parameter, computed from the median heuristic, as a
-                0-dimensional array
+    :return: Bandwidth parameter, computed from the median heuristic, as a
+             0-dimensional array
     """
     D = jnp.triu(sq_dist_pairwise(X, X), k=1)
     h = jnp.median(D[jnp.triu_indices_from(D, k=1)])
@@ -301,8 +301,8 @@ def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
     :param X: An $n \times d$ array of random variable values
     :param D: The $m \times d$ kernel density estimation set
     :param nu: Kernel bandwidth (standard deviation)
-    :return:    Gram matrix mean over X as an $n \times 1$ array; Gram matrix as an
-                $n \times m$ array
+    :return: Gram matrix mean over X as an $n \times 1$ array; Gram matrix as an
+             $n \times m$ array
     """
     K = normalised_rbf(X, D, nu)
     k = K.mean(axis=1)
