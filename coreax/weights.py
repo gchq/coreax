@@ -69,16 +69,18 @@ def simplex_weights(
 
 def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
     """
-    Solve quadratic programs with `jaxopt`.
+    Solve quadratic programs with :mod:`jaxopt`.
 
     Solves simplex weight problems of the form:
 
     .. math::
+
         \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
     
     subject to
 
     .. math::
+
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     :param Kmm: :math:`m \times m` coreset Gram matrix
