@@ -326,7 +326,7 @@ def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array
     """
     A wrapper for scalable (parallelised) herding with a decorated function.
 
-    TODO: is this for Stein kernels?
+    This function is deprecated, and scheduled for removal. 
 
     :return: Kernel evaluation at `(x,y)`, 0-dimensional array.
     """
@@ -334,9 +334,10 @@ def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array
 
 
 def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
-    """A wrapper for scalable (parallelised) herding with a decorated function.
+    """
+    A wrapper for scalable (parallelised) herding with a decorated function.
 
-    TODO: what is the use case for this? How is differentiated from the above function?
+    This function is deprecated, and scheduled for removal.
 
     :return: An $n \times d$ array of gradients evaluated at values of `X`.
     """
