@@ -43,8 +43,8 @@ def refine(
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param K_mean: Kernel matrix row sum divided by n
     :return: Refined coreset point indices
     """
@@ -115,8 +115,8 @@ def refine_rand(
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param K_mean: Kernel matrix row sum divided by n
     :param p: Proportion of original data to use as candidates
     :return: Refined coreset point indices
@@ -222,8 +222,8 @@ def refine_rev(
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param K_mean: Kernel matrix row sum divided by n
     :return: Refined coreset point indices
     """

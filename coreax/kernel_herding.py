@@ -47,8 +47,8 @@ def greedy_body(
     :param i: Loop counter
     :param val: Loop updatables
     :param X: Original :math:`n \times d` dataset
-    :param k_vec:   Vectorised kernel function on pairs `(X,x)`:
-                    :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array.
     :param unique: Flag for enforcing unique elements
     :returns: Updated loop variables (`coreset`, `K_t` objective)
@@ -86,10 +86,10 @@ def stein_greedy_body(
     :param i: Loop counter
     :param val: Loop updatables
     :param X: Original :math:`n \times d` dataset
-    :param k_vec:   Vectorised kernel function on pairs `(X,x,Y,y)`:
-                    :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
-                    :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
-                    :math:`\mathbb{R}^n`
+    :param k_vec: Vectorised kernel function on pairs `(X,x,Y,y)`:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
+                  :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
+                  :math:`\mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param grads: Gradients of log-PDF evaluated at `X`, an :math:`n \times d` array
     :param n: Number of data points inducing the original PDF
@@ -125,8 +125,8 @@ def kernel_herding_block(
 
     :param X: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
     :param unique: Flag for enforcing unique elements
@@ -170,10 +170,10 @@ def stein_kernel_herding_block(
 
     :param X: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
-    :param kernel:  Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :param grad_log_f_X:    Function computing gradient of log-PDF
-                            :math:`g: X \rightarrow Y`
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+    :param grad_log_f_X: Function computing gradient of log-PDF
+                         :math:`g: X \rightarrow Y`
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
     :param unique: Flag for enforcing unique elements
@@ -382,9 +382,9 @@ def scalable_herding(
     :param X: Original :math:`n \times d` dataset
     :param indices: Indices into original dataset, used for recursion
     :param n_core: Number of coreset points to calculate
-    :param function:    The Kernel function,
-                        :math:`k: \mathbb{R}^d \times \mathbb{R}^d`
-                        :math:`\rightarrow \mathbb{R}
+    :param function: The Kernel function,
+                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d`
+                     :math:`\rightarrow \mathbb{R}
     :param w_function: Weights function. If unweighted, this is `None`
     :param size: Region size in number of points. Optional, defaults to `1000`
     :param parallel: Use multiprocessing. Optional, defaults to `True`
