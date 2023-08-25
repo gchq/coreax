@@ -184,7 +184,7 @@ def grad_pc_imq_y(
         K: ArrayLike | None = None,
 ) -> Array:
     """
-    Calculate the gradient of the pre-conditioned inverse multi-quadric with respect to Y.
+    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to Y.
 
     :param X: First $n \times d$ array argument
     :param Y: Second $m \times d$ array argument
