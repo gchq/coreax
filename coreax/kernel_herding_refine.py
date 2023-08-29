@@ -35,7 +35,7 @@ def kernel_herding_refine_block(
         max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Execute kernel herding refine algorithm using `Jax`.
 
     :param x: Original :math:`n \times d` dataset
@@ -64,7 +64,7 @@ def kernel_herding_refine_rand_block(
         max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Execute kernel herding random refine algorithm using `Jax`.
 
     :param x: Original :math:`n \times d` dataset
@@ -93,7 +93,7 @@ def kernel_herding_refine_rev_block(
         max_size: int = 10_000,
         K_mean: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Execute kernel herding random refine algorithm using `Jax`.
 
     TODO: what differentiates this from kernel_herding_refine_rand_block?

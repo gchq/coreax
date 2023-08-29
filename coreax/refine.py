@@ -37,7 +37,7 @@ def refine(
         kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
-    """
+    r"""
     Refine a coreset iteratively, replacing elements with points most reducing maximum
     mean discrepancy (MMD).
 
@@ -86,7 +86,7 @@ def comparison(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
+    r"""
     Calculate the change the mmd delta from replacing i in S with any point in x. 
     Returns a vector of deltas.
     """
@@ -107,7 +107,7 @@ def refine_rand(
         K_mean: ArrayLike,
         p: float = 0.1,
 ) -> Array:
-    """
+    r"""
     Refine a coreset iteratively, replacing random elements with the best candidate point.
 
     The candidate points are a random sample of :math:`n \times p` points from among the
@@ -174,7 +174,7 @@ def comparison_cand(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
+    r"""
     Calculate the change in maximum mean discrepancy (MMD) delta from replacing `i` in
     `S` with `x`.
 
@@ -215,7 +215,7 @@ def refine_rev(
         kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
-    """
+    r"""
     Refine a coreset iteratively, replacing points which lead to the most improvement.
 
     The iteration is carred out over points in `x`.
@@ -268,7 +268,7 @@ def comparison_rev(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
+    r"""
     Calculate the change in maximum mean discrepancy (MMD) delta from replacing a point
     in `S` with `x[i]`.
 

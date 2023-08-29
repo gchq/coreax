@@ -23,7 +23,7 @@ from jax import jit, vmap, Array
 
 @jit
 def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
-    """
+    r"""
     Calculate the squared distance between two vectors.
 
     :param x: First vector argument
@@ -35,7 +35,7 @@ def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
 
 @jit
 def sq_dist_pairwise(X: ArrayLike, Y: ArrayLike) -> Array:
-    """
+    r"""
     Calculate efficient pairwise square distance between two arrays.
 
     :param X: First $n \times d$ array argument
@@ -51,7 +51,7 @@ def sq_dist_pairwise(X: ArrayLike, Y: ArrayLike) -> Array:
 
 @jit
 def rbf_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
-    """
+    r"""
     Calculate the radial basis function (RBF) kernel for a pair of vectors.
 
     :param x: First vector
@@ -64,7 +64,7 @@ def rbf_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
 
 @jit
 def laplace_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
-    """
+    r"""
     Calculate the Laplace kernel for a pair of vectors.
 
     :param x: First vector
@@ -77,7 +77,7 @@ def laplace_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
 
 @jit
 def diff(x: ArrayLike, y: ArrayLike) -> Array:
-    """
+    r"""
     Calculate vector difference for a pair of vectors.
 
     :param x: First vector
@@ -89,7 +89,7 @@ def diff(x: ArrayLike, y: ArrayLike) -> Array:
 
 @jit
 def pdiff(X: ArrayLike, Y: ArrayLike) -> Array:
-    """
+    r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
     :param X: First $n \times d$ array argument
@@ -103,7 +103,7 @@ def pdiff(X: ArrayLike, Y: ArrayLike) -> Array:
 
 @jit
 def normalised_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """
+    r"""
     Evaluate the normalised Gaussian kernel pairwise.
 
     :param X: First $n \times d$ array argument
@@ -118,7 +118,7 @@ def normalised_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
 
 @jit
 def pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """
+    r"""
     Evaluate the pre-conditioned inverse multi-quadric kernel pairwise.
 
     :param X: First $n \times d$ array argument
@@ -139,7 +139,7 @@ def grad_rbf_y(
         nu: float = 1.,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Calculate the gradient of the normalised radial basis function with respect to Y.
 
     :param X: First $n \times d$ array argument
@@ -164,7 +164,7 @@ def grad_rbf_x(
         nu: float = 1.,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Calculate the gradient of the normalised radial basis function with respect to X.
 
     :param X: First $n \times d$ array argument
@@ -183,7 +183,7 @@ def grad_pc_imq_y(
         nu: float = 1.,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Calculate gradient of the pre-conditioned inverse multi-quadric with respect to Y.
 
     :param X: First $n \times d$ array argument
@@ -208,7 +208,7 @@ def grad_pc_imq_x(
         nu: float = 1.,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Calculate gradient of the pre-conditioned inverse multi-quadric with respect to X.
 
     :param X: First $n \times d$ array argument
@@ -228,7 +228,7 @@ def rbf_div_x_grad_y(
         n: int | None = None,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Apply divergence operator on gradient of RBF kernel with respect to Y.
 
     This avoids explicit computation of the Hessian. Note that the generating set is
@@ -257,7 +257,7 @@ def pc_imq_div_x_grad_y(
         n: int = None,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Apply divergence operator on gradient of PC-IMQ kernel with respect to Y.
 
     This avoids explicit computation of the Hessian. Note that the generating set is
@@ -281,7 +281,7 @@ def pc_imq_div_x_grad_y(
 
 @jit
 def median_heuristic(X: ArrayLike) -> Array:
-    """
+    r"""
     Compute the median heuristic for setting kernel bandwidth.
 
     :param X: Input array of vectors
@@ -295,7 +295,7 @@ def median_heuristic(X: ArrayLike) -> Array:
 
 @jit
 def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
-    """
+    r"""
     Construct PDF of `X` by kernel density estimation for a radial basis function.
 
     :param X: An $n \times d$ array of random variable values
@@ -317,7 +317,7 @@ def rbf_grad_log_f_X(
         K: ArrayLike | None = None,
         Kbar: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Compute gradient of log-PDF of `X`.
 
     The PDF is constructed from kernel density estimation.
@@ -347,7 +347,7 @@ def grad_rbf_x(
         nu: float,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Compute gradient of the radial basis function kernel with respect to `X`.
 
     :param X: First $n \times d$ array argument
@@ -372,7 +372,7 @@ def grad_rbf_y(
         nu: float,
         K: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Compute gradient of the radial basis function kernel with respect to `Y`.
 
     :param X: First $n \times d$ array argument
@@ -386,7 +386,7 @@ def grad_rbf_y(
 
 @jit
 def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """
+    r"""
     Compute a kernel from a RBF kernel with the canonical Stein operator.
 
     :param X: First $n \times d$ array argument
@@ -425,7 +425,7 @@ def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
 
 @jit
 def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
-    """
+    r"""
     Compute a kernel from a PC-IMQ kernel with the canonical Stein operator.
 
     The log-PDF is assumed to be induced by kernel density estimation with the
@@ -474,7 +474,7 @@ def stein_kernel_pc_imq_element(
         n: int,
         nu: float = 1.,
 ) -> Array:
-    """
+    r"""
     Evaluate the kernel element at `(x,y)`.
 
     This element is induced by the canonical Stein operator on a PC-IMQ kernel. The

@@ -41,7 +41,7 @@ def update_K_sum(
         grads: ArrayLike | None = None,
         nu: float | None = None,
 ) -> Array:
-    """
+    r"""
     Update row sum with a kernel matrix block.
 
     The kernel matrix block :math:`i:i+max_size \times j:j+max_size` is used to update
@@ -90,7 +90,7 @@ def calculate_K_sum(
         grads: ArrayLike | None = None,
         nu: ArrayLike | None = None,
 ) -> Array:
-    """
+    r"""
     Calculate row sum of the kernel matrix.
 
     The row sum is calculated block-wise to limit memory overhead.

@@ -20,7 +20,7 @@ from coreax.utils import KernelFunction
 
 
 def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
-    """
+    r"""
     Calculate maximum mean discrepancy (MMD).
 
     :param x: The original :math:`n \times d` data
@@ -40,7 +40,7 @@ def wmmd(
         kernel: KernelFunction,
         weights: ArrayLike,
 ) -> float:
-    """
+    r"""
     Calculate one-sided, weighted maximum mean discrepancy (MMD) with weights on
     coreset points only.
 
@@ -85,7 +85,7 @@ def mmd_block(
         kernel: KernelFunction,
         max_size: int = 10_000,
 ) -> Array:
-    """
+    r"""
     Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
     :param x: The original :math:`n \times d` data
@@ -137,7 +137,7 @@ def mmd_weight_block(
         kernel: KernelFunction,
         max_size: int = 10_000,
 ) -> Array:
-    """
+    r"""
     Calculate weighted maximum mean discrepancy (MMD) whilst limiting memory
     requirements.
 
