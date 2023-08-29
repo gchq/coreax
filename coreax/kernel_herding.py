@@ -132,7 +132,6 @@ def kernel_herding_block(
     :param unique: Flag for enforcing unique elements
     :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0),
                                out_axes=0), in_axes=(0, None), out_axes=0))
     k_vec = jit(vmap(kernel, in_axes=(0, None)))
@@ -368,7 +367,7 @@ def scalable_herding(
         #.  If :math:`r` is the recursion depth, then we recurse unweighted for
             :math:`r` iterations where
 
-            ..math
+            ..math::
 
                      r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
 
