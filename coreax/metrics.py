@@ -29,7 +29,6 @@ def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     return  jnp.sqrt(k_pairwise(x,x).mean() + k_pairwise(x_c,x_c).mean() - 2*k_pairwise(x,x_c).mean())
@@ -41,8 +40,9 @@ def wmmd(
         weights: ArrayLike,
 ) -> float:
     r"""
-    Calculate one-sided, weighted maximum mean discrepancy (MMD) with weights on
-    coreset points only.
+    Calculate one-sided, weighted maximum mean discrepancy (MMD).
+
+    Only corset points are weighted.
 
     :param x: The original :math:`n \times d` data
     :param x_c: :math:`m \times d` coreset
@@ -95,7 +95,6 @@ def mmd_block(
     :param max_size: Size of matrix blocks to process
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     x = jnp.asarray(x)
@@ -138,8 +137,9 @@ def mmd_weight_block(
         max_size: int = 10_000,
 ) -> Array:
     r"""
-    Calculate weighted maximum mean discrepancy (MMD) whilst limiting memory
-    requirements.
+    Calculate weighted maximum mean discrepancy (MMD).
+
+    This calculation is executed whilst limiting memory requirements.
 
     :param x: The original :math:`n \times d` data
     :param x_c: :math:`m \times d` coreset
@@ -150,7 +150,6 @@ def mmd_weight_block(
     :param max_size: Size of matrix blocks to process
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     w = jnp.asarray(w)
