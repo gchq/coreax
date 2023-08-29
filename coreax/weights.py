@@ -25,7 +25,7 @@ def calculate_BQ_weights(
         x_c: ArrayLike,
         kernel: KernelFunction,
 ) -> Array:
-    """
+    r"""
     Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
     References for this technique can be found in
@@ -50,7 +50,7 @@ def simplex_weights(
         x_c: ArrayLike,
         kernel: KernelFunction,
 ) -> Array:
-    """
+    r"""
     Compute optimal weights given the simplex constraint.
 
     :param x: The original :math:`n \times d` data
@@ -68,7 +68,7 @@ def simplex_weights(
     return sol
 
 def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
-    """
+    r"""
     Solve quadratic programs with :mod:`jaxopt`.
 
     Solves simplex weight problems of the form:

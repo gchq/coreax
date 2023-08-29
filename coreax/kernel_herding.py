@@ -41,7 +41,7 @@ def greedy_body(
         K_mean: ArrayLike,
         unique: bool,
 ) -> tuple[Array, Array, Array]:
-    """
+    r"""
     Execute main loop of greedy kernel herding.
 
     :param i: Loop counter
@@ -51,7 +51,7 @@ def greedy_body(
                   :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array.
     :param unique: Flag for enforcing unique elements
-    :returns: Updated loop variables (`coreset`, `K_t` objective)
+    :returns: Updated loop variables (`coreset`, `Gram matrix`, `objective`)
     """
     X = jnp.asarray(X)
     S, K, K_t = val
@@ -80,7 +80,7 @@ def stein_greedy_body(
         nu: float,
         unique: bool,
 ) -> tuple[Array, Array, Array]:
-    """
+    r"""
     Execute the main loop of greedy Stein herding.
 
     :param i: Loop counter
@@ -120,7 +120,7 @@ def kernel_herding_block(
         K_mean: ArrayLike | None = None,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
-    """
+    r"""
     Execute kernel herding algorithm with Jax.
 
     :param X: Original :math:`n \times d` dataset
@@ -165,7 +165,7 @@ def stein_kernel_herding_block(
         nu: float = 1.,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
-    """
+    r"""
     Execute Stein herding.
 
     :param X: Original :math:`n \times d` dataset
@@ -208,7 +208,7 @@ def stein_kernel_herding_block(
 
 @jit
 def fw_linesearch(arg_x_t: int, K: ArrayLike, Ek: ArrayLike) -> Array:
-    """
+    r"""
     Execute Frank-Wolfe line search.
 
     :param arg_x_t: Previous index
@@ -233,7 +233,7 @@ def herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """
+    r"""
     Execute body of default herding.
 
     :param i: Loop counter
@@ -256,7 +256,7 @@ def greedy_herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """
+    r"""
     Execute body of Stein thinning.
 
     :param i: Loop counter
@@ -279,7 +279,7 @@ def fw_herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """
+    r"""
     Execute body of Frank-Wolfe herding.
 
     :param i: Loop counter
@@ -323,7 +323,7 @@ def fw_herding_body(
 #     return S
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
-    """
+    r"""
     A wrapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
@@ -334,7 +334,7 @@ def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array
 
 
 def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
-    """
+    r"""
     A wrapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
@@ -354,7 +354,7 @@ def scalable_herding(
         parallel: bool = True,
         **kwargs,
 ) -> tuple[Array, Array]:
-    """
+    r"""
     Execute scalable kernel herding.
 
     This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a

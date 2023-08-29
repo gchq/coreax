@@ -27,7 +27,7 @@ def K_mean_rand_approx(
         n_points: int = 1000,
         n_train: int = 2000,
 ) -> Array:
-    """
+    r"""
     Approximate kernel row mean by regression on points selected randomly.
 
     Here, the kernel row mean is the matrix row sum divided by n.
@@ -66,7 +66,7 @@ def K_mean_ANNchor_approx(
         n_points: int = 1000,
         n_train: int = 2000,
 ) -> Array:
-    """
+    r"""
     Approximate kernel row mean by regression on points chosen by ANNchor construction.
 
     Here, the kernel row mean is the matrix row sum divided by n. The ANNchor
@@ -121,7 +121,7 @@ def K_mean_nystrom_approx(
         kernel: KernelFunction,
         n_points: int = 1000,
 ) -> Array:
-    """
+    r"""
     Approximate kernel row mean by using Nystrom approximation
 
     Here, the kernel row mean is the matrix row sum divided by n. Further details for
