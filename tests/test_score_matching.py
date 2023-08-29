@@ -74,7 +74,7 @@ class TestScoreMatching(unittest.TestCase):
     def test_sliced_score_matching_loss_element(self) -> None:
         """Tests the loss function elementwise."""
 
-        # basic score function, implictly multivariate vector valued
+        # basic score function, implicitly multivariate vector valued
         def score_fn(x):
             return x**2
 
@@ -93,7 +93,7 @@ class TestScoreMatching(unittest.TestCase):
     def test_sliced_score_matching_loss(self) -> None:
         """Tests the loss function vmapped function."""
 
-        # basic score function, implictly multivariate vector valued
+        # basic score function, implicitly multivariate vector valued
         def score_fn(x: ArrayLike) -> ArrayLike:
             return x**2
 
