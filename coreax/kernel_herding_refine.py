@@ -44,7 +44,7 @@ def kernel_herding_refine_block(
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
-    :returns: Coreset point indices
+    :return: Coreset point indices
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -74,7 +74,7 @@ def kernel_herding_refine_rand_block(
     :param p: Proportion of original data to use as candidates
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
-    :returns: Coreset point indices.
+    :return: Coreset point indices.
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -104,7 +104,7 @@ def kernel_herding_refine_rev_block(
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
-    :returns: Coreset point indices
+    :return: Coreset point indices
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
