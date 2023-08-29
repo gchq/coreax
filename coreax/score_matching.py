@@ -21,12 +21,44 @@ from coreax.networks import ScoreNetwork, create_train_state
 import optax
 from tqdm import tqdm
 
-# analytic (reduced variance) loss, for use with certain random measures, e.g. normal
-# and Rademacher.
-analytic_obj = jit(lambda v, u, s: v @ u + 0.5 * s @ s)
 
-# general loss, for use with general random measures.
-general_obj = jit(lambda v, u, s: v @ u + 0.5 * (v @ s) ** 2)
+@jit
+def analytic_obj(
+        v: ArrayLike,
+        u: ArrayLike,
+        s: ArrayLike
+) -> ArrayLike:
+    """
+    Reduced variance score matching loss function.
+
+    This is for use with certain random measures, e.g. normal and Rademacher. If this
+    assumption is not true, then general_obj should be used instead.
+
+    :param v: d-dimensional random vector
+    :param u: product of v and gradient of s (w.r.t. x)
+    :param s: gradients of log-density
+    :return: evaluation of score matching objective, see equation 8 in [ssm]_
+    """
+    return v @ u + 0.5 * s @ s
+
+
+@jit
+def general_obj(
+    v, u, s
+) -> ArrayLike:
+    """
+    General score matching loss function.
+
+    This is to be used when one cannot assume normal or Rademacher random measures when
+    using score matching, but has higher variance than analytic_obj if these
+    assumptions hold
+
+    :param v: d-dimensional random vector
+    :param u: product of v and gradient of s (w.r.t. x)
+    :param s: gradients of log-density
+    :return: evaluation of score matching objective, see equation 7 in [ssm]_
+    """
+    return v @ u + 0.5 * (v @ s) ** 2
 
 
 @partial(jit, static_argnames=["score_network", "obj_fn"])
