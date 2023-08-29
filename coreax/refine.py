@@ -38,8 +38,10 @@ def refine(
         K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively, replacing elements with points most reducing maximum
-    mean discrepancy (MMD).
+    Refine a coreset iteratively.
+
+    The refinement procedure replaces elements with points most reducing maximum mean
+    discrepancy (MMD).
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
@@ -48,7 +50,6 @@ def refine(
     :param K_mean: Kernel matrix row sum divided by n
     :return: Refined coreset point indices
     """
-    
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
     
@@ -87,8 +88,18 @@ def comparison(
         k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change the mmd delta from replacing i in S with any point in x. 
-    Returns a vector of deltas.
+    Calculate the change in maximum mean discrepancy from point replacement.
+
+    The change calculated is from replacing point `i` in `S` with any point in `x`.
+
+    :param i: TODO
+    :param S: TODO
+    :param x: TODO
+    :param K_mean: TODO
+    :param K_diag: TODO
+    :param k_pairwise: TODO
+    :param k_vec: TODO
+    :return: A vector of maximum mean discrepancy deltas.
     """
     S = jnp.asarray(S)
     m = len(S)
@@ -108,10 +119,11 @@ def refine_rand(
         p: float = 0.1,
 ) -> Array:
     r"""
-    Refine a coreset iteratively, replacing random elements with the best candidate point.
+    Refine a coreset iteratively.
 
-    The candidate points are a random sample of :math:`n \times p` points from among the
-    original data.
+    The refinement procedure replaces a random element with the best point among a set
+    of candidate point. The candidate points are a random sample of :math:`n \times p`
+    points from among the original data.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
@@ -175,8 +187,9 @@ def comparison_cand(
         k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy (MMD) delta from replacing `i` in
-    `S` with `x`.
+    Calculate the change in maximum mean discrepancy (MMD).
+
+    The change in MMD arises from replacing `i` in `S` with `x`.
 
     :param i: A coreset index
     :param cand: Indices for randomly sampled candidate points among the original data
@@ -269,8 +282,9 @@ def comparison_rev(
         k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy (MMD) delta from replacing a point
-    in `S` with `x[i]`.
+    Calculate the change in maximum mean discrepancy (MMD).
+
+    The change in MMD arises from replacing a point in `S` with `x[i]`.
 
     :param i: Index for original data
     :param S: Coreset point indices
