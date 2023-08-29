@@ -209,7 +209,7 @@ def grad_pc_imq_x(
         K: ArrayLike | None = None,
 ) -> Array:
     """
-    Calculate the gradient of the pre-conditioned inverse multi-quadric with respect to X.
+    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to X.
 
     :param X: First $n \times d$ array argument
     :param Y: Second $m \times d$ array argument
@@ -229,7 +229,7 @@ def rbf_div_x_grad_y(
         K: ArrayLike | None = None,
 ) -> Array:
     """
-    Divergence operator on gradient of radial basis function kernel with respect to Y.
+    Apply divergence operator on gradient of RBF kernel with respect to Y.
 
     This avoids explicit computation of the Hessian. Note that the generating set is
     not necessarily the same as `X`.
@@ -258,7 +258,7 @@ def pc_imq_div_x_grad_y(
         K: ArrayLike | None = None,
 ) -> Array:
     """
-    Divergence operator on gradient of radial basis function kernel with respect to Y.
+    Apply divergence operator on gradient of PC-IMQ kernel with respect to Y.
 
     This avoids explicit computation of the Hessian. Note that the generating set is
     not necessarily the same as `X`.
@@ -318,8 +318,9 @@ def rbf_grad_log_f_X(
         Kbar: ArrayLike | None = None,
 ) -> Array:
     """
-    Compute gradient of log-PDF of `X`, with the PDF constructed from kernel density
-    estimation.
+    Compute gradient of log-PDF of `X`.
+
+    The PDF is constructed from kernel density estimation.
 
     :param X: An $n \times d$ array of random variable values
     :param D: The $m \times d$ kernel density estimation set
@@ -386,8 +387,7 @@ def grad_rbf_y(
 @jit
 def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     """
-    Compute a kernel from a radial basis function kernel with the canonical Stein
-    operator.
+    Compute a kernel from a RBF kernel with the canonical Stein operator.
 
     :param X: First $n \times d$ array argument
     :param Y: Second $m \times d$ array argument
@@ -426,8 +426,7 @@ def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
 @jit
 def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     """
-    Compute a kernel from a pre-conditioned inverse multi-quadric kernel with the
-    canonical Stein operator.
+    Compute a kernel from a PC-IMQ kernel with the canonical Stein operator.
 
     The log-PDF is assumed to be induced by kernel density estimation with the
     data in `Y`.
@@ -476,17 +475,18 @@ def stein_kernel_pc_imq_element(
         nu: float = 1.,
 ) -> Array:
     """
-    Evaluate the kernel element at `(x,y)` induced from a pre-conditioned inverse
-    multi-quadric kernel with the canonical Stein operator.
+    Evaluate the kernel element at `(x,y)`.
 
-    The log-PDF can be arbitrary as only gradients are supplied.
+    This element is induced by the canonical Stein operator on a PC-IMQ kernel. The
+    log-PDF can be arbitrary as only gradients are supplied.
 
     :param x: First $1 \times d$ array argument
     :param y: Second $1 \times d$ array argument
     :param g_log_p_x: Gradient of log-PDF evaluated at `x`, a $1 \times d$ array
     :param g_log_p_y: Gradient of log-PDF evaluated at `y`, a $1 \times d$ array
     :param nu: Kernel bandwidth (standard deviation). Optional, defaults to 1
-    :param n: *TODO*
+    :param n: Number of data points in the generating set. Optional, defaults to
+              `None`.
     :return: Kernel evaluation at `(x,y)`, 0-dimensional array
     """
     x = jnp.atleast_2d(x)
