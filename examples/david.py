@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import numpy as np
 import cv2
+from pathlib import Path
 
 from coreax.weights import qp
 from coreax.kernel import rbf_kernel, median_heuristic
@@ -23,14 +24,24 @@ from coreax.kernel_herding import stein_kernel_herding_block, scalable_herding, 
 from coreax.metrics import mmd_block
 
 
-def main(inpath="./examples/data/david_orig.png", outpath=None):
+def main(in_path: Path = Path("./examples/data/david_orig.png"), out_path: Path = None):
+    """
+    Run the 'david' example for image sampling.
+
+    Args:
+        in_path: path to input image
+        out_path: path to save output to, if not None. Default None.
+
+    Returns:
+        coreset MMD, random sample MMD
+
+    """
 
     # path to original image
-    orig = cv2.imread(inpath)
+    orig = cv2.imread(str(in_path))
     img = cv2.cvtColor(orig, cv2.COLOR_BGR2GRAY)
 
-    print("Image dimensions:")
-    print(img.shape)
+    print(f"Image dimensions: {img.shape}")
     X_ = np.column_stack(np.where(img < 255))
     vals = img[img < 255]
     X = np.column_stack((X_, vals)).astype(np.float32)
@@ -102,8 +113,8 @@ def main(inpath="./examples/data/david_orig.png", outpath=None):
     plt.title('Random')
     plt.axis('off')
 
-    if outpath is not None:
-        plt.savefig(outpath)
+    if out_path is not None:
+        plt.savefig(out_path)
 
     plt.show()
 
