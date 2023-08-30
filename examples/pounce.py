@@ -24,12 +24,12 @@ from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 
 
-def main(dir_: Path = "./examples/data/pounce"):
+def main(directory: Path = "./examples/data/pounce"):
     """
     Run the 'pounce' example for video sampling.
 
     Args:
-        dir_: path to directory containing input video.
+        directory: path to directory containing input video.
 
     Returns:
         coreset MMD, random sample MMD
@@ -38,10 +38,10 @@ def main(dir_: Path = "./examples/data/pounce"):
 
     # path to directory containing video as sequence of images
     fn = "pounce.gif"
-    os.makedirs(dir_ / "coreset", exist_ok=True)
+    os.makedirs(directory / "coreset", exist_ok=True)
 
     # read in as video. Frame 0 is missing A from RGBA.
-    Y_ = np.array(imageio.v2.mimread(f"{dir_}/{fn}")[1:])
+    Y_ = np.array(imageio.v2.mimread(f"{directory}/{fn}")[1:])
     Y = Y_.reshape(Y_.shape[0], -1)
 
     # run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
@@ -84,7 +84,7 @@ def main(dir_: Path = "./examples/data/pounce"):
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = Y_[coreset]
-    imageio.mimsave(dir_ / "coreset" / "coreset.gif", coreset_images)
+    imageio.mimsave(directory / "coreset" / "coreset.gif", coreset_images)
 
     # plot to visualise which frames were chosen from the sequence
     # action frames are where the "pounce" occurs
@@ -100,7 +100,7 @@ def main(dir_: Path = "./examples/data/pounce"):
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
-    plt.savefig(dir_ / "coreset" / "frames.png")
+    plt.savefig(directory / "coreset" / "frames.png")
     plt.close()
 
     return m, rm

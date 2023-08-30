@@ -61,10 +61,10 @@ class TestExamples(unittest.TestCase):
         better than MMD from random sampling.
         """
 
-        dir_ = Path.cwd().parent / Path("examples/data/pounce")
+        directory = Path.cwd().parent / Path("examples/data/pounce")
 
         # delete output files if already present
-        out_dir = dir_ / "coreset"
+        out_dir = directory / "coreset"
         if out_dir.exists():
             for sub in out_dir.iterdir():
                 if sub.name in {"coreset.gif", "frames.png"}:
@@ -72,10 +72,10 @@ class TestExamples(unittest.TestCase):
 
         with patch("builtins.print"):
             # run pounce.py
-            mmd_coreset, mmd_random = pounce_main(dir_=dir_)
+            mmd_coreset, mmd_random = pounce_main(directory=directory)
 
-            self.assert_is_file(dir_ / Path("coreset/coreset.gif"))
-            self.assert_is_file(dir_ / Path("coreset/frames.png"))
+            self.assert_is_file(directory / Path("coreset/coreset.gif"))
+            self.assert_is_file(directory / Path("coreset/frames.png"))
 
             self.assertLess(mmd_coreset, mmd_random,
                             msg="MMD for random sampling was unexpectedly lower than coreset MMD")
