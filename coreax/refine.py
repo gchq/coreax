@@ -11,37 +11,48 @@
  # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  # See the License for the specific language governing permissions and
  # limitations under the License.
-import jax.numpy as jnp 
-import jax.lax as lax
 
-from jax import jit, vmap, random
+import jax.numpy as jnp
+import jax.lax as lax
+from jax.typing import ArrayLike
+
+from jax import jit, vmap, random, Array
 from functools import partial
+
+from coreax.utils import KernelFunction
+
 
 #
 # Refine Functions 
 # 
 # These functions take a coreset S as an input and refine it by replacing elements to improve the MMD. 
 
-def refine(x, S, kernel, K_mean):
+def refine(
+        x: ArrayLike,
+        S: ArrayLike,
+        kernel: KernelFunction,
+        K_mean: ArrayLike,
+) -> Array:
     """
     Given a coreset S refine the coreset by iteratively replacing each element of S with the point in 
     x which gives greatest reduction in mmd.
 
     Args:
-        x (array_like): n x d original data 
-        S (array_like): coreset point indices
-        kernel (callable): kernel function k: R^d x R^d \to R
-        K_mean (array_like): n row sum of kernel matrix divided by n 
+        x: n x d original data
+        S: coreset point indices
+        kernel: kernel function k: R^d x R^d \to R
+        K_mean: n row sum of kernel matrix divided by n
     
     Returns:
-        array: coreset point indices 
+        coreset point indices
     """
     
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
     
     K_diag = vmap(kernel)(x,x)
-    
+
+    S = jnp.asarray(S)
     m = len(S)
     body = partial(refine_body, x=x, K_mean=K_mean, K_diag=K_diag, k_pairwise=k_pairwise, k_vec=k_vec)
     S = lax.fori_loop(0, m, body, S)
@@ -49,46 +60,72 @@ def refine(x, S, kernel, K_mean):
     return S
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
-def refine_body(i, S, x, K_mean, K_diag, k_pairwise, k_vec):
-
+def refine_body(
+        i: int,
+        S: ArrayLike,
+        x: ArrayLike,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> Array:
+    S = jnp.asarray(S)
     S = S.at[i].set(comparison(S[i], S, x, K_mean, K_diag, k_pairwise, k_vec).argmax())
 
     return S
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
-def comparison(i, S, x, K_mean, K_diag, k_pairwise, k_vec):
+def comparison(
+        i: ArrayLike,
+        S: ArrayLike,
+        x: ArrayLike,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> Array:
     """
     Calculate the change the mmd delta from replacing i in S with any point in x. 
     Returns a vector o f deltas.
     """
+    S = jnp.asarray(S)
     m = len(S)
-    
+    x = jnp.asarray(x)
+    K_mean = jnp.asarray(K_mean)
     return (
         (k_vec(x[S], x[i]).sum() - k_pairwise(x,x[S]).sum(axis=1) + k_vec(x,x[i]) - K_diag)/(m*m) - 
         (K_mean[i] - K_mean)/m
     )
 
 
-def refine_rand(x, S, kernel, K_mean, p=0.1):
+def refine_rand(
+        x: ArrayLike,
+        S: ArrayLike,
+        kernel: KernelFunction,
+        K_mean: ArrayLike,
+        p: float = 0.1,
+) -> Array:
     """
     Given a coreset S refines the coreset by iteratively replacing a random element of S with the best 
     point in a random sample of n*p candidate points. 
 
     Args:
-        x (array_like): n x d original data 
-        S (array_like): coreset point indices
-        kernel (callable): kernel function k: R^d x R^d \to R
-        K_mean (array_like): n row sum of kernel matrix divided by n 
-        p (float): proportion of original data to use as candidates.
+        x: n x d original data
+        S: coreset point indices
+        kernel: kernel function k: R^d x R^d \to R
+        K_mean: n row sum of kernel matrix divided by n
+        p: proportion of original data to use as candidates.
     
     Returns:
-        array: coreset point indices 
+        coreset point indices
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
     
     K_diag = vmap(kernel)(x,x)
 
+    S = jnp.asarray(S)
+    x = jnp.asarray(x)
     m = len(S)
     n = len(x)
     n_cand = int(n*p)
@@ -101,9 +138,19 @@ def refine_rand(x, S, kernel, K_mean, p=0.1):
 
     return S
 
-def refine_rand_body(i, val, x, n_cand, K_mean, K_diag, k_pairwise, k_vec):
+def refine_rand_body(
+        i: int,
+        val: tuple[random.PRNGKeyArray, ArrayLike],
+        x: ArrayLike,
+        n_cand: int,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> tuple[random.PRNGKeyArray, Array]:
 
-    key, S = val 
+    key, S = val
+    S = jnp.asarray(S)
     key, subkey = random.split(key)
     i = random.randint(subkey, (1,), 0, len(S))[0]
     key, subkey = random.split(key)
@@ -115,11 +162,24 @@ def refine_rand_body(i, val, x, n_cand, K_mean, K_diag, k_pairwise, k_vec):
     return key,S
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
-def comparison_cand(i, cand, S, x, K_mean, K_diag, k_pairwise, k_vec):
+def comparison_cand(
+        i: ArrayLike,
+        cand: ArrayLike,
+        S: ArrayLike,
+        x: ArrayLike,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> Array:
     """
     Calculate the change the mmd delta from replacing i in S with any point in x. 
     Returns a vector o f deltas.
     """
+    S = jnp.asarray(S)
+    x = jnp.asarray(x)
+    K_mean = jnp.asarray(K_mean)
+    K_diag = jnp.asarray(K_diag)
     m = len(S)
     
     return (
@@ -128,29 +188,37 @@ def comparison_cand(i, cand, S, x, K_mean, K_diag, k_pairwise, k_vec):
     )
 
 @jit
-def change(i, S, cand, comps):
-
+def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
+    S = jnp.asarray(S)
+    cand = jnp.asarray(cand)
     return S.at[i].set(cand[comps.argmax()])
 @jit
-def nochange(i, S, cand, comps):
+def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
+    return jnp.asarray(S)
 
-    return S
 
-
-def refine_rev(x, S, kernel, K_mean):
+def refine_rev(
+        x: ArrayLike,
+        S: ArrayLike,
+        kernel: KernelFunction,
+        K_mean: ArrayLike,
+) -> Array:
     """
     Given a coreset S refines the coreset by iterativing over point in x and replacing point in S which gives 
     the most improvement. 
 
     Args:
-        x (array_like): n x d original data 
-        S (array_like): coreset point indices
-        kernel (callable): kernel function k: R^d x R^d \to R
-        K_mean (array_like): n row sum of kernel matrix divided by n 
+        x: n x d original data
+        S: coreset point indices
+        kernel: kernel function k: R^d x R^d \to R
+        K_mean: n row sum of kernel matrix divided by n
     
     Returns:
-        array: coreset point indices 
+        coreset point indices
     """
+    x = jnp.asarray(x)
+    S = jnp.asarray(S)
+
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
     
@@ -164,7 +232,15 @@ def refine_rev(x, S, kernel, K_mean):
 
     return S
 
-def refine_rev_body(i, S, x,  K_mean, K_diag, k_pairwise, k_vec):
+def refine_rev_body(
+        i: int,
+        S: ArrayLike,
+        x: ArrayLike,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> Array:
 
     comps = comparison_rev(i,S,x,K_mean,K_diag, k_pairwise, k_vec)
     S = lax.cond(jnp.any(comps > 0), change_rev, nochange_rev, i, S, comps)
@@ -172,11 +248,23 @@ def refine_rev_body(i, S, x,  K_mean, K_diag, k_pairwise, k_vec):
     return S
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
-def comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec):
+def comparison_rev(
+        i: int,
+        S: ArrayLike,
+        x: ArrayLike,
+        K_mean: ArrayLike,
+        K_diag: ArrayLike,
+        k_pairwise: KernelFunction,
+        k_vec: KernelFunction,
+) -> Array:
     """
     Calculate the change the mmd delta from replacing any point in S with x[i]. 
     Returns a vector o f deltas.
     """
+    S = jnp.asarray(S)
+    x = jnp.asarray(x)
+    K_mean = jnp.asarray(K_mean)
+    K_diag = jnp.asarray(K_diag)
     m = len(S)
     
     return (
@@ -185,12 +273,12 @@ def comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec):
     )
 
 @jit
-def change_rev(i, S, comps):
-
+def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
+    S = jnp.asarray(S)
+    comps = jnp.asarray(comps)
     j = comps.argmax()
     return S.at[j].set(i)
 
 @jit
-def nochange_rev(i, S, comps):
-
-    return S
+def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
+    return jnp.asarray(S)
