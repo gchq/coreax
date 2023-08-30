@@ -20,12 +20,12 @@ from functools import partial
 from coreax.utils import KernelFunction
 
 
-def K_mean_rand_approx(
+def k_mean_rand_approx(
         key: random.PRNGKeyArray,
-        x: ArrayLike,
+        data: ArrayLike,
         kernel: KernelFunction,
-        n_points: int = 1000,
-        n_train: int = 2000,
+        num_kernel_points: int = 1000,
+        num_train_points: int = 2000,
 ) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
@@ -33,26 +33,26 @@ def K_mean_rand_approx(
 
     Args:
         key: key for random number generation
-        x: n X d original data
+        data: n X d original data
         kernel: kernel function k: R^d x R^d \to R
-        n_points: number of kernel evaluations points
-        n_train: number of training points to use to fit kernel regression
+        num_kernel_points: number of kernel evaluations points
+        num_train_points: number of training points to use to fit kernel regression
  
     Returns:
         kernel matrix row sum divide by n approximation
     """
-    x = jnp.asarray(x)
-    n = len(x)
-    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
+    data = jnp.asarray(data)
+    num_data_points = len(data)
+    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
 
     # Randomly select points for kernel regression
     key, subkey = random.split(key)
-    features_idx = random.choice(subkey, n, (n_points,), replace=False)
-    features = k_pairwise(x, x[features_idx])
+    features_idx = random.choice(subkey, num_data_points, (num_kernel_points,), replace=False)
+    features = k_pairwise(data, data[features_idx])
 
     # Select training points 
-    train_idx = random.choice(key, n, (n_train,), replace=False)
-    target = k_pairwise(x[train_idx],x).sum(axis=1)/n
+    train_idx = random.choice(key, num_data_points, (num_train_points,), replace=False)
+    target = k_pairwise(data[train_idx], data).sum(axis=1) / num_data_points
 
     # Solve regression problem.
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
@@ -60,12 +60,12 @@ def K_mean_rand_approx(
     return features @ params
 
 
-def K_mean_ANNchor_approx(
+def k_mean_annchor_approx(
         key: random.PRNGKeyArray,
-        x: ArrayLike,
+        data: ArrayLike,
         kernel: KernelFunction,
-        n_points: int = 1000,
-        n_train: int = 2000,
+        num_kernel_points: int = 1000,
+        num_train_points: int = 2000,
 ) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
@@ -73,54 +73,56 @@ def K_mean_ANNchor_approx(
 
     Args:
         key: key for random number generation
-        x: n X d original data
+        data: n X d original data
         kernel: kernel function k: R^d x R^d \to R
-        n_points: number of kernel evaluations points
-        n_train: number of training points to use to fit kernel regression
+        num_kernel_points: number of kernel evaluations points
+        num_train_points: number of training points to use to fit kernel regression
  
     Returns:
         kernel matrix row sum divide by n approximation
     """
-    x = jnp.asarray(x)
-    n = len(x)
-    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
+    data = jnp.asarray(data)
+    n = len(data)
+    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
     # k_vec is a function R^d x R^d \to R^d
-    k_vec = jit(vmap(kernel, in_axes=(0,None)))
+    kernel_function = jit(vmap(kernel, in_axes=(0, None)))
 
     # Select point for kernel regression using ANNchor construction
-    features = jnp.zeros((n,n_points))
-    features = features.at[:,0].set(k_vec(x,x[0]))
-    body = partial(anchor_body, x=x, k_vec=k_vec)
-    features = lax.fori_loop(1, n_points, body, features)
+    features = jnp.zeros((n, num_kernel_points))
+    features = features.at[:, 0].set(kernel_function(data, data[0]))
+    body = partial(anchor_body, data=data, kernel_function=kernel_function)
+    features = lax.fori_loop(1, num_kernel_points, body, features)
 
-    train_idx = random.choice(key, n, (n_train,), replace=False)
-    target = k_pairwise(x[train_idx],x).sum(axis=1)/n
+    train_idx = random.choice(key, n, (num_train_points,), replace=False)
+    target = kernel_pairwise(data[train_idx], data).sum(axis=1)/n
 
     # solve regression problem
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
     
     return features @ params
 
-@partial(jit, static_argnames=["k_vec"])
+
+@partial(jit, static_argnames=["kernel_function"])
 def anchor_body(
-        i: int,
+        idx: int,
         features: ArrayLike,
-        x: ArrayLike,
-        k_vec: KernelFunction,
+        data: ArrayLike,
+        kernel_function: KernelFunction,
 ) -> Array:
     features = jnp.asarray(features)
-    x = jnp.asarray(x)
+    data = jnp.asarray(data)
     
-    j  = features.max(axis=1).argmin()
-    features = features.at[:,i].set(k_vec(x,x[j]))
+    max_entry = features.max(axis=1).argmin()
+    features = features.at[:, idx].set(kernel_function(data, data[max_entry]))
     
     return features
 
-def K_mean_nystrom_approx(
+
+def k_mean_nystrom_approx(
         key: random.PRNGKeyArray,
-        x: ArrayLike,
+        data: ArrayLike,
         kernel: KernelFunction,
-        n_points: int = 1000,
+        num_points: int = 1000,
 ) -> Array:
     """
     Method for approximating the kernel matrix row sum divided by n using nystrom approximation 
@@ -128,18 +130,19 @@ def K_mean_nystrom_approx(
 
     Args:
         key: key for random number generation
-        x: n X d original data
+        data: n X d original data
         kernel: kernel function k: R^d x R^d \to R
-        n_points: number of kernel evaluations points
+        num_points: number of kernel evaluations points
  
     Returns:
         kernel matrix row sum divide by n approximation
     """
-    x = jnp.asarray(x)
-    n = len(x)
-    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
-    S = random.choice(key, n, (n_points,))
-    K_mn = k_pairwise(x[S],x)
-    K_mm = k_pairwise(x[S],x[S])
-    alpha = (jnp.linalg.pinv(K_mm)@K_mn).sum(axis=1)/n
-    return K_mn.T @ alpha
+    data = jnp.asarray(data)
+    num_data_points = len(data)
+    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
+    sample_points = random.choice(key, num_data_points, (num_points,))
+    k_mn = kernel_pairwise(data[sample_points], data)
+    k_mm = kernel_pairwise(data[sample_points], data[sample_points])
+    alpha = (jnp.linalg.pinv(k_mm)@k_mn).sum(axis=1) / num_data_points
+
+    return k_mn.T @ alpha
