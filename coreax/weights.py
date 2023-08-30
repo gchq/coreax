@@ -32,11 +32,11 @@ def calculate_BQ_weights(
     [huszar2016optimallyweighted]_. These are equivalent to the unconstrained weighted
     maximum mean discrepancy (MMD) optimum.
 
-    :param x: The original :math:`n \times d` data.
-    :param x_c: :math:`m times d` coreset.
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m times d` coreset
     :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
-    :return: Optimal weights.
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Optimal weights
     """
     x = jnp.asarray(x)
     x_c = jnp.asarray(x_c)

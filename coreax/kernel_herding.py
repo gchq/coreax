@@ -49,7 +49,7 @@ def greedy_body(
     :param X: Original :math:`n \times d` dataset
     :param k_vec: Vectorised kernel function on pairs `(X,x)`:
                   :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array.
+    :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param unique: Flag for enforcing unique elements
     :returns: Updated loop variables (`coreset`, `Gram matrix`, `objective`)
     """
@@ -170,7 +170,7 @@ def stein_kernel_herding_block(
     :param X: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
     :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`.
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param grad_log_f_X: Function computing gradient of log-PDF
                          :math:`g: X \rightarrow Y`
     :param max_size: Size of matrix blocks to process
@@ -338,7 +338,7 @@ def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
 
     This function is deprecated, and scheduled for removal.
 
-    :return: An $n \times d$ array of gradients evaluated at values of `X`
+    :return: An :math:`n \times d` array of gradients evaluated at values of `X`
     """
     return rbf_grad_log_f_X(*args, **kwargs)
 

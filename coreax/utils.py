@@ -99,14 +99,14 @@ def calculate_K_sum(
     are `None`. Else, `k_pairwise` should be of the form
     :math:`k(x,y, grads, grads, n, nu)`.
 
-    :param X: Data matrix, :math:`n \times d`.
-    :param k_pairwise: Pairwise kernel evaluation function.
-    :param max_size: Size of matrix block to process.
-    :param grads: Array of gradients, if applicable, :math:`n \times d`.
-                  Optional, defaults to `None`.
-    :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`.
-               Optional, defaults to `None`.
-    :return: Kernel matrix row sum.
+    :param X: Data matrix, :math:`n \times d`
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param max_size: Size of matrix block to process
+    :param grads: Array of gradients, if applicable, :math:`n \times d`
+                  Optional, defaults to `None`
+    :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`
+               Optional, defaults to `None`
+    :return: Kernel matrix row sum
     """
     X = jnp.asarray(X)
     n = len(X)
