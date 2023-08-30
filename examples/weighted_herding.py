@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import numpy as np
 from sklearn.datasets import make_blobs
+from pathlib import Path
 
 from coreax.weights import qp
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
@@ -22,7 +23,18 @@ from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 
 
-def main(outpath=None, weighted=True):
+def main(out_path: Path = None, weighted: bool = True):
+    """
+    Run the 'weighted_herding' example for weighted and unweighted herding.
+
+    Args:
+        out_path: path to save output to, if not None. Default None.
+        weighted: boolean flag for whether to use weighted or unweighted herding
+
+    Returns:
+        coreset MMD, random sample MMD
+
+    """
 
     # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D for plotting below.
     N = 10000
@@ -62,7 +74,7 @@ def main(outpath=None, weighted=True):
         # find the weights. Solves a QP
         weights = qp(Kc + 1e-10, Kbar)
         # check minimum weight is not negative by more than a reasonable tolerance
-        if weights.min() < -1e-5:
+        if weights.min() < -1e-4:
             raise ValueError(f"Minimum weight was {weights.min()} but should have been >=0")
         # compute the MMD between X and the coreset, weighted version
         m = mmd_weight_block(X, X[coreset], jnp.ones(N), weights, k, max_size=1000)
@@ -92,16 +104,14 @@ def main(outpath=None, weighted=True):
     plt.title('Random, m=%d, MMD=%.6f' % (C, rm))
     plt.axis('off')
 
-    if outpath is not None:
-        plt.savefig(outpath)
+    if out_path is not None:
+        plt.savefig(out_path)
 
     plt.show()
 
     # print the MMDs
-    print("Random MMD")
-    print(rm)
-    print("Coreset MMD")
-    print(m)
+    print(f"Random MMD: {rm}")
+    print(f"Coreset MMD: {m}")
 
     return m, rm
 

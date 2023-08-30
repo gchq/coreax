@@ -17,17 +17,28 @@ import imageio
 import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
+from pathlib import Path
 
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 
 
-def main(dir_="./examples/data/pounce"):
+def main(dir_: Path = "./examples/data/pounce"):
+    """
+    Run the 'pounce' example for video sampling.
+
+    Args:
+        dir_: path to directory containing input video.
+
+    Returns:
+        coreset MMD, random sample MMD
+
+    """
 
     # path to directory containing video as sequence of images
     fn = "pounce.gif"
-    os.makedirs(f"{dir_}/coreset", exist_ok=True)
+    os.makedirs(dir_ / "coreset", exist_ok=True)
 
     # read in as video. Frame 0 is missing A from RGBA.
     Y_ = np.array(imageio.v2.mimread(f"{dir_}/{fn}")[1:])
@@ -53,7 +64,7 @@ def main(dir_="./examples/data/pounce"):
 
     # sort the coreset ready for producing the output video
     coreset = jnp.sort(coreset)
-    print('Coreset:', coreset)
+    print('Coreset: ', coreset)
 
     # define a reference kernel to use for comparisons of MMD. We'll use an RBF
     def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
@@ -68,14 +79,12 @@ def main(dir_="./examples/data/pounce"):
     rm = mmd_block(X, X[rsample], k, max_size=1000).item()
 
     # print the MMDs
-    print("Random MMD")
-    print(rm)
-    print("Coreset MMD")
-    print(m)
+    print(f"Random MMD: {rm}")
+    print(f"Coreset MMD: {m}")
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = Y_[coreset]
-    imageio.mimsave(f"{dir_}/coreset/coreset.gif", coreset_images)
+    imageio.mimsave(dir_ / "coreset" / "coreset.gif", coreset_images)
 
     # plot to visualise which frames were chosen from the sequence
     # action frames are where the "pounce" occurs
@@ -91,7 +100,7 @@ def main(dir_="./examples/data/pounce"):
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
-    plt.savefig(f"{dir_}/coreset/frames.png")
+    plt.savefig(dir_ / "coreset" / "frames.png")
     plt.close()
 
     return m, rm
