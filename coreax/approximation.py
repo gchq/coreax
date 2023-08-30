@@ -122,7 +122,7 @@ def K_mean_nystrom_approx(
         n_points: int = 1000,
 ) -> Array:
     r"""
-    Approximate kernel row mean by using Nystrom approximation
+    Approximate kernel row mean by using Nystrom approximation.
 
     Here, the kernel row mean is the matrix row sum divided by n. Further details for
     Nystrom kernel mean embeddings can be found here [chatalic2022nystrom]_.
