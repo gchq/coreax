@@ -20,18 +20,15 @@ from coreax.utils import KernelFunction
 
 
 def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
+    r"""
+    Calculate maximum mean discrepancy (MMD).
+
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
-    Calculates maximum mean discrepancy
-
-    Args:
-        x: n x d original data
-        x_c: m x d  coreset
-        kernel: kernel function k: R^d x R^d \to R
-
-    Returns:
-        maximum mean discrepancy, as a zero-dimensional array
-    """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     return  jnp.sqrt(k_pairwise(x,x).mean() + k_pairwise(x_c,x_c).mean() - 2*k_pairwise(x,x_c).mean())
@@ -42,16 +39,17 @@ def wmmd(
         kernel: KernelFunction,
         weights: ArrayLike,
 ) -> float:
-    """One sided, weighted MMD, where weights are on the coreset points only.
+    r"""
+    Calculate one-sided, weighted maximum mean discrepancy (MMD).
 
-    Args:
-        x: original data points
-        x_c: coreset points
-        kernel: kernel function
-        weights: weights' vector
+    Only corset points are weighted.
 
-    Returns:
-        MMD value
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param weights: Weights vector
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     x = jnp.asarray(x)
@@ -87,19 +85,16 @@ def mmd_block(
         kernel: KernelFunction,
         max_size: int = 10_000,
 ) -> Array:
-    """
-    Calculates maximum mean discrepancy limiting memory requirements
-    Args:
-        x: n X d original data
-        x_c: m x d  coreset
-        kernel: kernel function k: R^d x R^d \to R
-        max_size: size of matrix block to process
+    r"""
+    Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
-    
-    Returns:
-        maximum mean discrepancy, as a zero-dimensional array
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param max_size: Size of matrix blocks to process
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     x = jnp.asarray(x)
@@ -141,20 +136,20 @@ def mmd_weight_block(
         kernel: KernelFunction,
         max_size: int = 10_000,
 ) -> Array:
-    """
-    Calculates weighted maximum mean discrepancy limiting memory requirements
-    Args:
-        x: n X d original data
-        x_c: m x d  coreset
-        w: n weights of original data
-        w_c: m weights of coreset points
-        kernel: kernel function k: R^d x R^d \to R
-        max_size: size of matrix block to process
+    r"""
+    Calculate weighted maximum mean discrepancy (MMD).
 
-    Returns:
-        weighted maximum mean discrepancy, as a zero-dimensional array
-    """
+    This calculation is executed whilst limiting memory requirements.
 
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param w: :math:`n` weights of original data
+    :param w_c: :math:`m` weights of coreset points
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param max_size: Size of matrix blocks to process
+    :return: Maximum mean discrepancy as a 0-dimensional array
+    """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
 
     w = jnp.asarray(w)
