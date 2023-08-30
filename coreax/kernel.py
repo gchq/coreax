@@ -40,7 +40,8 @@ def sq_dist_pairwise(X: ArrayLike, Y: ArrayLike) -> Array:
 
     :param X: First :math:`n \times d` array argument
     :param Y: Second :math:`m \times d` array argument
-    :return: Pairwise squared distances between `X` and `Y` as an :math:`n \times m` array
+    :return: Pairwise squared distances between `X` and `Y` as an
+             :math:`n \times m` array
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     d1 = vmap(sq_dist, in_axes=(None, 0), out_axes=0)
@@ -94,7 +95,8 @@ def pdiff(X: ArrayLike, Y: ArrayLike) -> Array:
 
     :param X: First :math:`n \times d` array argument
     :param Y: Second :math:`m \times d` array argument
-    :return: Pairwise differences between `X` and `Y` as an :math:`n \times m \times d` array
+    :return: Pairwise differences between `X` and `Y` as an :
+             math:`n \times m \times d` array
     """
     d1 = vmap(diff, in_axes=(0, None), out_axes=0)
     d2 = vmap(d1, in_axes=(None, 0), out_axes=1)

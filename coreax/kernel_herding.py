@@ -88,7 +88,7 @@ def stein_greedy_body(
     :param X: Original :math:`n \times d` dataset
     :param k_vec: Vectorised kernel function on pairs `(X,x,Y,y)`:
                   :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
-                  :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
+                  :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
                   :math:`\mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param grads: Gradients of log-PDF evaluated at `X`, an :math:`n \times d` array
@@ -124,7 +124,7 @@ def kernel_herding_block(
     Execute kernel herding algorithm with Jax.
 
     :param X: Original :math:`n \times d` dataset
-    :param n_core: Number of coreset points to calcualte
+    :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
@@ -367,7 +367,7 @@ def scalable_herding(
         #.  If :math:`r` is the recursion depth, then we recurse unweighted for
             :math:`r` iterations where
 
-            ..math::
+            .. math::
 
                      r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
 
@@ -387,7 +387,7 @@ def scalable_herding(
     :param w_function: Weights function. If unweighted, this is `None`
     :param size: Region size in number of points. Optional, defaults to `1000`
     :param parallel: Use multiprocessing. Optional, defaults to `True`
-    :returns: Coreset and weights, where weights is empty if unweighted
+    :return: Coreset and weights, where weights is empty if unweighted
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
     if n_core >= size:
