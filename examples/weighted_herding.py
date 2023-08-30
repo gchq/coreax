@@ -71,9 +71,10 @@ else:
     weights = jnp.ones(C)
     # compute the MMD between X and the coreset, unweighted version
     m = mmd_block(X, X[coreset], k, max_size=1000)
+m = m.item()
 
 # compute the MMD between X and the random sample
-rm = mmd_block(X, X[rsample], k, max_size=1000)
+rm = mmd_block(X, X[rsample], k, max_size=1000).item()
 
 # produce some scatter plots
 plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)

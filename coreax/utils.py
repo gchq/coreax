@@ -11,30 +11,59 @@
  # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  # See the License for the specific language governing permissions and
  # limitations under the License.
+
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
+from collections.abc import Callable
+from jax import Array
 import jax.numpy as jnp
+from jax.typing import ArrayLike
 
 
-def update_K_sum(X, K_sum, i, j, max_size, k_pairwise, grads=None, nu=None):
+KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+
+# Pairwise kernel evaluation if grads and nu are defined
+KernelFunctionWithGrads = Callable[
+    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float],
+    Array
+]
+
+
+def update_K_sum(
+        X: ArrayLike,
+        K_sum: ArrayLike,
+        i: int,
+        j: int,
+        max_size: int,
+        k_pairwise: KernelFunction | KernelFunctionWithGrads,
+        grads: ArrayLike | None = None,
+        nu: float | None = None,
+) -> Array:
     """Update row sum with the kernel matrix block i:i+max_size x j:j+max_size
     exploiting symmetry of kernel matix to reduce repeated calculation. 
 
     Args:
-        X (array_like): Data matrix, n x d.
-        K_sum (array_like): Full data structure for Gram matrix row sum, 1 x n.
-        i (int): Block start.
-        j (int): Block end.
-        max_size (int): Size of matrix block to process.
-        k_pairwise (callable): Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, nu)
-        grads (array_like, optional): Array of gradients, if applicable, n x d. Defaults to None.
-        nu (float, optional): Base kernel bandwidth. Defaults to None.
+        X: Data matrix, n x d.
+        K_sum: Full data structure for Gram matrix row sum, 1 x n.
+        i: Block start.
+        j: Block end.
+        max_size: Size of matrix block to process.
+        k_pairwise: Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, n, nu)
+        grads: Array of gradients, if applicable, n x d. Optional, defaults to None.
+        nu: Base kernel bandwidth. Optional, defaults to None.
 
     Returns:
-        ndarray: K_sum, with elements i: i + max_size, and j: j + max_size populated.
+        K_sum, with elements i: i + max_size, and j: j + max_size populated.
     """
+    X = jnp.asarray(X)
+    K_sum = jnp.asarray(K_sum)
     n = X.shape[0]
     if grads is None:
         K_part = k_pairwise(X[i:i + max_size], X[j:j + max_size])
     else:
+        grads = jnp.asarray(grads)
         K_part = k_pairwise(X[i:i + max_size], X[j:j + max_size],
                             grads[i:i + max_size], grads[j:j + max_size], n, nu)
     K_sum = K_sum.at[i:i +
@@ -47,19 +76,26 @@ def update_K_sum(X, K_sum, i, j, max_size, k_pairwise, grads=None, nu=None):
     return K_sum
 
 
-def calculate_K_sum(X, k_pairwise, max_size, grads=None, nu=None):
+def calculate_K_sum(
+        X: ArrayLike,
+        k_pairwise: KernelFunction | KernelFunctionWithGrads,
+        max_size: int,
+        grads: ArrayLike | None = None,
+        nu: ArrayLike | None = None,
+) -> Array:
     """Calculate row sum of the kernel matrix. This is done blockwise to limit memory overhead.
 
     Args:
-        X (array_like): Data matrix, n x d.
-        k_pairwise (callable): Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, nu).
-        max_size (int): Size of matrix block to process.
-        grads (array_like, optional): Matrix of gradients, if applicable, n x d. Defaults to None.
-        nu (float, optional): Kernel bandwidth parameter, if applicable, n x d. Defaults to None.
+        X: Data matrix, n x d.
+        k_pairwise: Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, n, nu).
+        max_size: Size of matrix block to process.
+        grads: Matrix of gradients, if applicable, n x d. Optional, defaults to None.
+        nu: Kernel bandwidth parameter, if applicable, n x d. Optional, defaults to None.
 
     Returns:
-        ndarray: Kernel matrix row sum.
+        Kernel matrix row sum.
     """
+    X = jnp.asarray(X)
     n = len(X)
     K_sum = jnp.zeros(n)
     # Iterate over upper trangular blocks
