@@ -74,8 +74,13 @@ class TestScoreMatching(unittest.TestCase):
     def test_sliced_score_matching_loss_element(self) -> None:
         """Tests the loss function elementwise."""
 
-        # basic score function, implicitly multivariate vector valued
         def score_fn(x):
+            """
+            Basic score function, implicitly multivariate vector valued.
+
+            :param x: point at which to evaluate the score function
+            :return: score function (gradient of log density) evaluated at x
+            """
             return x**2
 
         # arbitrary input
@@ -93,8 +98,14 @@ class TestScoreMatching(unittest.TestCase):
     def test_sliced_score_matching_loss(self) -> None:
         """Tests the loss function vmapped function."""
 
-        # basic score function, implicitly multivariate vector valued
+        #
         def score_fn(x: ArrayLike) -> ArrayLike:
+            """
+            Basic score function, implicitly multivariate vector valued.
+
+            :param x: point at which to evaluate the score function
+            :return: score function (gradient of log density) evaluated at x
+            """
             return x**2
 
         x = np.array([2.0, 7.0])
