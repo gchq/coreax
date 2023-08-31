@@ -25,17 +25,18 @@ def calculate_BQ_weights(
         x_c: ArrayLike,
         kernel: KernelFunction,
 ) -> Array:
-    """Weights from sequential Bayesian quadrature (SBQ). See https://arxiv.org/pdf/1204.1664.pdf
+    r"""
+    Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
-    These are equivalent to the unconstrained weighted MMD optimum.
+    References for this technique can be found in
+    [huszar2016optimallyweighted]_. These are equivalent to the unconstrained weighted
+    maximum mean discrepancy (MMD) optimum.
 
-    Args:
-        x: n x d original data
-        x_c: m x d coreset
-        kernel: kernel function k: R^d x R^d \to R
-
-    Returns:
-        optimal solution
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Optimal weights
     """
     x = jnp.asarray(x)
     x_c = jnp.asarray(x_c)
@@ -49,15 +50,14 @@ def simplex_weights(
         x_c: ArrayLike,
         kernel: KernelFunction,
 ) -> Array:
-    """Compute optimal weights given the simplex constraint.
+    r"""
+    Compute optimal weights given the simplex constraint.
 
-    Args:
-        x: n x d original data
-        x_c: m x d coreset
-        kernel: kernel function k: R^d x R^d \to R
-
-    Returns:
-        optimal solution
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :return: Optimal weights
     """
     x = jnp.asarray(x)
     x_c = jnp.asarray(x_c)
@@ -68,22 +68,24 @@ def simplex_weights(
     return sol
 
 def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
-    """Quadratic programming solver from jaxopt. Solves simplex weight problems of the form
+    r"""
+    Solve quadratic programs with :mod:`jaxopt`.
+
+    Solves simplex weight problems of the form:
 
     .. math::
+
         \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
     
     subject to
 
     .. math::
+
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
-    Args:
-        Kmm: m x m coreset Gram matrix
-        Kbar: m x d array of Gram matrix means
-
-    Returns:
-        optimal solution
+    :param Kmm: :math:`m \times m` coreset Gram matrix
+    :param Kbar: :math`m \times d` array of Gram matrix means
+    :return: Optimised solution for the quadratic program
     """
     Q = jnp.array(Kmm)
     c = -jnp.array(Kbar)
