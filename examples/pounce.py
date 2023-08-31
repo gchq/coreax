@@ -17,62 +17,94 @@ import imageio
 import os
 from sklearn.decomposition import PCA
 import jax.numpy as jnp
+from pathlib import Path
 
 from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
+from coreax.metrics import mmd_block
 
-# path to directory containing video as sequence of images
-dir = "./examples/data/pounce"
-fn = "pounce.gif"
-os.makedirs(f"{dir}/coreset", exist_ok=True)
 
-# read in as video. Frame 0 is missing A from RGBA.
-Y_ = np.array(imageio.v2.mimread(f"{dir}/{fn}")[1:])
-Y = Y_.reshape(Y_.shape[0], -1)
+def main(directory: Path = "./examples/data/pounce"):
+    """
+    Run the 'pounce' example for video sampling.
 
-# run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
-# properties, i.e. variance.
-p = 25
-pca = PCA(p)
-X = pca.fit_transform(Y)
+    Args:
+        directory: path to directory containing input video.
 
-# request a 10 frame summary of the video
-C = 10
+    Returns:
+        coreset MMD, random sample MMD
 
-# set the bandwidth parameter of the underlying RBF kernel
-N = min(X.shape[0], 1000)
-idx = np.random.choice(X.shape[0], N, replace=False)
-nu = median_heuristic(X[idx])
+    """
 
-# define the kernel
-k = lambda x, y : rbf_kernel(x, y, jnp.float32(nu)**2)/(nu * jnp.sqrt(2. * jnp.pi))
-weighted = True
+    # path to directory containing video as sequence of images
+    fn = "pounce.gif"
+    os.makedirs(directory / "coreset", exist_ok=True)
 
-# run Stein kernel herding in block mode to avoid GPU memory issues
-coreset, Kc, Kbar = \
-    stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+    # read in as video. Frame 0 is missing A from RGBA.
+    Y_ = np.array(imageio.v2.mimread(f"{directory}/{fn}")[1:])
+    Y = Y_.reshape(Y_.shape[0], -1)
 
-# sort the coreset ready for producing the output video
-coreset = jnp.sort(coreset)
-print('Coreset:', coreset)
+    # run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
+    # properties, i.e. variance.
+    p = 25
+    pca = PCA(p)
+    X = pca.fit_transform(Y)
 
-# Save a new video. Y_ is the original sequence with dimensions preserved
-coreset_images = Y_[coreset]
-imageio.mimsave(f"{dir}/coreset/coreset.gif", coreset_images)
+    # request a 10 frame summary of the video
+    C = 10
 
-# plot to visualise which frames were chosen from the sequence
-# action frames are where the "pounce" occurs
-action_frames = np.arange(63, 85)
-x = np.arange(N)
-y = np.zeros(N)
-y[coreset] = 1.
-z = np.zeros(N)
-z[jnp.intersect1d(coreset, action_frames)] = 1.
-plt.figure(figsize=(20, 3))
-plt.bar(x, y, alpha=.5)
-plt.bar(x, z)
-plt.xlabel("Frame")
-plt.ylabel("Chosen")
-plt.tight_layout()
-plt.savefig(f"{dir}/coreset/frames.png")
-plt.close()
+    # set the bandwidth parameter of the underlying RBF kernel
+    N = min(X.shape[0], 1000)
+    idx = np.random.choice(X.shape[0], N, replace=False)
+    nu = median_heuristic(X[idx])
+
+    # run Stein kernel herding in block mode to avoid GPU memory issues
+    coreset, Kc, Kbar = \
+        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+
+    # sort the coreset ready for producing the output video
+    coreset = jnp.sort(coreset)
+    print('Coreset: ', coreset)
+
+    # define a reference kernel to use for comparisons of MMD. We'll use an RBF
+    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
+        (nu * jnp.sqrt(2. * jnp.pi))
+
+    # compute the MMD between X and the coreset
+    m = mmd_block(X, X[coreset], k, max_size=1000)
+
+    # get a random sample of points to compare against
+    rsample = np.random.choice(N, size=C, replace=False)
+    # compute the MMD between X and the random sample
+    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+
+    # print the MMDs
+    print(f"Random MMD: {rm}")
+    print(f"Coreset MMD: {m}")
+
+    # Save a new video. Y_ is the original sequence with dimensions preserved
+    coreset_images = Y_[coreset]
+    imageio.mimsave(directory / "coreset" / "coreset.gif", coreset_images)
+
+    # plot to visualise which frames were chosen from the sequence
+    # action frames are where the "pounce" occurs
+    action_frames = np.arange(63, 85)
+    x = np.arange(N)
+    y = np.zeros(N)
+    y[coreset] = 1.
+    z = np.zeros(N)
+    z[jnp.intersect1d(coreset, action_frames)] = 1.
+    plt.figure(figsize=(20, 3))
+    plt.bar(x, y, alpha=.5)
+    plt.bar(x, z)
+    plt.xlabel("Frame")
+    plt.ylabel("Chosen")
+    plt.tight_layout()
+    plt.savefig(directory / "coreset" / "frames.png")
+    plt.close()
+
+    return m, rm
+
+
+if __name__ == '__main__':
+    main()
