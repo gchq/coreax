@@ -41,18 +41,17 @@ def greedy_body(
         K_mean: ArrayLike,
         unique: bool,
 ) -> tuple[Array, Array, Array]:
-    """Greedy kernel herding main loop.
+    r"""
+    Execute main loop of greedy kernel herding.
 
-    Args:
-        i: Loop counter
-        val: Loop updateables
-        X: Original data set, n x d
-        k_vec: Vectorised kernel function k(X, x) -> R^n, where X \in R^{n x d} and x \in R^d
-        K_mean: Mean vector for the Gram matrix, i.e. mean over rows, 1 x n.
-        unique: insist on unique elements
-
-    Returns:
-        Updated loop variables, (coreset, K_t objective).
+    :param i: Loop counter
+    :param val: Loop updatables
+    :param X: Original :math:`n \times d` dataset
+    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
+    :param unique: Flag for enforcing unique elements
+    :returns: Updated loop variables (`coreset`, `Gram matrix`, `objective`)
     """
     X = jnp.asarray(X)
     S, K, K_t = val
@@ -81,21 +80,22 @@ def stein_greedy_body(
         nu: float,
         unique: bool,
 ) -> tuple[Array, Array, Array]:
-    """Greedy Stein herding main loop
+    r"""
+    Execute the main loop of greedy Stein herding.
 
-    Args:
-        i: Loop counter
-        val: Loop updateables
-        X: Original data set, n x d
-        k_vec: Vectorised kernel function k(X, x, Y, y) -> R^n, where X, Y \in R^{n x d} and x, y \in R^d
-        K_mean: Mean vector for the Gram matrix, i.e. mean over rows, 1 x n.
-        grads: Gradients of log PDF evaluated at X, n x d.
-        n: Number of data points that induced the original PDF.
-        nu: Base kernel for Stein kernel, bandwidth parameter.
-        unique: insist on unique elements
-
-    Returns:
-        Updated loop variables, (coreset, coreset Gram matrix, objective)
+    :param i: Loop counter
+    :param val: Loop updatables
+    :param X: Original :math:`n \times d` dataset
+    :param k_vec: Vectorised kernel function on pairs `(X,x,Y,y)`:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
+                  :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
+    :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
+    :param grads: Gradients of log-PDF evaluated at `X`, an :math:`n \times d` array
+    :param n: Number of data points inducing the original PDF
+    :param nu: Bandwidth parameter for the base kernel of the Stein kernel
+    :param unique: Flag for enforcing unique elements
+    :returns: Updated loop variables (`coreset`, `coreset Gram matrix`, `K_t` objective)
     """
     S, K, objective = val
     S = jnp.asarray(S)
@@ -120,20 +120,18 @@ def kernel_herding_block(
         K_mean: ArrayLike | None = None,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
-    """Implementation of kernel herding algorithm using Jax. 
+    r"""
+    Execute kernel herding algorithm with Jax.
 
-    Args:
-        X: n x d original data
-        n_core: Number of coreset points to calculate
-        kernel: Kernel function k: R^d x R^d \to R
-        max_size: Size of matrix block to process
-        K_mean: Row sum of kernel matrix divided by n
-        unique: insist on unique elements
-
-    Returns:
-        coreset point indices, Kc, Kbar
+    :param X: Original :math:`n \times d` dataset
+    :param n_core: Number of coreset points to calculate
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param max_size: Size of matrix blocks to process
+    :param K_mean: Row sum of kernel matrix divided by `n`
+    :param unique: Flag for enforcing unique elements
+    :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
     """
-
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0),
                                out_axes=0), in_axes=(0, None), out_axes=0))
     k_vec = jit(vmap(kernel, in_axes=(0, None)))
@@ -166,20 +164,20 @@ def stein_kernel_herding_block(
         nu: float = 1.,
         unique: bool = True,
 ) -> tuple[Array, Array, Array]:
-    """Stein herding
+    r"""
+    Execute Stein herding.
 
-    Args:
-        X: n x d original data
-        n_core: Number of coreset points to calculate
-        kernel: Kernel function k: R^d x R^d \to R
-        grad_log_f_X: function to compute gradient of log PDF, g: X -> Y
-        K_mean: Row sum of kernel matrix divided by n
-        max_size: Size of matrix block to process
-        nu: Base kernel for Stein kernel, bandwidth parameter.
-        unique: insist on unique elements
-
-    Returns:
-        (coreset indices, coreset Gram matrix, coreset kernel mean)
+    :param X: Original :math:`n \times d` dataset
+    :param n_core: Number of coreset points to calcualte
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param grad_log_f_X: Function computing gradient of log-PDF
+                         :math:`g: X \rightarrow Y`
+    :param max_size: Size of matrix blocks to process
+    :param K_mean: Row sum of kernel matrix divided by `n`
+    :param unique: Flag for enforcing unique elements
+    :param nu: Bandwidth parameter for the base kernel of the Stein kernel
+    :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
     """
     X = jnp.asarray(X)
     g = vmap(grad_log_f_X, (0, None, None), 0)
@@ -209,15 +207,13 @@ def stein_kernel_herding_block(
 
 @jit
 def fw_linesearch(arg_x_t: int, K: ArrayLike, Ek: ArrayLike) -> Array:
-    """Frank-Wolfe line search.
+    r"""
+    Execute Frank-Wolfe line search.
 
-    Args:
-        arg_x_t: index of previous
-        K: Gram matrix
-        Ek: Gram matrix mean
-
-    Returns:
-        FW weight, as a zero-dimensional array
+    :param arg_x_t: Previous index
+    :param K: Gram matrix
+    :param Ek: Gram matrix mean
+    :return: Frank-Wolfe weight as a 0-dimensional array
     """
     K = jnp.asarray(K)
     Ek = jnp.asarray(Ek)
@@ -236,14 +232,12 @@ def herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """Basic herding body
+    r"""
+    Execute body of default herding.
 
-    Args:
-        i: Loop counter
-        val: Loop updateables
-
-    Returns:
-        (coreset indices, objective, K mean, K)
+    :param i: Loop counter
+    :param val: Loop updatables
+    :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
     S = jnp.asarray(S)
@@ -261,14 +255,12 @@ def greedy_herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """Stein thinning body
+    r"""
+    Execute body of Stein thinning.
 
-    Args:
-        i: Loop counter
-        val: Loop updateables
-
-    Returns:
-        coreset indices, objective, K mean, K)
+    :param i: Loop counter
+    :param val: Loop updatables
+    :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
     S = jnp.asarray(S)
@@ -286,14 +278,12 @@ def fw_herding_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
-    """Frank-Wolfe herding body
+    r"""
+    Execute body of Frank-Wolfe herding.
 
-    Args:
-        i: Loop counter
-        val: Loop updateables
-
-    Returns:
-        (coreset indices, objective, K mean, K)
+    :param i: Loop counter
+    :param val: Loop updatables
+    :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
     S = jnp.asarray(S)
@@ -332,19 +322,23 @@ def fw_herding_body(
 #     return S
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
-    """A wrapper for scalable (parallelised) herding with a decorated function
+    r"""
+    A wrapper for scalable (parallelised) herding with a decorated function.
 
-    Returns:
-        Object: Same returns as stein_kernel_pc_imq_element
+    This function is deprecated, and scheduled for removal.
+
+    :return: Kernel evaluation at `(x,y)`, 0-dimensional array
     """
     return stein_kernel_pc_imq_element(*args, **kwargs)
 
 
 def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
-    """A wrapper for scalable (parallelised) herding with a decorated function
+    r"""
+    A wrapper for scalable (parallelised) herding with a decorated function.
 
-    Returns:
-        Object: Same returns as rbf_grad_log_f_X
+    This function is deprecated, and scheduled for removal.
+
+    :return: An :math:`n \times d` array of gradients evaluated at values of `X`
     """
     return rbf_grad_log_f_x(*args, **kwargs)
 
@@ -359,26 +353,41 @@ def scalable_herding(
         parallel: bool = True,
         **kwargs,
 ) -> tuple[Array, Array]:
-    """Scalable kernel herding. Uses a kd-tree to partition X space into patches, upon each a kernel herding problem is solved.
+    r"""
+    Execute scalable kernel herding.
 
-    The setup is a little intricate. First, n_core < size. If we have n points, unweighted herding is run recursively on each patch of k = ceil(n/size) points.
+    This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a
+    kernel herding problem is solved.
 
-    If r is the recursion depth, then we recurse unweighted r = floor(log_{n_core/size} (n_core/n)) times, each recursion giving n_r = C*k_{r - 1} points.
-    Unpacking the recursion, this gives n_r ~= n_0(n_core/n_size)^r.
+    There is some intricate setup:
 
-    Once n_core < n_r <= size, we run a final weighted herding (if weighting is requested) to give n_core points.
+        #.  Parameter `n_core` must be less than `size`.
+        #.  If we have :math:`n` points, unweighted herding is executed recursively on
+            each patch of :math:`\lceil \frac{n}{size} \rceil` points.
+        #.  If :math:`r` is the recursion depth, then we recurse unweighted for
+            :math:`r` iterations where
 
-    Args:
-        X: n x d original data
-        indices: Indices into original data set; useful for recursion.
-        n_core: Number of coreset points to calculate
-        function: Kernel function k: R^d x R^d \to R
-        w_function: Weights' function. None if unweighted.
-        size: Region size in number of points. Defaults to 1000.
-        parallel: Use multiprocessing. Defaults to True.
+            .. math::
 
-    Returns:
-        (coreset, weights). Weights will be empty if unweighted.
+                     r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
+
+            Each recursion gives :math:`n_r = C \times k_{r-1}` points. Unpacking the
+            recursion, this gives
+            :math:`n_r \approx n_0 \left( \frac{n_core}{n_size}\right)^r`.
+        #.  Once :math:`n_core < n_r \leq size`, we run a final weighted herding (if
+            weighting is requested) to give :math:`n_core` points.
+
+
+    :param X: Original :math:`n \times d` dataset
+    :param indices: Indices into original dataset, used for recursion
+    :param n_core: Number of coreset points to calculate
+    :param function: The Kernel function,
+                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d`
+                     :math:`\rightarrow \mathbb{R}
+    :param w_function: Weights function. If unweighted, this is `None`
+    :param size: Region size in number of points. Optional, defaults to `1000`
+    :param parallel: Use multiprocessing. Optional, defaults to `True`
+    :return: Coreset and weights, where weights is empty if unweighted
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
     if n_core >= size:

@@ -23,28 +23,25 @@ from jax import jit, vmap, Array
 
 @jit
 def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
-    """ Squared distance between two vectors
+    r"""
+    Calculate the squared distance between two vectors.
 
-    Args:
-        x: First vector
-        y: Second vector
-
-    Returns:
-        ndarray: same format as numpy.dot
+    :param x: First vector argument
+    :param y: Second vector argument
+    :return: Dot product of `x-y` and `x-y`, the square distance between `x` and `y`
     """
     return jnp.dot(x - y, x - y)
 
 
 @jit
 def sq_dist_pairwise(x_array: ArrayLike, y_array: ArrayLike) -> Array:
-    """ Efficient pairwise square distance
+    r"""
+    Calculate efficient pairwise square distance between two arrays.
 
-    Args:
-        x_array: First set of vectors, n x d
-        y_array: Second set of vectors, m x d
-
-    Returns:
-        Pairwise squared distances, n x m
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :return: Pairwise squared distances between `x_array` and `y_array` as an
+             :math:`n \times m` array
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     d1 = vmap(sq_dist, in_axes=(None, 0), out_axes=0)
@@ -55,58 +52,51 @@ def sq_dist_pairwise(x_array: ArrayLike, y_array: ArrayLike) -> Array:
 
 @jit
 def rbf_kernel(x: ArrayLike, y: ArrayLike, variance: float = 1.) -> Array:
-    """Squared exponential kernel for a pair of individual vectors
+    r"""
+    Calculate the radial basis function (RBF) kernel for a pair of vectors.
 
-    Args:
-        x: First vector.
-        y: Second vector.
-        variance: Variance parameter. Optional, defaults to 1.
-
-    Returns:
-        RBF kernel evaluated at x, y
+    :param x: First vector
+    :param y: Second vector
+    :param var: Variance. Optional, defaults to 1
+    :return: RBF kernel evaluated at `(x,y)`
     """
     return jnp.exp(-sq_dist(x, y) / (2 * variance))
 
 
 @jit
 def laplace_kernel(x: ArrayLike, y: ArrayLike, variance: float = 1.) -> Array:
-    """Laplace kernel for a pair of individual vectors
+    r"""
+    Calculate the Laplace kernel for a pair of vectors.
 
-    Args:
-        x: First vector.
-        y: Second vector.
-        variance: Variance parameter. Optional, defaults to 1.
-
-    Returns:
-        Laplace kernel evaluated at x, y
+    :param x: First vector
+    :param y: Second vector
+    :param var: Variance. Optional, defaults to 1
+    :return: Laplace kernel evaluated at `(x,y)`
     """
     return jnp.exp(-jnp.linalg.norm(x - y) / (2 * variance))
 
 
 @jit
 def diff(x: ArrayLike, y: ArrayLike) -> Array:
-    """Vector difference for a pair of individual vectors
+    r"""
+    Calculate vector difference for a pair of vectors.
 
-    Args:
-        x: First vector.
-        y: Second vector.
-
-    Returns:
-        Vector difference
+    :param x: First vector
+    :param y: Second vector
+    :return: Vector difference `x-y`
     """
     return x - y
 
 
 @jit
 def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
-    """Efficient pairwise difference for two arrays of vectors
+    r"""
+    Calculate efficient pairwise difference between two arrays of vectors.
 
-    Args:
-        x_array: First set of vectors, n x d
-        y_array: Second set of vectors, m x d
-
-    Returns:
-        Pairwise differences, n x m x d
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :return: Pairwise differences between `x_array` and `y_array` as an
+             :math:`n \times m \times d` array
     """
     d1 = vmap(diff, in_axes=(0, None), out_axes=0)
     d2 = vmap(d1, in_axes=(None, 0), out_axes=1)
@@ -116,15 +106,13 @@ def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
 
 @jit
 def normalised_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.) -> Array:
-    """Normalised Gaussian kernel, pairwise.
+    r"""
+    Evaluate the normalised Gaussian kernel pairwise.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-
-    Returns:
-        Pairwise kernel evaluations.
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :return: Pairwise kernel evaluations
     """
     square_distances = sq_dist_pairwise(x_array, y_array)
     kernel = jnp.exp(-.5 * square_distances / bandwidth ** 2) / jnp.sqrt(2 * jnp.pi)
@@ -134,15 +122,13 @@ def normalised_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.
 
 @jit
 def pc_imq(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.) -> Array:
-    """Preconditioned inverse multi-quadric kernel
+    r"""
+    Evaluate the pre-conditioned inverse multi-quadric kernel pairwise.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-
-    Returns:
-        Pairwise kernel evaluations.
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :return: Pairwise kernel evaluations
     """
     scaling = 2 * bandwidth ** 2
     mq_array = sq_dist_pairwise(x_array, y_array) / scaling
@@ -158,16 +144,14 @@ def grad_rbf_y(
         bandwidth: float = 1.,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of normalised RBF wrt Y
+    r"""
+    Calculate the gradient of the normalised radial basis function with respect to Y.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        gram_matrix: Gram matrix, if available. Defaults to a Normalised Gaussian kernel.
-
-    Returns:
-        Gradients at each X x Y point, m x n x d
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param gram_matrix: Gram matrix. Optional, defaults to a Normalised Gaussian kernel
+    :return: Gradients at each `X x Y` point, an :math:`m \times n \times d` array
     """
     if gram_matrix is None:
         gram_matrix = normalised_rbf(y_array, x_array, bandwidth=bandwidth)
@@ -186,16 +170,15 @@ def grad_rbf_x(
         bandwidth: float = 1.,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of normalised RBF wrt X
+    r"""
+    Calculate the gradient of the normalised radial basis function with respect to X.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        gram_matrix: Gram matrix, if available. Defaults to a Normalised Gaussian kernel.
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param gram_matrix: Gram matrix. Optional, defaults to a Normalised Gaussian kernel    
 
-    Returns:
-        Gradients at each X x Y point, n x m x d
+    :return: Gradients at each `X x Y` point, an :math:`n \times m \times d` array
     """
     return -jnp.transpose(grad_rbf_y(x_array, y_array, bandwidth, gram_matrix), (1, 0, 2))
 
@@ -207,16 +190,14 @@ def grad_pc_imq_y(
         bandwidth: float = 1.,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of pre-conditioned inverse multi-quadric wrt Y
+    r"""
+    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to Y.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        gram_matrix: Gram matrix, if available. Defaults to a Preconditioned inverse multi-quadric kernel.
-
-    Returns:
-        Gradients at each X x Y point, m x n x d
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param gram_matrix: Gram matrix. Optional, defaults to a Preconditioned inverse multi-quadric kernel
+    :return: Gradients at each `X x Y` point, an :math:`m \times n \times d` array
     """
     scaling = 2 * bandwidth**2
     if gram_matrix is None:
@@ -235,16 +216,14 @@ def grad_pc_imq_x(
         bandwidth: float = 1.,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of pre-conditioned inverse multi-quadric wrt X
+    r"""
+    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to X.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        gram_matrix: Gram matrix, if available. Defaults to a Preconditioned inverse multi-quadric kernel.
-
-    Returns:
-        Gradients at each X x Y point, n x m x d
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param gram_matrix: Gram matrix. Optional, defaults to a Preconditioned inverse multi-quadric kernel
+    :return: Gradients at each `X x Y` point, an :math:`n \times m \times d` array
     """
     return -jnp.transpose(grad_pc_imq_y(x_array, y_array, bandwidth, gram_matrix), (1, 0, 2))
 
@@ -257,17 +236,18 @@ def rbf_div_x_grad_y(
         num_data_points: int | None = None,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Divergence operator acting on gradient of RBF kernel wrt Y. Avoids explicit computation of the Hessian.
+    r"""
+    Apply divergence operator on gradient of RBF kernel with respect to Y.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        num_data_points: The number of data points in the _generating_ set (not necessarily the same as X). Defaults to None.
-        gram_matrix: Gram matrix, if available. Defaults to a Normalised Gaussian kernel.
+    This avoids explicit computation of the Hessian. Note that the generating set is
+    not necessarily the same as `X`.
 
-    Returns:
-        n x m matrix
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param num_data_points: Number of data points in the generating set. Optional, defaults to `None`
+    :param gram_matrix: Gram matrix. Optional, defaults to a Normalised Gaussian kernel
+    :return: Divergence operator, an :math:`n \times m` matrix
     """
     x_array = jnp.asarray(x_array)
     if gram_matrix is None:
@@ -286,17 +266,18 @@ def pc_imq_div_x_grad_y(
         num_data_points: int = None,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Divergence operator acting on gradient of PC-IMQ kernel wrt Y. Avoids explicit computation of the Hessian.
+    r"""
+    Apply divergence operator on gradient of PC-IMQ kernel with respect to Y.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev). Defaults to 1.
-        num_data_points: The number of data points in the _generating_ set (not necessarily the same as X). Defaults to number of vectors in X.
-        gram_matrix: Gram matrix, if available. Defaults to a Normalised Gaussian kernel.
+    This avoids explicit computation of the Hessian. Note that the generating set is
+    not necessarily the same as `X`.
 
-    Returns:
-       n x m matrix
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+    :param num_data_points: Number of data points in the generating set. Optional, defaults to `None`
+    :param gram_matrix: Gram matrix. Optional, defaults to a Normalised Gaussian kernel
+    :return: Divergence operator, an :math:`n \times m` matrix
     """
     scaling = 2 * bandwidth ** 2
     x_array = jnp.asarray(x_array)
@@ -310,14 +291,12 @@ def pc_imq_div_x_grad_y(
 
 @jit
 def median_heuristic(x_array: ArrayLike) -> Array:
-    """Compute the median heuristic for setting kernel bandwidth
+    r"""
+    Compute the median heuristic for setting kernel bandwidth.
 
-    Args:
-        x_array: Input array of vectors.
-
-    Returns:
-        Bandwidth parameter, computed from the median heuristic, as a zero-dimensional
-        array
+    :param x_array: Input array of vectors
+    :return: Bandwidth parameter, computed from the median heuristic, as a
+             0-dimensional array
     """
     # calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(sq_dist_pairwise(x_array, x_array), k=1)
@@ -329,15 +308,14 @@ def median_heuristic(x_array: ArrayLike) -> Array:
 
 @jit
 def rbf_f_x(random_var_values: ArrayLike, kde_data: ArrayLike, bandwidth: float) -> tuple[Array, Array]:
-    """PDF of X, as constructed by an RBF KDE using data set D
+    r"""
+    Construct PDF of `X` by kernel density estimation for a radial basis function.
 
-    Args:
-        random_var_values: Random variable values, n x d
-        kde_data: KDE data set, m x d
-        bandwidth: Kernel bandwidth (std dev).
-
-    Returns:
-        Gram matrix mean over Y, n x 1; Gram matrix, n x m
+    :param random_var_values: An :math:`n \times d` array of random variable values
+    :param kde_data: The :math:`m \times d` kernel density estimation set
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :return: Gram matrix mean over X as a :math:`n \times 1` array; Gram matrix as an
+             :math:`n \times m` array
     """
     kernel = normalised_rbf(random_var_values, kde_data, bandwidth)
     kernel_mean = kernel.mean(axis=1)
@@ -353,17 +331,17 @@ def rbf_grad_log_f_x(
         gram_matrix: ArrayLike | None = None,
         kernel_mean: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of log PDF of X, where the PDF is a KDE induced by data set D.
+    r"""
+    Compute gradient of log-PDF of `X`.
 
-    Args:
-        random_var_values: Random variable values, n x d
-        kde_data: KDE data set, m x d
-        bandwidth: Kernel bandwidth (std dev).
-        gram_matrix: Gram matrix, if available, n x m. Defaults to a Normalised Gaussian kernel.
-        kernel_mean: Kernel mean, if available, n x 1. Defaults to a mean of a Normalised Gaussian kernel.
+    The PDF is constructed from kernel density estimation.
 
-    Returns:
-        Array of gradients evaluated at values of X, n x d.
+    :param random_var_values: An :math:`n \times d` array of random variable values
+    :param kde_data: The :math:`m \times d` kernel density estimation set
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, defaults to a Normalised Gaussian kernel
+    :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, defaults to the mean of a Normalised Gaussian kernel
+    :return: An :math:`n \times d` array of gradients evaluated at values of `random_var_values`
     """
     random_var_values = jnp.atleast_2d(random_var_values)
     kde_data = jnp.atleast_2d(kde_data)
@@ -384,16 +362,14 @@ def grad_rbf_x(
         bandwidth: float,
         kernel: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of the RBF kernel, wrt X
+    r"""
+    Compute gradient of the radial basis function kernel with respect to `X`.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev).
-        kernel: Gram matrix, if available, n x m. Defaults to None.
-
-    Returns:
-        Array of gradients evaluated at values of X, n x d.
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :param kernel: Gram matrix, an :math:`n \times m` array. Optional, defaults to a Normalised Gaussian kernel
+    :return: Gradient evaluated at values of `x_array`, as a :math:`n \times d` array
     """
     if kernel is None:
         kernel = normalised_rbf(x_array, y_array, bandwidth)
@@ -411,31 +387,27 @@ def grad_rbf_y(
         bandwidth: float,
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
-    """Gradient of the RBF kernel, wrt Y
+    r"""
+    Compute gradient of the radial basis function kernel with respect to `Y`.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Kernel bandwidth (std dev).
-        gram_matrix: Gram matrix, if available, n x m. Defaults to None.
-
-    Returns:
-        Array of gradients evaluated at values of Y, m x d.
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`n \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, defaults to a Normalised Gaussian kernel
+    :return: Gradient evaluated at values of `y_array`, as a :math:`m \times d` array
     """
     return -jnp.transpose(grad_rbf_x(x_array, y_array, bandwidth, gram_matrix), (1, 0, 2))
 
 
 @jit
 def stein_kernel_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.) -> Array:
-    """Compute the kernel induced by the canonical Stein operator on an RBF base kernel.
+    r"""
+    Compute a kernel from a RBF kernel with the canonical Stein operator.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Base kernel bandwidth (std dev).
-
-    Returns:
-        Gram matrix, n x m
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`n \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :return: Gram matrix, an :math:`n \times m` array
     """
     x_array = jnp.atleast_2d(x_array)
     y_array = jnp.atleast_2d(y_array)
@@ -468,17 +440,16 @@ def stein_kernel_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 
 
 @jit
 def stein_kernel_pc_imq(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.) -> Array:
-    """Compute the kernel Gram matrix induced by the canonical Stein operator on a pre-conditioned inverse multi-quadric base kernel.
+    r"""
+    Compute a kernel from a PC-IMQ kernel with the canonical Stein operator.
 
-    The log PDF is assumed to be a KDE induced by the data in Y.
+    The log-PDF is assumed to be induced by kernel density estimation with the
+    data in `Y`.
 
-    Args:
-        x_array: First set of vectors, n x d.
-        y_array: Second set of vectors, m x d.
-        bandwidth: Base kernel bandwidth (std dev). Defaults to 1
-
-    Returns:
-        Gram matrix, n x m
+    :param x_array: First set of vectors as a :math:`n \times d` array
+    :param y_array: Second set of vectors as a :math:`n \times d` array
+    :param bandwidth: Kernel bandwidth (standard deviation)
+    :return: Gram matrix, an :math:`n \times m` array
     """
     x_array = jnp.atleast_2d(x_array)
     y_array = jnp.atleast_2d(y_array)
@@ -518,20 +489,20 @@ def stein_kernel_pc_imq_element(
         num_data_points: int,
         bandwidth: float = 1.,
 ) -> Array:
-    """Compute the kernel element at x, y induced by the canonical Stein operator on a pre-conditioned inverse multi-quadric base kernel.
+    r"""
+    Evaluate the kernel element at `(x,y)`.
 
-    The log PDF can be arbitrary, as only the gradients are supplied.
+    This element is induced by the canonical Stein operator on a PC-IMQ kernel. The
+    log-PDF can be arbitrary as only gradients are supplied.
 
-    Args:
-        x: First vector, 1 x d.
-        y: Second vector, 1 x d.
-        grad_log_p_x: Gradient of log PDF evaluated at x, 1 x d.
-        grad_log_p_y: Gradient of log PDF evaluated at y, 1 x d.
-        num_data_points: Number of data points in the _generating_ set (not necessarily the same as X).
-        bandwidth: Base kernel bandwidth (std dev). Defaults to 1
-
-    Returns:
-        Kernel evaluation at x, y as zero-dimensional array
+    :param x: First vector as a :math:`1 \times d` array
+    :param y: Second vector as a :math:`1 \times d` array
+    :param grad_log_p_x: Gradient of log-PDF evaluated at `x`, a :math:`1 \times d` array
+    :param grad_log_p_y: Gradient of log-PDF evaluated at `y`, a :math:`1 \times d` array
+    :param num_data_points: Number of data points in the generating set
+    :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
+              `None`
+    :return: Kernel evaluation at `(x,y)`, 0-dimensional array
     """
     x = jnp.atleast_2d(x)
     y = jnp.atleast_2d(y)
