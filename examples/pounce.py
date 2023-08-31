@@ -60,7 +60,7 @@ def main(directory: Path = "./examples/data/pounce"):
 
     # run Stein kernel herding in block mode to avoid GPU memory issues
     coreset, Kc, Kbar = \
-        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000)
 
     # sort the coreset ready for producing the output video
     coreset = jnp.sort(coreset)

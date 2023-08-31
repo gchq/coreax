@@ -1,16 +1,16 @@
- # © Crown Copyright GCHQ
- #
- # Licensed under the Apache License, Version 2.0 (the "License");
- # you may not use this file except in compliance with the License.
- # You may obtain a copy of the License at
- #
- # http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS,
- # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- # See the License for the specific language governing permissions and
- # limitations under the License.
+# © Crown Copyright GCHQ
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
@@ -57,7 +57,7 @@ def rbf_kernel(x: ArrayLike, y: ArrayLike, variance: float = 1.) -> Array:
 
     :param x: First vector
     :param y: Second vector
-    :param var: Variance. Optional, defaults to 1
+    :param variance: Variance. Optional, defaults to 1
     :return: RBF kernel evaluated at `(x,y)`
     """
     return jnp.exp(-sq_dist(x, y) / (2 * variance))
@@ -70,7 +70,7 @@ def laplace_kernel(x: ArrayLike, y: ArrayLike, variance: float = 1.) -> Array:
 
     :param x: First vector
     :param y: Second vector
-    :param var: Variance. Optional, defaults to 1
+    :param variance: Variance. Optional, defaults to 1
     :return: Laplace kernel evaluated at `(x,y)`
     """
     return jnp.exp(-jnp.linalg.norm(x - y) / (2 * variance))
@@ -402,7 +402,7 @@ def grad_rbf_y(
 @jit
 def stein_kernel_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 1.) -> Array:
     r"""
-    Compute a kernel from a RBF kernel with the canonical Stein operator.
+    Compute a kernel from an RBF kernel with the canonical Stein operator.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`n \times d` array
@@ -414,13 +414,13 @@ def stein_kernel_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 
     x_size = x_array.shape[0]
     y_size = y_array.shape[0]
     # n x m
-    rbf_kernel = normalised_rbf(x_array, y_array, bandwidth)
+    rbf_kernel_ = normalised_rbf(x_array, y_array, bandwidth)
     # n x m
-    divergence = rbf_div_x_grad_y(x_array, y_array, bandwidth, x_size, rbf_kernel)
+    divergence = rbf_div_x_grad_y(x_array, y_array, bandwidth, x_size, rbf_kernel_)
     # n x m x d
-    grad_k_x = grad_rbf_x(x_array, y_array, bandwidth, rbf_kernel)
+    grad_k_x = grad_rbf_x(x_array, y_array, bandwidth, rbf_kernel_)
     # m x n x d
-    grad_k_y = grad_rbf_y(x_array, y_array, bandwidth, rbf_kernel)
+    grad_k_y = grad_rbf_y(x_array, y_array, bandwidth, rbf_kernel_)
     # n x d
     grad_log_p_x = rbf_grad_log_f_x(x_array, y_array, bandwidth)
     # m x d
@@ -434,7 +434,7 @@ def stein_kernel_rbf(x_array: ArrayLike, y_array: ArrayLike, bandwidth: float = 
     # n x m
     y = jnp.einsum("ijk,ijk -> ij", tiled_grad_log_y, grad_k_x)
     # n x m
-    z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * rbf_kernel
+    z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * rbf_kernel_
     return divergence + x.T + y + z
 
 
