@@ -83,13 +83,13 @@ def k_mean_annchor_approx(
     data = jnp.asarray(data)
     n = len(data)
     kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
-    # k_vec is a function R^d x R^d \to R^d
-    kernel_function = jit(vmap(kernel, in_axes=(0, None)))
+    # kernel_vector is a function R^d x R^d \to R^d
+    kernel_vector = jit(vmap(kernel, in_axes=(0, None)))
 
     # Select point for kernel regression using ANNchor construction
     features = jnp.zeros((n, num_kernel_points))
-    features = features.at[:, 0].set(kernel_function(data, data[0]))
-    body = partial(anchor_body, data=data, kernel_function=kernel_function)
+    features = features.at[:, 0].set(kernel_vector(data, data[0]))
+    body = partial(anchor_body, data=data, kernel_function=kernel_vector)
     features = lax.fori_loop(1, num_kernel_points, body, features)
 
     train_idx = random.choice(key, n, (num_train_points,), replace=False)
@@ -106,13 +106,13 @@ def anchor_body(
         idx: int,
         features: ArrayLike,
         data: ArrayLike,
-        kernel_function: KernelFunction,
+        kernel_vector: KernelFunction,
 ) -> Array:
     features = jnp.asarray(features)
     data = jnp.asarray(data)
     
     max_entry = features.max(axis=1).argmin()
-    features = features.at[:, idx].set(kernel_function(data, data[max_entry]))
+    features = features.at[:, idx].set(kernel_vector(data, data[max_entry]))
     
     return features
 
