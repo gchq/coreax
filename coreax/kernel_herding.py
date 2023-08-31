@@ -158,11 +158,12 @@ def stein_kernel_herding_block(
         X: ArrayLike,
         n_core: int,
         kernel: KernelFunction,
-        grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array],
+        grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] | callable,
         K_mean: ArrayLike | None = None,
         max_size: int = 10_000,
         nu: float = 1.,
         unique: bool = True,
+        sm: bool = False
 ) -> tuple[Array, Array, Array]:
     r"""
     Execute Stein herding.
@@ -180,8 +181,11 @@ def stein_kernel_herding_block(
     :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
     """
     X = jnp.asarray(X)
-    g = vmap(grad_log_f_X, (0, None, None), 0)
-    grads = g(X, X, nu).squeeze()
+    if sm:
+        grads = grad_log_f_X(X)
+    else:
+        g = vmap(grad_log_f_X, (0, None, None), 0)
+        grads = g(X, X, nu).squeeze()
     k_pairwise = jit(vmap(vmap(kernel, (None, 0, None, 0, None,
                                         None), 0), (0, None, 0, None, None, None), 0))
     n = X.shape[0]
