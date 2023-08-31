@@ -33,20 +33,19 @@ def refine(
         kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
-    """
-    Given a coreset S refine the coreset by iteratively replacing each element of S with the point in 
-    x which gives greatest reduction in mmd.
+    r"""
+    Refine a coreset iteratively.
 
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    The refinement procedure replaces elements with points most reducing maximum mean
+    discrepancy (MMD).
+
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :return: Refined coreset point indices
     """
-    
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
     
@@ -84,9 +83,19 @@ def comparison(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
-    Calculate the change the mmd delta from replacing i in S with any point in x. 
-    Returns a vector o f deltas.
+    r"""
+    Calculate the change in maximum mean discrepancy from point replacement.
+
+    The change calculated is from replacing point `i` in `S` with any point in `x`.
+
+    :param i: TODO
+    :param S: TODO
+    :param x: TODO
+    :param K_mean: TODO
+    :param K_diag: TODO
+    :param k_pairwise: TODO
+    :param k_vec: TODO
+    :return: A vector of maximum mean discrepancy deltas.
     """
     S = jnp.asarray(S)
     m = len(S)
@@ -105,19 +114,20 @@ def refine_rand(
         K_mean: ArrayLike,
         p: float = 0.1,
 ) -> Array:
-    """
-    Given a coreset S refines the coreset by iteratively replacing a random element of S with the best 
-    point in a random sample of n*p candidate points. 
+    r"""
+    Refine a coreset iteratively.
 
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-        p: proportion of original data to use as candidates.
-    
-    Returns:
-        coreset point indices
+    The refinement procedure replaces a random element with the best point among a set
+    of candidate point. The candidate points are a random sample of :math:`n \times p`
+    points from among the original data.
+
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :param p: Proportion of original data to use as candidates
+    :return: Refined coreset point indices
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
@@ -172,9 +182,20 @@ def comparison_cand(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
-    Calculate the change the mmd delta from replacing i in S with any point in x. 
-    Returns a vector o f deltas.
+    r"""
+    Calculate the change in maximum mean discrepancy (MMD).
+
+    The change in MMD arises from replacing `i` in `S` with `x`.
+
+    :param i: A coreset index
+    :param cand: Indices for randomly sampled candidate points among the original data
+    :param S: Coreset point indices
+    :param x: :math:`n \times d` original data
+    :param K_mean: Kernel matrix row sum divided by n
+    :param K_diag: *TODO*
+    :param k_pairwise: *TODO*
+    :param k_vec: *TODO*
+    :return: *TODO*
     """
     S = jnp.asarray(S)
     x = jnp.asarray(x)
@@ -203,18 +224,17 @@ def refine_rev(
         kernel: KernelFunction,
         K_mean: ArrayLike,
 ) -> Array:
-    """
-    Given a coreset S refines the coreset by iterativing over point in x and replacing point in S which gives 
-    the most improvement. 
+    r"""
+    Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    Args:
-        x: n x d original data
-        S: coreset point indices
-        kernel: kernel function k: R^d x R^d \to R
-        K_mean: n row sum of kernel matrix divided by n
-    
-    Returns:
-        coreset point indices
+    The iteration is carred out over points in `x`.
+
+    :param x: :math:`n \times d` original data
+    :param S: Coreset point indices
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param K_mean: Kernel matrix row sum divided by n
+    :return: Refined coreset point indices
     """
     x = jnp.asarray(x)
     S = jnp.asarray(S)
@@ -257,16 +277,26 @@ def comparison_rev(
         k_pairwise: KernelFunction,
         k_vec: KernelFunction,
 ) -> Array:
-    """
-    Calculate the change the mmd delta from replacing any point in S with x[i]. 
-    Returns a vector o f deltas.
+    r"""
+    Calculate the change in maximum mean discrepancy (MMD).
+
+    The change in MMD arises from replacing a point in `S` with `x[i]`.
+
+    :param i: Index for original data
+    :param S: Coreset point indices
+    :param x: :math:`n \times d` original data
+    :param K_mean: Kernel matrix row sum divided by n
+    :param K_diag: *TODO*
+    :param k_pairwise: *TODO*
+    :param k_vec: *TODO*
+    :return: *TODO*
     """
     S = jnp.asarray(S)
     x = jnp.asarray(x)
     K_mean = jnp.asarray(K_mean)
     K_diag = jnp.asarray(K_diag)
     m = len(S)
-    
+
     return (
         (k_pairwise(x[S], x[S]).sum(axis=1) - k_vec(x[S],x[i]).sum() + k_vec(x[S],x[i]) - K_diag[S])/(m*m) - 
         (K_mean[S] - K_mean[i])/m
