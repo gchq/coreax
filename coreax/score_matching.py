@@ -24,9 +24,9 @@ from tqdm import tqdm
 
 @jit
 def analytic_obj(
-        v: ArrayLike,
-        u: ArrayLike,
-        s: ArrayLike
+        random_direction_vector: ArrayLike,
+        grad_score_times_random_direction_matrix: ArrayLike,
+        score_matrix: ArrayLike
 ) -> ArrayLike:
     """
     Reduced variance score matching loss function.
@@ -34,17 +34,20 @@ def analytic_obj(
     This is for use with certain random measures, e.g. normal and Rademacher. If this
     assumption is not true, then general_obj should be used instead.
 
-    :param v: d-dimensional random vector
-    :param u: product of v and gradient of s (w.r.t. x)
-    :param s: gradients of log-density
+    :param random_direction_vector: d-dimensional random vector
+    :param grad_score_times_random_direction_matrix: product of the gradient of
+        score_matrix (w.r.t. x) and the random_direction_vector
+    :param score_matrix: gradients of log-density
     :return: evaluation of score matching objective, see equation 8 in [ssm]_
     """
-    return v @ u + 0.5 * s @ s
+    result = (random_direction_vector @ grad_score_times_random_direction_matrix +
+              0.5 * score_matrix @ score_matrix)
+    return result
 
 
 @jit
 def general_obj(
-    v, u, s
+    random_direction_vector, grad_score_times_random_direction_matrix, score_matrix
 ) -> ArrayLike:
     """
     General score matching loss function.
@@ -53,12 +56,15 @@ def general_obj(
     using score matching, but has higher variance than analytic_obj if these
     assumptions hold
 
-    :param v: d-dimensional random vector
-    :param u: product of v and gradient of s (w.r.t. x)
-    :param s: gradients of log-density
+    :param random_direction_vector: d-dimensional random vector
+    :param grad_score_times_random_direction_matrix: product of the gradient of
+        score_matrix (w.r.t. x) and the random_direction_vector
+    :param score_matrix: gradients of log-density
     :return: evaluation of score matching objective, see equation 7 in [ssm]_
     """
-    return v @ u + 0.5 * (v @ s) ** 2
+    result = (random_direction_vector @ grad_score_times_random_direction_matrix + 0.5 *
+              (random_direction_vector @ score_matrix) ** 2)
+    return result
 
 
 @partial(jit, static_argnames=["score_network", "obj_fn"])
@@ -198,17 +204,17 @@ def noise_conditional_train_step(
 def sliced_score_matching(
     X: ArrayLike,
     rgenerator: Callable,
-    noise_conditioning: Optional[bool] = True,
-    use_analytic: Optional[bool] = False,
-    M: Optional[int] = 1,
-    lr: Optional[float] = 1e-3,
-    epochs: Optional[int] = 10,
-    batch_size: Optional[int] = 64,
-    hidden_dim: Optional[int] = 128,
-    optimiser: Optional[Callable] = optax.adamw,
-    L: Optional[int] = 100,
-    sigma: Optional[float] = 1.0,
-    gamma: Optional[float] = 0.95,
+    noise_conditioning: bool = True,
+    use_analytic: bool = False,
+    M: int = 1,
+    lr: float = 1e-3,
+    epochs: int = 10,
+    batch_size: int = 64,
+    hidden_dim: int = 128,
+    optimiser: Callable = optax.adamw,
+    L: int = 100,
+    sigma: float = 1.0,
+    gamma: float = 0.95,
 ) -> Callable:
     """Learn a sliced score matching function from Song et al.'s paper [ssm]_
 
