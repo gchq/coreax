@@ -42,11 +42,13 @@ def k_mean_rand_approx(
     """
     data = jnp.asarray(data)
     num_data_points = len(data)
-    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
+    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0),
+                          in_axes=(0, None), out_axes=0))
 
     # Randomly select points for kernel regression
     key, subkey = random.split(key)
-    features_idx = random.choice(subkey, num_data_points, (num_kernel_points,), replace=False)
+    features_idx = random.choice(subkey, num_data_points, (num_kernel_points,),
+                                 replace=False)
     features = k_pairwise(data, data[features_idx])
 
     # Select training points 
@@ -82,7 +84,8 @@ def k_mean_annchor_approx(
     """
     data = jnp.asarray(data)
     n = len(data)
-    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
+    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0),
+                               in_axes=(0, None), out_axes=0))
     # kernel_vector is a function R^d x R^d \to R^d
     kernel_vector = jit(vmap(kernel, in_axes=(0, None)))
 
@@ -138,7 +141,8 @@ def k_mean_nystrom_approx(
     """
     data = jnp.asarray(data)
     num_data_points = len(data)
-    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0))
+    kernel_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0), out_axes=0),
+                               in_axes=(0, None), out_axes=0))
     sample_points = random.choice(key, num_data_points, (num_points,))
     k_mn = kernel_pairwise(data[sample_points], data)
     k_mm = kernel_pairwise(data[sample_points], data[sample_points])
