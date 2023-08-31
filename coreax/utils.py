@@ -41,21 +41,28 @@ def update_K_sum(
         grads: ArrayLike | None = None,
         nu: float | None = None,
 ) -> Array:
-    """Update row sum with the kernel matrix block i:i+max_size x j:j+max_size
-    exploiting symmetry of kernel matix to reduce repeated calculation. 
+    r"""
+    Update row sum with a kernel matrix block.
 
-    Args:
-        X: Data matrix, n x d.
-        K_sum: Full data structure for Gram matrix row sum, 1 x n.
-        i: Block start.
-        j: Block end.
-        max_size: Size of matrix block to process.
-        k_pairwise: Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, n, nu)
-        grads: Array of gradients, if applicable, n x d. Optional, defaults to None.
-        nu: Base kernel bandwidth. Optional, defaults to None.
+    The kernel matrix block :math:`i:i+max_size \times j:j+max_size` is used to update
+    the row sum. Symmetry of the kernel matrix is exploited to reduced repeated
+    calculation.
 
-    Returns:
-        K_sum, with elements i: i + max_size, and j: j + max_size populated.
+    Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and `nu`
+    are `None`. Else, `k_pairwise` should be of the form
+    :math:`k(x,y, grads, grads, n, nu)`.
+
+    :param X: Data matrix, :math:`n \times d`
+    :param K_sum: Full data structure for Gram matrix row sum, :math:`1 \times n`
+    :param i: Kernel matrix block start
+    :param j: Kernel matrix block end
+    :param max_size: Size of matrix block to process
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param grads: Array of gradients, if applicable, :math:`n \times d`;
+                  Optional, defaults to `None`
+    :param nu: Base kernel bandwidth. Optional, defaults to `None`
+    :return: Gram matrix row sum, with elements :math:`i: i + max_size` and
+             :math:`j: j + max_size` populated
     """
     X = jnp.asarray(X)
     K_sum = jnp.asarray(K_sum)
@@ -83,17 +90,23 @@ def calculate_K_sum(
         grads: ArrayLike | None = None,
         nu: ArrayLike | None = None,
 ) -> Array:
-    """Calculate row sum of the kernel matrix. This is done blockwise to limit memory overhead.
+    r"""
+    Calculate row sum of the kernel matrix.
 
-    Args:
-        X: Data matrix, n x d.
-        k_pairwise: Pairwise kernel evaluation function. This should be k(x, y) if grads and nu are None, else k(x, y, grads, grads, n, nu).
-        max_size: Size of matrix block to process.
-        grads: Matrix of gradients, if applicable, n x d. Optional, defaults to None.
-        nu: Kernel bandwidth parameter, if applicable, n x d. Optional, defaults to None.
+    The row sum is calculated block-wise to limit memory overhead.
 
-    Returns:
-        Kernel matrix row sum.
+    Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and `nu`
+    are `None`. Else, `k_pairwise` should be of the form
+    :math:`k(x,y, grads, grads, n, nu)`.
+
+    :param X: Data matrix, :math:`n \times d`
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param max_size: Size of matrix block to process
+    :param grads: Array of gradients, if applicable, :math:`n \times d`
+                  Optional, defaults to `None`
+    :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`
+               Optional, defaults to `None`
+    :return: Kernel matrix row sum
     """
     X = jnp.asarray(X)
     n = len(X)

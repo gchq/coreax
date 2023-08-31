@@ -27,19 +27,18 @@ def k_mean_rand_approx(
         num_kernel_points: int = 1000,
         num_train_points: int = 2000,
 ) -> Array:
-    """
-    Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
-    randomly
+    r"""
+    Approximate kernel row mean by regression on points selected randomly.
 
-    Args:
-        key: key for random number generation
-        data: n X d original data
-        kernel: kernel function k: R^d x R^d \to R
-        num_kernel_points: number of kernel evaluations points
-        num_train_points: number of training points to use to fit kernel regression
- 
-    Returns:
-        kernel matrix row sum divide by n approximation
+    Here, the kernel row mean is the matrix row sum divided by n.
+
+    :param key: Key for random number generation
+    :param data: The original :math:`n \times d` data
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
+    :return: Approximation of the kernel matrix row sum divided by n
     """
     data = jnp.asarray(data)
     num_data_points = len(data)
@@ -67,19 +66,19 @@ def k_mean_annchor_approx(
         num_kernel_points: int = 1000,
         num_train_points: int = 2000,
 ) -> Array:
-    """
-    Method for approximating the kernel matrix row sum divided by n using kernel regression on points selected
-    by ANNchor construction
+    r"""
+    Approximate kernel row mean by regression on points chosen by ANNchor construction.
 
-    Args:
-        key: key for random number generation
-        data: n X d original data
-        kernel: kernel function k: R^d x R^d \to R
-        num_kernel_points: number of kernel evaluations points
-        num_train_points: number of training points to use to fit kernel regression
- 
-    Returns:
-        kernel matrix row sum divide by n approximation
+    Here, the kernel row mean is the matrix row sum divided by n. The ANNchor
+    implementation used can be found `here<https://github.com/gchq/annchor>`_.
+
+    :param key: Key for random number generation
+    :param data: The original :math:`n \times d` data
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
+    :return: Approximation of the kernel matrix row sum divided by n
     """
     data = jnp.asarray(data)
     n = len(data)
@@ -124,18 +123,18 @@ def k_mean_nystrom_approx(
         kernel: KernelFunction,
         num_points: int = 1000,
 ) -> Array:
-    """
-    Method for approximating the kernel matrix row sum divided by n using nystrom approximation 
-    https://arxiv.org/abs/2201.13055
+    r"""
+    Approximate kernel row mean by using Nystrom approximation.
 
-    Args:
-        key: key for random number generation
-        data: n X d original data
-        kernel: kernel function k: R^d x R^d \to R
-        num_points: number of kernel evaluations points
- 
-    Returns:
-        kernel matrix row sum divide by n approximation
+    Here, the kernel row mean is the matrix row sum divided by n. Further details for
+    Nystrom kernel mean embeddings can be found here [chatalic2022nystrom]_.
+
+    :param key: Key for random number generation
+    :param data: The original :math:`n \times d` data
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param num_points: Number of kernel evaluation points
+    :return: Approximation of the kernel matrix row sum divided by n
     """
     data = jnp.asarray(data)
     num_data_points = len(data)
