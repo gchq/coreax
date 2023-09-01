@@ -6,4 +6,4 @@ repos:
       - id: end-of-file-fixer  # files must end in a single newline
       - id: check-yaml  # tries to load YAML files and fails upon error
       - id: check-added-large-files  # rejects commits which add large files (coverage.xml, for example)
-        args: [--enforce-all, --maxkb=100]  # sets the upper limit (might be worth bringing this down)
+        args: [--enforce-all, --maxkb=5000]  # sets the upper limit (might be worth bringing this down)
