@@ -111,7 +111,7 @@ def calculate_K_sum(
     X = jnp.asarray(X)
     n = len(X)
     K_sum = jnp.zeros(n)
-    # Iterate over upper trangular blocks
+    # Iterate over upper triangular blocks
     for i in range(0, n, max_size):
         for j in range(i, n, max_size):
             K_sum = update_K_sum(X, K_sum, i, j, max_size,
