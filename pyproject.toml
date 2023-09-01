@@ -1,3 +1,41 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coreax"
+version = "0.1.0"
+description = "Jax coreset algorithms."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "GCHQ"},
+]
+dependencies = [
+    "flax",
+    "jax",
+    "jaxopt",
+    "optax",
+    "scikit-learn",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "imageio",
+    "isort",
+    "matplotlib",
+    "numpy",
+    "opencv-python",
+    "pyqt5",
+    "pytest",
+    "scipy",
+]
+
 [tool.isort]
 known_first_party = ["coreax"]
 profile = "black"
+
+[tool.setuptools]
+packages = ["coreax"]
