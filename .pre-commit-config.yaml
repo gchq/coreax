@@ -1,0 +1,9 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace  # removes whitespace at the end of lines
+      - id: end-of-file-fixer  # files must end in a single newline
+      - id: check-yaml  # tries to load YAML files and fails upon error
+      - id: check-added-large-files  # rejects commits which add large files (coverage.xml, for example)
+        args: [--enforce-all, --maxkb=100]  # sets the upper limit (might be worth bringing this down)
