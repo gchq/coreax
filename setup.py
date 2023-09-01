@@ -7,16 +7,24 @@ setup(
     author="GCHQ",
     packages=["coreax"],
     install_requires=[
-        "jax",
-        "numpy",
-        "jaxopt",
-        "scikit-learn",
-        "matplotlib",
-        "imageio",
-        "typing-extensions",
-        "opencv-python",
-        "optax",
         "flax",
-        "tqdm"
-    ]
+        "jax",
+        "jaxopt",
+        "optax",
+        "scikit-learn",
+        "tqdm",
+    ],
+    extras_require={
+        "dev": [
+            "black",
+            "imageio",
+            "isort",
+            "matplotlib",
+            "numpy",
+            "opencv-python",
+            "pyqt5",
+            "pytest",
+            "scipy",
+        ],
+    },
 )

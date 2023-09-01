@@ -11,7 +11,10 @@ If you would like to contribute to the development of coreax, you can do so in a
 - Contribute example usages & documentation improvements.
 - Increase awareness of coreax with other potential users.
 
-All contributors must sign the [GCHQ Contributor Licence Agreement][cla]. 
+All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
+
+Developers should install additional packages required for development using
+`pip install -e .[dev]`.
 
 Reporting issues
 --------------
