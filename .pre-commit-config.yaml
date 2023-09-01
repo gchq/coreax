@@ -53,3 +53,8 @@ repos:
       # Place isort options in pyproject.toml
       - id: isort
         name: isort (Python)
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      # Change to black-jupyter if using Jupyter notebooks
+      - id: black
