@@ -146,16 +146,15 @@ def grad_rbf_y(
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate the gradient of the normalised radial basis function with respect to
-    y_array.
+    Calculate the gradient of the normalised radial basis function w.r.t. y_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
     :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
     :param gram_matrix: Gram matrix. Optional, if :data:`None` or omitted, defaults to
-    a normalised Gaussian kernel
+        a normalised Gaussian kernel
     :return: Gradients at each `x_array X y_array` point, an
-    :math:`m \times n \times d` array
+        :math:`m \times n \times d` array
     """
     if gram_matrix is None:
         gram_matrix = normalised_rbf(y_array, x_array, bandwidth=bandwidth)
@@ -175,8 +174,7 @@ def grad_rbf_x(
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate the gradient of the normalised radial basis function with respect to
-    x_array.
+    Calculate the gradient of the normalised radial basis function w.r.t. x_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -199,8 +197,7 @@ def grad_pc_imq_y(
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to
-    y_array.
+    Calculate gradient of the pre-conditioned inverse multi-quadric w.r.t. y_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -228,8 +225,7 @@ def grad_pc_imq_x(
         gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate gradient of the pre-conditioned inverse multi-quadric with respect to
-    x_array.
+    Calculate gradient of the pre-conditioned inverse multi-quadric w.r.t. x_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -364,13 +360,13 @@ def rbf_grad_log_f_x(
     :param kde_data: The :math:`m \times d` kernel density estimation set
     :param bandwidth: Kernel bandwidth (standard deviation)
     :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
-    `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
-    normalised Gaussian kernel
+        `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
+        normalised Gaussian kernel
     :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, if
-    `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the mean of
-    a Normalised Gaussian kernel
+        `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the
+        mean of a Normalised Gaussian kernel
     :return: An :math:`n \times d` array of gradients evaluated at values of
-    `random_var_values`
+        `random_var_values`
     """
     random_var_values = jnp.atleast_2d(random_var_values)
     kde_data = jnp.atleast_2d(kde_data)
@@ -399,7 +395,7 @@ def grad_rbf_x(
     :param y_array: Second set of vectors as a :math:`m \times d` array
     :param bandwidth: Kernel bandwidth (standard deviation)
     :param kernel: Gram matrix, an :math:`n \times m` array. Optional, if :data:`None`
-    or omitted, defaults to a normalised Gaussian kernel
+        or omitted, defaults to a normalised Gaussian kernel
     :return: Gradient evaluated at values of `x_array`, as a :math:`n \times d` array
     """
     if kernel is None:
@@ -425,7 +421,7 @@ def grad_rbf_y(
     :param y_array: Second set of vectors as a :math:`n \times d` array
     :param bandwidth: Kernel bandwidth (standard deviation)
     :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
-    :data:`None` or omitted, defaults to a normalised Gaussian kernel
+        :data:`None` or omitted, defaults to a normalised Gaussian kernel
     :return: Gradient evaluated at values of `y_array`, as a :math:`m \times d` array
     """
     return -jnp.transpose(grad_rbf_x(x_array, y_array, bandwidth, gram_matrix),
@@ -533,9 +529,9 @@ def stein_kernel_pc_imq_element(
     :param x: First vector as a :math:`1 \times d` array
     :param y: Second vector as a :math:`1 \times d` array
     :param grad_log_p_x: Gradient of log-PDF evaluated at `x`, a :math:`1 \times d`
-    array
+        array
     :param grad_log_p_y: Gradient of log-PDF evaluated at `y`, a :math:`1 \times d`
-    array
+        array
     :param num_data_points: Number of data points in the generating set
     :param bandwidth: Kernel bandwidth (standard deviation). Optional, defaults to 1
     :return: Kernel evaluation at `(x,y)`, 0-dimensional array
