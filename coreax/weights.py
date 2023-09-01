@@ -76,7 +76,7 @@ def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
     .. math::
 
         \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
-    
+
     subject to
 
     .. math::

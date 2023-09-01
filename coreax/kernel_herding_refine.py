@@ -24,9 +24,9 @@ from coreax.kernel_herding import kernel_herding_block
 from coreax.refine import refine, refine_rand, refine_rev
 
 #
-# Kernel Herding Refine Functions 
-# 
-# Combine kernel herding with a refine function to produce a coreset. 
+# Kernel Herding Refine Functions
+#
+# Combine kernel herding with a refine function to produce a coreset.
 
 def kernel_herding_refine_block(
         x: ArrayLike,
