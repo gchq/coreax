@@ -11,15 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
-import matplotlib.pyplot as plt
-import imageio
 import os
-from sklearn.decomposition import PCA
-import jax.numpy as jnp
 from pathlib import Path
 
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
+import imageio
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.decomposition import PCA
+
+from coreax.kernel import (
+    median_heuristic,
+    rbf_grad_log_f_X,
+    rbf_kernel,
+    stein_kernel_pc_imq_element,
+)
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 

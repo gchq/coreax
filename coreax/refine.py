@@ -12,15 +12,14 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
-import jax.numpy as jnp
-import jax.lax as lax
-from jax.typing import ArrayLike
-
-from jax import jit, vmap, random, Array
 from functools import partial
 
-from coreax.utils import KernelFunction
+import jax.lax as lax
+import jax.numpy as jnp
+from jax import Array, jit, random, vmap
+from jax.typing import ArrayLike
 
+from coreax.utils import KernelFunction
 
 #
 # Refine Functions

@@ -17,10 +17,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from jax import Array
-import jax.numpy as jnp
-from jax.typing import ArrayLike
 
+import jax.numpy as jnp
+from jax import Array
+from jax.typing import ArrayLike
 
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
