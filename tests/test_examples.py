@@ -22,9 +22,10 @@ from examples.weighted_herding import main as weighted_herding_main
 
 
 class TestExamples(unittest.TestCase):
-
     def assert_is_file(self, path):
-        self.assertTrue(Path(path).resolve().is_file(), msg=f"File does not exist: {path}")
+        self.assertTrue(
+            Path(path).resolve().is_file(), msg=f"File does not exist: {path}"
+        )
 
     def test_david(self):
         """
@@ -34,24 +35,29 @@ class TestExamples(unittest.TestCase):
         than MMD from random sampling.
         """
 
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-                patch("builtins.print") as mock_print, \
-                patch("matplotlib.pyplot.show") as mock_show:
-
+        with tempfile.TemporaryDirectory() as tmp_dir, patch(
+            "builtins.print"
+        ) as mock_print, patch("matplotlib.pyplot.show") as mock_show:
             # run david.py
             in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
             out_path = Path(tmp_dir) / "david_coreset.png"
             mmd_coreset, mmd_random = david_main(in_path=in_path, out_path=out_path)
 
-            self.assertEqual(call("Image dimensions: (215, 180)"), mock_print.call_args_list[0],
-                             msg="Unexpected print statement. Likely due to unexpected image size")
+            self.assertEqual(
+                call("Image dimensions: (215, 180)"),
+                mock_print.call_args_list[0],
+                msg="Unexpected print statement. Likely due to unexpected image size",
+            )
 
             mock_show.assert_called_once()
 
             self.assert_is_file(out_path)
 
-            self.assertLess(mmd_coreset, mmd_random,
-                            msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+            )
 
     def test_pounce(self):
         """
@@ -77,8 +83,11 @@ class TestExamples(unittest.TestCase):
             self.assert_is_file(directory / Path("coreset/coreset.gif"))
             self.assert_is_file(directory / Path("coreset/frames.png"))
 
-            self.assertLess(mmd_coreset, mmd_random,
-                            msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+            )
 
     def test_weighted_herding(self):
         """
@@ -88,32 +97,39 @@ class TestExamples(unittest.TestCase):
         MMD better than MMD from random sampling.
         """
 
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-                patch("builtins.print"), \
-                patch("matplotlib.pyplot.show") as mock_show:
-
+        with tempfile.TemporaryDirectory() as tmp_dir, patch("builtins.print"), patch(
+            "matplotlib.pyplot.show"
+        ) as mock_show:
             with self.subTest(msg="Weighted herding"):
-
                 # run weighted herding example
                 outpath = Path(tmp_dir) / "weighted_herding.png"
-                mmd_coreset, mmd_random = weighted_herding_main(out_path=outpath, weighted=True)
+                mmd_coreset, mmd_random = weighted_herding_main(
+                    out_path=outpath, weighted=True
+                )
 
                 mock_show.assert_has_calls([call(), call()])
 
                 self.assert_is_file(outpath)
 
-                self.assertLess(mmd_coreset, mmd_random,
-                                msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+                self.assertLess(
+                    mmd_coreset,
+                    mmd_random,
+                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                )
 
             with self.subTest(msg="Unweighted herding"):
-
                 # run weighted herding example
                 outpath = Path(tmp_dir) / "unweighted_herding.png"
-                mmd_coreset, mmd_random = weighted_herding_main(out_path=outpath, weighted=False)
+                mmd_coreset, mmd_random = weighted_herding_main(
+                    out_path=outpath, weighted=False
+                )
 
                 mock_show.assert_has_calls([call(), call()])
 
                 self.assert_is_file(outpath)
 
-                self.assertLess(mmd_coreset, mmd_random,
-                                msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+                self.assertLess(
+                    mmd_coreset,
+                    mmd_random,
+                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                )

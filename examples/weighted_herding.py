@@ -56,8 +56,8 @@ def main(out_path: Path = None, weighted: bool = True):
     nu = median_heuristic(X[idx])
 
     # define a kernel. We'll use an RBF
-    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
-        (nu * jnp.sqrt(2. * jnp.pi))
+    def k(x, y):
+        return rbf_kernel(x, y, jnp.float32(nu) ** 2) / (nu * jnp.sqrt(2.0 * jnp.pi))
 
     # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
     # Stein kernel herding uses the Stein kernel derived from the RBF above.
@@ -68,7 +68,8 @@ def main(out_path: Path = None, weighted: bool = True):
 
     # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the coreset Gram mean (Kbar)
     coreset, Kc, Kbar = stein_kernel_herding_block(
-        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000
+    )
 
     # get a random sample of points to compare against
     rsample = np.random.choice(N, size=C, replace=False)
@@ -81,7 +82,9 @@ def main(out_path: Path = None, weighted: bool = True):
         weights = qp(Kc + 1e-10, Kbar)
         # check minimum weight is not negative by more than a reasonable tolerance
         if weights.min() < -1e-4:
-            raise ValueError(f"Minimum weight was {weights.min()} but should have been >=0")
+            raise ValueError(
+                f"Minimum weight was {weights.min()} but should have been >=0"
+            )
         # compute the MMD between X and the coreset, weighted version
         m = mmd_weight_block(X, X[coreset], jnp.ones(N), weights, k, max_size=1000)
     else:
@@ -99,16 +102,16 @@ def main(out_path: Path = None, weighted: bool = True):
         weights -= weights.min()
 
     # produce some scatter plots
-    plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
-    plt.scatter(X[coreset, 0], X[coreset, 1], s=weights*1000, color="red")
-    plt.axis('off')
-    plt.title('Stein kernel herding, m=%d, MMD=%.6f' % (C, m))
+    plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(X[coreset, 0], X[coreset, 1], s=weights * 1000, color="red")
+    plt.axis("off")
+    plt.title("Stein kernel herding, m=%d, MMD=%.6f" % (C, m))
     plt.show()
 
-    plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
+    plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
     plt.scatter(X[rsample, 0], X[rsample, 1], s=10, color="red")
-    plt.title('Random, m=%d, MMD=%.6f' % (C, rm))
-    plt.axis('off')
+    plt.title("Random, m=%d, MMD=%.6f" % (C, rm))
+    plt.axis("off")
 
     if out_path is not None:
         plt.savefig(out_path)
@@ -122,5 +125,5 @@ def main(out_path: Path = None, weighted: bool = True):
     return m, rm
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
