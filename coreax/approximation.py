@@ -49,13 +49,13 @@ def K_mean_rand_approx(
     features_idx = random.choice(subkey, n, (n_points,), replace=False)
     features = k_pairwise(x, x[features_idx])
 
-    # Select training points 
+    # Select training points
     train_idx = random.choice(key, n, (n_train,), replace=False)
     target = k_pairwise(x[train_idx],x).sum(axis=1)/n
 
     # Solve regression problem.
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
-    
+
     return features @ params
 
 
@@ -97,7 +97,7 @@ def K_mean_ANNchor_approx(
 
     # solve regression problem
     params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
-    
+
     return features @ params
 
 @partial(jit, static_argnames=["k_vec"])
@@ -109,10 +109,10 @@ def anchor_body(
 ) -> Array:
     features = jnp.asarray(features)
     x = jnp.asarray(x)
-    
+
     j  = features.max(axis=1).argmin()
     features = features.at[:,i].set(k_vec(x,x[j]))
-    
+
     return features
 
 def K_mean_nystrom_approx(

@@ -23,9 +23,9 @@ from coreax.utils import KernelFunction
 
 
 #
-# Refine Functions 
-# 
-# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD. 
+# Refine Functions
+#
+# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
 
 def refine(
         x: ArrayLike,
@@ -48,14 +48,14 @@ def refine(
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
-    
+
     K_diag = vmap(kernel)(x,x)
 
     S = jnp.asarray(S)
     m = len(S)
     body = partial(refine_body, x=x, K_mean=K_mean, K_diag=K_diag, k_pairwise=k_pairwise, k_vec=k_vec)
     S = lax.fori_loop(0, m, body, S)
-    
+
     return S
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
@@ -102,7 +102,7 @@ def comparison(
     x = jnp.asarray(x)
     K_mean = jnp.asarray(K_mean)
     return (
-        (k_vec(x[S], x[i]).sum() - k_pairwise(x,x[S]).sum(axis=1) + k_vec(x,x[i]) - K_diag)/(m*m) - 
+        (k_vec(x[S], x[i]).sum() - k_pairwise(x,x[S]).sum(axis=1) + k_vec(x,x[i]) - K_diag)/(m*m) -
         (K_mean[i] - K_mean)/m
     )
 
@@ -131,7 +131,7 @@ def refine_rand(
     """
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
-    
+
     K_diag = vmap(kernel)(x,x)
 
     S = jnp.asarray(S)
@@ -202,9 +202,9 @@ def comparison_cand(
     K_mean = jnp.asarray(K_mean)
     K_diag = jnp.asarray(K_diag)
     m = len(S)
-    
+
     return (
-        (k_vec(x[S], x[i]).sum() - k_pairwise(x[cand,:],x[S]).sum(axis=1) + k_vec(x[cand,:],x[i]) - K_diag[cand])/(m*m) - 
+        (k_vec(x[S], x[i]).sum() - k_pairwise(x[cand,:],x[S]).sum(axis=1) + k_vec(x[cand,:],x[i]) - K_diag[cand])/(m*m) -
         (K_mean[i] - K_mean[cand])/m
     )
 
@@ -241,7 +241,7 @@ def refine_rev(
 
     k_pairwise = jit(vmap(vmap(kernel, in_axes=(None,0), out_axes=0), in_axes =(0,None), out_axes=0 ))
     k_vec = jit(vmap(kernel, in_axes=(0,None)))
-    
+
     K_diag = vmap(kernel)(x,x)
 
     m = len(S)
@@ -298,7 +298,7 @@ def comparison_rev(
     m = len(S)
 
     return (
-        (k_pairwise(x[S], x[S]).sum(axis=1) - k_vec(x[S],x[i]).sum() + k_vec(x[S],x[i]) - K_diag[S])/(m*m) - 
+        (k_pairwise(x[S], x[S]).sum(axis=1) - k_vec(x[S],x[i]).sum() + k_vec(x[S],x[i]) - K_diag[S])/(m*m) -
         (K_mean[S] - K_mean[i])/m
     )
 
