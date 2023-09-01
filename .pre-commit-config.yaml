@@ -47,3 +47,9 @@ repos:
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      # Place isort options in pyproject.toml
+      - id: isort
+        name: isort (Python)
