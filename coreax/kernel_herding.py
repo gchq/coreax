@@ -419,7 +419,8 @@ def scalable_herding(
         if w_function is not None:
             _, Kc, Kbar = function(X=X, n_core=n_core, **kwargs)
             weights = w_function(Kc, Kbar)
-    elif n_core < n <= size:  # tail case
+    elif n_core < n <= size:
+        # Tail case
         c, Kc, Kbar = function(X=X, n_core=n_core, **kwargs)
         coreset = indices[c]
         if w_function is not None:
