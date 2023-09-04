@@ -14,7 +14,7 @@ If you would like to contribute to the development of coreax, you can do so in a
 All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
 
 Developers should install additional packages required for development using
-`pip install -e .[dev]`.
+`pip install -e .[dev]`. Then, set up pre-commit hooks using `pre-commit install`.
 
 Reporting issues
 --------------
@@ -80,26 +80,12 @@ facilitate code review, code should meet these standards prior to creating a pul
 A high level overview of the expected style is:
 - Follow [PEP 8][pep-8] style where possible.
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
-- Apply [black][black] formatting (with default settings) prior to committing any changes.
-- Black will not reformat strings, comments or docstrings. These must be manually checked and limited to 88 characters per line.
+- [Black][black] will be applied by the pre-commit hook but will not reformat strings,
+  comments or docstrings. These must be manually checked and limited to 88 characters
+  per line.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
-You can format files by using:
-```bash
-black myfile.py
-```
-This will format the specified file.
-
-#### List-like definitions
-
-Any list-like definitions should be written as one entry per line. An example import statement may therefore read:
-```
-from mymodule import (
-    function_a,
-    object_b,
-)
-```
 ### External dependencies
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
