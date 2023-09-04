@@ -18,7 +18,9 @@ from unittest.mock import patch, call
 
 from examples.david import main as david_main
 from examples.pounce import main as pounce_main
+from examples.pounce_sm import main as pounce_sm_main
 from examples.weighted_herding import main as weighted_herding_main
+from examples.weighted_herding_sm import main as weighted_herding_sm_main
 
 
 class TestExamples(unittest.TestCase):
@@ -80,6 +82,33 @@ class TestExamples(unittest.TestCase):
             self.assertLess(mmd_coreset, mmd_random,
                             msg="MMD for random sampling was unexpectedly lower than coreset MMD")
 
+    def test_pounce_sm(self):
+        """
+        Test pounce_sm.py example
+
+        An end-to-end test to check pounce_sm.py runs without error, generates output, and has coreset MMD
+        better than MMD from random sampling.
+        """
+
+        directory = Path.cwd().parent / Path("examples/data/pounce")
+
+        # delete output files if already present
+        out_dir = directory / "coreset_sm"
+        if out_dir.exists():
+            for sub in out_dir.iterdir():
+                if sub.name in {"coreset_sm.gif", "frames_sm.png"}:
+                    sub.unlink()
+
+        with patch("builtins.print"):
+            # run pounce_sm.py
+            mmd_coreset, mmd_random = pounce_sm_main(directory=directory)
+
+            self.assert_is_file(directory / Path("coreset_sm/coreset_sm.gif"))
+            self.assert_is_file(directory / Path("coreset_sm/frames_sm.png"))
+
+            self.assertLess(mmd_coreset, mmd_random,
+                            msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+
     def test_weighted_herding(self):
         """
         Test weighted_herding.py example
@@ -110,6 +139,44 @@ class TestExamples(unittest.TestCase):
                 # run weighted herding example
                 outpath = Path(tmp_dir) / "unweighted_herding.png"
                 mmd_coreset, mmd_random = weighted_herding_main(out_path=outpath, weighted=False)
+
+                mock_show.assert_has_calls([call(), call()])
+
+                self.assert_is_file(outpath)
+
+                self.assertLess(mmd_coreset, mmd_random,
+                                msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+
+    def test_weighted_herding_sm(self):
+        """
+        Test weighted_herding_sm.py example
+
+        An end-to-end test to check weighted_herding_sm.py runs without error, generates output, and has coreset
+        MMD better than MMD from random sampling.
+        """
+
+        with tempfile.TemporaryDirectory() as tmp_dir, \
+                patch("builtins.print"), \
+                patch("matplotlib.pyplot.show") as mock_show:
+
+            with self.subTest(msg="Weighted herding (score matching)"):
+
+                # run weighted herding example
+                outpath = Path(tmp_dir) / "weighted_herding_sm.png"
+                mmd_coreset, mmd_random = weighted_herding_sm_main(out_path=outpath, weighted=True)
+
+                mock_show.assert_has_calls([call(), call()])
+
+                self.assert_is_file(outpath)
+
+                self.assertLess(mmd_coreset, mmd_random,
+                                msg="MMD for random sampling was unexpectedly lower than coreset MMD")
+
+            with self.subTest(msg="Unweighted herding (score matching)"):
+
+                # run weighted herding example
+                outpath = Path(tmp_dir) / "unweighted_herding_sm.png"
+                mmd_coreset, mmd_random = weighted_herding_sm_main(out_path=outpath, weighted=False)
 
                 mock_show.assert_has_calls([call(), call()])
 
