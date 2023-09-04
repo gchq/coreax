@@ -7,9 +7,22 @@ name = "coreax"
 version = "0.1.0"
 description = "Jax coreset algorithms."
 readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+    "coreset",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 license = {file = "LICENSE"}
 authors = [
-    {name = "GCHQ"},
+    # TODO: Populate author data when ready to publish
+    {name = "GCHQ", email = "todo@todo.com"},
 ]
 dependencies = [
     "flax",
@@ -32,6 +45,9 @@ dev = [
     "pytest",
     "scipy",
 ]
+
+[project.urls]
+Repository = "https://github.com/gchq/coreax"
 
 [tool.isort]
 known_first_party = ["coreax"]

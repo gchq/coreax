@@ -58,3 +58,8 @@ repos:
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
+  - repo: https://github.com/regebro/pyroma
+    rev: "4.1"
+    hooks:
+      # Ensure that necessary package information is provided
+      - id: pyroma
