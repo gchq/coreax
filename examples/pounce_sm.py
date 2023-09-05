@@ -25,7 +25,9 @@ from coreax.score_matching import sliced_score_matching
 from coreax.metrics import mmd_block
 
 
-def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
+def main(
+        directory: Path = Path("examples") / Path("data") / Path("pounce")
+) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with score matching.
 
@@ -35,8 +37,8 @@ def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param directory: path to directory containing input video.
-    :return: coreset MMD, random sample MMD
+    :param directory: Path to directory containing input video
+    :return: Coreset MMD, random sample MMD
     """
 
     # path to directory containing video as sequence of images

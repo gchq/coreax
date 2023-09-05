@@ -24,7 +24,7 @@ from coreax.metrics import mmd_block, mmd_weight_block
 
 
 def main(
-        out_path: Path = None,
+        out_path: Path | None = None,
         weighted: bool = True
 ) -> tuple[float, float]:
     """
@@ -34,9 +34,9 @@ def main(
     weighted and unweighted herding. Compare results to coresets generated via uniform
     random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
 
-    :param out_path: path to save output to, if not None. Default None.
-    :param weighted: boolean flag for whether to use weighted or unweighted herding
-    :return: coreset MMD, random sample MMD
+    :param out_path: Path to save output to, if not None. Default None.
+    :param weighted: Boolean flag for whether to use weighted or unweighted herding
+    :return: Coreset MMD, random sample MMD
     """
 
     # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D

@@ -82,7 +82,7 @@ class TestKernels(unittest.TestCase):
         """
         Test the function pdiff.
 
-        This test ensures efficient computation of pairwise differences
+        This test ensures efficient computation of pairwise differences.
         """
         m = 10
         n = 10
