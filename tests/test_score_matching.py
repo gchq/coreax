@@ -42,7 +42,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_analytic_objective(self) -> None:
         """
-        Test the core objective function, analytic version
+        Test the core objective function, analytic version.
         """
         # orthogonal u and v vectors should give back half length squared s
         u = np.array([0.0, 1.0])

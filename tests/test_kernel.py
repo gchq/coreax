@@ -56,7 +56,7 @@ class TestKernels(unittest.TestCase):
         """
         Test the RBF kernel.
 
-        Note that the bandwidth is the 'variance' of the sq exp
+        Note that the bandwidth is the 'variance' of the sq exp.
         """
         bandwidth = np.float32(np.pi) / 2.
         x = np.arange(10)
