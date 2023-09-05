@@ -23,7 +23,7 @@ from flax import linen as nn
 
 class TestNetwork(nn.Module):
     """
-    A simple neural  network for use in testing of sliced score matching.
+    A simple neural network for use in testing of sliced score matching.
     """
 
     hidden_dim: int
@@ -42,7 +42,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_analytic_objective(self) -> None:
         """
-        Tests the core objective function, analytic version
+        Test the core objective function, analytic version
         """
         # orthogonal u and v vectors should give back half length squared s
         u = np.array([0.0, 1.0])
@@ -62,7 +62,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_general_objective(self) -> None:
         """
-        Tests the core objective function, non-analytic version.
+        Test the core objective function, non-analytic version.
         """
         # orthogonal u and v vectors should give back half squared dot product of v and
         # s
@@ -83,7 +83,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_sliced_score_matching_loss_element(self) -> None:
         """
-        Tests the loss function elementwise.
+        Test the loss function elementwise.
         """
 
         def score_fn(x: ArrayLike) -> ArrayLike:
@@ -109,7 +109,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_sliced_score_matching_loss(self) -> None:
         """
-        Tests the loss function vmapped function.
+        Test the loss function vmapped function.
         """
 
         #
@@ -133,7 +133,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_train_step(self) -> None:
         """
-        Tests the basic training step.
+        Test the basic training step.
         """
         # simple linear model that we can compute the gradients for by hand
         score_network = TestNetwork(2, 2)
@@ -173,7 +173,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_univariate_gaussian_score(self):
         """
-        Tests a simple univariate Gaussian known score function.
+        Test a simple univariate Gaussian known score function.
         """
         mu = 0.0
         std_dev = 1.0
@@ -214,7 +214,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_multivariate_gaussian_score(self) -> None:
         """
-        Tests a simple multivariate Gaussian known score function.
+        Test a simple multivariate Gaussian known score function.
         """
         d = 2
         mu = np.zeros(d)
@@ -259,7 +259,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_univariate_gmm_score(self):
         """
-        Tests a univariate Gaussian mixture model known score function.
+        Test a univariate Gaussian mixture model known score function.
         """
         mus = np.array([-4.0, 4.0])
         std_devs = np.array([1.0, 2.0])
@@ -315,7 +315,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_multivariate_gmm_score(self):
         """
-        Tests a multivariate Gaussian mixture model known score function.
+        Test a multivariate Gaussian mixture model known score function.
         """
         np.random.seed(0)
         # we don't want to go much higher than 2

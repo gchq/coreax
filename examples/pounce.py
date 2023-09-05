@@ -33,8 +33,8 @@ def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param directory: path to directory containing input video.
-    :return: coreset MMD, random sample MMD
+    :param directory: Path to directory containing input video.
+    :return: Coreset MMD, random sample MMD
     """
 
     # path to directory containing video as sequence of images

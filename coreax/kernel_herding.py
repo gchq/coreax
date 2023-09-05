@@ -159,7 +159,7 @@ def stein_kernel_herding_block(
         n_core: int,
         kernel: KernelFunction,
         grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] |
-                      Callable[ArrayLike],
+                      Callable[[ArrayLike], Array],
         K_mean: ArrayLike | None = None,
         max_size: int = 10_000,
         nu: float = 1.,

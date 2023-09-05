@@ -49,12 +49,12 @@ def create_train_state(
     optimiser: Callable,
 ) -> TrainState:
     """
-    Creates a flax TrainState for learning with.
+    Create a flax TrainState for learning with.
 
     :param module: flax network class that inherits flax.nn.Module
-    :param rng: random number generator
-    :param learning_rate: optimiser learning rate
-    :param dimension: data dimension
+    :param rng: Random number generator
+    :param learning_rate: Optimiser learning rate
+    :param dimension: Data dimension
     :param optimiser: optax optimiser, e.g. optax.adam
     :return: TrainState object
     """

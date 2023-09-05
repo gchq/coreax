@@ -36,9 +36,9 @@ def main(
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param in_path: path to input image
-    :param out_path: path to save output to, if not None. Default None.
-    :return: coreset MMD, random sample MMD
+    :param in_path: Path to input image
+    :param out_path: Path to save output to, if not None. Default None.
+    :return: Coreset MMD, random sample MMD
     """
 
     # path to original image

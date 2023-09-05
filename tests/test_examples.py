@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 import unittest
 import tempfile
 from pathlib import Path
@@ -29,14 +32,14 @@ class TestExamples(unittest.TestCase):
         """
         Assert a file exists at a given path.
 
-        :param path:
+        :param path: Path to file
         :raises: Exception if file does not exist at given path
         """
         self.assertTrue(Path(path).resolve().is_file(), msg=f"File does not exist: {path}")
 
     def test_david(self) -> None:
         """
-        Test david.py example
+        Test david.py example.
 
         An end-to-end test to check david.py runs without error, generates output, and
         has coreset MMD better than MMD from random sampling.
@@ -63,7 +66,7 @@ class TestExamples(unittest.TestCase):
 
     def test_pounce(self) -> None:
         """
-        Test pounce.py example
+        Test pounce.py example.
 
         An end-to-end test to check pounce.py runs without error, generates output, and
         has coreset MMD better than MMD from random sampling.
@@ -90,7 +93,7 @@ class TestExamples(unittest.TestCase):
 
     def test_pounce_sm(self) -> None:
         """
-        Test pounce_sm.py example
+        Test pounce_sm.py example.
 
         An end-to-end test to check pounce_sm.py runs without error, generates output,
         and has coreset MMD better than MMD from random sampling.
@@ -117,7 +120,7 @@ class TestExamples(unittest.TestCase):
 
     def test_weighted_herding(self) -> None:
         """
-        Test weighted_herding.py example
+        Test weighted_herding.py example.
 
         An end-to-end test to check weighted_herding.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
@@ -155,7 +158,7 @@ class TestExamples(unittest.TestCase):
 
     def test_weighted_herding_sm(self) -> None:
         """
-        Test weighted_herding_sm.py example
+        Test weighted_herding_sm.py example.
 
         An end-to-end test to check weighted_herding_sm.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
