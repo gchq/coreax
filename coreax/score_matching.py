@@ -14,7 +14,7 @@ import jax
 from jax import random, vmap, numpy as jnp, jvp, jit
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 from flax.training.train_state import TrainState
 from functools import partial
 from coreax.networks import ScoreNetwork, create_train_state
@@ -80,8 +80,8 @@ def sliced_score_matching_loss_element(
     :param x: :math:`d`-dimensional data vector
     :param v: :math:`d`-dimensional random vector
     :param score_network: Function that calls the neural network on x
-    :param obj_fn: Objective function with arguments :math:`(v, u, s)
-                    \rightarrow \mathbb{R}`
+    :param obj_fn: Objective function with arguments
+                    :math:`(v, u, s) \rightarrow \mathbb{R}`
     :return: Objective function output for single x and v inputs
     """
     s, u = jvp(score_network, (x,), (v,))
@@ -116,10 +116,10 @@ def sliced_score_matching_train_step(
     Apply a single training step that updates model parameters using loss gradient.
 
     :param state: The :class:`~flax.training.train_state.TrainState` object.
-    :param X: the :math:`n \times d` data vectors
-    :param V: the :math:`n \times m \times d` random vectors
-    :param obj_fn: Objective function (vector, vector, vector) :math:`\rightarrow
-        \mathbb{R}`
+    :param X: The :math:`n \times d` data vectors
+    :param V: The :math:`n \times m \times d` random vectors
+    :param obj_fn: Objective function (vector, vector, vector)
+                    :math:`\rightarrow \mathbb{R}`
     :return: The updated :class:`~flax.training.train_state.TrainState` object
     """
 
@@ -154,8 +154,8 @@ def noise_conditional_loop_body(
     :param obj: Running objective, i.e. the current partial sum
     :param state: The :class:`~flax.training.train_state.TrainState` object
     :param params: The current iterate parameter settings
-    :param X: the :math:`n \times d` data vectors
-    :param V: the :math:`n \times m \times d` random vectors
+    :param X: The :math:`n \times d` data vectors
+    :param V: The :math:`n \times m \times d` random vectors
     :param sigmas: The geometric progression of noise standard deviations
     :param obj_fn: Element objective function (vector, vector, vector)
                     :math:`\rightarrow real`
@@ -186,8 +186,8 @@ def noise_conditional_train_step(
     Apply a single training step that updates model parameters using loss gradient.
 
     :param state: The :class:`~flax.training.train_state.TrainState` object
-    :param X: the :math:`n \times d` data vectors
-    :param V: the :math:`n \times m \times d` random vectors
+    :param X: The :math:`n \times d` data vectors
+    :param V: The :math:`n \times m \times d` random vectors
     :param obj_fn: Objective function (vector, vector, vector) :math:`\rightarrow real`
     :param sigmas: Length L array of noise standard deviations to use in objective
         function
@@ -213,7 +213,22 @@ def noise_conditional_train_step(
     return state, val
 
 
-r"""
+def sliced_score_matching(
+    X: ArrayLike,
+    rgenerator: Callable,
+    noise_conditioning: bool = True,
+    use_analytic: bool = False,
+    M: int = 1,
+    lr: float = 1e-3,
+    epochs: int = 10,
+    batch_size: int = 64,
+    hidden_dim: int = 128,
+    optimiser: Callable = optax.adamw,
+    L: int = 100,
+    sigma: float = 1.0,
+    gamma: float = 0.95,
+) -> Callable:
+    r"""
     Learn a sliced score matching function from Song et al.'s paper [ssm]_.
 
     We currently use the ScoreNetwork neural network in coreax.networks to approximate
@@ -221,7 +236,7 @@ r"""
 
     :param X: The :math:`n \times d` data vectors
     :param rgenerator: Distribution sampler (key, shape, dtype) :math:`\rightarrow`
-        :class:`~jax._src.typing.Array`, e.g. distributions in :class:`~jax.random`
+        :class:`~jax.Array`, e.g. distributions in :class:`~jax.random`
     :param noise_conditioning: Use the noise conditioning version of score matching.
         Defaults to True.
     :param use_analytic: Use the analytic (reduced variance) objective or not. Defaults
@@ -239,21 +254,6 @@ r"""
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     :return: A function that applies the learned score function to input x
     """
-def sliced_score_matching(
-    X: ArrayLike,
-    rgenerator: Callable,
-    noise_conditioning: bool = True,
-    use_analytic: bool = False,
-    M: int = 1,
-    lr: float = 1e-3,
-    epochs: int = 10,
-    batch_size: int = 64,
-    hidden_dim: int = 128,
-    optimiser: Callable = optax.adamw,
-    L: int = 100,
-    sigma: float = 1.0,
-    gamma: float = 0.95,
-) -> Callable:
     # main objects
     n, d = X.shape
     sn = ScoreNetwork(hidden_dim, d)
