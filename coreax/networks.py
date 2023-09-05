@@ -22,7 +22,9 @@ from typing import Callable
 
 
 class ScoreNetwork(nn.Module):
-    """A network for use in sliced score matching."""
+    """
+    A feed-forward neural network for use in sliced score matching.
+    """
 
     hidden_dim: int
     output_dim: int
@@ -46,14 +48,15 @@ def create_train_state(
     dimension: int,
     optimiser: Callable,
 ) -> TrainState:
-    """Creates a flax TrainState for learning with
+    """
+    Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
 
-    :param module: flax network class that inherits flax.nn.Module
-    :param rng: random number generator
-    :param learning_rate: optimiser learning rate
-    :param dimension: data dimension
-    :param optimiser: optax optimiser, e.g. optax.adam
-    :return: TrainState object
+    :param module: Subclass of :class:`~flax.nn.Module`
+    :param rng: Random number generator
+    :param learning_rate: Optimiser learning rate
+    :param dimension: Data dimension
+    :param optimiser: optax optimiser, e.g. :class:`~optax.adam`
+    :return: :class:`~flax.training.train_state.TrainState` object
     """
     params = module.init(rng, jnp.ones((1, dimension)))["params"]
     tx = optimiser(learning_rate)
