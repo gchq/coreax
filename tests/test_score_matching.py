@@ -22,7 +22,9 @@ from flax import linen as nn
 
 
 class TestNetwork(nn.Module):
-    """A network for use in sliced score matching."""
+    """
+    A simple neural  network for use in testing of sliced score matching.
+    """
 
     hidden_dim: int
     output_dim: int
@@ -34,8 +36,14 @@ class TestNetwork(nn.Module):
 
 
 class TestScoreMatching(unittest.TestCase):
+    """
+    Tests related to score_matching.py functions.
+    """
+
     def test_analytic_objective(self) -> None:
-        """Tests the core objective function, analytic version"""
+        """
+        Tests the core objective function, analytic version
+        """
         # orthogonal u and v vectors should give back half length squared s
         u = np.array([0.0, 1.0])
         v = np.array([1.0, 0.0])
@@ -53,7 +61,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(out, ans, places=3)
 
     def test_general_objective(self) -> None:
-        """Tests the core objective function."""
+        """
+        Tests the core objective function, non-analytic version.
+        """
         # orthogonal u and v vectors should give back half squared dot product of v and
         # s
         u = np.array([0.0, 1.0])
@@ -72,7 +82,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(out, ans, places=3)
 
     def test_sliced_score_matching_loss_element(self) -> None:
-        """Tests the loss function elementwise."""
+        """
+        Tests the loss function elementwise.
+        """
 
         def score_fn(x: ArrayLike) -> ArrayLike:
             """
@@ -96,7 +108,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(out, ans, places=3)
 
     def test_sliced_score_matching_loss(self) -> None:
-        """Tests the loss function vmapped function."""
+        """
+        Tests the loss function vmapped function.
+        """
 
         #
         def score_fn(x: ArrayLike) -> ArrayLike:
@@ -118,7 +132,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(np.linalg.norm(out - ans), 0.0, places=3)
 
     def test_train_step(self) -> None:
-        """Tests the basic training step."""
+        """
+        Tests the basic training step.
+        """
         # simple linear model that we can compute the gradients for by hand
         score_network = TestNetwork(2, 2)
 
@@ -156,7 +172,9 @@ class TestScoreMatching(unittest.TestCase):
         )
 
     def test_univariate_gaussian_score(self):
-        """Tests a simple univariate Gaussian known score function."""
+        """
+        Tests a simple univariate Gaussian known score function.
+        """
         mu = 0.0
         std_dev = 1.0
         N = 500
@@ -195,7 +213,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertLessEqual(mae, 1.0)
 
     def test_multivariate_gaussian_score(self) -> None:
-        """Tests a simple multivariate Gaussian known score function."""
+        """
+        Tests a simple multivariate Gaussian known score function.
+        """
         d = 2
         mu = np.zeros(d)
         Sigma = np.eye(d)
@@ -238,7 +258,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertLessEqual(err, 1.0)
 
     def test_univariate_gmm_score(self):
-        """Tests a univariate Gaussian mixture model known score function."""
+        """
+        Tests a univariate Gaussian mixture model known score function.
+        """
         mus = np.array([-4.0, 4.0])
         std_devs = np.array([1.0, 2.0])
         p = 0.7
@@ -292,7 +314,9 @@ class TestScoreMatching(unittest.TestCase):
         self.assertLessEqual(mae, 1.0)
 
     def test_multivariate_gmm_score(self):
-        """Tests a multivariate Gaussian mixture model known socre function."""
+        """
+        Tests a multivariate Gaussian mixture model known score function.
+        """
         np.random.seed(0)
         # we don't want to go much higher than 2
         d = 2

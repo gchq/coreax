@@ -19,9 +19,13 @@ from coreax.kernel import *
 
 
 class TestKernels(unittest.TestCase):
+    """
+    Tests related to kernel.py functions.
+    """
 
-    def test_sq_dist(self):
-        """Test square distance under float32
+    def test_sq_dist(self) -> None:
+        """
+        Test square distance under float32.
         """
         m = ortho_group.rvs(dim=2)
         x = m[0]
@@ -34,8 +38,9 @@ class TestKernels(unittest.TestCase):
         td = sq_dist(y, y)
         self.assertAlmostEqual(0., td, places=3)
 
-    def test_sq_dist_pairwise(self):
-        """Test vmap version of sq distance
+    def test_sq_dist_pairwise(self) -> None:
+        """
+        Test vmap version of sq distance.
         """
         # create an orthonormal matrix
         d = 3
@@ -47,8 +52,12 @@ class TestKernels(unittest.TestCase):
         td = jnp.linalg.norm(tinner - ans)
         self.assertAlmostEqual(td, 0., places=3)
 
-    def test_rbf_kernel(self):
-        """RBF kernel. Bandwidth is the 'variance' of the sq exp"""
+    def test_rbf_kernel(self) -> None:
+        """
+        Test the RBF kernel.
+
+        Note that the bandwidth is the 'variance' of the sq exp
+        """
         bandwidth = np.float32(np.pi) / 2.
         x = np.arange(10)
         y = x + 1.
@@ -56,8 +65,12 @@ class TestKernels(unittest.TestCase):
         tst = rbf_kernel(x, y, bandwidth)
         self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0., places=3)
 
-    def test_laplace_kernel(self):
-        """Laplace kernel. Norm isn't squared"""
+    def test_laplace_kernel(self) -> None:
+        """
+        Test the Laplace kernel.
+
+        Note that in this case, the norm isn't squared.
+        """
         bandwidth = np.float32(np.pi) / 2.
         x = np.arange(10)
         y = x + 1.
@@ -65,8 +78,12 @@ class TestKernels(unittest.TestCase):
         tst = laplace_kernel(x, y, bandwidth)
         self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0., places=3)
 
-    def test_pdiff(self):
-        """Efficient pairwise differences"""
+    def test_pdiff(self) -> None:
+        """
+        Test the function pdiff.
+
+        This test ensures efficient computation of pairwise differences
+        """
         m = 10
         n = 10
         d = 3
@@ -82,8 +99,10 @@ class TestKernels(unittest.TestCase):
         tst = pdiff(X, Y)
         self.assertAlmostEqual(jnp.linalg.norm(tst - Z), 0., places=3)
 
-    def test_gaussian_kernel(self):
-        """RBF kernel. Bandwidth is the 'variance' of the sq exp"""
+    def test_gaussian_kernel(self) -> None:
+        """
+        Test the normalised RBF (Gaussian) kernel.
+        """
         std_dev = np.e
         n = 10
         X = np.arange(n)
@@ -95,8 +114,12 @@ class TestKernels(unittest.TestCase):
         tst = normalised_rbf(X, Y, std_dev)
         self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0., places=3)
 
-    def test_pc_imq(self):
-        """Inverse multi-quadric (pre-conditioned). Bandwidth is the 'variance' of the sq exp"""
+    def test_pc_imq(self) -> None:
+        """
+        Test the function pc_imq (Inverse multi-quadric, pre-conditioned).
+
+        Note that the bandwidth is the 'variance' of the sq exp.
+        """
         std_dev = np.e
         n = 10
         X = np.arange(n)

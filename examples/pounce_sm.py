@@ -25,17 +25,18 @@ from coreax.score_matching import sliced_score_matching
 from coreax.metrics import mmd_block
 
 
-def main(directory: Path = "./examples/data/pounce"):
+def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     """
-    Run the 'pounce' example for video sampling with score matching rather than a
-    pre-specified kernel.
+    Run the 'pounce' example for video sampling with score matching.
 
-    Args:
-        directory: path to directory containing input video.
+    Take a video of a pouncing cat, apply PCA and then generate a coreset using
+    score matching, in which we train a neural network to approximate the score functon
+    of the underlying distribution. Compare the result from this to a coreset generated
+    via uniform random sampling. Coreset quality is measured using maximum mean
+    discrepancy (MMD).
 
-    Returns:
-        coreset MMD, random sample MMD
-
+    :param directory: path to directory containing input video.
+    :return: coreset MMD, random sample MMD
     """
 
     # path to directory containing video as sequence of images
@@ -46,8 +47,8 @@ def main(directory: Path = "./examples/data/pounce"):
     Y_ = np.array(imageio.v2.mimread(f"{directory}/{fn}")[1:])
     Y = Y_.reshape(Y_.shape[0], -1)
 
-    # run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
-    # properties, i.e. variance.
+    # run PCA to reduce the dimension of the images whilst minimising effects on some of
+    # the statistical properties, i.e. variance.
     p = 25
     pca = PCA(p)
     X = pca.fit_transform(Y)
@@ -94,8 +95,8 @@ def main(directory: Path = "./examples/data/pounce"):
     coreset_images = Y_[coreset]
     imageio.mimsave(directory / "coreset_sm" / "coreset_sm.gif", coreset_images)
 
-    # plot to visualise which frames were chosen from the sequence action frames are where
-    # the "pounce" occurs
+    # plot to visualise which frames were chosen from the sequence action frames are
+    # where the "pounce" occurs
     action_frames = np.arange(63, 85)
     x = np.arange(N)
     y = np.zeros(N)

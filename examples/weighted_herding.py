@@ -23,28 +23,32 @@ from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 
 
-def main(out_path: Path = None, weighted: bool = True):
+def main(
+        out_path: Path = None,
+        weighted: bool = True
+) -> tuple[float, float]:
     """
     Run the 'weighted_herding' example for weighted and unweighted herding.
 
-    Args:
-        out_path: path to save output to, if not None. Default None.
-        weighted: boolean flag for whether to use weighted or unweighted herding
+    Generate a set of points from distinct clusters in a plane. Generate a coreset via
+    weighted and unweighted herding. Compare results to coresets generated via uniform
+    random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
 
-    Returns:
-        coreset MMD, random sample MMD
-
+    :param out_path: path to save output to, if not None. Default None.
+    :param weighted: boolean flag for whether to use weighted or unweighted herding
+    :return: coreset MMD, random sample MMD
     """
 
-    # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D for plotting below.
+    # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
+    # for plotting below.
     N = 10000
     X, _ = make_blobs(N, n_features=2, centers=6, random_state=32)
 
     # ask for 100 coreset points
     C = 100
 
-    # set the bandwidth parameter of the kernel using a median heuristic derived from at most 1000 random samples
-    # in the data.
+    # set the bandwidth parameter of the kernel using a median heuristic derived from at
+    # most 1000 random samples in the data.
     n = min(N, 1000)
     idx = np.random.choice(N, n, replace=False)
     nu = median_heuristic(X[idx])
@@ -56,20 +60,21 @@ def main(out_path: Path = None, weighted: bool = True):
     # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
     # Stein kernel herding uses the Stein kernel derived from the RBF above.
     # Block mode processes the Gram matrix in blocks to avoid GPU memory issues.
-    # rbf_grad_log_f_X is the score function derived from a KDE. This could be replaced by any score-function
-    # approximation, e.g. score matching.
+    # rbf_grad_log_f_X is the score function derived from a KDE. This could be replaced
+    # by any score-function approximation, e.g. score matching.
     # max_size sets the block processing size
 
-    # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the coreset Gram mean (Kbar)
+    # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the
+    # coreset Gram mean (Kbar)
     coreset, Kc, Kbar = stein_kernel_herding_block(
         X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
 
     # get a random sample of points to compare against
     rsample = np.random.choice(N, size=C, replace=False)
 
-    # the weighted bool turns the coreset weights on or off. If on, a quadratic program is invoked to solve
-    # the weights' vector. This buys some increase in integration error, but at a computational cost. Likely
-    # to most effective in lower dimensions.
+    # the weighted bool turns the coreset weights on or off. If on, a quadratic program
+    # is invoked to solve the weights' vector. This buys some increase in integration
+    # error, but at a computational cost. Likely to most effective in lower dimensions.
     if weighted:
         # find the weights. Solves a QP
         weights = qp(Kc + 1e-10, Kbar)
