@@ -54,7 +54,7 @@ def general_obj(
 
     This is to be used when one cannot assume normal or Rademacher random measures when
     using score matching, but has higher variance than analytic_obj if these
-    assumptions hold
+    assumptions hold.
 
     :param random_direction_vector: d-dimensional random vector
     :param grad_score_times_random_direction_matrix: product of the gradient of
@@ -71,15 +71,17 @@ def general_obj(
 def sliced_score_matching_loss_element(
     x: ArrayLike, v: ArrayLike, score_network: Callable, obj_fn: Callable
 ) -> float:
-    """Element-wise loss function computation.
+    r"""
+    Element-wise loss function computation.
 
     Computes the loss function from Section 3.2 of Song el al.'s paper on sliced score
-    matching [ssm]_
+    matching [ssm]_.
 
-    :param x: d-dimensional data vector
-    :param v: d-dimensional random vector
+    :param x: :math:`d`-dimensional data vector
+    :param v: :math:`d`-dimensional random vector
     :param score_network: function that calls the neural network on x
-    :param obj_fn: objective function with arguments (v, u, s) -> real
+    :param obj_fn: objective function with arguments :math:`(v, u, s)
+                    \rightarrow \mathbb{R}`
     :return: objective function output for single x and v inputs
     """
     s, u = jvp(score_network, (x,), (v,))
@@ -87,11 +89,15 @@ def sliced_score_matching_loss_element(
 
 
 def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Callable:
-    """Vector mapped loss function for application to arbitrary numbers of X and V
-    vectors.
+    r"""
+    Vector mapped loss function for arbitrary numbers of X and V vectors.
+
+    In the context of score matching, we expect to call the objective function on the
+    data vector (x), random vectors (v) and using the score neural network.
 
     :param score_network: function that calls the neural network on x
-    :param obj_fn: element-wise function (vector, vector, score_network) -> real
+    :param obj_fn: element-wise function (vector, vector, score_network)
+                    :math:`\rightarrow \mathbb{R}`
     :return: callable vectorised sliced score matching loss function
     """
     inner = vmap(
@@ -106,12 +112,14 @@ def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Cal
 def sliced_score_matching_train_step(
     state: TrainState, X: ArrayLike, V: ArrayLike, obj_fn: Callable
 ) -> Tuple[TrainState, float]:
-    """A single training step that updates model parameters using loss gradient.
+    r"""
+    A single training step that updates model parameters using loss gradient.
 
     :param state: the TrainState object.
-    :param X: the n x d data vectors
-    :param V: the n x m x d random vectors
-    :param obj_fn: objective function (vector, vector, vector) -> real
+    :param X: the :math:`n \times d` data vectors
+    :param V: the :math:`n \times m \times d` random vectors
+    :param obj_fn: objective function (vector, vector, vector) :math:`\rightarrow
+        \mathbb{R}`
     :return: the updated TrainState object
     """
 
@@ -136,18 +144,21 @@ def noise_conditional_loop_body(
     sigmas: ArrayLike,
     obj_fn: Callable,
 ) -> float:
-    """Noise conditioning objective function summand.
+    r"""
+    Noise conditioning objective function summand.
 
-    See [improvedsgm]_ for details.
+    Inputs are perturbed by Gaussian random noise to improve performance of score
+    matching. See [improvedsgm]_ for details.
 
     :param i: loop index
     :param obj: running objective, i.e. the current partial sum
     :param state: the TrainState object
     :param params: the current iterate parameter settings
-    :param X: the n x d data vectors
-    :param V: the n x m x d random vectors
+    :param X: the :math:`n \times d` data vectors
+    :param V: the :math:`n \times m \times d` random vectors
     :param sigmas: the geometric progression of noise standard deviations
-    :param obj_fn: element objective function (vector, vector, vector) -> real
+    :param obj_fn: element objective function (vector, vector, vector)
+                    :math:`\rightarrow real`
     :return: the updated objective, i.e. partial sum
     """
     # perturb X
@@ -171,12 +182,13 @@ def noise_conditional_train_step(
     sigmas: ArrayLike,
     L: int,
 ) -> Tuple[TrainState, float]:
-    """A single training step that updates model parameters using loss gradient.
+    r"""
+    A single training step that updates model parameters using loss gradient.
 
     :param state: the TrainState object.
-    :param X: the n x d data vectors
-    :param V: the n x m x d random vectors
-    :param obj_fn: objective function (vector, vector, vector) -> real
+    :param X: the :math:`n \times d` data vectors
+    :param V: the :math:`n \times m \times d` random vectors
+    :param obj_fn: objective function (vector, vector, vector) :math:`\rightarrow real`
     :param sigmas: length L array of noise standard deviations to use in objective
         function.
     :param L: the static number of terms in the geometric progression. (Required for
@@ -216,12 +228,14 @@ def sliced_score_matching(
     sigma: float = 1.0,
     gamma: float = 0.95,
 ) -> Callable:
-    """Learn a sliced score matching function from Song et al.'s paper [ssm]_
+    r"""
+    Learn a sliced score matching function from Song et al.'s paper [ssm]_.
 
-    Currently uses the ScoreNetwork network in coreax.networks.
+    We currently use the ScoreNetwork neural network in coreax.networks to approximate
+    the score function. Alternative network architectures can be considered.
 
-    :param X: the n x d data vectors
-    :param rgenerator: distribution sampler (key, shape, dtype) ->
+    :param X: the :math:`n \times d` data vectors
+    :param rgenerator: distribution sampler (key, shape, dtype) :math:`\rightarrow`
         jax._src.typing.Array, e.g. distributions in jax.random
     :param noise_conditioning: use the noise conditioning version of score matching.
         Defaults to True.
