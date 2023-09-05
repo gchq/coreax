@@ -18,7 +18,7 @@ from sklearn.datasets import make_blobs
 from pathlib import Path
 
 from coreax.weights import qp
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_x
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 
@@ -62,7 +62,7 @@ def main(out_path: Path = None, weighted: bool = True):
 
     # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the coreset Gram mean (Kbar)
     coreset, Kc, Kbar = stein_kernel_herding_block(
-        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000)
 
     # get a random sample of points to compare against
     rsample = np.random.choice(N, size=C, replace=False)
