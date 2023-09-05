@@ -9,6 +9,9 @@
 # the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
 from jax.random import normal
@@ -24,20 +27,24 @@ from coreax.score_matching import sliced_score_matching
 import numpy as np
 
 
-def main(out_path: Path = None, weighted: bool = True):
+def main(
+        out_path: Path | None = None,
+        weighted: bool = True
+) -> tuple[float, float]:
     """
-    Run the 'weighted_herding' example for weighted and unweighted herding.
+    Run the 'weighted_herding' example using score matching.
 
-    Args:
-        out_path: path to save output to, if not None. Default None.
-        weighted: boolean flag for whether to use weighted or unweighted herding
+    Generate a set of points from distinct clusters in a plane. Generate a coreset via
+    weighted and unweighted herding using a neural network to approximate the score
+    function. Compare results to coresets generated via uniform random sampling. Coreset
+    quality is measured using maximum mean discrepancy (MMD).
 
-    Returns:
-        coreset MMD, random sample MMD
-
+    :param out_path: Path to save output to, if not None. Default None.
+    :param weighted: Boolean flag for whether to use weighted or unweighted herding
+    :return: Coreset MMD, random sample MMD
     """
-    # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D for
-    # plotting below.
+    # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
+    # for plotting below.
     N = 10000
     X, _ = make_blobs(N, n_features=2, centers=6, random_state=32)
 
@@ -54,16 +61,16 @@ def main(out_path: Path = None, weighted: bool = True):
     def k(x, y):
         return rbf_kernel(x, y, jnp.float32(nu) ** 2) / (nu * jnp.sqrt(2.0 * jnp.pi))
 
-    # learn a score function with normal random variables, which use the analytic form of
-    # the loss
+    # learn a score function with normal random variables, which use the analytic form
+    # of the loss
     score_function = sliced_score_matching(
         X, normal, use_analytic=True, epochs=100, sigma=10.0
     )
 
     # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
     # Stein kernel herding uses the Stein kernel derived from the RBF above. Block mode
-    # processes the Gram matrix in blocks to avoid GPU memory issues. rbf_grad_log_f_X is
-    # the score function derived from sliced score matching above. max_size sets the
+    # processes the Gram matrix in blocks to avoid GPU memory issues. rbf_grad_log_f_X
+    # is the score function derived from sliced score matching above. max_size sets the
     # block processing size
 
     # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the

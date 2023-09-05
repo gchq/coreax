@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 import unittest
 import tempfile
 from pathlib import Path
@@ -25,15 +28,21 @@ from examples.weighted_herding_sm import main as weighted_herding_sm_main
 
 class TestExamples(unittest.TestCase):
 
-    def assert_is_file(self, path):
+    def assert_is_file(self, path: Path | str) -> None:
+        """
+        Assert a file exists at a given path.
+
+        :param path: Path to file
+        :raises: Exception if file does not exist at given path
+        """
         self.assertTrue(Path(path).resolve().is_file(), msg=f"File does not exist: {path}")
 
-    def test_david(self):
+    def test_david(self) -> None:
         """
-        Test david.py example
+        Test david.py example.
 
-        An end-to-end test to check david.py runs without error, generates output, and has coreset MMD better
-        than MMD from random sampling.
+        An end-to-end test to check david.py runs without error, generates output, and
+        has coreset MMD better than MMD from random sampling.
         """
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
@@ -55,12 +64,12 @@ class TestExamples(unittest.TestCase):
             self.assertLess(mmd_coreset, mmd_random,
                             msg="MMD for random sampling was unexpectedly lower than coreset MMD")
 
-    def test_pounce(self):
+    def test_pounce(self) -> None:
         """
-        Test pounce.py example
+        Test pounce.py example.
 
-        An end-to-end test to check pounce.py runs without error, generates output, and has coreset MMD
-        better than MMD from random sampling.
+        An end-to-end test to check pounce.py runs without error, generates output, and
+        has coreset MMD better than MMD from random sampling.
         """
 
         directory = Path.cwd().parent / Path("examples/data/pounce")
@@ -82,12 +91,12 @@ class TestExamples(unittest.TestCase):
             self.assertLess(mmd_coreset, mmd_random,
                             msg="MMD for random sampling was unexpectedly lower than coreset MMD")
 
-    def test_pounce_sm(self):
+    def test_pounce_sm(self) -> None:
         """
-        Test pounce_sm.py example
+        Test pounce_sm.py example.
 
-        An end-to-end test to check pounce_sm.py runs without error, generates output, and has coreset MMD
-        better than MMD from random sampling.
+        An end-to-end test to check pounce_sm.py runs without error, generates output,
+        and has coreset MMD better than MMD from random sampling.
         """
 
         directory = Path.cwd().parent / Path("examples/data/pounce")
@@ -109,12 +118,12 @@ class TestExamples(unittest.TestCase):
             self.assertLess(mmd_coreset, mmd_random,
                             msg="MMD for random sampling was unexpectedly lower than coreset MMD")
 
-    def test_weighted_herding(self):
+    def test_weighted_herding(self) -> None:
         """
-        Test weighted_herding.py example
+        Test weighted_herding.py example.
 
-        An end-to-end test to check weighted_herding.py runs without error, generates output, and has coreset
-        MMD better than MMD from random sampling.
+        An end-to-end test to check weighted_herding.py runs without error, generates
+        output, and has coreset MMD better than MMD from random sampling.
         """
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
@@ -147,12 +156,12 @@ class TestExamples(unittest.TestCase):
                 self.assertLess(mmd_coreset, mmd_random,
                                 msg="MMD for random sampling was unexpectedly lower than coreset MMD")
 
-    def test_weighted_herding_sm(self):
+    def test_weighted_herding_sm(self) -> None:
         """
-        Test weighted_herding_sm.py example
+        Test weighted_herding_sm.py example.
 
-        An end-to-end test to check weighted_herding_sm.py runs without error, generates output, and has coreset
-        MMD better than MMD from random sampling.
+        An end-to-end test to check weighted_herding_sm.py runs without error, generates
+        output, and has coreset MMD better than MMD from random sampling.
         """
 
         with tempfile.TemporaryDirectory() as tmp_dir, \
