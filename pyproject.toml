@@ -35,12 +35,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black",
     "imageio",
-    "isort",
     "matplotlib",
     "numpy",
     "opencv-python",
+    "pre-commit",
     "pyqt5",
     "pytest",
     "scipy",
