@@ -24,7 +24,7 @@ from jax.typing import ArrayLike
 
 from jax import vmap, jit, Array
 
-from coreax.kernel import rbf_grad_log_f_X, stein_kernel_pc_imq_element
+from coreax.kernel import rbf_grad_log_f_x, stein_kernel_pc_imq_element
 from coreax.utils import calculate_K_sum, KernelFunction, KernelFunctionWithGrads
 from functools import partial
 
@@ -158,7 +158,8 @@ def stein_kernel_herding_block(
         X: ArrayLike,
         n_core: int,
         kernel: KernelFunction,
-        grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] | callable,
+        grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] |
+                      Callable[[ArrayLike], Array],
         K_mean: ArrayLike | None = None,
         max_size: int = 10_000,
         nu: float = 1.,
@@ -344,7 +345,7 @@ def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
 
     :return: An :math:`n \times d` array of gradients evaluated at values of `X`
     """
-    return rbf_grad_log_f_X(*args, **kwargs)
+    return rbf_grad_log_f_x(*args, **kwargs)
 
 
 def scalable_herding(
