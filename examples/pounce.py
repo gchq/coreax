@@ -19,21 +19,22 @@ from sklearn.decomposition import PCA
 import jax.numpy as jnp
 from pathlib import Path
 
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_x
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 
 
-def main(directory: Path = "./examples/data/pounce"):
+def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     """
-    Run the 'pounce' example for video sampling.
+    Run the 'pounce' example for video sampling with Stein kernel herding.
 
-    Args:
-        directory: path to directory containing input video.
+    Take a video of a pouncing cat, apply PCA and then generate a coreset using
+    Stein kernel herding. Compare the result from this to a coreset generated
+    via uniform random sampling. Coreset quality is measured using maximum mean
+    discrepancy (MMD).
 
-    Returns:
-        coreset MMD, random sample MMD
-
+    :param directory: Path to directory containing input video.
+    :return: Coreset MMD, random sample MMD
     """
 
     # path to directory containing video as sequence of images
@@ -44,8 +45,8 @@ def main(directory: Path = "./examples/data/pounce"):
     Y_ = np.array(imageio.v2.mimread(f"{directory}/{fn}")[1:])
     Y = Y_.reshape(Y_.shape[0], -1)
 
-    # run PCA to reduce the dimension of the images whilst minimising effects on some of the statistical
-    # properties, i.e. variance.
+    # run PCA to reduce the dimension of the images whilst minimising effects on some of
+    # the statistical properties, i.e. variance.
     p = 25
     pca = PCA(p)
     X = pca.fit_transform(Y)
@@ -60,7 +61,7 @@ def main(directory: Path = "./examples/data/pounce"):
 
     # run Stein kernel herding in block mode to avoid GPU memory issues
     coreset, Kc, Kbar = \
-        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_X, nu=nu, max_size=1000)
+        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000)
 
     # sort the coreset ready for producing the output video
     coreset = jnp.sort(coreset)

@@ -24,17 +24,21 @@ from coreax.kernel_herding import stein_kernel_herding_block, scalable_herding, 
 from coreax.metrics import mmd_block
 
 
-def main(in_path: Path = Path("./examples/data/david_orig.png"), out_path: Path = None):
+def main(
+        in_path: Path = Path("./examples/data/david_orig.png"),
+        out_path: Path = None
+) -> tuple[float, float]:
     """
     Run the 'david' example for image sampling.
 
-    Args:
-        in_path: path to input image
-        out_path: path to save output to, if not None. Default None.
+    Take an image of the statue of David and then generate a coreset using
+    scalable Stein kernel herding. Compare the result from this to a coreset generated
+    via uniform random sampling. Coreset quality is measured using maximum mean
+    discrepancy (MMD).
 
-    Returns:
-        coreset MMD, random sample MMD
-
+    :param in_path: Path to input image
+    :param out_path: Path to save output to, if not None. Default None.
+    :return: Coreset MMD, random sample MMD
     """
 
     # path to original image
@@ -60,10 +64,11 @@ def main(in_path: Path = Path("./examples/data/david_orig.png"), out_path: Path 
     indices = np.arange(n)
 
     print("Computing coreset...")
-    # use scalable Stein kernel herding. Here size=10000 partitions the input into size 10000 blocks for
-    # independent coreset solving. grad_log_f_X is the score function. We use an explicit function derived from a
-    # KDE, but this can be any score function approximation, e.g. score matching.
-    # max size is for block processing Gram matrices to avoid memory issues
+    # use scalable Stein kernel herding. Here size=10000 partitions the input into size
+    # 10000 blocks for independent coreset solving. grad_log_f_X is the score function.
+    # We use an explicit function derived from a KDE, but this can be any score function
+    # approximation, e.g. score matching. max size is for block processing Gram matrices
+    # to avoid memory issues
     coreset, weights = \
         scalable_herding(X, indices, C, stein_kernel_herding_block, qp, size=10000,
                          kernel=scalable_stein_kernel_pc_imq_element, grad_log_f_X=scalable_rbf_grad_log_f_X,
@@ -98,7 +103,8 @@ def main(in_path: Path = Path("./examples/data/david_orig.png"), out_path: Path 
     plt.title('Original')
     plt.axis('off')
 
-    # plot the coreset image and weight the points using a function of the coreset weights
+    # plot the coreset image and weight the points using a function of the coreset
+    # weights
     plt.subplot(1, 3, 2)
     plt.scatter(X[coreset, 1], -X[coreset, 0], c=X[coreset, 2], cmap="gray",
                 s=np.exp(2. * C * weights).reshape(1, -1), marker="h", alpha=.8)
