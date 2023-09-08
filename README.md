@@ -1,7 +1,7 @@
 # Coreax
 _© Crown Copyright GCHQ_
 
-Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html) for fast execution and GPU support.
+Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html) for fast execution and GPU support. 
 
 A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ points whilst attempting to preserve the statistical properties of the full data set. Some algorithms return the $m$ points with weights, such that importance can be attributed to each point. These are often chosen from the simplex, i.e. such that they are non-negative and sum to 1.
 
@@ -24,7 +24,7 @@ The key property to observe is the maximum mean discrepancy (MMD) between the co
 <img src="examples/pounce/pounce_coreset.gif" width="49%">
 </p>
 
-# Setup
+# Setup 
 Be sure to install Jax, and to install the preferred version for your system.
 1. Install [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html), noting that there are (currently) different setup paths for CPU and GPU use.
 2. Install coreax from this directory `pip install .`
