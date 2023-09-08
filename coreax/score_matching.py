@@ -10,20 +10,16 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-from functools import partial
-from typing import Callable, Optional, Tuple
-
 import jax
-import optax
-from flax.training.train_state import TrainState
-from jax import jit, jvp
-from jax import numpy as jnp
-from jax import random, vmap
+from jax import random, vmap, numpy as jnp, jvp, jit
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
-from tqdm import tqdm
-
+from typing import Callable, Optional, Tuple
+from flax.training.train_state import TrainState
+from functools import partial
 from coreax.networks import ScoreNetwork, create_train_state
+import optax
+from tqdm import tqdm
 
 
 @jit

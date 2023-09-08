@@ -17,17 +17,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from functools import partial
-from multiprocessing.pool import ThreadPool
 
-import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+import jax.lax as lax
 from jax.typing import ArrayLike
-from sklearn.neighbors import KDTree
+
+from jax import vmap, jit, Array
 
 from coreax.kernel import rbf_grad_log_f_X, stein_kernel_pc_imq_element
-from coreax.utils import KernelFunction, KernelFunctionWithGrads, calculate_K_sum
+from coreax.utils import calculate_K_sum, KernelFunction, KernelFunctionWithGrads
+from functools import partial
+
+from sklearn.neighbors import KDTree
+from multiprocessing.pool import ThreadPool
 
 
 @partial(jit, static_argnames=["k_vec", "unique"])

@@ -11,22 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import matplotlib.pyplot as plt
+import jax.numpy as jnp
+import numpy as np
+import cv2
 from pathlib import Path
 
-import cv2
-import jax.numpy as jnp
-import matplotlib.pyplot as plt
-import numpy as np
-
-from coreax.kernel import median_heuristic, rbf_kernel
-from coreax.kernel_herding import (
-    scalable_herding,
-    scalable_rbf_grad_log_f_X,
-    scalable_stein_kernel_pc_imq_element,
-    stein_kernel_herding_block,
-)
-from coreax.metrics import mmd_block
 from coreax.weights import qp
+from coreax.kernel import rbf_kernel, median_heuristic
+from coreax.kernel_herding import stein_kernel_herding_block, scalable_herding, scalable_rbf_grad_log_f_X, \
+    scalable_stein_kernel_pc_imq_element
+from coreax.metrics import mmd_block
 
 
 def main(in_path: Path = Path("./examples/data/david_orig.png"), out_path: Path = None):

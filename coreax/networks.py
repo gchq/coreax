@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
-
 from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
-from jax import numpy as jnp
 from jax.random import PRNGKey
 from jax.typing import ArrayLike
+from jax import numpy as jnp
+from typing import Callable
 
 
 class ScoreNetwork(nn.Module):

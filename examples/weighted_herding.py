@@ -11,22 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
-
-import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import jax.numpy as jnp
 import numpy as np
 from sklearn.datasets import make_blobs
+from pathlib import Path
 
-from coreax.kernel import (
-    median_heuristic,
-    rbf_grad_log_f_X,
-    rbf_kernel,
-    stein_kernel_pc_imq_element,
-)
+from coreax.weights import qp
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_X
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
-from coreax.weights import qp
 
 
 def main(out_path: Path = None, weighted: bool = True):

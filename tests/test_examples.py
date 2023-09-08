@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import tempfile
 import unittest
+import tempfile
 from pathlib import Path
-from unittest.mock import call, patch
+from unittest.mock import patch, call
 
 from examples.david import main as david_main
 from examples.pounce import main as pounce_main
