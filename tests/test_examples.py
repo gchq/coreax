@@ -34,10 +34,11 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check david.py runs without error, generates output, and has coreset MMD better
         than MMD from random sampling.
         """
-
-        with tempfile.TemporaryDirectory() as tmp_dir, patch(
-            "builtins.print"
-        ) as mock_print, patch("matplotlib.pyplot.show") as mock_show:
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print") as mock_print,
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
             # run david.py
             in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
             out_path = Path(tmp_dir) / "david_coreset.png"
@@ -97,9 +98,11 @@ class TestExamples(unittest.TestCase):
         MMD better than MMD from random sampling.
         """
 
-        with tempfile.TemporaryDirectory() as tmp_dir, patch("builtins.print"), patch(
-            "matplotlib.pyplot.show"
-        ) as mock_show:
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print"),
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
             with self.subTest(msg="Weighted herding"):
                 # run weighted herding example
                 outpath = Path(tmp_dir) / "weighted_herding.png"
