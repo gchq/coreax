@@ -9,16 +9,15 @@
 # the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
-import os
-
-import imageio
-import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
-from jax.random import rademacher
+import matplotlib.pyplot as plt
+import imageio
+import os
 from sklearn.decomposition import PCA
+import jax.numpy as jnp
+from jax.random import rademacher
 
-from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.score_matching import sliced_score_matching
 

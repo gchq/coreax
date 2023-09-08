@@ -12,11 +12,10 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
-from functools import partial
-
 import jax.numpy as jnp
-from jax import Array, jit, lax, random, vmap
 from jax.typing import ArrayLike
+from jax import vmap, jit, random, lax, Array
+from functools import partial
 
 from coreax.utils import KernelFunction
 

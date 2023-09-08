@@ -16,13 +16,12 @@
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
+from jax import jit, vmap, Array
 import jax.numpy as jnp
-from jax import Array, jit, vmap
 from jax.typing import ArrayLike
-
+from coreax.utils import calculate_K_sum, KernelFunction
 from coreax.kernel_herding import kernel_herding_block
 from coreax.refine import refine, refine_rand, refine_rev
-from coreax.utils import KernelFunction, calculate_K_sum
 
 #
 # Kernel Herding Refine Functions

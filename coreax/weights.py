@@ -13,8 +13,8 @@
  # limitations under the License.
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
 from jax.typing import ArrayLike
+from jax import vmap, jit, Array
 from jaxopt import OSQP
 
 from coreax.utils import KernelFunction

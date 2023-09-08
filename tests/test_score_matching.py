@@ -10,17 +10,15 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 import unittest
-from typing import Callable
-
 import numpy as np
-from flax import linen as nn
-from jax import numpy as jnp
-from jax import random
-from jax.scipy.stats import multivariate_normal, norm
+from jax import random, numpy as jnp
 from jax.typing import ArrayLike
+from typing import Callable
+from jax.scipy.stats import norm, multivariate_normal
 from optax import sgd
 
 from coreax.score_matching import *
+from flax import linen as nn
 
 
 class TestNetwork(nn.Module):

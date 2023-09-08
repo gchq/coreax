@@ -9,17 +9,18 @@
 # the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
-import jax.numpy as jnp
 import matplotlib.pyplot as plt
-import numpy as np
+import jax.numpy as jnp
 from jax.random import normal
 from sklearn.datasets import make_blobs
 
-from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
+from coreax.weights import qp
+from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 from coreax.score_matching import sliced_score_matching
-from coreax.weights import qp
+
+import numpy as np
 
 # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D for
 # plotting below.

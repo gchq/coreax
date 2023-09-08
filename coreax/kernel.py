@@ -17,8 +17,8 @@
 from __future__ import annotations
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
 from jax.typing import ArrayLike
+from jax import jit, vmap, Array
 
 
 @jit
