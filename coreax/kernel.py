@@ -1,16 +1,16 @@
-# © Crown Copyright GCHQ
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+ # © Crown Copyright GCHQ
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+ # you may not use this file except in compliance with the License.
+ # You may obtain a copy of the License at
+ #
+ # http://www.apache.org/licenses/LICENSE-2.0
+ #
+ # Unless required by applicable law or agreed to in writing, software
+ # distributed under the License is distributed on an "AS IS" BASIS,
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
@@ -51,7 +51,7 @@ def sq_dist_pairwise(X: ArrayLike, Y: ArrayLike) -> Array:
 
 
 @jit
-def rbf_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.0) -> Array:
+def rbf_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
     r"""
     Calculate the radial basis function (RBF) kernel for a pair of vectors.
 
@@ -60,11 +60,11 @@ def rbf_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.0) -> Array:
     :param var: Variance. Optional, defaults to 1
     :return: RBF kernel evaluated at `(x,y)`
     """
-    return jnp.exp(-sq_dist(x, y) / (2 * var))
+    return jnp.exp(-sq_dist(x, y)/(2*var))
 
 
 @jit
-def laplace_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.0) -> Array:
+def laplace_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.) -> Array:
     r"""
     Calculate the Laplace kernel for a pair of vectors.
 
@@ -73,7 +73,7 @@ def laplace_kernel(x: ArrayLike, y: ArrayLike, var: float = 1.0) -> Array:
     :param var: Variance. Optional, defaults to 1
     :return: Laplace kernel evaluated at `(x,y)`
     """
-    return jnp.exp(-jnp.linalg.norm(x - y) / (2 * var))
+    return jnp.exp(-jnp.linalg.norm(x - y)/(2*var))
 
 
 @jit
@@ -104,7 +104,7 @@ def pdiff(X: ArrayLike, Y: ArrayLike) -> Array:
 
 
 @jit
-def normalised_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
+def normalised_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     r"""
     Evaluate the normalised Gaussian kernel pairwise.
 
@@ -114,12 +114,12 @@ def normalised_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
     :return: Pairwise kernel evaluations
     """
     Z = sq_dist_pairwise(X, Y)
-    k = jnp.exp(-0.5 * Z / nu**2) / jnp.sqrt(2 * jnp.pi)
+    k = jnp.exp(-.5*Z / nu**2) / jnp.sqrt(2 * jnp.pi)
     return k / nu
 
 
 @jit
-def pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
+def pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     r"""
     Evaluate the pre-conditioned inverse multi-quadric kernel pairwise.
 
@@ -136,10 +136,10 @@ def pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
 
 @jit
 def grad_rbf_y(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Calculate the gradient of the normalised radial basis function with respect to Y.
@@ -161,10 +161,10 @@ def grad_rbf_y(
 
 @jit
 def grad_rbf_x(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Calculate the gradient of the normalised radial basis function with respect to X.
@@ -180,10 +180,10 @@ def grad_rbf_x(
 
 @jit
 def grad_pc_imq_y(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Calculate gradient of the pre-conditioned inverse multi-quadric with respect to Y.
@@ -200,15 +200,15 @@ def grad_pc_imq_y(
     else:
         K = jnp.asarray(K)
     D = pdiff(Y, X)
-    return K[:, :, None] ** 3 * D / l
+    return K[:, :, None]**3 * D / l
 
 
 @jit
 def grad_pc_imq_x(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Calculate gradient of the pre-conditioned inverse multi-quadric with respect to X.
@@ -224,11 +224,11 @@ def grad_pc_imq_x(
 
 @jit
 def rbf_div_x_grad_y(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    n: int | None = None,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        n: int | None = None,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Apply divergence operator on gradient of RBF kernel with respect to Y.
@@ -253,11 +253,11 @@ def rbf_div_x_grad_y(
 
 @jit
 def pc_imq_div_x_grad_y(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float = 1.0,
-    n: int = None,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float = 1.,
+        n: int = None,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Apply divergence operator on gradient of PC-IMQ kernel with respect to Y.
@@ -278,7 +278,7 @@ def pc_imq_div_x_grad_y(
         K = pc_imq(X, Y, nu=nu)
     if n is None:
         n = X.shape[0]
-    return n / l * K**3 - 3 * sq_dist_pairwise(X, Y) / l**2 * K**5
+    return n / l * K**3 - 3*sq_dist_pairwise(X, Y)/l**2 * K**5
 
 
 @jit
@@ -292,7 +292,7 @@ def median_heuristic(X: ArrayLike) -> Array:
     """
     D = jnp.triu(sq_dist_pairwise(X, X), k=1)
     h = jnp.median(D[jnp.triu_indices_from(D, k=1)])
-    return jnp.sqrt(h / 2.0)
+    return jnp.sqrt(h / 2.)
 
 
 @jit
@@ -313,11 +313,11 @@ def rbf_f_X(X: ArrayLike, D: ArrayLike, nu: float) -> tuple[Array, Array]:
 
 @jit
 def rbf_grad_log_f_X(
-    X: ArrayLike,
-    D: ArrayLike,
-    nu: float,
-    K: ArrayLike | None = None,
-    Kbar: ArrayLike | None = None,
+        X: ArrayLike,
+        D: ArrayLike,
+        nu: float,
+        K: ArrayLike | None = None,
+        Kbar: ArrayLike | None = None,
 ) -> Array:
     r"""
     Compute gradient of log-PDF of `X`.
@@ -339,15 +339,15 @@ def rbf_grad_log_f_X(
         Kbar = jnp.asarray(Kbar)
     n = D.shape[0]
     J = grad_rbf_x(X, D, nu, K).mean(axis=1)
-    return J / (n * Kbar[:, None])
+    return J / (n*Kbar[:, None])
 
 
 @jit
 def grad_rbf_x(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Compute gradient of the radial basis function kernel with respect to `X`.
@@ -369,10 +369,10 @@ def grad_rbf_x(
 
 @jit
 def grad_rbf_y(
-    X: ArrayLike,
-    Y: ArrayLike,
-    nu: float,
-    K: ArrayLike | None = None,
+        X: ArrayLike,
+        Y: ArrayLike,
+        nu: float,
+        K: ArrayLike | None = None,
 ) -> Array:
     r"""
     Compute gradient of the radial basis function kernel with respect to `Y`.
@@ -387,7 +387,7 @@ def grad_rbf_y(
 
 
 @jit
-def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
+def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     r"""
     Compute a kernel from a RBF kernel with the canonical Stein operator.
 
@@ -426,7 +426,7 @@ def stein_kernel_rbf(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
 
 
 @jit
-def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
+def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.) -> Array:
     r"""
     Compute a kernel from a PC-IMQ kernel with the canonical Stein operator.
 
@@ -469,12 +469,12 @@ def stein_kernel_pc_imq(X: ArrayLike, Y: ArrayLike, nu: float = 1.0) -> Array:
 
 @jit
 def stein_kernel_pc_imq_element(
-    x: ArrayLike,
-    y: ArrayLike,
-    g_log_p_x: ArrayLike,
-    g_log_p_y: ArrayLike,
-    n: int,
-    nu: float = 1.0,
+        x: ArrayLike,
+        y: ArrayLike,
+        g_log_p_x: ArrayLike,
+        g_log_p_y: ArrayLike,
+        n: int,
+        nu: float = 1.,
 ) -> Array:
     r"""
     Evaluate the kernel element at `(x,y)`.

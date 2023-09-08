@@ -1,16 +1,16 @@
-# © Crown Copyright GCHQ
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+ # © Crown Copyright GCHQ
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+ # you may not use this file except in compliance with the License.
+ # You may obtain a copy of the License at
+ #
+ # http://www.apache.org/licenses/LICENSE-2.0
+ #
+ # Unless required by applicable law or agreed to in writing, software
+ # distributed under the License is distributed on an "AS IS" BASIS,
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
@@ -32,12 +32,12 @@ from coreax.utils import KernelFunction, KernelFunctionWithGrads, calculate_K_su
 
 @partial(jit, static_argnames=["k_vec", "unique"])
 def greedy_body(
-    i: int,
-    val: tuple[ArrayLike, ArrayLike, ArrayLike],
-    X: ArrayLike,
-    k_vec: KernelFunction,
-    K_mean: ArrayLike,
-    unique: bool,
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        X: ArrayLike,
+        k_vec: KernelFunction,
+        K_mean: ArrayLike,
+        unique: bool,
 ) -> tuple[Array, Array, Array]:
     r"""
     Execute main loop of greedy kernel herding.
@@ -55,7 +55,7 @@ def greedy_body(
     S, K, K_t = val
     S = jnp.asarray(S)
     K = jnp.asarray(K)
-    j = (K_mean - K_t / (i + 1)).argmax()
+    j = (K_mean - K_t/(i+1)).argmax()
     kv = k_vec(X, X[j])
     K_t = K_t + kv
     S = S.at[i].set(j)
@@ -68,15 +68,15 @@ def greedy_body(
 
 @partial(jit, static_argnames=["k_vec", "unique"])
 def stein_greedy_body(
-    i: int,
-    val: tuple[ArrayLike, ArrayLike, ArrayLike],
-    X: ArrayLike,
-    k_vec: KernelFunctionWithGrads,
-    K_mean: ArrayLike,
-    grads: ArrayLike,
-    n: int,
-    nu: float,
-    unique: bool,
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        X: ArrayLike,
+        k_vec: KernelFunctionWithGrads,
+        K_mean: ArrayLike,
+        grads: ArrayLike,
+        n: int,
+        nu: float,
+        unique: bool,
 ) -> tuple[Array, Array, Array]:
     r"""
     Execute the main loop of greedy Stein herding.
@@ -111,12 +111,12 @@ def stein_greedy_body(
 
 
 def kernel_herding_block(
-    X: ArrayLike,
-    n_core: int,
-    kernel: KernelFunction,
-    max_size: int = 10_000,
-    K_mean: ArrayLike | None = None,
-    unique: bool = True,
+        X: ArrayLike,
+        n_core: int,
+        kernel: KernelFunction,
+        max_size: int = 10_000,
+        K_mean: ArrayLike | None = None,
+        unique: bool = True,
 ) -> tuple[Array, Array, Array]:
     r"""
     Execute kernel herding algorithm with Jax.
@@ -130,9 +130,8 @@ def kernel_herding_block(
     :param unique: Flag for enforcing unique elements
     :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
     """
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
+    k_pairwise = jit(vmap(vmap(kernel, in_axes=(None, 0),
+                               out_axes=0), in_axes=(0, None), out_axes=0))
     k_vec = jit(vmap(kernel, in_axes=(0, None)))
 
     X = jnp.asarray(X)
@@ -154,15 +153,15 @@ def kernel_herding_block(
 
 
 def stein_kernel_herding_block(
-    X: ArrayLike,
-    n_core: int,
-    kernel: KernelFunction,
-    grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] | callable,
-    K_mean: ArrayLike | None = None,
-    max_size: int = 10_000,
-    nu: float = 1.0,
-    unique: bool = True,
-    sm: bool = False,
+        X: ArrayLike,
+        n_core: int,
+        kernel: KernelFunction,
+        grad_log_f_X: Callable[[ArrayLike, ArrayLike, float], Array] | callable,
+        K_mean: ArrayLike | None = None,
+        max_size: int = 10_000,
+        nu: float = 1.,
+        unique: bool = True,
+        sm: bool = False
 ) -> tuple[Array, Array, Array]:
     r"""
     Execute Stein herding.
@@ -185,13 +184,8 @@ def stein_kernel_herding_block(
     else:
         g = vmap(grad_log_f_X, (0, None, None), 0)
         grads = g(X, X, nu).squeeze()
-    k_pairwise = jit(
-        vmap(
-            vmap(kernel, (None, 0, None, 0, None, None), 0),
-            (0, None, 0, None, None, None),
-            0,
-        )
-    )
+    k_pairwise = jit(vmap(vmap(kernel, (None, 0, None, 0, None,
+                                        None), 0), (0, None, 0, None, None, None), 0))
     n = X.shape[0]
     k_vec = jit(vmap(kernel, in_axes=(0, None, 0, None, None, None)))
 
@@ -205,16 +199,8 @@ def stein_kernel_herding_block(
     K = jnp.zeros((n_core, n))
 
     # Greedly select coreset points
-    body = partial(
-        stein_greedy_body,
-        X=X,
-        k_vec=k_vec,
-        K_mean=K_mean,
-        grads=grads,
-        n=n,
-        nu=nu,
-        unique=unique,
-    )
+    body = partial(stein_greedy_body, X=X, k_vec=k_vec,
+                   K_mean=K_mean, grads=grads, n=n, nu=nu, unique=unique)
     S, K, _ = lax.fori_loop(0, n_core, body, (S, K, objective))
     Kbar = K.mean(axis=1)
     Kc = K[:, S]
@@ -235,16 +221,18 @@ def fw_linesearch(arg_x_t: int, K: ArrayLike, Ek: ArrayLike) -> Array:
     Ek = jnp.asarray(Ek)
 
     arg_x_p = jnp.argmin(K[arg_x_t] - Ek)
-    rho_t_num = K[arg_x_t, arg_x_t] - K[arg_x_t, arg_x_p] - Ek[arg_x_t] + Ek[arg_x_p]
-    rho_t_den = K[arg_x_t, arg_x_t] + K[arg_x_p, arg_x_p] - 2 * K[arg_x_t, arg_x_p]
-    rho_t = rho_t_num / rho_t_den
+    rho_t_num = K[arg_x_t, arg_x_t] - \
+        K[arg_x_t, arg_x_p] - Ek[arg_x_t] + Ek[arg_x_p]
+    rho_t_den = K[arg_x_t, arg_x_t] + \
+        K[arg_x_p, arg_x_p] - 2*K[arg_x_t, arg_x_p]
+    rho_t = rho_t_num/rho_t_den
     return rho_t
 
 
 @jit
 def herding_body(
-    i: int,
-    val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
     r"""
     Execute body of default herding.
@@ -266,8 +254,8 @@ def herding_body(
 
 @jit
 def greedy_herding_body(
-    i: int,
-    val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
     r"""
     Execute body of Stein thinning.
@@ -281,7 +269,7 @@ def greedy_herding_body(
     objective = jnp.asarray(objective)
     Kbar = jnp.asarray(Kbar)
     K = jnp.asarray(K)
-    j = (objective + jnp.diag(K) / 2.0).argmin()
+    j = (objective + jnp.diag(K) / 2.).argmin()
     S = S.at[i].set(j)
     objective += K[S[i]]
     return S, objective, Kbar, K
@@ -289,8 +277,8 @@ def greedy_herding_body(
 
 @jit
 def fw_herding_body(
-    i: int,
-    val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike],
 ) -> tuple[Array, Array, Array, Array]:
     r"""
     Execute body of Frank-Wolfe herding.
@@ -307,7 +295,7 @@ def fw_herding_body(
     j = objective.argmax()
     S = S.at[i].set(j)
     rho = fw_linesearch(S[i], K, Kbar)
-    objective = objective * (1 - rho) + (Kbar - K[S[i]]) * rho
+    objective = objective * (1 - rho) + (Kbar - K[S[i]])*rho
     return S, objective, Kbar, K
 
 
@@ -335,7 +323,6 @@ def fw_herding_body(
 #     S = val[0]
 #     return S
 
-
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
     r"""
     A wrapper for scalable (parallelised) herding with a decorated function.
@@ -359,14 +346,14 @@ def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
 
 
 def scalable_herding(
-    X: ArrayLike,
-    indices: ArrayLike,
-    n_core: int,
-    function: Callable[..., Array],
-    w_function: KernelFunction | None,
-    size: int = 1000,
-    parallel: bool = True,
-    **kwargs,
+        X: ArrayLike,
+        indices: ArrayLike,
+        n_core: int,
+        function: Callable[..., Array],
+        w_function: KernelFunction | None,
+        size: int = 1000,
+        parallel: bool = True,
+        **kwargs,
 ) -> tuple[Array, Array]:
     r"""
     Execute scalable kernel herding.
@@ -406,10 +393,7 @@ def scalable_herding(
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
     if n_core >= size:
-        raise OverflowError(
-            "Number of coreset points requested (%d) is larger than the region size (%d). Try increasing the size argument, or reducing the number of coreset points"
-            % (n_core, size)
-        )
+        raise OverflowError("Number of coreset points requested (%d) is larger than the region size (%d). Try increasing the size argument, or reducing the number of coreset points" % (n_core, size))
     X = jnp.asarray(X)
     indices = jnp.asarray(indices)
     n = X.shape[0]
@@ -429,7 +413,7 @@ def scalable_herding(
         # build a kdtree
         kdtree = KDTree(X, leaf_size=size)
         _, nindices, nodes, _ = kdtree.get_arrays()
-        new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
+        new_indices = [jnp.array(nindices[nd[0]: nd[1]]) for nd in nodes if nd[2]]
         split_data = [X[n] for n in new_indices]
         # k = len(split_data)
         # print(n, k, n // k)
@@ -459,14 +443,6 @@ def scalable_herding(
         Xc = X[coreset]
         indices_c = indices[coreset]
         # recurse; n_core is already in kwargs
-        coreset, weights = scalable_herding(
-            Xc,
-            indices_c,
-            function=function,
-            w_function=w_function,
-            size=size,
-            parallel=parallel,
-            **kwargs,
-        )
+        coreset, weights = scalable_herding(Xc, indices_c, function=function, w_function=w_function, size=size, parallel=parallel, **kwargs)
 
     return coreset, weights

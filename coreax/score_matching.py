@@ -28,9 +28,9 @@ from coreax.networks import ScoreNetwork, create_train_state
 
 @jit
 def analytic_obj(
-    random_direction_vector: ArrayLike,
-    grad_score_times_random_direction_matrix: ArrayLike,
-    score_matrix: ArrayLike,
+        random_direction_vector: ArrayLike,
+        grad_score_times_random_direction_matrix: ArrayLike,
+        score_matrix: ArrayLike
 ) -> ArrayLike:
     """
     Reduced variance score matching loss function.
@@ -44,10 +44,8 @@ def analytic_obj(
     :param score_matrix: gradients of log-density
     :return: evaluation of score matching objective, see equation 8 in [ssm]_
     """
-    result = (
-        random_direction_vector @ grad_score_times_random_direction_matrix
-        + 0.5 * score_matrix @ score_matrix
-    )
+    result = (random_direction_vector @ grad_score_times_random_direction_matrix +
+              0.5 * score_matrix @ score_matrix)
     return result
 
 
@@ -68,10 +66,8 @@ def general_obj(
     :param score_matrix: gradients of log-density
     :return: evaluation of score matching objective, see equation 7 in [ssm]_
     """
-    result = (
-        random_direction_vector @ grad_score_times_random_direction_matrix
-        + 0.5 * (random_direction_vector @ score_matrix) ** 2
-    )
+    result = (random_direction_vector @ grad_score_times_random_direction_matrix + 0.5 *
+              (random_direction_vector @ score_matrix) ** 2)
     return result
 
 
