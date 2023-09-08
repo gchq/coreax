@@ -29,7 +29,7 @@ Reporting issues
 
 Pull requests
 -------------
-Currently, we are using [GitHub Flow][github-flow] as our approach to development.
+Currently, we are using [GitHub Flow][github-flow] as our approach to development. 
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
@@ -40,39 +40,39 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
   - `bugfix/<bug-name>`: for bug fixes.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
-- Changes must have sufficient [test coverage][run-tests].
-
+- Changes must have sufficient [test coverage][run-tests]. 
+ 
  **TODO: detail CI/CD workflows executed once a PR has been opened.**
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
 - Pull in changes from upstream often to minimise merge conflicts.
-- Make any required changes.
+- Make any required changes. 
 - [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert back to Draft at any time.
-
+ 
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
 Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
 
 ### Commit messages
 
 Follow the [conventional commits guidelines][conventional_commits] to *make reviews easier* and to make the git logs more valuable.
-An example commit, including reference to some GitHub issue #123, might take the form:
+An example commit, including reference to some GitHub issue #123, might take the form: 
 
 ```
-feat: add gpu support for matrix multiplication
+feat: add gpu support for matrix multiplication  
 
-If a gpu is available on the system, it is automatically used when performing matrix
-multiplication within the code.
+If a gpu is available on the system, it is automatically used when performing matrix 
+multiplication within the code. 
 
-BREAKING CHANGE: numpy 1.0.2 no longer supported
+BREAKING CHANGE: numpy 1.0.2 no longer supported 
 
-Refs: #123
+Refs: #123 
 ```
 
 Code
 ------
 
-Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
+Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To 
 facilitate code review, code should meet these standards prior to creating a pull request.
 
 ### Style
@@ -96,7 +96,7 @@ Use standard library and existing well maintained external libraries where possi
 
 ### Docstrings
 
-Docstrings must:
+Docstrings must: 
 - Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
 - Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
@@ -118,7 +118,7 @@ As many paragraphs as is required to document the object.
 If the function does not return anything, the return line above can be omitted.
 
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`. 
 
 ### Generating docs with Sphinx
 

@@ -72,12 +72,12 @@ def sum_K(
     output = 0
     for i in range(0,n,max_size):
         for j in range(0,m,max_size):
-
+            
             K_part = k_pairwise(x[i:i+max_size],y[j:j+max_size])
             output += K_part.sum()
-
+            
     return output
-
+    
 
 def mmd_block(
         x: ArrayLike,
@@ -104,7 +104,7 @@ def mmd_block(
     K_n = sum_K(x, x, k_pairwise, max_size)
     K_m = sum_K(x_c, x_c, k_pairwise, max_size)
     K_nm = sum_K(x, x_c, k_pairwise, max_size)
-
+            
     return jnp.sqrt(K_n/n**2 + K_m/m**2 - 2*K_nm/(n*m))
 
 def sum_weight_K(
@@ -122,10 +122,10 @@ def sum_weight_K(
     output = 0
     for i in range(0,n,max_size):
         for j in range(0,m,max_size):
-
+            
             K_part = w_x[i:i+max_size, None]*k_pairwise(x[i:i+max_size],y[j:j+max_size])*w_y[None,j:j+max_size]
             output += K_part.sum()
-
+            
     return output
 
 def mmd_weight_block(
@@ -159,5 +159,5 @@ def mmd_weight_block(
     K_n = sum_weight_K(x, x, w, w, k_pairwise, max_size)
     K_m = sum_weight_K(x_c, x_c, w_c, w_c, k_pairwise, max_size)
     K_nm = sum_weight_K(x, x_c, w, w_c, k_pairwise, max_size)
-
+            
     return jnp.sqrt(K_n/n**2 + K_m/m**2 - 2*K_nm/(n*m))
