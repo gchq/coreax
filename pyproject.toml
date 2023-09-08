@@ -48,7 +48,7 @@ dev = [
 Repository = "https://github.com/gchq/coreax"
 
 [tool.isort]
-known_first_party = ["coreax"]
+known_first_party = ["coreax", "examples"]
 profile = "black"
 
 [tool.setuptools]
