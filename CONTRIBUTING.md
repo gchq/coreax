@@ -11,7 +11,10 @@ If you would like to contribute to the development of coreax, you can do so in a
 - Contribute example usages & documentation improvements.
 - Increase awareness of coreax with other potential users.
 
-All contributors must sign the [GCHQ Contributor Licence Agreement][cla]. 
+All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
+
+Developers should install additional packages required for development using
+`pip install -e .[dev]`. Then, set up pre-commit hooks using `pre-commit install`.
 
 Reporting issues
 --------------
@@ -26,7 +29,7 @@ Reporting issues
 
 Pull requests
 -------------
-Currently, we are using [GitHub Flow][github-flow] as our approach to development. 
+Currently, we are using [GitHub Flow][github-flow] as our approach to development.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
@@ -37,39 +40,39 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
   - `bugfix/<bug-name>`: for bug fixes.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
-- Changes must have sufficient [test coverage][run-tests]. 
- 
+- Changes must have sufficient [test coverage][run-tests].
+
  **TODO: detail CI/CD workflows executed once a PR has been opened.**
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
 - Pull in changes from upstream often to minimise merge conflicts.
-- Make any required changes. 
+- Make any required changes.
 - [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert back to Draft at any time.
- 
+
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
 Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
 
 ### Commit messages
 
 Follow the [conventional commits guidelines][conventional_commits] to *make reviews easier* and to make the git logs more valuable.
-An example commit, including reference to some GitHub issue #123, might take the form: 
+An example commit, including reference to some GitHub issue #123, might take the form:
 
 ```
-feat: add gpu support for matrix multiplication  
+feat: add gpu support for matrix multiplication
 
-If a gpu is available on the system, it is automatically used when performing matrix 
-multiplication within the code. 
+If a gpu is available on the system, it is automatically used when performing matrix
+multiplication within the code.
 
-BREAKING CHANGE: numpy 1.0.2 no longer supported 
+BREAKING CHANGE: numpy 1.0.2 no longer supported
 
-Refs: #123 
+Refs: #123
 ```
 
 Code
 ------
 
-Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To 
+Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
 facilitate code review, code should meet these standards prior to creating a pull request.
 
 ### Style
@@ -77,26 +80,12 @@ facilitate code review, code should meet these standards prior to creating a pul
 A high level overview of the expected style is:
 - Follow [PEP 8][pep-8] style where possible.
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
-- Apply [black][black] formatting (with default settings) prior to committing any changes.
-- Black will not reformat strings, comments or docstrings. These must be manually checked and limited to 88 characters per line.
+- [Black][black] will be applied by the pre-commit hook but will not reformat strings,
+  comments or docstrings. These must be manually checked and limited to 88 characters
+  per line.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
-You can format files by using:
-```bash
-black myfile.py
-```
-This will format the specified file.
-
-#### List-like definitions
-
-Any list-like definitions should be written as one entry per line. An example import statement may therefore read:
-```
-from mymodule import (
-    function_a,
-    object_b,
-)
-```
 ### External dependencies
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
@@ -107,7 +96,7 @@ Use standard library and existing well maintained external libraries where possi
 
 ### Docstrings
 
-Docstrings must: 
+Docstrings must:
 - Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
 - Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
@@ -129,7 +118,7 @@ As many paragraphs as is required to document the object.
 If the function does not return anything, the return line above can be omitted.
 
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`. 
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
 
 ### Generating docs with Sphinx
 
