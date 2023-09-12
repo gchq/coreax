@@ -12,25 +12,23 @@
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
-import matplotlib.pyplot as plt
-import jax.numpy as jnp
-from jax.random import normal
-from sklearn.datasets import make_blobs
+
 from pathlib import Path
 
-from coreax.weights import qp
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from jax.random import normal
+from sklearn.datasets import make_blobs
+
+from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 from coreax.score_matching import sliced_score_matching
+from coreax.weights import qp
 
-import numpy as np
 
-
-def main(
-        out_path: Path | None = None,
-        weighted: bool = True
-) -> tuple[float, float]:
+def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, float]:
     """
     Run the 'weighted_herding' example using score matching.
 
@@ -120,5 +118,5 @@ def main(
     return m, rm
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
