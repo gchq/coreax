@@ -10,23 +10,27 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+from functools import partial
+from typing import Callable, Tuple
+
 import jax
-from jax import random, vmap, numpy as jnp, jvp, jit
+import optax
+from flax.training.train_state import TrainState
+from jax import jit, jvp
+from jax import numpy as jnp
+from jax import random, vmap
 from jax.lax import fori_loop
 from jax.typing import ArrayLike
-from typing import Callable, Tuple
-from flax.training.train_state import TrainState
-from functools import partial
-from coreax.networks import ScoreNetwork, create_train_state
-import optax
 from tqdm import tqdm
+
+from coreax.networks import ScoreNetwork, create_train_state
 
 
 @jit
 def analytic_obj(
-        random_direction_vector: ArrayLike,
-        grad_score_times_random_direction_matrix: ArrayLike,
-        score_matrix: ArrayLike
+    random_direction_vector: ArrayLike,
+    grad_score_times_random_direction_matrix: ArrayLike,
+    score_matrix: ArrayLike,
 ) -> ArrayLike:
     """
     Compute reduced variance score matching loss function.
@@ -40,8 +44,10 @@ def analytic_obj(
     :param score_matrix: Gradients of log-density
     :return: Evaluation of score matching objective, see equation 8 in [ssm]_
     """
-    result = (random_direction_vector @ grad_score_times_random_direction_matrix +
-              0.5 * score_matrix @ score_matrix)
+    result = (
+        random_direction_vector @ grad_score_times_random_direction_matrix
+        + 0.5 * score_matrix @ score_matrix
+    )
     return result
 
 
@@ -62,8 +68,10 @@ def general_obj(
     :param score_matrix: Gradients of log-density
     :return: Evaluation of score matching objective, see equation 7 in [ssm]_
     """
-    result = (random_direction_vector @ grad_score_times_random_direction_matrix + 0.5 *
-              (random_direction_vector @ score_matrix) ** 2)
+    result = (
+        random_direction_vector @ grad_score_times_random_direction_matrix
+        + 0.5 * (random_direction_vector @ score_matrix) ** 2
+    )
     return result
 
 
