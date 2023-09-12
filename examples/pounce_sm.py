@@ -10,23 +10,24 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import numpy as np
-import matplotlib.pyplot as plt
-import imageio
 import os
-from sklearn.decomposition import PCA
-import jax.numpy as jnp
-from jax.random import rademacher
 from pathlib import Path
 
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element
+import imageio
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from jax.random import rademacher
+from sklearn.decomposition import PCA
+
+from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
 from coreax.kernel_herding import stein_kernel_herding_block
-from coreax.score_matching import sliced_score_matching
 from coreax.metrics import mmd_block
+from coreax.score_matching import sliced_score_matching
 
 
 def main(
-        directory: Path = Path("examples") / Path("data") / Path("pounce")
+    directory: Path = Path("examples") / Path("data") / Path("pounce"),
 ) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with score matching.
@@ -78,8 +79,8 @@ def main(
     print("Coreset:", coreset)
 
     # define a reference kernel to use for comparisons of MMD. We'll use an RBF
-    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
-        (nu * jnp.sqrt(2. * jnp.pi))
+    def k(x, y):
+        return rbf_kernel(x, y, jnp.float32(nu) ** 2) / (nu * jnp.sqrt(2.0 * jnp.pi))
 
     # compute the MMD between X and the coreset
     m = mmd_block(X, X[coreset], k, max_size=1000)
@@ -117,5 +118,5 @@ def main(
     return m, rm
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

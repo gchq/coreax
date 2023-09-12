@@ -11,15 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
-import matplotlib.pyplot as plt
-import imageio
 import os
-from sklearn.decomposition import PCA
-import jax.numpy as jnp
 from pathlib import Path
 
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_x
+import imageio
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.decomposition import PCA
+
+from coreax.kernel import (
+    median_heuristic,
+    rbf_grad_log_f_x,
+    rbf_kernel,
+    stein_kernel_pc_imq_element,
+)
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 
@@ -60,16 +66,17 @@ def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     nu = median_heuristic(X[idx])
 
     # run Stein kernel herding in block mode to avoid GPU memory issues
-    coreset, Kc, Kbar = \
-        stein_kernel_herding_block(X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000)
+    coreset, Kc, Kbar = stein_kernel_herding_block(
+        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000
+    )
 
     # sort the coreset ready for producing the output video
     coreset = jnp.sort(coreset)
-    print('Coreset: ', coreset)
+    print("Coreset: ", coreset)
 
     # define a reference kernel to use for comparisons of MMD. We'll use an RBF
-    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
-        (nu * jnp.sqrt(2. * jnp.pi))
+    def k(x, y):
+        return rbf_kernel(x, y, jnp.float32(nu) ** 2) / (nu * jnp.sqrt(2.0 * jnp.pi))
 
     # compute the MMD between X and the coreset
     m = mmd_block(X, X[coreset], k, max_size=1000)
@@ -92,11 +99,11 @@ def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     action_frames = np.arange(63, 85)
     x = np.arange(N)
     y = np.zeros(N)
-    y[coreset] = 1.
+    y[coreset] = 1.0
     z = np.zeros(N)
-    z[jnp.intersect1d(coreset, action_frames)] = 1.
+    z[jnp.intersect1d(coreset, action_frames)] = 1.0
     plt.figure(figsize=(20, 3))
-    plt.bar(x, y, alpha=.5)
+    plt.bar(x, y, alpha=0.5)
     plt.bar(x, z)
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
@@ -107,5 +114,5 @@ def main(directory: Path = "./examples/data/pounce") -> tuple[float, float]:
     return m, rm
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

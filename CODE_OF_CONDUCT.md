@@ -1,18 +1,18 @@
 Community Code of Conduct
 =========================
 
-Our Pledge 
+Our Pledge
 ----------
 
-In the interest of fostering an open and welcoming environment, we as 
-contributors and maintainers pledge to make participation in our project and 
-our community a harassment-free experience for everyone, regardless of age, 
-body size, disability, ethnicity, sex characteristics, gender identity and 
-expression, level of experience, education, socio-economic status, 
-nationality, personal appearance, race, religion, or sexual identity and 
+In the interest of fostering an open and welcoming environment, we as
+contributors and maintainers pledge to make participation in our project and
+our community a harassment-free experience for everyone, regardless of age,
+body size, disability, ethnicity, sex characteristics, gender identity and
+expression, level of experience, education, socio-economic status,
+nationality, personal appearance, race, religion, or sexual identity and
 orientation.
 
-Our Standards 
+Our Standards
 -------------
 
 - Being open. Members of the community are open to collaboration.
@@ -20,7 +20,7 @@ Our Standards
 - Acknowledging time and effort. We're respectful of the volunteer efforts that permeate the community. We're thoughtful when addressing the efforts of others, keeping in mind that often times the labour was completed simply for the good of the community.
 - Being respectful of differing viewpoints and experiences. We're receptive to constructive comments and criticism, as the experiences and skill sets of other members contribute to the whole of our efforts.
 - Being considerate towards other community members. We're attentive in our communications and we're tactful when approaching differing views.
-- Using welcoming and inclusive language. We're accepting of all who wish to take part in our activities, fostering an environment where anyone can participate and everyone can make a difference. 
+- Using welcoming and inclusive language. We're accepting of all who wish to take part in our activities, fostering an environment where anyone can participate and everyone can make a difference.
 - Take responsibility for our words and our actions. We can all make mistakes; when we do, we take responsibility for them. If someone has been harmed or offended, we listen carefully and respectfully, and work to right the wrong.
 - Step down considerately. When somebody leaves or disengages from the project, we ask that they do so in a way that minimises disruption to the project.
 - Ask for help when unsure. Nobody is expected to be perfect in this community. Asking questions early avoids many problems later, so questions are encouraged, though they may be directed to the appropriate forum. Those who are asked should be responsive and helpful.
@@ -36,9 +36,9 @@ Enforcement
 -----------
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible
-for enforcement at [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk). All complaints will be reviewed and investigated promptly and fairly, and will 
+for enforcement at [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk). All complaints will be reviewed and investigated promptly and fairly, and will
 result in a response that is deemed necessary and appropriate to the circumstances. The community leaders responsible
-for enforcement are obligated to maintain confidentiality with regard to the reporter of an incident. 
+for enforcement are obligated to maintain confidentiality with regard to the reporter of an incident.
 Further details of specific enforcement policies may be posted separately.
 
 Attribution
