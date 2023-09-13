@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest.mock import call, patch
 
@@ -51,8 +52,19 @@ class TestExamples(unittest.TestCase):
             patch("builtins.print") as mock_print,
             patch("matplotlib.pyplot.show") as mock_show,
         ):
+
             # run david.py
-            in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
+            if os.path.isfile(Path.cwd().parent / Path("examples/data/david_orig.png")):
+                in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
+            elif os.path.isfile(Path("examples/data/david_orig.png")):
+                in_path = Path("examples/data/david_orig.png")
+            else:
+                raise FileNotFoundError(
+                    'david_orig.png does not appear to exist. Aborting.'
+                )
+
+            # in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
+
             out_path = Path(tmp_dir) / "david_coreset.png"
             mmd_coreset, mmd_random = david_main(in_path=in_path, out_path=out_path)
 
