@@ -54,17 +54,9 @@ class TestExamples(unittest.TestCase):
         ):
 
             # run david.py
-            # if os.path.isfile(Path.cwd().parent / Path("examples/data/david_orig.png")):
-            #     in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
-            # elif os.path.isfile(Path("examples/data/david_orig.png")):
-            #     in_path = Path("examples/data/david_orig.png")
-            # else:
-            #     raise FileNotFoundError(
-            #         'david_orig.png does not appear to exist. Aborting.'
-            #     )
-            # in_path = Path.cwd().parent / Path("examples/data/david_orig.png")
-
-            in_path = Path(os.path.dirname(__file__)) / Path('../examples/data/david_orig.png')
+            in_path = Path(os.path.dirname(__file__)) / Path(
+                '../examples/data/david_orig.png'
+            )
             out_path = Path(tmp_dir) / "david_coreset.png"
             mmd_coreset, mmd_random = david_main(in_path=in_path, out_path=out_path)
 
@@ -91,8 +83,9 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check pounce.py runs without error, generates output, and
         has coreset MMD better than MMD from random sampling.
         """
-
-        directory = Path.cwd().parent / Path("examples/data/pounce")
+        directory = Path(os.path.dirname(__file__)) / Path(
+            '../examples/data/pounce'
+        )
 
         # delete output files if already present
         out_dir = directory / "coreset"
@@ -121,8 +114,9 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check pounce_sm.py runs without error, generates output,
         and has coreset MMD better than MMD from random sampling.
         """
-
-        directory = Path.cwd().parent / Path("examples/data/pounce")
+        directory = Path(os.path.dirname(__file__)) / Path(
+            '../examples/data/pounce'
+        )
 
         # delete output files if already present
         out_dir = directory / "coreset_sm"
