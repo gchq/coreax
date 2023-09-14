@@ -16,28 +16,40 @@ import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.utils import KernelFunction
+from coreax.utils import KernelFunction, apply_negative_precision_threshold
 
 
-def mmd(x: ArrayLike, x_c: ArrayLike, kernel: KernelFunction) -> Array:
+def mmd(
+    x: ArrayLike,
+    x_c: ArrayLike,
+    kernel: KernelFunction,
+    precision_threshold: float = 1e-8,
+) -> Array:
     r"""
-    Calculate maximum mean discrepancy (MMD).
+     Calculate maximum mean discrepancy (MMD).
 
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m \times d` coreset
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :return: Maximum mean discrepancy as a 0-dimensional array
+     :param x: The original :math:`n \times d` data
+     :param x_c: :math:`m \times d` coreset
+     :param kernel: Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param precision_threshold: Positive threshold we compare against for precision
+     :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
     )
 
-    return jnp.sqrt(
-        k_pairwise(x, x).mean()
-        + k_pairwise(x_c, x_c).mean()
-        - 2 * k_pairwise(x, x_c).mean()
+    # Compute MMD, correcting for any numerical precision issues, where we would
+    # otherwise square-root a negative number very close to 0.0.
+    result = jnp.sqrt(
+        apply_negative_precision_threshold(
+            k_pairwise(x, x).mean()
+            + k_pairwise(x_c, x_c).mean()
+            - 2 * k_pairwise(x, x_c).mean(),
+            precision_threshold,
+        )
     )
+    return result
 
 
 def wmmd(
@@ -45,6 +57,7 @@ def wmmd(
     x_c: ArrayLike,
     kernel: KernelFunction,
     weights: ArrayLike,
+    precision_threshold: float = 1e-8,
 ) -> float:
     r"""
     Calculate one-sided, weighted maximum mean discrepancy (MMD).
@@ -56,6 +69,7 @@ def wmmd(
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param weights: Weights vector
+    :param precision_threshold: Positive threshold we compare against for precision
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(
@@ -66,11 +80,18 @@ def wmmd(
     Kmm = k_pairwise(x_c, x_c)
     Knn = k_pairwise(x, x)
     Kmn = k_pairwise(x_c, x).mean(axis=1)
-    return jnp.sqrt(
-        jnp.dot(weights.T, jnp.dot(Kmm, weights))
-        + Knn.sum() / n**2
-        - 2 * jnp.dot(weights.T, Kmn)
-    ).item()
+
+    # Compute MMD, correcting for any numerical precision issues, where we would
+    # otherwise square-root a negative number very close to 0.0.
+    result = jnp.sqrt(
+        apply_negative_precision_threshold(
+            jnp.dot(weights.T, jnp.dot(Kmm, weights))
+            + Knn.sum() / n**2
+            - 2 * jnp.dot(weights.T, Kmn),
+            precision_threshold,
+        )
+    )
+    return result
 
 
 def sum_K(
@@ -97,6 +118,7 @@ def mmd_block(
     x_c: ArrayLike,
     kernel: KernelFunction,
     max_size: int = 10_000,
+    precision_threshold: float = 1e-8,
 ) -> Array:
     r"""
     Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
@@ -106,6 +128,7 @@ def mmd_block(
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
+    :param precision_threshold: Positive threshold we compare against for precision
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(
@@ -120,7 +143,14 @@ def mmd_block(
     K_m = sum_K(x_c, x_c, k_pairwise, max_size)
     K_nm = sum_K(x, x_c, k_pairwise, max_size)
 
-    return jnp.sqrt(K_n / n**2 + K_m / m**2 - 2 * K_nm / (n * m))
+    # Compute MMD, correcting for any numerical precision issues, where we would
+    # otherwise square-root a negative number very close to 0.0.
+    result = jnp.sqrt(
+        apply_negative_precision_threshold(
+            K_n / n**2 + K_m / m**2 - 2 * K_nm / (n * m), precision_threshold
+        )
+    )
+    return result
 
 
 def sum_weight_K(
@@ -155,6 +185,7 @@ def mmd_weight_block(
     w_c: ArrayLike,
     kernel: KernelFunction,
     max_size: int = 10_000,
+    precision_threshold: float = 1e-8,
 ) -> Array:
     r"""
     Calculate weighted maximum mean discrepancy (MMD).
@@ -168,6 +199,7 @@ def mmd_weight_block(
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
+    :param precision_threshold: Positive threshold we compare against for precision
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(
@@ -182,4 +214,11 @@ def mmd_weight_block(
     K_m = sum_weight_K(x_c, x_c, w_c, w_c, k_pairwise, max_size)
     K_nm = sum_weight_K(x, x_c, w, w_c, k_pairwise, max_size)
 
-    return jnp.sqrt(K_n / n**2 + K_m / m**2 - 2 * K_nm / (n * m))
+    # Compute MMD, correcting for any numerical precision issues, where we would
+    # otherwise square-root a negative number very close to 0.0.
+    result = jnp.sqrt(
+        apply_negative_precision_threshold(
+            K_n / n**2 + K_m / m**2 - 2 * K_nm / (n * m), precision_threshold
+        )
+    )
+    return result

@@ -122,3 +122,32 @@ def calculate_K_sum(
             K_sum = update_K_sum(X, K_sum, i, j, max_size, k_pairwise, grads, nu)
 
     return K_sum
+
+
+def apply_negative_precision_threshold(
+    x: float | ArrayLike, precision_threshold: float = 1e-8
+) -> float:
+    """
+    Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
+
+    :param x: Value we wish to compare to 0.0
+    :param precision_threshold: Positive threshold we compare against for precision
+    :returns: x, rounded to 0.0 if it is between -precision_threshold and 0.0
+    """
+
+    # We can only apply this to floats, or zero-dimensional jax arrays
+    if not isinstance(x, float):
+        assert x.shape == ()
+
+    # We have to compare to a positive precision threshold
+    if precision_threshold < 0.0:
+        raise Exception(
+            f"precision_threshold must be positive, value {precision_threshold} given. "
+            f"Aborting."
+        )
+
+    # Round x to 0.0 if it is negative but still within precision_threshold of 0.0
+    if -precision_threshold < x < 0.0:
+        return 0.0
+    else:
+        return x
