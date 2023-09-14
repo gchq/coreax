@@ -363,7 +363,7 @@ def scalable_herding(
     X: ArrayLike,
     indices: ArrayLike,
     n_core: int,
-    function: Callable[..., Array],
+    function: Callable[..., tuple[Array, Array, Array]],
     w_function: KernelFunction | None,
     size: int = 1000,
     parallel: bool = True,
@@ -397,12 +397,11 @@ def scalable_herding(
     :param X: Original :math:`n \times d` dataset
     :param indices: Indices into original dataset, used for recursion
     :param n_core: Number of coreset points to calculate
-    :param function: The Kernel function,
-                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d`
-                     :math:`\rightarrow \mathbb{R}
+    :param function: Kernel herding function to call on each block
     :param w_function: Weights function. If unweighted, this is `None`
     :param size: Region size in number of points. Optional, defaults to `1000`
     :param parallel: Use multiprocessing. Optional, defaults to `True`
+    :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
     :return: Coreset and weights, where weights is empty if unweighted
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
