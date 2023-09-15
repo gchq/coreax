@@ -510,9 +510,7 @@ def stein_kernel_pc_imq_element(
     # n x m
     pc_imq_kernel = pc_imq(x, y, bandwidth)
     # n x m
-    divergence: Array = pc_imq_div_x_grad_y(
-        x, y, bandwidth, dimension, pc_imq_kernel
-    )
+    divergence: Array = pc_imq_div_x_grad_y(x, y, bandwidth, dimension, pc_imq_kernel)
     # n x m x d
     grad_p_x = jnp.squeeze(grad_pc_imq_x(x, y, bandwidth, pc_imq_kernel))
     # m x n x d
