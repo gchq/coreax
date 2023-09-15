@@ -238,7 +238,8 @@ class TestKernels(unittest.TestCase):
         X = np.random.random((n, d))
         kde_points = np.random.random((n, d))
         kde = lambda x: (
-            np.exp(-np.linalg.norm(x - kde_points, axis=1)[:, None] ** 2
+            np.exp(
+                -np.linalg.norm(x - kde_points, axis=1)[:, None] ** 2
                 / (2 * bandwidth**2)
             )
             / (np.sqrt(2 * np.pi) * bandwidth)
@@ -265,13 +266,20 @@ class TestKernels(unittest.TestCase):
         d = 2
         bandwidth = 1 / np.sqrt(2)
         score_fn = lambda x: -x
-        beta = .5
+        beta = 0.5
+
         def k_x_y(x, y):
-            norm_sq = np.linalg.norm(x - y)**2
-            l = -3 * norm_sq / (1 + norm_sq)**2.5
-            m = 2 * beta * (d + np.dot(score_fn(x) - score_fn(y), x - y)) / (1 + norm_sq)**1.5
-            r = np.dot(score_fn(x), score_fn(y)) / (1 + norm_sq)**.5
+            norm_sq = np.linalg.norm(x - y) ** 2
+            l = -3 * norm_sq / (1 + norm_sq) ** 2.5
+            m = (
+                2
+                * beta
+                * (d + np.dot(score_fn(x) - score_fn(y), x - y))
+                / (1 + norm_sq) ** 1.5
+            )
+            r = np.dot(score_fn(x), score_fn(y)) / (1 + norm_sq) ** 0.5
             return l + m + r
+
         X = np.random.random((n, d))
         Y = np.random.random((n, d))
         K = np.zeros((n, n))
@@ -279,8 +287,10 @@ class TestKernels(unittest.TestCase):
         for i, x in enumerate(X):
             for j, y in enumerate(Y):
                 K_ans[i, j] = k_x_y(x, y)
-                K[i, j] = stein_kernel_pc_imq_element(x, y, score_fn(x), score_fn(y), d, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(K - K_ans), 0., places=3)
+                K[i, j] = stein_kernel_pc_imq_element(
+                    x, y, score_fn(x), score_fn(y), d, bandwidth
+                )
+        self.assertAlmostEqual(jnp.linalg.norm(K - K_ans), 0.0, places=3)
 
 
 if __name__ == "__main__":
