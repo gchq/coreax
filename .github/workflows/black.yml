@@ -10,7 +10,6 @@ jobs:
       - uses: psf/black@stable
         with:
           options: "--check --verbose"
-          src: "./src"
           version: "~= 22.0"
       - uses: actions/setup-python@v3
         with:
