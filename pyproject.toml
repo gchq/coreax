@@ -53,3 +53,15 @@ profile = "black"
 
 [tool.setuptools]
 packages = ["coreax"]
+
+[tool.coverage.run]
+command_line = "-m unittest discover"
+source = ["coreax"]
+omit = ["*/__init__.py", "*/__main__.py"]
+
+[tool.coverage.report]
+sort = "Cover"
+exclude_lines = [
+    "pass",
+    "raise RuntimeError"
+]
