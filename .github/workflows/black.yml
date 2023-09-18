@@ -1,0 +1,20 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "./src"
+          version: "~= 22.0"
+      - uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
+      - uses: isort/isort-action@master
+        with:
+            requirementsFiles: "requirements.txt requirements-dev.txt"
