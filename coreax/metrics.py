@@ -79,10 +79,23 @@ def sum_K(
     k_pairwise: KernelFunction,
     max_size: int = 10_000,
 ) -> float:
+    r"""
+    Explanation of sum_K function to go here.
+
+    :param x: :math:`n \times 1` array
+    :param y: :math:`m \times 1` array
+    :param k_pairwise: Kernel function
+    :param max_size: Size of matrix blocks to process
+    """
+
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
     m = len(y)
+
+    if max_size > min(n, m):
+        raise ValueError("The value of max_size exceeds the size of the data.")
+
     output = 0
     for i in range(0, n, max_size):
         for j in range(0, m, max_size):
@@ -131,10 +144,24 @@ def sum_weight_K(
     k_pairwise: KernelFunction,
     max_size: int = 10_000,
 ) -> float:
+    r"""
+    Explanation of sum_weight_K function to go here.
+
+    :param x: :math:`n \times 1` array
+    :param y: :math:`m \times 1` array
+    :param w_x: :math: weights for x, `n \times 1` array
+    :param w_y: :math: weights for y, `m \times 1` array
+    :param k_pairwise: Kernel function
+    :param max_size: Size of matrix blocks to process
+    """
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
     m = len(y)
+
+    if max_size > min(n, m):
+        raise ValueError("The value of max_size exceeds the size of the data.")
+
     output = 0
     for i in range(0, n, max_size):
         for j in range(0, m, max_size):
