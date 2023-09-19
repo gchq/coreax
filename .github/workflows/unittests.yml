@@ -29,4 +29,4 @@ jobs:
         if [ -f requirements-dev.txt ]; then pip install --no-dependencies -r requirements-dev.txt; fi
     - name: Test with pytest
       run: |
-        pytest
+        pytest --ignore=tests/integration
