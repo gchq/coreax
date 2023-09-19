@@ -13,7 +13,7 @@ jobs:
           version: "~= 22.0"
       - uses: actions/setup-python@v3
         with:
-          python-version: 3.9
+          python-version: 3.11
       - uses: isort/isort-action@master
         with:
             requirementsFiles: "requirements.txt requirements-dev.txt"
