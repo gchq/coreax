@@ -20,297 +20,266 @@ from coreax.kernel import *
 from coreax.metrics import *
 
 
-def dummy_data(n, d, m):
-    """
-    Randomly generate dummy data for use in unit tests of metrics.py.
-
-    :param n: Number of test data points
-    :param d: Dimension of data
-    :param m: Number of points to randomly select for coreset
-    """
-
-    # Generate n random points in d dimensions from a uniform distribution [0, 1)
-    x = np.random.rand(n, d)
-    # Randomly select m points
-    sel = np.random.choice(x.shape[0], size=m, replace=False)
-    x_c = x[sel]
-
-    return x, x_c
-
-
-def gaussian_kernel(A, B, Var):
-    """
+def gaussian_kernel(a: ArrayLike, b: ArrayLike, var: float = 1.0):
+    r"""
     Define Gaussian kernel for use in test functions
+
+    :param a: First set of vectors as a :math:`n \times d` array
+    :param b: Second set of vectors as a :math:`m \times d` array
+    :param var: Variance. Optional, defaults to 1
     """
-    M = A.shape[0]
-    N = B.shape[0]
+    m = a.shape[0]
+    n = b.shape[0]
 
-    A_dots = (A * A).sum(axis=1).reshape((M, 1)) * np.ones(shape=(1, N))
-    B_dots = (B * B).sum(axis=1) * np.ones(shape=(M, 1))
-    dist_squared = A_dots + B_dots - 2 * A.dot(B.T)
+    a_dots = (a * a).sum(axis=1).reshape((m, 1)) * np.ones(shape=(1, n))
+    b_dots = (b * b).sum(axis=1) * np.ones(shape=(m, 1))
+    dist_squared = a_dots + b_dots - 2 * a.dot(b.T)
 
-    g_kern = np.exp(-dist_squared / (2 * Var))
+    g_kern = np.exp(-dist_squared / (2 * var))
     return g_kern
 
 
 class TestMetrics(unittest.TestCase):
-    """
+    r"""
     Tests related to metrics.py functions.
     """
+
+    def setUp(self):
+        r"""
+        Generate data for shared use across unit tests.
+        Generate n random points in d dimensions from a uniform distribution [0, 1), and
+        randomly select m points for coreset.
+        Also generate weights: w, for original dataset, and w_c, for the coreset.
+
+        : n: Number of test data points
+        : d: Dimension of data
+        : m: Number of points to randomly select for coreset
+        : max_size: Maximum number of points for block calculations
+        """
+
+        self.n = 50
+        self.d = 10
+        self.m = 5
+        self.max_size = 3
+
+        self.x = np.random.rand(self.n, self.d)
+        sel = np.random.choice(self.x.shape[0], size=self.m, replace=False)
+        self.x_c = self.x[sel]
+
+        self.w = np.random.rand(self.n, 1)
+        # self.w_c = np.random.rand(self.m, 1)
+        self.w_c = self.w[sel]
 
     def test_mmd(self) -> None:
         """
         Test the maximum mean discrepancy (MMD) function.
+
+        Tests that MMD(X,X) = 0.
+
+        Tests toy examples, with analytically determined results.
+
+        Tests that MMD computed from randomly generated test data agrees with mmd().
         """
 
-        # Set test data parameters:
-        n = 50  # number of points
-        d = 10  # dimensions
-        m = 5  # number of points for coreset, m<n
+        self.assertAlmostEqual(mmd(self.x, self.x, rbf_kernel), 0.0, places=3)
 
-        x, x_c = dummy_data(n, d, m)
+        mmd_test = mmd(
+            x=np.array([[0, 0], [1, 1], [0, 0], [1, 1]]),
+            x_c=np.array([[0, 0], [1, 1]]),
+            kernel=rbf_kernel,
+        )
+        self.assertAlmostEqual(mmd_test, 0.0, places=3)
 
-        # Calculate kernel matrices
-        var = 1
-        Knn = gaussian_kernel(x, x, var)
-        Kmm = gaussian_kernel(x_c, x_c, var)
-        Knm = gaussian_kernel(x, x_c, var)
+        mmd_test = mmd(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=np.array([[0, 0], [1, 1]]),
+            kernel=rbf_kernel,
+        )
+        self.assertAlmostEqual(
+            mmd_test, (np.sqrt((3 - np.exp(-1) - 2 * np.exp(-4)) / 18)), places=5
+        )
 
-        # Calculate MMD
+        Knn = gaussian_kernel(self.x, self.x)
+        Kmm = gaussian_kernel(self.x_c, self.x_c)
+        Knm = gaussian_kernel(self.x, self.x_c)
+
         mmd_rbf = (Knn.mean() + Kmm.mean() - 2 * Knm.mean()) ** 0.5
-        # Get MMD from function being tested
-        mmd_rbf_test = mmd(x, x_c, rbf_kernel)
-        # Test for equality
-        self.assertAlmostEqual(mmd_rbf_test, mmd_rbf, places=3)
+        mmd_rbf_test = mmd(self.x, self.x_c, rbf_kernel)
 
-        t_mmd = mmd(x, x, rbf_kernel)
-        # Test that MMD of data with itself is zero
-        self.assertAlmostEqual(np.zeros(1), t_mmd, places=3)
+        self.assertAlmostEqual(mmd_rbf_test, mmd_rbf, places=3)
 
     def test_wmmd(self) -> None:
         """
         Test the weighted maximum mean discrepancy (wmmd) function.
+
+        Tests toy example, with analytically determined result.
+
+        Tests that WMMD computed from randomly generated test data agrees with wmmd().
+
+        Tests that wmmd = mmd if weights = 1/m.
         """
+        wmmd_test = wmmd(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=np.array([[0, 0], [1, 1]]),
+            kernel=rbf_kernel,
+            weights=np.array([1, 0]),
+        )
+        self.assertAlmostEqual(
+            wmmd_test,
+            (np.sqrt(2 / 3 - (2 / 9) * np.exp(-1) - (4 / 9) * np.exp(-4))),
+            places=5,
+        )
 
-        # Set test data parameters:
-        n = 50  # number of points
-        d = 10  # dimensions
-        m = 5  # number of points for coreset, m<n
+        Knn = gaussian_kernel(self.x, self.x)
+        Kmm = gaussian_kernel(self.x_c, self.x_c)
+        Knm = gaussian_kernel(self.x, self.x_c)
 
-        # Generate n random points in d dimensions from a uniform distribution [0, 1)
-        x, x_c = dummy_data(n, d, m)
-
-        # Generate random weights vector and normalise so it sums to 1
-        weights = np.random.rand(m, 1)
-
-        var = 1
-
-        Knn = gaussian_kernel(x, x, var)
-        Kmm = gaussian_kernel(x_c, x_c, var)
-        Knm = gaussian_kernel(x, x_c, var)
-        # Calculate weighted MMD
         wmmd_rbf = (
             np.mean(Knn)
-            + np.dot(weights.T, np.dot(Kmm, weights))
-            - 2 * np.dot(weights.T, Knm.mean(axis=0))
+            + np.dot(self.w_c.T, np.dot(Kmm, self.w_c))
+            - 2 * np.dot(self.w_c.T, Knm.mean(axis=0))
         ).item() ** 0.5
-        # Get weighted MMD from function being tested
-        wmmd_rbf_test = wmmd(x, x_c, rbf_kernel, weights)
-        # Assert equality
+
+        wmmd_rbf_test = wmmd(self.x, self.x_c, rbf_kernel, self.w_c)
+
         self.assertAlmostEqual(wmmd_rbf_test, wmmd_rbf, places=3)
 
-        # Test equality with mmd() if weights = 1/m
         self.assertAlmostEqual(
-            wmmd(x, x_c, rbf_kernel, np.ones(m) / m), mmd(x, x_c, rbf_kernel), places=3
+            wmmd(self.x, self.x_c, rbf_kernel, np.ones(self.m) / self.m),
+            mmd(self.x, self.x_c, rbf_kernel),
+            places=3,
         )
 
     def test_sum_K(self) -> None:
         """
         Test the sum_K function.
+
+        Tests for ValueError if max_size exceeds that of the data.
+
+        Tests toy example, with analytically determined result.
         """
 
-        # Generate test data
-        n = 10  # number of points
-        d = 1  # dimensions
-        m = 5  # number of points for coreset, m=<n
-        x, x_c = dummy_data(n, d, m)
+        self.assertRaises(ValueError, sum_K, self.x, self.x_c, rbf_kernel, max_size=100)
 
-        # Test for Value Error when max_size exceeds m
-        self.assertRaises(ValueError, sum_K, x, x_c, rbf_kernel, max_size=100)
-
-        max_size = 5
-
-        # Calculate kernel sum
-        kernel_sum = 0.0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
-                kern_p = gaussian_kernel(x[i : i + max_size], x_c[j : j + max_size], 1)
-                kernel_sum += kern_p.sum()
-
-        # Get kernel sum from function being tested
-        kernel_sum_test = sum_K(x[:, 0], x_c[:, 0], rbf_kernel, max_size)
-        # Assert equality
-        self.assertAlmostEqual(kernel_sum, kernel_sum_test, places=3)
+        kernel_sum_test = sum_K(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            y=np.array([[0, 0], [1, 1]]),
+            k_pairwise=sq_dist_pairwise,
+            max_size=2,
+        )
+        print(kernel_sum_test)
+        self.assertAlmostEqual(kernel_sum_test, 14, places=3)
 
     def test_mmd_block(self) -> None:
         """
         Test the mmd_block function, which calculates MMD while limiting memory
         requirements.
+
+        Tests toy example, with analytically determined result.
+
+        Tests that MMD block-computed from randomly generated test data agrees with
+        mmd_block().
+
+        Tests that mmd() returns the same as mmd_block().
         """
-        n = 50  # number of points
-        d = 2  # dimensions
-        m = 10  # number of points for coreset, m<n
-        x, x_c = dummy_data(n, d, m)
 
-        max_size = 5
+        mmd_block_test = mmd_block(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=np.array([[0, 0], [1, 1]]),
+            kernel=rbf_kernel,
+            max_size=2,
+        )
+        self.assertAlmostEqual(
+            mmd_block_test, np.sqrt((3 - np.exp(-1) - 2 * np.exp(-4)) / 18), places=3
+        )
 
-        var = 1
-
-        # Calculate K(x,x) matrix in blocks of max_size
         Knn = 0.0
-        for i1 in range(0, n, max_size):
-            for i2 in range(0, n, max_size):
+        for i1 in range(0, self.n, self.max_size):
+            for i2 in range(0, self.n, self.max_size):
                 Knn += gaussian_kernel(
-                    x[i1 : i1 + max_size, :], x[i2 : i2 + max_size, :], var
+                    self.x[i1 : i1 + self.max_size, :],
+                    self.x[i2 : i2 + self.max_size, :],
                 ).sum()
 
-        # Calculate K(x_c,x_c) matrix in blocks of max_size
         Kmm = 0.0
-        for j1 in range(0, m, max_size):
-            for j2 in range(0, m, max_size):
+        for j1 in range(0, self.m, self.max_size):
+            for j2 in range(0, self.m, self.max_size):
                 Kmm += gaussian_kernel(
-                    x_c[j1 : j1 + max_size, :], x_c[j2 : j2 + max_size, :], var
+                    self.x_c[j1 : j1 + self.max_size, :],
+                    self.x_c[j2 : j2 + self.max_size, :],
                 ).sum()
 
-        # Calculate K(x,x_c) matrix in blocks of max_size
         Knm = 0.0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
+        for i in range(0, self.n, self.max_size):
+            for j in range(0, self.m, self.max_size):
                 Knm += gaussian_kernel(
-                    x[i : i + max_size, :], x_c[j : j + max_size, :], var
+                    self.x[i : i + self.max_size, :], self.x_c[j : j + self.max_size, :]
                 ).sum()
 
-        # Average over kernel matrices to calculate MMD
-        mmd_block_rbf = (Knn / n**2 + Kmm / m**2 - 2 * Knm / (n * m)) ** 0.5
-        # Get MMD from function being tested
-        mmd_block_test = mmd_block(x, x_c, rbf_kernel, max_size)
-        # Assert equality
+        mmd_block_rbf = (
+            Knn / self.n**2 + Kmm / self.m**2 - 2 * Knm / (self.n * self.m)
+        ) ** 0.5
+
+        mmd_block_test = mmd_block(self.x, self.x_c, rbf_kernel, self.max_size)
+
         self.assertAlmostEqual(mmd_block_rbf, mmd_block_test, places=3)
 
-        # Test equality with mmd()
-        self.assertAlmostEqual(mmd_block_rbf, mmd(x, x_c, rbf_kernel), places=3)
+        self.assertAlmostEqual(
+            mmd_block_rbf, mmd(self.x, self.x_c, rbf_kernel), places=3
+        )
 
     def test_sum_weight_K(self) -> None:
         """
-        Test the sum_weight_K function.
+        Test the sum_weight_K function. Calculates w^T*K*w matrices in blocks of max_size.
+
+        Tests for ValueError if max_size exceeds that of the data.
+
+        Tests toy example, with analytically determined result.
         """
 
-        n = 10  # number of points
-        d = 1  # dimensions
-        m = 5  # number of points for coreset, m=<n
-        x, y = dummy_data(n, d, m)
-
-        w_x = np.random.rand(n, 1)
-        w_y = np.random.rand(m, 1)
-
-        # Test for Value Error when max_size exceeds m
         self.assertRaises(
-            ValueError, sum_weight_K, x, y, w_x, w_y, rbf_kernel, max_size=100
+            ValueError,
+            sum_weight_K,
+            self.x,
+            self.x_c,
+            self.w,
+            self.w_c,
+            rbf_kernel,
+            max_size=100,
         )
 
-        max_size = 5
+        sum_weight_K_test = sum_weight_K(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            y=np.array([[0, 0], [1, 1]]),
+            w_x=np.asarray([0.5, 0.5, 0]),
+            w_y=np.asarray([1, 0]),
+            k_pairwise=sq_dist_pairwise,
+            max_size=2,
+        )
 
-        # Calculate weighted kernel sum
-        weight_kernel_sum = 0.0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
-                kern_p = (
-                    w_x[i : i + max_size, None]
-                    * gaussian_kernel(x[i : i + max_size], y[j : j + max_size], 1)
-                    * w_y[None, j : j + max_size]
-                )
-
-                weight_kernel_sum += kern_p.sum()
-
-        # Get weighted kernel sum from function being tested
-        sum_weight_K_test = sum_weight_K(x, y, w_x, w_y, rbf_kernel, max_size)
-        # Assert equality
-        self.assertAlmostEqual(weight_kernel_sum, sum_weight_K_test, places=3)
+        self.assertAlmostEqual(sum_weight_K_test, 1.0, places=3)
 
     def test_mmd_weight_block(self) -> None:
         """
         Test the mmd_weight_block function.
+
+        Tests toy example, with analytically determined result.
+
+        Test equality with wmmd().
+
+        Test equality with mmd() when weights = 1/n and coreset weights = 1/m.
         """
 
-        # Set test data parameters:
-        n = 50  # number of points
-        d = 10  # dimensions
-        m = 5  # number of points for coreset, m<n
-
-        # Generate n random points in d dimensions from a uniform distribution [0, 1)
-        x, x_c = dummy_data(n, d, m)
-
-        # Generate random weights vector and normalise so it sums to 1
-        w = np.random.rand(n, 1)
-        w_c = np.random.rand(m, 1)
-
-        max_size = 5
-        var = 1
-
-        # Calculate w^T*K(x,x)*w matrix in blocks of max_size
-        Knn = 0.0
-        for i1 in range(0, n, max_size):
-            for i2 in range(0, n, max_size):
-                Knn += np.dot(
-                    w[i1 : i1 + max_size].T,
-                    np.dot(
-                        gaussian_kernel(
-                            x[i1 : i1 + max_size, :], x[i2 : i2 + max_size, :], var
-                        ),
-                        w[i2 : i2 + max_size],
-                    ),
-                ).sum()
-
-        # Calculate w_c^T*K(x_c,x_c)*w_c matrix in blocks of max_size
-        Kmm = 0.0
-        for j1 in range(0, m, max_size):
-            for j2 in range(0, m, max_size):
-                Kmm += np.dot(
-                    w_c[j1 : j1 + max_size].T,
-                    np.dot(
-                        gaussian_kernel(
-                            x_c[j1 : j1 + max_size, :], x_c[j2 : j2 + max_size, :], var
-                        ),
-                        w_c[j2 : j2 + max_size],
-                    ),
-                ).sum()
-
-        # Calculate w^T*K(x,x_c)*w_c matrix in blocks of max_size
-        Knm = 0.0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
-                Knm += np.dot(
-                    w[i : i + max_size].T,
-                    np.dot(
-                        gaussian_kernel(
-                            x[i : i + max_size, :], x_c[j : j + max_size, :], var
-                        ),
-                        w_c[j : j + max_size],
-                    ),
-                ).sum()
-
-        # Average over kernel matrices to calculate MMD
-        mmd_weight_block_rbf = (Knn / n**2 + Kmm / m**2 - 2 * Knm / (n * m)) ** 0.5
-        # Get MMD from function being tested
-        mmd_weight_block_test = mmd_weight_block(x, x_c, w, w_c, rbf_kernel, max_size)
-        # Assert equality
-        self.assertAlmostEqual(mmd_weight_block_rbf, mmd_weight_block_test, places=3)
-
-        # Test equality with wmmd() when original dataset weights = 1/n
+        mmd_weight_block_test = mmd_weight_block(
+            x=np.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=np.array([[0, 0], [1, 1]]),
+            w=np.asarray([0.5, 0.5, 0]),
+            w_c=np.asarray([1, 0]),
+            kernel=rbf_kernel,
+            max_size=2,
+        )
         self.assertAlmostEqual(
-            mmd_weight_block(x, x_c, np.ones(n) / n, w_c, rbf_kernel, max_size),
-            wmmd(x, x_c, rbf_kernel, w_c),
-            places=3,
+            mmd_weight_block_test, np.sqrt(1 / 2 - np.exp(-1) / 2), places=3
         )
 
 

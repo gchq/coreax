@@ -80,7 +80,8 @@ def sum_K(
     max_size: int = 10_000,
 ) -> float:
     r"""
-    Explanation of sum_K function to go here.
+    Sum the kernel distance between all pairs of points in x and y.
+    The summation is done in blocks to avoid excessive memory usage.
 
     :param x: :math:`n \times 1` array
     :param y: :math:`m \times 1` array
@@ -145,7 +146,8 @@ def sum_weight_K(
     max_size: int = 10_000,
 ) -> float:
     r"""
-    Explanation of sum_weight_K function to go here.
+    Sum the kernel distance (weighted) between all pairs of points in x and y.
+    The summation is done in blocks to avoid excessive memory usage.
 
     :param x: :math:`n \times 1` array
     :param y: :math:`m \times 1` array
