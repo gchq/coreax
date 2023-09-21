@@ -31,7 +31,7 @@ from coreax.metrics import mmd_block
 
 
 def main(
-        directory: Path = Path(os.path.dirname(__file__)) / "../examples/data/pounce"
+    directory: Path = Path(os.path.dirname(__file__)) / "../examples/data/pounce",
 ) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with Stein kernel herding.

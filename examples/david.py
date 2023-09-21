@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
 import os
+from pathlib import Path
 
 import cv2
 import jax.numpy as jnp
@@ -31,8 +31,9 @@ from coreax.weights import qp
 
 
 def main(
-    in_path: Path = Path(os.path.dirname(__file__)) / Path("../examples/data/david_orig.png"),
-    out_path: Path = None
+    in_path: Path = Path(os.path.dirname(__file__))
+    / Path("../examples/data/david_orig.png"),
+    out_path: Path = None,
 ) -> tuple[float, float]:
     """
     Run the 'david' example for image sampling.
