@@ -114,7 +114,7 @@ class TestMetrics(unittest.TestCase):
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
             kernel=rbf_kernel,
-            w_c=jnp.array([1, 0]),
+            weights=jnp.array([1, 0]),
         )
         self.assertAlmostEqual(
             wmmd_test1,
