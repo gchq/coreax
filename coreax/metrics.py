@@ -115,14 +115,15 @@ def sum_K(
     n = len(x)
     m = len(y)
 
-    if max_size > min(n, m):
-        raise ValueError("The value of max_size exceeds the size of the data.")
+    if max_size > max(m, n):
+        output = k_pairwise(x, y).sum()
 
-    output = 0
-    for i in range(0, n, max_size):
-        for j in range(0, m, max_size):
-            K_part = k_pairwise(x[i : i + max_size], y[j : j + max_size])
-            output += K_part.sum()
+    else:
+        output = 0
+        for i in range(0, n, max_size):
+            for j in range(0, m, max_size):
+                K_part = k_pairwise(x[i : i + max_size], y[j : j + max_size])
+                output += K_part.sum()
 
     return output
 
@@ -191,18 +192,20 @@ def sum_weight_K(
     n = len(x)
     m = len(y)
 
-    if max_size > min(n, m):
-        raise ValueError("The value of max_size exceeds the size of the data.")
+    if max_size > max(m, n):
+        Kw = k_pairwise(x, y) * w_y
+        output = (w_x * Kw.T).sum()
 
-    output = 0
-    for i in range(0, n, max_size):
-        for j in range(0, m, max_size):
-            K_part = (
-                w_x[i : i + max_size, None]
-                * k_pairwise(x[i : i + max_size], y[j : j + max_size])
-                * w_y[None, j : j + max_size]
-            )
-            output += K_part.sum()
+    else:
+        output = 0
+        for i in range(0, n, max_size):
+            for j in range(0, m, max_size):
+                K_part = (
+                    w_x[i : i + max_size, None]
+                    * k_pairwise(x[i : i + max_size], y[j : j + max_size])
+                    * w_y[None, j : j + max_size]
+                )
+                output += K_part.sum()
 
     return output
 
