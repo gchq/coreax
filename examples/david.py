@@ -31,8 +31,9 @@ from coreax.weights import qp
 
 
 def main(
-    in_path: Path = Path(os.path.dirname(__file__))
-    / Path("../examples/data/david_orig.png"),
+    in_path: Path = (
+        Path(os.path.dirname(__file__)) / Path("../examples/data/david_orig.png")
+    ),
     out_path: Path = None,
 ) -> tuple[float, float]:
     """
