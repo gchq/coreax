@@ -62,13 +62,13 @@ def wmmd(
     r"""
     Calculate one-sided, weighted maximum mean discrepancy (MMD).
 
-    Only corset points are weighted.
+    Only coreset points are weighted.
 
     :param x: The original :math:`n \times d` data
     :param x_c: :math:`m \times d` coreset
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param weights: Weights vector
+    :param weights: :math:`n \times 1` weights vector
     :param precision_threshold: Positive threshold we compare against for precision
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
