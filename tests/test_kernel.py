@@ -269,6 +269,31 @@ class TestKernels(unittest.TestCase):
         beta = 0.5
 
         def k_x_y(x, y):
+            r"""The Stein kernel.
+
+            The base kernel is :math:`(1 + \lvert \mathbf{x} - \mathbf{y}
+            \rvert^2)^{-1/2}`. :math:`\mathbb{P}` is :math:`\mathcal{N}(0, \mathbf{I})`
+            with :math:`\nabla \log f_X(\mathbf{x}) = -\mathbf{x}`.
+
+            In the code: l, m and r refer to shared denominators in the Stein kernel
+            equation (rather than divergence, x_, y_ and z in the main code function).
+
+            :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = l + m + r`.
+
+            :math:`l := -\frac{3 \lvert \mathbf{x} - \mathbf{y} \rvert^2}{(1 + \lvert
+            \mathbf{x} - \mathbf{y} \rvert^2)^{5/2}}`.
+
+            :math:`m := 2\beta\left[ \frac{d + [\mathbf{y} -
+            \mathbf{x}]^\intercal[\mathbf{x} - \mathbf{y}]}{(1 + \lvert \mathbf{x} -
+            \mathbf{y} \rvert^2)^{3/2}} \right]`.
+
+            :math:`r := \frac{\mathbf{x}^\intercal \mathbf{y}}{(1 + \lvert \mathbf{x} -
+            \mathbf{y} \rvert^2)^{1/2}}`.
+
+            :param x: a d-dimensional vector
+            :param y: a d-dimensional vector
+            :return: kernel evaluated at x, y
+            """
             norm_sq = np.linalg.norm(x - y) ** 2
             l = -3 * norm_sq / (1 + norm_sq) ** 2.5
             m = (
