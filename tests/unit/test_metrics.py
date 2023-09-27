@@ -14,20 +14,24 @@
 
 import unittest
 
+import jax.numpy as jnp
 from jax import random
 
-from coreax.kernel import *
-from coreax.metrics import *
+import coreax.kernel as ck
+import coreax.metrics as cm
 
 
-def gaussian_kernel(a: ArrayLike, b: ArrayLike, var: float = 1.0):
+def gaussian_kernel(a: cm.ArrayLike, b: cm.ArrayLike, var: float = 1.0) -> cm.ArrayLike:
     r"""
-    Define Gaussian kernel for use in test functions
+    Define the Gaussian kernel (aka RBF kernel) for using in test functions.
 
     :param a: First set of vectors as a :math:`n \times d` array
     :param b: Second set of vectors as a :math:`m \times d` array
     :param var: Variance. Optional, defaults to 1
+    :return: Gaussian kernel matrix, :math:`n \times m` array with entry :math:`i,j` as
+     :math:`k(a_i, b_j)`, the kernel evaluated for points :math:`a_i, b_j`
     """
+
     m = a.shape[0]
     n = b.shape[0]
 
@@ -47,14 +51,15 @@ class TestMetrics(unittest.TestCase):
     def setUp(self):
         r"""
         Generate data for shared use across unit tests.
-        Generate n random points in d dimensions from a uniform distribution [0, 1), and
-        randomly select m points for coreset.
-        Also generate weights: w, for original dataset, and w_c, for the coreset.
 
-        : n: Number of test data points
-        : d: Dimension of data
-        : m: Number of points to randomly select for coreset
-        : max_size: Maximum number of points for block calculations
+        Generate n random points in d dimensions from a uniform distribution [0, 1), and
+        randomly select m points for coreset. Also generate weights: w, for original #
+        dataset, and w_c, for the coreset.
+
+        :param n: Number of test data points
+        :param d: Dimension of data
+        :param m: Number of points to randomly select for coreset
+        :param max_size: Maximum number of points for block calculations
         """
 
         self.n = 30
@@ -67,109 +72,240 @@ class TestMetrics(unittest.TestCase):
         self.w = random.uniform(random.PRNGKey(0), shape=(self.n,)) / self.n
         self.w_c = random.uniform(random.PRNGKey(0), shape=(self.m,)) / self.m
 
-    def test_mmd(self) -> None:
+    def test_mmd_XX(self) -> None:
         r"""
-        Tests the maximum mean discrepancy (MMD) function.
+        Test the maximum mean discrepancy (MMD) function.
 
-        1. Tests that MMD(X,X) = 0.
-        2 & 3. Tests toy examples, with analytically determined results.
-        4. Tests that MMD computed from randomly generated test data agrees with mmd().
+        Test that MMD of a dataset with itself is zero, for several different kernels.
         """
 
-        self.assertAlmostEqual(mmd(self.x, self.x, rbf_kernel), 0.0, places=3)
+        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.rbf_kernel), 0.0, places=3)
 
-        mmd_test2 = mmd(
+        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.laplace_kernel), 0.0, places=3)
+
+        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.pc_imq), 0.0, places=3)
+
+    def test_mmd_ones(self):
+        r"""
+        Test MMD function with a toy example, small dataset of ones and zeros.
+
+        For a toy dataset of 4 points in 2 dimensions, :math:`X`, and a coreset,
+        :math:`X_c`, given by:
+
+        .. math::
+
+            X = [[0,0], [1,1], [0,0], [1,1]]
+
+            X_c = [[0,0],[1,1]]
+
+        the Gaussian (aka radial basis function) kernel, :math:`k(x,y) = \exp (-||
+        x-y||^2/2\sigma^2)`, gives:
+
+        .. math::
+
+            k(X,X) = \exp(-\begin{bmatrix}0 & 2 & 0 & 2 \\ 2 & 0 & 2 & 0\\ 0 & 2 & 0 &
+            2 \\ 2 & 0 & 2 & 0\end{bmatrix}/2\sigma^2).
+
+            k(X_c,X_c) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \end{bmatrix}/2\sigma^2).
+
+            k(X,X_c) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \\0 & 2  \\ 2 & 0
+            \end{bmatrix}/2\sigma^2).
+
+        Then
+
+        .. math::
+
+            \text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) -
+            2\mathbb{E}(k(X,X_c))
+
+            = \frac{1}{2} + e^{-1/2} + \frac{1}{2} + e^{-1/2} - 2\left(\frac{1}{2}
+            + e^{-1/2}\right)
+
+            = 0.
+        """
+
+        mmd_test2 = cm.mmd(
             x=jnp.array([[0, 0], [1, 1], [0, 0], [1, 1]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=rbf_kernel,
+            kernel=ck.rbf_kernel,
         )
         self.assertAlmostEqual(mmd_test2, 0.0, places=3)
 
-        mmd_test3 = mmd(
+    def test_mmd_ints(self):
+        r"""
+        Test MMD function with a toy example, small dataset of integers.
+
+        For a toy dataset of 3 points in 2 dimensions, :math:`X`, and a coreset,
+        :math:`X_c`, given by:
+
+        .. math::
+
+            X = [[0,0], [1,1], [2,2]]
+
+            X_c = [[0,0],[1,1]]
+
+        the Gaussian (aka radial basis function) kernel, :math:`k(x,y) = \exp (-||
+        x-y||^2/2\sigma^2)`, gives:
+
+        .. math::
+
+            k(X,X) = \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \\ 8 & 2 & 0
+            \end{bmatrix}/2\sigma^2) = \begin{bmatrix}1 & e^{-1} & e^{-4} \\ e^{-1} &
+            1 & e^{-1} \\ e^{-4} & e^{-1} & 1\end{bmatrix}.
+
+            k(X_c,X_c) = \exp(-\begin{bmatrix}0 & 2 \\ 2 & 0 \end{bmatrix}/2\sigma^2) =
+             \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix}.
+
+            k(X,X_c) =  \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \end{bmatrix}
+            /2\sigma^2) = \begin{bmatrix}1 & e^{-1} \\  e^{-1} & 1 \\ e^{-4} & e^{-1}
+            \end{bmatrix}.
+
+        Then
+
+        .. math::
+
+            \text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) -
+            2\mathbb{E}(k(X,X_c))
+
+            = \frac{3+4e^{-1}+2e^{-4}}{9} + \frac{2 + 2e^{-1}}{2} -2 \times \frac{2 + 3e^{-1}+e^{-4}}{6}
+
+            = \frac{3 - e^{-1} -2e^{-4}}{18}.
+        """
+
+        mmd_test = cm.mmd(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=rbf_kernel,
+            kernel=ck.rbf_kernel,
         )
         self.assertAlmostEqual(
-            mmd_test3, (jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)), places=5
+            mmd_test, (jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)), places=5
         )
+
+    def test_mmd_rand(self):
+        r"""
+        Test that MMD computed from randomly generated test data agrees with mmd().
+        """
 
         Knn = gaussian_kernel(self.x, self.x)
         Kmm = gaussian_kernel(self.x_c, self.x_c)
         Knm = gaussian_kernel(self.x, self.x_c)
 
-        mmd_test4 = (Knn.mean() + Kmm.mean() - 2 * Knm.mean()) ** 0.5
+        mmd_test = (Knn.mean() + Kmm.mean() - 2 * Knm.mean()) ** 0.5
 
-        self.assertAlmostEqual(mmd_test4, mmd(self.x, self.x_c, rbf_kernel), places=3)
+        self.assertAlmostEqual(
+            mmd_test, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=3
+        )
 
-    def test_wmmd(self) -> None:
+    def test_wmmd_ints(self) -> None:
         r"""
-        Tests the weighted maximum mean discrepancy (wmmd) function.
+        Test WMMD function with a toy example, small dataset of integers.
 
-        1. Tests toy example, with analytically determined result.
-        2. Tests that WMMD computed from randomly generated test data agrees with wmmd().
-        3. Tests that wmmd = mmd if weights = 1/m.
+        For a toy dataset of 3 points in 2 dimensions, :math:`X`, and a coreset,
+        :math:`X_c`, and weights for coreset, :math:`w_c`, given by:
+
+        .. math::
+
+            X = [[0,0], [1,1], [2,2]]
+
+            X_c = [[0,0],[1,1]]
+
+            w_c = [1,0]
+
+        the weighted maximum mean discrepancy is calculated via:
+
+        .. math::
+
+            \text{WMMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + w_c^T k(X_c,X_c) w_c
+             - 2\mathbb{E}_X(k(X,X_c)) w_c
+
+            = \frac{3+4e^{-1}+2e^{-4}}{9} + 1 - 2 \times \frac{1 + e^{-1} + e^{-4}}{3}
+
+            = \frac{2}{3} - \fracv{2}{9}e^{-1} - \frac{4}{9}e^{-4}.
         """
-        wmmd_test1 = wmmd(
+
+        wmmd_test = cm.wmmd(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=rbf_kernel,
+            kernel=ck.rbf_kernel,
             weights=jnp.array([1, 0]),
         )
         self.assertAlmostEqual(
-            wmmd_test1,
+            wmmd_test,
             (jnp.sqrt(2 / 3 - (2 / 9) * jnp.exp(-1) - (4 / 9) * jnp.exp(-4))),
             places=5,
         )
 
+    def test_wmmd_rand(self) -> None:
+        r"""
+        Test that WMMD computed from randomly generated test data agrees with wmmd().
+        """
+
         Knn = gaussian_kernel(self.x, self.x)
         Kmm = gaussian_kernel(self.x_c, self.x_c)
         Knm = gaussian_kernel(self.x, self.x_c)
 
-        wmmd_test2 = (
+        wmmd_test = (
             jnp.mean(Knn)
             + jnp.dot(self.w_c.T, jnp.dot(Kmm, self.w_c))
             - 2 * jnp.dot(self.w_c.T, Knm.mean(axis=0))
         ).item() ** 0.5
 
         self.assertAlmostEqual(
-            wmmd_test2, wmmd(self.x, self.x_c, rbf_kernel, self.w_c), places=3
+            wmmd_test, cm.wmmd(self.x, self.x_c, ck.rbf_kernel, self.w_c), places=3
         )
 
-        wmmd_test3 = wmmd(self.x, self.x_c, rbf_kernel, jnp.ones(self.m) / self.m)
-        self.assertAlmostEqual(wmmd_test3, mmd(self.x, self.x_c, rbf_kernel), places=3)
+    def test_wmmd_uniform_weights(self) -> None:
+        r"""
+        Test that wmmd = mmd if weighting is uniform, i.e. w_c = 1/m.
+        """
+
+        wmmd_test = cm.wmmd(self.x, self.x_c, ck.rbf_kernel, jnp.ones(self.m) / self.m)
+        self.assertAlmostEqual(
+            wmmd_test, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=3
+        )
 
     def test_sum_K(self) -> None:
         r"""
-        Tests the sum_K function.
+        Test the sum_K function with a toy example, with analytically determined result.
 
-        1. Tests toy example, with analytically determined result.
+        For a toy dataset of 3 points in 2 dimensions, :math:`X`, and a coreset,
+        :math:`X_c`:
+
+        .. math::
+
+            X = [[0,0], [1,1], [2,2]]
+
+            X_c = [[0,0],[1,1]]
+
+        the pairwise square distances are given by the matrix:
+
+        .. math::
+
+            k(X, X_c) = \begin{bmatrix}0 & 2 \\ 2 & 0 \\ 8 & 2 \end{bmatrix}
+
+        which, if summed across both axes, gives the result :math:`14`.
         """
 
-        kernel_sum_test = sum_K(
+        kernel_sum_test = cm.sum_K(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             y=jnp.array([[0, 0], [1, 1]]),
-            k_pairwise=sq_dist_pairwise,
+            k_pairwise=ck.sq_dist_pairwise,
             max_size=2,
         )
 
         self.assertAlmostEqual(kernel_sum_test, 14, places=3)
 
-    def test_mmd_block(self) -> None:
+    def test_mmd_block_ints(self) -> None:
         r"""
-        Tests the mmd_block function, which calculates MMD while limiting memory
-        requirements.
+        Test mmd_block calculation of MMD wile limiting memory requirements.
 
-        1. Tests toy example, with analytically determined result.
-        2. Tests that MMD block-computed from randomly generated test data agrees with
-        mmd_block().
-        3. Tests that mmd() returns the same as mmd_block().
+        Test toy example, with analytically determined result.
         """
 
-        mmd_block_test1 = mmd_block(
+        mmd_block_test1 = cm.mmd_block(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=rbf_kernel,
+            kernel=ck.rbf_kernel,
             max_size=2,
         )
         self.assertAlmostEqual(
@@ -177,6 +313,13 @@ class TestMetrics(unittest.TestCase):
             jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18),
             places=3,
         )
+
+    def test_mmd_block_rand(self) -> None:
+        r"""
+          2. Test that MMD block-computed from randomly generated test data agrees with
+        mmd_block().
+        3. Test that mmd() returns the same as mmd_block().
+        """
 
         Knn = 0.0
         for i1 in range(0, self.n, self.max_size):
@@ -207,27 +350,27 @@ class TestMetrics(unittest.TestCase):
 
         self.assertAlmostEqual(
             mmd_block_test2,
-            mmd_block(self.x, self.x_c, rbf_kernel, self.max_size),
+            cm.mmd_block(self.x, self.x_c, ck.rbf_kernel, self.max_size),
             places=3,
         )
 
         self.assertAlmostEqual(
-            mmd_block_test2, mmd(self.x, self.x_c, rbf_kernel), places=3
+            mmd_block_test2, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=3
         )
 
     def test_sum_weight_K(self) -> None:
         r"""
-        Tests the sum_weight_K function. Calculates w^T*K*w matrices in blocks of max_size.
+        Test the sum_weight_K function. Calculates w^T*K*w matrices in blocks of max_size.
 
-        1. Tests toy example, with analytically determined result.
+        1. Test toy example, with analytically determined result.
         """
 
-        sum_weight_K_test = sum_weight_K(
+        sum_weight_K_test = cm.sum_weight_K(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             y=jnp.array([[0, 0], [1, 1]]),
             w_x=jnp.array([0.5, 0.5, 0]),
             w_y=jnp.array([1, 0]),
-            k_pairwise=sq_dist_pairwise,
+            k_pairwise=ck.sq_dist_pairwise,
             max_size=2,
         )
 
@@ -235,35 +378,35 @@ class TestMetrics(unittest.TestCase):
 
     def test_mmd_weight_block(self) -> None:
         r"""
-        Tests the mmd_weight_block function.
+        Test the mmd_weight_block function.
 
-        1. Tests toy example, with analytically determined result.
+        1. Test toy example, with analytically determined result.
         2. Test equality with mmd() when w = 1/n and coreset weights w_c = 1/m.
 
         """
 
-        mmd_weight_block_test1 = mmd_weight_block(
+        mmd_weight_block_test1 = cm.mmd_weight_block(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
             w=jnp.array([0.5, 0.5, 0]),
             w_c=jnp.array([1, 0]),
-            kernel=rbf_kernel,
+            kernel=ck.rbf_kernel,
             max_size=2,
         )
         self.assertAlmostEqual(
             mmd_weight_block_test1, jnp.sqrt(1 / 2 - jnp.exp(-1) / 2), places=3
         )
 
-        mmd_weight_block_test2 = mmd_weight_block(
+        mmd_weight_block_test2 = cm.mmd_weight_block(
             self.x,
             self.x_c,
             jnp.ones(self.n) / self.n,
             jnp.ones(self.m) / self.m,
-            rbf_kernel,
+            ck.rbf_kernel,
         )
 
         self.assertAlmostEqual(
-            mmd_weight_block_test2, mmd(self.x, self.x_c, rbf_kernel), places=3
+            mmd_weight_block_test2, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=3
         )
 
 
