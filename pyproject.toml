@@ -55,9 +55,10 @@ profile = "black"
 packages = ["coreax"]
 
 [tool.coverage.run]
-command_line = "-m unittest discover"
+branch = true
 source = ["coreax"]
-omit = ["*/__init__.py", "*/__main__.py"]
+command_line = "-m unittest discover -s tests/unit"
+omit = ["*/__init__.py", "*/__main__.py", "tests/integration/*"]
 
 [tool.coverage.report]
 sort = "Cover"
