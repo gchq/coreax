@@ -128,7 +128,7 @@ def kernel_herding_block(
     :param max_size: Size of matrix blocks to process
     :param K_mean: Row sum of kernel matrix divided by `n`
     :param unique: Flag for enforcing unique elements
-    :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
+    :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
     """
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
@@ -178,7 +178,7 @@ def stein_kernel_herding_block(
     :param K_mean: Row sum of kernel matrix divided by `n`
     :param unique: Flag for enforcing unique elements
     :param nu: Bandwidth parameter for the base kernel of the Stein kernel
-    :returns: Coreset point indices, coreset Gram matrix & corset Gram mean
+    :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
     """
     X = jnp.asarray(X)
     if sm:
@@ -310,31 +310,6 @@ def fw_herding_body(
     rho = fw_linesearch(S[i], K, Kbar)
     objective = objective * (1 - rho) + (Kbar - K[S[i]]) * rho
     return S, objective, Kbar, K
-
-
-# def kernel_herding(
-#         X: ArrayLike,
-#         m: int,
-#         method: str = "herding",
-#         kernel: KernelFunction | None = None,
-#         K: ArrayLike | None = None,
-# ) -> Array:
-#     if kernel is not None and K is None:
-#         K = kernel(X, X)
-#     Kbar = K.mean(axis=0)
-#     n = X.shape[0]
-#     S = jnp.zeros(m, dtype=jnp.int32)
-#     # objective = jnp.zeros(n)
-#     objective = Kbar.copy()
-#     init_val = (S, objective, Kbar, K)
-#     fn = herding_body
-#     if method == "greedy":
-#         fn = greedy_herding_body
-#     elif method == "fw":
-#         fn = fw_herding_body
-#     val = lax.fori_loop(0, m, fn, init_val)
-#     S = val[0]
-#     return S
 
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
