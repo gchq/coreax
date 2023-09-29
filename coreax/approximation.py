@@ -113,13 +113,23 @@ def anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
-    kernel_vector: KernelFunction,
+    kernel_function: KernelFunction,
 ) -> Array:
+    r"""
+    Execute main loop of the ANNchor construction.
+
+    :param idx: Loop counter
+    :param features: Loop updateables
+    :param data: Original :math:`n \times d` dataset
+    :param kernel_function: Vectorised kernel function on pairs `(X,x)`: :math:`k:
+                  \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :return: Updated loop variables `features`
+    """
     features = jnp.asarray(features)
     data = jnp.asarray(data)
 
     max_entry = features.max(axis=1).argmin()
-    features = features.at[:, idx].set(kernel_vector(data, data[max_entry]))
+    features = features.at[:, idx].set(kernel_function(data, data[max_entry]))
 
     return features
 
