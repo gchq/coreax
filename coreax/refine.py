@@ -79,7 +79,7 @@ def refine_body(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Execute main loop of the refine method, S -> x. 
+    Execute main loop of the refine method, S -> x.
 
     :param i: Loop counter
     :param S: Loop updatables
@@ -199,7 +199,7 @@ def refine_rand_body(
     k_vec: KernelFunction,
 ) -> tuple[random.PRNGKeyArray, Array]:
     r"""
-    Execute main loop of the random refine method 
+    Execute main loop of the random refine method
 
     :param i: Loop counter
     :param val: Loop updatables
