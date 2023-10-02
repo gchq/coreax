@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from scipy.stats import ortho_group, norm
-from jax import grad, vjp
-from typing import Callable
 from functools import partial
+from typing import Callable
+
 import numpy as np
+from jax import grad, vjp
+from scipy.stats import norm, ortho_group
 
 from coreax.kernel import *
 
