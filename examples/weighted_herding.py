@@ -14,22 +14,26 @@
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
-import matplotlib.pyplot as plt
-import jax.numpy as jnp
-import numpy as np
-from sklearn.datasets import make_blobs
+
 from pathlib import Path
 
-from coreax.weights import qp
-from coreax.kernel import rbf_kernel, median_heuristic, stein_kernel_pc_imq_element, rbf_grad_log_f_x
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.datasets import make_blobs
+
+from coreax.kernel import (
+    median_heuristic,
+    rbf_grad_log_f_x,
+    rbf_kernel,
+    stein_kernel_pc_imq_element,
+)
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
+from coreax.weights import qp
 
 
-def main(
-        out_path: Path | None = None,
-        weighted: bool = True
-) -> tuple[float, float]:
+def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, float]:
     """
     Run the 'weighted_herding' example for weighted and unweighted herding.
 
@@ -57,8 +61,8 @@ def main(
     nu = median_heuristic(X[idx])
 
     # define a kernel. We'll use an RBF
-    def k(x, y): return rbf_kernel(x, y, jnp.float32(nu)**2) / \
-        (nu * jnp.sqrt(2. * jnp.pi))
+    def k(x, y):
+        return rbf_kernel(x, y, jnp.float32(nu) ** 2) / (nu * jnp.sqrt(2.0 * jnp.pi))
 
     # Find a C-sized coreset using -- in this case -- Stein kernel herding (block mode).
     # Stein kernel herding uses the Stein kernel derived from the RBF above.
@@ -70,7 +74,8 @@ def main(
     # returns the indices for the coreset points, the coreset Gram matrix (Kc) and the
     # coreset Gram mean (Kbar)
     coreset, Kc, Kbar = stein_kernel_herding_block(
-        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000)
+        X, C, stein_kernel_pc_imq_element, rbf_grad_log_f_x, nu=nu, max_size=1000
+    )
 
     # get a random sample of points to compare against
     rsample = np.random.choice(N, size=C, replace=False)
@@ -83,7 +88,9 @@ def main(
         weights = qp(Kc + 1e-10, Kbar)
         # check minimum weight is not negative by more than a reasonable tolerance
         if weights.min() < -1e-4:
-            raise ValueError(f"Minimum weight was {weights.min()} but should have been >=0")
+            raise ValueError(
+                f"Minimum weight was {weights.min()} but should have been >=0"
+            )
         # compute the MMD between X and the coreset, weighted version
         m = mmd_weight_block(X, X[coreset], jnp.ones(N), weights, k, max_size=1000)
     else:
@@ -101,16 +108,16 @@ def main(
         weights -= weights.min()
 
     # produce some scatter plots
-    plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
-    plt.scatter(X[coreset, 0], X[coreset, 1], s=weights*1000, color="red")
-    plt.axis('off')
-    plt.title('Stein kernel herding, m=%d, MMD=%.6f' % (C, m))
+    plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(X[coreset, 0], X[coreset, 1], s=weights * 1000, color="red")
+    plt.axis("off")
+    plt.title("Stein kernel herding, m=%d, MMD=%.6f" % (C, m))
     plt.show()
 
-    plt.scatter(X[:, 0], X[:, 1], s=2., alpha=.1)
+    plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
     plt.scatter(X[rsample, 0], X[rsample, 1], s=10, color="red")
-    plt.title('Random, m=%d, MMD=%.6f' % (C, rm))
-    plt.axis('off')
+    plt.title("Random, m=%d, MMD=%.6f" % (C, rm))
+    plt.axis("off")
 
     if out_path is not None:
         plt.savefig(out_path)
@@ -124,5 +131,5 @@ def main(
     return m, rm
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
