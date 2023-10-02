@@ -169,7 +169,7 @@ def stein_kernel_herding_block(
     Execute Stein herding.
 
     :param X: Original :math:`n \times d` dataset
-    :param n_core: Number of coreset points to calcualte
+    :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param grad_log_f_X: Function computing gradient of log-PDF
