@@ -1,0 +1,65 @@
+default_install_hook_types: [pre-commit, pre-merge-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # Reject commits that add large files (coverage.xml, for example)
+      # Consider adjusting kB limit
+      - id: check-added-large-files
+        args: [--enforce-all, --maxkb=5000]
+      # Check valid Python syntax
+      - id: check-ast
+      # Require literal syntax when initializing empty or zero python builtin types
+      - id: check-builtin-literals
+      # Check for files that would conflict in case-insensitive filesystems
+      - id: check-case-conflict
+      # Check for a common error of defining a docstring after code
+      - id: check-docstring-first
+      # Check for files that contain merge conflict strings
+      - id: check-merge-conflict
+      # Check TOML files for parseable syntax
+      - id: check-toml
+      # Check YAML files for parseable syntax
+      - id: check-yaml
+      # Files must end in a single newline
+      - id: end-of-file-fixer
+      # Remove whitespace at the end of lines
+      - id: trailing-whitespace
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      # Prevent common mistakes of `assert mck.not_called()`,
+      # `assert mck.called_once_with(...)` and `mck.assert_called`
+      - id: python-check-mock-methods
+      # Check for the `eval()` built-in function - necessary for security
+      - id: python-no-eval
+      # Check for the deprecated `.warn()` method of Python loggers
+      - id: python-no-log-warn
+      # Enforce that type annotations are used instead of type comments
+      - id: python-use-type-annotations
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      # Check for binary files
+      - id: forbid-binary
+        exclude: examples/.+/.+.(gif|png)
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.4
+    hooks:
+      # No tabs, only spaces
+      - id: forbid-tabs
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      # Place isort options in pyproject.toml
+      - id: isort
+  - repo: https://github.com/psf/black
+    rev: 23.9.1
+    hooks:
+      # Change to black-jupyter if using Jupyter notebooks
+      - id: black
+  - repo: https://github.com/regebro/pyroma
+    rev: "4.2"
+    hooks:
+      # Ensure that necessary package information is provided
+      - id: pyroma
