@@ -102,9 +102,9 @@ def kernel_herding_refine_rev_block(
     K_mean: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Execute kernel herding random refine algorithm using `Jax`.
+    Execute kernel herding refine algorithm using `Jax`.
 
-    TODO: what differentiates this from kernel_herding_refine_rand_block?
+    This calls the greedy refine method, as opposed to the random refine method.
 
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
