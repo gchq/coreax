@@ -62,13 +62,13 @@ def wmmd(
     r"""
     Calculate one-sided, weighted maximum mean discrepancy (MMD).
 
-    Only corset points are weighted.
+    Only coreset points are weighted.
 
     :param x: The original :math:`n \times d` data
     :param x_c: :math:`m \times d` coreset
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param weights: Weights vector
+    :param weights: :math:`n \times 1` weights vector
     :param precision_threshold: Positive threshold we compare against for precision
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
@@ -100,15 +100,31 @@ def sum_K(
     k_pairwise: KernelFunction,
     max_size: int = 10_000,
 ) -> float:
+    r"""
+    Sum the kernel distance between all pairs of points in x and y.
+
+    The summation is done in blocks to avoid excessive memory usage.
+
+    :param x: :math:`n \times 1` array
+    :param y: :math:`m \times 1` array
+    :param k_pairwise: Kernel function
+    :param max_size: Size of matrix blocks to process
+    """
+
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
     m = len(y)
-    output = 0
-    for i in range(0, n, max_size):
-        for j in range(0, m, max_size):
-            K_part = k_pairwise(x[i : i + max_size], y[j : j + max_size])
-            output += K_part.sum()
+
+    if max_size > max(m, n):
+        output = k_pairwise(x, y).sum()
+
+    else:
+        output = 0
+        for i in range(0, n, max_size):
+            for j in range(0, m, max_size):
+                K_part = k_pairwise(x[i : i + max_size], y[j : j + max_size])
+                output += K_part.sum()
 
     return output
 
@@ -161,19 +177,37 @@ def sum_weight_K(
     k_pairwise: KernelFunction,
     max_size: int = 10_000,
 ) -> float:
+    r"""
+    Sum the kernel distance (weighted) between all pairs of points in x and y.
+
+    The summation is done in blocks to avoid excessive memory usage.
+
+    :param x: :math:`n \times 1` array
+    :param y: :math:`m \times 1` array
+    :param w_x: :math: weights for x, `n \times 1` array
+    :param w_y: :math: weights for y, `m \times 1` array
+    :param k_pairwise: Kernel function
+    :param max_size: Size of matrix blocks to process
+    """
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
     m = len(y)
-    output = 0
-    for i in range(0, n, max_size):
-        for j in range(0, m, max_size):
-            K_part = (
-                w_x[i : i + max_size, None]
-                * k_pairwise(x[i : i + max_size], y[j : j + max_size])
-                * w_y[None, j : j + max_size]
-            )
-            output += K_part.sum()
+
+    if max_size > max(m, n):
+        Kw = k_pairwise(x, y) * w_y
+        output = (w_x * Kw.T).sum()
+
+    else:
+        output = 0
+        for i in range(0, n, max_size):
+            for j in range(0, m, max_size):
+                K_part = (
+                    w_x[i : i + max_size, None]
+                    * k_pairwise(x[i : i + max_size], y[j : j + max_size])
+                    * w_y[None, j : j + max_size]
+                )
+                output += K_part.sum()
 
     return output
 
