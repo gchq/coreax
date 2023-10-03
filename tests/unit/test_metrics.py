@@ -94,10 +94,10 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [0,0], [1,1]]
 
-            X_c = [[0,0],[1,1]]
+            X_c = [[0,0], [1,1]]
 
-        the Gaussian (aka radial basis function) kernel, :math:`k(x,y) = \exp (-||
-        x-y||^2/2\sigma^2)`, gives:
+        the Gaussian (aka radial basis function) kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
 
         .. math::
 
@@ -140,7 +140,7 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [2,2]]
 
-            X_c = [[0,0],[1,1]]
+            X_c = [[0,0], [1,1]]
 
         the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
 
@@ -205,7 +205,7 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [2,2]]
 
-            X_c = [[0,0],[1,1]]
+            X_c = [[0,0], [1,1]]
 
             w_c = [1,0]
 
@@ -272,7 +272,7 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [2,2]]
 
-            X_c = [[0,0],[1,1]]
+            X_c = [[0,0], [1,1]]
 
         the pairwise square distances are given by the matrix:
 
@@ -294,7 +294,7 @@ class TestMetrics(unittest.TestCase):
 
     def test_mmd_block_ints(self) -> None:
         r"""
-        Test mmd_block calculation of MMD wile limiting memory requirements.
+        Test mmd_block calculation of MMD while limiting memory requirements.
 
         This test uses the same 2D, three-point dataset and coreset as test_mmd_ints().
         """
@@ -367,7 +367,7 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [2,2]]
 
-            X_c = [[0,0],[1,1]]
+            X_c = [[0,0], [1,1]]
 
         the pairwise square distances are given by the matrix:
 
@@ -406,7 +406,7 @@ class TestMetrics(unittest.TestCase):
 
             X = [[0,0], [1,1], [2,2]],
 
-            X_c = [[0,0],[1,1]],
+            X_c = [[0,0], [1,1]],
 
             w^T = [0.5, 0.5, 0],
 
@@ -440,7 +440,7 @@ class TestMetrics(unittest.TestCase):
             mmd_weight_block_test, jnp.sqrt(1 / 2 - jnp.exp(-1) / 2), places=5
         )
 
-    def test_mmd_weght_block_equals_mmd(self) -> None:
+    def test_mmd_weight_block_equals_mmd(self) -> None:
         r"""
         Test mmd_weight_block equals mmd when weights are uniform: w = 1/n, w_c = 1/m.
         """
