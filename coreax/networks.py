@@ -32,6 +32,12 @@ class ScoreNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, x: ArrayLike) -> ArrayLike:
+        r"""
+        Forward pass through a three-layer network with softplus activations
+
+        :param x: Batch input data :math:`b \times m \times n`
+        :return: Network output on batch :math:`b \times` self.output_dim
+        """
         x = nn.Dense(self.hidden_dim)(x)
         x = nn.softplus(x)
         x = nn.Dense(self.hidden_dim)(x)
