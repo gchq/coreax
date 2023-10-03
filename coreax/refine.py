@@ -272,6 +272,7 @@ def comparison_cand(
 def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
     Replace the i^th point in S with the candidate in cand with maximum value in comps.
+
     S -> x.
 
     :param i: Index in S to replace
@@ -306,10 +307,9 @@ def refine_rev(
     K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively, replacing points which lead to the most improvement. x
-    -> S.
+    Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    The iteration is carred out over points in `x`.
+    The iteration is carried out over points in `x`, with x -> S.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
@@ -431,8 +431,9 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change_rev). x ->
-    S.
+    Convenience function for leaving S unchanged (compare with refine.change_rev).
+
+    x -> S.
 
     :param i: Value to replace into S. Not used
     :param S: The dataset for replacement. Will remain unchanged
