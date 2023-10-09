@@ -27,7 +27,7 @@ from coreax.kernel_herding import (
     stein_kernel_herding_block,
 )
 from coreax.metrics import mmd_block
-from coreax.weights import qp
+from coreax.util import solve_qp
 
 
 def main(
@@ -82,7 +82,7 @@ def main(
         indices,
         C,
         stein_kernel_herding_block,
-        qp,
+        solve_qp,
         size=10000,
         kernel=scalable_stein_kernel_pc_imq_element,
         grad_log_f_X=scalable_rbf_grad_log_f_X,
