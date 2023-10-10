@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+from unittest.mock import patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -54,6 +55,11 @@ class TestApproximations(unittest.TestCase):
         """
         Test the class KernelMeanApproximator initilises correctly.
         """
+        # Patch the abstract method (approximate) of the KernelMeanApproximator so it
+        # can be created
+        p = patch.multiple(ca.KernelMeanApproximator, __abstractmethods__=set())
+        p.start()
+
         # Define the approximator
         approximator = ca.KernelMeanApproximator(
             kernel_evaluation=ck.sq_dist,
@@ -66,9 +72,6 @@ class TestApproximations(unittest.TestCase):
         self.assertEqual(approximator.random_key[0], self.random_key[0])
         self.assertEqual(approximator.random_key[1], self.random_key[1])
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
-
-        # Check that the approximate raises a NotImplementedError
-        self.assertRaises(NotImplementedError, approximator.approximate, self.data)
 
     def test_random_approximator(self) -> None:
         """
