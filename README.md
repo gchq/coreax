@@ -1,4 +1,9 @@
 # Coreax
+
+[![Unit Tests](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
+[![Lint](https://github.com/gchq/coreax/actions/workflows/lint.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/lint.yml)
+[![Code Coverage Assessment](https://github.com/gchq/coreax/actions/workflows/code_coverage_assessment.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/code_coverage_assessment.yml)
+
 _© Crown Copyright GCHQ_
 
 Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html) for fast execution and GPU support.
