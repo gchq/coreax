@@ -44,18 +44,15 @@ def apply_negative_precision_threshold(
     # Cast to float. Will raise TypeError if array is not zero-dimensional.
     x = float(x)
 
-    # We have to compare to a positive precision threshold
     if precision_threshold < 0.0:
         raise ValueError(
-            f"precision_threshold must be positive, value {precision_threshold} given. "
-            f"Aborting."
+            f"precision_threshold must be positive; value {precision_threshold} given."
         )
 
-    # Round x to 0.0 if it is negative but still within precision_threshold of 0.0
     if -precision_threshold < x < 0.0:
         return 0.0
-    else:
-        return x
+
+    return x
 
 
 @jit
