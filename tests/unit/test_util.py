@@ -24,16 +24,14 @@ class Test(unittest.TestCase):
         """
         Test square distance under float32.
         """
-        m = ortho_group.rvs(dim=2)
-        x = m[0]
-        y = m[1]
+        x, y = ortho_group.rvs(dim=2)
         d = jnp.linalg.norm(x - y) ** 2
         td = sq_dist(x, y)
-        self.assertAlmostEqual(d, td, places=3)
+        self.assertAlmostEqual(td, d, places=3)
         td = sq_dist(x, x)
-        self.assertAlmostEqual(0.0, td, places=3)
+        self.assertAlmostEqual(td, 0.0, places=3)
         td = sq_dist(y, y)
-        self.assertAlmostEqual(0.0, td, places=3)
+        self.assertAlmostEqual(td, 0.0, places=3)
 
     def test_sq_dist_pairwise(self) -> None:
         """
@@ -48,9 +46,8 @@ class Test(unittest.TestCase):
         np.fill_diagonal(ans, 0.0)
         # Frobenius norm
         td = jnp.linalg.norm(tinner - ans)
-        # Should return a zero-dimensional array
-        self.assertEqual(0, td.ndim)
-        self.assertAlmostEqual(0.0, float(td), places=3)
+        self.assertEqual(td.ndim, 0)
+        self.assertAlmostEqual(float(td), 0.0, places=3)
 
     def test_pdiff(self) -> None:
         """
@@ -65,7 +62,7 @@ class Test(unittest.TestCase):
         y_array = np.random.random((m, d))
         z_array = np.array([[x - y for y in y_array] for x in x_array])
         tst = pdiff(x_array, y_array)
-        self.assertAlmostEqual(0.0, float(jnp.linalg.norm(tst - z_array)), places=3)
+        self.assertAlmostEqual(float(jnp.linalg.norm(tst - z_array)), 0.0, places=3)
 
 
 if __name__ == "__main__":

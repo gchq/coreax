@@ -84,9 +84,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     # is invoked to solve the weights' vector. This buys some increase in integration
     # error, but at a computational cost. Likely to most effective in lower dimensions.
     if weighted:
-        # find the weights. Solves a QP
+        # Find the weights by solving a QP
         weights = solve_qp(Kc + 1e-10, Kbar)
-        # check minimum weight is not negative by more than a reasonable tolerance
         if weights.min() < -1e-4:
             raise ValueError(
                 f"Minimum weight was {weights.min()} but should have been >=0"
