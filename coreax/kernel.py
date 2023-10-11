@@ -17,37 +17,16 @@
 from __future__ import annotations
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array, jit
 from jax.typing import ArrayLike
 
-
-@jit
-def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
-    r"""
-    Calculate the squared distance between two vectors.
-
-    :param x: First vector argument
-    :param y: Second vector argument
-    :return: Dot product of `x-y` and `x-y`, the square distance between `x` and `y`
-    """
-    return jnp.dot(x - y, x - y)
-
-
-@jit
-def sq_dist_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
-    r"""
-    Calculate efficient pairwise square distance between two arrays.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between `x_array` and `y_array` as an
-             :math:`n \times m` array
-    """
-    # Use vmap to turn distance between individual vectors into a pairwise distance.
-    d1 = vmap(sq_dist, in_axes=(None, 0), out_axes=0)
-    d2 = vmap(d1, in_axes=(0, None), out_axes=0)
-
-    return d2(x, y)
+from coreax.util import (
+    KernelFunction,
+    KernelFunctionWithGrads,
+    pdiff,
+    sq_dist,
+    sq_dist_pairwise,
+)
 
 
 @jit
@@ -74,34 +53,6 @@ def laplace_kernel(x: ArrayLike, y: ArrayLike, variance: float = 1.0) -> Array:
     :return: Laplace kernel evaluated at `(x,y)`
     """
     return jnp.exp(-jnp.linalg.norm(x - y) / (2 * variance))
-
-
-@jit
-def diff(x: ArrayLike, y: ArrayLike) -> Array:
-    r"""
-    Calculate vector difference for a pair of vectors.
-
-    :param x: First vector
-    :param y: Second vector
-    :return: Vector difference `x-y`
-    """
-    return x - y
-
-
-@jit
-def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
-    r"""
-    Calculate efficient pairwise difference between two arrays of vectors.
-
-    :param x_array: First set of vectors as a :math:`n \times d` array
-    :param y_array: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between `x_array` and `y_array` as an
-             :math:`n \times m \times d` array
-    """
-    d1 = vmap(diff, in_axes=(0, None), out_axes=0)
-    d2 = vmap(d1, in_axes=(None, 0), out_axes=1)
-
-    return d2(x_array, y_array)
 
 
 @jit
@@ -522,3 +473,97 @@ def stein_kernel_pc_imq_element(
     z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * pc_imq_kernel
     kernel = divergence + x_.T + y_ + z
     return kernel[0, 0]
+
+
+def update_K_sum(
+    X: ArrayLike,
+    K_sum: ArrayLike,
+    i: int,
+    j: int,
+    max_size: int,
+    k_pairwise: KernelFunction | KernelFunctionWithGrads,
+    grads: ArrayLike | None = None,
+    nu: float | None = None,
+) -> Array:
+    r"""
+    Update row sum with a kernel matrix block.
+
+    The kernel matrix block ``i:i+max_size`` :math:`\times` ``j:j+max_size` is used to
+    update the row sum. Symmetry of the kernel matrix is exploited to reduced repeated
+    calculation.
+
+    Note that `k_pairwise` should be of the form ``k(x, y)`` if `grads` and `nu`
+    are :data:`None`. Otherwise, `k_pairwise` should be of the form
+    ``k(x, y, grads, grads, n, nu)``.
+
+    :param X: Data matrix, :math:`n \times d`
+    :param K_sum: Full data structure for Gram matrix row sum, :math:`1 \times n`
+    :param i: Kernel matrix block start
+    :param j: Kernel matrix block end
+    :param max_size: Size of matrix block to process
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param grads: Array of gradients, if applicable, :math:`n \times d`;
+        optional, defaults to :data:`None`
+    :param nu: Base kernel bandwidth; optional, defaults to :data:`None`
+    :return: Gram matrix row sum, with elements ``i:i+max_size`` and
+        ``j:j+max_size`` populated
+    """
+    X = jnp.asarray(X)
+    K_sum = jnp.asarray(K_sum)
+    n = X.shape[0]
+    if grads is None:
+        K_part = k_pairwise(X[i : i + max_size], X[j : j + max_size])
+    else:
+        grads = jnp.asarray(grads)
+        K_part = k_pairwise(
+            X[i : i + max_size],
+            X[j : j + max_size],
+            grads[i : i + max_size],
+            grads[j : j + max_size],
+            n,
+            nu,
+        )
+    K_sum = K_sum.at[i : i + max_size].set(K_sum[i : i + max_size] + K_part.sum(axis=1))
+
+    if i != j:
+        K_sum = K_sum.at[j : j + max_size].set(
+            K_sum[j : j + max_size] + K_part.sum(axis=0)
+        )
+
+    return K_sum
+
+
+def calculate_K_sum(
+    X: ArrayLike,
+    k_pairwise: KernelFunction | KernelFunctionWithGrads,
+    max_size: int,
+    grads: ArrayLike | None = None,
+    nu: ArrayLike | None = None,
+) -> Array:
+    r"""
+    Calculate row sum of the kernel matrix.
+
+    The row sum is calculated block-wise to limit memory overhead.
+
+    Note that `k_pairwise` should be of the form ``k(x, y)`` if `grads` and `nu`
+    are :data:`None`. Otherwise, `k_pairwise` should be of the form
+    ``k(x, y, grads, grads, n, nu)``.
+
+    :param X: Data matrix, :math:`n \times d`
+    :param k_pairwise: Pairwise kernel evaluation function
+    :param max_size: Size of matrix block to process
+    :param grads: Array of gradients, if applicable, :math:`n \times d`;
+        optional, defaults to :data:`None`.
+    :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`;
+        optional, defaults to :data:`None`.
+    :return: Kernel matrix row sum
+    """
+    X = jnp.asarray(X)
+    n = len(X)
+    K_sum = jnp.zeros(n)
+    # Iterate over upper triangular blocks
+    for i in range(0, n, max_size):
+        for j in range(i, n, max_size):
+            K_sum = update_K_sum(X, K_sum, i, j, max_size, k_pairwise, grads, nu)
+
+    return K_sum

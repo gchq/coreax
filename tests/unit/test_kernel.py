@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from functools import partial
-from typing import Callable
 
 import numpy as np
-from jax import grad, vjp
-from scipy.stats import norm, ortho_group
+from scipy.stats import norm
 
 from coreax.kernel import *
 
@@ -26,35 +23,6 @@ class TestKernels(unittest.TestCase):
     """
     Tests related to kernel.py functions.
     """
-
-    def test_sq_dist(self) -> None:
-        """
-        Test square distance under float32.
-        """
-        m = ortho_group.rvs(dim=2)
-        x = m[0]
-        y = m[1]
-        d = jnp.linalg.norm(x - y) ** 2
-        td = sq_dist(x, y)
-        self.assertAlmostEqual(d, td, places=3)
-        td = sq_dist(x, x)
-        self.assertAlmostEqual(0.0, td, places=3)
-        td = sq_dist(y, y)
-        self.assertAlmostEqual(0.0, td, places=3)
-
-    def test_sq_dist_pairwise(self) -> None:
-        """
-        Test vmap version of sq distance.
-        """
-        # create an orthonormal matrix
-        d = 3
-        m = ortho_group.rvs(dim=d)
-        tinner = sq_dist_pairwise(m, m)
-        ans = np.ones((d, d)) * 2.0
-        np.fill_diagonal(ans, 0.0)
-        # Frobenius norm
-        td = jnp.linalg.norm(tinner - ans)
-        self.assertAlmostEqual(td, 0.0, places=3)
 
     def test_rbf_kernel(self) -> None:
         """
@@ -81,27 +49,6 @@ class TestKernels(unittest.TestCase):
         ans = np.exp(-np.linalg.norm(x - y) / (2.0 * bandwidth))
         tst = laplace_kernel(x, y, bandwidth)
         self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0.0, places=3)
-
-    def test_pdiff(self) -> None:
-        """
-        Test the function pdiff.
-
-        This test ensures efficient computation of pairwise differences.
-        """
-        m = 10
-        n = 10
-        d = 3
-        X = np.random.random((n, d))
-        Y = np.random.random((m, d))
-        Z = []
-        for x in X:
-            row = []
-            for y in Y:
-                row.append(x - y)
-            Z.append(list(row))
-        Z = np.array(Z)
-        tst = pdiff(X, Y)
-        self.assertAlmostEqual(jnp.linalg.norm(tst - Z), 0.0, places=3)
 
     def test_gaussian_kernel(self) -> None:
         """
