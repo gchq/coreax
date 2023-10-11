@@ -159,7 +159,10 @@ class TestExamples(unittest.TestCase):
                 self.assertLess(
                     mmd_coreset,
                     mmd_random,
-                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                    msg=(
+                        "MMD for random sampling was unexpectedly lower than coreset "
+                        "MMD"
+                    ),
                 )
 
             with self.subTest(msg="Unweighted herding"):
@@ -176,7 +179,10 @@ class TestExamples(unittest.TestCase):
                 self.assertLess(
                     mmd_coreset,
                     mmd_random,
-                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                    msg=(
+                        "MMD for random sampling was unexpectedly lower than coreset "
+                        "MMD"
+                    ),
                 )
 
     def test_weighted_herding_sm(self) -> None:
@@ -204,7 +210,10 @@ class TestExamples(unittest.TestCase):
                 self.assertLess(
                     mmd_coreset,
                     mmd_random,
-                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                    msg=(
+                        "MMD for random sampling was unexpectedly lower than coreset "
+                        "MMD"
+                    ),
                 )
 
             with self.subTest(msg="Unweighted herding (score matching)"):
@@ -221,5 +230,8 @@ class TestExamples(unittest.TestCase):
                 self.assertLess(
                     mmd_coreset,
                     mmd_random,
-                    msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                    msg=(
+                        "MMD for random sampling was unexpectedly lower than coreset "
+                        "MMD"
+                    ),
                 )
