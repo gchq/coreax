@@ -16,11 +16,156 @@
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
 
+class Kernel(ABC):
+    """
+    Base class for kernels.
+    """
+
+    def __init__(self):
+        r"""
+        Define a kernel to measure distances between points in some space.
+
+        Kernels for the basic tool for measuring distances between points in a space,
+        and through this constructing representations of the distribution a discrete set
+        of samples follow.
+        """
+
+    @abstractmethod
+    def compute(self, X: ArrayLike, Y: ArrayLike) -> Array:
+        """
+        Evaluate the kernel on input data X and Y.
+
+        :param X: An :math:`n \times d` dataset
+        :param Y: An :math:`m \times d` dataset
+        :return: Distances (as determined by the kernel) between points in X and Y
+        """
+        pass
+
+    @abstractmethod
+    def _elementwise_k(self, X: ArrayLike, Y: ArrayLike) -> Array:
+        """
+        Evaluate the kernel on input data X and Y, elementwise.
+
+        :param X: An :math:`n \times d` dataset
+        :param Y: An :math:`m \times d` dataset
+        :return: Distances (as determined by the kernel) between points in X and Y
+        """
+        pass
+
+    @abstractmethod
+    def _vectorised_k(self, X: ArrayLike, Y: ArrayLike) -> Array:
+        """
+        Evaluate the kernel on input data X and Y, vectorised.
+
+        :param X: An :math:`n \times d` dataset
+        :param Y: An :math:`m \times d` dataset
+        :return: Distances (as determined by the kernel) between points in X and Y
+        """
+        pass
+
+    @abstractmethod  # TODO: Weights optional
+    def update_kernel_matrix_row_sum(self) -> Array:
+        """
+        Update the row sum of the kernel matrix.
+
+        The row sum of the kernel matrix may involve a large number of pairwise
+        computations, so this can be done in blocks to reduce memory requirements.
+        """
+        pass
+
+    @abstractmethod  # TODO: Weights optional
+    def calculate_kernel_matrix_row_sum(self) -> Array:
+        """
+        Compute the row sum of the kernel matrix.
+
+        The row sum of the kernel matrix is the sum of distances between a given point
+        and all possible pairs of points that contain this given point.
+        """
+        pass
+
+    @abstractmethod  # TODO: Weights optional
+    def calculate_kernel_matrix_row_sum_mean(self) -> Array:
+        """
+        Compute the mean of the row sum of the kernel matrix.
+
+        The mean of the row sum of the kernel matrix is the mean of the sum of distances
+        between a given point and all possible pairs of points that contain this given
+        point.
+        """
+        pass
+
+    @abstractmethod  # TODO: Weights optional
+    def approximate_kernel_matrix_row_sum_mean(self) -> Array:
+        """
+        Approximate the mean of the row sum of the kernel matrix.
+
+        The mean of the row sum of the kernel matrix is the mean of the sum of distances
+        between a given point and all possible pairs of points that contain this given
+        point. This can involve a large number of pairwise computations, so an
+        approximation can be used in place of the true value.
+        """
+        pass
+
+    @abstractmethod
+    def create_approximator(self) -> Array:
+        """
+        Create an approximator object for use with the kernel matrix row sum mean.
+        """
+        pass
+
+    @abstractmethod
+    def grad_x(self) -> Array:
+        """
+        Compute the gradient of the kernel with respect to x.
+        """
+        pass
+
+    @abstractmethod
+    def grad_y(self) -> Array:
+        """
+        Compute the gradient of the kernel with respect to y.
+        """
+        pass
+
+    @abstractmethod
+    def grad_log_x(self) -> Array:
+        """
+        Compute the gradient of the kernel with respect to the logarithm of x.
+        """
+        pass
+
+    @abstractmethod
+    def grad_log_y(self) -> Array:
+        """
+        Compute the gradient of the kernel with respect to the logarithm of y.
+        """
+        pass
+
+
+class RBFKernel(Kernel):
+    """
+    Define a radial basis function (RBF) kernel.
+    # TODO
+    """
+
+    def __init__(self, bandwidth: float):
+        r"""
+        Define the RBF kernel to measure distances between points in some space.
+        """
+        self.bandwidth = bandwidth
+
+        # Initialise parent
+        super().__init__()
+
+
+# TODO: All below is original functional code before OOP transition
 @jit
 def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
