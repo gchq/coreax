@@ -30,6 +30,9 @@ dependencies = [
     "optax",
     "scikit-learn",
     "tqdm",
+    "sphinx",
+    "myst-parser",
+    "sphinxcontrib-bibtex"
 ]
 
 [project.optional-dependencies]

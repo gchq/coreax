@@ -26,14 +26,14 @@ def mmd(
     precision_threshold: float = 1e-8,
 ) -> Array:
     r"""
-     Calculate maximum mean discrepancy (MMD).
+    Calculate maximum mean discrepancy (MMD).
 
-     :param x: The original :math:`n \times d` data
-     :param x_c: :math:`m \times d` coreset
-     :param kernel: Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param x: The original :math:`n \times d` data
+    :param x_c: :math:`m \times d` coreset
+    :param kernel: Kernel function
+                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param precision_threshold: Positive threshold we compare against for precision
-     :return: Maximum mean discrepancy as a 0-dimensional array
+    :return: Maximum mean discrepancy as a 0-dimensional array
     """
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)

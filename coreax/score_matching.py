@@ -42,7 +42,7 @@ def analytic_obj(
     :param grad_score_times_random_direction_matrix: Product of the gradient of
         score_matrix (w.r.t. x) and the random_direction_vector
     :param score_matrix: Gradients of log-density
-    :return: Evaluation of score matching objective, see equation 8 in [ssm]_
+    :return: Evaluation of score matching objective, see equation 8 in :cite:ts:`ssm`.
     """
     result = (
         random_direction_vector @ grad_score_times_random_direction_matrix
@@ -66,7 +66,7 @@ def general_obj(
     :param grad_score_times_random_direction_matrix: Product of the gradient of
         score_matrix (w.r.t. x) and the random_direction_vector
     :param score_matrix: Gradients of log-density
-    :return: Evaluation of score matching objective, see equation 7 in [ssm]_
+    :return: Evaluation of score matching objective, see equation 7 in :cite:ts:`ssm`
     """
     result = (
         random_direction_vector @ grad_score_times_random_direction_matrix
@@ -83,7 +83,7 @@ def sliced_score_matching_loss_element(
     Compute element-wise loss function.
 
     Computes the loss function from Section 3.2 of Song el al.'s paper on sliced score
-    matching [ssm]_.
+    matching :cite:ts:`ssm`.
 
     :param x: :math:`d`-dimensional data vector
     :param v: :math:`d`-dimensional random vector
@@ -156,7 +156,7 @@ def noise_conditional_loop_body(
     Sum objective function with noise perturbations.
 
     Inputs are perturbed by Gaussian random noise to improve performance of score
-    matching. See [improvedsgm]_ for details.
+    matching. See :cite:ts:`improvedsgm` for details.
 
     :param i: Loop index
     :param obj: Running objective, i.e. the current partial sum
@@ -237,7 +237,7 @@ def sliced_score_matching(
     gamma: float = 0.95,
 ) -> Callable:
     r"""
-    Learn a sliced score matching function from Song et al.'s paper [ssm]_.
+    Learn a sliced score matching function from Song et al.'s paper :cite:ts:`ssm`.
 
     We currently use the ScoreNetwork neural network in coreax.networks to approximate
     the score function. Alternative network architectures can be considered.
