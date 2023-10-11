@@ -56,10 +56,10 @@ class TestMetrics(unittest.TestCase):
         Randomly select m points for coreset.
         Generate weights: w for original data, w_c for coreset.
 
-        :param n: Number of test data points
-        :param d: Dimension of data
-        :param m: Number of points to randomly select for coreset
-        :param max_size: Maximum number of points for block calculations
+        :n: Number of test data points
+        :d: Dimension of data
+        :m: Number of points to randomly select for coreset
+        :max_size: Maximum number of points for block calculations
         """
 
         self.n = 30
@@ -69,19 +69,31 @@ class TestMetrics(unittest.TestCase):
 
         self.x = random.uniform(random.PRNGKey(0), shape=(self.n, self.d))
         self.x_c = random.choice(random.PRNGKey(0), self.x, shape=(self.m,))
-        self.w = random.uniform(random.PRNGKey(0), shape=(self.n,)) / self.n
-        self.w_c = random.uniform(random.PRNGKey(0), shape=(self.m,)) / self.m
+        self.weights_x = random.uniform(random.PRNGKey(0), shape=(self.n,)) / self.n
+        self.weights_x_c = random.uniform(random.PRNGKey(0), shape=(self.m,)) / self.m
+
+    def test_metric_creation(self) -> None:
+        r"""
+        Test the class Metric initialises correctly.
+        """
+        my_metric = cm.Metric()
+
+        with self.assertRaises(NotImplementedError):
+            my_metric.compute(self.x, self.x_c)
 
     def test_mmd_XX(self) -> None:
         r"""
         Test the MMD of a dataset with itself is zero, for several different kernels.
         """
 
-        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.rbf_kernel), 0.0)
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+        self.assertAlmostEqual(my_metric.compute(self.x, self.x), 0.0)
 
-        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.laplace_kernel), 0.0)
+        my_metric = cm.MMD(kernel=ck.laplace_kernel)
+        self.assertAlmostEqual(my_metric.compute(self.x, self.x), 0.0)
 
-        self.assertAlmostEqual(cm.mmd(self.x, self.x, ck.pc_imq), 0.0)
+        my_metric = cm.MMD(kernel=ck.pc_imq)
+        self.assertAlmostEqual(my_metric.compute(self.x, self.x), 0.0)
 
     def test_mmd_ones(self):
         r"""
@@ -122,10 +134,11 @@ class TestMetrics(unittest.TestCase):
             = 0.
         """
 
-        mmd_test = cm.mmd(
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        mmd_test = my_metric.compute(
             x=jnp.array([[0, 0], [1, 1], [0, 0], [1, 1]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
         )
         self.assertAlmostEqual(mmd_test, 0.0, places=5)
 
@@ -170,10 +183,11 @@ class TestMetrics(unittest.TestCase):
             = \frac{3 - e^{-1} -2e^{-4}}{18}.
         """
 
-        mmd_test = cm.mmd(
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        mmd_test = my_metric.compute(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
         )
         self.assertAlmostEqual(
             mmd_test, (jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)), places=5
@@ -184,19 +198,23 @@ class TestMetrics(unittest.TestCase):
         Test that MMD computed from randomly generated test data agrees with mmd().
         """
 
-        Knn = gaussian_kernel(self.x, self.x)
-        Kmm = gaussian_kernel(self.x_c, self.x_c)
-        Knm = gaussian_kernel(self.x, self.x_c)
+        kernel_nn = gaussian_kernel(self.x, self.x)
+        kernel_mm = gaussian_kernel(self.x_c, self.x_c)
+        kernel_nm = gaussian_kernel(self.x, self.x_c)
 
-        mmd_test = (Knn.mean() + Kmm.mean() - 2 * Knm.mean()) ** 0.5
+        mmd = (kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean()) ** 0.5
 
-        self.assertAlmostEqual(
-            mmd_test, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=5
-        )
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+        mmd_test = my_metric.compute(self.x, self.x_c)
+
+        self.assertAlmostEqual(mmd_test, mmd, places=5)
 
     def test_wmmd_ints(self) -> None:
         r"""
         Test wmmd() function with a small example dataset of integers.
+
+        wmmd is calculated if and only if weights_x_c are provided. When weights_x_c =
+        None, the MMD class computes the standard, non-weighted mmd.
 
         For the dataset of 3 points in 2 dimensions :math:`X`, coreset :math:`X_c`, and
         coreset weights :math:`w_c`, given by:
@@ -218,14 +236,15 @@ class TestMetrics(unittest.TestCase):
 
             = \frac{3+4e^{-1}+2e^{-4}}{9} + 1 - 2 \times \frac{1 + e^{-1} + e^{-4}}{3}
 
-            = \frac{2}{3} - \fracv{2}{9}e^{-1} - \frac{4}{9}e^{-4}.
+            = \frac{2}{3} - \frac{2}{9}e^{-1} - \frac{4}{9}e^{-4}.
         """
 
-        wmmd_test = cm.wmmd(
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        wmmd_test = my_metric.compute(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
-            weights=jnp.array([1, 0]),
+            weights_x_c=jnp.array([1, 0]),
         )
         self.assertAlmostEqual(
             wmmd_test,
@@ -238,29 +257,36 @@ class TestMetrics(unittest.TestCase):
         Test that WMMD computed from randomly generated test data agrees with wmmd().
         """
 
-        Knn = gaussian_kernel(self.x, self.x)
-        Kmm = gaussian_kernel(self.x_c, self.x_c)
-        Knm = gaussian_kernel(self.x, self.x_c)
+        kernel_nn = gaussian_kernel(self.x, self.x)
+        kernel_mm = gaussian_kernel(self.x_c, self.x_c)
+        kernel_nm = gaussian_kernel(self.x, self.x_c)
 
-        wmmd_test = (
-            jnp.mean(Knn)
-            + jnp.dot(self.w_c.T, jnp.dot(Kmm, self.w_c))
-            - 2 * jnp.dot(self.w_c.T, Knm.mean(axis=0))
+        wmmd = (
+            jnp.mean(kernel_nn)
+            + jnp.dot(self.weights_x_c.T, jnp.dot(kernel_mm, self.weights_x_c))
+            - 2 * jnp.dot(self.weights_x_c.T, kernel_nm.mean(axis=0))
         ).item() ** 0.5
 
-        self.assertAlmostEqual(
-            wmmd_test, cm.wmmd(self.x, self.x_c, ck.rbf_kernel, self.w_c), places=5
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+        wmmd_test = my_metric.compute(
+            x=self.x, x_c=self.x_c, weights_x_c=self.weights_x_c
         )
+
+        self.assertAlmostEqual(wmmd_test, wmmd, places=5)
 
     def test_wmmd_uniform_weights(self) -> None:
         r"""
         Test that wmmd = mmd if weights are uniform, :math:`w_c = 1/m`.
         """
 
-        wmmd_test = cm.wmmd(self.x, self.x_c, ck.rbf_kernel, jnp.ones(self.m) / self.m)
-        self.assertAlmostEqual(
-            wmmd_test, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=5
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        uniform_wmmd = my_metric.compute(
+            self.x, self.x_c, weights_x_c=jnp.ones(self.m) / self.m
         )
+        mmd = my_metric.compute(self.x, self.x_c)
+
+        self.assertAlmostEqual(uniform_wmmd, mmd, places=5)
 
     def test_sum_K(self) -> None:
         r"""
@@ -299,10 +325,11 @@ class TestMetrics(unittest.TestCase):
         This test uses the same 2D, three-point dataset and coreset as test_mmd_ints().
         """
 
-        mmd_block_test = cm.mmd_block(
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        mmd_block_test = my_metric.compute(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
             max_size=2,
         )
         self.assertAlmostEqual(
@@ -314,36 +341,41 @@ class TestMetrics(unittest.TestCase):
         Test that mmd block-computed for random test data equals mmd_block().
         """
 
-        Knn = 0.0
+        kernel_nn = 0.0
         for i1 in range(0, self.n, self.max_size):
             for i2 in range(0, self.n, self.max_size):
-                Knn += gaussian_kernel(
+                kernel_nn += gaussian_kernel(
                     self.x[i1 : i1 + self.max_size, :],
                     self.x[i2 : i2 + self.max_size, :],
                 ).sum()
 
-        Kmm = 0.0
+        kernel_mm = 0.0
         for j1 in range(0, self.m, self.max_size):
             for j2 in range(0, self.m, self.max_size):
-                Kmm += gaussian_kernel(
+                kernel_mm += gaussian_kernel(
                     self.x_c[j1 : j1 + self.max_size, :],
                     self.x_c[j2 : j2 + self.max_size, :],
                 ).sum()
 
-        Knm = 0.0
+        kernel_nm = 0.0
         for i in range(0, self.n, self.max_size):
             for j in range(0, self.m, self.max_size):
-                Knm += gaussian_kernel(
+                kernel_nm += gaussian_kernel(
                     self.x[i : i + self.max_size, :], self.x_c[j : j + self.max_size, :]
                 ).sum()
 
         mmd_block_test = (
-            Knn / self.n**2 + Kmm / self.m**2 - 2 * Knm / (self.n * self.m)
+            kernel_nn / self.n**2
+            + kernel_mm / self.m**2
+            - 2 * kernel_nm / (self.n * self.m)
         ) ** 0.5
+
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+        block_mmd = my_metric.compute(self.x, self.x_c, max_size=self.max_size)
 
         self.assertAlmostEqual(
             mmd_block_test,
-            cm.mmd_block(self.x, self.x_c, ck.rbf_kernel, self.max_size),
+            block_mmd,
             places=5,
         )
 
@@ -352,10 +384,13 @@ class TestMetrics(unittest.TestCase):
         Test that mmd() returns the same as mmd_block().
         """
 
-        mmd_test = cm.mmd(self.x, self.x_c, ck.rbf_kernel)
-        mmd_block_test = cm.mmd_block(self.x, self.x_c, ck.rbf_kernel, self.max_size)
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
 
-        self.assertAlmostEqual(mmd_test, mmd_block_test, places=5)
+        self.assertAlmostEqual(
+            my_metric.compute(self.x, self.x_c),
+            my_metric.compute(self.x, self.x_c, max_size=self.max_size),
+            places=5,
+        )
 
     def test_sum_weight_K(self) -> None:
         r"""
@@ -427,14 +462,14 @@ class TestMetrics(unittest.TestCase):
 
             = \frac{1}{2} - \frac{e^{-1}}{2}.
         """
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
 
-        mmd_weight_block_test = cm.mmd_weight_block(
+        mmd_weight_block_test = my_metric.compute(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            w=jnp.array([0.5, 0.5, 0]),
-            w_c=jnp.array([1, 0]),
-            kernel=ck.rbf_kernel,
             max_size=2,
+            weights_x=jnp.array([0.5, 0.5, 0]),
+            weights_x_c=jnp.array([1, 0]),
         )
         self.assertAlmostEqual(
             mmd_weight_block_test, jnp.sqrt(1 / 2 - jnp.exp(-1) / 2), places=5
@@ -445,16 +480,18 @@ class TestMetrics(unittest.TestCase):
         Test mmd_weight_block equals mmd when weights are uniform: w = 1/n, w_c = 1/m.
         """
 
-        mmd_weight_block_test = cm.mmd_weight_block(
+        my_metric = cm.MMD(kernel=ck.rbf_kernel)
+
+        mmd_weight_block_test = my_metric.compute(
             self.x,
             self.x_c,
-            jnp.ones(self.n) / self.n,
-            jnp.ones(self.m) / self.m,
-            ck.rbf_kernel,
+            max_size=self.max_size,
+            weights_x=jnp.ones(self.n) / self.n,
+            weights_x_c=jnp.ones(self.m) / self.m,
         )
 
         self.assertAlmostEqual(
-            mmd_weight_block_test, cm.mmd(self.x, self.x_c, ck.rbf_kernel), places=5
+            mmd_weight_block_test, my_metric.compute(self.x, self.x_c), places=5
         )
 
 
