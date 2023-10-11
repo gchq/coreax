@@ -12,34 +12,38 @@ sys.path.insert(0, target_dir)
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Coreax'
+project = "Coreax"
 copyright = '2023, ""'
 author = '""'
-release = '0.0.1'
+release = "0.0.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.intersphinx',
-              'myst_parser']
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "myst_parser",
+]
 
-source_suffix = ['.rst', '.md']
+source_suffix = [".rst", ".md"]
 
 myst_enable_extensions = ["html_image"]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
 # Display type annotations only in compiled description.
 autodoc_typehints = "description"
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'jax': ('https://jax.readthedocs.io/en/latest/', None)
+    "python": ("https://docs.python.org/3", None),
+    "jax": ("https://jax.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'classic'
-html_static_path = ['_static']
+html_theme = "classic"
+html_static_path = ["_static"]
