@@ -90,7 +90,9 @@ A high level overview of the expected style is:
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
 ### Testing
-[Unittest][unittest] is used for testing in coreax. As much effort should be put into developing tests as the code. Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
+[Unittest][unittest] is used to write tests for coreax, while [Pytest][pytest] is used to run tests. As much effort should
+be put into developing tests as the code. Tests should be provided to test functionality and also ensuring exceptions and
+warnings are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
