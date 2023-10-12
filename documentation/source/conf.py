@@ -15,8 +15,8 @@ sys.path.insert(0, target_dir)
 
 project = "Coreax"
 copyright = '2023, ""'
-author = '""'
-release = "v0.0.1"
+author = "GCHQ"
+release = "v0.1.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -32,18 +32,19 @@ extensions = [
 
 # file sources
 source_suffix = [".rst", ".md"]
-myst_enable_extensions = ["html_image"]
 
-# bibtex references path
+# enable MyST extension to parse HTML image objects in .md files
+myst_enable_extensions = ["html_image", "dollarmath", "amsmath"]
+
+# BibTex references path
 bibtex_bibfiles = ["references.bib"]
 
 templates_path = ["_templates"]
-exclude_patterns = []
 
 # Display type annotations only in compiled description.
 autodoc_typehints = "description"
 
-# set intersphinx mapping to auto-link to external documentation
+# set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://jax.readthedocs.io/en/latest/", None),
