@@ -96,6 +96,9 @@ warnings are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
+Keep in mind the impact on runtime when writing your tests. Favour more tests that are smaller rather than a few large
+tests with many assert statements unless it would significantly affect run time, e.g. due to excess set up or duplicated
+function calls.
 ### Docstrings
 
 Docstrings must:
