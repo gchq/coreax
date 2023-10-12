@@ -16,307 +16,232 @@ from functools import partial
 from typing import Callable
 
 import numpy as np
-from jax import grad, vjp
+from jax import grad
+from jax import numpy as jnp
+from jax import vjp
 from scipy.stats import norm, ortho_group
 
-from coreax.kernel import *
+import coreax.kernel as ck
 
 
 class TestKernels(unittest.TestCase):
     """
-    Tests related to kernel.py functions.
+    Tests related to kernel.py functions & classes.
     """
 
-    def test_sq_dist(self) -> None:
-        """
-        Test square distance under float32.
-        """
-        m = ortho_group.rvs(dim=2)
-        x = m[0]
-        y = m[1]
-        d = jnp.linalg.norm(x - y) ** 2
-        td = sq_dist(x, y)
-        self.assertAlmostEqual(d, td, places=3)
-        td = sq_dist(x, x)
-        self.assertAlmostEqual(0.0, td, places=3)
-        td = sq_dist(y, y)
-        self.assertAlmostEqual(0.0, td, places=3)
-
-    def test_sq_dist_pairwise(self) -> None:
-        """
-        Test vmap version of sq distance.
-        """
-        # create an orthonormal matrix
-        d = 3
-        m = ortho_group.rvs(dim=d)
-        tinner = sq_dist_pairwise(m, m)
-        ans = np.ones((d, d)) * 2.0
-        np.fill_diagonal(ans, 0.0)
-        # Frobenius norm
-        td = jnp.linalg.norm(tinner - ans)
-        self.assertAlmostEqual(td, 0.0, places=3)
-
-    def test_rbf_kernel(self) -> None:
-        """
-        Test the RBF kernel.
-
-        Note that the bandwidth is the 'variance' of the sq exp.
-        """
-        bandwidth = np.float32(np.pi) / 2.0
-        x = np.arange(10)
-        y = x + 1.0
-        ans = np.exp(-np.linalg.norm(x - y) ** 2 / (2.0 * bandwidth))
-        tst = rbf_kernel(x, y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0.0, places=3)
-
-    def test_laplace_kernel(self) -> None:
-        """
-        Test the Laplace kernel.
-
-        Note that in this case, the norm isn't squared.
-        """
-        bandwidth = np.float32(np.pi) / 2.0
-        x = np.arange(10)
-        y = x + 1.0
-        ans = np.exp(-np.linalg.norm(x - y) / (2.0 * bandwidth))
-        tst = laplace_kernel(x, y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(ans - tst), 0.0, places=3)
-
-    def test_pdiff(self) -> None:
-        """
-        Test the function pdiff.
-
-        This test ensures efficient computation of pairwise differences.
-        """
-        m = 10
-        n = 10
-        d = 3
-        X = np.random.random((n, d))
-        Y = np.random.random((m, d))
-        Z = []
-        for x in X:
-            row = []
-            for y in Y:
-                row.append(x - y)
-            Z.append(list(row))
-        Z = np.array(Z)
-        tst = pdiff(X, Y)
-        self.assertAlmostEqual(jnp.linalg.norm(tst - Z), 0.0, places=3)
-
-    def test_gaussian_kernel(self) -> None:
-        """
-        Test the normalised RBF (Gaussian) kernel.
-        """
-        std_dev = np.e
-        n = 10
-        X = np.arange(n)
-        Y = X + 1.0
-        K = np.zeros((n, n))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = norm(y, std_dev).pdf(x)
-        tst = normalised_rbf(X, Y, std_dev)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
-
-    def test_pc_imq(self) -> None:
-        """
-        Test the function pc_imq (Inverse multi-quadric, pre-conditioned).
-
-        Note that the bandwidth is the 'variance' of the sq exp.
-        """
-        std_dev = np.e
-        n = 10
-        X = np.arange(n)
-        Y = X + 1.0
-        K = np.zeros((n, n))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = 1.0 / np.sqrt(1.0 + ((x - y) / std_dev) ** 2 / 2.0)
-        tst = pc_imq(X, Y, std_dev)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
-
-    def test_rbf_f_x(self) -> None:
+    def test_rbf_kernel_init(self) -> None:
         r"""
-        Test the kernel density estimation (KDE) PDF for a radial basis function.
+        Test the class RBFKernel initilisation with a negative bandwidth.
         """
-        std_dev = np.e
-        n = 10
-        X = np.arange(n)
-        Y = X + 1.0
-        K = np.zeros((n, n))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = norm(y, std_dev).pdf(x)
-        tst_mean, tst_val = rbf_f_x(X, Y, std_dev)
-        self.assertAlmostEqual(
-            jnp.linalg.norm(K.mean(axis=1) - tst_mean), 0.0, places=3
-        )
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst_val), 0.0, places=3)
+        # Create the kernel with a negative bandwidth - we expect a value error to be
+        # raised
+        self.assertRaises(ValueError, ck.RBFKernel, bandwidth=-1.0)
 
-    def test_grad_rbf_x(self) -> None:
+    def test_rbf_kernel_distance_two_floats(self) -> None:
         r"""
-        Test the gradient of the RBF kernel (analytic).
+        Test the class RBFKernel distance computations.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+
+        For the two input floats
+        .. math::
+
+            x = 0.5
+
+            y = 2.0
+
+        For our choices of x and y, we have:
+
+        .. math::
+
+            ||x - y||^2 &= (0.5 - 2.0)^2
+                        &= 2.25
+
+        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+            k(x, y) &= \exp(- 2.25 / \pi)
+                    &= 0.48860678
         """
+        # Define data and bandwidth
+        x = 0.5
+        y = 2.0
+        bandwidth = np.float32(np.pi) / 2.0
+
+        # Define the expected distance - it should just be a number in this case since
+        # we have floats as inputs, so treat these single data-points in space
+        expected_distance = 0.48860678
+
+        # Create the kernel
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(output, expected_distance, places=5)
+
+    def test_rbf_kernel_distance_two_vectors(self) -> None:
+        r"""
+        Test the class RBFKernel distance computations.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+
+        For the two input vectors
+        .. math::
+
+            x = [0, 1, 2, 3]
+
+            y = [1, 2, 3, 4]
+
+        For our choices of x and y, we have:
+
+        .. math::
+
+            ||x - y||^2 &= (0 - 1)^2 + (1 - 2)^2 + (2 - 3)^2 + (3 - 4)^2
+                        &= 4
+
+        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+            k(x, y) &= \exp(- 4 / \pi)
+                    &= 0.279923327
+        """
+        # Define data and bandwidth
+        x = 1.0 * np.arange(4)
+        y = x + 1.0
+        bandwidth = np.float32(np.pi) / 2.0
+
+        # Define the expected distance - it should just be a number in this case since
+        # we have 1-dimensional arrays, so treat these as single data-points in space
+        expected_distance = 0.279923327
+
+        # Create the kernel
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(output, expected_distance, places=5)
+
+    def test_rbf_kernel_distance_two_matrices(self) -> None:
+        r"""
+        Test the class RBFKernel distance computations.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+
+        For the two input vectors
+        .. math::
+
+            x = [ [0, 1, 2, 3], [5, 6, 7, 8] ]
+
+            y = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+        For our choices of x and y, we have distances of:
+
+        .. math::
+
+            ||x - y||^2 = [4, 0]
+
+        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+            k(x[0], y[0]) &= \exp(- 4 / \pi)
+                          &= 0.279923327
+            k(x[1 y[1]) &= \exp(- 0 / \pi)
+                          &= 1.0
+
+        """
+        # Define data and bandwidth
+        x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+        y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+        bandwidth = np.float32(np.pi) / 2.0
+
+        # Define the expected distance - it should just be an array in this case since
+        # we have an input that has multiple 'rows' and a defined second dimension
+        # (column)
+        expected_distances = np.array([0.279923327, 1.0])
+
+        # Create the kernel
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        np.testing.assert_array_almost_equal(output, expected_distances, decimal=5)
+
+    def test_rbf_kernel_gradients_wrt_x(self) -> None:
+        """
+        Test the class RBFKernel gradient computations.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The gradient of this with respect to x is:
+
+        ..math:
+            - \frac{(x - y)}{bandwidth^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 bandwidth^2}}
+        """
+        # Define some data
         bandwidth = 1 / np.sqrt(2)
-        n = 10
-        d = 2
-        X = np.random.random((n, d))
-        Y = np.random.random((n, d))
-        K = np.zeros((n, n, d))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = (
-                    -(x - y)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to x
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    -(x_ - y_)
                     / bandwidth**3
-                    * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * bandwidth**2))
+                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
                     / (np.sqrt(2 * np.pi))
                 )
 
-        tst = grad_rbf_x(X, Y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
+        # Create the kernel
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
 
-    def test_grad_rbf_y(self) -> None:
-        r"""
-        Test the gradient of the RBF kernel (analytic).
+        # Evaluate the gradient
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(jnp.linalg.norm(true_gradients - output), 0.0, places=3)
+
+    def test_rbf_kernel_gradients_wrt_y(self) -> None:
         """
+        Test the class RBFKernel gradient computations.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The gradient of this with respect to y is:
+
+        ..math:
+            \frac{(x - y)}{bandwidth^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 bandwidth^2}}
+        """
+        # Define some data
         bandwidth = 1 / np.sqrt(2)
-        n = 10
-        d = 2
-        X = np.random.random((n, d))
-        Y = np.random.random((n, d))
-        K = np.zeros((n, n, d))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = (
-                    (x - y)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to y
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    (x_ - y_)
                     / bandwidth**3
-                    * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * bandwidth**2))
+                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
                     / (np.sqrt(2 * np.pi))
                 )
 
-        tst = grad_rbf_y(X, Y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
+        # Create the kernel
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
 
-    def test_grad_pc_imq_x(self) -> None:
-        r"""
-        Test the gradient of the PC-IMQ kernel wrt x argument
-        """
-        bandwidth = 1 / np.sqrt(2)
-        n = 10
-        d = 2
-        X = np.random.random((n, d))
-        Y = np.random.random((n, d))
-        K = np.zeros((n, n, d))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = -(x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
-        tst = grad_pc_imq_x(X, Y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
+        # Evaluate the gradient
+        output = kernel.grad_y(x, y)
 
-    def test_grad_pc_imq_y(self) -> None:
-        r"""
-        Test the gradient of the PC-IMQ kernel wrt x argument
-        """
-        bandwidth = 1 / np.sqrt(2)
-        n = 10
-        d = 2
-        X = np.random.random((n, d))
-        Y = np.random.random((n, d))
-        K = np.zeros((n, n, d))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K[i, j] = (x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
-        tst = grad_pc_imq_y(X, Y, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(K - tst), 0.0, places=3)
-
-    def test_rbf_grad_log_f_x(self) -> None:
-        r"""
-        Test the score function of an RBF
-        """
-        bandwidth = 1 / np.sqrt(2)
-        n = 10
-        d = 2
-        X = np.random.random((n, d))
-        kde_points = np.random.random((n, d))
-        kde = lambda x: (
-            np.exp(
-                -np.linalg.norm(x - kde_points, axis=1)[:, None] ** 2
-                / (2 * bandwidth**2)
-            )
-            / (np.sqrt(2 * np.pi) * bandwidth)
-        ).mean(axis=0)
-        J = np.zeros((n, d))
-        for i, x in enumerate(X):
-            J[i] = (
-                -(x - kde_points)
-                / bandwidth**3
-                * np.exp(
-                    -np.linalg.norm(x - kde_points, axis=1)[:, None] ** 2
-                    / (2 * bandwidth**2)
-                )
-                / (np.sqrt(2 * np.pi))
-            ).mean(axis=0) / (kde(x)[:, None])
-        tst = rbf_grad_log_f_x(X, kde_points, bandwidth)
-        self.assertAlmostEqual(jnp.linalg.norm(J - tst), 0.0, places=3)
-
-    def test_stein_kernel_pc_imq_element(self) -> None:
-        """
-        Test the Stein kernel with PC-IMQ base and score fn -x
-        """
-        n = 10
-        d = 2
-        bandwidth = 1 / np.sqrt(2)
-        score_fn = lambda x: -x
-        beta = 0.5
-
-        def k_x_y(x, y):
-            r"""The Stein kernel.
-
-            The base kernel is :math:`(1 + \lvert \mathbf{x} - \mathbf{y}
-            \rvert^2)^{-1/2}`. :math:`\mathbb{P}` is :math:`\mathcal{N}(0, \mathbf{I})`
-            with :math:`\nabla \log f_X(\mathbf{x}) = -\mathbf{x}`.
-
-            In the code: l, m and r refer to shared denominators in the Stein kernel
-            equation (rather than divergence, x_, y_ and z in the main code function).
-
-            :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = l + m + r`.
-
-            :math:`l := -\frac{3 \lvert \mathbf{x} - \mathbf{y} \rvert^2}{(1 + \lvert
-            \mathbf{x} - \mathbf{y} \rvert^2)^{5/2}}`.
-
-            :math:`m := 2\beta\left[ \frac{d + [\mathbf{y} -
-            \mathbf{x}]^\intercal[\mathbf{x} - \mathbf{y}]}{(1 + \lvert \mathbf{x} -
-            \mathbf{y} \rvert^2)^{3/2}} \right]`.
-
-            :math:`r := \frac{\mathbf{x}^\intercal \mathbf{y}}{(1 + \lvert \mathbf{x} -
-            \mathbf{y} \rvert^2)^{1/2}}`.
-
-            :param x: a d-dimensional vector
-            :param y: a d-dimensional vector
-            :return: kernel evaluated at x, y
-            """
-            norm_sq = np.linalg.norm(x - y) ** 2
-            l = -3 * norm_sq / (1 + norm_sq) ** 2.5
-            m = (
-                2
-                * beta
-                * (d + np.dot(score_fn(x) - score_fn(y), x - y))
-                / (1 + norm_sq) ** 1.5
-            )
-            r = np.dot(score_fn(x), score_fn(y)) / (1 + norm_sq) ** 0.5
-            return l + m + r
-
-        X = np.random.random((n, d))
-        Y = np.random.random((n, d))
-        K = np.zeros((n, n))
-        K_ans = np.zeros((n, n))
-        for i, x in enumerate(X):
-            for j, y in enumerate(Y):
-                K_ans[i, j] = k_x_y(x, y)
-                K[i, j] = stein_kernel_pc_imq_element(
-                    x, y, score_fn(x), score_fn(y), d, bandwidth
-                )
-        self.assertAlmostEqual(jnp.linalg.norm(K - K_ans), 0.0, places=3)
+        # Check output matches expected
+        self.assertAlmostEqual(jnp.linalg.norm(true_gradients - output), 0.0, places=3)
 
 
 if __name__ == "__main__":
