@@ -101,6 +101,10 @@ Docstrings must:
 - Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
 - Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
+- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Have a full stop at the end of the one-line descriptive sentence.
+- Use full stops in extended paragraphs of text.
+- Not have full stops at the end of parameter definitions.
 
 Each docstring for a public object should take the following structure:
 ```
@@ -116,6 +120,13 @@ As many paragraphs as is required to document the object.
 """
 ```
 If the function does not return anything, the return line above can be omitted.
+
+### Comments
+
+Comments must:
+- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Not end in a full stop for single-line comments in code.
+- End with a full stop for multi-line comments.
 
 ### Documentation and references
 The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
