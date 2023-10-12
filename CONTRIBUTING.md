@@ -128,6 +128,10 @@ Comments must:
 - Not end in a full stop for single-line comments in code.
 - End with a full stop for multi-line comments.
 
+### Maths Overflow
+
+Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
+
 ### Documentation and references
 The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
 
