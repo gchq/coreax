@@ -157,3 +157,4 @@ sphinx-quickstart
 [mit]: https://opensource.org/license/mit/
 [lgpl]: https://opensource.org/license/lgpl-license-html/
 [unittest]: https://docs.python.org/3/library/unittest.html
+[pytest]: https://docs.pytest.org/
