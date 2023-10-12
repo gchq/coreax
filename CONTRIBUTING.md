@@ -99,6 +99,12 @@ warnings are raised or managed appropriately. This includes:
 Keep in mind the impact on runtime when writing your tests. Favour more tests that are smaller rather than a few large
 tests with many assert statements unless it would significantly affect run time, e.g. due to excess set up or duplicated
 function calls.
+
+Use the form: actual expected in asserts, e.g.
+```python
+assertEqual(actualValue, expectedValue)
+```
+
 ### Docstrings
 
 Docstrings must:
