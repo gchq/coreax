@@ -1,6 +1,14 @@
 coreax package
 ==============
 
+Module contents
+---------------
+
+.. automodule:: coreax
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -80,14 +88,6 @@ coreax.weights module
 ---------------------
 
 .. automodule:: coreax.weights
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: coreax
    :members:
    :undoc-members:
    :show-inheritance:

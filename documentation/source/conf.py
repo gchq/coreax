@@ -6,17 +6,23 @@
 import pathlib
 import sys
 
+import coreax
+
 # add root directory to path
-target_dir = pathlib.Path(__file__).parent.parent.resolve()
-sys.path.insert(0, target_dir)
+CONF_FILE_PATH = pathlib.Path(__file__).absolute()
+SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
+DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
+REPO_FOLDER_PATH = DOCS_FOLDER_PATH.parent
+
+sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Coreax"
-copyright = '2023, ""'
+copyright = "UK Crown"
 author = "GCHQ"
-release = "v0.1.0"
+version = "v" + coreax.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -24,8 +30,10 @@ release = "v0.1.0"
 # sphinx extensions
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosectionlabel",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     "myst_parser",
     "sphinxcontrib.bibtex",
 ]

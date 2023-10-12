@@ -41,7 +41,7 @@ def analytic_obj(
 
     :param random_direction_vector: :math:`d`-dimensional random vector
     :param grad_score_times_random_direction_matrix: Product of the gradient of
-        score_matrix (w.r.t. x) and the random_direction_vector
+        score_matrix (w.r.t. ``x``) and the random_direction_vector
     :param score_matrix: Gradients of log-density
     :return: Evaluation of score matching objective, see equation 8 in :cite:p:`ssm`.
     """
@@ -65,7 +65,7 @@ def general_obj(
 
     :param random_direction_vector: :math:`d`-dimensional random vector
     :param grad_score_times_random_direction_matrix: Product of the gradient of
-        score_matrix (w.r.t. x) and the random_direction_vector
+        score_matrix (w.r.t. ``x``) and the random_direction_vector
     :param score_matrix: Gradients of log-density
     :return: Evaluation of score matching objective, see equation 7 in :cite:p:`ssm`
     """
@@ -88,10 +88,10 @@ def sliced_score_matching_loss_element(
 
     :param x: :math:`d`-dimensional data vector
     :param v: :math:`d`-dimensional random vector
-    :param score_network: Function that calls the neural network on x
+    :param score_network: Function that calls the neural network on ``x``
     :param obj_fn: Objective function with arguments
                     :math:`(v, u, s) \rightarrow \mathbb{R}`
-    :return: Objective function output for single `x` and `v` inputs
+    :return: Objective function output for single ``x`` and ``v`` inputs
     """
     s, u = jvp(score_network, (x,), (v,))
     return obj_fn(v, u, s)
@@ -99,12 +99,12 @@ def sliced_score_matching_loss_element(
 
 def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Callable:
     r"""
-    Compute vector mapped loss function for arbitrary numbers of `X` and `V` vectors.
+    Compute vector mapped loss function for arbitrary numbers of ``X`` & ``V`` vectors.
 
     In the context of score matching, we expect to call the objective function on the
-    data vector (`x`), random vectors (`v`) and using the score neural network.
+    data vector (``x``), random vectors (``v``) and using the score neural network.
 
-    :param score_network: Function that calls the neural network on `x`
+    :param score_network: Function that calls the neural network on ``x``
     :param obj_fn: Element-wise function (vector, vector, score_network)
                     :math:`\rightarrow \mathbb{R}`
     :return: Callable vectorised sliced score matching loss function
@@ -261,7 +261,7 @@ def sliced_score_matching(
     :param sigma: Initial noise standard deviation for noise geometric progression in
         noise conditional score matching, defaults to 1
     :param gamma: Geometric progression ratio, defaults to 0.95
-    :return: A function that applies the learned score function to input x
+    :return: A function that applies the learned score function to input ``x``
     """
     # main objects
     n, d = X.shape

@@ -293,7 +293,9 @@ def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
     Convenience function for leaving `S` unchanged, :math:`S \rightarrow x`
 
-    Compare with :func:`~coreax.refine.change`.
+    .. seealso::
+
+        Compare with :func:`~coreax.refine.change`.
 
     :param i: Index in S to replace. Not used
     :param S: The dataset for replacement. Will remain unchanged
@@ -439,7 +441,9 @@ def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
     Convenience function for leaving `S` unchanged, :math:`x \rightarrow S`
 
-    Compare with :func:`~coreax.refine.change_rev`.
+    .. seealso::
+
+        Compare with :func:`~coreax.refine.change_rev`.
 
 
 

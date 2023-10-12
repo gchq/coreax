@@ -30,9 +30,6 @@ dependencies = [
     "optax",
     "scikit-learn",
     "tqdm",
-    "sphinx",
-    "myst-parser",
-    "sphinxcontrib-bibtex"
 ]
 
 [project.optional-dependencies]
@@ -45,6 +42,9 @@ dev = [
     "pyqt5",
     "pytest",
     "scipy",
+    "sphinx",
+    "myst-parser",
+    "sphinxcontrib-bibtex",
 ]
 
 [project.urls]
