@@ -53,6 +53,11 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
 Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
 
+### Pull request commenting process
+- Use a comment thread for each required change.
+- Reviewer closes the thread once the comment has been resolved.
+- Only the reviewer may mark a thread they opened as resolved.
+
 ### Commit messages
 
 Follow the [conventional commits guidelines][conventional_commits] to *make reviews easier* and to make the git logs more valuable.
