@@ -43,8 +43,8 @@ def update_K_sum(
     r"""
     Update row sum with a kernel matrix block.
 
-    The kernel matrix block :math:`i:i+max_size \times j:j+max_size` is used to update
-    the row sum. Symmetry of the kernel matrix is exploited to reduced repeated
+    The kernel matrix block :math:`i:i+max_{size} \times j:j+max_{size}` is used to
+    update the row sum. Symmetry of the kernel matrix is exploited to reduced repeated
     calculation.
 
     Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and `nu`
@@ -60,8 +60,8 @@ def update_K_sum(
     :param grads: Array of gradients, if applicable, :math:`n \times d`;
                   Optional, defaults to `None`
     :param nu: Base kernel bandwidth. Optional, defaults to `None`
-    :return: Gram matrix row sum, with elements :math:`i: i + max_size` and
-             :math:`j: j + max_size` populated
+    :return: Gram matrix row sum, with elements :math:`i: i + max_{size}` and
+             :math:`j: j + max_{size}` populated
     """
     X = jnp.asarray(X)
     K_sum = jnp.asarray(K_sum)

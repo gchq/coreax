@@ -48,6 +48,8 @@ autodoc_typehints = "description"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://jax.readthedocs.io/en/latest/", None),
+    "flax": ("https://flax.readthedocs.io/en/latest/", None),
+    "optax": ("https://optax.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

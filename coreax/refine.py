@@ -34,7 +34,7 @@ def refine(
     K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively. S -> x.
+    Refine a coreset iteratively. :math:`S \rightarrow x`.
 
     The refinement procedure replaces elements with points most reducing maximum mean
     discrepancy (MMD). The iteration is carred out over points in `x`.
@@ -79,7 +79,7 @@ def refine_body(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Execute main loop of the refine method, S -> x.
+    Execute main loop of the refine method, :math:`S \rightarrow x`.
 
     :param i: Loop counter
     :param S: Loop updatables
@@ -109,7 +109,8 @@ def comparison(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy from point replacement. S -> x.
+    Calculate the change in maximum mean discrepancy from point replacement.
+    :math:`S \rightarrow x`
 
     The change calculated is from replacing point `i` in `S` with any point in `x`.
 
@@ -199,7 +200,7 @@ def refine_rand_body(
     k_vec: KernelFunction,
 ) -> tuple[random.PRNGKeyArray, Array]:
     r"""
-    Execute main loop of the random refine method
+    Execute main loop of the random refine method.
 
     :param i: Loop counter
     :param val: Loop updatables
@@ -271,9 +272,10 @@ def comparison_cand(
 @jit
 def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the i^th point in S with the candidate in cand with maximum value in comps.
+    Replace the :math:`i^{th}` point in `S`, :math:`S \rightarrow x`
 
-    S -> x.
+    The :math:`i^{th}` point is replaced with the candidate in `cand` with max value in
+    `comps`.
 
     :param i: Index in S to replace
     :param S: The dataset for replacement
@@ -289,7 +291,9 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change). S -> x.
+    Convenience function for leaving `S` unchanged, :math:`S \rightarrow x`
+
+    Compare with :func:`~coreax.refine.change`.
 
     :param i: Index in S to replace. Not used
     :param S: The dataset for replacement. Will remain unchanged
@@ -309,7 +313,7 @@ def refine_rev(
     r"""
     Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    The iteration is carried out over points in `x`, with x -> S.
+    The iteration is carried out over points in `x`, with :math:`x \rightarrow S`.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
@@ -353,7 +357,7 @@ def refine_rev_body(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Execute main loop of the refine method, x -> S.
+    Execute main loop of the refine method, :math:`x \rightarrow S`.
 
     :param i: Loop counter
     :param S: Loop updatables
@@ -363,7 +367,8 @@ def refine_rev_body(
     :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
+                  \mathbb{R}^n`
     :returns: Updated loop variables `S`
     """
     comps = comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec)
@@ -383,7 +388,7 @@ def comparison_rev(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy (MMD). x -> S.
+    Calculate the change in maximum mean discrepancy (MMD), :math:`x \rightarrow S`
 
     The change in MMD arises from replacing a point in `S` with `x[i]`.
 
@@ -395,7 +400,8 @@ def comparison_rev(
     :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
+                  \mathbb{R}^n`
     :return: the MMD changes for each point
     """
     S = jnp.asarray(S)
@@ -415,12 +421,12 @@ def comparison_rev(
 @jit
 def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the maximum comps value point in S with i. x -> S.
+    Replace the maximum comps value point in `S` with `i`, :math:`x \rightarrow S`
 
-    :param i: Value to replace into S.
+    :param i: Value to replace into `S`.
     :param S: The dataset for replacement
     :param comps: Comparison values for each candidate
-    :return: Updated S, with maximum comps point replaced
+    :return: Updated `S`, with maximum comps point replaced
     """
     S = jnp.asarray(S)
     comps = jnp.asarray(comps)
@@ -431,9 +437,11 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change_rev).
+    Convenience function for leaving `S` unchanged, :math:`x \rightarrow S`
 
-    x -> S.
+    Compare with :func:`~coreax.refine.change_rev`.
+
+
 
     :param i: Value to replace into S. Not used
     :param S: The dataset for replacement. Will remain unchanged

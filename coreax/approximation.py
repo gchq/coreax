@@ -144,7 +144,7 @@ def k_mean_nystrom_approx(
     Approximate kernel row mean by using Nystrom approximation.
 
     Here, the kernel row mean is the matrix row sum divided by n. Further details for
-    Nystrom kernel mean embeddings can be found here :cite:ts:`chatalic2022nystrom`.
+    Nystrom kernel mean embeddings can be found here :cite:p:`chatalic2022nystrom`.
 
     :param key: Key for random number generation
     :param data: The original :math:`n \times d` data

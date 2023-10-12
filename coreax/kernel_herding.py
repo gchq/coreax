@@ -360,13 +360,13 @@ def scalable_herding(
 
             .. math::
 
-                     r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
+                     r = \lfloor \log_{\frac{n_{core}}{size}}(\frac{n_{core}}{n})\rfloor
 
             Each recursion gives :math:`n_r = C \times k_{r-1}` points. Unpacking the
             recursion, this gives
-            :math:`n_r \approx n_0 \left( \frac{n_core}{n_size}\right)^r`.
-        #.  Once :math:`n_core < n_r \leq size`, we run a final weighted herding (if
-            weighting is requested) to give :math:`n_core` points.
+            :math:`n_r \approx n_0 \left( \frac{n_{core}}{n_{size}}\right)^r`.
+        #.  Once :math:`n_{core} < n_r \leq size`, we run a final weighted herding (if
+            weighting is requested) to give :math:`n_{core}` points.
 
 
     :param X: Original :math:`n \times d` dataset
