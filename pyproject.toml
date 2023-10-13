@@ -36,6 +36,7 @@ dependencies = [
 dev = [
     "imageio",
     "matplotlib",
+    "myst-parser",
     "numpy",
     "opencv-python",
     "pre-commit",
@@ -43,7 +44,6 @@ dev = [
     "pytest",
     "scipy",
     "sphinx",
-    "myst-parser",
     "sphinxcontrib-bibtex",
 ]
 

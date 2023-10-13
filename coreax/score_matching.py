@@ -246,9 +246,9 @@ def sliced_score_matching(
     :param X: The :math:`n \times d` data vectors
     :param rgenerator: Distribution sampler (key, shape, dtype) :math:`\rightarrow`
         :class:`~jax.Array`, e.g. distributions in :class:`~jax.random`
-    :param noise_conditioning: Use the noise conditioning version of score matching.
-        Defaults to True
-    :param use_analytic: Use the analytic (reduced variance) objective or not. Defaults
+    :param noise_conditioning: Use the noise conditioning version of score matching,
+        defaults to True
+    :param use_analytic: Use the analytic (reduced variance) objective or not, defaults
         to False
     :param M: The number of random vectors to use per data vector, defaults to 1
     :param lr: Optimiser learning rate, defaults to 1e-3

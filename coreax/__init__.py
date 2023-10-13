@@ -1,2 +1,5 @@
 # __init__.py
-__version__ = "0.0.1"
+import importlib.metadata as metadata
+
+# this pulls the version from pyproject.toml
+__version__ = metadata.version(__package__)

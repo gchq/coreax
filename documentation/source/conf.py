@@ -31,6 +31,7 @@ version = "v" + coreax.__version__
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosectionlabel",
+    "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
@@ -51,6 +52,7 @@ templates_path = ["_templates"]
 
 # Display type annotations only in compiled description.
 autodoc_typehints = "description"
+autosummary_generate = True
 
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {
