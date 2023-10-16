@@ -27,45 +27,203 @@ from coreax.util import KernelFunction
 # These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
 
 
-def refine(
-    x: ArrayLike,
-    S: ArrayLike,
-    kernel: KernelFunction,
-    K_mean: ArrayLike,
-) -> Array:
+class Refine:
     r"""
-    Refine a coreset iteratively. S -> x.
-
-    The refinement procedure replaces elements with points most reducing maximum mean
-    discrepancy (MMD). The iteration is carred out over points in `x`.
-
-    :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
-    :return: Refined coreset point indices
+    Base class for creating refine functions.
     """
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
-    k_vec = jit(vmap(kernel, in_axes=(0, None)))
 
-    K_diag = vmap(kernel)(x, x)
+    def __init__(
+        self,
+        kernel: KernelFunction,
+    ):
+        r"""
+        :param kernel: Kernel function
+                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        """
 
-    S = jnp.asarray(S)
-    m = len(S)
-    body = partial(
-        refine_body,
-        x=x,
-        K_mean=K_mean,
-        K_diag=K_diag,
-        k_pairwise=k_pairwise,
-        k_vec=k_vec,
-    )
-    S = lax.fori_loop(0, m, body, S)
+        self.kernel = kernel
 
-    return S
+        self.k_pairwise = jit(
+            vmap(
+                vmap(self.kernel, in_axes=(None, 0), out_axes=0),
+                in_axes=(0, None),
+                out_axes=0,
+            )
+        )
+        self.k_vec = jit(vmap(self.kernel, in_axes=(0, None)))
+
+    def refine(self, x: ArrayLike, S: ArrayLike, K_mean: ArrayLike) -> Array:
+        r"""
+        Compute the refined coreset, of m points in d dimensions.
+
+        Return an m-by-d array.
+        """
+        raise NotImplementedError
+
+
+class RefineRegular(Refine):
+    def __init__(self):
+        super().__init__()
+
+    def refine(self, x, S, K_mean) -> Array:
+        r"""
+        Refine a coreset iteratively. S -> x.
+
+        The refinement procedure replaces elements with points most reducing maximum mean
+        discrepancy (MMD). The iteration is carred out over points in `x`.
+
+        :param x: :math:`n \times d` original data
+        :param S: Coreset point indices
+        :param K_mean: Kernel matrix row sum divided by n
+        :return: Refined coreset point indices
+        """
+
+        K_diag = vmap(self.kernel)(x, x)
+
+        S = jnp.asarray(S)
+        m = len(S)
+        body = partial(
+            refine_body,
+            x=x,
+            K_mean=K_mean,
+            K_diag=K_diag,
+            k_pairwise=self.k_pairwise,
+            k_vec=self.k_vec,
+        )
+        S = lax.fori_loop(0, m, body, S)
+
+        return S
+
+
+class RefineRandom(Refine):
+    def __init__(self, p: float = 0.1):
+        self.p = p
+
+        super().__init__()
+
+    def refine(self, x, S, K_mean):
+        r"""
+         Refine a coreset iteratively.
+
+        The refinement procedure replaces a random element with the best point among a set
+        of candidate point. The candidate points are a random sample of :math:`n \times p`
+        points from among the original data.
+
+        :param x: :math:`n \times d` original data
+        :param S: Coreset point indices
+        :param kernel: Kernel function
+                       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :param K_mean: Kernel matrix row sum divided by n
+        :param p: Proportion of original data to use as candidates
+        :return: Refined coreset point indices
+        """
+
+        K_diag = vmap(self.kernel)(x, x)
+
+        S = jnp.asarray(S)
+        x = jnp.asarray(x)
+        m = len(S)
+        n = len(x)
+        n_cand = int(n * self.p)
+        n_iter = m * (n // n_cand)
+
+        key = random.PRNGKey(42)
+
+        body = partial(
+            refine_rand_body,
+            x=x,
+            n_cand=n_cand,
+            K_mean=K_mean,
+            K_diag=K_diag,
+            k_pairwise=self.k_pairwise,
+            k_vec=self.k_vec,
+        )
+        key, S = lax.fori_loop(0, n_iter, body, (key, S))
+
+        return S
+
+
+class RefineRev(Refine):
+    def __init__(self):
+        super().__init__()
+
+    def refine(
+        self,
+        x: ArrayLike,
+        S: ArrayLike,
+        K_mean: ArrayLike,
+    ) -> Array:
+        r"""
+        Refine a coreset iteratively, replacing points which lead to the most improvement.
+
+        The iteration is carried out over points in `x`, with x -> S.
+
+        :param x: :math:`n \times d` original data
+        :param S: Coreset point indices
+        :param K_mean: Kernel matrix row sum divided by n
+        :return: Refined coreset point indices
+        """
+        x = jnp.asarray(x)
+        S = jnp.asarray(S)
+
+        K_diag = vmap(self.kernel)(x, x)
+
+        n = len(x)
+
+        body = partial(
+            refine_rev_body,
+            x=x,
+            K_mean=K_mean,
+            K_diag=K_diag,
+            k_pairwise=self.k_pairwise,
+            k_vec=self.k_vec,
+        )
+        S = lax.fori_loop(0, n, body, S)
+
+        return S
+
+
+# old below
+
+# def refine(
+#     x: ArrayLike,
+#     S: ArrayLike,
+#     kernel: KernelFunction,
+#     K_mean: ArrayLike,
+# ) -> Array:
+#     r"""
+#     Refine a coreset iteratively. S -> x.
+#
+#     The refinement procedure replaces elements with points most reducing maximum mean
+#     discrepancy (MMD). The iteration is carred out over points in `x`.
+#
+#     :param x: :math:`n \times d` original data
+#     :param S: Coreset point indices
+#     :param kernel: Kernel function
+#                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+#     :param K_mean: Kernel matrix row sum divided by n
+#     :return: Refined coreset point indices
+#     """
+#     k_pairwise = jit(
+#         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
+#     )
+#     k_vec = jit(vmap(kernel, in_axes=(0, None)))
+#
+#     K_diag = vmap(kernel)(x, x)
+#
+#     S = jnp.asarray(S)
+#     m = len(S)
+#     body = partial(
+#         refine_body,
+#         x=x,
+#         K_mean=K_mean,
+#         K_diag=K_diag,
+#         k_pairwise=k_pairwise,
+#         k_vec=k_vec,
+#     )
+#     S = lax.fori_loop(0, m, body, S)
+#
+#     return S
 
 
 @partial(jit, static_argnames=["k_pairwise", "k_vec"])
@@ -136,56 +294,56 @@ def comparison(
     ) / (m * m) - (K_mean[i] - K_mean) / m
 
 
-def refine_rand(
-    x: ArrayLike,
-    S: ArrayLike,
-    kernel: KernelFunction,
-    K_mean: ArrayLike,
-    p: float = 0.1,
-) -> Array:
-    r"""
-    Refine a coreset iteratively.
-
-    The refinement procedure replaces a random element with the best point among a set
-    of candidate point. The candidate points are a random sample of :math:`n \times p`
-    points from among the original data.
-
-    :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
-    :param p: Proportion of original data to use as candidates
-    :return: Refined coreset point indices
-    """
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
-    k_vec = jit(vmap(kernel, in_axes=(0, None)))
-
-    K_diag = vmap(kernel)(x, x)
-
-    S = jnp.asarray(S)
-    x = jnp.asarray(x)
-    m = len(S)
-    n = len(x)
-    n_cand = int(n * p)
-    n_iter = m * (n // n_cand)
-
-    key = random.PRNGKey(42)
-
-    body = partial(
-        refine_rand_body,
-        x=x,
-        n_cand=n_cand,
-        K_mean=K_mean,
-        K_diag=K_diag,
-        k_pairwise=k_pairwise,
-        k_vec=k_vec,
-    )
-    key, S = lax.fori_loop(0, n_iter, body, (key, S))
-
-    return S
+# def refine_rand(
+#     x: ArrayLike,
+#     S: ArrayLike,
+#     kernel: KernelFunction,
+#     K_mean: ArrayLike,
+#     p: float = 0.1,
+# ) -> Array:
+#     r"""
+#     Refine a coreset iteratively.
+#
+#     The refinement procedure replaces a random element with the best point among a set
+#     of candidate point. The candidate points are a random sample of :math:`n \times p`
+#     points from among the original data.
+#
+#     :param x: :math:`n \times d` original data
+#     :param S: Coreset point indices
+#     :param kernel: Kernel function
+#                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+#     :param K_mean: Kernel matrix row sum divided by n
+#     :param p: Proportion of original data to use as candidates
+#     :return: Refined coreset point indices
+#     """
+#     k_pairwise = jit(
+#         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
+#     )
+#     k_vec = jit(vmap(kernel, in_axes=(0, None)))
+#
+#     K_diag = vmap(kernel)(x, x)
+#
+#     S = jnp.asarray(S)
+#     x = jnp.asarray(x)
+#     m = len(S)
+#     n = len(x)
+#     n_cand = int(n * p)
+#     n_iter = m * (n // n_cand)
+#
+#     key = random.PRNGKey(42)
+#
+#     body = partial(
+#         refine_rand_body,
+#         x=x,
+#         n_cand=n_cand,
+#         K_mean=K_mean,
+#         K_diag=K_diag,
+#         k_pairwise=k_pairwise,
+#         k_vec=k_vec,
+#     )
+#     key, S = lax.fori_loop(0, n_iter, body, (key, S))
+#
+#     return S
 
 
 def refine_rand_body(
@@ -300,47 +458,47 @@ def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     return jnp.asarray(S)
 
 
-def refine_rev(
-    x: ArrayLike,
-    S: ArrayLike,
-    kernel: KernelFunction,
-    K_mean: ArrayLike,
-) -> Array:
-    r"""
-    Refine a coreset iteratively, replacing points which lead to the most improvement.
-
-    The iteration is carried out over points in `x`, with x -> S.
-
-    :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
-    :return: Refined coreset point indices
-    """
-    x = jnp.asarray(x)
-    S = jnp.asarray(S)
-
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
-    k_vec = jit(vmap(kernel, in_axes=(0, None)))
-
-    K_diag = vmap(kernel)(x, x)
-
-    n = len(x)
-
-    body = partial(
-        refine_rev_body,
-        x=x,
-        K_mean=K_mean,
-        K_diag=K_diag,
-        k_pairwise=k_pairwise,
-        k_vec=k_vec,
-    )
-    S = lax.fori_loop(0, n, body, S)
-
-    return S
+# def refine_rev(
+#     x: ArrayLike,
+#     S: ArrayLike,
+#     kernel: KernelFunction,
+#     K_mean: ArrayLike,
+# ) -> Array:
+#     r"""
+#     Refine a coreset iteratively, replacing points which lead to the most improvement.
+#
+#     The iteration is carried out over points in `x`, with x -> S.
+#
+#     :param x: :math:`n \times d` original data
+#     :param S: Coreset point indices
+#     :param kernel: Kernel function
+#                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+#     :param K_mean: Kernel matrix row sum divided by n
+#     :return: Refined coreset point indices
+#     """
+#     x = jnp.asarray(x)
+#     S = jnp.asarray(S)
+#
+#     k_pairwise = jit(
+#         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
+#     )
+#     k_vec = jit(vmap(kernel, in_axes=(0, None)))
+#
+#     K_diag = vmap(kernel)(x, x)
+#
+#     n = len(x)
+#
+#     body = partial(
+#         refine_rev_body,
+#         x=x,
+#         K_mean=K_mean,
+#         K_diag=K_diag,
+#         k_pairwise=k_pairwise,
+#         k_vec=k_vec,
+#     )
+#     S = lax.fori_loop(0, n, body, S)
+#
+#     return S
 
 
 def refine_rev_body(
