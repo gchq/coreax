@@ -8,7 +8,6 @@ import sys
 
 import coreax
 
-# add root directory to path
 CONF_FILE_PATH = pathlib.Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
 DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
@@ -53,7 +52,6 @@ templates_path = ["_templates"]
 # Display type annotations only in compiled description.
 autodoc_typehints = "description"
 
-# set autodoc options
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
