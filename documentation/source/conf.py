@@ -54,12 +54,16 @@ autodoc_typehints = "description"
 
 autodoc_default_options = {
     "members": True,
+    "class": True,
     "member-order": "bysource",
     "special-members": "__init__",
     "undoc-members": True,
     "exclude-members": "__weakref__",
     "show_inheritance": True,
 }
+
+# specify that class __init__ docstrings are appended to class docstrings
+autoclass_content = "both"
 
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {
