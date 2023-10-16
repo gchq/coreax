@@ -24,7 +24,8 @@ class Metric:
     Base class for calculating metrics.
     """
 
-    # def __init__(self) -> None:
+    def __init__(self) -> None:
+        pass
 
     def compute(
         self,
@@ -57,6 +58,14 @@ class MMD(Metric):
         """
         self.kernel = kernel
         self.precision_threshold = precision_threshold
+
+        self.k_pairwise = jit(
+            vmap(
+                vmap(self.kernel, in_axes=(None, 0), out_axes=0),  # self.kernel.compute
+                in_axes=(0, None),
+                out_axes=0,
+            )
+        )
 
         # initialise parent
         super().__init__()
@@ -118,16 +127,10 @@ def mmd(self, x: ArrayLike, x_c: ArrayLike) -> Array:
     :param x_c: :math:`m \times d` coreset
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-    k_pairwise = jit(
-        vmap(
-            vmap(self.kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )
-    )
-    kernel_nn = k_pairwise(x, x)
-    kernel_mm = k_pairwise(x_c, x_c)
-    kernel_nm = k_pairwise(x, x_c)
+
+    kernel_nn = self.k_pairwise(x, x)
+    kernel_mm = self.k_pairwise(x_c, x_c)
+    kernel_nm = self.k_pairwise(x, x_c)
 
     result = jnp.sqrt(
         apply_negative_precision_threshold(
@@ -149,18 +152,12 @@ def wmmd(self, x: ArrayLike, x_c: ArrayLike, weights_x_c: ArrayLike) -> Array:
     :param weights_x_c: :math:`m \times 1` weights vector for coreset
     :return: Weighted maximum mean discrepancy as a 0-dimensional array
     """
-    k_pairwise = jit(
-        vmap(
-            vmap(self.kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )
-    )
+
     x = jnp.asarray(x)
     n = float(len(x))
-    kernel_nn = k_pairwise(x, x)
-    kernel_mm = k_pairwise(x_c, x_c)
-    kernel_nm = k_pairwise(x, x_c)
+    kernel_nn = self.k_pairwise(x, x)
+    kernel_mm = self.k_pairwise(x_c, x_c)
+    kernel_nm = self.k_pairwise(x, x_c)
 
     # Compute MMD, correcting for any numerical precision issues, where we would
     # otherwise square-root a negative number very close to 0.0.
@@ -184,21 +181,14 @@ def mmd_block(self, x: ArrayLike, x_c: ArrayLike, max_size: int) -> Array:
     :param max_size: Size of matrix blocks to process
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-    k_pairwise = jit(
-        vmap(
-            vmap(self.kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )
-    )
 
     x = jnp.asarray(x)
     x_c = jnp.asarray(x_c)
     n = float(len(x))
     m = float(len(x_c))
-    kernel_nn = sum_K(x, x, k_pairwise, max_size)
-    kernel_mm = sum_K(x_c, x_c, k_pairwise, max_size)
-    kernel_nm = sum_K(x, x_c, k_pairwise, max_size)  # self.kernel.calculate_K_sum
+    kernel_nn = sum_K(x, x, self.k_pairwise, max_size)
+    kernel_mm = sum_K(x_c, x_c, self.k_pairwise, max_size)
+    kernel_nm = sum_K(x, x_c, self.k_pairwise, max_size)  # self.kernel.calculate_K_sum
 
     # Compute MMD, correcting for any numerical precision issues, where we would
     # otherwise square-root a negative number very close to 0.0.
@@ -231,22 +221,17 @@ def mmd_weight_block(
     :param weights_x_c: :math:`m` weights of coreset points
     :return: Maximum mean discrepancy as a 0-dimensional array
     """
-    k_pairwise = jit(
-        vmap(
-            vmap(self.kernel, in_axes=(None, 0), out_axes=0),  # self.kernel.compute
-            in_axes=(0, None),
-            out_axes=0,
-        )
-    )
 
     weights_x = jnp.asarray(weights_x)
     weights_x_c = jnp.asarray(weights_x_c)
     n = weights_x.sum()
     m = weights_x_c.sum()
     # needs changing to self.kernel.calculate_K_sum:
-    kernel_nn = sum_weight_K(x, x, weights_x, weights_x, k_pairwise, max_size)
-    kernel_mm = sum_weight_K(x_c, x_c, weights_x_c, weights_x_c, k_pairwise, max_size)
-    kernel_nm = sum_weight_K(x, x_c, weights_x, weights_x_c, k_pairwise, max_size)
+    kernel_nn = sum_weight_K(x, x, weights_x, weights_x, self.k_pairwise, max_size)
+    kernel_mm = sum_weight_K(
+        x_c, x_c, weights_x_c, weights_x_c, self.k_pairwise, max_size
+    )
+    kernel_nm = sum_weight_K(x, x_c, weights_x, weights_x_c, self.k_pairwise, max_size)
 
     # Compute MMD, correcting for any numerical precision issues, where we would
     # otherwise square-root a negative number very close to 0.0.
