@@ -29,14 +29,14 @@ version = "v" + coreax.__version__
 
 # sphinx extensions
 extensions = [
+    "sphinxcontrib.bibtex",
     "sphinx.ext.autodoc",
+    "sphinx_autodoc_typehints",
     "sphinx.ext.autosectionlabel",
-    "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "myst_parser",
-    "sphinxcontrib.bibtex",
 ]
 
 # file sources
@@ -52,7 +52,16 @@ templates_path = ["_templates"]
 
 # Display type annotations only in compiled description.
 autodoc_typehints = "description"
-autosummary_generate = True
+
+# set autodoc options
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
+    "show_inheritance": True,
+}
 
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {
@@ -65,5 +74,5 @@ intersphinx_mapping = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "classic"
+html_theme = "furo"
 html_static_path = ["_static"]

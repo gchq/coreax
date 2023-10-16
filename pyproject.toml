@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coreax"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Jax coreset algorithms."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -34,6 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "furo",
     "imageio",
     "matplotlib",
     "myst-parser",
@@ -44,6 +45,7 @@ dev = [
     "pytest",
     "scipy",
     "sphinx",
+    "sphinx-autodoc-typehints",
     "sphinxcontrib-bibtex",
 ]
 
@@ -56,6 +58,9 @@ profile = "black"
 
 [tool.setuptools]
 packages = ["coreax"]
+
+[tool.setuptools.dynamic]
+version = {attr = "coreax.__version__"}
 
 [tool.coverage.run]
 branch = true
