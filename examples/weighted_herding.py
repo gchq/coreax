@@ -30,7 +30,7 @@ from coreax.kernel import (
 )
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
-from coreax.weights import qp
+from coreax.util import solve_qp
 
 
 def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, float]:
@@ -84,9 +84,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     # is invoked to solve the weights' vector. This buys some increase in integration
     # error, but at a computational cost. Likely to most effective in lower dimensions.
     if weighted:
-        # find the weights. Solves a QP
-        weights = qp(Kc + 1e-10, Kbar)
-        # check minimum weight is not negative by more than a reasonable tolerance
+        # Find the weights by solving a QP
+        weights = solve_qp(Kc + 1e-10, Kbar)
         if weights.min() < -1e-4:
             raise ValueError(
                 f"Minimum weight was {weights.min()} but should have been >=0"

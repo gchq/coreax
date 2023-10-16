@@ -198,7 +198,11 @@ class TestApproximations(unittest.TestCase):
         approximate_kernel_mean_full = approximator_full.approximate(self.data)
         approximate_kernel_mean_partial = approximator_partial.approximate(self.data)
 
-        # Check the approximation is close to the true value
+        # Check the approximation is close to the true value. Note that this particular
+        # approximation on this dataset is very poor when using a subset of points, so
+        # we do not check if approximate_kernel_mean_partial is within some precision of
+        # the true distances. Instead, we only check later in this test if there has
+        # been an improvement in the approximation as we use more data.
         np.testing.assert_array_almost_equal(
             approximate_kernel_mean_full, self.true_distances, decimal=0
         )

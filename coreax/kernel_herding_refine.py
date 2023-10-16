@@ -20,9 +20,10 @@ import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
+from coreax.kernel import calculate_K_sum
 from coreax.kernel_herding import kernel_herding_block
 from coreax.refine import refine, refine_rand, refine_rev
-from coreax.utils import KernelFunction, calculate_K_sum
+from coreax.util import KernelFunction
 
 #
 # Kernel Herding Refine Functions
