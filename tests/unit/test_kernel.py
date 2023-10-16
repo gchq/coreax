@@ -13,7 +13,6 @@
 # limitations under the License.
 import unittest
 from functools import partial
-from typing import Callable
 
 import numpy as np
 from jax import grad
@@ -60,6 +59,10 @@ class TestKernels(unittest.TestCase):
         If we take the bandwidth to be :math:`\pi / 2.0` we get:
             k(x, y) &= \exp(- 2.25 / \pi)
                     &= 0.48860678
+
+        If the bandwidth is instead taken to be :math:`\pi`, we get:
+            k(x, y) &= \exp(- 2.25 / (2.0\pi))
+                    &= 0.6990041
         """
         # Define data and bandwidth
         x = 0.5
@@ -78,7 +81,20 @@ class TestKernels(unittest.TestCase):
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
-        self.assertAlmostEqual(output, expected_distance, places=5)
+        self.assertAlmostEqual(float(output), expected_distance, places=5)
+
+        # Alter the bandwidth, and check the jit decorator catches the update
+        kernel.bandwidth = np.float32(np.pi)
+
+        # Set expected output with this new bandwidth
+        expected_distance = 0.6990041
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y, with the new, altered bandwidth
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(float(output), expected_distance, places=5)
 
     def test_rbf_kernel_distance_two_vectors(self) -> None:
         r"""
@@ -121,7 +137,7 @@ class TestKernels(unittest.TestCase):
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
-        self.assertAlmostEqual(output, expected_distance, places=5)
+        self.assertAlmostEqual(float(output), expected_distance, places=5)
 
     def test_rbf_kernel_distance_two_matrices(self) -> None:
         r"""
@@ -204,7 +220,9 @@ class TestKernels(unittest.TestCase):
         output = kernel.grad_x(x, y)
 
         # Check output matches expected
-        self.assertAlmostEqual(jnp.linalg.norm(true_gradients - output), 0.0, places=3)
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
 
     def test_rbf_kernel_gradients_wrt_y(self) -> None:
         """
@@ -241,7 +259,9 @@ class TestKernels(unittest.TestCase):
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
-        self.assertAlmostEqual(jnp.linalg.norm(true_gradients - output), 0.0, places=3)
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
 
 
 if __name__ == "__main__":

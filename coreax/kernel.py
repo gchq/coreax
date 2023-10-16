@@ -17,21 +17,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, jit, random, vmap
+from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.kernel_functions as ckf
-
-KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
-
-# Pairwise kernel evaluation if grads and nu are defined
-KernelFunctionWithGrads = Callable[
-    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
-]
+import coreax.utils as cu
 
 
 class Kernel(ABC):
@@ -46,53 +39,60 @@ class Kernel(ABC):
         Kernels for the basic tool for measuring distances between points in a space,
         and through this constructing representations of the distribution a discrete set
         of samples follow.
-
-        :param approximator: The name of an approximator class to use, or the class
-            directly as a dependency injection
         """
 
-    def compute(self, x: ArrayLike | float, y: ArrayLike | float) -> Array:
+    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Evaluate the kernel on input data x and y.
 
-        The 'data' can be any of: floating numbers (so a single data-point in
-        1-dimension), a vector (a single-point in multiple dimensions) or a matrix
-        (multiple points in multiple dimensions).
+        The 'data' can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * matrix (multiple points in multiple dimensions).
 
         :param x: An :math:`n \times d` dataset or a single value (point)
         :param y: An :math:`m \times d` dataset or a single value (point)
         :return: Distances (as determined by the kernel) between points in x and y
         """
-        if isinstance(x, float) and isinstance(y, float):
-            return self._elementwise_kernel_computation(x, y)
-        elif x.ndim == 1 and y.ndim == 1:
-            return self._elementwise_kernel_computation(x, y)
+        # Convert data-types for clarity
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
+        # Apply vectorised computations if dimensions are 2 or higher, otherwise use
+        # elementwise
+        if x.ndim < 2 and y.ndim < 2:
+            return self._compute_elementwise(x, y)
         else:
-            return self._vectorised_kernel_computation(x, y)
+            return self._compute_vectorised(x, y)
 
     @abstractmethod
-    def _elementwise_kernel_computation(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def _compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input vectors x and y, not-vectorised.
+
+        Vectorisation only becomes relevant in terms of computational speed when data
+        is in 2 or more dimensions.
 
         :param x: First vector we consider
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
 
-    def _vectorised_kernel_computation(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def _compute_vectorised(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data x and y, vectorised.
+
+        Vectorisation only becomes relevant in terms of computational speed when data
+        is in 2 or more dimensions.
 
         :param x: An :math:`n \times d` dataset
         :param y: An :math:`m \times d` dataset
         :return: Distances (as determined by the kernel) between points in x and y
         """
-        return vmap(self._elementwise_kernel_computation, in_axes=(0, 0), out_axes=0)(
-            x, y
-        )
+        return vmap(self._compute_elementwise, in_axes=(0, 0), out_axes=0)(x, y)
 
-    def _define_pairwise_kernel_evaluation_no_grads(self) -> KernelFunction:
+    def _define_pairwise_kernel_evaluation_no_grads(self) -> cu.KernelFunction:
         """
         Define a callable that returns an evaluation of all pairs of points in inputs.
 
@@ -102,11 +102,11 @@ class Kernel(ABC):
         :return: Callable that, given data inputs x and y, outputs kernel distances
             between all possible pairs of points within
         """
-        return ckf.kernel_pairwise_evaluation_no_grads(
-            self._elementwise_kernel_computation
-        )
+        return ckf.kernel_pairwise_evaluation_no_grads(self._compute_elementwise)
 
-    def _define_pairwise_kernel_evaluation_with_grads(self) -> KernelFunctionWithGrads:
+    def _define_pairwise_kernel_evaluation_with_grads(
+        self,
+    ) -> cu.KernelFunctionWithGrads:
         """
         Define a callable that returns an evaluation of all pairs of points in inputs.
 
@@ -118,9 +118,7 @@ class Kernel(ABC):
             bandwidth nu, outputs kernel distances between all possible pairs of points
             within
         """
-        return ckf.kernel_pairwise_evaluation_with_grads(
-            self._elementwise_kernel_computation
-        )
+        return ckf.kernel_pairwise_evaluation_with_grads(self._compute_elementwise)
 
     # TODO: Weights need to be optional here to agree with metrics approach
     def update_kernel_matrix_row_sum(
@@ -130,7 +128,7 @@ class Kernel(ABC):
         i: int,
         j: int,
         max_size: int,
-        kernel_pairwise: KernelFunction | KernelFunctionWithGrads,
+        kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
         grads: ArrayLike | None = None,
         nu: float | None = None,
     ) -> Array:
@@ -264,8 +262,8 @@ class Kernel(ABC):
     # TODO: Weights need to be optional here to agree with metrics approach
     def approximate_kernel_matrix_row_sum_mean(
         self,
-        x,
-        approximator: str | ca.KernelMeanApproximator,
+        x: ArrayLike,
+        approximator: str | type[ca.KernelMeanApproximator],
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -279,27 +277,27 @@ class Kernel(ABC):
         approximation can be used in place of the true value.
 
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: The name of an approximator class to use, or the class
-            directly as a dependency injection
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :param approximator: Name of the approximator to use, or an uninstatiated
+            class object
         :param random_key: Key for random number generation
         :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel regression
+        :param num_train_points: Number of training points used to fit kernel
+            regression. This is ignored if not applicable to the approximator method.
         :return: Approximator object
         """
-        # Create an approximator object
-        approximator = self.create_approximator(
-            approximator=approximator,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
-        )
+        # Create an approximator object (if needed)
+        if not isinstance(approximator, ca.KernelMeanApproximator):
+            approximator = self.create_approximator(
+                approximator=approximator,
+                random_key=random_key,
+                num_kernel_points=num_kernel_points,
+                num_train_points=num_train_points,
+            )
         return approximator.approximate(x)
 
     def create_approximator(
         self,
-        approximator: str | ca.KernelMeanApproximator,
+        approximator: str | type[ca.KernelMeanApproximator],
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -320,28 +318,26 @@ class Kernel(ABC):
         if isinstance(approximator, str):
             if approximator == "random":
                 return ca.RandomApproximator(
-                    kernel_evaluation=self._elementwise_kernel_computation,
+                    kernel_evaluation=self._compute_elementwise,
                     random_key=random_key,
                     num_kernel_points=num_kernel_points,
                     num_train_points=num_train_points,
                 )
             elif approximator == "annchor":
                 return ca.ANNchorApproximator(
-                    kernel_evaluation=self._elementwise_kernel_computation,
+                    kernel_evaluation=self._compute_elementwise,
                     random_key=random_key,
                     num_kernel_points=num_kernel_points,
                     num_train_points=num_train_points,
                 )
             elif approximator == "nystrom":
                 return ca.NystromApproximator(
-                    kernel_evaluation=self._elementwise_kernel_computation,
+                    kernel_evaluation=self._compute_elementwise,
                     random_key=random_key,
                     num_kernel_points=num_kernel_points,
                 )
             else:
-                raise ValueError(
-                    f"Approximator choice {approximator} not known. Aborting."
-                )
+                raise ValueError(f"Approximator choice {approximator} not known.")
         else:
             return approximator
 
@@ -382,17 +378,46 @@ class RBFKernel(Kernel):
     def __init__(self, bandwidth: float = 1.0):
         """
         Define the RBF kernel to measure distances between points in some space.
+
+        :param bandwidth: Kernel bandwidth to use (variance of the underlying Gaussian)
         """
-        if bandwidth <= 0.0:
+        # Check that bandwidth is above zero (the isinstance check here is to ensure
+        # that we don't check a trace of an array when jit decorators interact with
+        # code)
+        if isinstance(bandwidth, float) and bandwidth <= 0.0:
             raise ValueError(
-                f"Bandwidth must be above zero. Current value {bandwidth}. Aborting."
+                f"Bandwidth must be above zero. Current value {bandwidth}."
             )
         self.bandwidth = bandwidth
 
         # Initialise parent
         super().__init__()
 
-    def _elementwise_kernel_computation(
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = (self.bandwidth,)
+        aux_data = {}
+        return children, aux_data
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstructs a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
+    @jit
+    def _compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -407,7 +432,18 @@ class RBFKernel(Kernel):
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
-        return ckf.rbf_kernel(x, y, self.bandwidth)
+        return jnp.exp(-self.sq_dist(x, y) / (2 * self.bandwidth))
+
+    @jit
+    def sq_dist(self, x: ArrayLike, y: ArrayLike) -> Array:
+        r"""
+        Calculate the squared distance between two vectors.
+
+        :param x: First vector argument
+        :param y: Second vector argument
+        :return: Dot product of `x-y` and `x-y`, the square distance between `x` and `y`
+        """
+        return jnp.dot(x - y, x - y)
 
     def grad_x(
         self,
@@ -469,3 +505,10 @@ class RBFKernel(Kernel):
         return ckf.rbf_grad_log_f_x(
             x, kde_data, self.bandwidth, gram_matrix, kernel_mean
         )
+
+
+# Define the pytree node for the class RBFKernel to ensure methods with jit decorators
+# are able to run
+tree_util.register_pytree_node(
+    RBFKernel, RBFKernel._tree_flatten, RBFKernel._tree_unflatten
+)
