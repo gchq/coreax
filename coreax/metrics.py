@@ -100,148 +100,148 @@ class MMD(Metric):
 
         if weights_x_c is None:
             if max_size is None or max_size > max(n, m):
-                return mmd(self, x, x_c)
+                return self.mmd(x, x_c)
             else:
-                return mmd_block(self, x, x_c, max_size)
+                return self.mmd_block(x, x_c, max_size)
 
         else:
             if max_size is None or max_size > max(n, m):
-                return wmmd(self, x, x_c, weights_x_c)
+                return self.wmmd(x, x_c, weights_x_c)
             else:
-                return mmd_weight_block(self, x, x_c, max_size, weights_x, weights_x_c)
+                return self.mmd_weight_block(x, x_c, max_size, weights_x, weights_x_c)
 
+    def mmd(self, x: ArrayLike, x_c: ArrayLike) -> Array:
+        r"""
+        Calculate standard MMD.
 
-def mmd(self, x: ArrayLike, x_c: ArrayLike) -> Array:
-    r"""
-    Calculate standard MMD.
+        For dataset of n points in d dimensions, :math:`X`, and a coreset :math:`Y` of m
+        points in d dimensions, the maximum mean discrepancy is given by:
 
-    For dataset of n points in d dimensions, :math:`X`, and a coreset :math:`Y` of m
-    points in d dimensions, the maximum mean discrepancy is given by:
+        .. math::
 
-    .. math::
+            \text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c))
+            - 2\mathbb{E}(k(X,X_c))
 
-        \text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c))
-        - 2\mathbb{E}(k(X,X_c))
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m \times d` coreset
+        :return: Maximum mean discrepancy as a 0-dimensional array
+        """
 
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m \times d` coreset
-    :return: Maximum mean discrepancy as a 0-dimensional array
-    """
+        kernel_nn = self.k_pairwise(x, x)
+        kernel_mm = self.k_pairwise(x_c, x_c)
+        kernel_nm = self.k_pairwise(x, x_c)
 
-    kernel_nn = self.k_pairwise(x, x)
-    kernel_mm = self.k_pairwise(x_c, x_c)
-    kernel_nm = self.k_pairwise(x, x_c)
-
-    result = jnp.sqrt(
-        apply_negative_precision_threshold(
-            kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean(),
-            self.precision_threshold,
+        result = jnp.sqrt(
+            apply_negative_precision_threshold(
+                kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean(),
+                self.precision_threshold,
+            )
         )
-    )
-    return result
+        return result
 
+    def wmmd(self, x: ArrayLike, x_c: ArrayLike, weights_x_c: ArrayLike) -> Array:
+        r"""
+        Calculate one-sided, weighted maximum mean discrepancy (WMMD).
 
-def wmmd(self, x: ArrayLike, x_c: ArrayLike, weights_x_c: ArrayLike) -> Array:
-    r"""
-    Calculate one-sided, weighted maximum mean discrepancy (WMMD).
+        Only coreset points are weighted.
 
-    Only coreset points are weighted.
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m \times d` coreset
+        :param weights_x_c: :math:`m \times 1` weights vector for coreset
+        :return: Weighted maximum mean discrepancy as a 0-dimensional array
+        """
 
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m \times d` coreset
-    :param weights_x_c: :math:`m \times 1` weights vector for coreset
-    :return: Weighted maximum mean discrepancy as a 0-dimensional array
-    """
+        x = jnp.asarray(x)
+        n = float(len(x))
+        kernel_nn = self.k_pairwise(x, x)
+        kernel_mm = self.k_pairwise(x_c, x_c)
+        kernel_nm = self.k_pairwise(x, x_c)
 
-    x = jnp.asarray(x)
-    n = float(len(x))
-    kernel_nn = self.k_pairwise(x, x)
-    kernel_mm = self.k_pairwise(x_c, x_c)
-    kernel_nm = self.k_pairwise(x, x_c)
-
-    # Compute MMD, correcting for any numerical precision issues, where we would
-    # otherwise square-root a negative number very close to 0.0.
-    result = jnp.sqrt(
-        apply_negative_precision_threshold(
-            jnp.dot(weights_x_c.T, jnp.dot(kernel_mm, weights_x_c))
-            + kernel_nn.sum() / n**2
-            - 2 * jnp.dot(weights_x_c.T, kernel_nm.mean(axis=0)),
-            self.precision_threshold,
+        # Compute MMD, correcting for any numerical precision issues, where we would
+        # otherwise square-root a negative number very close to 0.0.
+        result = jnp.sqrt(
+            apply_negative_precision_threshold(
+                jnp.dot(weights_x_c.T, jnp.dot(kernel_mm, weights_x_c))
+                + kernel_nn.sum() / n**2
+                - 2 * jnp.dot(weights_x_c.T, kernel_nm.mean(axis=0)),
+                self.precision_threshold,
+            )
         )
-    )
-    return result
+        return result
 
+    def mmd_block(self, x: ArrayLike, x_c: ArrayLike, max_size: int) -> Array:
+        r"""
+        Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
-def mmd_block(self, x: ArrayLike, x_c: ArrayLike, max_size: int) -> Array:
-    r"""
-    Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m \times d` coreset
+        :param max_size: Size of matrix blocks to process
+        :return: Maximum mean discrepancy as a 0-dimensional array
+        """
 
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m \times d` coreset
-    :param max_size: Size of matrix blocks to process
-    :return: Maximum mean discrepancy as a 0-dimensional array
-    """
+        x = jnp.asarray(x)
+        x_c = jnp.asarray(x_c)
+        n = float(len(x))
+        m = float(len(x_c))
+        kernel_nn = sum_K(x, x, self.k_pairwise, max_size)
+        kernel_mm = sum_K(x_c, x_c, self.k_pairwise, max_size)
+        kernel_nm = sum_K(
+            x, x_c, self.k_pairwise, max_size
+        )  # self.kernel.calculate_K_sum
 
-    x = jnp.asarray(x)
-    x_c = jnp.asarray(x_c)
-    n = float(len(x))
-    m = float(len(x_c))
-    kernel_nn = sum_K(x, x, self.k_pairwise, max_size)
-    kernel_mm = sum_K(x_c, x_c, self.k_pairwise, max_size)
-    kernel_nm = sum_K(x, x_c, self.k_pairwise, max_size)  # self.kernel.calculate_K_sum
-
-    # Compute MMD, correcting for any numerical precision issues, where we would
-    # otherwise square-root a negative number very close to 0.0.
-    result = jnp.sqrt(
-        apply_negative_precision_threshold(
-            kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
-            self.precision_threshold,
+        # Compute MMD, correcting for any numerical precision issues, where we would
+        # otherwise square-root a negative number very close to 0.0.
+        result = jnp.sqrt(
+            apply_negative_precision_threshold(
+                kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
+                self.precision_threshold,
+            )
         )
-    )
-    return result
+        return result
 
+    def mmd_weight_block(
+        self,
+        x: ArrayLike,
+        x_c: ArrayLike,
+        max_size: int,
+        weights_x: ArrayLike,
+        weights_x_c: ArrayLike,
+    ) -> Array:
+        r"""
+        Calculate weighted maximum mean discrepancy (MMD).
 
-def mmd_weight_block(
-    self,
-    x: ArrayLike,
-    x_c: ArrayLike,
-    max_size: int,
-    weights_x: ArrayLike,
-    weights_x_c: ArrayLike,
-) -> Array:
-    r"""
-    Calculate weighted maximum mean discrepancy (MMD).
+        This calculation is executed whilst limiting memory requirements.
 
-    This calculation is executed whilst limiting memory requirements.
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m \times d` coreset
+        :param max_size: Size of matrix blocks to process
+        :param weights_x: :math:`n` weights of original data
+        :param weights_x_c: :math:`m` weights of coreset points
+        :return: Maximum mean discrepancy as a 0-dimensional array
+        """
 
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m \times d` coreset
-    :param max_size: Size of matrix blocks to process
-    :param weights_x: :math:`n` weights of original data
-    :param weights_x_c: :math:`m` weights of coreset points
-    :return: Maximum mean discrepancy as a 0-dimensional array
-    """
-
-    weights_x = jnp.asarray(weights_x)
-    weights_x_c = jnp.asarray(weights_x_c)
-    n = weights_x.sum()
-    m = weights_x_c.sum()
-    # needs changing to self.kernel.calculate_K_sum:
-    kernel_nn = sum_weight_K(x, x, weights_x, weights_x, self.k_pairwise, max_size)
-    kernel_mm = sum_weight_K(
-        x_c, x_c, weights_x_c, weights_x_c, self.k_pairwise, max_size
-    )
-    kernel_nm = sum_weight_K(x, x_c, weights_x, weights_x_c, self.k_pairwise, max_size)
-
-    # Compute MMD, correcting for any numerical precision issues, where we would
-    # otherwise square-root a negative number very close to 0.0.
-    result = jnp.sqrt(
-        apply_negative_precision_threshold(
-            kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
-            self.precision_threshold,
+        weights_x = jnp.asarray(weights_x)
+        weights_x_c = jnp.asarray(weights_x_c)
+        n = weights_x.sum()
+        m = weights_x_c.sum()
+        # needs changing to self.kernel.calculate_K_sum:
+        kernel_nn = sum_weight_K(x, x, weights_x, weights_x, self.k_pairwise, max_size)
+        kernel_mm = sum_weight_K(
+            x_c, x_c, weights_x_c, weights_x_c, self.k_pairwise, max_size
         )
-    )
-    return result
+        kernel_nm = sum_weight_K(
+            x, x_c, weights_x, weights_x_c, self.k_pairwise, max_size
+        )
+
+        # Compute MMD, correcting for any numerical precision issues, where we would
+        # otherwise square-root a negative number very close to 0.0.
+        result = jnp.sqrt(
+            apply_negative_precision_threshold(
+                kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
+                self.precision_threshold,
+            )
+        )
+        return result
 
 
 # Below to be moved to Kernel.py
