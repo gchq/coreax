@@ -24,7 +24,7 @@ from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.kernel_functions as ckf
-import coreax.utils as cu
+import coreax.util as cu
 
 
 class Kernel(ABC):
@@ -432,18 +432,7 @@ class RBFKernel(Kernel):
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
-        return jnp.exp(-self.sq_dist(x, y) / (2 * self.bandwidth))
-
-    @jit
-    def sq_dist(self, x: ArrayLike, y: ArrayLike) -> Array:
-        r"""
-        Calculate the squared distance between two vectors.
-
-        :param x: First vector argument
-        :param y: Second vector argument
-        :return: Dot product of `x-y` and `x-y`, the square distance between `x` and `y`
-        """
-        return jnp.dot(x - y, x - y)
+        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.bandwidth))
 
     def grad_x(
         self,
