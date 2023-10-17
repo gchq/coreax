@@ -526,25 +526,3 @@ def stein_kernel_pc_imq_element(
     z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * pc_imq_kernel
     kernel = divergence + x_.T + y_ + z
     return kernel[0, 0]
-
-
-@jit
-def kernel_pairwise_evaluation_no_grads(kernel):
-    """
-    TODO
-    """
-    return vmap(
-        vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0
-    )
-
-
-@jit
-def kernel_pairwise_evaluation_with_grads(kernel):
-    """
-    TODO
-    """
-    return vmap(
-        vmap(kernel, (None, 0, None, 0, None, None), 0),
-        (0, None, 0, None, None, None),
-        0,
-    )
