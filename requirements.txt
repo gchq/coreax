@@ -2,33 +2,34 @@
 absl-py==2.0.0; python_version >= '3.7'
 chex==0.1.83; python_version >= '3.9'
 colorama==0.4.6; platform_system == 'Windows'
-etils[epath,epy]==1.5.0; python_version >= '3.9'
-flax==0.7.4
+-e .
+etils[epath,epy]==1.5.1; python_version >= '3.9'
+flax==0.7.4; python_version >= '3.9'
 fsspec==2023.9.2
 importlib-metadata==6.8.0; python_version < '3.10'
 importlib-resources==6.1.0
-jax==0.4.17
-jaxlib==0.4.17; python_version >= '3.9'
-jaxopt==0.8
+jax==0.4.18; python_version >= '3.9'
+jaxlib==0.4.18; python_version >= '3.9'
+jaxopt==0.8.1
 joblib==1.3.2; python_version >= '3.7'
 markdown-it-py==3.0.0; python_version >= '3.8'
 mdurl==0.1.2; python_version >= '3.7'
 ml-dtypes==0.3.1; python_version >= '3.9'
 msgpack==1.0.7; python_version >= '3.8'
 nest-asyncio==1.5.8; python_version >= '3.5'
-numpy==1.26.0; python_version < '3.13' and python_version >= '3.9'
+numpy==1.26.1; python_version < '3.13' and python_version >= '3.9'
 opt-einsum==3.3.0; python_version >= '3.5'
-optax==0.1.7
+optax==0.1.7; python_version >= '3.8'
 orbax-checkpoint==0.4.1; python_version >= '3.9'
 protobuf==4.24.4; python_version >= '3.7'
 pygments==2.16.1; python_version >= '3.7'
 pyyaml==6.0.1; python_version >= '3.6'
 rich==13.6.0; python_full_version >= '3.7.0'
-scikit-learn==1.3.1
+scikit-learn==1.3.1; python_version >= '3.8'
 scipy==1.11.3; python_version < '3.13' and python_version >= '3.9'
 tensorstore==0.1.45; python_version >= '3.8'
 threadpoolctl==3.2.0; python_version >= '3.8'
 toolz==0.12.0; python_version >= '3.5'
-tqdm==4.66.1
+tqdm==4.66.1; python_version >= '3.7'
 typing-extensions==4.8.0; python_version >= '3.8'
 zipp==3.17.0; python_version >= '3.8'
