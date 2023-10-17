@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 from functools import partial
 
 import jax.lax as lax
@@ -199,7 +201,7 @@ def refine_rand_body(
     k_vec: KernelFunction,
 ) -> tuple[random.PRNGKeyArray, Array]:
     r"""
-    Execute main loop of the random refine method
+    Execute main loop of the random refine method.
 
     :param i: Loop counter
     :param val: Loop updatables
