@@ -12,20 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from functools import partial
+from unittest.mock import MagicMock, patch
 
 import numpy as np
-from jax import grad
+import scipy.stats
 from jax import numpy as jnp
-from jax import vjp
-from scipy.stats import norm, ortho_group
 
+import coreax.approximation as ca
 import coreax.kernel as ck
 
 
-class TestKernels(unittest.TestCase):
+class TestKernelABC(unittest.TestCase):
     """
-    Tests related to kernel.py functions & classes.
+    Tests related to the Kernel abstract base class in kernel.py
+    """
+
+    def test_create_approximator(self) -> None:
+        """
+        Test creation of approximation object within the Kernel class.
+        """
+        # Patch the abstract methods of the Kernel ABC so it can be created
+        p = patch.multiple(ck.Kernel, __abstractmethods__=set())
+        p.start()
+
+        # Define known approximator names
+        known_approximators = {
+            "random": ca.RandomApproximator,
+            "nystrom": ca.NystromApproximator,
+            "annchor": ca.ANNchorApproximator,
+        }
+
+        # Create the kernel
+        kernel = ck.Kernel()
+
+        # Call the approximation method with an invalid approximator string
+        self.assertRaises(
+            ValueError, kernel.create_approximator, approximator="example"
+        )
+
+        # Call the approximation method with each known approximator name
+        for name, approx_type in known_approximators.items():
+            self.assertTrue(
+                isinstance(kernel.create_approximator(approximator=name), approx_type)
+            )
+
+        # Pre-create a KernelMeanApproximator and check that it is returned when passed
+        pre_defined_approximator = ca.RandomApproximator(kernel_evaluation=MagicMock())
+        self.assertEqual(
+            pre_defined_approximator,
+            kernel.create_approximator(approximator=pre_defined_approximator),
+        )
+
+
+class TestRBFKernel(unittest.TestCase):
+    """
+    Tests related to the RBFKernel defined in kernel.py
     """
 
     def test_rbf_kernel_init(self) -> None:
@@ -36,7 +77,7 @@ class TestKernels(unittest.TestCase):
         # raised
         self.assertRaises(ValueError, ck.RBFKernel, bandwidth=-1.0)
 
-    def test_rbf_kernel_distance_two_floats(self) -> None:
+    def test_rbf_kernel_compute_two_floats(self) -> None:
         r"""
         Test the class RBFKernel distance computations.
 
@@ -96,7 +137,7 @@ class TestKernels(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(float(output), expected_distance, places=5)
 
-    def test_rbf_kernel_distance_two_vectors(self) -> None:
+    def test_rbf_kernel_compute_two_vectors(self) -> None:
         r"""
         Test the class RBFKernel distance computations.
 
@@ -139,7 +180,7 @@ class TestKernels(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(float(output), expected_distance, places=5)
 
-    def test_rbf_kernel_distance_two_matrices(self) -> None:
+    def test_rbf_kernel_compute_two_matrices(self) -> None:
         r"""
         Test the class RBFKernel distance computations.
 
@@ -262,6 +303,343 @@ class TestKernels(unittest.TestCase):
         self.assertAlmostEqual(
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
+
+    def test_rbf_kernel_log_pdf_gradients_wrt_x(self) -> None:
+        """
+        Test the class RBFKernel score-function gradient computations.
+        """
+        # Define parameters for data
+        bandwidth = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+
+        # Sample points to build the distribution from
+        kde_points = np.random.random((num_points, dimension))
+
+        # Define a kernel density estimate function for the distribution
+        kde = lambda input_var: (
+            np.exp(
+                -np.linalg.norm(input_var - kde_points, axis=1)[:, None] ** 2
+                / (2 * bandwidth**2)
+            )
+            / (np.sqrt(2 * np.pi) * bandwidth)
+        ).mean(axis=0)
+
+        # Define a matrix to store gradients in - this is a jacobian because it's the
+        # matrix of partial derivatives
+        jacobian = np.zeros((num_points, dimension))
+
+        # For each data-point in x, compute the gradients
+        for i, x_ in enumerate(x):
+            jacobian[i] = (
+                -(x_ - kde_points)
+                / bandwidth**3
+                * np.exp(
+                    -np.linalg.norm(x_ - kde_points, axis=1)[:, None] ** 2
+                    / (2 * bandwidth**2)
+                )
+                / (np.sqrt(2 * np.pi))
+            ).mean(axis=0) / (kde(x_)[:, None])
+
+        # Compute the gradient of the score function using the class
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        output = kernel.grad_log_x(x, kde_points, bandwidth)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
+
+    def test_define_pairwise_kernel_evaluation_no_grads(self) -> None:
+        """
+        Test the definition of pairwise kernel evaluation functions, without gradients.
+
+        Pairwise distances mean, given two input arrays, we should return a matrix
+        where the values correspond to the distance, as judged by the kernel, between
+        each point in the first array and each point in the second array.
+
+        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        If we have two input arrays:
+
+        ..math:
+            x = [0.0, 1.0, 2.0, 3.0, 4.0]
+            y = [10.0, 3.0, 0.0]
+
+        then we expect an output matrix with 5 rows and 3 columns. Entry [0, 0] in that
+        matrix is the kernel distance between points 0.0 and 10.0, entry [0, 1] is the
+        kernel distance between 0.0 and 3.0 and so on.
+        """
+        # Define parameters for data
+        bandwidth = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        y = np.array([10.0, 3.0, 0.0])
+
+        # Define the kernel object
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Define expected output for pairwise distances
+        expected_output = np.zeros([5, 3])
+        for x_index, x_ in enumerate(x):
+            for y_index, y_ in enumerate(y):
+                expected_output[x_index, y_index] = kernel.compute(x_, y_)
+
+        # Compute the pairwise distances between the data using the kernel
+        output = kernel.compute_pairwise_no_grads(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output)
+
+    def test_update_kernel_matrix_row_sum(self) -> None:
+        """
+        Test updates to the kernel matrix row sum.
+
+        In this test, we consider a subset of points (determined by the parameter
+        max_size) and then compute the sum of pairwise distances between them. Any
+        points outside this subset should not alter the existing kernel row sum values.
+        """
+        # Define parameters for data
+        bandwidth = 1 / np.sqrt(2)
+        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        max_size = 3
+
+        # Pre-specify an empty kernel matrix row sum to update as we go
+        kernel_row_sum = jnp.zeros(len(x))
+
+        # Define the kernel object
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Define expected output for pairwise distances - in this case we are looking
+        # from the start index (0) to start index + max_size (0 + 3) in both axis (rows
+        # and columns) and then adding the pairwise distances up to this point. Any
+        # pairs of points beyond this subset of indices should not be computed
+        expected_output = np.zeros([5, 5])
+        for x_1_index, x_1 in enumerate(x[0:max_size]):
+            for x_2_index, x_2 in enumerate(x[0:max_size]):
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+        expected_output = expected_output.sum(axis=1)
+
+        # Compute the kernel matrix row sum with the class
+        output = kernel.update_kernel_matrix_row_sum(
+            x, kernel_row_sum, 0, 0, kernel.compute_pairwise_no_grads, max_size=max_size
+        )
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output)
+
+    def test_calculate_kernel_matrix_row_sum(self) -> None:
+        """
+        Test computation of the kernel matrix row sum.
+
+        We compute the distance between all pairs of points, and then sum these
+        distances, giving a single value for each data-point.
+        """
+        # Define parameters for data
+        bandwidth = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+
+        # Define the kernel object
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Define expected output for pairwise distances
+        expected_output = np.zeros([5, 5])
+        for x_1_index, x_1 in enumerate(x):
+            for x_2_index, x_2 in enumerate(x):
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+        expected_output = expected_output.sum(axis=1)
+
+        # Compute the kernel matrix row sum with the class
+        output = kernel.calculate_kernel_matrix_row_sum(x)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output)
+
+    def test_calculate_kernel_matrix_row_sum_mean(self) -> None:
+        """
+        Test computation of the mean of the kernel matrix row sum.
+
+        We compute the distance between all pairs of points, and then take the mean of
+        these distances, giving a single value for each data-point.
+        """
+        # Define parameters for data
+        bandwidth = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+
+        # Define the kernel object
+        kernel = ck.RBFKernel(bandwidth=bandwidth)
+
+        # Define expected output for pairwise distances, then take the mean of them
+        expected_output = np.zeros([5, 5])
+        for x_1_index, x_1 in enumerate(x):
+            for x_2_index, x_2 in enumerate(x):
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+        expected_output = expected_output.mean(axis=1)
+
+        # Compute the kernel matrix row sum mean with the class
+        output = kernel.calculate_kernel_matrix_row_sum_mean(x)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output)
+
+    def test_compute_normalised(self) -> None:
+        """
+        Test computation of normalised RBF kernel.
+
+        A normalised RBF kernel is also known as a Gaussian kernel. We generate data and
+        compare to a standard implementation of the Gaussian PDF.
+        """
+        # Setup some data
+        std_dev = np.e
+        num_points = 10
+        x = np.arange(num_points)
+        y = x + 1.0
+
+        # Compute expected output using standard implementation of the Gaussian PDF
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
+
+        # Compute the normalised PDF output using the kernel class
+        kernel = ck.RBFKernel(bandwidth=std_dev)
+        output = kernel.compute_normalised(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_construct_pdf(self) -> None:
+        """
+        Test construction of PDF using RBF kernel.
+        """
+        # Setup some data
+        std_dev = np.e
+        num_points = 10
+        x = np.arange(num_points)
+        y = x + 1.0
+
+        # Compute expected output using standard implementation of the Gaussian PDF
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
+
+        # Compute the normalised PDF output using the kernel class
+        kernel = ck.RBFKernel(bandwidth=std_dev)
+        output_mean, output_kernel = kernel.construct_pdf(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(
+            output_mean, expected_output.mean(axis=1), decimal=3
+        )
+        np.testing.assert_array_almost_equal(output_kernel, expected_output, decimal=3)
+
+    def test_define_pairwise_kernel_evaluation_with_grads(self) -> None:
+        """
+        Test the definition of pairwise kernel evaluation functions, with gradients.
+
+        # TODO: What is a sensible test-case for this? Functionality may not work.
+        """
+        pass
+
+    def test_compute_divergence_x_grad_y(self) -> None:
+        """
+        Test the function compute_divergence_x_grad_y.
+
+        # TODO: What is a sensible test-case for this? Functionality may not work.
+        """
+        pass
+
+
+class TestPCIMQKernel(unittest.TestCase):
+    """
+    Tests related to the PCIMQKernel defined in kernel.py
+    """
+
+    def test_pcimq_kernel_init(self) -> None:
+        r"""
+        Test the class PCIMQKernel initilisation with a negative bandwidth.
+        """
+        # Create the kernel with a negative bandwidth - we expect a value error to be
+        # raised
+        self.assertRaises(ValueError, ck.PCIMQKernel, bandwidth=-1.0)
+
+    def test_pcimq_kernel_compute(self) -> None:
+        r"""
+        Test the class PCIMQKernel distance computations.
+
+        The PCIMQ kernel is defined as
+        :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / std_dev) ** 2 / 2.0)}`.
+        """
+        # Define input data
+        std_dev = np.e
+        num_points = 10
+        x = np.arange(num_points)
+        y = x + 1.0
+
+        # Compute expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = 1.0 / np.sqrt(
+                    1.0 + ((x_ - y_) / std_dev) ** 2 / 2.0
+                )
+
+        # Compute distance using the kernel class
+        kernel = ck.PCIMQKernel(bandwidth=std_dev)
+        output = kernel.compute(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_rbf_kernel_gradients_wrt_x(self) -> None:
+        r"""
+        Test the class PCIMQ gradient computations with respect to x.
+        """
+        # Setup data
+        bandwidth = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = -(x_ - y_) / (
+                    1 + np.linalg.norm(x_ - y_) ** 2
+                ) ** (3 / 2)
+
+        # Compute output using Kernel class  # TODO: What has changed to break this?
+        kernel = ck.PCIMQKernel(bandwidth=bandwidth)
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_rbf_kernel_gradients_wrt_y(self) -> None:
+        """
+        Test the class PCIMQ gradient computations with respect to y.
+        """
+        # Setup data
+        bandwidth = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = -(x_ - y_) / (
+                    1 + np.linalg.norm(x_ - y_) ** 2
+                ) ** (3 / 2)
+
+        # Compute output using Kernel class  # TODO: What has changed to break this?
+        kernel = ck.PCIMQKernel(bandwidth=bandwidth)
+        output = kernel.grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
 
 if __name__ == "__main__":
