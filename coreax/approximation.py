@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 from abc import ABC, abstractmethod
 from functools import partial
 
@@ -23,9 +25,7 @@ from coreax.util import KernelFunction
 
 
 class KernelMeanApproximator(ABC):
-    """
-    Base class for approximation methods to kernel means.
-    """
+    """Base class for approximation methods to kernel means."""
 
     def __init__(
         self,
@@ -52,7 +52,7 @@ class KernelMeanApproximator(ABC):
 
     @abstractmethod
     def approximate(self, data: ArrayLike) -> Array:
-        """
+        r"""
         Approximate kernel row mean.
 
         :param data: The original :math:`n \times d` data
@@ -61,9 +61,7 @@ class KernelMeanApproximator(ABC):
 
 
 class RandomApproximator(KernelMeanApproximator):
-    """
-    Approximation method to kernel mean through regression on random sampled points.
-    """
+    """Approximation method to kernel mean through regression on random sampled points."""
 
     def __init__(
         self,
