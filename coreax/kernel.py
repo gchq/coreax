@@ -305,8 +305,8 @@ class Kernel(ABC):
         """
         Create an approximator object for use with the kernel matrix row sum mean.
 
-        :param approximator: The name of an approximator class to use, or the class
-            directly as a dependency injection
+        :param approximator: The name of an approximator class to use, or the
+            uninstantiated class directly as a dependency injection
         :param kernel_evaluation: Kernel function
             :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param random_key: Key for random number generation
@@ -314,32 +314,17 @@ class Kernel(ABC):
         :param num_train_points: Number of training points used to fit kernel regression
         :return: Approximator object
         """
-        # TODO: Move strings into constants module
-        if isinstance(approximator, str):
-            if approximator == "random":
-                return ca.RandomApproximator(
-                    kernel_evaluation=self._compute_elementwise,
-                    random_key=random_key,
-                    num_kernel_points=num_kernel_points,
-                    num_train_points=num_train_points,
-                )
-            elif approximator == "annchor":
-                return ca.ANNchorApproximator(
-                    kernel_evaluation=self._compute_elementwise,
-                    random_key=random_key,
-                    num_kernel_points=num_kernel_points,
-                    num_train_points=num_train_points,
-                )
-            elif approximator == "nystrom":
-                return ca.NystromApproximator(
-                    kernel_evaluation=self._compute_elementwise,
-                    random_key=random_key,
-                    num_kernel_points=num_kernel_points,
-                )
-            else:
-                raise ValueError(f"Approximator choice {approximator} not known.")
-        else:
-            return approximator
+        approximator_obj = ca.approximator_factory.get(approximator)
+
+        # Initialise, accounting for different classes having different numbers of
+        # parameters
+        return cu.call_with_excess_kwargs(
+            approximator_obj,
+            kernel_evaluation=self._compute_elementwise,
+            random_key=random_key,
+            num_kernel_points=num_kernel_points,
+            num_train_points=num_train_points,
+        )
 
     @abstractmethod
     def grad_x(
