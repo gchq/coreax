@@ -664,7 +664,7 @@ class PCIMQKernel(Kernel):
     @jit
     def compute_normalised(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
-        Evaluate the normalised Gaussian kernel pairwise.
+        Evaluate the normalised pcimq kernel pairwise.
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
@@ -679,7 +679,7 @@ class PCIMQKernel(Kernel):
         gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Calculate the *element-wise* gradient of the PCIMQ function w.r.t. x.
+        Calculate the *element-wise* gradient of the pcimq function w.r.t. x.
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
@@ -697,7 +697,7 @@ class PCIMQKernel(Kernel):
         gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Calculate the *element-wise* gradient of the PCIMQ function w.r.t. y.
+        Calculate the *element-wise* gradient of the pcimq function w.r.t. y.
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
@@ -731,7 +731,7 @@ class PCIMQKernel(Kernel):
         :param kde_data: The :math:`m \times d` kernel density estimation set
         :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
             `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
-            normalised Gaussian kernel
+            normalised Gaussian kernel TODO: UPDATE
         :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, if
             `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the
             mean of a Normalised Gaussian kernel
@@ -744,7 +744,7 @@ class PCIMQKernel(Kernel):
     @jit
     def construct_pdf(self, x: ArrayLike, kde_data: ArrayLike) -> tuple[Array, Array]:
         r"""
-        Construct PDF of `x` by kernel density estimation for a radial basis function.
+        Construct PDF of `x` by kernel density estimation for a pcimq function.
 
         :param x: An :math:`n \times d` array of random variable values
         :param kde_data: The :math:`m \times d` kernel density estimation set
@@ -763,7 +763,7 @@ class PCIMQKernel(Kernel):
         gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Apply divergence operator on gradient of RBF kernel with respect to `y`.
+        Apply divergence operator on gradient of pcimq kernel with respect to `y`.
 
         This avoids explicit computation of the Hessian. Note that the generating set is
         not necessarily the same as `x_array`.
@@ -773,7 +773,7 @@ class PCIMQKernel(Kernel):
         :param num_data_points: Number of data points in the generating set. Optional,
             if :data:`None` or omitted, defaults to number of vectors in `x`
         :param gram_matrix: Gram matrix. Optional, if :data:`None` or omitted, defaults
-            to a normalised Gaussian kernel
+            to a normalised Gaussian kernel TODO: UPDATE
         :return: Divergence operator, an :math:`n \times m` matrix
         """
         # TODO: Implement & test
