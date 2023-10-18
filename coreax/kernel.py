@@ -331,16 +331,15 @@ class Kernel(ABC):
         :param num_kernel_points: Number of kernel evaluation points
         :param num_train_points: Number of training points used to fit kernel
             regression. This is ignored if not applicable to the approximator method.
-        :return: Approximator object
+        :return: Approximation to the kernel matrix row sum
         """
-        # Create an approximator object (if needed)
-        if not isinstance(approximator, ca.KernelMeanApproximator):
-            approximator = self.create_approximator(
-                approximator=approximator,
-                random_key=random_key,
-                num_kernel_points=num_kernel_points,
-                num_train_points=num_train_points,
-            )
+        # Create an approximator object
+        approximator = self.create_approximator(
+            approximator=approximator,
+            random_key=random_key,
+            num_kernel_points=num_kernel_points,
+            num_train_points=num_train_points,
+        )
         return approximator.approximate(x)
 
     def create_approximator(
@@ -359,7 +358,8 @@ class Kernel(ABC):
             :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param random_key: Key for random number generation
         :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel regression
+        :param num_train_points: Number of training points used to fit kernel
+            regression. This is ignored if not applicable to the approximator method.
         :return: Approximator object
         """
         approximator_obj = ca.approximator_factory.get(approximator)
