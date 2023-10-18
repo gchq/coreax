@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
+
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import KernelFunction, apply_negative_precision_threshold
+import coreax.kernel as ck
+import coreax.util as cu
 
 
-class Metric:
+class Metric(ABC):
     r"""
     Base class for calculating metrics.
     """
@@ -27,6 +30,7 @@ class Metric:
     def __init__(self) -> None:
         pass
 
+    @abstractmethod
     def compute(
         self,
         x: ArrayLike,
@@ -39,8 +43,16 @@ class Metric:
         Compute the metric.
 
         Return a zero-dimensional array.
+
+        :param x: An :math:`n \times d` array defining the full dataset
+        :param x_c: An :math:`n \times d` array defining a representation of x
+        :param max_size: Size of matrix block to process
+        :param weights_x: An :math:`1 \times n` array of weights for associated points
+            in x
+        :param weights_x_c: An :math:`1 \times n` array of weights for associated points
+            in x_c
+        :return: Metric computed as a zero-dimensional array.
         """
-        raise NotImplementedError
 
 
 class MMD(Metric):
@@ -48,24 +60,16 @@ class MMD(Metric):
     Calculation for maximum mean discrepancy.
     """
 
-    def __init__(self, kernel: KernelFunction, precision_threshold: float = 1e-8):
+    def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
         r"""
         Calculate maximum mean discrepancy between two datasets in d dimensions.
 
-        :param kernel: Kernel function
-                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :param kernel: Kernel object with compute method defined mapping
+            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param precision_threshold: Positive threshold we compare against for precision
         """
         self.kernel = kernel
         self.precision_threshold = precision_threshold
-
-        self.k_pairwise = jit(
-            vmap(
-                vmap(self.kernel, in_axes=(None, 0), out_axes=0),  # self.kernel.compute
-                in_axes=(0, None),
-                out_axes=0,
-            )
-        )
 
         # initialise parent
         super().__init__()
@@ -74,9 +78,9 @@ class MMD(Metric):
         self,
         x: ArrayLike,
         x_c: ArrayLike,
-        max_size: int = None,
         weights_x: ArrayLike = None,
         weights_x_c: ArrayLike = None,
+        max_size: int = None,
     ) -> Array:
         r"""
         Calculate maximum mean discrepancy.
@@ -90,27 +94,30 @@ class MMD(Metric):
         :param x: The original :math:`n \times d` data
         :param x_c: :math:`m \times d` coreset
         :param max_size: (Optional) Size of matrix block to process, for memory limits
-        :param weights_x: (Optional)  :math:`n \times 1` weights for original data X
-        :param weights_x_c: (Optional)  :math:`m \times 1` weights for coreset Y
+        :param weights_x: (Optional)  :math:`n \times 1` weights for original data x
+        :param weights_x_c: (Optional)  :math:`m \times 1` weights for coreset x_c
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
+        # Compute number of points in each input dataset
+        num_points_x = len(jnp.asarray(x))
+        num_points_x_c = len(jnp.asarray(x_c))
 
-        n = len(jnp.asarray(x))
-        m = len(jnp.asarray(x_c))
-
+        # Choose which MMD computation method to call depending on max_size and weights
         if weights_x_c is None:
-            if max_size is None or max_size > max(n, m):
-                return self.mmd(x, x_c)
+            if max_size is None or max_size > max(num_points_x, num_points_x_c):
+                return self.maximum_mean_discrepancy(x, x_c)
             else:
-                return self.mmd_block(x, x_c, max_size)
+                return self.maximum_mean_discrepancy_block(x, x_c, max_size)
 
         else:
-            if max_size is None or max_size > max(n, m):
-                return self.wmmd(x, x_c, weights_x_c)
+            if max_size is None or max_size > max(num_points_x, num_points_x_c):
+                return self.weighted_maximum_mean_discrepancy(x, x_c, weights_x_c)
             else:
-                return self.mmd_weight_block(x, x_c, max_size, weights_x, weights_x_c)
+                return self.weighted_maximum_mean_discrepancy_block(
+                    x, x_c, weights_x, weights_x_c, max_size
+                )
 
-    def mmd(self, x: ArrayLike, x_c: ArrayLike) -> Array:
+    def maximum_mean_discrepancy(self, x: ArrayLike, x_c: ArrayLike) -> Array:
         r"""
         Calculate standard MMD.
 
@@ -126,20 +133,23 @@ class MMD(Metric):
         :param x_c: :math:`m \times d` coreset
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
+        # Compute each term in the MMD formula
+        kernel_nn = self.kernel.compute_pairwise_no_grads(x, x)
+        kernel_mm = self.kernel.compute_pairwise_no_grads(x_c, x_c)
+        kernel_nm = self.kernel.compute_pairwise_no_grads(x, x_c)
 
-        kernel_nn = self.k_pairwise(x, x)
-        kernel_mm = self.k_pairwise(x_c, x_c)
-        kernel_nm = self.k_pairwise(x, x_c)
-
+        # Compute MMD
         result = jnp.sqrt(
-            apply_negative_precision_threshold(
+            cu.apply_negative_precision_threshold(
                 kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean(),
                 self.precision_threshold,
             )
         )
         return result
 
-    def wmmd(self, x: ArrayLike, x_c: ArrayLike, weights_x_c: ArrayLike) -> Array:
+    def weighted_maximum_mean_discrepancy(
+        self, x: ArrayLike, x_c: ArrayLike, weights_x_c: ArrayLike
+    ) -> Array:
         r"""
         Calculate one-sided, weighted maximum mean discrepancy (WMMD).
 
@@ -150,17 +160,19 @@ class MMD(Metric):
         :param weights_x_c: :math:`m \times 1` weights vector for coreset
         :return: Weighted maximum mean discrepancy as a 0-dimensional array
         """
-
+        # Ensure data is in desired format
         x = jnp.asarray(x)
         n = float(len(x))
-        kernel_nn = self.k_pairwise(x, x)
-        kernel_mm = self.k_pairwise(x_c, x_c)
-        kernel_nm = self.k_pairwise(x, x_c)
 
-        # Compute MMD, correcting for any numerical precision issues, where we would
-        # otherwise square-root a negative number very close to 0.0.
+        # Compute each term in the weighted MMD formula
+        kernel_nn = self.kernel.compute_pairwise_no_grads(x, x)
+        kernel_mm = self.kernel.compute_pairwise_no_grads(x_c, x_c)
+        kernel_nm = self.kernel.compute_pairwise_no_grads(x, x_c)
+
+        # Compute weighted MMD, correcting for any numerical precision issues, where we
+        # would otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            apply_negative_precision_threshold(
+            cu.apply_negative_precision_threshold(
                 jnp.dot(weights_x_c.T, jnp.dot(kernel_mm, weights_x_c))
                 + kernel_nn.sum() / n**2
                 - 2 * jnp.dot(weights_x_c.T, kernel_nm.mean(axis=0)),
@@ -169,7 +181,12 @@ class MMD(Metric):
         )
         return result
 
-    def mmd_block(self, x: ArrayLike, x_c: ArrayLike, max_size: int) -> Array:
+    def maximum_mean_discrepancy_block(
+        self,
+        x: ArrayLike,
+        x_c: ArrayLike,
+        max_size: int = 10_000,
+    ) -> Array:
         r"""
         Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
@@ -178,34 +195,36 @@ class MMD(Metric):
         :param max_size: Size of matrix blocks to process
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
-
+        # Ensure data is in desired format
         x = jnp.asarray(x)
         x_c = jnp.asarray(x_c)
-        n = float(len(x))
-        m = float(len(x_c))
-        kernel_nn = sum_K(x, x, self.k_pairwise, max_size)
-        kernel_mm = sum_K(x_c, x_c, self.k_pairwise, max_size)
-        kernel_nm = sum_K(
-            x, x_c, self.k_pairwise, max_size
-        )  # self.kernel.calculate_K_sum
+        num_points_x = float(len(x))
+        num_points_x_c = float(len(x_c))
+
+        # Compute each term in the weighted MMD formula
+        kernel_nn = self.sum_pairwise_distances(x, x, max_size)
+        kernel_mm = self.sum_pairwise_distances(x_c, x_c, max_size)
+        kernel_nm = self.sum_pairwise_distances(x, x_c, max_size)
 
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            apply_negative_precision_threshold(
-                kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
+            cu.apply_negative_precision_threshold(
+                kernel_nn / num_points_x**2
+                + kernel_mm / num_points_x_c**2
+                - 2 * kernel_nm / (num_points_x * num_points_x_c),
                 self.precision_threshold,
             )
         )
         return result
 
-    def mmd_weight_block(
+    def weighted_maximum_mean_discrepancy_block(
         self,
         x: ArrayLike,
         x_c: ArrayLike,
-        max_size: int,
         weights_x: ArrayLike,
         weights_x_c: ArrayLike,
+        max_size: int = 10_000,
     ) -> Array:
         r"""
         Calculate weighted maximum mean discrepancy (MMD).
@@ -214,112 +233,119 @@ class MMD(Metric):
 
         :param x: The original :math:`n \times d` data
         :param x_c: :math:`m \times d` coreset
-        :param max_size: Size of matrix blocks to process
         :param weights_x: :math:`n` weights of original data
         :param weights_x_c: :math:`m` weights of coreset points
+        :param max_size: Size of matrix blocks to process
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
-
+        # Ensure data is in desired format
         weights_x = jnp.asarray(weights_x)
         weights_x_c = jnp.asarray(weights_x_c)
-        n = weights_x.sum()
-        m = weights_x_c.sum()
+        num_points_x = weights_x.sum()
+        num_points_x_c = weights_x_c.sum()
+
         # needs changing to self.kernel.calculate_K_sum:
-        kernel_nn = sum_weight_K(x, x, weights_x, weights_x, self.k_pairwise, max_size)
-        kernel_mm = sum_weight_K(
-            x_c, x_c, weights_x_c, weights_x_c, self.k_pairwise, max_size
+        kernel_nn = self.sum_weighted_pairwise_distances(
+            x, x, weights_x, weights_x, max_size
         )
-        kernel_nm = sum_weight_K(
-            x, x_c, weights_x, weights_x_c, self.k_pairwise, max_size
+        kernel_mm = self.sum_weighted_pairwise_distances(
+            x_c, x_c, weights_x_c, weights_x_c, max_size
+        )
+        kernel_nm = self.sum_weighted_pairwise_distances(
+            x, x_c, weights_x, weights_x_c, max_size
         )
 
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            apply_negative_precision_threshold(
-                kernel_nn / n**2 + kernel_mm / m**2 - 2 * kernel_nm / (n * m),
+            cu.apply_negative_precision_threshold(
+                kernel_nn / num_points_x**2
+                + kernel_mm / num_points_x_c**2
+                - 2 * kernel_nm / (num_points_x * num_points_x_c),
                 self.precision_threshold,
             )
         )
         return result
 
+    def sum_pairwise_distances(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        max_size: int = 10_000,
+    ) -> float:
+        r"""
+        Sum the kernel distance between all pairs of points in x and y.
 
-# Below to be moved to Kernel.py
+        The summation is done in blocks to avoid excessive memory usage.
 
+        :param x: :math:`n \times 1` array
+        :param y: :math:`m \times 1` array
+        :param max_size: Size of matrix blocks to process
+        """
+        # Ensure data is in desired format
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+        num_points_x = len(x)
+        num_points_y = len(y)
 
-def sum_K(
-    x: ArrayLike,
-    y: ArrayLike,
-    k_pairwise: KernelFunction,
-    max_size: int = 10_000,
-) -> float:
-    r"""
-    Sum the kernel distance between all pairs of points in x and y.
+        # If max_size is larger than both inputs, we don't need to consider block-wise
+        # computation
+        if max_size > max(num_points_x, num_points_y):
+            output = self.kernel.compute_pairwise_no_grads(x, y).sum()
 
-    The summation is done in blocks to avoid excessive memory usage.
+        else:
+            output = 0
+            for i in range(0, num_points_x, max_size):
+                for j in range(0, num_points_y, max_size):
+                    pairwise_distances_part = self.kernel.compute_pairwise_no_grads(
+                        x[i : i + max_size], y[j : j + max_size]
+                    )
+                    output += pairwise_distances_part.sum()
 
-    :param x: :math:`n \times 1` array
-    :param y: :math:`m \times 1` array
-    :param k_pairwise: Kernel function
-    :param max_size: Size of matrix blocks to process
-    """
+        return output
 
-    x = jnp.asarray(x)
-    y = jnp.asarray(y)
-    n = len(x)
-    m = len(y)
+    def sum_weighted_pairwise_distances(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        weights_x: ArrayLike,
+        weights_y: ArrayLike,
+        max_size: int = 10_000,
+    ) -> float:
+        r"""
+        Sum the kernel distance (weighted) between all pairs of points in x and y.
 
-    if max_size > max(m, n):
-        output = k_pairwise(x, y).sum()
+        The summation is done in blocks to avoid excessive memory usage.
 
-    else:
-        output = 0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
-                K_part = k_pairwise(x[i : i + max_size], y[j : j + max_size])
-                output += K_part.sum()
+        :param x: :math:`n \times 1` array
+        :param y: :math:`m \times 1` array
+        :param weights_x: :math: weights for x, `n \times 1` array
+        :param weights_y: :math: weights for y, `m \times 1` array
+        :param max_size: Size of matrix blocks to process
+        """
+        # Ensure data is in desired format
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+        num_points_x = len(x)
+        num_points_y = len(y)
 
-    return output
+        # If max_size is larger than both inputs, we don't need to consider block-wise
+        # computation
+        if max_size > max(num_points_x, num_points_y):
+            Kw = self.kernel.compute_pairwise_no_grads(x, y) * weights_y
+            output = (weights_x * Kw.T).sum()
 
+        else:
+            output = 0
+            for i in range(0, num_points_x, max_size):
+                for j in range(0, num_points_y, max_size):
+                    pairwise_distances_part = (
+                        weights_x[i : i + max_size, None]
+                        * self.kernel.compute_pairwise_no_grads(
+                            x[i : i + max_size], y[j : j + max_size]
+                        )
+                        * weights_y[None, j : j + max_size]
+                    )
+                    output += pairwise_distances_part.sum()
 
-def sum_weight_K(
-    x: ArrayLike,
-    y: ArrayLike,
-    w_x: ArrayLike,
-    w_y: ArrayLike,
-    k_pairwise: KernelFunction,
-    max_size: int = 10_000,
-) -> float:
-    r"""
-    Sum the kernel distance (weighted) between all pairs of points in x and y.
-
-    The summation is done in blocks to avoid excessive memory usage.
-
-    :param x: :math:`n \times 1` array
-    :param y: :math:`m \times 1` array
-    :param w_x: :math: weights for x, `n \times 1` array
-    :param w_y: :math: weights for y, `m \times 1` array
-    :param k_pairwise: Kernel function
-    :param max_size: Size of matrix blocks to process
-    """
-    x = jnp.asarray(x)
-    y = jnp.asarray(y)
-    n = len(x)
-    m = len(y)
-
-    if max_size > max(m, n):
-        Kw = k_pairwise(x, y) * w_y
-        output = (w_x * Kw.T).sum()
-
-    else:
-        output = 0
-        for i in range(0, n, max_size):
-            for j in range(0, m, max_size):
-                K_part = (
-                    w_x[i : i + max_size, None]
-                    * k_pairwise(x[i : i + max_size], y[j : j + max_size])
-                    * w_y[None, j : j + max_size]
-                )
-                output += K_part.sum()
-
-    return output
+        return output
