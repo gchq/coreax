@@ -588,7 +588,7 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_rbf_kernel_gradients_wrt_x(self) -> None:
+    def test_pcimq_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class PCIMQ gradient computations with respect to x.
         """
@@ -614,7 +614,7 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_rbf_kernel_gradients_wrt_y(self) -> None:
+    def test_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
         Test the class PCIMQ gradient computations with respect to y.
         """
