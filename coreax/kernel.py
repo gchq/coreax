@@ -100,8 +100,7 @@ def grad_rbf_y(
     gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate the *element-wise* gradient of the normalised radial basis function w.r.t.
-    y_array.
+    Calculate *element-wise* grad of the normalised radial basis func w.r.t. y_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -129,8 +128,7 @@ def grad_rbf_x(
     gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate the *element-wise* gradient of the normalised radial basis function w.r.t.
-    x_array.
+    Calculate *element-wise* grad of the normalised radial basis func w.r.t. x_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -151,8 +149,7 @@ def grad_pc_imq_y(
     gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate *element-wise* gradient of the pre-conditioned inverse multi-quadric
-    w.r.t. y_array.
+    Calculate *element-wise* grad of the pcimq w.r.t. y_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -180,8 +177,7 @@ def grad_pc_imq_x(
     gram_matrix: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Calculate *element-wise* gradient of the pre-conditioned inverse multi-quadric
-    w.r.t. x_array.
+    Calculate *element-wise* grad of the pcimq w.r.t. x_array.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
@@ -289,8 +285,9 @@ def rbf_f_x(
     random_var_values: ArrayLike, kde_data: ArrayLike, bandwidth: float
 ) -> tuple[Array, Array]:
     r"""
-    Construct PDF of `random_var_values` by kernel density estimation for a radial
-    basis function.
+    Construct PDF of `random_var_values` by kernel density estimation.
+
+    This is done for a radial basis function.
 
     :param random_var_values: An :math:`n \times d` array of random variable values
     :param kde_data: The :math:`m \times d` kernel density estimation set
