@@ -46,9 +46,7 @@ class TestKernelABC(unittest.TestCase):
         kernel = ck.Kernel()
 
         # Call the approximation method with an invalid approximator string
-        self.assertRaises(
-            ValueError, kernel.create_approximator, approximator="example"
-        )
+        self.assertRaises(KeyError, kernel.create_approximator, approximator="example")
 
         # Call the approximation method with each known approximator name
         for name, approx_type in known_approximators.items():
@@ -57,10 +55,11 @@ class TestKernelABC(unittest.TestCase):
             )
 
         # Pre-create a KernelMeanApproximator and check that it is returned when passed
-        pre_defined_approximator = ca.RandomApproximator(kernel_evaluation=MagicMock())
-        self.assertEqual(
-            pre_defined_approximator,
-            kernel.create_approximator(approximator=pre_defined_approximator),
+        self.assertTrue(
+            isinstance(
+                kernel.create_approximator(approximator=ca.RandomApproximator),
+                ca.RandomApproximator,
+            )
         )
 
 

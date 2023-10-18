@@ -19,7 +19,7 @@ import numpy as np
 from jax import random
 
 import coreax.approximation as ca
-import coreax.kernel as ck
+import coreax.util as cu
 
 
 class TestApproximations(unittest.TestCase):
@@ -62,13 +62,13 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator
         approximator = ca.KernelMeanApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
         )
 
         # Check parameters have been set
-        self.assertEqual(approximator.kernel_evaluation, ck.sq_dist)
+        self.assertEqual(approximator.kernel_evaluation, cu.sq_dist)
         self.assertEqual(approximator.random_key[0], self.random_key[0])
         self.assertEqual(approximator.random_key[1], self.random_key[1])
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
@@ -84,7 +84,7 @@ class TestApproximations(unittest.TestCase):
         """
         # Define the approximator - full dataset used to fit the approximation
         approximator_full = ca.RandomApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
             num_train_points=self.data.shape[0],
@@ -92,7 +92,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator - full dataset used to fit the approximation
         approximator_partial = ca.RandomApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
             num_train_points=self.num_train_points,
@@ -132,7 +132,7 @@ class TestApproximations(unittest.TestCase):
         """
         # Define the approximator - full dataset used to fit the approximation
         approximator_full = ca.ANNchorApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
             num_train_points=self.data.shape[0],
@@ -140,7 +140,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator - full dataset used to fit the approximation
         approximator_partial = ca.ANNchorApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
             num_train_points=self.num_train_points,
@@ -180,14 +180,14 @@ class TestApproximations(unittest.TestCase):
         """
         # Define the approximator - full dataset used to fit the approximation
         approximator_full = ca.NystromApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
         )
 
         # Define the approximator - full dataset used to fit the approximation
         approximator_partial = ca.NystromApproximator(
-            kernel_evaluation=ck.sq_dist,
+            kernel_evaluation=cu.sq_dist,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
         )
