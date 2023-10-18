@@ -143,11 +143,18 @@ class Kernel(ABC):
         x = jnp.asarray(x)
         y = jnp.asarray(y)
 
-        # Apply vectorised computations if dimensions are 2 or higher, otherwise use
-        # elementwise
+        # Apply vectorised computations if at least one component has dimension 2
         if x.ndim < 2 and y.ndim < 2:
             return self._compute_elementwise(x, y)
+        elif x.ndim > 2 or y.ndim > 2:
+            raise NotImplementedError(
+                "Kernel functions are not yet implemented for tensors. Please use vectors"
+            )
         else:
+            if x.ndim < 2:
+                x = jnp.atleast_2d(x)
+            if y.ndim < 2:
+                y = jnp.atleast_2d(y)
             return self._compute_vectorised(x, y)
 
     def _compute_vectorised(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -161,7 +168,7 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset
         :return: Distances (as determined by the kernel) between points in x and y
         """
-        return vmap(self._compute_elementwise, in_axes=(0, 0), out_axes=0)(x, y)
+        return self.compute_pairwise_no_grads(x, y)
 
     # TODO: Weights need to be optional here to agree with metrics approach
     @staticmethod
@@ -437,7 +444,7 @@ class RBFKernel(Kernel):
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
-        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.bandwidth))
+        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.bandwidth**2))
 
     @jit
     def compute_normalised(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -448,8 +455,6 @@ class RBFKernel(Kernel):
         :param y: Second set of vectors as a :math:`m \times d` array
         :return: Pairwise kernel evaluations for normalised RBF kernel
         """
-        # TODO: Do we need to square root the bandwidth here so it's consistent with
-        #  the interpretation that bandwidth = variance of the kernel?
         square_distances = cu.sq_dist_pairwise(x, y)
         kernel = jnp.exp(-0.5 * square_distances / self.bandwidth**2) / jnp.sqrt(
             2 * jnp.pi
@@ -643,7 +648,7 @@ class PCIMQKernel(Kernel):
         :return: Distance (as determined by the kernel) between point x and y
         """
         scaling = 2 * self.bandwidth**2
-        mq_array = cu.sq_dist_pairwise(x, y) / scaling
+        mq_array = cu.sq_dist(x, y) / scaling
         return 1 / jnp.sqrt(1 + mq_array)
 
     @jit
