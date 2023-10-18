@@ -170,7 +170,6 @@ class Kernel(ABC):
         """
         return self.compute_pairwise_no_grads(x, y)
 
-    # TODO: Weights need to be optional here to agree with metrics approach
     @staticmethod
     def update_kernel_matrix_row_sum(
         x: ArrayLike,
@@ -242,7 +241,6 @@ class Kernel(ABC):
 
         return kernel_row_sum
 
-    # TODO: Weights need to be optional here to agree with metrics approach
     def calculate_kernel_matrix_row_sum(
         self,
         x: ArrayLike,
@@ -288,7 +286,6 @@ class Kernel(ABC):
                 )
         return kernel_row_sum
 
-    # TODO: Weights need to be optional here to agree with metrics approach
     def calculate_kernel_matrix_row_sum_mean(
         self,
         x: ArrayLike,
@@ -314,7 +311,6 @@ class Kernel(ABC):
             1.0 * x.shape[0]
         )
 
-    # TODO: Weights need to be optional here to agree with metrics approach
     def approximate_kernel_matrix_row_sum_mean(
         self,
         x: ArrayLike,
