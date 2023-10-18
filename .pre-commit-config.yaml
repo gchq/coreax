@@ -65,3 +65,10 @@ repos:
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: "6.3.0"
+    hooks:
+      # Check PEP-257 and other docstring guidance
+      - id: pydocstyle
+        additional_dependencies: [ "tomli" ]
+        exclude: examples|tests|conf.py

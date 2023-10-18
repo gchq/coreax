@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 from functools import partial
 
 import jax.lax as lax
@@ -202,7 +204,7 @@ def refine_rand_body(
     k_vec: KernelFunction,
 ) -> tuple[random.PRNGKeyArray, Array]:
     r"""
-    Execute main loop of the random refine method
+    Execute main loop of the random refine method.
 
     :param i: Loop counter
     :param val: Loop updatables
@@ -292,7 +294,9 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change). S -> x.
+    Leave S unchanged (compare with refine.change).
+
+    This is simply a convenience function for leaving S unchanged.  S -> x.
 
     :param i: Index in S to replace. Not used
     :param S: The dataset for replacement. Will remain unchanged
@@ -310,10 +314,10 @@ def refine_rev(
     K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively, replacing points which lead to the most improvement -
-    the greedy refine method.
+    Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    The iteration is carried out over points in `x`, with x -> S.
+    This greedy refine method, the iteration is carried out over points in `x`, with
+    x -> S.
 
     :param x: :math:`n \times d` original data
     :param S: :math:`m` Coreset point indices
@@ -435,9 +439,9 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change_rev).
+    Leave S unchanged (compare with refine.change_rev).
 
-    x -> S.
+    This is simply a convenience function for leaving S unchanged. x -> S.
 
     :param i: Value to replace into S. Not used
     :param S: The dataset for replacement. Will remain unchanged
