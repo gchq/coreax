@@ -291,7 +291,9 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change). S -> x.
+    Leave S unchanged (compare with refine.change).
+
+    This is simply a convenience function for leaving S unchanged.  S -> x.
 
     :param i: Index in S to replace. Not used
     :param S: The dataset for replacement. Will remain unchanged
@@ -433,9 +435,9 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving S unchanged (compare with refine.change_rev).
+    Leave S unchanged (compare with refine.change_rev).
 
-    x -> S.
+    This is simply a convenience function for leaving S unchanged. x -> S.
 
     :param i: Value to replace into S. Not used
     :param S: The dataset for replacement. Will remain unchanged
