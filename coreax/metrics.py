@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.utils import KernelFunction, apply_negative_precision_threshold
+from coreax.util import KernelFunction, apply_negative_precision_threshold
 
 
 def mmd(
@@ -101,7 +103,7 @@ def sum_K(
     max_size: int = 10_000,
 ) -> float:
     r"""
-    Sum the kernel distance between all pairs of points in x and y.
+    Sum the kernel distance between all pairs of points in ``x`` and ``y``.
 
     The summation is done in blocks to avoid excessive memory usage.
 
@@ -110,7 +112,6 @@ def sum_K(
     :param k_pairwise: Kernel function
     :param max_size: Size of matrix blocks to process
     """
-
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
@@ -178,7 +179,7 @@ def sum_weight_K(
     max_size: int = 10_000,
 ) -> float:
     r"""
-    Sum the kernel distance (weighted) between all pairs of points in x and y.
+    Sum the kernel distance (weighted) between all pairs of points in ``x`` and ``y``.
 
     The summation is done in blocks to avoid excessive memory usage.
 
