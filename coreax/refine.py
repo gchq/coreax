@@ -37,14 +37,17 @@ def refine(
     Refine a coreset iteratively. S -> x.
 
     The refinement procedure replaces elements with points most reducing maximum mean
-    discrepancy (MMD). The iteration is carred out over points in `x`.
+    discrepancy (MMD). The iteration is carried out over points in `x`.
+
+    This is a post-processing step in coreset generation, through a generic reduction
+    algorithm.
 
     :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
+    :param S: :math:`m` Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
-    :return: Refined coreset point indices
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+    :return: :math:`m` Refined coreset point indices
     """
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
@@ -116,7 +119,7 @@ def comparison(
     :param i: A coreset index
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
     :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
@@ -151,12 +154,12 @@ def refine_rand(
     points from among the original data.
 
     :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
+    :param S: :math:`m` Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
     :param p: Proportion of original data to use as candidates
-    :return: Refined coreset point indices
+    :return: :math:`m` Refined coreset point indices
     """
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
@@ -246,7 +249,7 @@ def comparison_cand(
     :param cand: Indices for randomly sampled candidate points among the original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
     :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
@@ -307,16 +310,17 @@ def refine_rev(
     K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively, replacing points which lead to the most improvement.
+    Refine a coreset iteratively, replacing points which lead to the most improvement -
+    the greedy refine method.
 
     The iteration is carried out over points in `x`, with x -> S.
 
     :param x: :math:`n \times d` original data
-    :param S: Coreset point indices
+    :param S: :math:`m` Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
-    :return: Refined coreset point indices
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+    :return: :math:`m` Refined coreset point indices
     """
     x = jnp.asarray(x)
     S = jnp.asarray(S)
@@ -390,7 +394,7 @@ def comparison_rev(
     :param i: Index for original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
     :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
