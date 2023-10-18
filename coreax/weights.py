@@ -15,9 +15,8 @@
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
-from jaxopt import OSQP
 
-from coreax.utils import KernelFunction
+from coreax.util import KernelFunction, solve_qp
 
 
 def calculate_BQ_weights(
@@ -69,38 +68,5 @@ def simplex_weights(
     )
     kbar = k_pairwise(x_c, x).sum(axis=1) / len(x)
     Kmm = k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
-    sol = qp(Kmm, kbar)
+    sol = solve_qp(Kmm, kbar)
     return sol
-
-
-def qp(Kmm: ArrayLike, Kbar: ArrayLike) -> Array:
-    r"""
-    Solve quadratic programs with :mod:`jaxopt`.
-
-    Solves simplex weight problems of the form:
-
-    .. math::
-
-        \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
-
-    subject to
-
-    .. math::
-
-        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
-
-    :param Kmm: :math:`m \times m` coreset Gram matrix
-    :param Kbar: :math`m \times d` array of Gram matrix means
-    :return: Optimised solution for the quadratic program
-    """
-    Q = jnp.array(Kmm)
-    c = -jnp.array(Kbar)
-    m = Q.shape[0]
-    A = jnp.ones((1, m))
-    b = jnp.array([1.0])
-    G = jnp.eye(m) * -1.0
-    h = jnp.zeros(m)
-
-    qp = OSQP()
-    sol = qp.run(params_obj=(Q, c), params_eq=(A, b), params_ineq=(G, h)).params
-    return sol.primal

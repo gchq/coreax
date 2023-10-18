@@ -25,7 +25,7 @@ from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_elem
 from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block, mmd_weight_block
 from coreax.score_matching import sliced_score_matching
-from coreax.weights import qp
+from coreax.util import solve_qp
 
 
 def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, float]:
@@ -82,7 +82,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
 
     if weighted:
         # find the weights. Solves a QP
-        weights = qp(Kc + 1e-10, Kbar)
+        weights = solve_qp(Kc + 1e-10, Kbar)
         # compute the MMD between X and the coreset, weighted version
         m = mmd_weight_block(X, X[coreset], jnp.ones(N), weights, k, max_size=1000)
     else:

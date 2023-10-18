@@ -16,7 +16,7 @@ import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.utils import KernelFunction, apply_negative_precision_threshold
+from coreax.util import KernelFunction, apply_negative_precision_threshold
 
 
 class Metric:

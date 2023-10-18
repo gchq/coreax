@@ -1,13 +1,13 @@
-name: Lint
+name: Pre-commit Checks
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
     branches: ["**"]
 
 jobs:
-  lint:
+  pre_commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,4 +15,4 @@ jobs:
         with:
           python-version: 3.11
       - run: pip install pre-commit
-      - run: pre-commit run --all-files --show-diff-on-failure
+      - run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure
