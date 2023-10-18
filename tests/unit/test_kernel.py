@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import scipy.stats
@@ -107,7 +107,7 @@ class TestRBFKernel(unittest.TestCase):
         # Define data and bandwidth
         x = 0.5
         y = 2.0
-        bandwidth = np.float32(np.pi) / 2.0
+        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
 
         # Define the expected distance - it should just be a number in this case since
         # we have floats as inputs, so treat these single data-points in space
@@ -124,7 +124,7 @@ class TestRBFKernel(unittest.TestCase):
         self.assertAlmostEqual(float(output), expected_distance, places=5)
 
         # Alter the bandwidth, and check the jit decorator catches the update
-        kernel.bandwidth = np.float32(np.pi)
+        kernel.bandwidth = np.sqrt(np.float32(np.pi))
 
         # Set expected output with this new bandwidth
         expected_distance = 0.6990041
@@ -163,7 +163,7 @@ class TestRBFKernel(unittest.TestCase):
         # Define data and bandwidth
         x = 1.0 * np.arange(4)
         y = x + 1.0
-        bandwidth = np.float32(np.pi) / 2.0
+        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
 
         # Define the expected distance - it should just be a number in this case since
         # we have 1-dimensional arrays, so treat these as single data-points in space
@@ -179,9 +179,9 @@ class TestRBFKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(float(output), expected_distance, places=5)
 
-    def test_rbf_kernel_compute_two_matrices(self) -> None:
+    def test_rbf_kernel_compute_two_arrays(self) -> None:
         r"""
-        Test the class RBFKernel distance computations.
+        Test the class RBFKernel distance computations on arrays.
 
         The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
 
@@ -198,28 +198,31 @@ class TestRBFKernel(unittest.TestCase):
 
             ||x - y||^2 = [4, 0]
 
-        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+        If we take the bandwidth to be :math:`\sqrt(\pi / 2.0` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
-            k(x[1 y[1]) &= \exp(- 0 / \pi)
+            k(x[0], y[1]) &= \exp(- 100 / \pi)
+                          &= 1.4996075 \times 10^{-14}
+            k(x[1], y[0]) &= \exp(- 64 / \pi)
+                          &= 1.4211038 \times 10^{-9}
+            k(x[1], y[1]) &= \exp(- 0 / \pi)
                           &= 1.0
 
         """
         # Define data and bandwidth
         x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
         y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
-        bandwidth = np.float32(np.pi) / 2.0
+        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
 
-        # Define the expected distance - it should just be an array in this case since
-        # we have an input that has multiple 'rows' and a defined second dimension
-        # (column)
-        expected_distances = np.array([0.279923327, 1.0])
+        # Define the expected Gram matrix
+        expected_distances = np.array(
+            [[0.279923327, 1.4996075e-14], [1.4211038e-09, 1.0]]
+        )
 
         # Create the kernel
         kernel = ck.RBFKernel(bandwidth=bandwidth)
 
-        # Evaluate the kernel - which computes the distance between the two vectors x
-        # and y
+        # Evaluate the kernel - which computes the Gram matrix between x and y
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
@@ -570,7 +573,7 @@ class TestPCIMQKernel(unittest.TestCase):
         # Define input data
         std_dev = np.e
         num_points = 10
-        x = np.arange(num_points)
+        x = np.arange(num_points).reshape(-1, 1)
         y = x + 1.0
 
         # Compute expected output
@@ -578,7 +581,7 @@ class TestPCIMQKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 expected_output[i, j] = 1.0 / np.sqrt(
-                    1.0 + ((x_ - y_) / std_dev) ** 2 / 2.0
+                    1.0 + ((x_[0] - y_[0]) / std_dev) ** 2 / 2.0
                 )
 
         # Compute distance using the kernel class
@@ -607,7 +610,7 @@ class TestPCIMQKernel(unittest.TestCase):
                     1 + np.linalg.norm(x_ - y_) ** 2
                 ) ** (3 / 2)
 
-        # Compute output using Kernel class  # TODO: What has changed to break this?
+        # Compute output using Kernel class
         kernel = ck.PCIMQKernel(bandwidth=bandwidth)
         output = kernel.grad_x(x, y)
 
@@ -629,11 +632,11 @@ class TestPCIMQKernel(unittest.TestCase):
         expected_output = np.zeros((num_points, num_points, dimension))
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
-                expected_output[i, j] = -(x_ - y_) / (
+                expected_output[i, j] = (x_ - y_) / (
                     1 + np.linalg.norm(x_ - y_) ** 2
                 ) ** (3 / 2)
 
-        # Compute output using Kernel class  # TODO: What has changed to break this?
+        # Compute output using Kernel class
         kernel = ck.PCIMQKernel(bandwidth=bandwidth)
         output = kernel.grad_y(x, y)
 
