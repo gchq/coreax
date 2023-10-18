@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -314,7 +316,7 @@ def fw_herding_body(
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
     r"""
-    A wrapper for scalable (parallelised) herding with a decorated function.
+    Apply rapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
 
@@ -325,7 +327,7 @@ def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array
 
 def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
     r"""
-    A wrapper for scalable (parallelised) herding with a decorated function.
+    Apply wrapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
 

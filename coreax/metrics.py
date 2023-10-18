@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
@@ -110,7 +112,6 @@ def sum_K(
     :param k_pairwise: Kernel function
     :param max_size: Size of matrix blocks to process
     """
-
     x = jnp.asarray(x)
     y = jnp.asarray(y)
     n = len(x)
