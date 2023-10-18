@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from jax import Array, jit, random, vmap
 from jax.typing import ArrayLike
 
-from coreax.utils import KernelFunction
+from coreax.util import KernelFunction
 
 #
 # Refine Functions
