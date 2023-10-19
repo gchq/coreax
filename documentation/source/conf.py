@@ -4,11 +4,11 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import pathlib
+import shutil
 import sys
-from typing import TypeAlias
+from typing import Generator, TypeAlias
 
 import sphinx
-from jax import random
 from jax.typing import ArrayLike
 
 import coreax
@@ -18,6 +18,7 @@ CONF_FILE_PATH = pathlib.Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
 DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
 REPO_FOLDER_PATH = DOCS_FOLDER_PATH.parent
+EXAMPLES = "examples"
 
 sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
 
@@ -96,3 +97,49 @@ def typehints_formatter(annotation: str, config: sphinx.config.Config) -> str | 
 
 html_theme = "furo"
 html_static_path = ["_static"]
+
+
+# create local copies of example image files
+examples_source = REPO_FOLDER_PATH / EXAMPLES
+examples_dest = SOURCE_FOLDER_PATH / EXAMPLES
+
+if examples_dest.exists():
+    # makes sure we don't keep files that should have been deleted
+    shutil.rmtree(examples_dest)
+examples_dest.mkdir()
+
+
+def walk(source_folder: pathlib.Path) -> Generator:
+    r"""Generate the file names in a directory tree by walking the tree top-down."""
+    sub_directories = list(d for d in source_folder.iterdir() if d.is_dir())
+    files = list(f for f in source_folder.iterdir() if f.is_file())
+    yield source_folder, sub_directories, files
+    for s in sub_directories:
+        yield from walk(s)
+
+
+def copy_filtered_files(
+    source_folder: pathlib.Path,
+    destination_folder: pathlib.Path,
+    file_types: set[str] = frozenset(),
+):
+    r"""Copy the contents of a folder across if they have a particular type."""
+
+    for root, dirs, files in walk(source_folder):
+        for dr in dirs:
+            pathlib.Path(
+                str(root).replace(str(source_folder), str(destination_folder))
+            ).joinpath(dr.stem).mkdir()
+        for file in files:
+            if file.suffix in file_types:
+                source_filename = root.joinpath(file)
+                dest_filename = str(source_filename).replace(
+                    str(source_folder), str(destination_folder)
+                )
+                print(source_filename)
+                print(dest_filename)
+                shutil.copyfile(str(source_filename), str(dest_filename))
+
+
+# copy example files across
+copy_filtered_files(examples_source, examples_dest, file_types={".gif", ".png"})
