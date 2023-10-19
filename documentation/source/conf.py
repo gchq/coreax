@@ -5,8 +5,14 @@
 
 import pathlib
 import sys
+from typing import TypeAlias
+
+import sphinx
+from jax import random
+from jax.typing import ArrayLike
 
 import coreax
+import coreax.util as cu
 
 CONF_FILE_PATH = pathlib.Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
@@ -62,9 +68,6 @@ autodoc_default_options = {
     "show_inheritance": True,
 }
 
-# specify that class __init__ docstrings are appended to class docstrings
-autoclass_content = "both"
-
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -72,6 +75,21 @@ intersphinx_mapping = {
     "flax": ("https://flax.readthedocs.io/en/latest/", None),
     "optax": ("https://optax.readthedocs.io/en/latest/", None),
 }
+
+# specify custom types for autodoc_type_hints
+autodoc_custom_types: dict[TypeAlias, str] = {
+    cu.KernelFunction: ":obj:`~coreax.util.KernelFunction`",
+    cu.KernelFunctionWithGrads: ":obj:`~coreax.util.KernelFunctionWithGrads`",
+    ArrayLike: ":data:`~jax.typing.ArrayLike`",
+    ArrayLike | None: ":data:`~jax.typing.ArrayLike` | :data:`None`",
+}
+
+
+# specify the typehints_formatter for custom types for autodoc_type_hints
+def typehints_formatter(annotation: str, config: sphinx.config.Config) -> str | None:
+    """Properly replace custom type aliases."""
+    return autodoc_custom_types.get(annotation)
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

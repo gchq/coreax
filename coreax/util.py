@@ -19,16 +19,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TypeAlias
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+#: Kernel evaluation function.
+KernelFunction: TypeAlias = Callable[[ArrayLike, ArrayLike], Array]
 
-# Pairwise kernel evaluation if grads and nu are defined
-KernelFunctionWithGrads = Callable[
+#: Pairwise kernel evaluation function if gradients and bandwidth are defined.
+KernelFunctionWithGrads: TypeAlias = Callable[
     [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
 ]
 
