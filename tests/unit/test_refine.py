@@ -17,7 +17,7 @@ import unittest
 import jax.numpy as jnp
 from jax import random, vmap
 
-import coreax.refine as cr
+import coreax.refine
 from coreax.kernel import rbf_kernel
 
 
@@ -42,7 +42,7 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = cr.refine(x, S, rbf_kernel, K_mean)
+        refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
         self.assertCountEqual(refine_test, S)
 
     def test_refine_ints(self) -> None:
@@ -67,7 +67,7 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = cr.refine(x, S, rbf_kernel, K_mean)
+        refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
 
         self.assertCountEqual(refine_test, jnp.asarray([0, 2]))
 
@@ -90,7 +90,7 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = cr.refine_rand(x, S, rbf_kernel, K_mean, p=1.0)
+        refine_test = coreax.refine.refine_rand(x, S, rbf_kernel, K_mean, p=1.0)
 
         self.assertCountEqual(refine_test, jnp.asarray([0, 2]))
 
@@ -113,6 +113,6 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = cr.refine_rev(x, S, rbf_kernel, K_mean)
+        refine_test = coreax.refine.refine_rev(x, S, rbf_kernel, K_mean)
 
         self.assertCountEqual(refine_test, jnp.asarray([0, 2]))
