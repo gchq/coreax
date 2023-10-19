@@ -33,10 +33,7 @@ class Refine(ABC):
     Base class for creating refine functions.
     """
 
-    def __init__(
-        self,
-        kernel: KernelFunction,
-    ):
+    def __init__(self, kernel: KernelFunction):
         r"""
         Create a method to refine a coreset by optimising the indices in the dataset.
 
@@ -47,6 +44,12 @@ class Refine(ABC):
 
         :param kernel: Kernel function
                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+
+        :return self.k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :return self.k_vec: Vectorised kernel function on pairs `(X,x)`:
+                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
+                       \mathbb{R}^n`
         """
 
         self.kernel = kernel
@@ -85,12 +88,13 @@ class RefineRegular(Refine):
         Refine a coreset iteratively. S -> x.
 
         The refinement procedure replaces elements with points most reducing maximum mean
-        discrepancy (MMD). The iteration is carried out over points in `x`.
+        discrepancy (MMD). The iteration is carried out over points in `x`. This is a
+        post-processing step in coreset generation, through a generic reduction algorithm.
 
         :param x: :math:`n \times d` original data
-        :param S: Coreset point indices
-        :param K_mean: Kernel matrix row sum divided by n
-        :return: Refined coreset point indices
+        :param S: :math:`m` Coreset point indices
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+        :return: :math:`m` Refined coreset point indices
         """
 
         K_diag = vmap(self.kernel)(x, x)
@@ -102,8 +106,6 @@ class RefineRegular(Refine):
             x=x,
             K_mean=K_mean,
             K_diag=K_diag,
-            k_pairwise=self.k_pairwise,
-            k_vec=self.k_vec,
         )
         S = lax.fori_loop(0, m, body, S)
 
@@ -111,14 +113,7 @@ class RefineRegular(Refine):
 
     @partial(jit, static_argnames=["k_pairwise", "k_vec"])
     def refine_body(
-        self,
-        i: int,
-        S: ArrayLike,
-        x: ArrayLike,
-        K_mean: ArrayLike,
-        K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
+        self, i: int, S: ArrayLike, x: ArrayLike, K_mean: ArrayLike, K_diag: ArrayLike
     ) -> Array:
         r"""
         Execute main loop of the refine method, S -> x.
@@ -128,15 +123,13 @@ class RefineRegular(Refine):
         :param x: Original :math:`n \times d` dataset
         :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :returns: Updated loop variables `S`
         """
         S = jnp.asarray(S)
         S = S.at[i].set(
-            self.comparison(S[i], S, x, K_mean, K_diag, k_pairwise, k_vec).argmax()
+            self.comparison(
+                S[i], S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
+            ).argmax()
         )
 
         return S
@@ -149,8 +142,6 @@ class RefineRegular(Refine):
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
     ) -> Array:
         r"""
         Calculate the change in maximum mean discrepancy from point replacement. S -> x.
@@ -162,10 +153,6 @@ class RefineRegular(Refine):
         :param x: :math:`n \times d` original data
         :param K_mean: Kernel matrix row sum divided by n
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :return: the MMD changes for each candidate point
         """
         S = jnp.asarray(S)
@@ -173,9 +160,9 @@ class RefineRegular(Refine):
         x = jnp.asarray(x)
         K_mean = jnp.asarray(K_mean)
         return (
-            k_vec(x[S], x[i]).sum()
-            - k_pairwise(x, x[S]).sum(axis=1)
-            + k_vec(x, x[i])
+            self.k_vec(x[S], x[i]).sum()
+            - self.k_pairwise(x, x[S]).sum(axis=1)
+            + self.k_vec(x, x[i])
             - K_diag
         ) / (m * m) - (K_mean[i] - K_mean) / m
 
@@ -196,10 +183,7 @@ class RefineRandom(Refine):
 
         :param x: :math:`n \times d` original data
         :param S: Coreset point indices
-        :param kernel: Kernel function
-                       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param K_mean: Kernel matrix row sum divided by n
-        :param p: Proportion of original data to use as candidates
         :return: Refined coreset point indices
         """
 
@@ -220,8 +204,6 @@ class RefineRandom(Refine):
             n_cand=n_cand,
             K_mean=K_mean,
             K_diag=K_diag,
-            k_pairwise=self.k_pairwise,
-            k_vec=self.k_vec,
         )
         key, S = lax.fori_loop(0, n_iter, body, (key, S))
 
@@ -235,8 +217,6 @@ class RefineRandom(Refine):
         n_cand: int,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
     ) -> tuple[random.PRNGKeyArray, Array]:
         r"""
         Execute main loop of the random refine method
@@ -247,10 +227,6 @@ class RefineRandom(Refine):
         :param n_cand: Number of candidates for comparison
         :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :returns: Updated loop variables `S`
         """
         key, S = val
@@ -261,7 +237,7 @@ class RefineRandom(Refine):
         cand = random.randint(subkey, (n_cand,), 0, len(x))
         # cand = random.choice(subkey, len(x), (n_cand,), replace=False)
         comps = self.comparison_cand(
-            S[i], cand, S, x, K_mean, K_diag, k_pairwise, k_vec
+            S[i], cand, S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
         )
         S = lax.cond(jnp.any(comps > 0), self.change, self.nochange, i, S, cand, comps)
 
@@ -276,8 +252,6 @@ class RefineRandom(Refine):
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
     ) -> Array:
         r"""
         Calculate the change in maximum mean discrepancy (MMD).
@@ -290,10 +264,6 @@ class RefineRandom(Refine):
         :param x: :math:`n \times d` original data
         :param K_mean: Kernel matrix row sum divided by n
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :return: the MMD changes for each candidate point
         """
         S = jnp.asarray(S)
@@ -303,9 +273,9 @@ class RefineRandom(Refine):
         m = len(S)
 
         return (
-            k_vec(x[S], x[i]).sum()
-            - k_pairwise(x[cand, :], x[S]).sum(axis=1)
-            + k_vec(x[cand, :], x[i])
+            self.k_vec(x[S], x[i]).sum()
+            - self.k_pairwise(x[cand, :], x[S]).sum(axis=1)
+            + self.k_vec(x[cand, :], x[i])
             - K_diag[cand]
         ) / (m * m) - (K_mean[i] - K_mean[cand]) / m
 
@@ -374,22 +344,13 @@ class RefineRev(Refine):
             x=x,
             K_mean=K_mean,
             K_diag=K_diag,
-            k_pairwise=self.k_pairwise,
-            k_vec=self.k_vec,
         )
         S = lax.fori_loop(0, n, body, S)
 
         return S
 
     def refine_rev_body(
-        self,
-        i: int,
-        S: ArrayLike,
-        x: ArrayLike,
-        K_mean: ArrayLike,
-        K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
+        self, i: int, S: ArrayLike, x: ArrayLike, K_mean: ArrayLike, K_diag: ArrayLike
     ) -> Array:
         r"""
         Execute main loop of the refine method, x -> S.
@@ -399,13 +360,11 @@ class RefineRev(Refine):
         :param x: Original :math:`n \times d` dataset
         :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :returns: Updated loop variables `S`
         """
-        comps = self.comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec)
+        comps = self.comparison_rev(
+            i, S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
+        )
         S = lax.cond(
             jnp.any(comps > 0), self.change_rev, self.nochange_rev, i, S, comps
         )
@@ -420,8 +379,6 @@ class RefineRev(Refine):
         x: ArrayLike,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
-        k_pairwise: KernelFunction,
-        k_vec: KernelFunction,
     ) -> Array:
         r"""
         Calculate the change in maximum mean discrepancy (MMD). x -> S.
@@ -433,10 +390,6 @@ class RefineRev(Refine):
         :param x: :math:`n \times d` original data
         :param K_mean: Kernel matrix row sum divided by n
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-        :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                      :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :return: the MMD changes for each point
         """
         S = jnp.asarray(S)
@@ -446,9 +399,9 @@ class RefineRev(Refine):
         m = len(S)
 
         return (
-            k_pairwise(x[S], x[S]).sum(axis=1)
-            - k_vec(x[S], x[i]).sum()
-            + k_vec(x[S], x[i])
+            self.k_pairwise(x[S], x[S]).sum(axis=1)
+            - self.k_vec(x[S], x[i]).sum()
+            + self.k_vec(x[S], x[i])
             - K_diag[S]
         ) / (m * m) - (K_mean[S] - K_mean[i]) / m
 
