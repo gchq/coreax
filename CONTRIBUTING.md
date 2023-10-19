@@ -113,6 +113,11 @@ assertEqual(actualValue, expectedValue)
 ### Abstract Functions
 Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
 
+### Exceptions and Error Messages
+Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
+
+Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
+
 ### Docstrings
 
 Docstrings must:
