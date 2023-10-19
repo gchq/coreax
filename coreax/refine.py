@@ -45,9 +45,9 @@ class Refine(ABC):
         :param kernel: Kernel function
                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
 
-        :return self.k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+        self.k_pairwise: Vectorised kernel function on pairs `(x,x)`:
                       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :return self.k_vec: Vectorised kernel function on pairs `(X,x)`:
+        self.k_vec: Vectorised kernel function on pairs `(X,x)`:
                       :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
                        \mathbb{R}^n`
         """
@@ -148,10 +148,9 @@ class RefineRegular(Refine):
 
         The change calculated is from replacing point `i` in `S` with any point in `x`.
 
-        :param i: A coreset index
         :param S: Coreset point indices
         :param x: :math:`n \times d` original data
-        :param K_mean: Kernel matrix row sum divided by n
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
         :return: the MMD changes for each candidate point
         """
@@ -183,7 +182,7 @@ class RefineRandom(Refine):
 
         :param x: :math:`n \times d` original data
         :param S: Coreset point indices
-        :param K_mean: Kernel matrix row sum divided by n
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :return: Refined coreset point indices
         """
 
@@ -262,7 +261,7 @@ class RefineRandom(Refine):
         :param cand: Indices for randomly sampled candidate points among the original data
         :param S: Coreset point indices
         :param x: :math:`n \times d` original data
-        :param K_mean: Kernel matrix row sum divided by n
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
         :return: the MMD changes for each candidate point
         """
@@ -325,12 +324,13 @@ class RefineRev(Refine):
         r"""
         Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-        The iteration is carried out over points in `x`, with x -> S.
+        This greedy refine method, the iteration is carried out over points in `x`, with
+        x -> S.
 
         :param x: :math:`n \times d` original data
-        :param S: Coreset point indices
-        :param K_mean: Kernel matrix row sum divided by n
-        :return: Refined coreset point indices
+        :param S: :math:`m` Coreset point indices
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+        :return: :math:`m` Refined coreset point indices
         """
         x = jnp.asarray(x)
         S = jnp.asarray(S)
@@ -388,7 +388,7 @@ class RefineRev(Refine):
         :param i: Index for original data
         :param S: Coreset point indices
         :param x: :math:`n \times d` original data
-        :param K_mean: Kernel matrix row sum divided by n
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
         :return: the MMD changes for each point
         """
