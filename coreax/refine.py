@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from functools import partial
 
 import jax.lax as lax
@@ -27,7 +28,7 @@ from coreax.util import KernelFunction
 # These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
 
 
-class Refine:
+class Refine(ABC):
     r"""
     Base class for creating refine functions.
     """
@@ -52,6 +53,7 @@ class Refine:
         )
         self.k_vec = jit(vmap(self.kernel, in_axes=(0, None)))
 
+    @abstractmethod
     def refine(self, x: ArrayLike, S: ArrayLike, K_mean: ArrayLike) -> Array:
         r"""
         Compute the refined coreset, of m points in d dimensions.
