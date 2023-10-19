@@ -110,6 +110,9 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
+### Abstract Functions
+Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
+
 ### Docstrings
 
 Docstrings must:
