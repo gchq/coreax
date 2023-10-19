@@ -29,7 +29,7 @@ from coreax.util import KernelFunction
 
 
 class Refine(ABC):
-    r"""
+    """
     Base class for creating refine functions.
     """
 
@@ -38,6 +38,13 @@ class Refine(ABC):
         kernel: KernelFunction,
     ):
         r"""
+        Create a method to refine a coreset by optimising the indices in the dataset.
+
+        The refinement process happens iteratively. Coreset elements are replaced by
+        points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
+        :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) -
+        2\mathbb{E}(k(X,X_c))`.
+
         :param kernel: Kernel function
                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         """
@@ -58,7 +65,13 @@ class Refine(ABC):
         r"""
         Compute the refined coreset, of m points in d dimensions.
 
-        Return an m-by-d array.
+        The refinement procedure replaces elements with points most reducing maximum mean
+        discrepancy (MMD). The iteration is carried out over points in `x`.
+
+        :param x: :math:`n \times d` original data
+        :param S: :math:`m` coreset point indices
+        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+        :return: :math:`m` Refined coreset point indices
         """
         raise NotImplementedError
 
