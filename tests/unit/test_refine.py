@@ -16,7 +16,6 @@ import unittest
 
 import jax.numpy as jnp
 from jax import vmap
-from numpy import random
 
 import coreax.refine
 from coreax.kernel import rbf_kernel
@@ -28,13 +27,16 @@ class TestMetrics(unittest.TestCase):
     """
 
     def test_refine_ones(self) -> None:
-        r"""
+        """
         Test that refining an optimal coreset, specified by indices S, returns the same
          indices.
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        S = jnp.asarray([0, 1])
+
+        best_indices = {0, 1}
+
+        S = jnp.array(list(best_indices))
 
         K = vmap(
             vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
@@ -44,44 +46,43 @@ class TestMetrics(unittest.TestCase):
         K_mean = K.mean(axis=1)
 
         refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
-        expected_output = S
 
-        self.assertListEqual(list(refine_test), list(expected_output))
+        self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
     def test_refine_ints(self) -> None:
-        r"""
+        """
         For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
         the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
 
-        Test this example, for a random 2-point coreset, that refine returns [0, 2].
+        Test this example, for any 2-point coreset, that refine returns [0, 2].
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
 
-        S1 = random.randint(low=0, high=3, size=())
-        S2 = random.randint(low=0, high=3, size=())
-        S = jnp.asarray([S1, S2])
-        if S1 > S2 or list(S) == [0, 0]:
-            expected_output = jnp.asarray([2, 0])
-        else:
-            expected_output = jnp.asarray([0, 2])
+        best_indices = {0, 2}
 
-        print(S)
-        print(expected_output)
+        index_pairs = [
+            {a, b}
+            for idx, a in enumerate(range(len(x)))
+            for b in range(len(x))[idx + 1 :]
+        ]
 
-        K = vmap(
-            vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )(x, x)
-        K_mean = K.mean(axis=1)
+        for test_indices in index_pairs:
+            S = jnp.array(list(test_indices))
 
-        refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
+            K = vmap(
+                vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
+                in_axes=(0, None),
+                out_axes=0,
+            )(x, x)
+            K_mean = K.mean(axis=1)
 
-        self.assertTrue((refine_test == expected_output).all())
+            refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
+
+            self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
     def test_refine_rand(self):
-        r"""
+        """
         For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
         the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
 
@@ -90,7 +91,11 @@ class TestMetrics(unittest.TestCase):
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
 
-        S = jnp.asarray([2, 2])
+        best_indices = {0, 2}
+
+        test_indices = [2, 2]
+
+        S = jnp.array(test_indices)
 
         K = vmap(
             vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
@@ -100,30 +105,37 @@ class TestMetrics(unittest.TestCase):
         K_mean = K.mean(axis=1)
 
         refine_test = coreax.refine.refine_rand(x, S, rbf_kernel, K_mean, p=1.0)
-        expected_output = jnp.asarray([0, 2])
 
-        self.assertCountEqual(refine_test, expected_output)
+        self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
     def test_refine_rev(self):
-        r"""
+        """
         For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
         the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
 
-        Test, when given coreset indices [1,2], that refine_rev() returns [0, 2].
+        Test, for any 2-point coreset, that refine_rev() returns [0, 2].
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
 
-        S = jnp.asarray([1, 2])
+        best_indices = {0, 2}
 
-        K = vmap(
-            vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )(x, x)
-        K_mean = K.mean(axis=1)
+        index_pairs = [
+            {a, b}
+            for idx, a in enumerate(range(len(x)))
+            for b in range(len(x))[idx + 1 :]
+        ]
 
-        refine_test = coreax.refine.refine_rev(x, S, rbf_kernel, K_mean)
-        expected_output = jnp.asarray([0, 2])
+        for test_indices in index_pairs:
+            S = jnp.array(list(test_indices))
 
-        self.assertCountEqual(refine_test, expected_output)
+            K = vmap(
+                vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
+                in_axes=(0, None),
+                out_axes=0,
+            )(x, x)
+            K_mean = K.mean(axis=1)
+
+            refine_test = coreax.refine.refine_rev(x, S, rbf_kernel, K_mean)
+
+            self.assertSetEqual(set(refine_test.tolist()), best_indices)
