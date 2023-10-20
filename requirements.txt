@@ -1,6 +1,6 @@
 -i https://pypi.org/simple
 absl-py==2.0.0; python_version >= '3.7'
-chex==0.1.83; python_version >= '3.9'
+chex==0.1.84; python_version >= '3.9'
 colorama==0.4.6; platform_system == 'Windows'
 .
 etils[epath,epy]==1.5.1; python_version >= '3.9'
