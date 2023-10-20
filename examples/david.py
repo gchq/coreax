@@ -48,7 +48,6 @@ def main(
     :param out_path: Path to save output to, if not None. Default None.
     :return: Coreset MMD, random sample MMD
     """
-
     # path to original image
     orig = cv2.imread(str(in_path))
     img = cv2.cvtColor(orig, cv2.COLOR_BGR2GRAY)

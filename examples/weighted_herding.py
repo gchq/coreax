@@ -45,7 +45,6 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     :param weighted: Boolean flag for whether to use weighted or unweighted herding
     :return: Coreset MMD, random sample MMD
     """
-
     # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
     N = 10000
