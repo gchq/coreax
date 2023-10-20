@@ -40,7 +40,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     function. Compare results to coresets generated via uniform random sampling. Coreset
     quality is measured using maximum mean discrepancy (MMD).
 
-    :param out_path: Path to save output to, if not None. Default None.
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :param weighted: Boolean flag for whether to use weighted or unweighted herding
     :return: Coreset MMD, random sample MMD
     """
@@ -110,6 +111,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     plt.axis("off")
 
     if out_path is not None:
+        if out_path is not None and not out_path.is_absolute():
+            out_path = Path(__file__).parent / out_path
         plt.savefig(out_path)
 
     plt.show()
