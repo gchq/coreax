@@ -42,7 +42,7 @@ doc = [
 ]
 # Run unit tests
 test = [
-    "pytest",
+    "pytest-cov",
 ]
 # All tools for a developer
 dev = [
@@ -70,10 +70,7 @@ packages = ["coreax"]
 version = {attr = "coreax.__version__"}
 
 [tool.coverage.run]
-branch = true
-source = ["coreax"]
-command_line = "-m unittest discover -s tests/unit"
-omit = ["*/__init__.py", "*/__main__.py", "tests/integration/*"]
+omit = ["*/__init__.py", "*/__main__.py", "tests/*"]
 
 [tool.coverage.report]
 sort = "Cover"
