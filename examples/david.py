@@ -156,7 +156,7 @@ def main(
 
     plt.show()
 
-    return m, rm
+    return float(m), float(rm)
 
 
 if __name__ == "__main__":
