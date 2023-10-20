@@ -110,6 +110,14 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
+### Abstract Functions
+Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
+
+### Exceptions and Error Messages
+Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
+
+Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
+
 ### Docstrings
 
 Docstrings must:
@@ -147,6 +155,10 @@ Comments must:
 ### Maths Overflow
 
 Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
+
+### Thousands Separators
+
+For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
 
 ### Documentation and references
 The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
