@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 from functools import partial
 
 import jax.lax as lax
@@ -19,12 +21,13 @@ import jax.numpy as jnp
 from jax import Array, jit, random, vmap
 from jax.typing import ArrayLike
 
-from coreax.utils import KernelFunction
+from coreax.util import KernelFunction
 
 #
 # Refine Functions
 #
-# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
+# These functions take a Coreset S as an input and refine it by replacing elements to
+# improve the MMD.
 
 
 def refine(
@@ -37,13 +40,13 @@ def refine(
     Refine a coreset iteratively, :math:`S \rightarrow x`.
 
     The refinement procedure replaces elements with points most reducing maximum mean
-    discrepancy (MMD). The iteration is carred out over points in `x`.
+    discrepancy (MMD). The iteration is carred out over points in ``x``.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :return: Refined coreset point indices
     """
     k_pairwise = jit(
@@ -89,7 +92,8 @@ def refine_body(
     :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
     :returns: Updated loop variables ``S``
     """
     S = jnp.asarray(S)
@@ -110,10 +114,9 @@ def comparison(
 ) -> Array:
     r"""
     Calculate the change in maximum mean discrepancy from point replacement.
-    :math:`S \rightarrow x`
 
     The change calculated is from replacing point ``i`` in ``S`` with any point in
-    ``x``.
+    ``x``. :math:`S \rightarrow x`
 
     :param i: A coreset index
     :param S: Coreset point indices
@@ -276,7 +279,7 @@ def comparison_cand(
 @jit
 def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the :math:`i^{th}` point in `S`, :math:`S \rightarrow x`
+    Replace the :math:`i^{th}` point in `S`, :math:`S \rightarrow x`.
 
     The :math:`i^{th}` point is replaced with the candidate in `cand` with max value in
     `comps`.
@@ -295,13 +298,13 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving `S` unchanged, :math:`S \rightarrow x`
+    Leave ``S`` unchanged, :math:`S \rightarrow x`.
 
     .. seealso::
 
         Compare with :func:`~coreax.refine.change`.
 
-    :param i: Index in ``S`` to replace. Not used
+    :param i: Index in ``S`` to replace, not used
     :param S: The dataset for replacement, will remain unchanged
     :param cand: A set of candidates for replacement, not used
     :param comps: Comparison values for each candidate, not used
@@ -394,7 +397,7 @@ def comparison_rev(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy (MMD), :math:`x \rightarrow S`
+    Calculate the change in maximum mean discrepancy (MMD), :math:`x \rightarrow S`.
 
     The change in MMD arises from replacing a point in ``S`` with ``x[i]``.
 
@@ -427,7 +430,7 @@ def comparison_rev(
 @jit
 def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the maximum comps value point in ``S`` with ``i``, :math:`x \rightarrow S`
+    Replace the maximum comps value point in ``S`` with ``i``, :math:`x \rightarrow S`.
 
     :param i: Value to replace into ``S``.
     :param S: The dataset for replacement
@@ -443,7 +446,7 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Convenience function for leaving ``S`` unchanged, :math:`x \rightarrow S`
+    Leave ``S`` unchanged, :math:`x \rightarrow S`.
 
     .. seealso::
 

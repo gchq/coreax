@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -26,8 +28,8 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
-from coreax.kernel import rbf_grad_log_f_x, stein_kernel_pc_imq_element
-from coreax.utils import KernelFunction, KernelFunctionWithGrads, calculate_K_sum
+from coreax.kernel import calculate_K_sum, rbf_grad_log_f_x, stein_kernel_pc_imq_element
+from coreax.util import KernelFunction, KernelFunctionWithGrads
 
 
 @partial(jit, static_argnames=["k_vec", "unique"])
@@ -46,10 +48,11 @@ def greedy_body(
     :param val: Loop updatables
     :param X: Original :math:`n \times d` dataset
     :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param unique: Flag for enforcing unique elements
-    :returns: Updated loop variables (`coreset`, `Gram matrix`, `objective`)
+    :returns: Updated loop variables (``coreset``, ``Gram matrix``, ``objective``)
     """
     X = jnp.asarray(X)
     S, K, K_t = val
@@ -84,16 +87,17 @@ def stein_greedy_body(
     :param i: Loop counter
     :param val: Loop updatables
     :param X: Original :math:`n \times d` dataset
-    :param k_vec: Vectorised kernel function on pairs `(X,x,Y,y)`:
+    :param k_vec: Vectorised kernel function on pairs ``(X,x,Y,y)``:
                   :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
                   :math:`\mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
                   :math:`\mathbb{R}^n`
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
-    :param grads: Gradients of log-PDF evaluated at `X`, an :math:`n \times d` array
+    :param grads: Gradients of log-PDF evaluated at ``X``, an :math:`n \times d` array
     :param n: Number of data points inducing the original PDF
     :param nu: Bandwidth parameter for the base kernel of the Stein kernel
     :param unique: Flag for enforcing unique elements
-    :returns: Updated loop variables (`coreset`, `coreset Gram matrix`, `K_t` objective)
+    :returns: Updated loop variables (``coreset``, ``coreset Gram matrix``,
+              ``K_t`` objective)
     """
     S, K, objective = val
     S = jnp.asarray(S)
@@ -126,7 +130,7 @@ def kernel_herding_block(
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
-    :param K_mean: Row sum of kernel matrix divided by `n`
+    :param K_mean: Row sum of kernel matrix divided by :math:`n`
     :param unique: Flag for enforcing unique elements
     :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
     """
@@ -175,7 +179,7 @@ def stein_kernel_herding_block(
     :param grad_log_f_X: Function computing gradient of log-PDF
                          :math:`g: X \rightarrow Y`
     :param max_size: Size of matrix blocks to process
-    :param K_mean: Row sum of kernel matrix divided by `n`
+    :param K_mean: Row sum of kernel matrix divided by :math:`n`
     :param unique: Flag for enforcing unique elements
     :param nu: Bandwidth parameter for the base kernel of the Stein kernel
     :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
@@ -314,22 +318,22 @@ def fw_herding_body(
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
     r"""
-    A wrapper for scalable (parallelised) herding with a decorated function.
+    Apply rapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
 
-    :return: Kernel evaluation at `(x,y)`, 0-dimensional array
+    :return: Kernel evaluation at ``(x,y)``, 0-dimensional array
     """
     return stein_kernel_pc_imq_element(*args, **kwargs)
 
 
 def scalable_rbf_grad_log_f_X(*args, **kwargs) -> Callable[..., Array]:
     r"""
-    A wrapper for scalable (parallelised) herding with a decorated function.
+    Apply wrapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
 
-    :return: An :math:`n \times d` array of gradients evaluated at values of `X`
+    :return: An :math:`n \times d` array of gradients evaluated at values of ``X``
     """
     return rbf_grad_log_f_x(*args, **kwargs)
 
@@ -347,12 +351,12 @@ def scalable_herding(
     r"""
     Execute scalable kernel herding.
 
-    This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a
+    This uses a ``kd-tree`` to partition ``X``-space into patches. Upon each of these a
     kernel herding problem is solved.
 
     There is some intricate setup:
 
-        #.  Parameter `n_core` must be less than `size`.
+        #.  Parameter ``n_core`` must be less than ``size``.
         #.  If we have :math:`n` points, unweighted herding is executed recursively on
             each patch of :math:`\lceil \frac{n}{size} \rceil` points.
         #.  If :math:`r` is the recursion depth, then we recurse unweighted for
@@ -373,17 +377,19 @@ def scalable_herding(
     :param indices: Indices into original dataset, used for recursion
     :param n_core: Number of coreset points to calculate
     :param function: Kernel herding function to call on each block
-    :param w_function: Weights function. If unweighted, this is `None`
-    :param size: Region size in number of points. Optional, defaults to `1000`
-    :param parallel: Use multiprocessing. Optional, defaults to `True`
-    :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
+    :param w_function: Weights function; if unweighted, this is :data:`None`
+    :param size: Region size in number of points; optional, defaults to `1000`
+    :param parallel: Use multiprocessing; optional, defaults to :data:`True`
+    :param kwargs: Keyword arguments to be passed to ``function`` after ``X`` and
+                   ``n_core``
     :return: Coreset and weights, where weights is empty if unweighted
     """
     # check parameters to see if we need to invoke the kd-tree and recursion.
     if n_core >= size:
         raise OverflowError(
-            "Number of coreset points requested (%d) is larger than the region size (%d). Try increasing the size argument, or reducing the number of coreset points"
-            % (n_core, size)
+            "Number of coreset points requested (%d) is larger than the region size "
+            "(%d). Try increasing the size argument, or reducing the number of coreset"
+            " points" % (n_core, size)
         )
     X = jnp.asarray(X)
     indices = jnp.asarray(indices)

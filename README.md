@@ -1,7 +1,7 @@
 # Coreax
 
 [![Unit Tests](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
-[![Lint](https://github.com/gchq/coreax/actions/workflows/lint.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/lint.yml)
+[![Pre-commit Checks](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml)
 [![Code Coverage Assessment](https://github.com/gchq/coreax/actions/workflows/code_coverage_assessment.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/code_coverage_assessment.yml)
 
 _© Crown Copyright GCHQ_

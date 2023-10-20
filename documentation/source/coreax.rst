@@ -1,6 +1,12 @@
 coreax package
 ==============
 
+Module contents
+---------------
+
+.. automodule:: coreax
+
+
 Submodules
 ----------
 
@@ -47,14 +53,9 @@ coreax.score\_matching module
 coreax.utils module
 -------------------
 
-.. automodule:: coreax.utils
+.. automodule:: coreax.util
 
 coreax.weights module
 ---------------------
 
 .. automodule:: coreax.weights
-
-Module contents
----------------
-
-.. automodule:: coreax

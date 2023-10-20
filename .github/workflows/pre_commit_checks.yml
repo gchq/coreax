@@ -1,0 +1,18 @@
+name: Pre-commit Checks
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  pre_commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: 3.11
+      - run: pip install pre-commit
+      - run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure
