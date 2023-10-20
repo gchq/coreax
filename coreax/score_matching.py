@@ -12,8 +12,8 @@
 
 """TODO: Create top-level docstring."""
 
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Tuple
 
 import jax
 import optax
@@ -121,7 +121,7 @@ def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Cal
 @partial(jit, static_argnames=["obj_fn"])
 def sliced_score_matching_train_step(
     state: TrainState, X: ArrayLike, V: ArrayLike, obj_fn: Callable
-) -> Tuple[TrainState, float]:
+) -> tuple[TrainState, float]:
     r"""
     Apply a single training step that updates model parameters using loss gradient.
 
@@ -191,7 +191,7 @@ def noise_conditional_train_step(
     obj_fn: Callable,
     sigmas: ArrayLike,
     L: int,
-) -> Tuple[TrainState, float]:
+) -> tuple[TrainState, float]:
     r"""
     Apply a single training step that updates model parameters using loss gradient.
 

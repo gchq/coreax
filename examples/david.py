@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""TODO: Write module docstring."""
+
 import os
 from pathlib import Path
 
@@ -48,7 +51,6 @@ def main(
     :param out_path: Path to save output to, if not None. Default None.
     :return: Coreset MMD, random sample MMD
     """
-
     # path to original image
     orig = cv2.imread(str(in_path))
     img = cv2.cvtColor(orig, cv2.COLOR_BGR2GRAY)

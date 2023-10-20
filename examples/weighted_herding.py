@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""TODO: Write module docstring."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -45,7 +48,6 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     :param weighted: Boolean flag for whether to use weighted or unweighted herding
     :return: Coreset MMD, random sample MMD
     """
-
     # create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
     N = 10000

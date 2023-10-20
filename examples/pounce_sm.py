@@ -10,6 +10,8 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""TODO: Write module docstring."""
+
 import os
 from pathlib import Path
 
@@ -41,7 +43,6 @@ def main(
     :param directory: Path to directory containing input video
     :return: Coreset MMD, random sample MMD
     """
-
     # path to directory containing video as sequence of images
     fn = "pounce.gif"
     os.makedirs(directory / "coreset_sm", exist_ok=True)
