@@ -25,6 +25,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --no-dependencies -r requirements-test.txt
-    - name: Test with pytest
+    - name: Test with pytest and assess code coverage
       run: |
-        pytest --cov=. --cov-branch --cov-report=term-missing --ignore=tests/integration
+        pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing
