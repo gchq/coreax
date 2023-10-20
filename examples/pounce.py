@@ -44,7 +44,6 @@ def main(
     :param directory: Path to directory containing input video.
     :return: Coreset MMD, random sample MMD
     """
-
     # path to directory containing video as sequence of images
     fn = "pounce.gif"
     os.makedirs(directory / "coreset", exist_ok=True)
