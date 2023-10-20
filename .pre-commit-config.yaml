@@ -71,4 +71,4 @@ repos:
       # Check PEP-257 and other docstring guidance
       - id: pydocstyle
         additional_dependencies: [ "tomli" ]
-        exclude: examples|tests|conf.py
+        exclude: tests|conf.py
