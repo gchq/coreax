@@ -5,3 +5,4 @@ coreax
    :maxdepth: 4
 
    coreax
+   examples
