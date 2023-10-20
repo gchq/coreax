@@ -100,14 +100,14 @@ class RefineRegular(Refine):
         K_diag = vmap(self.kernel)(x, x)
 
         S = jnp.asarray(S)
-        m = len(S)
+        num_points_in_coreset = len(S)
         body = partial(
             self.refine_body,
             x=x,
             K_mean=K_mean,
             K_diag=K_diag,
         )
-        S = lax.fori_loop(0, m, body, S)
+        S = lax.fori_loop(0, num_points_in_coreset, body, S)
 
         return S
 
@@ -155,7 +155,7 @@ class RefineRegular(Refine):
         :return: the MMD changes for each candidate point
         """
         S = jnp.asarray(S)
-        m = len(S)
+        num_points_in_coreset = len(S)
         x = jnp.asarray(x)
         K_mean = jnp.asarray(K_mean)
         return (
@@ -163,7 +163,7 @@ class RefineRegular(Refine):
             - self.k_pairwise(x, x[S]).sum(axis=1)
             + self.k_vec(x, x[i])
             - K_diag
-        ) / (m * m) - (K_mean[i] - K_mean) / m
+        ) / (num_points_in_coreset**2) - (K_mean[i] - K_mean) / num_points_in_coreset
 
 
 class RefineRandom(Refine):
@@ -190,10 +190,10 @@ class RefineRandom(Refine):
 
         S = jnp.asarray(S)
         x = jnp.asarray(x)
-        m = len(S)
-        n = len(x)
-        n_cand = int(n * self.p)
-        n_iter = m * (n // n_cand)
+        num_points_in_coreset = len(S)
+        num_points_in_x = len(x)
+        n_cand = int(num_points_in_x * self.p)
+        n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
 
         key = random.PRNGKey(42)
 
@@ -269,14 +269,16 @@ class RefineRandom(Refine):
         x = jnp.asarray(x)
         K_mean = jnp.asarray(K_mean)
         K_diag = jnp.asarray(K_diag)
-        m = len(S)
+        num_points_in_coreset = len(S)
 
         return (
             self.k_vec(x[S], x[i]).sum()
             - self.k_pairwise(x[cand, :], x[S]).sum(axis=1)
             + self.k_vec(x[cand, :], x[i])
             - K_diag[cand]
-        ) / (m * m) - (K_mean[i] - K_mean[cand]) / m
+        ) / (num_points_in_coreset**2) - (
+            K_mean[i] - K_mean[cand]
+        ) / num_points_in_coreset
 
     @jit
     def change(self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
@@ -337,7 +339,7 @@ class RefineRev(Refine):
 
         K_diag = vmap(self.kernel)(x, x)
 
-        n = len(x)
+        num_points_in_x = len(x)
 
         body = partial(
             self.refine_rev_body,
@@ -345,7 +347,7 @@ class RefineRev(Refine):
             K_mean=K_mean,
             K_diag=K_diag,
         )
-        S = lax.fori_loop(0, n, body, S)
+        S = lax.fori_loop(0, num_points_in_x, body, S)
 
         return S
 
@@ -396,14 +398,16 @@ class RefineRev(Refine):
         x = jnp.asarray(x)
         K_mean = jnp.asarray(K_mean)
         K_diag = jnp.asarray(K_diag)
-        m = len(S)
+        num_points_in_coreset = len(S)
 
         return (
             self.k_pairwise(x[S], x[S]).sum(axis=1)
             - self.k_vec(x[S], x[i]).sum()
             + self.k_vec(x[S], x[i])
             - K_diag[S]
-        ) / (m * m) - (K_mean[S] - K_mean[i]) / m
+        ) / (num_points_in_coreset**2) - (
+            K_mean[S] - K_mean[i]
+        ) / num_points_in_coreset
 
     @jit
     def change_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
