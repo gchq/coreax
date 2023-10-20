@@ -3,12 +3,17 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 import pathlib
 import shutil
 import sys
-from typing import Generator, TypeAlias
+from collections.abc import Generator
+from typing import Any
 
-import sphinx
+import sphinx.config
 from jax.typing import ArrayLike
 
 import coreax
@@ -77,17 +82,18 @@ intersphinx_mapping = {
     "optax": ("https://optax.readthedocs.io/en/latest/", None),
 }
 
-# specify custom types for autodoc_type_hints
-autodoc_custom_types: dict[TypeAlias, str] = {
+# Specify custom types for autodoc_type_hints
+autodoc_custom_types: dict[Any, str] = {
     cu.KernelFunction: ":obj:`~coreax.util.KernelFunction`",
     cu.KernelFunctionWithGrads: ":obj:`~coreax.util.KernelFunctionWithGrads`",
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
-    ArrayLike | None: ":data:`~jax.typing.ArrayLike` | :data:`None`",
+    # TODO: Once no longer supporting Python <3.10, drop quotes around left hand side
+    "ArrayLike | None": ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }
 
 
-# specify the typehints_formatter for custom types for autodoc_type_hints
-def typehints_formatter(annotation: str, config: sphinx.config.Config) -> str | None:
+# Specify the typehints_formatter for custom types for autodoc_type_hints
+def typehints_formatter(annotation: Any, _: sphinx.config.Config) -> str | None:
     """Properly replace custom type aliases."""
     return autodoc_custom_types.get(annotation)
 
@@ -110,7 +116,7 @@ examples_dest.mkdir()
 
 
 def walk(source_folder: pathlib.Path) -> Generator:
-    r"""Generate the file names in a directory tree by walking the tree top-down."""
+    """Generate the file names in a directory tree by walking the tree top-down."""
     sub_directories = list(d for d in source_folder.iterdir() if d.is_dir())
     files = list(f for f in source_folder.iterdir() if f.is_file())
     yield source_folder, sub_directories, files
