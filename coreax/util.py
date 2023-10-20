@@ -14,10 +14,6 @@
 
 """TODO: Create top-level docstring."""
 
-# Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
-from __future__ import annotations
-
 from collections.abc import Callable
 
 import jax.numpy as jnp
