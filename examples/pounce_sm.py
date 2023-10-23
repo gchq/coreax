@@ -116,7 +116,7 @@ def main(
     plt.savefig(directory / "coreset_sm" / "frames_sm.png")
     plt.close()
 
-    return m, rm
+    return float(m), float(rm)
 
 
 if __name__ == "__main__":
