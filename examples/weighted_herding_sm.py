@@ -94,8 +94,10 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
         # compute the MMD between X and the coreset, unweighted version
         m = mmd_block(X, X[coreset], k, max_size=1000)
 
+    m = float(m)
+
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000)
+    rm = float(mmd_block(X, X[rsample], k, max_size=1000))
 
     # produce some scatter plots
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
