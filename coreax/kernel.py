@@ -793,6 +793,14 @@ class PCIMQKernel(Kernel):
 class SteinKernel:
     """
     Define a Stein kernel.
+
+    TODO: We'll need kernel matrix row sum methods here, but not all of the other kernel
+        methods. We could either make this a child class of Kernel and just raise a
+        NotImplimentedError for the irrelevant parts, or we could copy/paste and adjust
+        the kernel row sum parts as needed.
+
+    TODO: Note we might need to edit how the pairwise vmapped functions work in this
+        class when using the kernel matrix row sum parts.
     """
 
     def __init__(
