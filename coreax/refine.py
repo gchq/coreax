@@ -80,8 +80,8 @@ class Refine(ABC):
 
 
 class RefineRegular(Refine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, kernel: KernelFunction):
+        super().__init__(kernel)
 
     def refine(self, x, S, K_mean) -> Array:
         r"""
@@ -111,7 +111,7 @@ class RefineRegular(Refine):
 
         return S
 
-    @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
     def refine_body(
         self, i: int, S: ArrayLike, x: ArrayLike, K_mean: ArrayLike, K_diag: ArrayLike
     ) -> Array:
@@ -128,13 +128,17 @@ class RefineRegular(Refine):
         S = jnp.asarray(S)
         S = S.at[i].set(
             self.comparison(
-                S[i], S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
+                S[i],
+                S,
+                x,
+                K_mean,
+                K_diag,
             ).argmax()
         )
 
         return S
 
-    @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
     def comparison(
         self,
         i: ArrayLike,
@@ -167,10 +171,10 @@ class RefineRegular(Refine):
 
 
 class RefineRandom(Refine):
-    def __init__(self, p: float = 0.1):
+    def __init__(self, kernel: KernelFunction, p: float = 0.1):
         self.p = p
 
-        super().__init__()
+        super().__init__(kernel)
 
     def refine(self, x, S, K_mean):
         r"""
@@ -236,13 +240,18 @@ class RefineRandom(Refine):
         cand = random.randint(subkey, (n_cand,), 0, len(x))
         # cand = random.choice(subkey, len(x), (n_cand,), replace=False)
         comps = self.comparison_cand(
-            S[i], cand, S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
+            S[i],
+            cand,
+            S,
+            x,
+            K_mean,
+            K_diag,
         )
         S = lax.cond(jnp.any(comps > 0), self.change, self.nochange, i, S, cand, comps)
 
         return key, S
 
-    @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
     def comparison_cand(
         self,
         i: ArrayLike,
@@ -280,7 +289,7 @@ class RefineRandom(Refine):
             K_mean[i] - K_mean[cand]
         ) / num_points_in_coreset
 
-    @jit
+    # @jit
     def change(self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the i^th point in S with the candidate in cand with maximum value in comps.
@@ -297,7 +306,7 @@ class RefineRandom(Refine):
         cand = jnp.asarray(cand)
         return S.at[i].set(cand[comps.argmax()])
 
-    @jit
+    # @jit
     def nochange(
         self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
@@ -314,8 +323,8 @@ class RefineRandom(Refine):
 
 
 class RefineRev(Refine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, kernel: KernelFunction):
+        super().__init__(kernel)
 
     def refine(
         self,
@@ -365,7 +374,11 @@ class RefineRev(Refine):
         :returns: Updated loop variables `S`
         """
         comps = self.comparison_rev(
-            i, S, x, K_mean, K_diag, self.k_pairwise, self.k_vec
+            i,
+            S,
+            x,
+            K_mean,
+            K_diag,
         )
         S = lax.cond(
             jnp.any(comps > 0), self.change_rev, self.nochange_rev, i, S, comps
@@ -373,7 +386,7 @@ class RefineRev(Refine):
 
         return S
 
-    @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
     def comparison_rev(
         self,
         i: int,
@@ -409,7 +422,7 @@ class RefineRev(Refine):
             K_mean[S] - K_mean[i]
         ) / num_points_in_coreset
 
-    @jit
+    # @jit
     def change_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the maximum comps value point in S with i. x -> S.
@@ -424,7 +437,7 @@ class RefineRev(Refine):
         j = comps.argmax()
         return S.at[j].set(i)
 
-    @jit
+    # @jit
     def nochange_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Convenience function for leaving S unchanged (compare with refine.change_rev).
