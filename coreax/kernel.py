@@ -19,6 +19,7 @@ from __future__ import annotations
 import inspect
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
@@ -123,6 +124,28 @@ class Kernel(ABC):
     ) -> Array:
         """
         Compute the gradient of the log-PDF (score function) with respect to x.
+        """
+
+    @abstractmethod
+    def compute_divergence_x_grad_y(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        num_data_points: int | None = None,
+        gram_matrix: ArrayLike | None = None,
+    ) -> Array:
+        r"""
+        Apply divergence operator on gradient of kernel with respect to `y`.
+
+        This avoids explicit computation of the Hessian. Note that the generating set is
+        not necessarily the same as `x`.
+
+        :param x: First set of vectors as a :math:`n \times d` array
+        :param y: Second set of vectors as a :math:`m \times d` array
+        :param num_data_points: Number of data points in the generating set. Optional,
+            if :data:`None` or omitted, defaults to number of vectors in `x`
+        :param gram_matrix: Gram matrix.
+        :return: Divergence operator, an :math:`n \times m` matrix
         """
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -377,6 +400,20 @@ class Kernel(ABC):
             num_train_points=num_train_points,
         )
 
+    @jit
+    def construct_pdf(self, x: ArrayLike, kde_data: ArrayLike) -> tuple[Array, Array]:
+        r"""
+        Construct PDF of `x` by kernel density estimation for a kernel function.
+
+        :param x: An :math:`n \times d` array of random variable values
+        :param kde_data: The :math:`m \times d` kernel density estimation set
+        :return: Gram matrix mean over `random_var_values` as a :math:`n \times 1` array;
+            Gram matrix as an :math:`n \times m` array
+        """
+        kernel = self.compute_normalised(x, kde_data)
+        kernel_mean = kernel.mean(axis=1)
+        return kernel_mean, kernel
+
 
 class RBFKernel(Kernel):
     """
@@ -532,20 +569,6 @@ class RBFKernel(Kernel):
         return gradients / kernel_mean[:, None]
 
     @jit
-    def construct_pdf(self, x: ArrayLike, kde_data: ArrayLike) -> tuple[Array, Array]:
-        r"""
-        Construct PDF of `x` by kernel density estimation for a radial basis function.
-
-        :param x: An :math:`n \times d` array of random variable values
-        :param kde_data: The :math:`m \times d` kernel density estimation set
-        :return: Gram matrix mean over `random_var_values` as a :math:`n \times 1` array;
-            Gram matrix as an :math:`n \times m` array
-        """
-        kernel = self.compute_normalised(x, kde_data)
-        kernel_mean = kernel.mean(axis=1)
-        return kernel_mean, kernel
-
-    @jit
     def compute_divergence_x_grad_y(
         self,
         x: ArrayLike,
@@ -656,7 +679,10 @@ class PCIMQKernel(Kernel):
         :param y: Second set of vectors as a :math:`m \times d` array
         :return: Pairwise kernel evaluations for normalised RBF kernel
         """
-        raise NotImplementedError
+        # TODO: PCIMQ kernel does not have a normalised equivalent in
+        #  kernel_functions.py (but RBFKernel does) - is this an oversight or is it
+        #  already normalised?
+        return self.compute_pairwise_no_grads(x, y)
 
     def grad_x(
         self,
@@ -711,31 +737,18 @@ class PCIMQKernel(Kernel):
         """
         Compute the gradient of the log-PDF (score function) with respect to x.
 
-        The PDF is constructed from kernel density estimation.
+        The PDF is constructed from kernel density estimation using an RBF kernel.
 
         :param x: An :math:`n \times d` array of random variable values
         :param kde_data: The :math:`m \times d` kernel density estimation set
         :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
             `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
-            normalised Gaussian kernel TODO: UPDATE
+            normalised Gaussian kernel
         :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, if
             `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the
             mean of a Normalised Gaussian kernel
         :return: An :math:`n \times d` array of gradients evaluated at values of
             `random_var_values`
-        """
-        # TODO: Implement & test
-        raise NotImplementedError
-
-    @jit
-    def construct_pdf(self, x: ArrayLike, kde_data: ArrayLike) -> tuple[Array, Array]:
-        r"""
-        Construct PDF of `x` by kernel density estimation for a pcimq function.
-
-        :param x: An :math:`n \times d` array of random variable values
-        :param kde_data: The :math:`m \times d` kernel density estimation set
-        :return: Gram matrix mean over `random_var_values` as a :math:`n \times 1` array;
-            Gram matrix as an :math:`n \times m` array
         """
         # TODO: Implement & test
         raise NotImplementedError
@@ -759,11 +772,138 @@ class PCIMQKernel(Kernel):
         :param num_data_points: Number of data points in the generating set. Optional,
             if :data:`None` or omitted, defaults to number of vectors in `x`
         :param gram_matrix: Gram matrix. Optional, if :data:`None` or omitted, defaults
-            to a normalised Gaussian kernel TODO: UPDATE
+            to a normalised Gaussian kernel
         :return: Divergence operator, an :math:`n \times m` matrix
         """
-        # TODO: Implement & test
-        raise NotImplementedError
+        # TODO: Test this
+        # TODO: Should we call self.compute_normalised or self.compute for the
+        #  gram_matrix?
+        scaling = 2 * self.bandwidth**2
+        x = jnp.asarray(x)
+        if gram_matrix is None:
+            gram_matrix = self.compute_normalised(x, y)
+        if num_data_points is None:
+            num_data_points = x.shape[0]
+        return (
+            num_data_points / scaling * gram_matrix**3
+            - 3 * cu.sq_dist_pairwise(x, y) / scaling**2 * gram_matrix**5
+        )
+
+
+class SteinKernel:
+    """
+    Define a Stein kernel.
+    """
+
+    def __init__(
+        self,
+        base_kernel: Kernel,
+        score_function: Callable[[ArrayLike, ArrayLike], Array] | None,
+    ):
+        """
+        Define the Stein kernel to measure distances between points in some space.
+
+        This kernel requires a 'base' kernel to evaluate. The base kernel can be any
+        other implemented subclass of the Kernel abstract base class.
+
+        The score function is the gradient of the log-density function of a
+        distribution. We can either approximate this via kernel density estimation (done
+        if score_function is None) or model it directly (for example, through score
+        matching techniques). In the latter case, a callable can be supplied as is
+        treated as the score function.
+
+        :param base_kernel: Initialised kernel object to evaluate the Stein kernel with
+        :param score_function: If none, we determine the score function via kernel
+            density estimation using base_kernel. Otherwise, a callable defining
+            the score function (or an approximation to it).
+        """
+        self.base_kernel = base_kernel
+        if score_function is None:
+            # If no score function has been provided, then we use the base-kernels
+            # grad_log_x method
+            self.score_function = self.base_kernel.grad_log_x
+        else:
+            # If an alternative score function is passed (e.g. a pre-determined
+            # analytical function, or a neural network callable) we assign this
+            self.score_function = score_function
+
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        # TODO: score functon is assumed to not change here - but it might if the kernel
+        #  changes - but does not work when specified in children
+        children = (self.base_kernel,)
+        aux_data = {"score_function": self.score_function}
+        return children, aux_data
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstructs a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
+    @jit
+    def compute(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Compute a kernel from a base kernel with the canonical Stein operator.
+
+        :param x: First set of vectors as a :math:`n \times d` array
+        :param y: Second set of vectors as a :math:`n \times d` array
+        :return: Gram matrix, an :math:`n \times m` array
+        """
+        # Format data
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
+        x_size = x.shape[0]
+        y_size = y.shape[0]
+
+        # n x m
+        kernel_gram_matrix = self.base_kernel.compute_normalised(x, y)
+
+        # n x m
+        divergence = self.base_kernel.compute_divergence_x_grad_y(
+            x, y, x_size, kernel_gram_matrix
+        )
+
+        # n x m x d
+        grad_k_x = self.base_kernel.grad_x(x, y, kernel_gram_matrix)
+
+        # m x n x d
+        grad_k_y = jnp.transpose(
+            self.base_kernel.grad_y(x, y, kernel_gram_matrix), (1, 0, 2)
+        )
+
+        # n x d
+        grad_log_p_x = self.score_function(x, y)
+
+        # m x d
+        grad_log_p_y = self.score_function(y, x)
+
+        # m x n x d
+        tiled_grad_log_x = jnp.tile(grad_log_p_x, (y_size, 1, 1))
+        # n x m x d
+        tiled_grad_log_y = jnp.tile(grad_log_p_y, (x_size, 1, 1))
+        # m x n
+        x = jnp.einsum("ijk,ijk -> ij", tiled_grad_log_x, grad_k_y)
+        # n x m
+        y = jnp.einsum("ijk,ijk -> ij", tiled_grad_log_y, grad_k_x)
+        # n x m
+        z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * kernel_gram_matrix
+        return divergence + x.T + y + z
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
@@ -779,6 +919,5 @@ for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isc
 # TODO: Gaussian density kernel
 # TODO: Laplace kernel
 # TODO: PCIMQ kernel
-# TODO: Stein kernels
 # TODO: Include divergence bits
 # TODO: Do we want weights to be used to align with MMD?

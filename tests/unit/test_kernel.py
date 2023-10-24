@@ -17,6 +17,7 @@ from unittest.mock import patch
 import numpy as np
 import scipy.stats
 from jax import numpy as jnp
+from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.kernel as ck
@@ -642,6 +643,45 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+
+class TestSteinKernel(unittest.TestCase):
+    """
+    Tests related to the SteinKernel defined in kernel.py
+    """
+
+    def test_stein_kernel_computation(self) -> None:
+        r"""
+        Test the class SteinKernel computation.
+
+        Due to the complexity of the Stein kernel, we check the size of the output
+        matches the expected size, not the numerical values in the output array itself.
+        """
+        # Setup some data
+        num_points_x = 10
+        num_points_y = 5
+        dimension = 2
+        bandwidth = 1 / np.sqrt(2)
+
+        def score_function(x, y):
+            return -x
+
+        # Setup data
+        x = np.random.random((num_points_x, dimension))
+        y = np.random.random((num_points_y, dimension))
+
+        # Set expected output sizes
+        expected_size = (10, 5)
+
+        # Compute output using Kernel class
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(bandwidth=bandwidth),
+            score_function=score_function,
+        )
+        output = kernel.compute(x, y)
+
+        # Check output sizes match the expected
+        self.assertEqual(output.shape, expected_size)
 
 
 if __name__ == "__main__":
