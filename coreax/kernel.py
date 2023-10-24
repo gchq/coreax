@@ -905,6 +905,59 @@ class SteinKernel:
         z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * kernel_gram_matrix
         return divergence + x.T + y + z
 
+    @jit
+    def compute_element(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        grad_log_p_x: ArrayLike,
+        grad_log_p_y: ArrayLike,
+        dimension: int,
+    ) -> Array:
+        r"""
+        Evaluate the kernel element at `(x,y)`.
+
+        This element is induced by the canonical Stein operator on a base kernel. The
+        log-PDF can be arbitrary as only gradients are supplied.
+
+        :param x: First vector as a :math:`1 \times d` array
+        :param y: Second vector as a :math:`1 \times d` array
+        :param grad_log_p_x: Gradient of log-PDF evaluated at `x`, a :math:`1 \times d`
+            array
+        :param grad_log_p_y: Gradient of log-PDF evaluated at `y`, a :math:`1 \times d`
+            array
+        :param dimension: Dimension of the input data.
+        :return: Kernel evaluation at `(x,y)`, 0-dimensional array
+        """
+        # Format data
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
+        grad_log_p_x = jnp.atleast_2d(grad_log_p_x)
+        grad_log_p_y = jnp.atleast_2d(grad_log_p_y)
+
+        # n x m
+        kernel_gram_matrix = self.base_kernel.compute_normalised(x, y)
+
+        # n x m
+        divergence = self.base_kernel.compute_divergence_x_grad_y(
+            x, y, dimension, kernel_gram_matrix
+        )
+
+        # n x m x d
+        grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y, kernel_gram_matrix))
+
+        # m x n x d
+        grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y, kernel_gram_matrix))
+
+        x_ = jnp.dot(grad_log_p_x, grad_p_y)
+        # n x m
+        y_ = jnp.dot(grad_log_p_y, grad_p_x)
+        # n x m
+        z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * kernel_gram_matrix
+
+        kernel = divergence + x_.T + y_ + z
+        return kernel[0, 0]
+
 
 # Define the pytree node for the added class to ensure methods with jit decorators
 # are able to run. We rely on the naming convention that all child classes of Kernel

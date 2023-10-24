@@ -652,7 +652,7 @@ class TestSteinKernel(unittest.TestCase):
 
     def test_stein_kernel_computation(self) -> None:
         r"""
-        Test the class SteinKernel computation.
+        Test computation of the SteinKernel.
 
         Due to the complexity of the Stein kernel, we check the size of the output
         matches the expected size, not the numerical values in the output array itself.
@@ -682,6 +682,90 @@ class TestSteinKernel(unittest.TestCase):
 
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
+
+    def test_stein_kernel_element_computation(self) -> None:
+        r"""
+        Test computation of a single element of the SteinKernel.
+        """
+        # Setup some data
+        num_points_x = 10
+        num_points_y = 5
+        dimension = 2
+        bandwidth = 1 / np.sqrt(2)
+        beta = 0.5
+
+        def score_function(x, y):
+            return -x
+
+        def k_x_y(x, y):
+            r"""
+            The Stein kernel.
+
+            The base kernel is :math:`(1 + \lvert \mathbf{x} - \mathbf{y}
+            \rvert^2)^{-1/2}`. :math:`\mathbb{P}` is :math:`\mathcal{N}(0, \mathbf{I})`
+            with :math:`\nabla \log f_X(\mathbf{x}) = -\mathbf{x}`.
+
+            In the code: l, m and r refer to shared denominators in the Stein kernel
+            equation (rather than divergence, x_, y_ and z in the main code function).
+
+            :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = l + m + r`.
+
+            :math:`l := -\frac{3 \lvert \mathbf{x} - \mathbf{y} \rvert^2}{(1 + \lvert
+            \mathbf{x} - \mathbf{y} \rvert^2)^{5/2}}`.
+
+            :math:`m := 2\beta\left[ \frac{d + [\mathbf{y} -
+            \mathbf{x}]^\intercal[\mathbf{x} - \mathbf{y}]}{(1 + \lvert \mathbf{x} -
+            \mathbf{y} \rvert^2)^{3/2}} \right]`.
+
+            :math:`r := \frac{\mathbf{x}^\intercal \mathbf{y}}{(1 + \lvert \mathbf{x} -
+            \mathbf{y} \rvert^2)^{1/2}}`.
+
+            :param x: a d-dimensional vector
+            :param y: a d-dimensional vector
+            :return: kernel evaluated at x, y
+            """
+            norm_sq = np.linalg.norm(x - y) ** 2
+            l = -3 * norm_sq / (1 + norm_sq) ** 2.5
+            m = (
+                2
+                * beta
+                * (
+                    dimension
+                    + np.dot(score_function(x, y) - score_function(y, x), x - y)
+                )
+                / (1 + norm_sq) ** 1.5
+            )
+            r = (
+                np.dot(score_function(x, y), score_function(y, x))
+                / (1 + norm_sq) ** 0.5
+            )
+            return l + m + r
+
+        # Setup data
+        x = np.random.random((num_points_x, dimension))
+        y = np.random.random((num_points_y, dimension))
+
+        # Compute output using Kernel class
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(bandwidth=bandwidth),
+            score_function=score_function,
+        )
+
+        # Compute the output step-by-step with the element method
+        expected_output = np.zeros([x.shape[0], y.shape[0]])
+        output = np.zeros([x.shape[0], y.shape[0]])
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                # Compute via our hand-coded kernel evaluation
+                expected_output[i, j] = k_x_y(x_, y_)
+
+                # Compute via element method
+                output[i, j] = kernel.compute_element(
+                    x_, y_, score_function(x_, y_), score_function(y_, x_), dimension
+                )
+
+        # Check output sizes match the expected
+        np.testing.assert_array_almost_equal(output, expected_output)
 
 
 if __name__ == "__main__":
