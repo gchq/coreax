@@ -20,10 +20,12 @@ import numpy as np
 from jax.random import rademacher
 from sklearn.decomposition import PCA
 
-from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
-from coreax.kernel_herding import stein_kernel_herding_block
-from coreax.metrics import mmd_block
-from coreax.score_matching import sliced_score_matching
+import coreax.kernel as ck
+
+# from coreax.kernel import median_heuristic, rbf_kernel, stein_kernel_pc_imq_element
+# from coreax.kernel_herding import stein_kernel_herding_block
+# from coreax.metrics import mmd_block
+import coreax.score_matching as csm
 
 
 def main(
@@ -62,12 +64,17 @@ def main(
     # set the bandwidth parameter of the underlying RBF kernel
     N = min(X.shape[0], 1000)
     idx = np.random.choice(X.shape[0], N, replace=False)
-    nu = median_heuristic(X[idx])
+    nu = ck.median_heuristic(X[idx])
 
     # learn a score function
-    score_function = sliced_score_matching(
-        X, rademacher, use_analytic=True, epochs=100, L=100, sigma=1.0
+    sliced_score_matcher = csm.SlicedScoreMatching(
+        random_generator=rademacher,
+        use_analytic=True,
+        num_epochs=100,
+        num_random_vectors=100,
+        sigma=1.0,
     )
+    score_function = sliced_score_matcher.match(X)
 
     # run Stein kernel herding in block mode to avoid GPU memory issues
     coreset, Kc, Kbar = stein_kernel_herding_block(
