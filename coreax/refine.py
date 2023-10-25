@@ -111,7 +111,7 @@ class RefineRegular(Refine):
 
         return S
 
-    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    @partial(jit, static_argnames=["self"])
     def refine_body(
         self, i: int, S: ArrayLike, x: ArrayLike, K_mean: ArrayLike, K_diag: ArrayLike
     ) -> Array:
@@ -138,7 +138,7 @@ class RefineRegular(Refine):
 
         return S
 
-    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    @partial(jit, static_argnames=["self"])
     def comparison(
         self,
         i: ArrayLike,
@@ -251,7 +251,7 @@ class RefineRandom(Refine):
 
         return key, S
 
-    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    @partial(jit, static_argnames=["self"])
     def comparison_cand(
         self,
         i: ArrayLike,
@@ -289,7 +289,7 @@ class RefineRandom(Refine):
             K_mean[i] - K_mean[cand]
         ) / num_points_in_coreset
 
-    # @jit
+    @partial(jit, static_argnames=["self"])
     def change(self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the i^th point in S with the candidate in cand with maximum value in comps.
@@ -306,7 +306,7 @@ class RefineRandom(Refine):
         cand = jnp.asarray(cand)
         return S.at[i].set(cand[comps.argmax()])
 
-    # @jit
+    @partial(jit, static_argnames=["self"])
     def nochange(
         self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
@@ -386,7 +386,7 @@ class RefineRev(Refine):
 
         return S
 
-    # @partial(jit, static_argnames=["k_pairwise", "k_vec"])
+    @partial(jit, static_argnames=["self"])
     def comparison_rev(
         self,
         i: int,
@@ -422,7 +422,7 @@ class RefineRev(Refine):
             K_mean[S] - K_mean[i]
         ) / num_points_in_coreset
 
-    # @jit
+    @partial(jit, static_argnames=["self"])
     def change_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the maximum comps value point in S with i. x -> S.
@@ -437,7 +437,7 @@ class RefineRev(Refine):
         j = comps.argmax()
         return S.at[j].set(i)
 
-    # @jit
+    @partial(jit, static_argnames=["self"])
     def nochange_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Convenience function for leaving S unchanged (compare with refine.change_rev).
