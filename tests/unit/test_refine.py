@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import jax.numpy as jnp
@@ -61,11 +62,7 @@ class TestMetrics(unittest.TestCase):
 
         best_indices = {0, 2}
 
-        index_pairs = [
-            {a, b}
-            for idx, a in enumerate(range(len(x)))
-            for b in range(len(x))[idx + 1 :]
-        ]
+        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
@@ -79,7 +76,8 @@ class TestMetrics(unittest.TestCase):
 
             refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
 
-            self.assertSetEqual(set(refine_test.tolist()), best_indices)
+            with self.subTest(test_indices):
+                self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
     def test_refine_rand(self):
         """
@@ -120,11 +118,7 @@ class TestMetrics(unittest.TestCase):
 
         best_indices = {0, 2}
 
-        index_pairs = [
-            {a, b}
-            for idx, a in enumerate(range(len(x)))
-            for b in range(len(x))[idx + 1 :]
-        ]
+        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
@@ -138,4 +132,5 @@ class TestMetrics(unittest.TestCase):
 
             refine_test = coreax.refine.refine_rev(x, S, rbf_kernel, K_mean)
 
-            self.assertSetEqual(set(refine_test.tolist()), best_indices)
+            with self.subTest(test_indices):
+                self.assertSetEqual(set(refine_test.tolist()), best_indices)
