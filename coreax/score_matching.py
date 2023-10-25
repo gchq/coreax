@@ -38,13 +38,14 @@ def analytic_obj(
     Compute reduced variance score matching loss function.
 
     This is for use with certain random measures, e.g. normal and Rademacher. If this
-    assumption is not true, then general_obj should be used instead.
+    assumption is not true, then :func:`~coreax.score_matching.general_obj` should be
+    used instead.
 
-    :param random_direction_vector: d-dimensional random vector
+    :param random_direction_vector: :math:`d`-dimensional random vector
     :param grad_score_times_random_direction_matrix: Product of the gradient of
-        score_matrix (w.r.t. x) and the random_direction_vector
+        score_matrix (w.r.t. ``x``) and the random_direction_vector
     :param score_matrix: Gradients of log-density
-    :return: Evaluation of score matching objective, see equation 8 in [ssm]_
+    :return: Evaluation of score matching objective, see equation 8 in :cite:p:`ssm`.
     """
     result = (
         random_direction_vector @ grad_score_times_random_direction_matrix
@@ -61,14 +62,14 @@ def general_obj(
     Compute general score matching loss function.
 
     This is to be used when one cannot assume normal or Rademacher random measures when
-    using score matching, but has higher variance than analytic_obj if these
-    assumptions hold.
+    using score matching, but has higher variance than
+    :func:`~coreax.score_matching.analytic_obj` if these assumptions hold.
 
-    :param random_direction_vector: d-dimensional random vector
+    :param random_direction_vector: :math:`d`-dimensional random vector
     :param grad_score_times_random_direction_matrix: Product of the gradient of
-        score_matrix (w.r.t. x) and the random_direction_vector
+        score_matrix (w.r.t. ``x``) and the random_direction_vector
     :param score_matrix: Gradients of log-density
-    :return: Evaluation of score matching objective, see equation 7 in [ssm]_
+    :return: Evaluation of score matching objective, see equation 7 in :cite:p:`ssm`
     """
     result = (
         random_direction_vector @ grad_score_times_random_direction_matrix
@@ -85,14 +86,14 @@ def sliced_score_matching_loss_element(
     Compute element-wise loss function.
 
     Computes the loss function from Section 3.2 of Song el al.'s paper on sliced score
-    matching [ssm]_.
+    matching :cite:p:`ssm`.
 
     :param x: :math:`d`-dimensional data vector
     :param v: :math:`d`-dimensional random vector
-    :param score_network: Function that calls the neural network on x
+    :param score_network: Function that calls the neural network on ``x``
     :param obj_fn: Objective function with arguments
                     :math:`(v, u, s) \rightarrow \mathbb{R}`
-    :return: Objective function output for single x and v inputs
+    :return: Objective function output for single ``x`` and ``v`` inputs
     """
     s, u = jvp(score_network, (x,), (v,))
     return obj_fn(v, u, s)
@@ -100,12 +101,12 @@ def sliced_score_matching_loss_element(
 
 def sliced_score_matching_loss(score_network: Callable, obj_fn: Callable) -> Callable:
     r"""
-    Compute vector mapped loss function for arbitrary numbers of X and V vectors.
+    Compute vector mapped loss function for arbitrary numbers of ``X`` & ``V`` vectors.
 
     In the context of score matching, we expect to call the objective function on the
-    data vector (x), random vectors (v) and using the score neural network.
+    data vector (``x``), random vectors (``v``) and using the score neural network.
 
-    :param score_network: Function that calls the neural network on x
+    :param score_network: Function that calls the neural network on ``x``
     :param obj_fn: Element-wise function (vector, vector, score_network)
                     :math:`\rightarrow \mathbb{R}`
     :return: Callable vectorised sliced score matching loss function
@@ -158,7 +159,7 @@ def noise_conditional_loop_body(
     Sum objective function with noise perturbations.
 
     Inputs are perturbed by Gaussian random noise to improve performance of score
-    matching. See [improvedsgm]_ for details.
+    matching. See :cite:p:`improvedsgm` for details.
 
     :param i: Loop index
     :param obj: Running objective, i.e. the current partial sum
@@ -239,7 +240,7 @@ def sliced_score_matching(
     gamma: float = 0.95,
 ) -> Callable:
     r"""
-    Learn a sliced score matching function from Song et al.'s paper [ssm]_.
+    Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
     We currently use the ScoreNetwork neural network in coreax.networks to approximate
     the score function. Alternative network architectures can be considered.
@@ -247,22 +248,22 @@ def sliced_score_matching(
     :param X: The :math:`n \times d` data vectors
     :param rgenerator: Distribution sampler (key, shape, dtype) :math:`\rightarrow`
         :class:`~jax.Array`, e.g. distributions in :class:`~jax.random`
-    :param noise_conditioning: Use the noise conditioning version of score matching.
-        Defaults to True.
-    :param use_analytic: Use the analytic (reduced variance) objective or not. Defaults
-        to False.
-    :param M: The number of random vectors to use per data vector. Defaults to 1.
-    :param lr: Optimiser learning rate. Defaults to 1e-3.
-    :param epochs: Epochs for training. Defaults to 10.
-    :param batch_size: Size of minibatch. Defaults to 64.
-    :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
-    :param optimiser: The optax optimiser to use. Defaults to optax.adam.
-    :param L: Number of noise models to use in noise conditional score matching.
-        Defaults to 100.
+    :param noise_conditioning: Use the noise conditioning version of score matching,
+        defaults to True
+    :param use_analytic: Use the analytic (reduced variance) objective or not, defaults
+        to False
+    :param M: The number of random vectors to use per data vector, defaults to 1
+    :param lr: Optimiser learning rate, defaults to 1e-3
+    :param epochs: Epochs for training, defaults to 10
+    :param batch_size: Size of minibatch, defaults to 64
+    :param hidden_dim: The ScoreNetwork hidden dimension, defaults to 128
+    :param optimiser: The optax optimiser to use, defaults to :func:`~optax.adamw`
+    :param L: Number of noise models to use in noise conditional score matching,
+        defaults to 100
     :param sigma: Initial noise standard deviation for noise geometric progression in
-        noise conditional score matching. Defaults to 1.
-    :param gamma: Geometric progression ratio. Defaults to 0.95.
-    :return: A function that applies the learned score function to input x
+        noise conditional score matching, defaults to 1
+    :param gamma: Geometric progression ratio, defaults to 0.95
+    :return: A function that applies the learned score function to input ``x``
     """
     # main objects
     n, d = X.shape

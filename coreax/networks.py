@@ -14,7 +14,7 @@
 
 """TODO: Create top-level docstring."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from flax import linen as nn
 from flax.linen import Module
