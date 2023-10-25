@@ -46,7 +46,9 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
+        refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
+
+        refine_test = refine_regular.refine(x=x, S=S, K_mean=K_mean)
 
         self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
@@ -64,6 +66,8 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
+        refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
+
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
@@ -74,7 +78,7 @@ class TestMetrics(unittest.TestCase):
             )(x, x)
             K_mean = K.mean(axis=1)
 
-            refine_test = coreax.refine.refine(x, S, rbf_kernel, K_mean)
+            refine_test = refine_regular.refine(x, S, K_mean)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(set(refine_test.tolist()), best_indices)
@@ -102,7 +106,9 @@ class TestMetrics(unittest.TestCase):
         )(x, x)
         K_mean = K.mean(axis=1)
 
-        refine_test = coreax.refine.refine_rand(x, S, rbf_kernel, K_mean, p=1.0)
+        refine_rand = coreax.refine.RefineRandom(kernel=rbf_kernel, p=1.0)
+
+        refine_test = refine_rand.refine(x, S, K_mean)
 
         self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
@@ -120,6 +126,8 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
+        refine_rev = coreax.refine.RefineRev(kernel=rbf_kernel)
+
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
@@ -130,7 +138,7 @@ class TestMetrics(unittest.TestCase):
             )(x, x)
             K_mean = K.mean(axis=1)
 
-            refine_test = coreax.refine.refine_rev(x, S, rbf_kernel, K_mean)
+            refine_test = refine_rev.refine(x, S, K_mean)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(set(refine_test.tolist()), best_indices)
