@@ -14,10 +14,6 @@
 
 """TODO: Create top-level docstring."""
 
-# Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
-from __future__ import annotations
-
 from collections.abc import Callable
 
 import jax.numpy as jnp
@@ -25,9 +21,10 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
+#: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
-# Pairwise kernel evaluation if grads and nu are defined
+#: Pairwise kernel evaluation function if gradients and bandwidth are defined.
 KernelFunctionWithGrads = Callable[
     [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
 ]
@@ -41,7 +38,7 @@ def apply_negative_precision_threshold(
 
     :param x: Scalar value we wish to compare to 0.0
     :param precision_threshold: Positive threshold we compare against for precision
-    :return: x, rounded to 0.0 if it is between -`precision_threshold` and 0.0
+    :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
     # Cast to float. Will raise TypeError if array is not zero-dimensional.
     x = float(x)
@@ -64,7 +61,8 @@ def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
 
     :param x: First vector argument
     :param y: Second vector argument
-    :return: Dot product of `x - y` and `x - y`, the square distance between `x` and `y`
+    :return: Dot product of ``x - y`` and ``x - y``, the square distance between ``x``
+        and ``y``
     """
     return jnp.dot(x - y, x - y)
 
@@ -76,7 +74,7 @@ def sq_dist_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
 
     :param x: First set of vectors as a :math:`n \times d` array
     :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between `x_array` and `y_array` as an
+    :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
@@ -93,7 +91,7 @@ def diff(x: ArrayLike, y: ArrayLike) -> Array:
 
     :param x: First vector
     :param y: Second vector
-    :return: Vector difference `x - y`
+    :return: Vector difference ``x - y``
     """
     return x - y
 
@@ -105,7 +103,7 @@ def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between `x_array` and `y_array` as an
+    :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
     d1 = vmap(diff, in_axes=(0, None), out_axes=0)
