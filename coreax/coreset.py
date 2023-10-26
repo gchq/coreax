@@ -27,8 +27,19 @@ The abstract base class is :class:`Coreset`. Concrete implementations are:
     typically only used for benchmarking against other coreset methods.
 """
 
-from reduction import DataReduction
+from reduction import DataReduction, data_reduction_factory
 
 
 class Coreset(DataReduction):
     """Abstract base class for a method to construct a coreset."""
+
+
+class KernelHerding(Coreset):
+    """
+    Apply kernel herding to a dataset.
+
+    This class works with all kernels, including Stein kernels.
+    """
+
+
+data_reduction_factory.register("kernel_herding", KernelHerding)
