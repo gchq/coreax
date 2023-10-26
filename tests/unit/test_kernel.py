@@ -64,24 +64,24 @@ class TestKernelABC(unittest.TestCase):
         )
 
 
-class TestRBFKernel(unittest.TestCase):
+class TestSquaredExponentialKernel(unittest.TestCase):
     """
-    Tests related to the RBFKernel defined in kernel.py
+    Tests related to the SquaredExponentialKernel defined in kernel.py
     """
 
-    def test_rbf_kernel_init(self) -> None:
+    def test_se_kernel_init(self) -> None:
         r"""
-        Test the class RBFKernel initilisation with a negative bandwidth.
+        Test the class SquaredExponentialKernel initilisation with a negative bandwidth.
         """
         # Create the kernel with a negative bandwidth - we expect a value error to be
         # raised
-        self.assertRaises(ValueError, ck.RBFKernel, bandwidth=-1.0)
+        self.assertRaises(ValueError, ck.SquaredExponentialKernel, lengthscale=-1.0)
 
-    def test_rbf_kernel_compute_two_floats(self) -> None:
+    def test_se_kernel_compute_two_floats(self) -> None:
         r"""
-        Test the class RBFKernel distance computations.
+        Test the class SquaredExponentialKernel distance computations.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
 
         For the two input floats
         .. math::
@@ -115,17 +115,17 @@ class TestRBFKernel(unittest.TestCase):
         expected_distance = 0.48860678
 
         # Create the kernel
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
-        self.assertAlmostEqual(float(output), expected_distance, places=5)
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
         # Alter the bandwidth, and check the jit decorator catches the update
-        kernel.bandwidth = np.sqrt(np.float32(np.pi))
+        kernel.lengthscale = np.sqrt(np.float32(np.pi))
 
         # Set expected output with this new bandwidth
         expected_distance = 0.6990041
@@ -135,13 +135,13 @@ class TestRBFKernel(unittest.TestCase):
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
-        self.assertAlmostEqual(float(output), expected_distance, places=5)
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-    def test_rbf_kernel_compute_two_vectors(self) -> None:
+    def test_se_kernel_compute_two_vectors(self) -> None:
         r"""
-        Test the class RBFKernel distance computations.
+        Test the class SquaredExponentialKernel distance computations.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
 
         For the two input vectors
         .. math::
@@ -171,20 +171,20 @@ class TestRBFKernel(unittest.TestCase):
         expected_distance = 0.279923327
 
         # Create the kernel
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
-        self.assertAlmostEqual(float(output), expected_distance, places=5)
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-    def test_rbf_kernel_compute_two_arrays(self) -> None:
+    def test_se_kernel_compute_two_arrays(self) -> None:
         r"""
-        Test the class RBFKernel distance computations on arrays.
+        Test the class SquaredExponentialKernel distance computations on arrays.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
 
         For the two input vectors
         .. math::
@@ -221,7 +221,7 @@ class TestRBFKernel(unittest.TestCase):
         )
 
         # Create the kernel
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Evaluate the kernel - which computes the Gram matrix between x and y
         output = kernel.compute(x, y)
@@ -229,11 +229,11 @@ class TestRBFKernel(unittest.TestCase):
         # Check the output matches the expected distance
         np.testing.assert_array_almost_equal(output, expected_distances, decimal=5)
 
-    def test_rbf_kernel_gradients_wrt_x(self) -> None:
+    def test_se_kernel_gradients_wrt_x(self) -> None:
         """
-        Test the class RBFKernel gradient computations.
+        Test the class SquaredExponentialKernel gradient computations.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
         The gradient of this with respect to x is:
 
         ..math:
@@ -251,14 +251,18 @@ class TestRBFKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    -(x_ - y_)
-                    / bandwidth**3
+                    -(x_ - y_) / bandwidth**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
-                    / (np.sqrt(2 * np.pi))
                 )
+                # true_gradients[i, j] = (
+                #     -(x_ - y_)
+                #     / bandwidth**3
+                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                #     / (np.sqrt(2 * np.pi))
+                # )
 
         # Create the kernel
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -268,11 +272,11 @@ class TestRBFKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    def test_rbf_kernel_gradients_wrt_y(self) -> None:
+    def test_se_kernel_gradients_wrt_y(self) -> None:
         """
-        Test the class RBFKernel gradient computations.
+        Test the class SquaredExponentialKernel gradient computations.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
         The gradient of this with respect to y is:
 
         ..math:
@@ -290,14 +294,18 @@ class TestRBFKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    (x_ - y_)
-                    / bandwidth**3
+                    (x_ - y_) / bandwidth**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
-                    / (np.sqrt(2 * np.pi))
                 )
+                # true_gradients[i, j] = (
+                #     (x_ - y_)
+                #     / bandwidth**3
+                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                #     / (np.sqrt(2 * np.pi))
+                # )
 
         # Create the kernel
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Evaluate the gradient
         output = kernel.grad_y(x, y)
@@ -307,50 +315,50 @@ class TestRBFKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    def test_rbf_kernel_log_pdf_gradients_wrt_x(self) -> None:
-        """
-        Test the class RBFKernel score-function gradient computations.
-        """
-        # Define parameters for data
-        bandwidth = 1 / np.sqrt(2)
-        num_points = 10
-        dimension = 2
-        x = np.random.random((num_points, dimension))
+    # def test_se_kernel_log_pdf_gradients_wrt_x(self) -> None:
+    #     """
+    #     Test the class SquaredExponentialKernel score-function gradient computations.
+    #     """
+    #     # Define parameters for data
+    #     bandwidth = 1 / np.sqrt(2)
+    #     num_points = 10
+    #     dimension = 2
+    #     x = np.random.random((num_points, dimension))
 
-        # Sample points to build the distribution from
-        kde_points = np.random.random((num_points, dimension))
+    #     # Sample points to build the distribution from
+    #     kde_points = np.random.random((num_points, dimension))
 
-        # Define a kernel density estimate function for the distribution
-        kde = lambda input_var: (
-            np.exp(
-                -np.linalg.norm(input_var - kde_points, axis=1)[:, None] ** 2
-                / (2 * bandwidth**2)
-            )
-            / (np.sqrt(2 * np.pi) * bandwidth)
-        ).mean(axis=0)
+    #     # Define a kernel density estimate function for the distribution
+    #     kde = lambda input_var: (
+    #         np.exp(
+    #             -np.linalg.norm(input_var - kde_points, axis=1)[:, None] ** 2
+    #             / (2 * bandwidth**2)
+    #         )
+    #         / (np.sqrt(2 * np.pi) * bandwidth)
+    #     ).mean(axis=0)
 
-        # Define a matrix to store gradients in - this is a jacobian because it's the
-        # matrix of partial derivatives
-        jacobian = np.zeros((num_points, dimension))
+    #     # Define a matrix to store gradients in - this is a jacobian because it's the
+    #     # matrix of partial derivatives
+    #     jacobian = np.zeros((num_points, dimension))
 
-        # For each data-point in x, compute the gradients
-        for i, x_ in enumerate(x):
-            jacobian[i] = (
-                -(x_ - kde_points)
-                / bandwidth**3
-                * np.exp(
-                    -np.linalg.norm(x_ - kde_points, axis=1)[:, None] ** 2
-                    / (2 * bandwidth**2)
-                )
-                / (np.sqrt(2 * np.pi))
-            ).mean(axis=0) / (kde(x_)[:, None])
+    #     # For each data-point in x, compute the gradients
+    #     for i, x_ in enumerate(x):
+    #         jacobian[i] = (
+    #             -(x_ - kde_points)
+    #             / bandwidth**3
+    #             * np.exp(
+    #                 -np.linalg.norm(x_ - kde_points, axis=1)[:, None] ** 2
+    #                 / (2 * bandwidth**2)
+    #             )
+    #             / (np.sqrt(2 * np.pi))
+    #         ).mean(axis=0) / (kde(x_)[:, None])
 
-        # Compute the gradient of the score function using the class
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
-        output = kernel.grad_log_x(x, kde_points, bandwidth)
+    #     # Compute the gradient of the score function using the class
+    #     kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+    #     output = kernel.grad_log_x(x, kde_points, bandwidth)
 
-        # Check output matches expected
-        np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
+    #     # Check output matches expected
+    #     np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
 
     def test_define_pairwise_kernel_evaluation_no_grads(self) -> None:
         """
@@ -360,7 +368,7 @@ class TestRBFKernel(unittest.TestCase):
         where the values correspond to the distance, as judged by the kernel, between
         each point in the first array and each point in the second array.
 
-        The RBF kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
         If we have two input arrays:
 
         ..math:
@@ -373,20 +381,20 @@ class TestRBFKernel(unittest.TestCase):
         """
         # Define parameters for data
         bandwidth = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        y = np.array([10.0, 3.0, 0.0])
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
+        y = np.array([10.0, 3.0, 0.0]).reshape(-1, 1)
 
         # Define the kernel object
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 3])
         for x_index, x_ in enumerate(x):
             for y_index, y_ in enumerate(y):
-                expected_output[x_index, y_index] = kernel.compute(x_, y_)
+                expected_output[x_index, y_index] = kernel.compute(x_, y_)[0, 0]
 
         # Compute the pairwise distances between the data using the kernel
-        output = kernel.compute_pairwise_no_grads(x, y)
+        output = kernel.compute(x, y)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
@@ -401,14 +409,14 @@ class TestRBFKernel(unittest.TestCase):
         """
         # Define parameters for data
         bandwidth = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
         max_size = 3
 
         # Pre-specify an empty kernel matrix row sum to update as we go
         kernel_row_sum = jnp.zeros(len(x))
 
         # Define the kernel object
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Define expected output for pairwise distances - in this case we are looking
         # from the start index (0) to start index + max_size (0 + 3) in both axis (rows
@@ -417,12 +425,12 @@ class TestRBFKernel(unittest.TestCase):
         expected_output = np.zeros([5, 5])
         for x_1_index, x_1 in enumerate(x[0:max_size]):
             for x_2_index, x_2 in enumerate(x[0:max_size]):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.sum(axis=1)
 
         # Compute the kernel matrix row sum with the class
         output = kernel.update_kernel_matrix_row_sum(
-            x, kernel_row_sum, 0, 0, kernel.compute_pairwise_no_grads, max_size=max_size
+            x, kernel_row_sum, 0, 0, kernel.compute, max_size=max_size
         )
 
         # Check output matches expected
@@ -440,13 +448,13 @@ class TestRBFKernel(unittest.TestCase):
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 5])
         for x_1_index, x_1 in enumerate(x):
             for x_2_index, x_2 in enumerate(x):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.sum(axis=1)
 
         # Compute the kernel matrix row sum with the class
@@ -467,13 +475,13 @@ class TestRBFKernel(unittest.TestCase):
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
 
         # Define expected output for pairwise distances, then take the mean of them
         expected_output = np.zeros([5, 5])
         for x_1_index, x_1 in enumerate(x):
             for x_2_index, x_2 in enumerate(x):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)
+                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.mean(axis=1)
 
         # Compute the kernel matrix row sum mean with the class
@@ -482,57 +490,57 @@ class TestRBFKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
 
-    def test_compute_normalised(self) -> None:
-        """
-        Test computation of normalised RBF kernel.
+    # def test_compute_normalised(self) -> None:
+    #     """
+    #     Test computation of normalised SquaredExponential kernel.
 
-        A normalised RBF kernel is also known as a Gaussian kernel. We generate data and
-        compare to a standard implementation of the Gaussian PDF.
-        """
-        # Setup some data
-        std_dev = np.e
-        num_points = 10
-        x = np.arange(num_points)
-        y = x + 1.0
+    #     A normalised SquaredExponential kernel is also known as a Gaussian kernel. We generate data and
+    #     compare to a standard implementation of the Gaussian PDF.
+    #     """
+    #     # Setup some data
+    #     std_dev = np.e
+    #     num_points = 10
+    #     x = np.arange(num_points)
+    #     y = x + 1.0
 
-        # Compute expected output using standard implementation of the Gaussian PDF
-        expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
+    #     # Compute expected output using standard implementation of the Gaussian PDF
+    #     expected_output = np.zeros((num_points, num_points))
+    #     for i, x_ in enumerate(x):
+    #         for j, y_ in enumerate(y):
+    #             expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
 
-        # Compute the normalised PDF output using the kernel class
-        kernel = ck.RBFKernel(bandwidth=std_dev)
-        output = kernel.compute_normalised(x, y)
+    #     # Compute the normalised PDF output using the kernel class
+    #     kernel = ck.SquaredExponentialKernel(lengthscale=std_dev)
+    #     output = kernel.compute_normalised(x, y)
 
-        # Check output matches expected
-        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+    #     # Check output matches expected
+    #     np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_construct_pdf(self) -> None:
-        """
-        Test construction of PDF using RBF kernel.
-        """
-        # Setup some data
-        std_dev = np.e
-        num_points = 10
-        x = np.arange(num_points)
-        y = x + 1.0
+    # def test_construct_pdf(self) -> None:
+    #     """
+    #     Test construction of PDF using SquaredExponential kernel.
+    #     """
+    #     # Setup some data
+    #     std_dev = np.e
+    #     num_points = 10
+    #     x = np.arange(num_points)
+    #     y = x + 1.0
 
-        # Compute expected output using standard implementation of the Gaussian PDF
-        expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
+    #     # Compute expected output using standard implementation of the Gaussian PDF
+    #     expected_output = np.zeros((num_points, num_points))
+    #     for i, x_ in enumerate(x):
+    #         for j, y_ in enumerate(y):
+    #             expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
 
-        # Compute the normalised PDF output using the kernel class
-        kernel = ck.RBFKernel(bandwidth=std_dev)
-        output_mean, output_kernel = kernel.construct_pdf(x, y)
+    #     # Compute the normalised PDF output using the kernel class
+    #     kernel = ck.SquaredExponentialKernel(lengthscale=std_dev)
+    #     output_mean, output_kernel = kernel.construct_pdf(x, y)
 
-        # Check output matches expected
-        np.testing.assert_array_almost_equal(
-            output_mean, expected_output.mean(axis=1), decimal=3
-        )
-        np.testing.assert_array_almost_equal(output_kernel, expected_output, decimal=3)
+    #     # Check output matches expected
+    #     np.testing.assert_array_almost_equal(
+    #         output_mean, expected_output.mean(axis=1), decimal=3
+    #     )
+    #     np.testing.assert_array_almost_equal(output_kernel, expected_output, decimal=3)
 
     def test_define_pairwise_kernel_evaluation_with_grads(self) -> None:
         """
@@ -562,7 +570,7 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Create the kernel with a negative bandwidth - we expect a value error to be
         # raised
-        self.assertRaises(ValueError, ck.PCIMQKernel, bandwidth=-1.0)
+        self.assertRaises(ValueError, ck.PCIMQKernel, lengthscale=-1.0)
 
     def test_pcimq_kernel_compute(self) -> None:
         r"""
@@ -586,7 +594,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 )
 
         # Compute distance using the kernel class
-        kernel = ck.PCIMQKernel(bandwidth=std_dev)
+        kernel = ck.PCIMQKernel(lengthscale=std_dev)
         output = kernel.compute(x, y)
 
         # Check output matches expected
@@ -612,7 +620,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(bandwidth=bandwidth)
+        kernel = ck.PCIMQKernel(lengthscale=bandwidth)
         output = kernel.grad_x(x, y)
 
         # Check output matches expected
@@ -638,7 +646,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(bandwidth=bandwidth)
+        kernel = ck.PCIMQKernel(lengthscale=bandwidth)
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
@@ -675,7 +683,7 @@ class TestSteinKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(bandwidth=bandwidth),
+            base_kernel=ck.PCIMQKernel(lengthscale=bandwidth),
             score_function=score_function,
         )
         output = kernel.compute(x, y)
@@ -747,7 +755,7 @@ class TestSteinKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(bandwidth=bandwidth),
+            base_kernel=ck.PCIMQKernel(lengthscale=bandwidth),
             score_function=score_function,
         )
 

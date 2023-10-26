@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, jit, random, tree_util, vmap
+from jax import Array, jit, random, tree_util, vmap, grad
 from jax.typing import ArrayLike
 
 import coreax.approximation as ca
@@ -53,31 +53,29 @@ class Kernel(ABC):
     Base class for kernels.
     """
 
-    def __init__(self):
-        r"""
-        Define a kernel to measure distances between points in some space.
-
-        Kernels for the basic tool for measuring distances between points in a space,
-        and through this constructing representations of the distribution a discrete set
-        of samples follow.
+    @jit
+    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
-        # Define helper-functions for ease of computation - this assigns a callable
-        # function that is jit compiled
-        self.compute_pairwise_no_grads = jit(
-            vmap(
-                vmap(self._compute_elementwise, in_axes=(None, 0), out_axes=0),
-                in_axes=(0, None),
-                out_axes=0,
-            )
+        Evaluate the kernel on input data x and y.
+
+        The 'data' can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * matrix (multiple points in multiple dimensions).
+
+        :param x: An :math:`n \times d` dataset or a single value (point)
+        :param y: An :math:`m \times d` dataset or a single value (point)
+        :return: Distances (as determined by the kernel) between points in x and y
+        """
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
+        fn = vmap(
+            vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
         )
-        # TODO: Test this method
-        self.compute_pairwise_with_grads = jit(
-            vmap(
-                vmap(self._compute_elementwise, (None, 0, None, 0, None, None), 0),
-                (0, None, 0, None, None, None),
-                0,
-            )
-        )
+        return fn(x, y)
 
     @abstractmethod
     def _compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -92,39 +90,31 @@ class Kernel(ABC):
         :return: Distance (as determined by the kernel) between point x and y
         """
 
-    @abstractmethod
-    def grad_x(
-        self, x: ArrayLike, y: ArrayLike, gram_matrix: ArrayLike | None = None
-    ) -> Array:
+    @jit
+    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Compute the gradient of the kernel with respect to x.
         """
+        fn = vmap(
+            vmap(grad(self._compute_elementwise, 0), in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )
+        return fn(x, y)
 
-    @abstractmethod
-    def grad_y(
-        self, x: ArrayLike, y: ArrayLike, gram_matrix: ArrayLike | None = None
-    ) -> Array:
+    @jit
+    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Compute the gradient of the kernel with respect to y.
         """
-
-    @abstractmethod
-    def compute_normalised(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
-        Compute the normalised kernel output
-        """
-
-    @abstractmethod
-    def grad_log_x(
-        self,
-        x: ArrayLike,
-        kde_data: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
-        kernel_mean: ArrayLike | None = None,
-    ) -> Array:
-        """
-        Compute the gradient of the log-PDF (score function) with respect to x.
-        """
+        fn = jit(
+            vmap(
+                vmap(grad(self._compute_elementwise, 1), in_axes=(0, None), out_axes=0),
+                in_axes=(None, 0),
+                out_axes=1,
+            )
+        )
+        return fn(x, y)
 
     @abstractmethod
     def compute_divergence_x_grad_y(
@@ -147,51 +137,6 @@ class Kernel(ABC):
         :param gram_matrix: Gram matrix.
         :return: Divergence operator, an :math:`n \times m` matrix
         """
-
-    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
-        Evaluate the kernel on input data x and y.
-
-        The 'data' can be any of:
-            * floating numbers (so a single data-point in 1-dimension)
-            * zero-dimensional arrays (so a single data-point in 1-dimension)
-            * a vector (a single-point in multiple dimensions)
-            * matrix (multiple points in multiple dimensions).
-
-        :param x: An :math:`n \times d` dataset or a single value (point)
-        :param y: An :math:`m \times d` dataset or a single value (point)
-        :return: Distances (as determined by the kernel) between points in x and y
-        """
-        # Convert data-types for clarity
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
-
-        # Apply vectorised computations if at least one component has dimension 2
-        if x.ndim < 2 and y.ndim < 2:
-            return self._compute_elementwise(x, y)
-        elif x.ndim > 2 or y.ndim > 2:
-            raise NotImplementedError(
-                "Kernel functions are not yet implemented for tensors. Please use vectors"
-            )
-        else:
-            if x.ndim < 2:
-                x = jnp.atleast_2d(x)
-            if y.ndim < 2:
-                y = jnp.atleast_2d(y)
-            return self._compute_vectorised(x, y)
-
-    def _compute_vectorised(self, x: ArrayLike, y: ArrayLike) -> Array:
-        r"""
-        Evaluate the kernel on input data x and y, vectorised.
-
-        Vectorisation only becomes relevant in terms of computational speed when data
-        is in 2 or more dimensions.
-
-        :param x: An :math:`n \times d` dataset
-        :param y: An :math:`m \times d` dataset
-        :return: Distances (as determined by the kernel) between points in x and y
-        """
-        return self.compute_pairwise_no_grads(x, y)
 
     @staticmethod
     def update_kernel_matrix_row_sum(
@@ -293,9 +238,23 @@ class Kernel(ABC):
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
         if grads is None:
-            kernel_pairwise = self.compute_pairwise_no_grads
+            # kernel_pairwise = self.compute_pairwise_no_grads
+            kernel_pairwise = jit(
+                vmap(
+                    vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+                    in_axes=(None, 0),
+                    out_axes=1,
+                )
+            )
         else:
-            kernel_pairwise = self.compute_pairwise_with_grads
+            # kernel_pairwise = self.compute_pairwise_with_grads
+            kernel_pairwise = jit(
+                vmap(
+                    vmap(self._compute_elementwise, (None, 0, None, 0, None, None), 0),
+                    (0, None, 0, None, None, None),
+                    0,
+                )
+            )
 
         # Ensure data format is as required
         x = jnp.asarray(x)
@@ -313,7 +272,7 @@ class Kernel(ABC):
         self,
         x: ArrayLike,
         grads: ArrayLike | None = None,
-        nu: ArrayLike | None = None,
+        lengthscale: ArrayLike | None = None,
         max_size: int = 10_000,
     ) -> Array:
         """
@@ -327,10 +286,10 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         :param grads: Array of gradients, if applicable, :math:`n \times d`
                       Optional, defaults to `None`
-        :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`
+        :param lengthscale: Base kernel bandwidth, if applicable, :math:`n \times d`
                    Optional, defaults to `None`
         """
-        return self.calculate_kernel_matrix_row_sum(x, max_size, grads, nu) / (
+        return self.calculate_kernel_matrix_row_sum(x, max_size, grads, lengthscale) / (
             1.0 * x.shape[0]
         )
 
@@ -400,40 +359,26 @@ class Kernel(ABC):
             num_train_points=num_train_points,
         )
 
-    @jit
-    def construct_pdf(self, x: ArrayLike, kde_data: ArrayLike) -> tuple[Array, Array]:
-        r"""
-        Construct PDF of `x` by kernel density estimation for a kernel function.
 
-        :param x: An :math:`n \times d` array of random variable values
-        :param kde_data: The :math:`m \times d` kernel density estimation set
-        :return: Gram matrix mean over `random_var_values` as a :math:`n \times 1` array;
-            Gram matrix as an :math:`n \times m` array
-        """
-        kernel = self.compute_normalised(x, kde_data)
-        kernel_mean = kernel.mean(axis=1)
-        return kernel_mean, kernel
-
-
-class RBFKernel(Kernel):
+class SquaredExponentialKernel(Kernel):
     """
-    Define a radial basis function (RBF) kernel.
+    Define a squared exponential (squared exponential) kernel.
     """
 
-    def __init__(self, bandwidth: float = 1.0):
+    def __init__(self, lengthscale: float = 1.0):
         """
-        Define the RBF kernel to measure distances between points in some space.
+        Define the squared exponential kernel to measure distances between points in some space.
 
         :param bandwidth: Kernel bandwidth to use (variance of the underlying Gaussian)
         """
         # Check that bandwidth is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
         # code)
-        if isinstance(bandwidth, float) and bandwidth <= 0.0:
+        if isinstance(lengthscale, float) and lengthscale <= 0.0:
             raise ValueError(
-                f"Bandwidth must be above zero. Current value {bandwidth}."
+                f"Bandwidth must be above zero. Current value {lengthscale}."
             )
-        self.bandwidth = bandwidth
+        self.lengthscale = lengthscale
 
         # Initialise parent
         super().__init__()
@@ -446,8 +391,9 @@ class RBFKernel(Kernel):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = (self.bandwidth,)
-        aux_data = {}
+        # children = (self.lengthscale,)
+        children = ()
+        aux_data = {"lengthscale": self.lengthscale}
         return children, aux_data
 
     @classmethod
@@ -477,96 +423,49 @@ class RBFKernel(Kernel):
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
-        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.bandwidth**2))
+        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.lengthscale**2))
 
     @jit
-    def compute_normalised(self, x: ArrayLike, y: ArrayLike) -> Array:
-        r"""
-        Evaluate the normalised Gaussian kernel pairwise.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Pairwise kernel evaluations for normalised RBF kernel
-        """
-        square_distances = cu.sq_dist_pairwise(x, y)
-        kernel = jnp.exp(-0.5 * square_distances / self.bandwidth**2) / jnp.sqrt(
-            2 * jnp.pi
-        )
-        return kernel / self.bandwidth
-
-    def grad_x(
+    def _grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
     ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the radial basis function w.r.t. x.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :param gram_matrix: Gram matrix. Optional, if omitted, defaults to a normalised
-            Gaussian kernel
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        return -self.grad_y(x, y, gram_matrix)
+        return (x - y) / self.lengthscale**2 * self._compute_elementwise(x, y)
 
     @jit
     def grad_y(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Calculate the *element-wise* gradient of the radial basis function w.r.t. y.
+        Calculate the *element-wise* gradient of the squared exponential w.r.t. y.
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
-        :param gram_matrix: Gram matrix. Optional, if omitted, defaults to a normalised
-            Gaussian kernel
         :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
         """
-        if gram_matrix is None:
-            gram_matrix = self.compute_normalised(x, y)
-        else:
-            gram_matrix = jnp.asarray(gram_matrix)
-        distances = cu.pdiff(x, y)
-        return distances * gram_matrix[:, :, None] / self.bandwidth**2
+        fn = vmap(
+            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )
+        return fn(x, y)
 
-    @jit
-    def grad_log_x(
+    def grad_x(
         self,
         x: ArrayLike,
-        kde_data: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
-        kernel_mean: ArrayLike | None = None,
+        y: ArrayLike,
     ) -> Array:
+        r"""
+        Calculate the *element-wise* gradient of the squared exponential w.r.t. x.
+
+        :param x: First set of vectors as a :math:`n \times d` array
+        :param y: Second set of vectors as a :math:`m \times d` array
+        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
         """
-        Compute the gradient of the log-PDF (score function) with respect to x.
-
-        The PDF is constructed from kernel density estimation.
-
-        :param x: An :math:`n \times d` array of random variable values
-        :param kde_data: The :math:`m \times d` kernel density estimation set
-        :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
-            `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
-            normalised Gaussian kernel
-        :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, if
-            `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the
-            mean of a Normalised Gaussian kernel
-        :return: An :math:`n \times d` array of gradients evaluated at values of
-            `random_var_values`
-        """
-        x = jnp.atleast_2d(x)
-        kde_data = jnp.atleast_2d(kde_data)
-        if gram_matrix is None or kernel_mean is None:
-            kernel_mean, gram_matrix = self.construct_pdf(x, kde_data)
-        else:
-            kernel_mean = jnp.asarray(kernel_mean)
-        gradients = self.grad_x(x, kde_data, gram_matrix).mean(axis=1)
-
-        return gradients / kernel_mean[:, None]
+        return -self.grad_y(x, y)
 
     @jit
     def compute_divergence_x_grad_y(
@@ -577,7 +476,7 @@ class RBFKernel(Kernel):
         gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Apply divergence operator on gradient of RBF kernel with respect to `y`.
+        Apply divergence operator on gradient of squared exponential kernel with respect to `y`.
 
         This avoids explicit computation of the Hessian. Note that the generating set is
         not necessarily the same as `x_array`.
@@ -593,14 +492,14 @@ class RBFKernel(Kernel):
         # TODO: Test this
         x = jnp.asarray(x)
         if gram_matrix is None:
-            gram_matrix = self.compute_normalised(x, y)
+            gram_matrix = self.compute(x, y)
         if num_data_points is None:
             num_data_points = x.shape[0]
 
         return (
             gram_matrix
-            / self.bandwidth
-            * (num_data_points - cu.sq_dist_pairwise(x, y) / self.bandwidth)
+            / self.lengthscale
+            * (num_data_points - cu.sq_dist_pairwise(x, y) / self.lengthscale)
         )
 
 
@@ -609,7 +508,7 @@ class PCIMQKernel(Kernel):
     Define a pre-conditioned inverse multi-quadric (pcimq) kernel.
     """
 
-    def __init__(self, bandwidth: float = 1.0):
+    def __init__(self, lengthscale: float = 1.0):
         """
         Define the pcimq kernel to measure distances between points in some space.
 
@@ -618,11 +517,11 @@ class PCIMQKernel(Kernel):
         # Check that bandwidth is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
         # code)
-        if isinstance(bandwidth, float) and bandwidth <= 0.0:
+        if isinstance(lengthscale, float) and lengthscale <= 0.0:
             raise ValueError(
-                f"Bandwidth must be above zero. Current value {bandwidth}."
+                f"Bandwidth must be above zero. Current value {lengthscale}."
             )
-        self.bandwidth = bandwidth
+        self.lengthscale = lengthscale
 
         # Initialise parent
         super().__init__()
@@ -635,8 +534,9 @@ class PCIMQKernel(Kernel):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = (self.bandwidth,)
-        aux_data = {}
+        # children = (self.bandwidth,)
+        children = ()
+        aux_data = {"lengthscale": self.lengthscale}
         return children, aux_data
 
     @classmethod
@@ -666,92 +566,53 @@ class PCIMQKernel(Kernel):
         :param y: Second vector we consider
         :return: Distance (as determined by the kernel) between point x and y
         """
-        scaling = 2 * self.bandwidth**2
+        scaling = 2 * self.lengthscale**2
         mq_array = cu.sq_dist(x, y) / scaling
         return 1 / jnp.sqrt(1 + mq_array)
 
     @jit
-    def compute_normalised(self, x: ArrayLike, y: ArrayLike) -> Array:
-        r"""
-        Evaluate the normalised pcimq kernel pairwise.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Pairwise kernel evaluations for normalised RBF kernel
-        """
-        # TODO: PCIMQ kernel does not have a normalised equivalent in
-        #  kernel_functions.py (but RBFKernel does) - is this an oversight or is it
-        #  already normalised?
-        return self.compute_pairwise_no_grads(x, y)
-
-    def grad_x(
+    def _grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
     ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the pcimq function w.r.t. x.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :param gram_matrix: Gram matrix. Optional, if omitted, defaults to a normalised
-            Gaussian kernel
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        return -self.grad_y(x, y, gram_matrix)
+        return (
+            (x - y) / (2 * self.lengthscale**2) * self._compute_elementwise(x, y) ** 3
+        )
 
     @jit
     def grad_y(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Calculate the *element-wise* gradient of the pcimq function w.r.t. y.
+        Calculate the *element-wise* gradient of the PCIMQ w.r.t. y.
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
-        :param gram_matrix: Gram matrix. Optional, if omitted, defaults to a normalised
-            Gaussian kernel
         :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
         """
-        scaling = 2 * self.bandwidth**2
-        if gram_matrix is None:
-            gram_matrix = self.compute(x, y)
-        else:
-            gram_matrix = jnp.asarray(gram_matrix)
-        mq_array = cu.pdiff(x, y)
+        fn = vmap(
+            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )
+        return fn(x, y)
 
-        return gram_matrix[:, :, None] ** 3 * mq_array / scaling
-
-    @jit
-    def grad_log_x(
+    def grad_x(
         self,
         x: ArrayLike,
-        kde_data: ArrayLike,
-        gram_matrix: ArrayLike | None = None,
-        kernel_mean: ArrayLike | None = None,
+        y: ArrayLike,
     ) -> Array:
-        """
-        Compute the gradient of the log-PDF (score function) with respect to x.
+        r"""
+        Calculate the *element-wise* gradient of the PCIMQ w.r.t. x.
 
-        The PDF is constructed from kernel density estimation using an RBF kernel.
-
-        :param x: An :math:`n \times d` array of random variable values
-        :param kde_data: The :math:`m \times d` kernel density estimation set
-        :param gram_matrix: Gram matrix, an :math:`n \times m` array. Optional, if
-            `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to a
-            normalised Gaussian kernel
-        :param kernel_mean: Kernel mean, an :math:`n \times 1` array. Optional, if
-            `gram_matrix` or `kernel_mean` are :data:`None` or omitted, defaults to the
-            mean of a Normalised Gaussian kernel
-        :return: An :math:`n \times d` array of gradients evaluated at values of
-            `random_var_values`
+        :param x: First set of vectors as a :math:`n \times d` array
+        :param y: Second set of vectors as a :math:`m \times d` array
+        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
         """
-        # TODO: Implement & test
-        raise NotImplementedError
+        return -self.grad_y(x, y)
 
     @jit
     def compute_divergence_x_grad_y(
@@ -778,10 +639,10 @@ class PCIMQKernel(Kernel):
         # TODO: Test this
         # TODO: Should we call self.compute_normalised or self.compute for the
         #  gram_matrix?
-        scaling = 2 * self.bandwidth**2
+        scaling = 2 * self.lengthscale**2
         x = jnp.asarray(x)
         if gram_matrix is None:
-            gram_matrix = self.compute_normalised(x, y)
+            gram_matrix = self.compute(x, y)
         if num_data_points is None:
             num_data_points = x.shape[0]
         return (
@@ -880,7 +741,7 @@ class SteinKernel:
         y_size = y.shape[0]
 
         # n x m
-        kernel_gram_matrix = self.base_kernel.compute_normalised(x, y)
+        kernel_gram_matrix = self.base_kernel.compute(x, y)
 
         # n x m
         divergence = self.base_kernel.compute_divergence_x_grad_y(
@@ -888,12 +749,14 @@ class SteinKernel:
         )
 
         # n x m x d
-        grad_k_x = self.base_kernel.grad_x(x, y, kernel_gram_matrix)
+        # grad_k_x = self.base_kernel.grad_x(x, y, kernel_gram_matrix)
+        grad_k_x = self.base_kernel.grad_x(x, y)
 
         # m x n x d
-        grad_k_y = jnp.transpose(
-            self.base_kernel.grad_y(x, y, kernel_gram_matrix), (1, 0, 2)
-        )
+        # grad_k_y = jnp.transpose(
+        #     self.base_kernel.grad_y(x, y, kernel_gram_matrix), (1, 0, 2)
+        # )
+        grad_k_y = jnp.transpose(self.base_kernel.grad_y(x, y), (1, 0, 2))
 
         # n x d
         grad_log_p_x = self.score_function(x, y)
@@ -944,7 +807,7 @@ class SteinKernel:
         grad_log_p_y = jnp.atleast_2d(grad_log_p_y)
 
         # n x m
-        kernel_gram_matrix = self.base_kernel.compute_normalised(x, y)
+        kernel_gram_matrix = self.base_kernel.compute(x, y)
 
         # n x m
         divergence = self.base_kernel.compute_divergence_x_grad_y(
@@ -952,10 +815,12 @@ class SteinKernel:
         )
 
         # n x m x d
-        grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y, kernel_gram_matrix))
+        # grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y, kernel_gram_matrix))
+        grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y))
 
         # m x n x d
-        grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y, kernel_gram_matrix))
+        # grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y, kernel_gram_matrix))
+        grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y))
 
         x_ = jnp.dot(grad_log_p_x, grad_p_y)
         # n x m
