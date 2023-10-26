@@ -87,7 +87,7 @@ A high level overview of the expected style is:
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
-  per line.
+  per line starting from the left margin and including any indentation.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
