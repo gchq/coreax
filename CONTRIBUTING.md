@@ -129,6 +129,8 @@ Docstrings must:
 - Have a full stop at the end of the one-line descriptive sentence.
 - Use full stops in extended paragraphs of text.
 - Not have full stops at the end of parameter definitions.
+- If a `:param:` or similar line requires more than the max line length, use multiple lines. Each additional line should
+be indented by a further 4 spaces.
 
 Each docstring for a public object should take the following structure:
 ```
