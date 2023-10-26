@@ -26,7 +26,8 @@ from coreax.util import KernelFunction
 #
 # Refine Functions
 #
-# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
+# These functions take a coreset S as an input and refine it by replacing elements to
+# improve the MMD.
 
 
 def refine(
@@ -36,16 +37,16 @@ def refine(
     K_mean: ArrayLike,
 ) -> Array:
     r"""
-    Refine a coreset iteratively. S -> x.
+    Refine a coreset iteratively, :math:`S \rightarrow x`.
 
     The refinement procedure replaces elements with points most reducing maximum mean
-    discrepancy (MMD). The iteration is carred out over points in `x`.
+    discrepancy (MMD). The iteration is carred out over points in ``x``.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :return: Refined coreset point indices
     """
     k_pairwise = jit(
@@ -81,18 +82,18 @@ def refine_body(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Execute main loop of the refine method, S -> x.
+    Execute main loop of the refine method, :math:`S \rightarrow x`.
 
     :param i: Loop counter
     :param S: Loop updatables
     :param x: Original :math:`n \times d` dataset
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                  :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :returns: Updated loop variables `S`
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+        :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :returns: Updated loop variables ``S``
     """
     S = jnp.asarray(S)
     S = S.at[i].set(comparison(S[i], S, x, K_mean, K_diag, k_pairwise, k_vec).argmax())
@@ -111,19 +112,21 @@ def comparison(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy from point replacement. S -> x.
+    Calculate the change in maximum mean discrepancy from point replacement.
 
-    The change calculated is from replacing point `i` in `S` with any point in `x`.
+    The change calculated is from replacing point ``i`` in ``S`` with any point in
+    ``x``: :math:`S \rightarrow x`.
 
     :param i: A coreset index
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
     :return: the MMD changes for each candidate point
     """
     S = jnp.asarray(S)
@@ -156,7 +159,7 @@ def refine_rand(
     :param S: Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :param p: Proportion of original data to use as candidates
     :return: Refined coreset point indices
     """
@@ -209,11 +212,12 @@ def refine_rand_body(
     :param n_cand: Number of candidates for comparison
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :returns: Updated loop variables `S`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
+    :returns: Updated loop variables ``S``
     """
     key, S = val
     S = jnp.asarray(S)
@@ -242,18 +246,19 @@ def comparison_cand(
     r"""
     Calculate the change in maximum mean discrepancy (MMD).
 
-    The change in MMD arises from replacing `i` in `S` with `x`.
+    The change in MMD arises from replacing ``i`` in ``S`` with ``x``.
 
     :param i: A coreset index
     :param cand: Indices for randomly sampled candidate points among the original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
     :return: the MMD changes for each candidate point
     """
     S = jnp.asarray(S)
@@ -273,15 +278,16 @@ def comparison_cand(
 @jit
 def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the i^th point in S with the candidate in cand with maximum value in comps.
+    Replace the :math:`i^{th}` point in ``S``, :math:`S \rightarrow x`.
 
-    S -> x.
+    The :math:`i^{th}` point is replaced with the candidate in ``cand`` with max value
+    in ``comps``.
 
-    :param i: Index in S to replace
+    :param i: Index in ``S`` to replace
     :param S: The dataset for replacement
-    :param cand: A set of candidates for replacement
+    :param cand: Set of candidates for replacement
     :param comps: Comparison values for each candidate
-    :return: Updated S, with i^th point replaced
+    :return: Updated ``S``, with :math:`i^{th}` point replaced
     """
     S = jnp.asarray(S)
     cand = jnp.asarray(cand)
@@ -291,15 +297,19 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Leave S unchanged (compare with refine.change).
+    Leave ``S`` unchanged.
 
-    This is simply a convenience function for leaving S unchanged.  S -> x.
+    This is a convenience function for leaving ``S`` unchanged, :math:`S \rightarrow x`.
 
-    :param i: Index in S to replace. Not used
-    :param S: The dataset for replacement. Will remain unchanged
-    :param cand: A set of candidates for replacement. Not used
-    :param comps: Comparison values for each candidate. Not used
-    :return: The original dataset S, unchanged
+    .. seealso::
+
+        Compare with :func:`~coreax.refine.change`.
+
+    :param i: Index in ``S`` to replace, not used
+    :param S: The dataset for replacement, will remain unchanged
+    :param cand: A set of candidates for replacement, not used
+    :param comps: Comparison values for each candidate, not used
+    :return: The original dataset ``S``, unchanged
     """
     return jnp.asarray(S)
 
@@ -313,13 +323,13 @@ def refine_rev(
     r"""
     Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    The iteration is carried out over points in `x`, with x -> S.
+    The iteration is carried out over points in ``x``, with :math:`x \rightarrow S`.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :return: Refined coreset point indices
     """
     x = jnp.asarray(x)
@@ -357,18 +367,19 @@ def refine_rev_body(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Execute main loop of the refine method, x -> S.
+    Execute main loop of the refine method, :math:`x \rightarrow S`.
 
     :param i: Loop counter
     :param S: Loop updatables
     :param x: Original :math:`n \times d` dataset
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :returns: Updated loop variables `S`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
+    :returns: Updated loop variables ``S``
     """
     comps = comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec)
     S = lax.cond(jnp.any(comps > 0), change_rev, nochange_rev, i, S, comps)
@@ -387,19 +398,20 @@ def comparison_rev(
     k_vec: KernelFunction,
 ) -> Array:
     r"""
-    Calculate the change in maximum mean discrepancy (MMD). x -> S.
+    Calculate the change in maximum mean discrepancy (MMD), :math:`x \rightarrow S`.
 
-    The change in MMD arises from replacing a point in `S` with `x[i]`.
+    The change in MMD arises from replacing a point in ``S`` with ``x[i]``.
 
     :param i: Index for original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Kernel matrix row sum divided by n
+    :param K_mean: Kernel matrix row sum divided by :math:`n`
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
-    :param k_pairwise: Vectorised kernel function on pairs `(x,x)`:
+    :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param k_vec: Vectorised kernel function on pairs `(X,x)`:
-                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
+    :param k_vec: Vectorised kernel function on pairs ``(X,x)``:
+                  :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow`
+                  :math:`\mathbb{R}^n`
     :return: the MMD changes for each point
     """
     S = jnp.asarray(S)
@@ -419,12 +431,12 @@ def comparison_rev(
 @jit
 def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Replace the maximum comps value point in S with i. x -> S.
+    Replace the maximum comps value point in ``S`` with ``i``, :math:`x \rightarrow S`.
 
-    :param i: Value to replace into S.
+    :param i: Value to replace into ``S``
     :param S: The dataset for replacement
     :param comps: Comparison values for each candidate
-    :return: Updated S, with maximum comps point replaced
+    :return: Updated ``S``, with maximum comps point replaced
     """
     S = jnp.asarray(S)
     comps = jnp.asarray(comps)
@@ -435,13 +447,17 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 @jit
 def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
-    Leave S unchanged (compare with refine.change_rev).
+    Leave ``S`` unchanged.
 
-    This is simply a convenience function for leaving S unchanged. x -> S.
+    This is a convenience function for leaving ``S`` unchanged, :math:`x \rightarrow S`.
 
-    :param i: Value to replace into S. Not used
-    :param S: The dataset for replacement. Will remain unchanged
-    :param comps: Comparison values for each candidate. Not used
-    :return: The original dataset S, unchanged
+    .. seealso::
+
+        Compare with :func:`~coreax.refine.change_rev`.
+
+    :param i: Value to replace into ``S``, not used
+    :param S: The dataset for replacement, will remain unchanged
+    :param comps: Comparison values for each candidate, not used
+    :return: The original dataset ``S``, unchanged
     """
     return jnp.asarray(S)
