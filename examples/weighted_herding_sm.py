@@ -9,6 +9,9 @@
 # the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
+
+"""TODO: Write module docstring."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -37,7 +40,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     function. Compare results to coresets generated via uniform random sampling. Coreset
     quality is measured using maximum mean discrepancy (MMD).
 
-    :param out_path: Path to save output to, if not None. Default None.
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :param weighted: Boolean flag for whether to use weighted or unweighted herding
     :return: Coreset MMD, random sample MMD
     """
@@ -91,8 +95,10 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
         # compute the MMD between X and the coreset, unweighted version
         m = mmd_block(X, X[coreset], k, max_size=1000)
 
+    m = float(m)
+
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000)
+    rm = float(mmd_block(X, X[rsample], k, max_size=1000))
 
     # produce some scatter plots
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
@@ -107,6 +113,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     plt.axis("off")
 
     if out_path is not None:
+        if out_path is not None and not out_path.is_absolute():
+            out_path = Path(__file__).parent / out_path
         plt.savefig(out_path)
 
     plt.show()
