@@ -71,9 +71,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_se_kernel_init(self) -> None:
         r"""
-        Test the class SquaredExponentialKernel initilisation with a negative bandwidth.
+        Test the class SquaredExponentialKernel initilisation with a negative lengthscale.
         """
-        # Create the kernel with a negative bandwidth - we expect a value error to be
+        # Create the kernel with a negative lengthscale - we expect a value error to be
         # raised
         self.assertRaises(ValueError, ck.SquaredExponentialKernel, lengthscale=-1.0)
 
@@ -81,7 +81,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input floats
         .. math::
@@ -97,25 +97,25 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0.5 - 2.0)^2
                         &= 2.25
 
-        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+        If we take the lengthscale to be :math:`\pi / 2.0` we get:
             k(x, y) &= \exp(- 2.25 / \pi)
                     &= 0.48860678
 
-        If the bandwidth is instead taken to be :math:`\pi`, we get:
+        If the lengthscale is instead taken to be :math:`\pi`, we get:
             k(x, y) &= \exp(- 2.25 / (2.0\pi))
                     &= 0.6990041
         """
-        # Define data and bandwidth
+        # Define data and lengthscale
         x = 0.5
         y = 2.0
-        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
+        lengthscale = np.sqrt(np.float32(np.pi) / 2.0)
 
         # Define the expected distance - it should just be a number in this case since
         # we have floats as inputs, so treat these single data-points in space
         expected_distance = 0.48860678
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -124,14 +124,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-        # Alter the bandwidth, and check the jit decorator catches the update
+        # Alter the lengthscale, and check the jit decorator catches the update
         kernel.lengthscale = np.sqrt(np.float32(np.pi))
 
-        # Set expected output with this new bandwidth
+        # Set expected output with this new lengthscale
         expected_distance = 0.6990041
 
         # Evaluate the kernel - which computes the distance between the two vectors x
-        # and y, with the new, altered bandwidth
+        # and y, with the new, altered lengthscale
         output = kernel.compute(x, y)
 
         # Check the output matches the expected distance
@@ -141,7 +141,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input vectors
         .. math::
@@ -157,21 +157,21 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0 - 1)^2 + (1 - 2)^2 + (2 - 3)^2 + (3 - 4)^2
                         &= 4
 
-        If we take the bandwidth to be :math:`\pi / 2.0` we get:
+        If we take the lengthscale to be :math:`\pi / 2.0` we get:
             k(x, y) &= \exp(- 4 / \pi)
                     &= 0.279923327
         """
-        # Define data and bandwidth
+        # Define data and lengthscale
         x = 1.0 * np.arange(4)
         y = x + 1.0
-        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
+        lengthscale = np.sqrt(np.float32(np.pi) / 2.0)
 
         # Define the expected distance - it should just be a number in this case since
         # we have 1-dimensional arrays, so treat these as single data-points in space
         expected_distance = 0.279923327
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -184,7 +184,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations on arrays.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input vectors
         .. math::
@@ -199,7 +199,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
             ||x - y||^2 = [4, 0]
 
-        If we take the bandwidth to be :math:`\sqrt(\pi / 2.0` we get:
+        If we take the lengthscale to be :math:`\sqrt(\pi / 2.0` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
             k(x[0], y[1]) &= \exp(- 100 / \pi)
@@ -210,10 +210,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                           &= 1.0
 
         """
-        # Define data and bandwidth
+        # Define data and lengthscale
         x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
         y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
-        bandwidth = np.sqrt(np.float32(np.pi) / 2.0)
+        lengthscale = np.sqrt(np.float32(np.pi) / 2.0)
 
         # Define the expected Gram matrix
         expected_distances = np.array(
@@ -221,7 +221,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Evaluate the kernel - which computes the Gram matrix between x and y
         output = kernel.compute(x, y)
@@ -233,14 +233,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         Test the class SquaredExponentialKernel gradient computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         The gradient of this with respect to x is:
 
         ..math:
-            - \frac{(x - y)}{bandwidth^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 bandwidth^2}}
+            - \frac{(x - y)}{lengthscale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 lengthscale^2}}
         """
         # Define some data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -251,18 +251,18 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    -(x_ - y_) / bandwidth**2
-                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                    -(x_ - y_) / lengthscale**2
+                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 )
                 # true_gradients[i, j] = (
                 #     -(x_ - y_)
-                #     / bandwidth**3
-                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                #     / lengthscale**3
+                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 #     / (np.sqrt(2 * np.pi))
                 # )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -276,14 +276,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         Test the class SquaredExponentialKernel gradient computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         The gradient of this with respect to y is:
 
         ..math:
-            \frac{(x - y)}{bandwidth^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 bandwidth^2}}
+            \frac{(x - y)}{lengthscale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 lengthscale^2}}
         """
         # Define some data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -294,18 +294,18 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    (x_ - y_) / bandwidth**2
-                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                    (x_ - y_) / lengthscale**2
+                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 )
                 # true_gradients[i, j] = (
                 #     (x_ - y_)
-                #     / bandwidth**3
-                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * bandwidth**2))
+                #     / lengthscale**3
+                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 #     / (np.sqrt(2 * np.pi))
                 # )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Evaluate the gradient
         output = kernel.grad_y(x, y)
@@ -320,7 +320,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     #     Test the class SquaredExponentialKernel score-function gradient computations.
     #     """
     #     # Define parameters for data
-    #     bandwidth = 1 / np.sqrt(2)
+    #     lengthscale = 1 / np.sqrt(2)
     #     num_points = 10
     #     dimension = 2
     #     x = np.random.random((num_points, dimension))
@@ -332,9 +332,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     #     kde = lambda input_var: (
     #         np.exp(
     #             -np.linalg.norm(input_var - kde_points, axis=1)[:, None] ** 2
-    #             / (2 * bandwidth**2)
+    #             / (2 * lengthscale**2)
     #         )
-    #         / (np.sqrt(2 * np.pi) * bandwidth)
+    #         / (np.sqrt(2 * np.pi) * lengthscale)
     #     ).mean(axis=0)
 
     #     # Define a matrix to store gradients in - this is a jacobian because it's the
@@ -345,17 +345,17 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     #     for i, x_ in enumerate(x):
     #         jacobian[i] = (
     #             -(x_ - kde_points)
-    #             / bandwidth**3
+    #             / lengthscale**3
     #             * np.exp(
     #                 -np.linalg.norm(x_ - kde_points, axis=1)[:, None] ** 2
-    #                 / (2 * bandwidth**2)
+    #                 / (2 * lengthscale**2)
     #             )
     #             / (np.sqrt(2 * np.pi))
     #         ).mean(axis=0) / (kde(x_)[:, None])
 
     #     # Compute the gradient of the score function using the class
-    #     kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
-    #     output = kernel.grad_log_x(x, kde_points, bandwidth)
+    #     kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
+    #     output = kernel.grad_log_x(x, kde_points, lengthscale)
 
     #     # Check output matches expected
     #     np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
@@ -368,7 +368,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         where the values correspond to the distance, as judged by the kernel, between
         each point in the first array and each point in the second array.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * bandwidth)`.
+        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         If we have two input arrays:
 
         ..math:
@@ -380,12 +380,12 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         kernel distance between 0.0 and 3.0 and so on.
         """
         # Define parameters for data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
         y = np.array([10.0, 3.0, 0.0]).reshape(-1, 1)
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 3])
@@ -408,7 +408,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         points outside this subset should not alter the existing kernel row sum values.
         """
         # Define parameters for data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
         max_size = 3
 
@@ -416,7 +416,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         kernel_row_sum = jnp.zeros(len(x))
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Define expected output for pairwise distances - in this case we are looking
         # from the start index (0) to start index + max_size (0 + 3) in both axis (rows
@@ -444,11 +444,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         distances, giving a single value for each data-point.
         """
         # Define parameters for data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 5])
@@ -471,11 +471,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         these distances, giving a single value for each data-point.
         """
         # Define parameters for data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(lengthscale=bandwidth)
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
 
         # Define expected output for pairwise distances, then take the mean of them
         expected_output = np.zeros([5, 5])
@@ -550,13 +550,29 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         pass
 
-    def test_compute_divergence_x_grad_y(self) -> None:
+    def test_se_div_x_grad_y(self) -> None:
         """
-        Test the function compute_divergence_x_grad_y.
+        Test the divergence wrt x of kernel Jacobian wrt y
+        """
+        # Setup data
+        lengthscale = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
 
-        # TODO: What is a sensible test-case for this? Functionality may not work.
-        """
-        pass
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                dp = np.dot(x_ - y_, x_ - y_)
+                expected_output[i, j] = 2*np.exp(-dp) * (dimension - 2*dp)
+        # Compute output using Kernel class
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
+        output = kernel.compute_divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
 
 class TestPCIMQKernel(unittest.TestCase):
@@ -566,9 +582,9 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_pcimq_kernel_init(self) -> None:
         r"""
-        Test the class PCIMQKernel initilisation with a negative bandwidth.
+        Test the class PCIMQKernel initilisation with a negative lengthscale.
         """
-        # Create the kernel with a negative bandwidth - we expect a value error to be
+        # Create the kernel with a negative lengthscale - we expect a value error to be
         # raised
         self.assertRaises(ValueError, ck.PCIMQKernel, lengthscale=-1.0)
 
@@ -605,7 +621,7 @@ class TestPCIMQKernel(unittest.TestCase):
         Test the class PCIMQ gradient computations with respect to x.
         """
         # Setup data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -620,7 +636,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(lengthscale=bandwidth)
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale)
         output = kernel.grad_x(x, y)
 
         # Check output matches expected
@@ -631,7 +647,7 @@ class TestPCIMQKernel(unittest.TestCase):
         Test the class PCIMQ gradient computations with respect to y.
         """
         # Setup data
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -646,11 +662,37 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(lengthscale=bandwidth)
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale)
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_pcimq_div_x_grad_y(self) -> None:
+        """
+        Test the divergence wrt x of kernel Jacobian wrt y
+        """
+        # Setup data
+        lengthscale = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                dp = np.dot(x_ - y_, x_ - y_)
+                den = (1 + dp)**(3/2)
+                expected_output[i, j] = dimension/den - 3*dp/den**(5/3)
+        # Compute output using Kernel class
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale)
+        output = kernel.compute_divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
 
 
 class TestSteinKernel(unittest.TestCase):
@@ -669,9 +711,9 @@ class TestSteinKernel(unittest.TestCase):
         num_points_x = 10
         num_points_y = 5
         dimension = 2
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
 
-        def score_function(x, y):
+        def score_function(x):
             return -x
 
         # Setup data
@@ -683,7 +725,7 @@ class TestSteinKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(lengthscale=bandwidth),
+            base_kernel=ck.PCIMQKernel(lengthscale=lengthscale),
             score_function=score_function,
         )
         output = kernel.compute(x, y)
@@ -699,10 +741,10 @@ class TestSteinKernel(unittest.TestCase):
         num_points_x = 10
         num_points_y = 5
         dimension = 2
-        bandwidth = 1 / np.sqrt(2)
+        lengthscale = 1 / np.sqrt(2)
         beta = 0.5
 
-        def score_function(x, y):
+        def score_function(x):
             return -x
 
         def k_x_y(x, y):
@@ -739,12 +781,12 @@ class TestSteinKernel(unittest.TestCase):
                 * beta
                 * (
                     dimension
-                    + np.dot(score_function(x, y) - score_function(y, x), x - y)
+                    + np.dot(score_function(x) - score_function(y), x - y)
                 )
                 / (1 + norm_sq) ** 1.5
             )
             r = (
-                np.dot(score_function(x, y), score_function(y, x))
+                np.dot(score_function(x), score_function(y))
                 / (1 + norm_sq) ** 0.5
             )
             return l + m + r
@@ -755,7 +797,7 @@ class TestSteinKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(lengthscale=bandwidth),
+            base_kernel=ck.PCIMQKernel(lengthscale=lengthscale),
             score_function=score_function,
         )
 
@@ -768,9 +810,7 @@ class TestSteinKernel(unittest.TestCase):
                 expected_output[i, j] = k_x_y(x_, y_)
 
                 # Compute via element method
-                output[i, j] = kernel.compute_element(
-                    x_, y_, score_function(x_, y_), score_function(y_, x_), dimension
-                )
+                output[i, j] = kernel.compute(x_, y_)
 
         # Check output sizes match the expected
         np.testing.assert_array_almost_equal(output, expected_output)

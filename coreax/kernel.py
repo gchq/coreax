@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, jit, random, tree_util, vmap, grad
+from jax import Array, jit, random, tree_util, vmap, grad, jacrev
 from jax.typing import ArrayLike
 
 import coreax.approximation as ca
@@ -96,7 +96,8 @@ class Kernel(ABC):
         Compute the gradient of the kernel with respect to x.
         """
         fn = vmap(
-            vmap(grad(self._compute_elementwise, 0), in_axes=(0, None), out_axes=0),
+            # vmap(grad(self._compute_elementwise, 0), in_axes=(0, None), out_axes=0),
+            vmap(self._grad_x_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
         )
@@ -109,20 +110,50 @@ class Kernel(ABC):
         """
         fn = jit(
             vmap(
-                vmap(grad(self._compute_elementwise, 1), in_axes=(0, None), out_axes=0),
+                # vmap(grad(self._compute_elementwise, 1), in_axes=(0, None), out_axes=0),
+                vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
                 in_axes=(None, 0),
                 out_axes=1,
             )
         )
         return fn(x, y)
 
-    @abstractmethod
+    @jit
+    def _grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        return grad(self._compute_elementwise, 1)(x, y)
+
+    @jit
+    def _grad_x_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        return grad(self._compute_elementwise, 0)(x, y)
+
+    @jit
+    def _compute_divergence_x_grad_y_elementise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        """Elementwise div x grad y operator.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Trace of the Laplace-style operator; a real number.
+        """
+        pseudo_hessian = jacrev(self._grad_y_elementwise, 0)(x, y)
+        return pseudo_hessian.trace()
+
+    @jit
     def compute_divergence_x_grad_y(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        num_data_points: int | None = None,
-        gram_matrix: ArrayLike | None = None,
     ) -> Array:
         r"""
         Apply divergence operator on gradient of kernel with respect to `y`.
@@ -132,11 +163,18 @@ class Kernel(ABC):
 
         :param x: First set of vectors as a :math:`n \times d` array
         :param y: Second set of vectors as a :math:`m \times d` array
-        :param num_data_points: Number of data points in the generating set. Optional,
-            if :data:`None` or omitted, defaults to number of vectors in `x`
-        :param gram_matrix: Gram matrix.
         :return: Divergence operator, an :math:`n \times m` matrix
         """
+        fn = vmap(
+            vmap(
+                self._compute_divergence_x_grad_y_elementise,
+                in_axes=(0, None),
+                out_axes=0,
+            ),
+            in_axes=(None, 0),
+            out_axes=1,
+        )
+        return fn(x, y)
 
     @staticmethod
     def update_kernel_matrix_row_sum(
@@ -426,6 +464,14 @@ class SquaredExponentialKernel(Kernel):
         return jnp.exp(-cu.sq_dist(x, y) / (2 * self.lengthscale**2))
 
     @jit
+    def _grad_x_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        return -self._grad_y_elementwise(x, y)
+
+    @jit
     def _grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -434,73 +480,15 @@ class SquaredExponentialKernel(Kernel):
         return (x - y) / self.lengthscale**2 * self._compute_elementwise(x, y)
 
     @jit
-    def grad_y(
+    def _compute_divergence_x_grad_y_elementise(
         self,
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the squared exponential w.r.t. y.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        fn = vmap(
-            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
-
-    def grad_x(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the squared exponential w.r.t. x.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        return -self.grad_y(x, y)
-
-    @jit
-    def compute_divergence_x_grad_y(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-        num_data_points: int | None = None,
-        gram_matrix: ArrayLike | None = None,
-    ) -> Array:
-        r"""
-        Apply divergence operator on gradient of squared exponential kernel with respect to `y`.
-
-        This avoids explicit computation of the Hessian. Note that the generating set is
-        not necessarily the same as `x_array`.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :param num_data_points: Number of data points in the generating set. Optional,
-            if :data:`None` or omitted, defaults to number of vectors in `x`
-        :param gram_matrix: Gram matrix. Optional, if :data:`None` or omitted, defaults
-            to a normalised Gaussian kernel
-        :return: Divergence operator, an :math:`n \times m` matrix
-        """
-        # TODO: Test this
-        x = jnp.asarray(x)
-        if gram_matrix is None:
-            gram_matrix = self.compute(x, y)
-        if num_data_points is None:
-            num_data_points = x.shape[0]
-
-        return (
-            gram_matrix
-            / self.lengthscale
-            * (num_data_points - cu.sq_dist_pairwise(x, y) / self.lengthscale)
-        )
+        k = self._compute_elementwise(x, y)
+        scale = 1 / self.lengthscale**2
+        d = len(x)
+        return scale * k * (d - scale * cu.sq_dist(x, y))
 
 
 class PCIMQKernel(Kernel):
@@ -534,7 +522,6 @@ class PCIMQKernel(Kernel):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        # children = (self.bandwidth,)
         children = ()
         aux_data = {"lengthscale": self.lengthscale}
         return children, aux_data
@@ -571,6 +558,14 @@ class PCIMQKernel(Kernel):
         return 1 / jnp.sqrt(1 + mq_array)
 
     @jit
+    def _grad_x_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        return -self._grad_y_elementwise(x, y)
+
+    @jit
     def _grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -581,89 +576,18 @@ class PCIMQKernel(Kernel):
         )
 
     @jit
-    def grad_y(
+    def _compute_divergence_x_grad_y_elementise(
         self,
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the PCIMQ w.r.t. y.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        fn = vmap(
-            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
-
-    def grad_x(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Calculate the *element-wise* gradient of the PCIMQ w.r.t. x.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Gradients at each `x X y` point, an :math:`m \times n \times d` array
-        """
-        return -self.grad_y(x, y)
-
-    @jit
-    def compute_divergence_x_grad_y(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-        num_data_points: int | None = None,
-        gram_matrix: ArrayLike | None = None,
-    ) -> Array:
-        r"""
-        Apply divergence operator on gradient of pcimq kernel with respect to `y`.
-
-        This avoids explicit computation of the Hessian. Note that the generating set is
-        not necessarily the same as `x_array`.
-
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :param num_data_points: Number of data points in the generating set. Optional,
-            if :data:`None` or omitted, defaults to number of vectors in `x`
-        :param gram_matrix: Gram matrix. Optional, if :data:`None` or omitted, defaults
-            to a normalised Gaussian kernel
-        :return: Divergence operator, an :math:`n \times m` matrix
-        """
-        # TODO: Test this
-        # TODO: Should we call self.compute_normalised or self.compute for the
-        #  gram_matrix?
-        scaling = 2 * self.lengthscale**2
-        x = jnp.asarray(x)
-        if gram_matrix is None:
-            gram_matrix = self.compute(x, y)
-        if num_data_points is None:
-            num_data_points = x.shape[0]
-        return (
-            num_data_points / scaling * gram_matrix**3
-            - 3 * cu.sq_dist_pairwise(x, y) / scaling**2 * gram_matrix**5
-        )
+        k = self._compute_elementwise(x, y)
+        scale = 2 * self.lengthscale**2
+        d = len(x)
+        return d * k**3 - 3 / scale * k**5 * cu.sq_dist(x, y)
 
 
-class SteinKernel:
-    """
-    Define a Stein kernel.
-
-    TODO: We'll need kernel matrix row sum methods here, but not all of the other kernel
-        methods. We could either make this a child class of Kernel and just raise a
-        NotImplimentedError for the irrelevant parts, or we could copy/paste and adjust
-        the kernel row sum parts as needed.
-
-    TODO: Note we might need to edit how the pairwise vmapped functions work in this
-        class when using the kernel matrix row sum parts.
-    """
-
+class SteinKernel(Kernel):
     def __init__(
         self,
         base_kernel: Kernel,
@@ -687,14 +611,17 @@ class SteinKernel:
             the score function (or an approximation to it).
         """
         self.base_kernel = base_kernel
-        if score_function is None:
-            # If no score function has been provided, then we use the base-kernels
-            # grad_log_x method
-            self.score_function = self.base_kernel.grad_log_x
-        else:
-            # If an alternative score function is passed (e.g. a pre-determined
-            # analytical function, or a neural network callable) we assign this
-            self.score_function = score_function
+        # if score_function is None:
+        #     # If no score function has been provided, then we use the base-kernels
+        #     # grad_log_x method
+        #     self.score_function = self.base_kernel.grad_log_x
+        # else:
+        # If an alternative score function is passed (e.g. a pre-determined
+        # analytical function, or a neural network callable) we assign this
+        self.score_function = score_function
+
+        # Initialise parent
+        super().__init__()
 
     def _tree_flatten(self):
         """
@@ -722,114 +649,33 @@ class SteinKernel:
         return cls(*children, **aux_data)
 
     @jit
-    def compute(
+    def _compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
         r"""
-        Compute a kernel from a base kernel with the canonical Stein operator.
+        Evaluate the kernel on input vectors x and y.
 
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`n \times d` array
-        :return: Gram matrix, an :math:`n \times m` array
+        We assume x and y are two vectors of the same length. We compute the distance
+        between these two vectors, as determined by the selected kernel.
+
+        :param x: First vector we consider
+        :param y: Second vector we consider
+        :return: Distance (as determined by the kernel) between point x and y
         """
-        # Format data
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        x_size = x.shape[0]
-        y_size = y.shape[0]
-
-        # n x m
-        kernel_gram_matrix = self.base_kernel.compute(x, y)
-
-        # n x m
-        divergence = self.base_kernel.compute_divergence_x_grad_y(
-            x, y, x_size, kernel_gram_matrix
+        k = self.base_kernel._compute_elementwise(x, y)
+        div = self.base_kernel._compute_divergence_x_grad_y_elementise(x, y)
+        gkx = self.base_kernel._grad_x_elementwise(x, y)
+        gky = self.base_kernel._grad_y_elementwise(x, y)
+        score_x = self.score_function(x)
+        score_y = self.score_function(y)
+        return (
+            div
+            + jnp.dot(gkx, score_y)
+            + jnp.dot(gky, score_x)
+            + k * jnp.dot(score_x, score_y)
         )
-
-        # n x m x d
-        # grad_k_x = self.base_kernel.grad_x(x, y, kernel_gram_matrix)
-        grad_k_x = self.base_kernel.grad_x(x, y)
-
-        # m x n x d
-        # grad_k_y = jnp.transpose(
-        #     self.base_kernel.grad_y(x, y, kernel_gram_matrix), (1, 0, 2)
-        # )
-        grad_k_y = jnp.transpose(self.base_kernel.grad_y(x, y), (1, 0, 2))
-
-        # n x d
-        grad_log_p_x = self.score_function(x, y)
-
-        # m x d
-        grad_log_p_y = self.score_function(y, x)
-
-        # m x n x d
-        tiled_grad_log_x = jnp.tile(grad_log_p_x, (y_size, 1, 1))
-        # n x m x d
-        tiled_grad_log_y = jnp.tile(grad_log_p_y, (x_size, 1, 1))
-        # m x n
-        x = jnp.einsum("ijk,ijk -> ij", tiled_grad_log_x, grad_k_y)
-        # n x m
-        y = jnp.einsum("ijk,ijk -> ij", tiled_grad_log_y, grad_k_x)
-        # n x m
-        z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * kernel_gram_matrix
-        return divergence + x.T + y + z
-
-    @jit
-    def compute_element(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-        grad_log_p_x: ArrayLike,
-        grad_log_p_y: ArrayLike,
-        dimension: int,
-    ) -> Array:
-        r"""
-        Evaluate the kernel element at `(x,y)`.
-
-        This element is induced by the canonical Stein operator on a base kernel. The
-        log-PDF can be arbitrary as only gradients are supplied.
-
-        :param x: First vector as a :math:`1 \times d` array
-        :param y: Second vector as a :math:`1 \times d` array
-        :param grad_log_p_x: Gradient of log-PDF evaluated at `x`, a :math:`1 \times d`
-            array
-        :param grad_log_p_y: Gradient of log-PDF evaluated at `y`, a :math:`1 \times d`
-            array
-        :param dimension: Dimension of the input data.
-        :return: Kernel evaluation at `(x,y)`, 0-dimensional array
-        """
-        # Format data
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        grad_log_p_x = jnp.atleast_2d(grad_log_p_x)
-        grad_log_p_y = jnp.atleast_2d(grad_log_p_y)
-
-        # n x m
-        kernel_gram_matrix = self.base_kernel.compute(x, y)
-
-        # n x m
-        divergence = self.base_kernel.compute_divergence_x_grad_y(
-            x, y, dimension, kernel_gram_matrix
-        )
-
-        # n x m x d
-        # grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y, kernel_gram_matrix))
-        grad_p_x = jnp.squeeze(self.base_kernel.grad_x(x, y))
-
-        # m x n x d
-        # grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y, kernel_gram_matrix))
-        grad_p_y = jnp.squeeze(self.base_kernel.grad_y(x, y))
-
-        x_ = jnp.dot(grad_log_p_x, grad_p_y)
-        # n x m
-        y_ = jnp.dot(grad_log_p_y, grad_p_x)
-        # n x m
-        z = jnp.dot(grad_log_p_x, grad_log_p_y.T) * kernel_gram_matrix
-
-        kernel = divergence + x_.T + y_ + z
-        return kernel[0, 0]
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
