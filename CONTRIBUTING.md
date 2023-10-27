@@ -87,7 +87,7 @@ A high level overview of the expected style is:
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
-  per line.
+  per line starting from the left margin and including any indentation.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
@@ -129,6 +129,11 @@ Docstrings must:
 - Have a full stop at the end of the one-line descriptive sentence.
 - Use full stops in extended paragraphs of text.
 - Not have full stops at the end of parameter definitions.
+- If a `:param:` or similar line requires more than the max line length, use multiple lines. Each additional line should
+  be indented by a further 4 spaces.
+- Class `__init__` methods should not have docstrings. All constructor parameters should be listed at the end of the class
+  docstring. `__init__` docstrings will not be rendered by Sphinx. Any developer comments should be contained in a regular
+  comment.
 
 Each docstring for a public object should take the following structure:
 ```
