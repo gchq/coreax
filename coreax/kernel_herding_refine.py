@@ -41,7 +41,7 @@ def kernel_herding_refine_block(
     K_mean: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Execute kernel herding refine algorithm using `Jax`.
+    Execute kernel herding refine algorithm using :mod:`jax`.
 
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
@@ -73,7 +73,7 @@ def kernel_herding_refine_rand_block(
     K_mean: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Execute kernel herding random refine algorithm using `Jax`.
+    Execute kernel herding random refine algorithm using :mod:`jax`.
 
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calcualte
@@ -81,7 +81,7 @@ def kernel_herding_refine_rand_block(
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param p: Proportion of original data to use as candidates
     :param max_size: Size of matrix blocks to process
-    :param K_mean: Row sum of kernel matrix divided by `n`, an :math:`1 \times n` array
+    :param K_mean: Row sum of kernel matrix divided by `n`, a :math:`1 \times n` array
     :return: Coreset point indices.
     """
     k_pairwise = jit(
@@ -105,7 +105,7 @@ def kernel_herding_refine_rev_block(
     K_mean: ArrayLike | None = None,
 ) -> Array:
     r"""
-    Execute kernel herding refine algorithm using `Jax`.
+    Execute kernel herding refine algorithm using :mod:`jax`.
 
     This calls the greedy refine method, as opposed to the random refine method.
 
@@ -114,7 +114,7 @@ def kernel_herding_refine_rev_block(
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
-    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+    :param K_mean: Row sum of kernel matrix divided by `n`, a :math:`1 \times n` array
     :return: Coreset point indices
     """
     k_pairwise = jit(

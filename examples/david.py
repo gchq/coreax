@@ -11,7 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+
+"""TODO: Write module docstring."""
+
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from pathlib import Path
 
 import cv2
@@ -31,10 +37,8 @@ from coreax.util import solve_qp
 
 
 def main(
-    in_path: Path = (
-        Path(os.path.dirname(__file__)) / Path("../examples/data/david_orig.png")
-    ),
-    out_path: Path = None,
+    in_path: Path = Path("../examples/data/david_orig.png"),
+    out_path: Path | None = None,
 ) -> tuple[float, float]:
     """
     Run the 'david' example for image sampling.
@@ -44,10 +48,17 @@ def main(
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param in_path: Path to input image
-    :param out_path: Path to save output to, if not None. Default None.
+    :param in_path: Path to input image, assumed relative to this module file unless an
+        absolute path is given
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
+    # Convert to absolute paths
+    if not in_path.is_absolute():
+        in_path = Path(__file__).parent / in_path
+    if out_path is not None and not out_path.is_absolute():
+        out_path = Path(__file__).parent / out_path
 
     # path to original image
     orig = cv2.imread(str(in_path))
@@ -154,7 +165,7 @@ def main(
 
     plt.show()
 
-    return m, rm
+    return float(m), float(rm)
 
 
 if __name__ == "__main__":

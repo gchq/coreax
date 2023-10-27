@@ -1,7 +1,7 @@
 default_install_hook_types: [pre-commit, pre-merge-commit]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
@@ -50,13 +50,14 @@ repos:
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
+        exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       # Place isort options in pyproject.toml
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.9.1
+    rev: 23.10.0
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
@@ -71,4 +72,5 @@ repos:
       # Check PEP-257 and other docstring guidance
       - id: pydocstyle
         additional_dependencies: [ "tomli" ]
-        exclude: examples|tests|conf.py
+        exclude: tests|conf.py
+        

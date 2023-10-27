@@ -53,6 +53,11 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
 Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
 
+### Pull request commenting process
+- Use a comment thread for each required change.
+- Reviewer closes the thread once the comment has been resolved.
+- Only the reviewer may mark a thread they opened as resolved.
+
 ### Commit messages
 
 Follow the [conventional commits guidelines][conventional_commits] to *make reviews easier* and to make the git logs more valuable.
@@ -105,6 +110,14 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
+### Abstract Functions
+Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
+
+### Exceptions and Error Messages
+Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
+
+Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
+
 ### Docstrings
 
 Docstrings must:
@@ -112,6 +125,10 @@ Docstrings must:
 - Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
 - Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
+- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Have a full stop at the end of the one-line descriptive sentence.
+- Use full stops in extended paragraphs of text.
+- Not have full stops at the end of parameter definitions.
 
 Each docstring for a public object should take the following structure:
 ```
@@ -127,6 +144,21 @@ As many paragraphs as is required to document the object.
 """
 ```
 If the function does not return anything, the return line above can be omitted.
+
+### Comments
+
+Comments must:
+- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Not end in a full stop for single-line comments in code.
+- End with a full stop for multi-line comments.
+
+### Maths Overflow
+
+Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
+
+### Thousands Separators
+
+For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
 
 ### Documentation and references
 The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.

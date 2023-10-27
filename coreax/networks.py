@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable
+"""TODO: Create top-level docstring."""
+
+from collections.abc import Callable
 
 from flax import linen as nn
 from flax.linen import Module
@@ -23,9 +25,7 @@ from jax.typing import ArrayLike
 
 
 class ScoreNetwork(nn.Module):
-    """
-    A feed-forward neural network for use in sliced score matching.
-    """
+    """A feed-forward neural network for use in sliced score matching."""
 
     hidden_dim: int
     output_dim: int
@@ -33,7 +33,7 @@ class ScoreNetwork(nn.Module):
     @nn.compact
     def __call__(self, x: ArrayLike) -> ArrayLike:
         r"""
-        Forward pass through a three-layer network with softplus activations
+        Forward pass through a three-layer network with softplus activations.
 
         :param x: Batch input data :math:`b \times m \times n`
         :return: Network output on batch :math:`b \times` self.output_dim

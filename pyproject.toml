@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coreax"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Jax coreset algorithms."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -20,8 +20,7 @@ classifiers = [
 ]
 license = {file = "LICENSE"}
 authors = [
-    # TODO: Populate author data when ready to publish
-    {name = "GCHQ", email = "todo@todo.com"},
+    {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
     "flax",
@@ -33,14 +32,27 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Compile documentation
+doc = [
+    "furo",
+    "myst-parser",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinxcontrib-bibtex",
+]
+# Run unit tests
+test = [
+    "pytest-cov",
+]
+# All tools for a developer
 dev = [
+    "coreax[doc, test]",
     "imageio",
     "matplotlib",
     "numpy",
     "opencv-python",
     "pre-commit",
     "pyqt5",
-    "pytest",
     "scipy",
 ]
 
@@ -54,11 +66,11 @@ profile = "black"
 [tool.setuptools]
 packages = ["coreax"]
 
+[tool.setuptools.dynamic]
+version = {attr = "coreax.__version__"}
+
 [tool.coverage.run]
-branch = true
-source = ["coreax"]
-command_line = "-m unittest discover -s tests/unit"
-omit = ["*/__init__.py", "*/__main__.py", "tests/integration/*"]
+omit = ["*/__init__.py", "*/__main__.py", "tests/*"]
 
 [tool.coverage.report]
 sort = "Cover"
