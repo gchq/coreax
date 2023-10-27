@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, jit, random, tree_util, vmap, grad, jacrev
+from jax import Array, grad, jacrev, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation as ca
@@ -62,11 +62,12 @@ class Kernel(ABC):
             * floating numbers (so a single data-point in 1-dimension)
             * zero-dimensional arrays (so a single data-point in 1-dimension)
             * a vector (a single-point in multiple dimensions)
-            * matrix (multiple points in multiple dimensions).
+            * array (multiple vectors).
 
-        :param x: An :math:`n \times d` dataset or a single value (point)
-        :param y: An :math:`m \times d` dataset or a single value (point)
-        :return: Distances (as determined by the kernel) between points in x and y
+        :param x: An :math:`n \times d` dataset (array) or a single value (point)
+        :param y: An :math:`m \times d` dataset (array) or a single value (point)
+        :return: Kernel evaluations between points in x and y. If x = y, then
+            this is the Gram matrix corresponding to the RKHS' inner product.
         """
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
@@ -80,23 +81,32 @@ class Kernel(ABC):
     @abstractmethod
     def _compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
-        Evaluate the kernel on input vectors x and y, not-vectorised.
+        Evaluate the kernel on individual input vectors x and y, not-vectorised.
 
-        Vectorisation only becomes relevant in terms of computational speed when data
-        is in 2 or more dimensions.
+        Vectorisation only becomes relevant in terms of computational speed when we
+        have multiple x or y
 
-        :param x: First vector we consider
-        :param y: Second vector we consider
-        :return: Distance (as determined by the kernel) between point x and y
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: kernel evaluated at (x, y).
         """
 
     @jit
     def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
-        Compute the gradient of the kernel with respect to x.
+        r"""
+        Gradient (Jacobian) of the kernel function w.r.t. x.
+
+        The function is vectorised, so x or y can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * array (multiple vectors).
+
+        :param x: An :math:`n \times d` dataset (array) or a single value (point)
+        :param y: An :math:`m \times d` dataset (array) or a single value (point)
+        :return: An :math:`n \times m \times d` array of pairwise Jacobians.
         """
         fn = vmap(
-            # vmap(grad(self._compute_elementwise, 0), in_axes=(0, None), out_axes=0),
             vmap(self._grad_x_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
@@ -105,12 +115,21 @@ class Kernel(ABC):
 
     @jit
     def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
-        Compute the gradient of the kernel with respect to y.
+        r"""
+        Gradient (Jacobian) of the kernel function w.r.t. y.
+
+        The function is vectorised, so x or y can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * array (multiple vectors).
+
+        :param x: An :math:`n \times d` dataset (array) or a single value (point)
+        :param y: An :math:`m \times d` dataset (array) or a single value (point)
+        :return: An :math:`m \times n \times d` array of pairwise Jacobians.
         """
         fn = jit(
             vmap(
-                # vmap(grad(self._compute_elementwise, 1), in_axes=(0, None), out_axes=0),
                 vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
                 in_axes=(None, 0),
                 out_axes=1,
@@ -124,6 +143,18 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the kernel function w.r.t. y. Autodiff
+        version.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_y.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return grad(self._compute_elementwise, 1)(x, y)
 
     @jit
@@ -132,6 +163,18 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the kernel function w.r.t. x. Autodiff
+        version.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_x.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return grad(self._compute_elementwise, 0)(x, y)
 
     @jit
@@ -140,7 +183,15 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        """Elementwise div x grad y operator.
+        r"""
+        Elementwise divergence w.r.t. x of Jacobian w.r.t. y. Autodiff version.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors x and y. A vectorised version for arrays is computed in
+        compute_divergence_x_grad_y.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
 
         :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`.
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
@@ -156,14 +207,17 @@ class Kernel(ABC):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Apply divergence operator on gradient of kernel with respect to `y`.
+        Divergence operator w.r.t. x of Jacobian w.r.t. y.
 
-        This avoids explicit computation of the Hessian. Note that the generating set is
-        not necessarily the same as `x`.
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        This function is vectorised, so it accepts vectors or arrays.
 
-        :param x: First set of vectors as a :math:`n \times d` array
-        :param y: Second set of vectors as a :math:`m \times d` array
-        :return: Divergence operator, an :math:`n \times m` matrix
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Array of Laplace-style operator traces :math:`n \times m` array.
         """
         fn = vmap(
             vmap(
@@ -184,10 +238,10 @@ class Kernel(ABC):
         j: int,
         kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
         grads: ArrayLike | None = None,
-        nu: float | None = None,
+        lengthscale: float | None = None,
         max_size: int = 10_000,
     ) -> Array:
-        """
+        r"""
         Update the row sum of the kernel matrix with a single block of values.
 
         The row sum of the kernel matrix may involve a large number of pairwise
@@ -197,20 +251,20 @@ class Kernel(ABC):
         update the row sum. Symmetry of the kernel matrix is exploited to reduced
         repeated calculation.
 
-        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and `nu`
-        are `None`. Else, `k_pairwise` should be of the form
-        :math:`k(x,y, grads, grads, n, nu)`.
+        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and
+        `lengthscale` are `None`. Else, `k_pairwise` should be of the form :math:`k(x,y,
+        grads, grads, n, lengthscale)`.
 
         :param x: Data matrix, :math:`n \times d`
-        :param kernel_row_sum: Full data structure for Gram matrix row sum,
-            :math:`1 \times n`
+        :param kernel_row_sum: Full data structure for Gram matrix row sum, :math:`1
+            \times n`
         :param i: Kernel matrix block start
         :param j: Kernel matrix block end
         :param max_size: Size of matrix block to process
         :param kernel_pairwise: Pairwise kernel evaluation function
-        :param grads: Array of gradients, if applicable, :math:`n \times d`;
-            Optional, defaults to `None`
-        :param nu: Base kernel bandwidth. Optional, defaults to `None`
+        :param grads: Array of gradients, if applicable, :math:`n \times d`; Optional,
+            defaults to `None`
+        :param lengthscale: Base kernel lengthscale. Optional, defaults to `None`
         :return: Gram matrix row sum, with elements :math:`i: i + max_size` and
             :math:`j: j + max_size` populated
         """
@@ -232,7 +286,7 @@ class Kernel(ABC):
                 grads[i : i + max_size],
                 grads[j : j + max_size],
                 num_datapoints,
-                nu,
+                lengthscale,
             )
 
         # Assign the kernel row sum to the relevant part of this full matrix
@@ -252,31 +306,30 @@ class Kernel(ABC):
         x: ArrayLike,
         max_size: int = 10_000,
         grads: ArrayLike | None = None,
-        nu: ArrayLike | None = None,
+        lengthscale: ArrayLike | None = None,
     ) -> Array:
-        """
+        r"""
         Compute the row sum of the kernel matrix.
 
         The row sum of the kernel matrix is the sum of distances between a given point
         and all possible pairs of points that contain this given point. The row sum is
         calculated block-wise to limit memory overhead.
 
-        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and `nu`
-        are `None`. Else, `k_pairwise` should be of the form
-        :math:`k(x,y, grads, grads, n, nu)`.
+        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and
+        `lengthscale` are `None`. Else, `k_pairwise` should be of the form :math:`k(x,y,
+        grads, grads, n, lengthscale)`.
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d`
-                      Optional, defaults to `None`
-        :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`
+        :param grads: Array of gradients, if applicable, :math:`n \times d` Optional,
+                      defaults to `None`
+        :param lengthscale: Base kernel lengthscale, if applicable, :math:`n \times d`
                    Optional, defaults to `None`
         :return: Kernel matrix row sum
         """
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
         if grads is None:
-            # kernel_pairwise = self.compute_pairwise_no_grads
             kernel_pairwise = jit(
                 vmap(
                     vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
@@ -285,7 +338,6 @@ class Kernel(ABC):
                 )
             )
         else:
-            # kernel_pairwise = self.compute_pairwise_with_grads
             kernel_pairwise = jit(
                 vmap(
                     vmap(self._compute_elementwise, (None, 0, None, 0, None, None), 0),
@@ -302,7 +354,14 @@ class Kernel(ABC):
         for i in range(0, num_datapoints, max_size):
             for j in range(i, num_datapoints, max_size):
                 kernel_row_sum = self.update_kernel_matrix_row_sum(
-                    x, kernel_row_sum, i, j, kernel_pairwise, grads, nu, max_size
+                    x,
+                    kernel_row_sum,
+                    i,
+                    j,
+                    kernel_pairwise,
+                    grads,
+                    lengthscale,
+                    max_size,
                 )
         return kernel_row_sum
 
@@ -313,7 +372,7 @@ class Kernel(ABC):
         lengthscale: ArrayLike | None = None,
         max_size: int = 10_000,
     ) -> Array:
-        """
+        r"""
         Compute the mean of the row sum of the kernel matrix.
 
         The mean of the row sum of the kernel matrix is the mean of the sum of distances
@@ -324,7 +383,7 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         :param grads: Array of gradients, if applicable, :math:`n \times d`
                       Optional, defaults to `None`
-        :param lengthscale: Base kernel bandwidth, if applicable, :math:`n \times d`
+        :param lengthscale: Base kernel lengthscale, if applicable, :math:`n \times d`
                    Optional, defaults to `None`
         """
         return self.calculate_kernel_matrix_row_sum(x, max_size, grads, lengthscale) / (
@@ -339,7 +398,7 @@ class Kernel(ABC):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ) -> Array:
-        """
+        r"""
         Approximate the mean of the row sum of the kernel matrix.
 
         The mean of the row sum of the kernel matrix is the mean of the sum of distances
@@ -372,7 +431,7 @@ class Kernel(ABC):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ) -> ca.KernelMeanApproximator:
-        """
+        r"""
         Create an approximator object for use with the kernel matrix row sum mean.
 
         :param approximator: The name of an approximator class to use, or the
@@ -400,21 +459,21 @@ class Kernel(ABC):
 
 class SquaredExponentialKernel(Kernel):
     """
-    Define a squared exponential (squared exponential) kernel.
+    Define a squared exponential kernel.
     """
 
     def __init__(self, lengthscale: float = 1.0):
         """
-        Define the squared exponential kernel to measure distances between points in some space.
+        Define the squared exponential kernel.
 
-        :param bandwidth: Kernel bandwidth to use (variance of the underlying Gaussian)
+        :param lengthscale: Kernel lengthscale to use.
         """
-        # Check that bandwidth is above zero (the isinstance check here is to ensure
+        # Check that lengthscale is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
         # code)
         if isinstance(lengthscale, float) and lengthscale <= 0.0:
             raise ValueError(
-                f"Bandwidth must be above zero. Current value {lengthscale}."
+                f"Lengthscale must be above zero. Current value {lengthscale}."
             )
         self.lengthscale = lengthscale
 
@@ -429,7 +488,6 @@ class SquaredExponentialKernel(Kernel):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        # children = (self.lengthscale,)
         children = ()
         aux_data = {"lengthscale": self.lengthscale}
         return children, aux_data
@@ -452,14 +510,13 @@ class SquaredExponentialKernel(Kernel):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Evaluate the kernel on input vectors x and y.
+        Evaluate the squared exponential kernel on input vectors x and y.
 
-        We assume x and y are two vectors of the same length. We compute the distance
-        between these two vectors, as determined by the selected kernel.
+        We assume x and y are two vectors of the same dimension.
 
-        :param x: First vector we consider
-        :param y: Second vector we consider
-        :return: Distance (as determined by the kernel) between point x and y
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: kernel evaluated at (x, y).
         """
         return jnp.exp(-cu.sq_dist(x, y) / (2 * self.lengthscale**2))
 
@@ -469,6 +526,18 @@ class SquaredExponentialKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the squared exponential kernel function
+        w.r.t. x.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_x.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return -self._grad_y_elementwise(x, y)
 
     @jit
@@ -477,6 +546,18 @@ class SquaredExponentialKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the squared exponential kernel function
+        w.r.t. y.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_y.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return (x - y) / self.lengthscale**2 * self._compute_elementwise(x, y)
 
     @jit
@@ -485,6 +566,20 @@ class SquaredExponentialKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Elementwise divergence w.r.t. x of Jacobian of squared exponential w.r.t. y.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors x and y. A vectorised version for arrays is computed in
+        compute_divergence_x_grad_y.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Trace of the Laplace-style operator; a real number.
+        """
         k = self._compute_elementwise(x, y)
         scale = 1 / self.lengthscale**2
         d = len(x)
@@ -493,21 +588,21 @@ class SquaredExponentialKernel(Kernel):
 
 class PCIMQKernel(Kernel):
     """
-    Define a pre-conditioned inverse multi-quadric (pcimq) kernel.
+    Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
     """
 
     def __init__(self, lengthscale: float = 1.0):
         """
-        Define the pcimq kernel to measure distances between points in some space.
+        Define the PCIMQ kernel.
 
-        :param bandwidth: Kernel bandwidth to use (variance of the underlying Gaussian)
+        :param lengthscale: Kernel lengthscale to use.
         """
-        # Check that bandwidth is above zero (the isinstance check here is to ensure
+        # Check that lengthscale is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
         # code)
         if isinstance(lengthscale, float) and lengthscale <= 0.0:
             raise ValueError(
-                f"Bandwidth must be above zero. Current value {lengthscale}."
+                f"Lengthscale must be above zero. Current value {lengthscale}."
             )
         self.lengthscale = lengthscale
 
@@ -544,14 +639,13 @@ class PCIMQKernel(Kernel):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Evaluate the kernel on input vectors x and y.
+        Evaluate the PCIMQ kernel on input vectors x and y.
 
-        We assume x and y are two vectors of the same length. We compute the distance
-        between these two vectors, as determined by the selected kernel.
+        We assume x and y are two vectors of the same dimension.
 
-        :param x: First vector we consider
-        :param y: Second vector we consider
-        :return: Distance (as determined by the kernel) between point x and y
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: kernel evaluated at (x, y).
         """
         scaling = 2 * self.lengthscale**2
         mq_array = cu.sq_dist(x, y) / scaling
@@ -563,6 +657,17 @@ class PCIMQKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. x.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_x.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return -self._grad_y_elementwise(x, y)
 
     @jit
@@ -571,6 +676,17 @@ class PCIMQKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. y.
+
+        Only accepts single vectors x and y, i.e. not arrays. This function is
+        vectorised for arrays in grad_y.
+
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in
+            \mathbb{R}^d`
+        """
         return (
             (x - y) / (2 * self.lengthscale**2) * self._compute_elementwise(x, y) ** 3
         )
@@ -581,6 +697,20 @@ class PCIMQKernel(Kernel):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        r"""
+        Elementwise divergence w.r.t. x of Jacobian of PCIMQ w.r.t. y.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors x and y. A vectorised version for arrays is computed in
+        compute_divergence_x_grad_y.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Trace of the Laplace-style operator; a real number.
+        """
         k = self._compute_elementwise(x, y)
         scale = 2 * self.lengthscale**2
         d = len(x)
@@ -591,33 +721,51 @@ class SteinKernel(Kernel):
     def __init__(
         self,
         base_kernel: Kernel,
-        score_function: Callable[[ArrayLike, ArrayLike], Array] | None,
+        # score_function: Callable[[ArrayLike, ArrayLike], Array] | None,
+        score_function: Callable[[ArrayLike], Array],
     ):
-        """
-        Define the Stein kernel to measure distances between points in some space.
+        r"""
+        Define the Stein kernel, i.e. the application of the Stein operator,
+
+        :math:`\mathcal{A}_\mathbb{P}(g(\mathbf{x})) := \nabla_\mathbf{x} g(\mathbf{x})
+        + g(\mathbf{x}) \nabla_\mathbf{x} \log f_X(\mathbf{x})^\intercal,`
+
+        w.r.t. probability measure :math:`\mathbb{P}` to the base kernel $k(\mathbf{x},
+        \mathbf{y})$. Here, differentiable vector-valued :math:`g: \mathbb{R}^d \to
+        \mathbb{R}^d`, and :math: `\nabla_\mathbf{x} \log f_X(\mathbf{x})` is the *score
+        function* of measure :math:`\mathbb{P}`.
+
+        :math:`\mathbb{P}` is assumed to admit a density function :math:`f_X` w.r.t.
+        d-dimensional Lebesgue measure. The score function is assumed to be Lipschitz.
+
+        The key property of a Stein operator is zero expectation under
+        :math:`\mathbb{P}`, i.e. :math:`\mathbb{E}_\mathbb{P}[\mathcal{A}_\mathbb{P}
+        f(\mathbf{x})]`, for positive differentiable :math:`f_X`.
+
+        The Stein kernel for base kernel :math:`k(\mathbf{x}, \mathbf{y})` is defined as
+
+        :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = \nabla_\mathbf{x} \cdot
+        \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) + \nabla_\mathbf{x} \log f_X(\mathbf{x})
+        \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) + \nabla_\mathbf{y} \log
+        f_X(\mathbf{y}) \cdot \nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) +
+        (\nabla_\mathbf{x} \log f_X(\mathbf{x}) \cdot \nabla_\mathbf{y} \log
+        f_X(\mathbf{y})) k(\mathbf{x}, \mathbf{y})`.
+
 
         This kernel requires a 'base' kernel to evaluate. The base kernel can be any
-        other implemented subclass of the Kernel abstract base class.
+        other implemented subclass of the Kernel abstract base class; even another Stein
+        kernel.
 
-        The score function is the gradient of the log-density function of a
-        distribution. We can either approximate this via kernel density estimation (done
-        if score_function is None) or model it directly (for example, through score
-        matching techniques). In the latter case, a callable can be supplied as is
-        treated as the score function.
+        The score function :math:`\nabla_\mathbf{x} \log f_X: \mathbb{R}^d \to
+        \mathbb{R}^d` can be any suitable Lipschitz score function, e.g. one that is
+        learned from score matching (#TODO: link to score matching), computed explicitly
+        from a density function, or known analytically.
 
-        :param base_kernel: Initialised kernel object to evaluate the Stein kernel with
-        :param score_function: If none, we determine the score function via kernel
-            density estimation using base_kernel. Otherwise, a callable defining
-            the score function (or an approximation to it).
+        :param base_kernel: Initialised kernel object to evaluate the Stein kernel with.
+        :param score_function: A vector-valued callable defining a score function.
+            :math:`\mathbb{R}^d \to \mathbb{R}^d`.
         """
         self.base_kernel = base_kernel
-        # if score_function is None:
-        #     # If no score function has been provided, then we use the base-kernels
-        #     # grad_log_x method
-        #     self.score_function = self.base_kernel.grad_log_x
-        # else:
-        # If an alternative score function is passed (e.g. a pre-determined
-        # analytical function, or a neural network callable) we assign this
         self.score_function = score_function
 
         # Initialise parent
@@ -655,14 +803,13 @@ class SteinKernel(Kernel):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Evaluate the kernel on input vectors x and y.
+        Evaluate the Stein kernel on input vectors x and y.
 
-        We assume x and y are two vectors of the same length. We compute the distance
-        between these two vectors, as determined by the selected kernel.
+        We assume x and y are two vectors of the same dimension.
 
-        :param x: First vector we consider
-        :param y: Second vector we consider
-        :return: Distance (as determined by the kernel) between point x and y
+        :param x: vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: kernel evaluated at (x, y).
         """
         k = self.base_kernel._compute_elementwise(x, y)
         div = self.base_kernel._compute_divergence_x_grad_y_elementise(x, y)
@@ -687,9 +834,5 @@ for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isc
             current_class, current_class._tree_flatten, current_class._tree_unflatten
         )
 
-# TODO: Squared exponential kernel
-# TODO: Gaussian density kernel
 # TODO: Laplace kernel
-# TODO: PCIMQ kernel
-# TODO: Include divergence bits
 # TODO: Do we want weights to be used to align with MMD?

@@ -251,15 +251,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    -(x_ - y_) / lengthscale**2
+                    -(x_ - y_)
+                    / lengthscale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 )
-                # true_gradients[i, j] = (
-                #     -(x_ - y_)
-                #     / lengthscale**3
-                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
-                #     / (np.sqrt(2 * np.pi))
-                # )
 
         # Create the kernel
         kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
@@ -294,15 +289,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    (x_ - y_) / lengthscale**2
+                    (x_ - y_)
+                    / lengthscale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
                 )
-                # true_gradients[i, j] = (
-                #     (x_ - y_)
-                #     / lengthscale**3
-                #     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
-                #     / (np.sqrt(2 * np.pi))
-                # )
 
         # Create the kernel
         kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
@@ -566,7 +556,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 dp = np.dot(x_ - y_, x_ - y_)
-                expected_output[i, j] = 2*np.exp(-dp) * (dimension - 2*dp)
+                expected_output[i, j] = 2 * np.exp(-dp) * (dimension - 2 * dp)
         # Compute output using Kernel class
         kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
         output = kernel.compute_divergence_x_grad_y(x, y)
@@ -684,15 +674,14 @@ class TestPCIMQKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 dp = np.dot(x_ - y_, x_ - y_)
-                den = (1 + dp)**(3/2)
-                expected_output[i, j] = dimension/den - 3*dp/den**(5/3)
+                den = (1 + dp) ** (3 / 2)
+                expected_output[i, j] = dimension / den - 3 * dp / den ** (5 / 3)
         # Compute output using Kernel class
         kernel = ck.PCIMQKernel(lengthscale=lengthscale)
         output = kernel.compute_divergence_x_grad_y(x, y)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
-
 
 
 class TestSteinKernel(unittest.TestCase):
@@ -779,16 +768,10 @@ class TestSteinKernel(unittest.TestCase):
             m = (
                 2
                 * beta
-                * (
-                    dimension
-                    + np.dot(score_function(x) - score_function(y), x - y)
-                )
+                * (dimension + np.dot(score_function(x) - score_function(y), x - y))
                 / (1 + norm_sq) ** 1.5
             )
-            r = (
-                np.dot(score_function(x), score_function(y))
-                / (1 + norm_sq) ** 0.5
-            )
+            r = np.dot(score_function(x), score_function(y)) / (1 + norm_sq) ** 0.5
             return l + m + r
 
         # Setup data
@@ -803,16 +786,13 @@ class TestSteinKernel(unittest.TestCase):
 
         # Compute the output step-by-step with the element method
         expected_output = np.zeros([x.shape[0], y.shape[0]])
-        output = np.zeros([x.shape[0], y.shape[0]])
+        output = kernel.compute(x, y)
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 # Compute via our hand-coded kernel evaluation
                 expected_output[i, j] = k_x_y(x_, y_)
 
-                # Compute via element method
-                output[i, j] = kernel.compute(x_, y_)
-
-        # Check output sizes match the expected
+        # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
 
 
