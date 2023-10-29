@@ -12,30 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+import sys
 from abc import ABC, abstractmethod
 from functools import partial
 
 import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, random, vmap
+from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 from coreax.util import KernelFunction
 
-#
 # Refine Functions
 #
-# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
+# These functions take a coreset and refine it by replacing elements to improve the MMD.
 
 
 class Refine(ABC):
     """
-    Base class for creating refine functions.
+    Base class for refinement functions.
     """
 
     def __init__(self, kernel: KernelFunction):
         r"""
-        Create a method to refine a coreset by optimising the indices in the dataset.
+        Create a method to refine a coreset by optimising over indices in the dataset.
 
         The refinement process happens iteratively. Coreset elements are replaced by
         points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
@@ -78,6 +79,29 @@ class Refine(ABC):
         """
         raise NotImplementedError
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = ()  # dynamic values
+        aux_data = {"kernel": self.kernel}  # static values
+        return children, aux_data
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstructs a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
 
 class RefineRegular(Refine):
     def __init__(self, kernel: KernelFunction):
@@ -111,7 +135,7 @@ class RefineRegular(Refine):
 
         return S
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def refine_body(
         self, i: int, S: ArrayLike, x: ArrayLike, K_mean: ArrayLike, K_diag: ArrayLike
     ) -> Array:
@@ -138,7 +162,7 @@ class RefineRegular(Refine):
 
         return S
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def comparison(
         self,
         i: ArrayLike,
@@ -251,7 +275,7 @@ class RefineRandom(Refine):
 
         return key, S
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def comparison_cand(
         self,
         i: ArrayLike,
@@ -289,7 +313,7 @@ class RefineRandom(Refine):
             K_mean[i] - K_mean[cand]
         ) / num_points_in_coreset
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def change(self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the i^th point in S with the candidate in cand with maximum value in comps.
@@ -306,7 +330,7 @@ class RefineRandom(Refine):
         cand = jnp.asarray(cand)
         return S.at[i].set(cand[comps.argmax()])
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def nochange(
         self, i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
@@ -386,7 +410,7 @@ class RefineRev(Refine):
 
         return S
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def comparison_rev(
         self,
         i: int,
@@ -422,7 +446,7 @@ class RefineRev(Refine):
             K_mean[S] - K_mean[i]
         ) / num_points_in_coreset
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def change_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Replace the maximum comps value point in S with i. x -> S.
@@ -437,7 +461,7 @@ class RefineRev(Refine):
         j = comps.argmax()
         return S.at[j].set(i)
 
-    @partial(jit, static_argnames=["self"])
+    @jit
     def nochange_rev(self, i: int, S: ArrayLike, comps: ArrayLike) -> Array:
         r"""
         Convenience function for leaving S unchanged (compare with refine.change_rev).
@@ -450,3 +474,13 @@ class RefineRev(Refine):
         :return: The original dataset S, unchanged
         """
         return jnp.asarray(S)
+
+
+# Define the pytree node for the added class to ensure methods with jit decorators
+# are able to run. We rely on the naming convention that all child classes of
+# ScoreMatching include the sub-string ScoreMatching inside of them.
+for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+    if "Refine" in name and name != "Refine":
+        tree_util.register_pytree_node(
+            current_class, current_class._tree_flatten, current_class._tree_unflatten
+        )
