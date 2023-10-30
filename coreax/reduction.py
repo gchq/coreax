@@ -36,13 +36,13 @@ class DataReduction(ABC):
     Methods for reducing data.
     """
 
-    def __init__(self, original_data: ArrayLike, weighting: str):
+    def __init__(self, original_data: ArrayLike, weight: str | cw.WeightsOptimiser):
         r"""
         Define a ... TODO
         """
         self.original_data = original_data
         self.reduced_data = original_data.copy()
-        self.weighting = weighting
+        self.weighting = weight
 
     def solve_weights(
             self,
@@ -101,7 +101,7 @@ class DataReduction(ABC):
         Refine...TODO
 
         :param x: Data matrix, :math:`n \times d`
-        :param refine_name: Name of the refine type to use, or an uninstatiated
+        :param refine_name: Name of the refine type to use, or an uninstantiated
             class object
         :return: Approximation to the kernel matrix row sum
         """
@@ -118,10 +118,10 @@ class DataReduction(ABC):
         metric_name: str | type[cm.Metric],
     ) -> Array:
         """
-        Refine...TODO
+        Compute metrics...TODO
 
         :param x: Data matrix, :math:`n \times d`
-        :param refine_name: Name of the refine type to use, or an uninstatiated
+        :param metric_name: Name of the metric type to use, or an uninstantiated
             class object
         :return: Approximation to the kernel matrix row sum
         """
