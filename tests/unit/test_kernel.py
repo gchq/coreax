@@ -267,6 +267,46 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_scaled_se_kernel_gradients_wrt_x(self) -> None:
+        """
+        Test the class SquaredExponentialKernel gradient computations; with scaling.
+
+        The scaled SquaredExponential kernel is defined as :math:`k(x,y) = s\exp (-||x-y||^2/2 * lengthscale)`.
+        The gradient of this with respect to x is:
+
+        ..math:
+            - s\frac{(x - y)}{lengthscale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 lengthscale^2}}
+        """
+        # Define some data
+        lengthscale = 1 / np.pi
+        s = np.e
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to x
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    -s
+                    * (x_ - y_)
+                    / lengthscale**2
+                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * lengthscale**2))
+                )
+
+        # Create the kernel
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale, scale=s)
+
+        # Evaluate the gradient
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
+
     def test_se_kernel_gradients_wrt_y(self) -> None:
         """
         Test the class SquaredExponentialKernel gradient computations.
@@ -566,6 +606,33 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_scaled_se_div_x_grad_y(self) -> None:
+        """
+        Test the divergence wrt x of kernel Jacobian wrt y; scaled version.
+        """
+        # Setup data
+        lengthscale = 1 / np.pi
+        s = np.e
+        sc = lengthscale**2
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                dp = np.dot(x_ - y_, x_ - y_)
+                k = s * np.exp(-dp / (2.0 * sc))
+                expected_output[i, j] = k / sc * (dimension - dp / sc)
+        # Compute output using Kernel class
+        kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale, scale=s)
+        output = kernel.divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
 
 class TestPCIMQKernel(unittest.TestCase):
     """
@@ -660,6 +727,37 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_scaled_pcimq_kernel_gradients_wrt_y(self) -> None:
+        """
+        Test the class PCIMQ gradient computations with respect to y; with scaling
+        """
+        # Setup data
+        lengthscale = 1 / np.pi
+        s = np.e
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = (
+                    s
+                    / (2 * lengthscale**2)
+                    * (x_ - y_)
+                    / (1 + (np.linalg.norm(x_ - y_) ** 2) / (2 * lengthscale**2))
+                    ** (3 / 2)
+                )
+
+        # Compute output using Kernel class
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale, scale=s)
+        output = kernel.grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
     def test_pcimq_div_x_grad_y(self) -> None:
         """
         Test the divergence wrt x of kernel Jacobian wrt y
@@ -680,6 +778,39 @@ class TestPCIMQKernel(unittest.TestCase):
                 expected_output[i, j] = dimension / den - 3 * dp / den ** (5 / 3)
         # Compute output using Kernel class
         kernel = ck.PCIMQKernel(lengthscale=lengthscale)
+        output = kernel.divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_scaled_pcimq_div_x_grad_y(self) -> None:
+        """
+        Test the divergence wrt x of kernel Jacobian wrt y; scaled version
+        """
+        # Setup data
+        lengthscale = 1 / np.pi
+        s = np.e
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                dp = np.dot(x_ - y_, x_ - y_)
+                k = s / ((1 + dp / (2 * lengthscale**2)) ** (1 / 2))
+                expected_output[i, j] = (
+                    s
+                    / (2 * lengthscale**2)
+                    * (
+                        dimension * ((k / s)) ** 3
+                        - 3 * dp * (k / s) ** 5 / (2 * lengthscale**2)
+                    )
+                )
+        # Compute output using Kernel class
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale, scale=s)
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
