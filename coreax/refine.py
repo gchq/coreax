@@ -22,7 +22,7 @@ import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import KernelFunction
+from coreax.util import ClassFactory, KernelFunction
 
 # Refine Functions
 #
@@ -484,3 +484,9 @@ for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isc
         tree_util.register_pytree_node(
             current_class, current_class._tree_flatten, current_class._tree_unflatten
         )
+
+# Set up class factory
+refine_factory = ClassFactory(Refine)
+refine_factory.register("regular", RefineRegular)
+refine_factory.register("random", RefineRandom)
+refine_factory.register("rev", RefineRev)
