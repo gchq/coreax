@@ -16,9 +16,13 @@
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
+import inspect
+import sys
+
 from abc import ABC
 from jax import Array
 from jax.typing import ArrayLike
+from jax import tree_util
 
 import coreax.coreset as cc
 import coreax.metrics as cm
@@ -172,40 +176,103 @@ class ReductionStrategy(ABC):
         TODO
         """
 
-        self.reduction_method = reduction_method
+        self.data_reduction = reduction_method
 
-    def reduce(self, original_data, weighted):
+    def reduce(self, original_data, weight):
         """
         TODO
         """
 
-        return DataReduction(original_data, weighted)
+        return self.data_reduction.__init__(original_data, weight)
+
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstructs a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside children of this class.
+        """
+        return cls(*children, **aux_data)
 
 
 class SizeReduce(ReductionStrategy):
 
-    def __init__(self, n):
+    def __init__(self, n, reduction_method: DataReduction):
 
+        super().__init__(reduction_method)
         self.n = n
 
     def generate_coreset(self):
         # TODO: return Coreset from coreset.py when ready
         return NotImplementedError
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = (self.data_reduction, self.n,)
+        aux_data = {}
+        return children, aux_data
+
 
 class ErrorReduce(ReductionStrategy):
 
-    def __init__(self, eps):
+    def __init__(self, eps, reduction_method: DataReduction):
 
+        super().__init__(reduction_method)
         self.eps = eps
 
     def reduce_error(self):
         # TODO: vary n to meet probabilistically...
         return NotImplementedError
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = (self.data_reduction, self.eps,)
+        aux_data = {}
+        return children, aux_data
+
 
 class MapReduce(ReductionStrategy):
 
-    def __init__(self, n):
+    def __init__(self, n, reduction_method: DataReduction):
 
+        super().__init__(reduction_method)
         self.n = n
+
+    # TODO: functionality mostly in scalable_herding
+
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = (self.data_reduction, self.n,)
+        aux_data = {}
+        return children, aux_data
+
+
+# Define the pytree node for the added class to ensure methods with jit decorators
+# are able to run. We rely on the naming convention that all child classes of
+# DataReduction include the sub-string DataReduction inside of them.
+for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+    if "ReductionStrategy" in name and name != "ReductionStrategy":
+        tree_util.register_pytree_node(
+            current_class, current_class._tree_flatten, current_class._tree_unflatten
+        )
