@@ -20,6 +20,7 @@ from abc import ABC
 from jax import Array
 from jax.typing import ArrayLike
 
+import coreax.coreset as cc
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
@@ -66,7 +67,26 @@ class DataReduction(ABC):
         else:
             raise ValueError(f"weight type '{self.weighting}' not recognised.")
 
-    # def fit()
+    def fit(
+        self,
+        coreset_name: str | type[cc.Coreset],
+        kernel: cu.KernelFunction,
+    ) -> Array:
+        """
+        Fit...TODO
+
+        :param coreset_name: Name of the coreset method to use, or an uninstantiated
+            class object
+        :param kernel: Kernel function
+           :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :return: Approximation to the kernel matrix row sum
+        """
+        # Create an approximator object
+        coreset_instance = self._create_instance_from_factory(
+            cc.coreset_factory,
+            coreset_name
+        )
+        return coreset_instance.fit(self.original_data, kernel)
 
     def refine(
         self,
@@ -111,8 +131,8 @@ class DataReduction(ABC):
     def _create_instance_from_factory(
         self,
         factory_obj: cu.ClassFactory,
-        class_type: str | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
-    ) -> cm.Metric | cr.Refine | cw.WeightsOptimiser:
+        class_type: str | type[cc.Corset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+    ) -> cc.Corset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
         """
         Create a refine object for use with the fit method.
 
