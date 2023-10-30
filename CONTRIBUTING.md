@@ -122,7 +122,7 @@ Avoid stating how the program will handle the error, e.g. avoid Aborting, since 
 
 Docstrings must:
 - Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
-- Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
+- Be written in [reStructured Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
 - Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
 - Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
