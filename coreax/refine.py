@@ -40,7 +40,7 @@ def refine(
     Refine a coreset iteratively, :math:`S \rightarrow x`.
 
     The refinement procedure replaces elements with points most reducing maximum mean
-    discrepancy (MMD). The iteration is carred out over points in ``x``.
+    discrepancy (MMD). The iteration is carried out over points in ``x``.
 
     :param x: :math:`n \times d` original data
     :param S: Coreset point indices
