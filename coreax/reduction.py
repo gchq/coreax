@@ -20,8 +20,10 @@ from abc import ABC
 from jax import Array
 from jax.typing import ArrayLike
 
+import coreax.metrics as cm
+import coreax.refine as cr
 import coreax.util as cu
-import coreax.weights as we
+import coreax.weights as cw
 
 
 class DataReduction(ABC):
@@ -50,13 +52,13 @@ class DataReduction(ABC):
         if self.weighting is None:
             return None
         elif self.weighting == 'MMD':
-            return we.simplex_weights(
+            return cw.simplex_weights(
                 self.original_data,
                 self.reduced_data,
                 kernel
             )
         elif self.weighting == 'SBQ':
-            return we.calculate_BQ_weights(
+            return cw.calculate_BQ_weights(
                 self.original_data,
                 self.reduced_data,
                 kernel
@@ -64,17 +66,68 @@ class DataReduction(ABC):
         else:
             raise ValueError(f"weight type '{self.weighting}' not recognised.")
 
-    def fit(
-            self,
-            kernel
-            ):
-        return NotImplementedError
+    # def fit()
 
-    def refine(self):
-        return NotImplementedError
+    def refine(
+        self,
+        x: ArrayLike,
+        refine_name: str | type[cr.Refine],
+    ) -> Array:
+        """
+        Refine...TODO
 
-    def compute_metric(self):
-        return NotImplementedError
+        :param x: Data matrix, :math:`n \times d`
+        :param refine_name: Name of the refine type to use, or an uninstatiated
+            class object
+        :return: Approximation to the kernel matrix row sum
+        """
+        # Create an approximator object
+        refiner = self._create_instance_from_factory(
+            cr.refine_factory,
+            refine_name
+        )
+        return refiner.refine(x)  # TODO check what refine actually needs to do here...
+
+    def compute_metric(
+        self,
+        x: ArrayLike,
+        metric_name: str | type[cm.Metric],
+    ) -> Array:
+        """
+        Refine...TODO
+
+        :param x: Data matrix, :math:`n \times d`
+        :param refine_name: Name of the refine type to use, or an uninstatiated
+            class object
+        :return: Approximation to the kernel matrix row sum
+        """
+        # Create an approximator object
+        metric_instance = self._create_instance_from_factory(
+            cr.metric_factory,
+            metric_name
+        )
+        return metric_instance.refine(x)
+
+    def _create_instance_from_factory(
+        self,
+        factory_obj: cu.ClassFactory,
+        class_type: str | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+    ) -> cm.Metric | cr.Refine | cw.WeightsOptimiser:
+        """
+        Create a refine object for use with the fit method.
+
+        :param class_type: The name of a class to use, or the uninstantiated class
+            directly as a dependency injection
+        :return: Refine object
+        """
+        class_obj = factory_obj.get(class_type)
+
+        # Initialise, accounting for different classes having different numbers of
+        # parameters
+        return cu.call_with_excess_kwargs(
+            class_obj,
+            kernel_evaluation=self._compute_elementwise,
+        )
 
     def render(self):
         """
