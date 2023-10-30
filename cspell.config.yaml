@@ -12,7 +12,6 @@ words:
     "Licence",
     "minimise",
     "docstrings",
-    "Structed",
     "Prioritise",
     "quickstart",
     "pcimq",
@@ -116,7 +115,7 @@ words:
     "exceptiongroup",
     "iniconfig",
     "pluggy",
-    "initilises",
+    "initialises",
     "Annchor",
     "Nchor",
     "Gaussians",
@@ -127,7 +126,6 @@ words:
     "mathbf",
     "xlarge",
     "chex",
-    "calcualte",
     "pushd",
     "errorlevel",
     "popd",
@@ -217,5 +215,5 @@ words:
     "functon",
     "figsize",
     "xlabel",
-    "ylabel"
+    "ylabel",
   ]

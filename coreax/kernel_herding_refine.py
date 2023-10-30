@@ -44,7 +44,7 @@ def kernel_herding_refine_block(
     Execute kernel herding refine algorithm using :mod:`jax`.
 
     :param x: Original :math:`n \times d` dataset
-    :param n_core: Number of coreset points to calcualte
+    :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
@@ -76,7 +76,7 @@ def kernel_herding_refine_rand_block(
     Execute kernel herding random refine algorithm using :mod:`jax`.
 
     :param x: Original :math:`n \times d` dataset
-    :param n_core: Number of coreset points to calcualte
+    :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param p: Proportion of original data to use as candidates
@@ -110,7 +110,7 @@ def kernel_herding_refine_rev_block(
     This calls the greedy refine method, as opposed to the random refine method.
 
     :param x: Original :math:`n \times d` dataset
-    :param n_core: Number of coreset points to calcualte
+    :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
