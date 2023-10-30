@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 from abc import ABC
+from jax import Array
+from jax.typing import ArrayLike
 
 import coreax.util as cu
 import coreax.weights as we
@@ -27,42 +29,44 @@ class DataReduction(ABC):
     Methods for reducing data.
     """
 
-    def __init__(self, original_data, weighted):
+    def __init__(self, original_data: ArrayLike, weighting: str):
         r"""
         Define a ... TODO
         """
         self.original_data = original_data
         self.reduced_data = original_data.copy()
-        self.weighted = weighted
+        self.weighting = weighting
 
     def solve_weights(
             self,
-            kernel: cu.KernelFunction,
-            weight_type: str
-    ):
+            kernel: cu.KernelFunction
+    ) -> Array | None:
         """
         Solve for weights. Currently implemented are MMD and SBQ weights.
 
         TODO: update when weights.py is OOPed.
         """
 
-        if weight_type == 'MMD':
+        if self.weighting is None:
+            return None
+        elif self.weighting == 'MMD':
             return we.simplex_weights(
                 self.original_data,
                 self.reduced_data,
                 kernel
             )
-        elif weight_type == 'SBQ':
+        elif self.weighting == 'SBQ':
             return we.calculate_BQ_weights(
                 self.original_data,
                 self.reduced_data,
                 kernel
             )
         else:
-            raise ValueError(f"weight type '{weight_type}' not recognised.")
+            raise ValueError(f"weight type '{self.weighting}' not recognised.")
 
     def fit(
             self,
+            kernel
             ):
         return NotImplementedError
 
