@@ -276,3 +276,10 @@ for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isc
         tree_util.register_pytree_node(
             current_class, current_class._tree_flatten, current_class._tree_unflatten
         )
+
+# Set up class factories
+data_reduction_factory = cu.ClassFactory(DataReduction)
+reduction_strategy_factory = cu.ClassFactory(ReductionStrategy)
+reduction_strategy_factory.register("size", SizeReduce)
+reduction_strategy_factory.register("error", ErrorReduce)
+reduction_strategy_factory.register("map", MapReduce)
