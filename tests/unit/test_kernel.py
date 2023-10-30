@@ -480,31 +480,33 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
 
-    # def test_compute_normalised(self) -> None:
-    #     """
-    #     Test computation of normalised SquaredExponential kernel.
+    def test_compute_normalised(self) -> None:
+        """
+        Test computation of normalised SquaredExponential kernel.
 
-    #     A normalised SquaredExponential kernel is also known as a Gaussian kernel. We generate data and
-    #     compare to a standard implementation of the Gaussian PDF.
-    #     """
-    #     # Setup some data
-    #     std_dev = np.e
-    #     num_points = 10
-    #     x = np.arange(num_points)
-    #     y = x + 1.0
+        A normalised SquaredExponential kernel is also known as a Gaussian kernel. We generate data and
+        compare to a standard implementation of the Gaussian PDF.
+        """
+        # Setup some data
+        std_dev = np.e
+        num_points = 10
+        x = np.arange(num_points)
+        y = x + 1.0
 
-    #     # Compute expected output using standard implementation of the Gaussian PDF
-    #     expected_output = np.zeros((num_points, num_points))
-    #     for i, x_ in enumerate(x):
-    #         for j, y_ in enumerate(y):
-    #             expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
+        # Compute expected output using standard implementation of the Gaussian PDF
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
 
-    #     # Compute the normalised PDF output using the kernel class
-    #     kernel = ck.SquaredExponentialKernel(lengthscale=std_dev)
-    #     output = kernel.compute_normalised(x, y)
+        # Compute the normalised PDF output using the kernel class
+        kernel = ck.SquaredExponentialKernel(
+            lengthscale=std_dev, scale=1 / (np.sqrt(2 * np.pi) * std_dev)
+        )
+        output = kernel.compute(x.reshape(-1, 1), y.reshape(-1, 1))
 
-    #     # Check output matches expected
-    #     np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
     # def test_construct_pdf(self) -> None:
     #     """
@@ -559,7 +561,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                 expected_output[i, j] = 2 * np.exp(-dp) * (dimension - 2 * dp)
         # Compute output using Kernel class
         kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
-        output = kernel.compute_divergence_x_grad_y(x, y)
+        output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
@@ -678,7 +680,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 expected_output[i, j] = dimension / den - 3 * dp / den ** (5 / 3)
         # Compute output using Kernel class
         kernel = ck.PCIMQKernel(lengthscale=lengthscale)
-        output = kernel.compute_divergence_x_grad_y(x, y)
+        output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
