@@ -53,6 +53,26 @@ class Kernel(ABC):
     Base class for kernels.
     """
 
+    def __init__(self, lengthscale: float = 1.0, scale: float = 1.0):
+        """
+        Define a kernel
+
+        :param lengthscale: Kernel lengthscale to use.
+        :param scale: Output scale to use.
+        """
+        # TODO: generalise lengthscale to multiple dimensions.
+        # Check that lengthscale is above zero (the isinstance check here is to ensure
+        # that we don't check a trace of an array when jit decorators interact with
+        # code)
+        if isinstance(lengthscale, float) and lengthscale <= 0.0:
+            raise ValueError(
+                f"Lengthscale must be above zero. Current value {lengthscale}."
+            )
+        if isinstance(scale, float) and scale <= 0.0:
+            raise ValueError(f"Output scale must be above zero. Current value {scale}.")
+        self.lengthscale = lengthscale
+        self.scale = scale
+
     @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
@@ -178,7 +198,7 @@ class Kernel(ABC):
         return grad(self._compute_elementwise, 0)(x, y)
 
     @jit
-    def _compute_divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -201,7 +221,7 @@ class Kernel(ABC):
         return pseudo_hessian.trace()
 
     @jit
-    def compute_divergence_x_grad_y(
+    def divergence_x_grad_y(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -221,7 +241,7 @@ class Kernel(ABC):
         """
         fn = vmap(
             vmap(
-                self._compute_divergence_x_grad_y_elementise,
+                self._divergence_x_grad_y_elementise,
                 in_axes=(0, None),
                 out_axes=0,
             ),
@@ -462,24 +482,6 @@ class SquaredExponentialKernel(Kernel):
     Define a squared exponential kernel.
     """
 
-    def __init__(self, lengthscale: float = 1.0):
-        """
-        Define the squared exponential kernel.
-
-        :param lengthscale: Kernel lengthscale to use.
-        """
-        # Check that lengthscale is above zero (the isinstance check here is to ensure
-        # that we don't check a trace of an array when jit decorators interact with
-        # code)
-        if isinstance(lengthscale, float) and lengthscale <= 0.0:
-            raise ValueError(
-                f"Lengthscale must be above zero. Current value {lengthscale}."
-            )
-        self.lengthscale = lengthscale
-
-        # Initialise parent
-        super().__init__()
-
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -489,7 +491,7 @@ class SquaredExponentialKernel(Kernel):
         of methods inside this class.
         """
         children = ()
-        aux_data = {"lengthscale": self.lengthscale}
+        aux_data = {"lengthscale": self.lengthscale, "scale": self.scale}
         return children, aux_data
 
     @classmethod
@@ -518,7 +520,7 @@ class SquaredExponentialKernel(Kernel):
         :param y: vector :math:`\mathbf{y} \in \mathbb{R}^d`.
         :return: kernel evaluated at (x, y).
         """
-        return jnp.exp(-cu.sq_dist(x, y) / (2 * self.lengthscale**2))
+        return self.scale * jnp.exp(-cu.sq_dist(x, y) / (2 * self.lengthscale**2))
 
     @jit
     def _grad_x_elementwise(
@@ -561,7 +563,7 @@ class SquaredExponentialKernel(Kernel):
         return (x - y) / self.lengthscale**2 * self._compute_elementwise(x, y)
 
     @jit
-    def _compute_divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -591,24 +593,6 @@ class PCIMQKernel(Kernel):
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
     """
 
-    def __init__(self, lengthscale: float = 1.0):
-        """
-        Define the PCIMQ kernel.
-
-        :param lengthscale: Kernel lengthscale to use.
-        """
-        # Check that lengthscale is above zero (the isinstance check here is to ensure
-        # that we don't check a trace of an array when jit decorators interact with
-        # code)
-        if isinstance(lengthscale, float) and lengthscale <= 0.0:
-            raise ValueError(
-                f"Lengthscale must be above zero. Current value {lengthscale}."
-            )
-        self.lengthscale = lengthscale
-
-        # Initialise parent
-        super().__init__()
-
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -618,7 +602,7 @@ class PCIMQKernel(Kernel):
         of methods inside this class.
         """
         children = ()
-        aux_data = {"lengthscale": self.lengthscale}
+        aux_data = {"lengthscale": self.lengthscale, "scale": self.scale}
         return children, aux_data
 
     @classmethod
@@ -649,7 +633,7 @@ class PCIMQKernel(Kernel):
         """
         scaling = 2 * self.lengthscale**2
         mq_array = cu.sq_dist(x, y) / scaling
-        return 1 / jnp.sqrt(1 + mq_array)
+        return self.scale / jnp.sqrt(1 + mq_array)
 
     @jit
     def _grad_x_elementwise(
@@ -688,11 +672,14 @@ class PCIMQKernel(Kernel):
             \mathbb{R}^d`
         """
         return (
-            (x - y) / (2 * self.lengthscale**2) * self._compute_elementwise(x, y) ** 3
+            self.scale
+            * (x - y)
+            / (2 * self.lengthscale**2)
+            * (self._compute_elementwise(x, y) / self.scale) ** 3
         )
 
     @jit
-    def _compute_divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -711,10 +698,10 @@ class PCIMQKernel(Kernel):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`.
         :return: Trace of the Laplace-style operator; a real number.
         """
-        k = self._compute_elementwise(x, y)
+        k = self._compute_elementwise(x, y) / self.scale
         scale = 2 * self.lengthscale**2
         d = len(x)
-        return d * k**3 - 3 / scale * k**5 * cu.sq_dist(x, y)
+        return self.scale / scale * (d * k**3 - 3 * k**5 * cu.sq_dist(x, y) / scale)
 
 
 class SteinKernel(Kernel):
@@ -723,6 +710,7 @@ class SteinKernel(Kernel):
         base_kernel: Kernel,
         # score_function: Callable[[ArrayLike, ArrayLike], Array] | None,
         score_function: Callable[[ArrayLike], Array],
+        scale: float = 1.0,
     ):
         r"""
         Define the Stein kernel, i.e. the application of the Stein operator,
@@ -764,12 +752,14 @@ class SteinKernel(Kernel):
         :param base_kernel: Initialised kernel object to evaluate the Stein kernel with.
         :param score_function: A vector-valued callable defining a score function.
             :math:`\mathbb{R}^d \to \mathbb{R}^d`.
+        :param scale: Output scale to use.
         """
         self.base_kernel = base_kernel
         self.score_function = score_function
+        self.scale = scale
 
         # Initialise parent
-        super().__init__()
+        super().__init__(scale=scale)
 
     def _tree_flatten(self):
         """
@@ -782,7 +772,7 @@ class SteinKernel(Kernel):
         # TODO: score functon is assumed to not change here - but it might if the kernel
         #  changes - but does not work when specified in children
         children = (self.base_kernel,)
-        aux_data = {"score_function": self.score_function}
+        aux_data = {"score_function": self.score_function, "scale": self.scale}
         return children, aux_data
 
     @classmethod
@@ -812,7 +802,7 @@ class SteinKernel(Kernel):
         :return: kernel evaluated at (x, y).
         """
         k = self.base_kernel._compute_elementwise(x, y)
-        div = self.base_kernel._compute_divergence_x_grad_y_elementise(x, y)
+        div = self.base_kernel._divergence_x_grad_y_elementise(x, y)
         gkx = self.base_kernel._grad_x_elementwise(x, y)
         gky = self.base_kernel._grad_y_elementwise(x, y)
         score_x = self.score_function(x)
