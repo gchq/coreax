@@ -15,6 +15,7 @@ import unittest
 from unittest.mock import patch
 
 import jax.numpy as jnp
+from jax import Array
 
 import coreax.reduction as re
 
@@ -39,30 +40,46 @@ class TestDataReduction(unittest.TestCase):
         with patch('coreax.weights.simplex_weights') as mock_calc_weights_simp, \
                 patch('coreax.weights.calculate_BQ_weights') as mock_calc_weights_bq:
 
-            with self.subTest('MMD'):
-                self.test_class.solve_weights('a_kernel', 'MMD')
+            with self.subTest('No weighting'):
+                self.test_class.weighting = None
 
-                mock_calc_weights_simp.assert_called_once_with(self.original_data, reduced_data, 'a_kernel')
+                self.test_class.solve_weights(Array)
+
+                mock_calc_weights_simp.assert_not_called()
+                mock_calc_weights_bq.assert_not_called()
+
+                mock_calc_weights_simp.reset_mock()
+                mock_calc_weights_bq.reset_mock()
+
+            with self.subTest('MMD'):
+                self.test_class.weighting = 'MMD'
+
+                self.test_class.solve_weights(Array)
+
+                mock_calc_weights_simp.assert_called_once_with(self.original_data, reduced_data, Array)
                 mock_calc_weights_bq.assert_not_called()
 
                 mock_calc_weights_simp.reset_mock()
                 mock_calc_weights_bq.reset_mock()
 
             with self.subTest('SBQ'):
-                self.test_class.solve_weights('a_kernel', 'SBQ')
+                self.test_class.weighting = 'SBQ'
+
+                self.test_class.solve_weights(Array)
 
                 mock_calc_weights_simp.assert_not_called()
-                mock_calc_weights_bq.assert_called_once_with(self.original_data, reduced_data, 'a_kernel')
+                mock_calc_weights_bq.assert_called_once_with(self.original_data, reduced_data, Array)
 
                 mock_calc_weights_simp.reset_mock()
                 mock_calc_weights_bq.reset_mock()
 
             with self.subTest('Unexpected weighting'):
+                self.test_class.weighting = 'Unexpected weighting'
+
                 self.assertRaisesRegex(ValueError,
                                        "weight type 'Unexpected weighting' not recognised.",
                                        self.test_class.solve_weights,
-                                       'a_kernel',
-                                       'Unexpected weighting'
+                                       'a_kernel'
                                        )
 
                 mock_calc_weights_simp.assert_not_called()
