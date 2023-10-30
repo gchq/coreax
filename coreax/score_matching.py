@@ -70,7 +70,7 @@ class SlicedScoreMatching(ScoreMatching):
         batch_size: int = 64,
         hidden_dim: int = 128,
         optimiser: Callable = optax.adamw,
-        num_noise_models: int = 10,  # TODO: Set to 100
+        num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
@@ -249,21 +249,15 @@ class SlicedScoreMatching(ScoreMatching):
         )
         return result
 
-    # @partial(jit, static_argnames=["score_network"])
+    @partial(jit, static_argnames=["score_network"])
     def loss_element(
-        self,
-        x: ArrayLike,
-        v: ArrayLike,
-        score_network: Callable,
-        # objective_function: Callable
+        self, x: ArrayLike, v: ArrayLike, score_network: Callable
     ) -> float:
         r"""
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced score
         matching [ssm]_.
-
-        # TODO: Objective function
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -273,11 +267,7 @@ class SlicedScoreMatching(ScoreMatching):
         s, u = jvp(score_network, (x,), (v,))
         return self.objective_function(v, u, s)
 
-    def loss(
-        self,
-        score_network: Callable,
-        # objective_function: Callable
-    ) -> Callable:
+    def loss(self, score_network: Callable) -> Callable:
         r"""
         Compute vector mapped loss function for arbitrary numbers of X and V vectors.
 
@@ -296,11 +286,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     @jit
     def train_step(
-        self,
-        state: TrainState,
-        x: ArrayLike,
-        random_vectors: ArrayLike,
-        # objective_function: Callable
+        self, state: TrainState, x: ArrayLike, random_vectors: ArrayLike
     ) -> Tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
@@ -322,7 +308,7 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
-    # @jit
+    @jit
     def noise_conditional_loop_body(
         self,
         i: int,
@@ -362,7 +348,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
         return obj
 
-    # @jit
+    @jit
     def noise_conditional_train_step(
         self,
         state: TrainState,
@@ -420,10 +406,6 @@ class SlicedScoreMatching(ScoreMatching):
 
         else:
             train_step = self.train_step
-            # partial(
-            #     self.train_step,
-            #     objective_function = self.objective_function
-            # )
 
         # Define random projection vectors
         random_key_1, random_key_2 = random.split(self.random_key)
