@@ -37,9 +37,9 @@ class TestNetwork(nn.Module):
         return x
 
 
-class TestScoreMatching(unittest.TestCase):
+class TestSlicedScoreMatching(unittest.TestCase):
     """
-    Tests related to score_matching.py functions.
+    Tests related to the class SlicedScoreMatching in score_matching.py.
     """
 
     def test_analytic_objective_orthogonal(self) -> None:
@@ -229,14 +229,14 @@ class TestScoreMatching(unittest.TestCase):
         We use the analytic loss function in this example.
         """
 
-        def score_function(x: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(y: csm.ArrayLike) -> csm.ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
-            :param x: point at which to evaluate the score function
+            :param y: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at x
             """
-            return x**2
+            return y**2
 
         # Define an arbitrary input
         x = np.array([2.0, 7.0])
@@ -258,17 +258,16 @@ class TestScoreMatching(unittest.TestCase):
         expected_output = sliced_score_matcher.objective_function(v, H @ v, s)
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(
-            x, v, score_function, sliced_score_matcher.objective_function
-        )
+        output = sliced_score_matcher.loss_element(x, v, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
 
         # Call the loss element with a different objective function, and check that the
         # jit compilation recognises this change
+        sliced_score_matcher.use_analytic = False
         output_changed_objective = sliced_score_matcher.loss_element(
-            x, v, score_function, sliced_score_matcher.general_objective
+            x, v, score_function
         )
         self.assertNotAlmostEquals(output, output_changed_objective)
 
@@ -279,14 +278,14 @@ class TestScoreMatching(unittest.TestCase):
         We use the non-analytic loss function in this example.
         """
 
-        def score_function(x: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
-            :param x: point at which to evaluate the score function
+            :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at x
             """
-            return x**2
+            return x_**2
 
         # Define an arbitrary input
         x = np.array([2.0, 7.0])
@@ -303,14 +302,11 @@ class TestScoreMatching(unittest.TestCase):
             random_generator=rademacher, use_analytic=False
         )
 
-        # Determine the expected output - using the analytic objective function tested
-        # elsewhere
+        # Determine the expected output
         expected_output = sliced_score_matcher.objective_function(v, H @ v, s)
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(
-            x, v, score_function, sliced_score_matcher.objective_function
-        )
+        output = sliced_score_matcher.loss_element(x, v, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -320,14 +316,14 @@ class TestScoreMatching(unittest.TestCase):
         Test the vmapped loss function.
         """
 
-        def score_function(x: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
-            :param x: point at which to evaluate the score function
+            :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at x
             """
-            return x**2
+            return x_**2
 
         # Define an arbitrary input
         x = np.tile(np.array([2.0, 7.0]), (10, 1))
@@ -342,9 +338,7 @@ class TestScoreMatching(unittest.TestCase):
         sliced_score_matcher = csm.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
-        output = sliced_score_matcher.loss(
-            score_function, sliced_score_matcher.objective_function
-        )(x, random_vectors)
+        output = sliced_score_matcher.loss(score_function)(x, random_vectors)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
@@ -390,10 +384,7 @@ class TestScoreMatching(unittest.TestCase):
         bias_ = bias - 1e-3 * grad_bias
 
         state, _ = sliced_score_matcher.train_step(
-            state,
-            x_to_vector_map,
-            v_to_vector_map,
-            sliced_score_matcher.objective_function,
+            state, x_to_vector_map, v_to_vector_map
         )
 
         # Jax is row based, so transpose W_
@@ -415,8 +406,8 @@ class TestScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(num_points, 1))
 
-        def true_score(x: csm.ArrayLike) -> csm.ArrayLike:
-            return -(x - mu) / std_dev**2
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            return -(x_ - mu) / std_dev**2
 
         # Define data
         x = np.linspace(-2, 2).reshape(-1, 1)
@@ -427,7 +418,7 @@ class TestScoreMatching(unittest.TestCase):
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
-            num_epochs=100,
+            num_epochs=10,
         )
 
         # Learn score function with noise conditioning
@@ -459,8 +450,8 @@ class TestScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
-        def true_score(x: csm.ArrayLike) -> csm.ArrayLike:
-            y = np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x)))
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            y = np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
             return y
 
         # Define data
@@ -473,7 +464,7 @@ class TestScoreMatching(unittest.TestCase):
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
-            num_epochs=100,
+            num_epochs=10,
         )
 
         # Learn score function with noise conditioning
@@ -506,16 +497,16 @@ class TestScoreMatching(unittest.TestCase):
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def egrad(g: csm.Callable) -> csm.Callable:
-            def wrapped(x, *rest):
-                y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
+            def wrapped(x_, *rest):
+                y, g_vjp = jax.vjp(lambda x_: g(x, *rest), x)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
             return wrapped
 
-        def true_score(x: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
             logpdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(logpdf)(x)
+            return egrad(logpdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
@@ -526,7 +517,7 @@ class TestScoreMatching(unittest.TestCase):
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
-            num_epochs=100,
+            num_epochs=10,
         )
 
         # Learn score function with noise conditioning
@@ -593,7 +584,7 @@ class TestScoreMatching(unittest.TestCase):
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
-            num_epochs=100,
+            num_epochs=10,
         )
 
         # Learn score function with noise conditioning
