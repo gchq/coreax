@@ -12,61 +12,91 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
+
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import KernelFunction, solve_qp
+from coreax.util import ClassFactory, KernelFunction, solve_qp
 
 
-def calculate_BQ_weights(
-    x: ArrayLike,
-    x_c: ArrayLike,
-    kernel: KernelFunction,
-) -> Array:
-    r"""
-    Calculate weights from Sequential Bayesian Quadrature (SBQ).
-
-    References for this technique can be found in
-    [huszar2016optimallyweighted]_. These are equivalent to the unconstrained weighted
-    maximum mean discrepancy (MMD) optimum.
-
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m times d` coreset
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :return: Optimal weights
+class WeightsOptimiser(ABC):
     """
-    x = jnp.asarray(x)
-    x_c = jnp.asarray(x_c)
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
-    z = k_pairwise(x_c, x).sum(axis=1) / len(x)
-    K = k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
-    return jnp.linalg.solve(K, z)
-
-
-def simplex_weights(
-    x: ArrayLike,
-    x_c: ArrayLike,
-    kernel: KernelFunction,
-) -> Array:
-    r"""
-    Compute optimal weights given the simplex constraint.
-
-    :param x: The original :math:`n \times d` data
-    :param x_c: :math:`m times d` coreset
-    :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :return: Optimal weights
+    Base class for calculating weights.
     """
-    x = jnp.asarray(x)
-    x_c = jnp.asarray(x_c)
-    k_pairwise = jit(
-        vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
-    )
-    kbar = k_pairwise(x_c, x).sum(axis=1) / len(x)
-    Kmm = k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
-    sol = solve_qp(Kmm, kbar)
-    return sol
+
+    def __init__(self, kernel: KernelFunction) -> None:
+        r"""
+
+        :param kernel: Kernel function
+               :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        """
+        self.kernel = kernel
+
+        self.k_pairwise = jit(
+            vmap(
+                vmap(kernel, in_axes=(None, 0), out_axes=0),
+                in_axes=(0, None),
+                out_axes=0,
+            )
+        )
+
+    @abstractmethod
+    def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
+        """
+        Calculate the weights.
+        """
+
+
+class SBQ(WeightsOptimiser):
+    def __init__(self, kernel: KernelFunction):
+        r"""
+
+        :param kernel: Kernel function
+               :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        """
+
+        # initialise parent
+        super().__init__()
+
+    def solve(self, x: ArrayLike, x_c: ArrayLike) -> Array:
+        r"""
+        Calculate weights from Sequential Bayesian Quadrature (SBQ).
+
+        References for this technique can be found in
+        [huszar2016optimallyweighted]_. These are equivalent to the unconstrained weighted
+        maximum mean discrepancy (MMD) optimum.
+
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m times d` coreset
+        :return: Optimal weights
+        """
+        x = jnp.asarray(x)
+        x_c = jnp.asarray(x_c)
+        kernel_nm = self.k_pairwise(x_c, x).sum(axis=1) / len(x)
+        kernel_mm = self.k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
+        return jnp.linalg.solve(kernel_mm, kernel_nm)
+
+
+class MMD(WeightsOptimiser):
+    def solve(self, x: ArrayLike, x_c: ArrayLike) -> Array:
+        r"""
+        Compute optimal weights given the simplex constraint.
+
+        :param x: The original :math:`n \times d` data
+        :param x_c: :math:`m times d` coreset
+        :return: Optimal weights
+        """
+        x = jnp.asarray(x)
+        x_c = jnp.asarray(x_c)
+        kernel_nm = self.k_pairwise(x_c, x).sum(axis=1) / len(x)
+        kernel_mm = self.k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
+        sol = solve_qp(kernel_mm, kernel_nm)
+        return sol
+
+
+# Set up class factory
+weights_factory = ClassFactory(WeightsOptimiser)
+weights_factory.register("SBQ", SBQ)
+weights_factory.register("MMD", MMD)
