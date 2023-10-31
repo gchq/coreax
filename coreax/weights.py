@@ -18,7 +18,8 @@ import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import ClassFactory, KernelFunction, solve_qp
+import coreax.kernel as ck
+from coreax.util import ClassFactory, solve_qp
 
 
 class WeightsOptimiser(ABC):
@@ -26,21 +27,13 @@ class WeightsOptimiser(ABC):
     Base class for calculating weights.
     """
 
-    def __init__(self, kernel: KernelFunction) -> None:
+    def __init__(self, kernel: ck.Kernel) -> None:
         r"""
 
         :param kernel: Kernel function
                :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         """
         self.kernel = kernel
-
-        self.k_pairwise = jit(
-            vmap(
-                vmap(kernel, in_axes=(None, 0), out_axes=0),
-                in_axes=(0, None),
-                out_axes=0,
-            )
-        )
 
     @abstractmethod
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -50,13 +43,7 @@ class WeightsOptimiser(ABC):
 
 
 class SBQ(WeightsOptimiser):
-    def __init__(self, kernel: KernelFunction):
-        r"""
-
-        :param kernel: Kernel function
-               :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        """
-
+    def __init__(self):
         # initialise parent
         super().__init__()
 
@@ -74,12 +61,16 @@ class SBQ(WeightsOptimiser):
         """
         x = jnp.asarray(x)
         x_c = jnp.asarray(x_c)
-        kernel_nm = self.k_pairwise(x_c, x).sum(axis=1) / len(x)
-        kernel_mm = self.k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
+        kernel_nm = self.kernel.compute(x_c, x).sum(axis=1) / len(x)
+        kernel_mm = self.kernel.compute(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
         return jnp.linalg.solve(kernel_mm, kernel_nm)
 
 
 class MMD(WeightsOptimiser):
+    def __init__(self):
+        # initialise parent
+        super().__init__()
+
     def solve(self, x: ArrayLike, x_c: ArrayLike) -> Array:
         r"""
         Compute optimal weights given the simplex constraint.
@@ -90,8 +81,8 @@ class MMD(WeightsOptimiser):
         """
         x = jnp.asarray(x)
         x_c = jnp.asarray(x_c)
-        kernel_nm = self.k_pairwise(x_c, x).sum(axis=1) / len(x)
-        kernel_mm = self.k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
+        kernel_nm = self.kernel.compute(x_c, x).sum(axis=1) / len(x)
+        kernel_mm = self.kernel.compute(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
         sol = solve_qp(kernel_mm, kernel_nm)
         return sol
 
