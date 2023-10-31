@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
@@ -134,9 +134,9 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Compute each term in the MMD formula
-        kernel_nn = self.kernel.compute_pairwise_no_grads(x, x)
-        kernel_mm = self.kernel.compute_pairwise_no_grads(x_c, x_c)
-        kernel_nm = self.kernel.compute_pairwise_no_grads(x, x_c)
+        kernel_nn = self.kernel.compute(x, x)
+        kernel_mm = self.kernel.compute(x_c, x_c)
+        kernel_nm = self.kernel.compute(x, x_c)
 
         # Compute MMD
         result = jnp.sqrt(
@@ -165,9 +165,9 @@ class MMD(Metric):
         n = float(len(x))
 
         # Compute each term in the weighted MMD formula
-        kernel_nn = self.kernel.compute_pairwise_no_grads(x, x)
-        kernel_mm = self.kernel.compute_pairwise_no_grads(x_c, x_c)
-        kernel_nm = self.kernel.compute_pairwise_no_grads(x, x_c)
+        kernel_nn = self.kernel.compute(x, x)
+        kernel_mm = self.kernel.compute(x_c, x_c)
+        kernel_nm = self.kernel.compute(x, x_c)
 
         # Compute weighted MMD, correcting for any numerical precision issues, where we
         # would otherwise square-root a negative number very close to 0.0.
@@ -291,13 +291,13 @@ class MMD(Metric):
         # If max_size is larger than both inputs, we don't need to consider block-wise
         # computation
         if max_size > max(num_points_x, num_points_y):
-            output = self.kernel.compute_pairwise_no_grads(x, y).sum()
+            output = self.kernel.compute(x, y).sum()
 
         else:
             output = 0
             for i in range(0, num_points_x, max_size):
                 for j in range(0, num_points_y, max_size):
-                    pairwise_distances_part = self.kernel.compute_pairwise_no_grads(
+                    pairwise_distances_part = self.kernel.compute(
                         x[i : i + max_size], y[j : j + max_size]
                     )
                     output += pairwise_distances_part.sum()
@@ -332,8 +332,8 @@ class MMD(Metric):
         # If max_size is larger than both inputs, we don't need to consider block-wise
         # computation
         if max_size > max(num_points_x, num_points_y):
-            Kw = self.kernel.compute_pairwise_no_grads(x, y) * weights_y
-            output = (weights_x * Kw.T).sum()
+            kernel_weights = self.kernel.compute(x, y) * weights_y
+            output = (weights_x * kernel_weights.T).sum()
 
         else:
             output = 0
@@ -341,9 +341,7 @@ class MMD(Metric):
                 for j in range(0, num_points_y, max_size):
                     pairwise_distances_part = (
                         weights_x[i : i + max_size, None]
-                        * self.kernel.compute_pairwise_no_grads(
-                            x[i : i + max_size], y[j : j + max_size]
-                        )
+                        * self.kernel.compute(x[i : i + max_size], y[j : j + max_size])
                         * weights_y[None, j : j + max_size]
                     )
                     output += pairwise_distances_part.sum()
