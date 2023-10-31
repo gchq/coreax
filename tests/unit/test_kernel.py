@@ -17,7 +17,6 @@ from unittest.mock import patch
 import numpy as np
 import scipy.stats
 from jax import numpy as jnp
-from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.kernel as ck
@@ -32,7 +31,7 @@ class TestKernelABC(unittest.TestCase):
         """
         Test creation of approximation object within the Kernel class.
         """
-        # Patch the abstract methods of the Kernel ABC so it can be created
+        # Patch the abstract methods of the Kernel ABC, so it can be created
         p = patch.multiple(ck.Kernel, __abstractmethods__=set())
         p.start()
 
@@ -71,7 +70,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_se_kernel_init(self) -> None:
         r"""
-        Test the class SquaredExponentialKernel initilisation with a negative lengthscale.
+        Test the initilisation of SquaredExponentialKernel with a negative lengthscale.
         """
         # Create the kernel with a negative lengthscale - we expect a value error to be
         # raised
@@ -81,7 +80,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input floats
         .. math::
@@ -141,7 +141,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input vectors
         .. math::
@@ -184,7 +185,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         r"""
         Test the class SquaredExponentialKernel distance computations on arrays.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
 
         For the two input vectors
         .. math::
@@ -230,10 +232,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         np.testing.assert_array_almost_equal(output, expected_distances, decimal=5)
 
     def test_se_kernel_gradients_wrt_x(self) -> None:
-        """
+        r"""
         Test the class SquaredExponentialKernel gradient computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         The gradient of this with respect to x is:
 
         ..math:
@@ -268,10 +271,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         )
 
     def test_scaled_se_kernel_gradients_wrt_x(self) -> None:
-        """
+        r"""
         Test the class SquaredExponentialKernel gradient computations; with scaling.
 
-        The scaled SquaredExponential kernel is defined as :math:`k(x,y) = s\exp (-||x-y||^2/2 * lengthscale)`.
+        The scaled SquaredExponential kernel is defined as
+        :math:`k(x,y) = s\exp (-||x-y||^2/2 * lengthscale)`.
         The gradient of this with respect to x is:
 
         ..math:
@@ -308,10 +312,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         )
 
     def test_se_kernel_gradients_wrt_y(self) -> None:
-        """
+        r"""
         Test the class SquaredExponentialKernel gradient computations.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         The gradient of this with respect to y is:
 
         ..math:
@@ -391,14 +396,15 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     #     np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
 
     def test_define_pairwise_kernel_evaluation_no_grads(self) -> None:
-        """
+        r"""
         Test the definition of pairwise kernel evaluation functions, without gradients.
 
         Pairwise distances mean, given two input arrays, we should return a matrix
         where the values correspond to the distance, as judged by the kernel, between
         each point in the first array and each point in the second array.
 
-        The SquaredExponential kernel is defined as :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
+        The SquaredExponential kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * lengthscale)`.
         If we have two input arrays:
 
         ..math:
@@ -805,7 +811,7 @@ class TestPCIMQKernel(unittest.TestCase):
                     s
                     / (2 * lengthscale**2)
                     * (
-                        dimension * ((k / s)) ** 3
+                        dimension * (k / s) ** 3
                         - 3 * dp * (k / s) ** 5 / (2 * lengthscale**2)
                     )
                 )
@@ -835,8 +841,8 @@ class TestSteinKernel(unittest.TestCase):
         dimension = 2
         lengthscale = 1 / np.sqrt(2)
 
-        def score_function(x):
-            return -x
+        def score_function(x_):
+            return -x_
 
         # Setup data
         x = np.random.random((num_points_x, dimension))
@@ -866,12 +872,15 @@ class TestSteinKernel(unittest.TestCase):
         lengthscale = 1 / np.sqrt(2)
         beta = 0.5
 
-        def score_function(x):
-            return -x
+        def score_function(x_):
+            return -x_
 
-        def k_x_y(x, y):
+        def k_x_y(x_input, y_input):
             r"""
             The Stein kernel.
+
+            Throughout this docstring, x_input and y_input are simply refered to as x
+            and y.
 
             The base kernel is :math:`(1 + \lvert \mathbf{x} - \mathbf{y}
             \rvert^2)^{-1/2}`. :math:`\mathbb{P}` is :math:`\mathcal{N}(0, \mathbf{I})`
@@ -892,19 +901,28 @@ class TestSteinKernel(unittest.TestCase):
             :math:`r := \frac{\mathbf{x}^\intercal \mathbf{y}}{(1 + \lvert \mathbf{x} -
             \mathbf{y} \rvert^2)^{1/2}}`.
 
-            :param x: a d-dimensional vector
-            :param y: a d-dimensional vector
+            :param x_input: a d-dimensional vector
+            :param y_input: a d-dimensional vector
             :return: kernel evaluated at x, y
             """
-            norm_sq = np.linalg.norm(x - y) ** 2
+            norm_sq = np.linalg.norm(x_input - y_input) ** 2
             l = -3 * norm_sq / (1 + norm_sq) ** 2.5
             m = (
                 2
                 * beta
-                * (dimension + np.dot(score_function(x) - score_function(y), x - y))
+                * (
+                    dimension
+                    + np.dot(
+                        score_function(x_input) - score_function(y_input),
+                        x_input - y_input,
+                    )
+                )
                 / (1 + norm_sq) ** 1.5
             )
-            r = np.dot(score_function(x), score_function(y)) / (1 + norm_sq) ** 0.5
+            r = (
+                np.dot(score_function(x_input), score_function(y_input))
+                / (1 + norm_sq) ** 0.5
+            )
             return l + m + r
 
         # Setup data
@@ -920,10 +938,10 @@ class TestSteinKernel(unittest.TestCase):
         # Compute the output step-by-step with the element method
         expected_output = np.zeros([x.shape[0], y.shape[0]])
         output = kernel.compute(x, y)
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
+        for i, x__ in enumerate(x):
+            for j, y__ in enumerate(y):
                 # Compute via our hand-coded kernel evaluation
-                expected_output[i, j] = k_x_y(x_, y_)
+                expected_output[i, j] = k_x_y(x__, y__)
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)

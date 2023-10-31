@@ -55,7 +55,7 @@ class Kernel(ABC):
 
     def __init__(self, lengthscale: float = 1.0, scale: float = 1.0):
         """
-        Define a kernel
+        Define a kernel.
 
         :param lengthscale: Kernel lengthscale to use.
         :param scale: Output scale to use.
@@ -75,7 +75,7 @@ class Kernel(ABC):
 
     @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
+        r"""
         Evaluate the kernel on input data x and y.
 
         The 'data' can be any of:
@@ -164,8 +164,7 @@ class Kernel(ABC):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Element-wise gradient (Jacobian) of the kernel function w.r.t. y. Autodiff
-        version.
+        Element-wise gradient (Jacobian) of the kernel function w.r.t. y via Autodiff.
 
         Only accepts single vectors x and y, i.e. not arrays. This function is
         vectorised for arrays in grad_y.
@@ -184,8 +183,7 @@ class Kernel(ABC):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Element-wise gradient (Jacobian) of the kernel function w.r.t. x. Autodiff
-        version.
+        Element-wise gradient (Jacobian) of the kernel function w.r.t. x via Autodiff.
 
         Only accepts single vectors x and y, i.e. not arrays. This function is
         vectorised for arrays in grad_x.
@@ -198,13 +196,13 @@ class Kernel(ABC):
         return grad(self._compute_elementwise, 0)(x, y)
 
     @jit
-    def _divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
         r"""
-        Elementwise divergence w.r.t. x of Jacobian w.r.t. y. Autodiff version.
+        Elementwise divergence w.r.t. x of Jacobian w.r.t. y via Autodiff.
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors x and y. A vectorised version for arrays is computed in
@@ -241,7 +239,7 @@ class Kernel(ABC):
         """
         fn = vmap(
             vmap(
-                self._divergence_x_grad_y_elementise,
+                self._divergence_x_grad_y_elementwise,
                 in_axes=(0, None),
                 out_axes=0,
             ),
@@ -456,8 +454,6 @@ class Kernel(ABC):
 
         :param approximator: The name of an approximator class to use, or the
             uninstantiated class directly as a dependency injection
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param random_key: Key for random number generation
         :param num_kernel_points: Number of kernel evaluation points
         :param num_train_points: Number of training points used to fit kernel
@@ -529,8 +525,7 @@ class SquaredExponentialKernel(Kernel):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Element-wise gradient (Jacobian) of the squared exponential kernel function
-        w.r.t. x.
+        Element-wise gradient (Jacobian) of the squared exponential kernel w.r.t. x.
 
         Only accepts single vectors x and y, i.e. not arrays. This function is
         vectorised for arrays in grad_x.
@@ -549,8 +544,7 @@ class SquaredExponentialKernel(Kernel):
         y: ArrayLike,
     ) -> Array:
         r"""
-        Element-wise gradient (Jacobian) of the squared exponential kernel function
-        w.r.t. y.
+        Element-wise gradient (Jacobian) of the squared exponential kernel w.r.t. y.
 
         Only accepts single vectors x and y, i.e. not arrays. This function is
         vectorised for arrays in grad_y.
@@ -563,7 +557,7 @@ class SquaredExponentialKernel(Kernel):
         return (x - y) / self.lengthscale**2 * self._compute_elementwise(x, y)
 
     @jit
-    def _divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -679,7 +673,7 @@ class PCIMQKernel(Kernel):
         )
 
     @jit
-    def _divergence_x_grad_y_elementise(
+    def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -708,12 +702,11 @@ class SteinKernel(Kernel):
     def __init__(
         self,
         base_kernel: Kernel,
-        # score_function: Callable[[ArrayLike, ArrayLike], Array] | None,
         score_function: Callable[[ArrayLike], Array],
         scale: float = 1.0,
     ):
         r"""
-        Define the Stein kernel, i.e. the application of the Stein operator,
+        Define the Stein kernel, i.e. the application of the Stein operator.
 
         :math:`\mathcal{A}_\mathbb{P}(g(\mathbf{x})) := \nabla_\mathbf{x} g(\mathbf{x})
         + g(\mathbf{x}) \nabla_\mathbf{x} \log f_X(\mathbf{x})^\intercal,`
@@ -733,7 +726,8 @@ class SteinKernel(Kernel):
         The Stein kernel for base kernel :math:`k(\mathbf{x}, \mathbf{y})` is defined as
 
         :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = \nabla_\mathbf{x} \cdot
-        \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) + \nabla_\mathbf{x} \log f_X(\mathbf{x})
+        \nabla_\mathbf{y}
+        k(\mathbf{x}, \mathbf{y}) + \nabla_\mathbf{x} \log f_X(\mathbf{x})
         \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) + \nabla_\mathbf{y} \log
         f_X(\mathbf{y}) \cdot \nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) +
         (\nabla_\mathbf{x} \log f_X(\mathbf{x}) \cdot \nabla_\mathbf{y} \log
@@ -802,7 +796,7 @@ class SteinKernel(Kernel):
         :return: kernel evaluated at (x, y).
         """
         k = self.base_kernel._compute_elementwise(x, y)
-        div = self.base_kernel._divergence_x_grad_y_elementise(x, y)
+        div = self.base_kernel._divergence_x_grad_y_elementwise(x, y)
         gkx = self.base_kernel._grad_x_elementwise(x, y)
         gky = self.base_kernel._grad_y_elementwise(x, y)
         score_x = self.score_function(x)
