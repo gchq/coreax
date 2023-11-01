@@ -22,7 +22,8 @@ import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import ClassFactory, KernelFunction
+import coreax.kernel as ck
+from coreax.util import ClassFactory
 
 # Refine Functions
 #
@@ -34,7 +35,7 @@ class Refine(ABC):
     Base class for refinement functions.
     """
 
-    def __init__(self, kernel: KernelFunction):
+    def __init__(self, kernel: ck.Kernel):
         r"""
         Create a method to refine a coreset by optimising over indices in the dataset.
 
@@ -57,12 +58,12 @@ class Refine(ABC):
 
         self.k_pairwise = jit(
             vmap(
-                vmap(self.kernel, in_axes=(None, 0), out_axes=0),
+                vmap(kernel._compute_elementwise, in_axes=(None, 0), out_axes=0),
                 in_axes=(0, None),
                 out_axes=0,
             )
         )
-        self.k_vec = jit(vmap(self.kernel, in_axes=(0, None)))
+        self.k_vec = jit(vmap(kernel._compute_elementwise, in_axes=(0, None)))
 
     @abstractmethod
     def refine(self, x: ArrayLike, S: ArrayLike, K_mean: ArrayLike) -> Array:
@@ -104,7 +105,7 @@ class Refine(ABC):
 
 
 class RefineRegular(Refine):
-    def __init__(self, kernel: KernelFunction):
+    def __init__(self, kernel: ck.Kernel):
         super().__init__(kernel)
 
     def refine(self, x, S, K_mean) -> Array:
@@ -121,7 +122,7 @@ class RefineRegular(Refine):
         :return: :math:`m` Refined coreset point indices
         """
 
-        K_diag = vmap(self.kernel)(x, x)
+        K_diag = vmap(self.kernel.compute)(x, x)
 
         S = jnp.asarray(S)
         num_points_in_coreset = len(S)
@@ -195,7 +196,7 @@ class RefineRegular(Refine):
 
 
 class RefineRandom(Refine):
-    def __init__(self, kernel: KernelFunction, p: float = 0.1):
+    def __init__(self, kernel: ck.Kernel, p: float = 0.1):
         self.p = p
 
         super().__init__(kernel)
@@ -214,7 +215,7 @@ class RefineRandom(Refine):
         :return: Refined coreset point indices
         """
 
-        K_diag = vmap(self.kernel)(x, x)
+        K_diag = vmap(self.kernel.compute)(x, x)
 
         S = jnp.asarray(S)
         x = jnp.asarray(x)
@@ -347,7 +348,7 @@ class RefineRandom(Refine):
 
 
 class RefineRev(Refine):
-    def __init__(self, kernel: KernelFunction):
+    def __init__(self, kernel: ck.Kernel):
         super().__init__(kernel)
 
     def refine(
@@ -370,7 +371,7 @@ class RefineRev(Refine):
         x = jnp.asarray(x)
         S = jnp.asarray(S)
 
-        K_diag = vmap(self.kernel)(x, x)
+        K_diag = vmap(self.kernel.compute)(x, x)
 
         num_points_in_x = len(x)
 
