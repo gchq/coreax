@@ -75,6 +75,7 @@ def main(
         sigma=1.0,
         gamma=0.95,
     )
+    score_function = sliced_score_matcher.match(X)
 
     # run Stein kernel herding in block mode to avoid GPU memory issues
     coreset, Kc, Kbar = stein_kernel_herding_block(

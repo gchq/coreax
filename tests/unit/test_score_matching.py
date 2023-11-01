@@ -43,7 +43,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
     """
 
     def test_analytic_objective_orthogonal(self) -> None:
-        """
+        r"""
         Test the core objective function, analytic version.
 
         We consider two orthogonal vectors, u and v, and a score vector of ones. The
@@ -82,7 +82,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output, places=3)
 
     def test_analytic_objective(self) -> None:
-        """
+        r"""
         Test the core objective function, analytic version.
 
         We consider the following vectors:
@@ -138,7 +138,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output_general, places=3)
 
     def test_general_objective_orthogonal(self) -> None:
-        """
+        r"""
         Test the core objective function, non-analytic version.
 
         We consider the following vectors:
@@ -182,7 +182,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output, places=3)
 
     def test_general_objective(self) -> None:
-        """
+        r"""
         Test the core objective function, non-analytic version.
 
         We consider the following vectors:
@@ -243,10 +243,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         s = score_function(x)
 
         # Defined the Hessian (grad of score function)
-        H = 2.0 * np.diag(x)
+        hessian = 2.0 * np.diag(x)
 
         # Define some arbitrary random vector
-        v = np.ones(2, dtype=float)
+        random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
         sliced_score_matcher = csm.SlicedScoreMatching(
@@ -255,10 +255,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Determine the expected output - using the analytic objective function tested
         # elsewhere
-        expected_output = sliced_score_matcher.objective_function(v, H @ v, s)
+        expected_output = sliced_score_matcher.objective_function(
+            random_vector, hessian @ random_vector, s
+        )
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(x, v, score_function)
+        output = sliced_score_matcher.loss_element(x, random_vector, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -267,7 +269,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # jit compilation recognises this change
         sliced_score_matcher.use_analytic = False
         output_changed_objective = sliced_score_matcher.loss_element(
-            x, v, score_function
+            x, random_vector, score_function
         )
         self.assertNotAlmostEquals(output, output_changed_objective)
 
@@ -292,10 +294,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         s = score_function(x)
 
         # Defined the Hessian (grad of score function)
-        H = 2.0 * np.diag(x)
+        hessian = 2.0 * np.diag(x)
 
         # Define some arbitrary random vector
-        v = np.ones(2, dtype=float)
+        random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
         sliced_score_matcher = csm.SlicedScoreMatching(
@@ -303,10 +305,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Determine the expected output
-        expected_output = sliced_score_matcher.objective_function(v, H @ v, s)
+        expected_output = sliced_score_matcher.objective_function(
+            random_vector, hessian @ random_vector, s
+        )
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(x, v, score_function)
+        output = sliced_score_matcher.loss_element(x, random_vector, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -451,8 +455,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
         def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            y = np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
-            return y
+            return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
         x, y = np.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
@@ -498,15 +501,15 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def egrad(g: csm.Callable) -> csm.Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = jax.vjp(lambda x_: g(x, *rest), x)
+                y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
             return wrapped
 
         def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            logpdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(logpdf)(x_)
+            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            return egrad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
@@ -558,21 +561,21 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         def egrad(g: csm.Callable) -> csm.Callable:
-            def wrapped(x, *rest):
-                y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
+            def wrapped(x_, *rest):
+                y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
             return wrapped
 
-        def true_score(x: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
             def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
                 lpdf = 0.0
                 for k_ in range(k):
                     lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
                 return jax.numpy.log(lpdf)
 
-            return egrad(logpdf)(x)
+            return egrad(logpdf)(x_)
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
