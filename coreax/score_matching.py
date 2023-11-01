@@ -208,8 +208,8 @@ class SlicedScoreMatching(ScoreMatching):
         """
         Compute reduced variance score matching loss function.
 
-        This is for use with certain random measures, e.g. normal and Rademacher. If this
-        assumption is not true, then general_obj should be used instead.
+        This is for use with certain random measures, e.g. normal and Rademacher. If
+        this assumption is not true, then general_obj should be used instead.
 
         :param random_direction_vector: d-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
@@ -233,8 +233,8 @@ class SlicedScoreMatching(ScoreMatching):
         """
         Compute general score matching loss function.
 
-        This is to be used when one cannot assume normal or Rademacher random measures when
-        using score matching, but has higher variance than analytic_obj if these
+        This is to be used when one cannot assume normal or Rademacher random measures
+        when using score matching, but has higher variance than analytic_obj if these
         assumptions hold.
 
         :param random_direction_vector: d-dimensional random vector
@@ -256,8 +256,8 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Compute element-wise loss function.
 
-        Computes the loss function from Section 3.2 of Song el al.'s paper on sliced score
-        matching [ssm]_.
+        Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
+        score matching [ssm]_.
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -271,8 +271,8 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Compute vector mapped loss function for arbitrary numbers of X and V vectors.
 
-        In the context of score matching, we expect to call the objective function on the
-        data vector (x), random vectors (v) and using the score neural network.
+        In the context of score matching, we expect to call the objective function on
+        the data vector (x), random vectors (v) and using the score neural network.
 
         :param score_network: Function that calls the neural network on x
         :return: Callable vectorised sliced score matching loss function
