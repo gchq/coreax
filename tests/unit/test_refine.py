@@ -16,10 +16,9 @@ import itertools
 import unittest
 
 import jax.numpy as jnp
-from jax import vmap
 
 import coreax.refine
-from coreax.kernel import rbf_kernel
+from coreax.kernel import RBFKernel
 
 
 class TestMetrics(unittest.TestCase):
@@ -39,11 +38,10 @@ class TestMetrics(unittest.TestCase):
 
         S = jnp.array(list(best_indices))
 
-        K = vmap(
-            vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )(x, x)
+        rbf_kernel = RBFKernel(bandwidth=1.0)
+
+        K = rbf_kernel.compute(x=x, y=x)
+
         K_mean = K.mean(axis=1)
 
         refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
@@ -66,16 +64,13 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
+        rbf_kernel = RBFKernel(bandwidth=1.0)
         refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
-            K = vmap(
-                vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-                in_axes=(0, None),
-                out_axes=0,
-            )(x, x)
+            K = rbf_kernel.compute(x=x, y=x)
             K_mean = K.mean(axis=1)
 
             refine_test = refine_regular.refine(x, S, K_mean)
@@ -99,11 +94,9 @@ class TestMetrics(unittest.TestCase):
 
         S = jnp.array(test_indices)
 
-        K = vmap(
-            vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-            in_axes=(0, None),
-            out_axes=0,
-        )(x, x)
+        rbf_kernel = RBFKernel(bandwidth=1.0)
+
+        K = rbf_kernel.compute(x=x, y=x)
         K_mean = K.mean(axis=1)
 
         refine_rand = coreax.refine.RefineRandom(kernel=rbf_kernel, p=1.0)
@@ -126,16 +119,14 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
+        rbf_kernel = RBFKernel(bandwidth=1.0)
+
         refine_rev = coreax.refine.RefineRev(kernel=rbf_kernel)
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
-            K = vmap(
-                vmap(rbf_kernel, in_axes=(None, 0), out_axes=0),
-                in_axes=(0, None),
-                out_axes=0,
-            )(x, x)
+            K = rbf_kernel.compute(x=x, y=x)
             K_mean = K.mean(axis=1)
 
             refine_test = refine_rev.refine(x, S, K_mean)
