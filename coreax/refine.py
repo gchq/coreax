@@ -255,7 +255,8 @@ def comparison_cand(
     :param cand: Indices for randomly sampled candidate points among the original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Row mean of the :math:`n \times n` kernel matrix, a :math:`1 \times n` array
+    :param K_mean: Row mean of the :math:`n \times n` kernel matrix,
+        a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
     :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
@@ -333,7 +334,8 @@ def refine_rev(
     :param S: :math:`m` Coreset point indices
     :param kernel: Kernel function
                    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param K_mean: Row mean of the :math:`n \times n` kernel matrix, a  :math:`1 \times n` array
+    :param K_mean: Row mean of the :math:`n \times n` kernel matrix,
+        a  :math:`1 \times n` array
     :return: :math:`m` Refined coreset point indices
     """
     x = jnp.asarray(x)
@@ -409,7 +411,8 @@ def comparison_rev(
     :param i: Index for original data
     :param S: Coreset point indices
     :param x: :math:`n \times d` original data
-    :param K_mean: Row mean of the :math:`n \times n` kernel matrix. a :math:`1 \times n` array
+    :param K_mean: Row mean of the :math:`n \times n` kernel matrix.
+        a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
     :param k_pairwise: Vectorised kernel function on pairs ``(x,x)``:
                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
