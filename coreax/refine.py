@@ -305,7 +305,7 @@ def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     This is a convenience function for leaving ``S`` unchanged, :math:`S \rightarrow x`.
 
     .. seealso::
-    
+
         Compare with :func:`~coreax.refine.change`.
 
     :param i: Index in ``S`` to replace, not used
@@ -326,7 +326,7 @@ def refine_rev(
     r"""
     Refine a coreset iteratively, replacing points which lead to the most improvement.
 
-    In this greedy refine method, the iteration is carried out over points in ``x``, with 
+    In this greedy refine method, the iteration is carried out over points in ``x``, with
     :math:`x \rightarrow S`.
 
     :param x: :math:`n \times d` original data
