@@ -350,51 +350,6 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    # def test_se_kernel_log_pdf_gradients_wrt_x(self) -> None:
-    #     """
-    #     Test the class SquaredExponentialKernel score-function gradient computations.
-    #     """
-    #     # Define parameters for data
-    #     lengthscale = 1 / np.sqrt(2)
-    #     num_points = 10
-    #     dimension = 2
-    #     x = np.random.random((num_points, dimension))
-
-    #     # Sample points to build the distribution from
-    #     kde_points = np.random.random((num_points, dimension))
-
-    #     # Define a kernel density estimate function for the distribution
-    #     kde = lambda input_var: (
-    #         np.exp(
-    #             -np.linalg.norm(input_var - kde_points, axis=1)[:, None] ** 2
-    #             / (2 * lengthscale**2)
-    #         )
-    #         / (np.sqrt(2 * np.pi) * lengthscale)
-    #     ).mean(axis=0)
-
-    #     # Define a matrix to store gradients in - this is a jacobian because it's the
-    #     # matrix of partial derivatives
-    #     jacobian = np.zeros((num_points, dimension))
-
-    #     # For each data-point in x, compute the gradients
-    #     for i, x_ in enumerate(x):
-    #         jacobian[i] = (
-    #             -(x_ - kde_points)
-    #             / lengthscale**3
-    #             * np.exp(
-    #                 -np.linalg.norm(x_ - kde_points, axis=1)[:, None] ** 2
-    #                 / (2 * lengthscale**2)
-    #             )
-    #             / (np.sqrt(2 * np.pi))
-    #         ).mean(axis=0) / (kde(x_)[:, None])
-
-    #     # Compute the gradient of the score function using the class
-    #     kernel = ck.SquaredExponentialKernel(lengthscale=lengthscale)
-    #     output = kernel.grad_log_x(x, kde_points, lengthscale)
-
-    #     # Check output matches expected
-    #     np.testing.assert_array_almost_equal(output, jacobian, decimal=3)
-
     def test_define_pairwise_kernel_evaluation_no_grads(self) -> None:
         r"""
         Test the definition of pairwise kernel evaluation functions, without gradients.
@@ -530,8 +485,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         Test computation of normalised SquaredExponential kernel.
 
-        A normalised SquaredExponential kernel is also known as a Gaussian kernel. We generate data and
-        compare to a standard implementation of the Gaussian PDF.
+        A normalised SquaredExponential kernel is also known as a Gaussian kernel. We
+        generate data and compare to a standard implementation of the Gaussian PDF.
         """
         # Setup some data
         std_dev = np.e
@@ -554,43 +509,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    # def test_construct_pdf(self) -> None:
-    #     """
-    #     Test construction of PDF using SquaredExponential kernel.
-    #     """
-    #     # Setup some data
-    #     std_dev = np.e
-    #     num_points = 10
-    #     x = np.arange(num_points)
-    #     y = x + 1.0
-
-    #     # Compute expected output using standard implementation of the Gaussian PDF
-    #     expected_output = np.zeros((num_points, num_points))
-    #     for i, x_ in enumerate(x):
-    #         for j, y_ in enumerate(y):
-    #             expected_output[i, j] = scipy.stats.norm(y_, std_dev).pdf(x_)
-
-    #     # Compute the normalised PDF output using the kernel class
-    #     kernel = ck.SquaredExponentialKernel(lengthscale=std_dev)
-    #     output_mean, output_kernel = kernel.construct_pdf(x, y)
-
-    #     # Check output matches expected
-    #     np.testing.assert_array_almost_equal(
-    #         output_mean, expected_output.mean(axis=1), decimal=3
-    #     )
-    #     np.testing.assert_array_almost_equal(output_kernel, expected_output, decimal=3)
-
-    def test_define_pairwise_kernel_evaluation_with_grads(self) -> None:
-        """
-        Test the definition of pairwise kernel evaluation functions, with gradients.
-
-        # TODO: What is a sensible test-case for this? Functionality may not work.
-        """
-        pass
-
     def test_se_div_x_grad_y(self) -> None:
         """
-        Test the divergence wrt x of kernel Jacobian wrt y
+        Test the divergence w.r.t. x of kernel Jacobian w.r.t. y
         """
         # Setup data
         lengthscale = 1 / np.sqrt(2)
@@ -614,7 +535,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_scaled_se_div_x_grad_y(self) -> None:
         """
-        Test the divergence wrt x of kernel Jacobian wrt y; scaled version.
+        Test the divergence w.r.t. x of kernel Jacobian w.r.t. y; scaled version.
         """
         # Setup data
         lengthscale = 1 / np.pi
@@ -661,7 +582,7 @@ class TestPCIMQKernel(unittest.TestCase):
         :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / std_dev) ** 2 / 2.0)}`.
         """
         # Define input data
-        std_dev = np.e
+        lengthscale = np.e
         num_points = 10
         x = np.arange(num_points).reshape(-1, 1)
         y = x + 1.0
@@ -671,11 +592,11 @@ class TestPCIMQKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 expected_output[i, j] = 1.0 / np.sqrt(
-                    1.0 + ((x_[0] - y_[0]) / std_dev) ** 2 / 2.0
+                    1.0 + ((x_[0] - y_[0]) / lengthscale) ** 2 / 2.0
                 )
 
         # Compute distance using the kernel class
-        kernel = ck.PCIMQKernel(lengthscale=std_dev)
+        kernel = ck.PCIMQKernel(lengthscale=lengthscale)
         output = kernel.compute(x, y)
 
         # Check output matches expected
@@ -766,7 +687,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_pcimq_div_x_grad_y(self) -> None:
         """
-        Test the divergence wrt x of kernel Jacobian wrt y
+        Test the divergence w.r.t. x of kernel Jacobian w.r.t. y
         """
         # Setup data
         lengthscale = 1 / np.sqrt(2)
@@ -791,7 +712,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_scaled_pcimq_div_x_grad_y(self) -> None:
         """
-        Test the divergence wrt x of kernel Jacobian wrt y; scaled version
+        Test the divergence w.r.t. x of kernel Jacobian w.r.t. y; scaled version
         """
         # Setup data
         lengthscale = 1 / np.pi
