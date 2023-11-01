@@ -66,7 +66,7 @@ class Refine(ABC):
         self.k_vec = jit(vmap(kernel._compute_elementwise, in_axes=(0, None)))
 
     @abstractmethod
-    def refine(self, x: ArrayLike, S: ArrayLike, K_mean: ArrayLike) -> Array:
+    def refine(self, x: ArrayLike, S: ArrayLike) -> Array:
         r"""
         Compute the refined coreset, of m points in d dimensions.
 
@@ -75,7 +75,6 @@ class Refine(ABC):
 
         :param x: :math:`n \times d` original data
         :param S: :math:`m` coreset point indices
-        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :return: :math:`m` Refined coreset point indices
         """
         raise NotImplementedError
@@ -108,7 +107,7 @@ class RefineRegular(Refine):
     def __init__(self, kernel: ck.Kernel):
         super().__init__(kernel)
 
-    def refine(self, x, S, K_mean) -> Array:
+    def refine(self, x, S) -> Array:
         r"""
         Refine a coreset iteratively. S -> x.
 
@@ -118,11 +117,11 @@ class RefineRegular(Refine):
 
         :param x: :math:`n \times d` original data
         :param S: :math:`m` Coreset point indices
-        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :return: :math:`m` Refined coreset point indices
         """
 
         K_diag = vmap(self.kernel.compute)(x, x)
+        K_mean = self.kernel.compute(x, x).mean(axis=1)
 
         S = jnp.asarray(S)
         num_points_in_coreset = len(S)
@@ -201,7 +200,7 @@ class RefineRandom(Refine):
 
         super().__init__(kernel)
 
-    def refine(self, x, S, K_mean):
+    def refine(self, x, S):
         r"""
          Refine a coreset iteratively.
 
@@ -211,11 +210,11 @@ class RefineRandom(Refine):
 
         :param x: :math:`n \times d` original data
         :param S: Coreset point indices
-        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :return: Refined coreset point indices
         """
 
         K_diag = vmap(self.kernel.compute)(x, x)
+        K_mean = self.kernel.compute(x, x).mean(axis=1)
 
         S = jnp.asarray(S)
         x = jnp.asarray(x)
@@ -351,12 +350,7 @@ class RefineRev(Refine):
     def __init__(self, kernel: ck.Kernel):
         super().__init__(kernel)
 
-    def refine(
-        self,
-        x: ArrayLike,
-        S: ArrayLike,
-        K_mean: ArrayLike,
-    ) -> Array:
+    def refine(self, x: ArrayLike, S: ArrayLike) -> Array:
         r"""
         Refine a coreset iteratively, replacing points which lead to the most improvement.
 
@@ -365,13 +359,13 @@ class RefineRev(Refine):
 
         :param x: :math:`n \times d` original data
         :param S: :math:`m` Coreset point indices
-        :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
         :return: :math:`m` Refined coreset point indices
         """
         x = jnp.asarray(x)
         S = jnp.asarray(S)
 
         K_diag = vmap(self.kernel.compute)(x, x)
+        K_mean = self.kernel.compute(x, x).mean(axis=1)
 
         num_points_in_x = len(x)
 

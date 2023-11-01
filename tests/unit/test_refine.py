@@ -40,13 +40,9 @@ class TestMetrics(unittest.TestCase):
 
         rbf_kernel = RBFKernel(bandwidth=1.0)
 
-        K = rbf_kernel.compute(x=x, y=x)
-
-        K_mean = K.mean(axis=1)
-
         refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
 
-        refine_test = refine_regular.refine(x=x, S=S, K_mean=K_mean)
+        refine_test = refine_regular.refine(x=x, S=S)
 
         self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
@@ -70,10 +66,7 @@ class TestMetrics(unittest.TestCase):
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
-            K = rbf_kernel.compute(x=x, y=x)
-            K_mean = K.mean(axis=1)
-
-            refine_test = refine_regular.refine(x, S, K_mean)
+            refine_test = refine_regular.refine(x, S)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(set(refine_test.tolist()), best_indices)
@@ -96,12 +89,9 @@ class TestMetrics(unittest.TestCase):
 
         rbf_kernel = RBFKernel(bandwidth=1.0)
 
-        K = rbf_kernel.compute(x=x, y=x)
-        K_mean = K.mean(axis=1)
-
         refine_rand = coreax.refine.RefineRandom(kernel=rbf_kernel, p=1.0)
 
-        refine_test = refine_rand.refine(x, S, K_mean)
+        refine_test = refine_rand.refine(x, S)
 
         self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
@@ -126,10 +116,7 @@ class TestMetrics(unittest.TestCase):
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
 
-            K = rbf_kernel.compute(x=x, y=x)
-            K_mean = K.mean(axis=1)
-
-            refine_test = refine_rev.refine(x, S, K_mean)
+            refine_test = refine_rev.refine(x, S)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(set(refine_test.tolist()), best_indices)
