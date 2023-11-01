@@ -47,8 +47,6 @@ class Refine(ABC):
         :param kernel: Kernel function
                     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
 
-        self.k_pairwise: Vectorised kernel function on pairs `(x,x)`:
-                      :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         self.k_vec: Vectorised kernel function on pairs `(X,x)`:
                       :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow
                        \mathbb{R}^n`
