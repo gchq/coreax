@@ -56,13 +56,6 @@ class Refine(ABC):
 
         self.kernel = kernel
 
-        self.k_pairwise = jit(
-            vmap(
-                vmap(kernel._compute_elementwise, in_axes=(None, 0), out_axes=0),
-                in_axes=(0, None),
-                out_axes=0,
-            )
-        )
         self.k_vec = jit(vmap(kernel._compute_elementwise, in_axes=(0, None)))
 
     @abstractmethod
@@ -188,7 +181,7 @@ class RefineRegular(Refine):
         K_mean = jnp.asarray(K_mean)
         return (
             self.k_vec(x[S], x[i]).sum()
-            - self.k_pairwise(x, x[S]).sum(axis=1)
+            - self.kernel.compute(x, x[S]).sum(axis=1)
             + self.k_vec(x, x[i])
             - K_diag
         ) / (num_points_in_coreset**2) - (K_mean[i] - K_mean) / num_points_in_coreset
@@ -306,7 +299,7 @@ class RefineRandom(Refine):
 
         return (
             self.k_vec(x[S], x[i]).sum()
-            - self.k_pairwise(x[cand, :], x[S]).sum(axis=1)
+            - self.kernel.compute(x[cand, :], x[S]).sum(axis=1)
             + self.k_vec(x[cand, :], x[i])
             - K_diag[cand]
         ) / (num_points_in_coreset**2) - (
@@ -433,7 +426,7 @@ class RefineRev(Refine):
         num_points_in_coreset = len(S)
 
         return (
-            self.k_pairwise(x[S], x[S]).sum(axis=1)
+            self.kernel.compute(x[S], x[S]).sum(axis=1)
             - self.k_vec(x[S], x[i]).sum()
             + self.k_vec(x[S], x[i])
             - K_diag[S]
