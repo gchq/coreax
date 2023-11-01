@@ -298,11 +298,9 @@ class SlicedScoreMatching(ScoreMatching):
         """
 
         def loss(params):
-            return self.loss(
-                lambda x_: state.apply_fn(
-                    {"params": params}, x_
-                )  # , objective_function
-            )(x, random_vectors).mean()
+            return self.loss(lambda x_: state.apply_fn({"params": params}, x_))(
+                x, random_vectors
+            ).mean()
 
         val, grads = jax.value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
