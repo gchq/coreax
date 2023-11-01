@@ -79,4 +79,3 @@ repos:
       # run a spellcheck (words pulled from cspell.config.yaml)
         - id: cspell
           exclude: .gitignore|.*.properties
- 
