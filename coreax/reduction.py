@@ -36,113 +36,113 @@ class DataReduction(ABC):
     Methods for reducing data.
     """
 
-    def __init__(self, original_data: ArrayLike, weight: str | cw.WeightsOptimiser):
+    def __init__(
+            self,
+            original_data: ArrayLike,
+            weight: str | cw.WeightsOptimiser,
+            kernel: cu.KernelFunction):
         r"""
-        Define a ... TODO
+        Class for performing data reduction.
+
+        :param original_data: Original data before reduction
+        :param weight: Type of weighting to apply
+        :param kernel: Kernel function
+           :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         """
-        self.original_data = original_data
+        self.original_data = jnp.asarray(original_data)
         self.reduced_data = original_data.copy()
-        self.weighting = weight
+        self.weight = weight
+        self.kernel = kernel
+        self.reduction_indices = jnp.asarray(range(original_data.shape[0]))
 
     def solve_weights(
             self,
-            kernel: cu.KernelFunction
-    ) -> Array | None:
+    ) -> Array:
         """
-        Solve for weights. Currently implemented are MMD and SBQ weights.
+        Solve for weights.
 
-        TODO: update when weights.py is OOPed.
+        :return: TODO once OOPedweights.py is implemented
         """
-
-        if self.weighting is None:
-            return None
-        elif self.weighting == 'MMD':
-            return cw.simplex_weights(
-                self.original_data,
-                self.reduced_data,
-                kernel
-            )
-        elif self.weighting == 'SBQ':
-            return cw.calculate_BQ_weights(
-                self.original_data,
-                self.reduced_data,
-                kernel
-            )
-        else:
-            raise ValueError(f"weight type '{self.weighting}' not recognised.")
+        # Create a weights optimiser object
+        weights_instance = self._create_instance_from_factory(
+            cw.WeightsOptimiser,
+            self.weight
+        )
+        return weights_instance.solve(self.original_data, self.reduced_data, self.kernel)
 
     def fit(
         self,
         coreset_name: str | type[cc.Coreset],
-        kernel: cu.KernelFunction,
     ) -> Array:
         """
-        Fit...TODO
+        Fit...TODO once coreset.py implemented
 
         :param coreset_name: Name of the coreset method to use, or an uninstantiated
             class object
-        :param kernel: Kernel function
-           :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :return: Approximation to the kernel matrix row sum
+        :return: TODO once OOPed coreset.py is implemented
         """
-        # Create an approximator object
+        # Create a coreset object
         coreset_instance = self._create_instance_from_factory(
             cc.coreset_factory,
             coreset_name
         )
-        return coreset_instance.fit(self.original_data, kernel)
+        return coreset_instance.fit(self.original_data, self.kernel)
 
     def refine(
         self,
-        x: ArrayLike,
         refine_name: str | type[cr.Refine],
     ) -> Array:
         """
-        Refine...TODO
+        Compute the refined coreset, of m points in d dimensions.
 
-        :param x: Data matrix, :math:`n \times d`
+        The refinement procedure replaces elements with points most reducing maximum mean
+        discrepancy (MMD). The iteration is carried out over points in original_data.
+
         :param refine_name: Name of the refine type to use, or an uninstantiated
             class object
-        :return: Approximation to the kernel matrix row sum
+        :return: :math:`m` Refined coreset point indices
         """
-        # Create an approximator object
+        # Create a refine object
         refiner = self._create_instance_from_factory(
             cr.refine_factory,
-            refine_name
+            refine_name,
+            kernel=self.kernel
         )
-        return refiner.refine(x)  # TODO check what refine actually needs to do here...
+        return refiner.refine(self.original_data, self.reduction_indices, kernel_mean)  # TODO compute kernel mean here or in refine.py?
 
     def compute_metric(
         self,
-        x: ArrayLike,
         metric_name: str | type[cm.Metric],
     ) -> Array:
         """
-        Compute metrics...TODO
+        Compute metrics...TODO: once OOPed metrics.py is implemented
 
-        :param x: Data matrix, :math:`n \times d`
         :param metric_name: Name of the metric type to use, or an uninstantiated
             class object
-        :return: Approximation to the kernel matrix row sum
+        :return: TODO: once OOPed metrics.py is implemented
         """
-        # Create an approximator object
+        # Create a metric object
         metric_instance = self._create_instance_from_factory(
             cr.metric_factory,
-            metric_name
+            metric_name,
+            kernel=self.kernel,
+            weight=self.weight,
         )
-        return metric_instance.refine(x)
 
+        return metric_instance.compute(self.original_data, self.reduced_data)
+
+    @staticmethod
     def _create_instance_from_factory(
-        self,
         factory_obj: cu.ClassFactory,
-        class_type: str | type[cc.Corset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
-    ) -> cc.Corset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
+        class_type: str | type[cc.Coreset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+        **kwargs,
+    ) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
         """
         Create a refine object for use with the fit method.
 
         :param class_type: The name of a class to use, or the uninstantiated class
             directly as a dependency injection
-        :return: Refine object
+        :return: Class instance of the requested type
         """
         class_obj = factory_obj.get(class_type)
 
@@ -150,20 +150,20 @@ class DataReduction(ABC):
         # parameters
         return cu.call_with_excess_kwargs(
             class_obj,
-            kernel_evaluation=self._compute_elementwise,
+            **kwargs,
         )
 
     def render(self):
         """
-        TODO
+        TODO: once data.py is implemented
         """
-        return self.original_data.render_reduction
+        return self.original_data.render_reduction()
 
     def save(self):
         """
-        TODO
+        TODO: once data.py is implemented
         """
-        return self.original_data.save_reduction
+        return self.original_data.save_reduction()
 
 
 class ReductionStrategy(ABC):
@@ -178,12 +178,12 @@ class ReductionStrategy(ABC):
 
         self.data_reduction = reduction_method
 
-    def reduce(self, original_data, weight):
+    def reduce(self, original_data, weight, kernel):
         """
         TODO
         """
 
-        return self.data_reduction.__init__(original_data, weight)
+        return self.data_reduction.__init__(original_data, weight, kernel)
 
 
     @classmethod
