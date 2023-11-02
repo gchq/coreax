@@ -18,11 +18,16 @@ from __future__ import annotations
 
 import inspect
 import sys
+import jax.numpy as jnp
 
 from abc import ABC
+from collections.abc import Callable
+from functools import partial
 from jax import Array
 from jax.typing import ArrayLike
 from jax import tree_util
+from multiprocessing.pool import ThreadPool
+from sklearn.neighbors import KDTree
 
 import coreax.coreset as cc
 import coreax.metrics as cm
@@ -253,7 +258,108 @@ class MapReduce(ReductionStrategy):
         super().__init__(reduction_method)
         self.n = n
 
-    # TODO: functionality mostly in scalable_herding
+    def map_reduce(self,
+        indices: ArrayLike,
+        n_core: int,
+        function: Callable[..., tuple[Array, Array, Array]],
+        w_function: cu.KernelFunction | None,
+        size: int = 1000,
+        parallel: bool = True,
+        **kwargs,
+    ) -> tuple[Array, Array]:
+        r"""
+        # TODO: note for review - this function is largely copy-pasted from kernel_herding, I have not tried to change it other than fit it into the class structure.
+
+        Execute scalable kernel herding.
+
+        This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a
+        kernel herding problem is solved.
+
+        There is some intricate setup:
+
+            #.  Parameter `n_core` must be less than `size`.
+            #.  If we have :math:`n` points, unweighted herding is executed recursively on
+                each patch of :math:`\lceil \frac{n}{size} \rceil` points.
+            #.  If :math:`r` is the recursion depth, then we recurse unweighted for
+                :math:`r` iterations where
+
+                .. math::
+
+                         r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
+
+                Each recursion gives :math:`n_r = C \times k_{r-1}` points. Unpacking the
+                recursion, this gives
+                :math:`n_r \approx n_0 \left( \frac{n_core}{n_size}\right)^r`.
+            #.  Once :math:`n_core < n_r \leq size`, we run a final weighted herding (if
+                weighting is requested) to give :math:`n_core` points.
+
+        :param n_core: Number of coreset points to calculate
+        :param function: Kernel herding function to call on each block
+        :param w_function: Weights function. If unweighted, this is `None` # TODO: is this self.kernel or actually 'weights'
+        :param size: Region size in number of points. Optional, defaults to `1000`
+        :param parallel: Use multiprocessing. Optional, defaults to `True`
+        :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
+        :return: Coreset and weights, where weights is empty if unweighted
+        """
+        # check parameters to see if we need to invoke the kd-tree and recursion.
+        if n_core >= size:
+            raise OverflowError(
+                f"Number of coreset points requested {n_core} is larger than the region size {size}. "
+                f"Try increasing the size argument, or reducing the number of coreset points"
+            )
+
+        n = self.reduced_data.shape[0]
+        weights = None
+        if n <= n_core:
+            coreset = indices
+            if w_function is not None:
+                _, Kc, Kbar = function(X=self.reduced_data, n_core=n_core, **kwargs)
+                weights = w_function(Kc, Kbar)
+        elif n_core < n <= size:
+            # Tail case
+            c, Kc, Kbar = function(X=self.reduced_data, n_core=n_core, **kwargs)
+            coreset = indices[c]
+            if w_function is not None:
+                weights = w_function(Kc, Kbar)
+        else:
+            # build a kdtree
+            kdtree = KDTree(self.reduced_data, leaf_size=size)
+            _, nindices, nodes, _ = kdtree.get_arrays()
+            new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
+            split_data = [self.reduced_data[n] for n in new_indices]
+
+            # run k coreset problems
+            coreset = []
+            kwargs["n_core"] = n_core
+            if parallel:
+                with ThreadPool() as pool:
+                    res = pool.map_async(partial(function, **kwargs), split_data)
+                    res.wait()
+                    for herding_output, idx in zip(res.get(), new_indices):
+                        # different herding algorithms return different things
+                        if isinstance(herding_output, tuple):
+                            c, _, _ = herding_output
+                        else:
+                            c = herding_output
+                        coreset.append(idx[c])
+
+            else:
+                for X_, idx in zip(split_data, new_indices):
+                    c, _, _ = function(X_, **kwargs)
+                    coreset.append(idx[c])
+
+            coreset = jnp.concatenate(coreset)
+            self.reduction_indices = self.reduction_indices[coreset].copy()
+            # recurse; n_core is already in kwargs
+            coreset, weights = self.map_reduce(
+                function=function,
+                w_function=w_function,
+                size=size,
+                parallel=parallel,
+                **kwargs,
+            )
+
+        return coreset, weights
 
     def _tree_flatten(self):
         """
