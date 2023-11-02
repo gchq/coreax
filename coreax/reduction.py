@@ -71,7 +71,7 @@ class DataReduction(ABC):
         # Create a weights optimiser object
         weights_instance = self._create_instance_from_factory(
             cw.WeightsOptimiser,
-            self.weight
+            self.weight,
         )
         return weights_instance.solve(self.original_data, self.reduced_data, self.kernel)
 
@@ -258,14 +258,15 @@ class MapReduce(ReductionStrategy):
         super().__init__(reduction_method)
         self.n = n
 
-    def map_reduce(self,
-        indices: ArrayLike,
-        n_core: int,
-        function: Callable[..., tuple[Array, Array, Array]],
-        w_function: cu.KernelFunction | None,
-        size: int = 1000,
-        parallel: bool = True,
-        **kwargs,
+    def map_reduce(
+            self,
+            indices: ArrayLike,
+            n_core: int,
+            function: Callable[..., tuple[Array, Array, Array]],
+            w_function: cu.KernelFunction | None,
+            size: int = 1000,
+            parallel: bool = True,
+            **kwargs,
     ) -> tuple[Array, Array]:
         r"""
         # TODO: note for review - this function is largely copy-pasted from kernel_herding, I have not tried to change it other than fit it into the class structure.

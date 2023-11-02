@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import jax.numpy as jnp
 from jax import Array
 
-import coreax.reduction as re
+import coreax.coreset as cc
+import coreax.reduction as cr
+import coreax.util as cu
+import coreax.weights as cw
 
 
 class TestDataReduction(unittest.TestCase):
@@ -27,63 +30,95 @@ class TestDataReduction(unittest.TestCase):
 
     def setUp(self) -> None:
         self.original_data = jnp.array([0, 0.3, 0.75, 1])
-        self.test_class = re.DataReduction(self.original_data, None)
+        self.weight = 'MMD'
+        self.kernel = jnp.array([0, 0.5, 0.6, 0.5, 0])
+        self.test_class = cr.DataReduction(self.original_data, self.weight, self.kernel)
+        # make reduced data distinguishable from original data without calling an actual reduction
+        self.reduced_data = self.original_data[jnp.array([0, 1, 3])]
+        self.test_class.reduced_data = reduced_data
 
     def test_solve_weights(self) -> None:
         """
-        Test the solve_weights methods of :class:`coreax.reduction.DataReduction`.
+        Test the solve_weights method of :class:`coreax.reduction.DataReduction`.
         """
-        # make reduced data distinguishable from original data without calling an actual reduction
-        reduced_data = self.original_data[jnp.array([0, 1, 3])]
-        self.test_class.reduced_data = reduced_data
 
-        with patch('coreax.weights.simplex_weights') as mock_calc_weights_simp, \
-                patch('coreax.weights.calculate_BQ_weights') as mock_calc_weights_bq:
 
-            with self.subTest('No weighting'):
-                self.test_class.weighting = None
+        with patch('coreax.reduction.DataReduction._create_instance_from_factory') \
+            as mock_create_instance:
 
-                self.test_class.solve_weights(Array)
+            mock_create_instance.return_value = MockCreatedInstance()
 
-                mock_calc_weights_simp.assert_not_called()
-                mock_calc_weights_bq.assert_not_called()
+            actual_out = self.test_class.solve_weights()
 
-                mock_calc_weights_simp.reset_mock()
-                mock_calc_weights_bq.reset_mock()
+            mock_create_instance.assert_called_once_with(cw.weights_factory, self.weight)
 
-            with self.subTest('MMD'):
-                self.test_class.weighting = 'MMD'
+            self.assertEqual(actual_out, (self.original_data, self.reduced_data, self.kernel))
 
-                self.test_class.solve_weights(Array)
+    def test_fit(self) -> None:
+        """
+        Test the fit method of :class:`coreax.reduction.DataReduction`.
+        """
 
-                mock_calc_weights_simp.assert_called_once_with(self.original_data, reduced_data, Array)
-                mock_calc_weights_bq.assert_not_called()
+        with patch('coreax.reduction.DataReduction._create_instance_from_factory') \
+                as mock_create_instance:
+            mock_create_instance.return_value = MockCreatedInstance()
 
-                mock_calc_weights_simp.reset_mock()
-                mock_calc_weights_bq.reset_mock()
+            actual_out = self.test_class.fit('coreset_a')
 
-            with self.subTest('SBQ'):
-                self.test_class.weighting = 'SBQ'
+            mock_create_instance.assert_called_once_with(cc.coreset_factory, 'coreset_a')
 
-                self.test_class.solve_weights(Array)
+            self.assertEqual(actual_out, (self.original_data, self.kernel))
 
-                mock_calc_weights_simp.assert_not_called()
-                mock_calc_weights_bq.assert_called_once_with(self.original_data, reduced_data, Array)
+    def test_refine(self) -> None:
+        """
+        Test the refine method of :class:`coreax.reduction.DataReduction`.
+        """
 
-                mock_calc_weights_simp.reset_mock()
-                mock_calc_weights_bq.reset_mock()
+        with patch('coreax.reduction.DataReduction._create_instance_from_factory') \
+                as mock_create_instance:
+            mock_create_instance.return_value = MockCreatedInstance()
 
-            with self.subTest('Unexpected weighting'):
-                self.test_class.weighting = 'Unexpected weighting'
+            actual_out = self.test_class.refine('refine_a')
 
-                self.assertRaisesRegex(ValueError,
-                                       "weight type 'Unexpected weighting' not recognised.",
-                                       self.test_class.solve_weights,
-                                       'a_kernel'
-                                       )
+            mock_create_instance.assert_called_once_with(cc.refine_factory, 'refine_a', kernel=self.kernel)
 
-                mock_calc_weights_simp.assert_not_called()
-                mock_calc_weights_bq.assert_not_called()
+            self.assertEqual(actual_out, (self.original_data, self.kernel, kernel_mean))
 
-                mock_calc_weights_simp.reset_mock()
-                mock_calc_weights_bq.reset_mock()
+    def test_compute_metric(self) -> None:
+        """
+        Test the compute_metric method of :class:`coreax.reduction.DataReduction`.
+        """
+
+        with patch('coreax.reduction.DataReduction._create_instance_from_factory') \
+                as mock_create_instance:
+            mock_create_instance.return_value = MockCreatedInstance()
+
+            actual_out = self.test_class.compute_metric('metric_a')
+
+            mock_create_instance.assert_called_once_with(cc.refine_factory, 'metric_a', kernel=self.kernel, weight=self.weight)
+
+            self.assertEqual(actual_out, (self.original_data, self.reduced_data))
+
+    def test_create_instance_from_factory(self) -> None:
+        """
+        Test the _create_instance_from_factory method of :class:`coreax.reduction.DataReduction`.
+        """
+
+        with patch('coreax.util.call_with_excess_kwargs') as mock_call:
+
+            actual_out = self.test_class._create_instance_from_factory(MockClassFactory, 'class_a', a='a', b='b')
+
+            mock_call.assert_called_once_with('class_a', a='a', b='b')
+
+
+# Mocked output of reduction.DataReduction._create_instance_from_factory
+class MockCreatedInstance:
+    @staticmethod
+    def solve(*args):
+        return tuple(*args)
+
+# Mocked ClassFactory
+class MockClassFactory:
+    @staticmethod
+    def get(*args):
+        return tuple(*args)
