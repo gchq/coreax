@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, pre-merge-commit]
+default_install_hook_types: [ pre-commit, pre-merge-commit ]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -6,7 +6,7 @@ repos:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
       - id: check-added-large-files
-        args: [--enforce-all, --maxkb=5000]
+        args: [ --enforce-all, --maxkb=5000 ]
       # Check valid Python syntax
       - id: check-ast
       # Require literal syntax when initializing empty or zero python builtin types
@@ -73,4 +73,9 @@ repos:
       - id: pydocstyle
         additional_dependencies: [ "tomli" ]
         exclude: tests|conf.py
-        
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v7.3.1
+    hooks:
+      # run a spellcheck (words pulled from cspell.config.yaml)
+        - id: cspell
+          exclude: .gitignore|.*.properties
