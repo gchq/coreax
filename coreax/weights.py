@@ -41,6 +41,12 @@ class WeightsOptimiser(ABC):
         Calculate the weights.
         """
 
+    def solve_approximate(self, x, y) -> Array:
+        """
+        Calculate approximate weights.
+        """
+        raise NotImplementedError
+
 
 class SBQ(WeightsOptimiser):
     def __init__(self):
