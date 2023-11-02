@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
@@ -45,7 +46,11 @@ class WeightsOptimiser(ABC):
         """
         Calculate approximate weights.
         """
-        raise NotImplementedError
+        warnings.warn(
+            "solve_approximate() not yet implemented. "
+            "Calculating exact solution via solve()"
+        )
+        return self.solve(x, y)
 
 
 class SBQ(WeightsOptimiser):
