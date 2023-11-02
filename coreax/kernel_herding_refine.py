@@ -46,9 +46,9 @@ def kernel_herding_refine_block(
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
-    :param K_mean: :math:`1 \times n` Row mean of the :math:`n \times n` kernel matrix
+    :param K_mean: :math:`1 \times n` row mean of the :math:`n \times n` kernel matrix
     :return: Coreset point indices
     """
     k_pairwise = jit(
@@ -78,10 +78,10 @@ def kernel_herding_refine_rand_block(
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param p: Proportion of original data to use as candidates
     :param max_size: Size of matrix blocks to process
-    :param K_mean: Row sum of kernel matrix divided by `n`, a :math:`1 \times n` array
+    :param K_mean: Row sum of kernel matrix divided by ``n``, a :math:`1 \times n` array
     :return: Coreset point indices.
     """
     k_pairwise = jit(
@@ -112,9 +112,9 @@ def kernel_herding_refine_rev_block(
     :param x: Original :math:`n \times d` dataset
     :param n_core: Number of coreset points to calculate
     :param kernel: Kernel function
-                   :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param max_size: Size of matrix blocks to process
-    :param K_mean: Row sum of kernel matrix divided by `n`, a :math:`1 \times n` array
+    :param K_mean: Row sum of kernel matrix divided by ``n``, a :math:`1 \times n` array
     :return: Coreset point indices
     """
     k_pairwise = jit(
