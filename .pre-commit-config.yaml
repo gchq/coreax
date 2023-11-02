@@ -79,3 +79,12 @@ repos:
       # run a spellcheck (words pulled from cspell.config.yaml)
         - id: cspell
           exclude: .gitignore|.*.properties
+  - repo: local
+    hooks:
+      # Check for non-ascii characters in files
+      - id: require-ascii
+        name: Check file encoding
+        description: Ensure file is ascii-encoded
+        entry: python3 pre_commit_hooks/require_ascii.py
+        language: python
+        types: [text]
