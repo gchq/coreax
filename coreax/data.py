@@ -24,6 +24,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 import coreax.reduction as cr
+import coreax.util as cu
 
 
 class DataReader(ABC):
@@ -131,3 +132,7 @@ class Image(DataReader):
             plt.title("Original")
             plt.axis("off")
             plt.show()
+
+
+data_reader_factory = cu.ClassFactory(DataReader)
+data_reader_factory.register("image", Image)
