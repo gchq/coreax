@@ -13,8 +13,8 @@
 import inspect
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Tuple
 
 import jax
 import optax
@@ -22,7 +22,7 @@ from flax.training.train_state import TrainState
 from jax import jit, jvp
 from jax import numpy as jnp
 from jax import random, tree_util, vmap
-from jax.lax import fori_loop
+from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
 
@@ -165,7 +165,7 @@ class SlicedScoreMatching(ScoreMatching):
         """
         return cls(*children, **aux_data)
 
-    def objective_function(
+    def _objective_function(
         self,
         random_direction_vector: ArrayLike,
         grad_score_times_random_direction_matrix: ArrayLike,
@@ -185,22 +185,17 @@ class SlicedScoreMatching(ScoreMatching):
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equation 8 in [ssm]_
         """
-        if self.use_analytic:
-            return self.analytic_objective(
-                random_direction_vector,
-                grad_score_times_random_direction_matrix,
-                score_matrix,
-            )
-        else:
-            return self.general_objective(
-                random_direction_vector,
-                grad_score_times_random_direction_matrix,
-                score_matrix,
-            )
+        return cond(
+            self.use_analytic,
+            self._analytic_objective,
+            self._general_objective,
+            random_direction_vector,
+            grad_score_times_random_direction_matrix,
+            score_matrix,
+        )
 
     @staticmethod
-    @jit
-    def analytic_objective(
+    def _analytic_objective(
         random_direction_vector: ArrayLike,
         grad_score_times_random_direction_matrix: ArrayLike,
         score_matrix: ArrayLike,
@@ -224,8 +219,7 @@ class SlicedScoreMatching(ScoreMatching):
         return result
 
     @staticmethod
-    @jit
-    def general_objective(
+    def _general_objective(
         random_direction_vector: ArrayLike,
         grad_score_times_random_direction_matrix: ArrayLike,
         score_matrix: ArrayLike,
@@ -249,8 +243,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
         return result
 
-    @partial(jit, static_argnames=["score_network"])
-    def loss_element(
+    def _loss_element(
         self, x: ArrayLike, v: ArrayLike, score_network: Callable
     ) -> float:
         r"""
@@ -265,9 +258,9 @@ class SlicedScoreMatching(ScoreMatching):
         :return: Objective function output for single x and v inputs
         """
         s, u = jvp(score_network, (x,), (v,))
-        return self.objective_function(v, u, s)
+        return self._objective_function(v, u, s)
 
-    def loss(self, score_network: Callable) -> Callable:
+    def _loss(self, score_network: Callable) -> Callable:
         r"""
         Compute vector mapped loss function for arbitrary numbers of X and V vectors.
 
@@ -278,16 +271,16 @@ class SlicedScoreMatching(ScoreMatching):
         :return: Callable vectorised sliced score matching loss function
         """
         inner = vmap(
-            lambda x, v: self.loss_element(x, v, score_network),
+            lambda x, v: self._loss_element(x, v, score_network),
             (None, 0),
             0,
         )
         return vmap(inner, (0, 0), 0)
 
     @jit
-    def train_step(
+    def _train_step(
         self, state: TrainState, x: ArrayLike, random_vectors: ArrayLike
-    ) -> Tuple[TrainState, float]:
+    ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
@@ -298,7 +291,7 @@ class SlicedScoreMatching(ScoreMatching):
         """
 
         def loss(params):
-            return self.loss(lambda x_: state.apply_fn({"params": params}, x_))(
+            return self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
                 x, random_vectors
             ).mean()
 
@@ -306,8 +299,7 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
-    @jit
-    def noise_conditional_loop_body(
+    def _noise_conditional_loop_body(
         self,
         i: int,
         obj: float,
@@ -340,20 +332,20 @@ class SlicedScoreMatching(ScoreMatching):
         obj = (
             obj
             + sigmas[i] ** 2
-            * self.loss(lambda x_: state.apply_fn({"params": params}, x_))(
+            * self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
                 x_perturbed, random_vectors
             ).mean()
         )
         return obj
 
     @jit
-    def noise_conditional_train_step(
+    def _noise_conditional_train_step(
         self,
         state: TrainState,
         x: ArrayLike,
         random_vectors: ArrayLike,
         sigmas: ArrayLike,
-    ) -> Tuple[TrainState, float]:
+    ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
@@ -367,7 +359,7 @@ class SlicedScoreMatching(ScoreMatching):
 
         def loss(params):
             body = partial(
-                self.noise_conditional_loop_body,
+                self._noise_conditional_loop_body,
                 state=state,
                 params=params,
                 x=x,
@@ -400,10 +392,10 @@ class SlicedScoreMatching(ScoreMatching):
         if self.noise_conditioning:
             gammas = self.gamma ** jnp.arange(self.num_noise_models)
             sigmas = self.sigma * gammas
-            train_step = partial(self.noise_conditional_train_step, sigmas=sigmas)
+            train_step = partial(self._noise_conditional_train_step, sigmas=sigmas)
 
         else:
-            train_step = self.train_step
+            train_step = self._train_step
 
         # Define random projection vectors
         random_key_1, random_key_2 = random.split(self.random_key)
@@ -421,7 +413,7 @@ class SlicedScoreMatching(ScoreMatching):
             data_dimension,
             self.optimiser,
         )
-        random_key_3, random_key_4 = random.split(random_key_2)
+        _, random_key_4 = random.split(random_key_2)
         batch_key = random.PRNGKey(random_key_4[-1])
 
         # Carry out main training loop to fit the neural network

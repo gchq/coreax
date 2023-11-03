@@ -63,7 +63,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         # Define data
         u = np.array([0.0, 1.0])
-        v = np.array([1.0, 0.0])
+        v = np.array([[1.0, 0.0]])
         s = np.ones(2, dtype=float)
 
         # Define expected output - orthogonal u and v vectors should give back
@@ -76,7 +76,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
-        output = sliced_score_matcher.objective_function(v, u, s)
+        output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -125,14 +125,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
-        output = sliced_score_matcher.objective_function(v, u, s)
+        output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_analytic, places=3)
 
         # Mutate the objective, and check that the result changes
-        sliced_score_matcher.objective_function = sliced_score_matcher.general_objective
-        output = sliced_score_matcher.objective_function(v, u, s)
+        sliced_score_matcher._objective_function = (
+            sliced_score_matcher._general_objective
+        )
+        output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_general, places=3)
@@ -164,7 +166,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define data - orthogonal u and v vectors should give back half squared dot
         # product of v and s
         u = np.array([0.0, 1.0])
-        v = np.array([1.0, 0.0])
+        v = np.array([[1.0, 0.0]])
         s = np.ones(2, dtype=float)
 
         # Define expected outputs
@@ -176,7 +178,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
-        output = sliced_score_matcher.objective_function(v, u, s)
+        output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -217,7 +219,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
-        output = sliced_score_matcher.objective_function(v, u, s)
+        output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -255,12 +257,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Determine the expected output - using the analytic objective function tested
         # elsewhere
-        expected_output = sliced_score_matcher.objective_function(
-            random_vector, hessian @ random_vector, s
+        expected_output = sliced_score_matcher._objective_function(
+            random_vector[None, :], hessian @ random_vector, s
         )
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(x, random_vector, score_function)
+        output = sliced_score_matcher._loss_element(x, random_vector, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -268,10 +270,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Call the loss element with a different objective function, and check that the
         # jit compilation recognises this change
         sliced_score_matcher.use_analytic = False
-        output_changed_objective = sliced_score_matcher.loss_element(
+        output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function
         )
-        self.assertNotAlmostEquals(output, output_changed_objective)
+        self.assertNotAlmostEqual(output, output_changed_objective)
 
     def test_sliced_score_matching_loss_element_general(self) -> None:
         """
@@ -305,12 +307,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Determine the expected output
-        expected_output = sliced_score_matcher.objective_function(
+        expected_output = sliced_score_matcher._objective_function(
             random_vector, hessian @ random_vector, s
         )
 
         # Evaluate the loss element
-        output = sliced_score_matcher.loss_element(x, random_vector, score_function)
+        output = sliced_score_matcher._loss_element(x, random_vector, score_function)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -342,7 +344,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = csm.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
-        output = sliced_score_matcher.loss(score_function)(x, random_vectors)
+        output = sliced_score_matcher._loss(score_function)(x, random_vectors)
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
@@ -387,7 +389,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         weights_ = weights - 1e-3 * grad_weights
         bias_ = bias - 1e-3 * grad_bias
 
-        state, _ = sliced_score_matcher.train_step(
+        state, _ = sliced_score_matcher._train_step(
             state, x_to_vector_map, v_to_vector_map
         )
 
