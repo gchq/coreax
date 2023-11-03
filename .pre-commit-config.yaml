@@ -57,7 +57,7 @@ repos:
       # Place isort options in pyproject.toml
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.10.0
+    rev: 23.10.1
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
@@ -74,7 +74,7 @@ repos:
         additional_dependencies: [ "tomli" ]
         exclude: tests|conf.py
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v7.3.1
+    rev: v7.3.2
     hooks:
       # run a spellcheck (words pulled from cspell.config.yaml)
         - id: cspell
