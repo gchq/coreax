@@ -18,7 +18,7 @@ import unittest
 import jax.numpy as jnp
 
 import coreax.refine
-from coreax.kernel import RBFKernel
+from coreax.kernel import SquaredExponentialKernel
 
 
 class TestMetrics(unittest.TestCase):
@@ -38,9 +38,7 @@ class TestMetrics(unittest.TestCase):
 
         S = jnp.array(list(best_indices))
 
-        rbf_kernel = RBFKernel(bandwidth=1.0)
-
-        refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
+        refine_regular = coreax.refine.RefineRegular(kernel=SquaredExponentialKernel())
 
         refine_test = refine_regular.refine(x=x, S=S)
 
@@ -60,8 +58,7 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        rbf_kernel = RBFKernel(bandwidth=1.0)
-        refine_regular = coreax.refine.RefineRegular(kernel=rbf_kernel)
+        refine_regular = coreax.refine.RefineRegular(kernel=SquaredExponentialKernel())
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
@@ -87,9 +84,9 @@ class TestMetrics(unittest.TestCase):
 
         S = jnp.array(test_indices)
 
-        rbf_kernel = RBFKernel(bandwidth=1.0)
-
-        refine_rand = coreax.refine.RefineRandom(kernel=rbf_kernel, p=1.0)
+        refine_rand = coreax.refine.RefineRandom(
+            kernel=SquaredExponentialKernel(), p=1.0
+        )
 
         refine_test = refine_rand.refine(x, S)
 
@@ -109,9 +106,7 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        rbf_kernel = RBFKernel(bandwidth=1.0)
-
-        refine_rev = coreax.refine.RefineRev(kernel=rbf_kernel)
+        refine_rev = coreax.refine.RefineRev(kernel=SquaredExponentialKernel())
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
