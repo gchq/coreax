@@ -104,9 +104,9 @@ class SlicedScoreMatching(ScoreMatching):
             :class:`~jax.random`
         :param random_key: Key for random number generation
         :param noise_conditioning: Use the noise conditioning version of score matching.
-            Defaults to True.
+            Defaults to :data:`True`.
         :param use_analytic: Use the analytic (reduced variance) objective or not.
-            Defaults to False.
+            Defaults to :data:`False`.
         :param num_random_vectors: The number of random vectors to use per data vector.
             Defaults to 1.
         :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
