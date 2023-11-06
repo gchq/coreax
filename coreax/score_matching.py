@@ -44,10 +44,21 @@ class ScoreMatching(ABC):
         child class of this base class.
         """
 
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstruct a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
     @abstractmethod
     def match(self, x):
-        """
-        Match some model score function to that of a dataset x.
+        r"""
+        Match some model score function to that of a dataset ``x``.
 
         :param x: The :math:`n \times d` data vectors
         """
@@ -88,7 +99,7 @@ class SlicedScoreMatching(ScoreMatching):
         TODO: Allow user to pass hidden_dim as a list and build network with
             # layers = len(hidden_dim), with each layer size assigned as appropriate.
 
-        :param random_generator: Distribution sampler (key, shape, dtype)
+        :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
             :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
             :class:`~jax.random`
         :param random_key: Key for random number generation
@@ -154,17 +165,6 @@ class SlicedScoreMatching(ScoreMatching):
 
         return children, aux_data
 
-    @classmethod
-    def _tree_unflatten(cls, aux_data, children):
-        """
-        Reconstructs a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
-
     def _objective_function(
         self,
         random_direction_vector: ArrayLike,
@@ -176,12 +176,12 @@ class SlicedScoreMatching(ScoreMatching):
 
         Two objectives are proposed in [ssm]_, a general objective, and a simplification
         with reduced variance that holds for particular assumptions. The choice between
-        the two is determined by the boolean use_analytic defined when the class is
+        the two is determined by the boolean ``use_analytic`` defined when the class is
         initiated.
 
-        :param random_direction_vector: d-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. x) and the random_direction_vector
+            score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equation 8 in [ssm]_
         """
@@ -204,11 +204,11 @@ class SlicedScoreMatching(ScoreMatching):
         Compute reduced variance score matching loss function.
 
         This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then general_obj should be used instead.
+        this assumption is not true, then :meth:`general_obj` should be used instead.
 
-        :param random_direction_vector: d-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. x) and the random_direction_vector
+            score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equation 8 in [ssm]_
         """
@@ -228,12 +228,12 @@ class SlicedScoreMatching(ScoreMatching):
         Compute general score matching loss function.
 
         This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than analytic_obj if these
-        assumptions hold.
+        when using score matching, but has higher variance than :meth:`analytic_obj` if
+        these assumptions hold.
 
-        :param random_direction_vector: d-dimensional random vector
+        :param random_direction_vector: `:math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. x) and the random_direction_vector
+            score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equation 7 in [ssm]_
         """
@@ -254,20 +254,21 @@ class SlicedScoreMatching(ScoreMatching):
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
-        :param score_network: Function that calls the neural network on x
-        :return: Objective function output for single x and v inputs
+        :param score_network: Function that calls the neural network on ``x``
+        :return: Objective function output for single ``x`` and ``v`` inputs
         """
         s, u = jvp(score_network, (x,), (v,))
         return self._objective_function(v, u, s)
 
     def _loss(self, score_network: Callable) -> Callable:
         r"""
-        Compute vector mapped loss function for arbitrary numbers of X and V vectors.
+        Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
-        the data vector (x), random vectors (v) and using the score neural network.
+        the data vector (``x``), random vectors (``v``) and using the score neural
+        network.
 
-        :param score_network: Function that calls the neural network on x
+        :param score_network: Function that calls the neural network on ``x``
         :return: Callable vectorised sliced score matching loss function
         """
         inner = vmap(
@@ -352,8 +353,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param state: The :class:`~flax.training.train_state.TrainState` object
         :param x: The :math:`n \times d` data vectors
         :param random_vectors: The :math:`n \times m \times d` random vectors
-        :param sigmas: Length L array of noise standard deviations to use in objective
-            function
+        :param sigmas: Array of noise standard deviations to use in objective function
         :return: The updated :class:`~flax.training.train_state.TrainState` object
         """
 
@@ -376,12 +376,12 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Learn a sliced score matching function from Song et al.'s paper [ssm]_.
 
-        We currently use the ScoreNetwork neural network in coreax.networks to
+        We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
         considered.
 
         :param x: The :math:`n \times d` data vectors
-        :return: A function that applies the learned score function to input x
+        :return: A function that applies the learned score function to input ``x``
         """
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
@@ -436,10 +436,9 @@ class SlicedScoreMatching(ScoreMatching):
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
-# are able to run. We rely on the naming convention that all child classes of
-# ScoreMatching include the sub-string ScoreMatching inside of them.
-for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isclass):
-    if "ScoreMatching" in name and name != "ScoreMatching":
-        tree_util.register_pytree_node(
-            current_class, current_class._tree_flatten, current_class._tree_unflatten
-        )
+# are able to run. This tuple must be updated when a new class object is defined.
+kernel_classes = (SlicedScoreMatching,)
+for current_class in kernel_classes:
+    tree_util.register_pytree_node(
+        current_class, current_class._tree_flatten, current_class._tree_unflatten
+    )

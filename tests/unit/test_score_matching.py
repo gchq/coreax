@@ -131,9 +131,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output_analytic, places=3)
 
         # Mutate the objective, and check that the result changes
-        sliced_score_matcher._objective_function = (
-            sliced_score_matcher._general_objective
-        )
+        sliced_score_matcher.use_analytic = False
         output = sliced_score_matcher._objective_function(v, u, s)
 
         # Check output matches expected
