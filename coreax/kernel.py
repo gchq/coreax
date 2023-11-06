@@ -73,6 +73,27 @@ class Kernel(ABC):
         self.length_scale = length_scale
         self.output_scale = output_scale
 
+    @abstractmethod
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        """
+        Reconstruct a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable jit decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
     @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -110,7 +131,7 @@ class Kernel(ABC):
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Kernel evaluated at (x, y)
+        :return: Kernel evaluated at (``x``, ``y``)
         """
 
     @jit
@@ -171,8 +192,8 @@ class Kernel(ABC):
         The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
         Autodiff.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_x.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -192,8 +213,8 @@ class Kernel(ABC):
 
         The gradient (Jacobian) of the kernel function is computed using Autodiff.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_y.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`.
@@ -201,31 +222,6 @@ class Kernel(ABC):
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
         return grad(self._compute_elementwise, 1)(x, y)
-
-    @jit
-    def _divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
-
-        The evaluation is done via Autodiff.
-
-        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
-
-        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
-        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-
-        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Trace of the Laplace-style operator; a real number
-        """
-        pseudo_hessian = jacrev(self._grad_y_elementwise, 0)(x, y)
-        return pseudo_hessian.trace()
 
     @jit
     def divergence_x_grad_y(
@@ -257,6 +253,31 @@ class Kernel(ABC):
         )
         return fn(x, y)
 
+    @jit
+    def _divergence_x_grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
+
+        The evaluation is done via Autodiff.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
+        computed in :meth:`compute_divergence_x_grad_y`.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Trace of the Laplace-style operator; a real number
+        """
+        pseudo_hessian = jacrev(self._grad_y_elementwise, 0)(x, y)
+        return pseudo_hessian.trace()
+
     @staticmethod
     def update_kernel_matrix_row_sum(
         x: ArrayLike,
@@ -274,12 +295,12 @@ class Kernel(ABC):
         The row sum of the kernel matrix may involve a large number of pairwise
         computations, so this can be done in blocks to reduce memory requirements.
 
-        The kernel matrix block :math:`i:i+max_size \times j:j+max_size` is used to
-        update the row sum. Symmetry of the kernel matrix is exploited to reduced
-        repeated calculation.
+        The kernel matrix block ``i``:``i`` + ``max_size`` :math:`\times`
+        ``j``:``j`` + ``max_size`` is used to update the row sum. Symmetry of the kernel
+        matrix is exploited to reduced repeated calculation.
 
-        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and
-        `length_scale` are `None`. Else, `k_pairwise` should be of the form
+        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
+        `length_scale` are :data:`None`. Else, ``k_pairwise`` should be of the form
         :math:`k(x,y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
@@ -289,12 +310,12 @@ class Kernel(ABC):
         :param j: Kernel matrix block end
         :param max_size: Size of matrix block to process
         :param kernel_pairwise: Pairwise kernel evaluation function
-        :param grads: Array of gradients, if applicable, :math:`n \times d`; Optional,
+        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
             defaults to :data:`None`
-        :param length_scale: Base kernel length_scale. Optional, defaults to
+        :param length_scale: Base kernel length_scale; optional, defaults to
             :data:`None`
-        :return: Gram matrix row sum, with elements :math:`i: i + max_size` and
-            :math:`j: j + max_size` populated
+        :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
+            ``j``:``j`` + ``max_size`` populated
         """
         # Ensure data format is as required
         x = jnp.asarray(x)
@@ -343,16 +364,16 @@ class Kernel(ABC):
         and all possible pairs of points that contain this given point. The row sum is
         calculated block-wise to limit memory overhead.
 
-        Note that `k_pairwise` should be of the form :math:`k(x,y)` if `grads` and
-        `length_scale` are `None`. Else, `k_pairwise` should be of the form
+        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
+        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
         :math:`k(x, y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d` Optional,
+        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
             defaults to :data:`None`
-        :param length_scale: Base kernel length_scale, if applicable, :math:`n \times d`
-            Optional, defaults to :data:`None`
+        :param length_scale: Base kernel length_scale, if applicable,
+            :math:`n \times d`; optional, defaults to :data:`None`
         :return: Kernel matrix row sum
         """
         # Define the function to call to evaluate the kernel for all pairwise sets of
@@ -503,17 +524,6 @@ class SquaredExponentialKernel(Kernel):
         }
         return children, aux_data
 
-    @classmethod
-    def _tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
-
     @jit
     def _compute_elementwise(
         self,
@@ -544,8 +554,8 @@ class SquaredExponentialKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_x.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -565,8 +575,8 @@ class SquaredExponentialKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_y.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -589,7 +599,7 @@ class SquaredExponentialKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in compute_divergence_x_grad_y.
+        computed in :meth:`compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -624,17 +634,6 @@ class PCIMQKernel(Kernel):
         }
         return children, aux_data
 
-    @classmethod
-    def _tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
-
     @jit
     def _compute_elementwise(
         self,
@@ -663,8 +662,8 @@ class PCIMQKernel(Kernel):
         r"""
         Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``x``.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_x.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -682,8 +681,8 @@ class PCIMQKernel(Kernel):
         r"""
         Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``y``.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. This function is
-        vectorised for arrays in grad_y.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
+        provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -708,7 +707,7 @@ class PCIMQKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in compute_divergence_x_grad_y.
+        computed in :meth:`compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -731,7 +730,7 @@ class SteinKernel(Kernel):
     r"""
     Define the Stein kernel, i.e. the application of the Stein operator.
 
-    .. :math:
+    .. math:
 
         \mathcal{A}_\mathbb{P}(g(\mathbf{x})) := \nabla_\mathbf{x} g(\mathbf{x})
         + g(\mathbf{x}) \nabla_\mathbf{x} \log f_X(\mathbf{x})^\intercal
@@ -752,7 +751,7 @@ class SteinKernel(Kernel):
 
     The Stein kernel for base kernel :math:`k(\mathbf{x}, \mathbf{y})` is defined as
 
-    .. :math:`
+    .. math:
 
         k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = \nabla_\mathbf{x} \cdot
         \nabla_\mathbf{y}
@@ -810,17 +809,6 @@ class SteinKernel(Kernel):
             "output_scale": self.output_scale,
         }
         return children, aux_data
-
-    @classmethod
-    def _tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
 
     @jit
     def _compute_elementwise(
