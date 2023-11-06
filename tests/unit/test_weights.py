@@ -1,0 +1,78 @@
+# © Crown Copyright GCHQ
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import jax.numpy as jnp
+
+import coreax.kernel as ck
+import coreax.weights as cw
+
+
+class TestWeights(unittest.TestCase):
+    """
+    Tests related to weights.py.
+    """
+
+    def test_calculate_BQ_weights(self) -> None:
+        r"""
+        Test the calculation of weights via sequential Bayesian quadrature.
+
+        For the simple dataset of 3 points in 2D :math:`X`, with coreset :math:`X_c`,
+        given by:
+
+        .. math::
+
+            X = [[0,0], [1,1], [2,2]]
+
+            X_c = [[0,0], [1,1]]
+
+        the weights, calculated by sequential Bayesian quadrature, are the solution to
+        the equation :math:`w = z^T K^{-1}`. Here, :math:`z` is the row-mean of the
+        kernel matrix :math:`k(X_c, X)`, i.e., the mean in the :math:`X` direction. The
+        matrix :math:`K = k(X_c, X_c)`.
+
+        Choosing the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+
+        .. math::
+
+            z^T = [\frac{1 + e^{-1} + e^{-4}}{3}, \frac{1 + 2e^{-1}}{3}]
+
+            K = [1, e^{-1}; e^{-1}, 1]
+
+        Therefore
+
+        .. math::
+
+            K^{-1} = \frac{1}{1 - e^{-2}}[1, -e^{-1}; -e^{-1}, 1]
+
+        and it follows that
+
+        .. math::
+
+            w = [1 - 2e^{-2} + e^{-4}, 1 + e^{-1} - e^{-2} - e^{-5}]/3(1 - e^{-2}).
+
+        """
+
+        calculate_BQ_weights_test = cw.calculate_BQ_weights(
+            x=jnp.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=jnp.array([[0, 0], [1, 1]]),
+            kernel=ck.rbf_kernel,
+        )
+
+        w1 = (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2)))
+        w2 = (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2)))
+        expected_output = jnp.asarray([w1, w2])
+
+        self.assertTrue(jnp.allclose(calculate_BQ_weights_test, expected_output))
