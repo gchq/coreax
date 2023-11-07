@@ -730,7 +730,7 @@ class SteinKernel(Kernel):
     r"""
     Define the Stein kernel, i.e. the application of the Stein operator.
 
-    .. math:
+    .. math::
 
         \mathcal{A}_\mathbb{P}(g(\mathbf{x})) := \nabla_\mathbf{x} g(\mathbf{x})
         + g(\mathbf{x}) \nabla_\mathbf{x} \log f_X(\mathbf{x})^\intercal
@@ -751,7 +751,7 @@ class SteinKernel(Kernel):
 
     The Stein kernel for base kernel :math:`k(\mathbf{x}, \mathbf{y})` is defined as
 
-    .. math:
+    .. math::
 
         k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = \nabla_\mathbf{x} \cdot
         \nabla_\mathbf{y}
