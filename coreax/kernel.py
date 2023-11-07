@@ -300,7 +300,7 @@ class Kernel(ABC):
         matrix is exploited to reduced repeated calculation.
 
         Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
-        `length_scale` are :data:`None`. Else, ``k_pairwise`` should be of the form
+        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
         :math:`k(x,y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
