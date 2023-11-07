@@ -81,7 +81,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel distance computations.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale^2)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
 
         For the two input floats
         .. math::
@@ -97,11 +97,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0.5 - 2.0)^2
                         &= 2.25
 
-        If we take the length\_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 2.25 / \pi)
                     &= 0.48860678
 
-        If the length\_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
+        If the length_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
             k(x, y) &= \exp(- 2.25 / (2.0\pi))
                     &= 0.6990041
         """
@@ -142,7 +142,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel distance computations.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
 
         For the two input vectors
         .. math::
@@ -158,7 +158,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0 - 1)^2 + (1 - 2)^2 + (2 - 3)^2 + (3 - 4)^2
                         &= 4
 
-        If we take the length\_scale to be :math:`\pi / 2.0` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 4 / \pi)
                     &= 0.279923327
         """
@@ -186,7 +186,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel distance computations on arrays.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
 
         For the two input vectors
         .. math::
@@ -201,7 +201,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
             ||x - y||^2 = [4, 0]
 
-        If we take the length\_scale to be :math:`\sqrt(\pi / 2.0` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
             k(x[0], y[1]) &= \exp(- 100 / \pi)
@@ -212,7 +212,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                           &= 1.0
 
         """
-        # Define data and length\_scale
+        # Define data and length_scale
         x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
         y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
         length_scale = np.sqrt(np.float32(np.pi) / 2.0)
@@ -236,11 +236,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel gradient computations.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
         ..math:
-            - \frac{(x - y)}{length\_scale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 length\_scale^2}}
+            - \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
@@ -275,11 +275,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel gradient computations; with scaling.
 
         The scaled SquaredExponential kernel is defined as
-        :math:`k(x,y) = s\exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = s\exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
         ..math:
-            - s\frac{(x - y)}{length\_scale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 length\_scale^2}}
+            - s\frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.pi
@@ -316,11 +316,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel gradient computations.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to y is:
 
         ..math:
-            \frac{(x - y)}{length\_scale^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 length\_scale^2}}
+            \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
@@ -359,7 +359,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         each point in the first array and each point in the second array.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         If we have two input arrays:
 
         ..math:
@@ -580,7 +580,7 @@ class TestPCIMQKernel(unittest.TestCase):
         Test the class PCIMQKernel distance computations.
 
         The PCIMQ kernel is defined as
-        :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / length\_scale) ** 2 / 2.0)}`.
+        :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / \text{length_scale}) ** 2 / 2.0)}`.
         """
         # Define input data
         length_scale = np.e
