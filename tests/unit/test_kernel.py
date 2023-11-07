@@ -81,7 +81,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the class SquaredExponentialKernel distance computations.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/2 * length\_scale^2)`.
 
         For the two input floats
         .. math::
@@ -97,11 +97,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0.5 - 2.0)^2
                         &= 2.25
 
-        If we take the length\_scale to be :math:`\pi / 2.0` we get:
+        If we take the length\_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 2.25 / \pi)
                     &= 0.48860678
 
-        If the length\_scale is instead taken to be :math:`\pi`, we get:
+        If the length\_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
             k(x, y) &= \exp(- 2.25 / (2.0\pi))
                     &= 0.6990041
         """
