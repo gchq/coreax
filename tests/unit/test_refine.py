@@ -36,11 +36,11 @@ class TestMetrics(unittest.TestCase):
 
         best_indices = {0, 1}
 
-        S = jnp.array(list(best_indices))
+        coreset_indices = jnp.array(list(best_indices))
 
         refine_regular = coreax.refine.RefineRegular(kernel=SquaredExponentialKernel())
 
-        refine_test = refine_regular.refine(x=x, S=S)
+        refine_test = refine_regular.refine(x=x, coreset_indices=coreset_indices)
 
         self.assertSetEqual(set(refine_test.tolist()), best_indices)
 
