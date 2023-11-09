@@ -562,6 +562,354 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
 
+class TestLaplacianKernel(unittest.TestCase):
+    """
+    Tests related to the LaplacianKernel defined in kernel.py
+    """
+
+    def test_laplacian_kernel_init(self) -> None:
+        r"""
+        Test the initilisation of LaplacianKernel with a negative length_scale.
+        """
+        # Create the kernel with a negative length_scale - we expect a value error to be
+        # raised
+        self.assertRaises(ValueError, ck.LaplacianKernel, length_scale=-1.0)
+
+    def test_laplacian_kernel_compute_two_floats(self) -> None:
+        r"""
+        Test the class LaplacianKernel distance computations.
+
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
+
+        For the two input floats
+        .. math::
+
+            x = 0.5
+
+            y = 2.0
+
+        For our choices of ``x`` and ``y``, we have:
+
+        .. math::
+
+            ||x - y|| &= |0.5 - 2.0|
+                        &= 1.5
+
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+            k(x, y) &= \exp(- 1.5 / \pi)
+                    &= 0.62035410351
+
+        If the length_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
+            k(x, y) &= \exp(- 1.5 / (2.0\pi))
+                    &= 0.78762561126
+        """
+        # Define data and length_scale
+        x = 0.5
+        y = 2.0
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+
+        # Define the expected distance - it should just be a number in this case since
+        # we have floats as inputs, so treat these single data-points in space
+        expected_distance = 0.62035410351
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
+
+        # Alter the length_scale, and check the jit decorator catches the update
+        kernel.length_scale = np.sqrt(np.float32(np.pi))
+
+        # Set expected output with this new length_scale
+        expected_distance = 0.78762561126
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y, with the new, altered length_scale
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
+
+    def test_laplacian_kernel_compute_two_vectors(self) -> None:
+        r"""
+        Test the class LaplacianKernel distance computations.
+
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
+
+        For the two input vectors
+        .. math::
+
+            x = [0, 1, 2, 3]
+
+            y = [1, 2, 3, 4]
+
+        For our choices of ``x`` and ``y``, we have:
+
+        .. math::
+
+            \lVert x - y \rVert_1 &= |0 - 1| + |1 - 2| + |2 - 3| + |3 - 4|
+                        &= 4
+
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+            k(x, y) &= \exp(- 4 / \pi)
+                    &= 0.279923327
+        """
+        # Define data and length_scale
+        x = 1.0 * np.arange(4)
+        y = x + 1.0
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+
+        # Define the expected distance - it should just be a number in this case since
+        # we have 1-dimensional arrays, so treat these as single data-points in space
+        expected_distance = 0.279923327
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+
+        # Evaluate the kernel - which computes the distance between the two vectors x
+        # and y
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
+
+    def test_laplacian_kernel_compute_two_arrays(self) -> None:
+        r"""
+        Test the class LaplacianKernel distance computations on arrays.
+
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
+
+        For the two input vectors
+        .. math::
+
+            x = [ [0, 1, 2, 3], [5, 6, 7, 8] ]
+
+            y = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+        For our choices of ``x`` and ``y``, we have distances of:
+
+        .. math::
+
+            ||x - y||_1 = [[4, 20], [16, 0]]
+
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+            k(x[0], y[0]) &= \exp(- 4 / \pi)
+                          &= 0.279923327
+            k(x[0], y[1]) &= \exp(- 20 / \pi)
+                          &= 0.00171868172
+            k(x[1], y[0]) &= \exp(- 16 / \pi)
+                          &= 0.00613983027
+            k(x[1], y[1]) &= \exp(- 0 / \pi)
+                          &= 1.0
+
+        """
+        # Define data and length_scale
+        x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+        y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+
+        # Define the expected Gram matrix
+        expected_distances = np.array(
+            [[0.279923327, 0.00171868172], [0.00613983027, 1.0]]
+        )
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+
+        # Evaluate the kernel - which computes the Gram matrix between ``x`` and ``y``
+        output = kernel.compute(x, y)
+
+        # Check the output matches the expected distance
+        np.testing.assert_array_almost_equal(output, expected_distances, decimal=5)
+
+    def test_laplacian_kernel_gradients_wrt_x(self) -> None:
+        r"""
+        Test the class LaplacianKernel gradient computations.
+
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-\Vert x-y \rVert_1/2 * \text{length_scale}^2)`. The
+        gradient  of this with respect to ``x`` is:
+
+        .. math:
+            - \operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
+              \rVert_1}{2 \text{length_scale}^2}}
+        """
+        # Define some data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to x
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    -np.sign(x_ - y_)
+                    / (2 * length_scale**2)
+                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                )
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+
+        # Evaluate the gradient
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
+
+    def test_scaled_laplacian_kernel_gradients_wrt_x(self) -> None:
+        r"""
+        Test the class LaplacianKernel gradient computations; with scaling.
+
+        The scaled Laplacian kernel is defined as
+        :math:`k(x,y) = s\exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`.
+        The gradient of this with respect to ``x`` is:
+
+        .. math:
+            - s\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
+              \rVert_1}{2 \text{length_scale}^2}}
+        """
+        # Define some data
+        length_scale = 1 / np.pi
+        s = np.e
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to x
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    -s
+                    * np.sign(x_ - y_)
+                    / (2 * length_scale**2)
+                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                )
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale, output_scale=s)
+
+        # Evaluate the gradient
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
+
+    def test_laplacian_kernel_gradients_wrt_y(self) -> None:
+        r"""
+        Test the class LaplacianKernel gradient computations.
+
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`. The
+        gradient of this with respect to y is:
+
+        ..math:
+            \operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
+              \rVert_1}{2 \text{length_scale}^2}}
+        """
+        # Define some data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Compute the actual gradients of the kernel with respect to y
+        true_gradients = np.zeros((num_points, num_points, dimension))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                true_gradients[i, j] = (
+                    np.sign(x_ - y_)
+                    / (2 * length_scale**2)
+                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                )
+
+        # Create the kernel
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+
+        # Evaluate the gradient
+        output = kernel.grad_y(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
+        )
+
+    def test_laplacian_div_x_grad_y(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = (
+                    -dimension
+                    / (4 * length_scale**4)
+                    * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                )
+        # Compute output using Kernel class
+        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        output = kernel.divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_scaled_laplacian_div_x_grad_y(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
+        """
+        # Setup data
+        length_scale = 1 / np.pi
+        s = np.e
+        sc = length_scale**2
+        num_points = 10
+        dimension = 2
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for i, x_ in enumerate(x):
+            for j, y_ in enumerate(y):
+                expected_output[i, j] = (
+                    -s
+                    * dimension
+                    / (4 * length_scale**4)
+                    * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                )
+        # Compute output using Kernel class
+        kernel = ck.LaplacianKernel(length_scale=length_scale, output_scale=s)
+        output = kernel.divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+
 class TestPCIMQKernel(unittest.TestCase):
     """
     Tests related to the PCIMQKernel defined in kernel.py

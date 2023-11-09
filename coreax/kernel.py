@@ -180,7 +180,6 @@ class Kernel(ABC):
         )
         return fn(x, y)
 
-    @jit
     def _grad_x_elementwise(
         self,
         x: ArrayLike,
@@ -202,7 +201,6 @@ class Kernel(ABC):
         """
         return grad(self._compute_elementwise, 0)(x, y)
 
-    @jit
     def _grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -253,7 +251,6 @@ class Kernel(ABC):
         )
         return fn(x, y)
 
-    @jit
     def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -524,7 +521,6 @@ class SquaredExponentialKernel(Kernel):
         }
         return children, aux_data
 
-    @jit
     def _compute_elementwise(
         self,
         x: ArrayLike,
@@ -543,7 +539,6 @@ class SquaredExponentialKernel(Kernel):
             -cu.sq_dist(x, y) / (2 * self.length_scale**2)
         )
 
-    @jit
     def _grad_x_elementwise(
         self,
         x: ArrayLike,
@@ -564,7 +559,6 @@ class SquaredExponentialKernel(Kernel):
         """
         return -self._grad_y_elementwise(x, y)
 
-    @jit
     def _grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -585,7 +579,6 @@ class SquaredExponentialKernel(Kernel):
         """
         return (x - y) / self.length_scale**2 * self._compute_elementwise(x, y)
 
-    @jit
     def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -614,6 +607,115 @@ class SquaredExponentialKernel(Kernel):
         return scale * k * (d - scale * cu.sq_dist(x, y))
 
 
+class LaplacianKernel(Kernel):
+    """
+    Define a Laplacian kernel.
+    """
+
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = ()
+        aux_data = {
+            "length_scale": self.length_scale,
+            "output_scale": self.output_scale,
+        }
+        return children, aux_data
+
+    def _compute_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the Laplacian kernel on input vectors ``x`` and ``y``.
+
+        We assume ``x`` and ``y`` are two vectors of the same dimension.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Kernel evaluated at (``x``, ``y``)
+        """
+        return self.output_scale * jnp.exp(
+            -jnp.linalg.norm(x - y, ord=1) / (2 * self.length_scale**2)
+        )
+
+    def _grad_x_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the element-wise grad of the Laplacian kernel w.r.t. ``x``.
+
+        The gradient (Jacobian) is computed using the analytical form.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
+        provides a vectorised version of this method for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Jacobian
+            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return -self._grad_y_elementwise(x, y)
+
+    def _grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the element-wise grad of the Laplacian kernel w.r.t. ``y``.
+
+        The gradient (Jacobian) is computed using the analytical form.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
+        provides a vectorised version of this method for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Jacobian
+            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return (
+            jnp.sign(x - y)
+            / (2 * self.length_scale**2)
+            * self._compute_elementwise(x, y)
+        )
+
+    def _divergence_x_grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
+
+        The computations are done using the analytical form of Jacobian and divergence
+        of the Laplacian kernel.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
+        computed in :meth:`compute_divergence_x_grad_y`.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Trace of the Laplace-style operator; a real number
+        """
+        k = self._compute_elementwise(x, y)
+        d = len(x)
+        return -d * k / (4 * self.length_scale**4)
+
+
 class PCIMQKernel(Kernel):
     """
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
@@ -634,7 +736,6 @@ class PCIMQKernel(Kernel):
         }
         return children, aux_data
 
-    @jit
     def _compute_elementwise(
         self,
         x: ArrayLike,
@@ -653,7 +754,6 @@ class PCIMQKernel(Kernel):
         mq_array = cu.sq_dist(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
-    @jit
     def _grad_x_elementwise(
         self,
         x: ArrayLike,
@@ -672,7 +772,6 @@ class PCIMQKernel(Kernel):
         """
         return -self._grad_y_elementwise(x, y)
 
-    @jit
     def _grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -696,7 +795,6 @@ class PCIMQKernel(Kernel):
             * (self._compute_elementwise(x, y) / self.output_scale) ** 3
         )
 
-    @jit
     def _divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
@@ -810,7 +908,6 @@ class SteinKernel(Kernel):
         }
         return children, aux_data
 
-    @jit
     def _compute_elementwise(
         self,
         x: ArrayLike,
@@ -841,11 +938,7 @@ class SteinKernel(Kernel):
 
 # Define the pytree node for the added class to ensure methods with jit decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-kernel_classes = (
-    SquaredExponentialKernel,
-    PCIMQKernel,
-    SteinKernel,
-)
+kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
 for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
