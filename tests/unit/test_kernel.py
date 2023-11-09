@@ -580,7 +580,7 @@ class TestLaplacianKernel(unittest.TestCase):
         Test the class LaplacianKernel distance computations.
 
         The Laplacian kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||_1/2 * length\_scale^2)`.
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
 
         For the two input floats
         .. math::
@@ -596,11 +596,11 @@ class TestLaplacianKernel(unittest.TestCase):
             ||x - y|| &= |0.5 - 2.0|
                         &= 1.5
 
-        If we take the length\_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 1.5 / \pi)
                     &= 0.62035410351
 
-        If the length\_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
+        If the length_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
             k(x, y) &= \exp(- 1.5 / (2.0\pi))
                     &= 0.78762561126
         """
@@ -641,7 +641,7 @@ class TestLaplacianKernel(unittest.TestCase):
         Test the class LaplacianKernel distance computations.
 
         The Laplacian kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||_1/2 * length\_scale^2)`.
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
 
         For the two input vectors
         .. math::
@@ -657,7 +657,7 @@ class TestLaplacianKernel(unittest.TestCase):
             \lVert x - y \rVert_1 &= |0 - 1| + |1 - 2| + |2 - 3| + |3 - 4|
                         &= 4
 
-        If we take the length\_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 4 / \pi)
                     &= 0.279923327
         """
@@ -685,7 +685,7 @@ class TestLaplacianKernel(unittest.TestCase):
         Test the class LaplacianKernel distance computations on arrays.
 
         The Laplacian kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||_1/2 * length\_scale^2)`.
+        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
 
         For the two input vectors
         .. math::
@@ -700,7 +700,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
             ||x - y||_1 = [[4, 20], [16, 0]]
 
-        If we take the length\_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
             k(x[0], y[1]) &= \exp(- 20 / \pi)
@@ -711,7 +711,7 @@ class TestLaplacianKernel(unittest.TestCase):
                           &= 1.0
 
         """
-        # Define data and length\_scale
+        # Define data and length_scale
         x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
         y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
         length_scale = np.sqrt(np.float32(np.pi) / 2.0)
@@ -734,12 +734,13 @@ class TestLaplacianKernel(unittest.TestCase):
         r"""
         Test the class LaplacianKernel gradient computations.
 
-        The Laplacian kernel is defined as :math:`k(x,y) = \exp (-\Vert x-y \rVert_1/2 *
-        length\_scale^2)`. The gradient of this with respect to ``x`` is:
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-\Vert x-y \rVert_1/2 * \text{length_scale}^2)`. The
+        gradient  of this with respect to ``x`` is:
 
-        ..math:
+        .. math:
             - \operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
-              \rVert_1}{2 length\_scale^2}}
+              \rVert_1}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
@@ -773,12 +774,13 @@ class TestLaplacianKernel(unittest.TestCase):
         r"""
         Test the class LaplacianKernel gradient computations; with scaling.
 
-        The scaled Laplacian kernel is defined as :math:`k(x,y) = s\exp (-\lVert x-y
-        \rVert_1/2 * length\_scale^2)`. The gradient of this with respect to ``x`` is:
+        The scaled Laplacian kernel is defined as
+        :math:`k(x,y) = s\exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`.
+        The gradient of this with respect to ``x`` is:
 
-        ..math:
+        .. math:
             - s\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
-              \rVert_1}{2 length\_scale^2}}
+              \rVert_1}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.pi
@@ -814,12 +816,13 @@ class TestLaplacianKernel(unittest.TestCase):
         r"""
         Test the class LaplacianKernel gradient computations.
 
-        The Laplacian kernel is defined as :math:`k(x,y) = \exp (-\lVert x-y \rVert_1/2
-        * length\_scale^2)`. The gradient of this with respect to y is:
+        The Laplacian kernel is defined as
+        :math:`k(x,y) = \exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`. The
+        gradient of this with respect to y is:
 
         ..math:
             \operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
-              \rVert_1}{2 length\_scale^2}}
+              \rVert_1}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
