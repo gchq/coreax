@@ -698,7 +698,7 @@ class LaplacianKernel(Kernel):
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
         The computations are done using the analytical form of Jacobian and divergence
-        of the squared exponential kernel.
+        of the Laplacian kernel.
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
