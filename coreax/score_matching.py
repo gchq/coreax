@@ -76,7 +76,7 @@ class ScoreMatching(ABC):
 
 class SlicedScoreMatching(ScoreMatching):
     """
-    Implementation of slice score matching, defined in :cite:p:'ssm'.
+    Implementation of slice score matching, defined in :cite:p:`ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
@@ -85,7 +85,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
-    :cite:p:'ssm'.
+    :cite:p:`ssm`.
 
     TODO: Allow user to pass hidden_dim as a list and build network with
         # layers = len(hidden_dim), with each layer size assigned as appropriate.
@@ -185,7 +185,7 @@ class SlicedScoreMatching(ScoreMatching):
         """
         Compute the score matching loss function.
 
-        Two objectives are proposed in :cite:p:'ssm', a general objective, and a
+        Two objectives are proposed in :cite:p:`ssm`, a general objective, and a
         simplification with reduced variance that holds for particular assumptions. The
         choice between the two is determined by the boolean ``use_analytic`` defined
         when the class is initiated.
@@ -195,7 +195,7 @@ class SlicedScoreMatching(ScoreMatching):
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equations 7 and 8 in
-            :cite:p:'ssm'
+            :cite:p:`ssm`
         """
         return cond(
             self.use_analytic,
@@ -222,7 +222,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in :cite:p:'ssm'
+        :return: Evaluation of score matching objective, see equation 8 in :cite:p:`ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -247,7 +247,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 7 in :cite:p:'ssm'
+        :return: Evaluation of score matching objective, see equation 7 in :cite:p:`ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -262,7 +262,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
-        score matching :cite:p:'ssm'.
+        score matching :cite:p:`ssm`.
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -326,7 +326,7 @@ class SlicedScoreMatching(ScoreMatching):
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:p:'improvedsgm' for details.
+        matching. See :cite:p:`improvedsgm` for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -386,7 +386,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def match(self, x: ArrayLike) -> Callable:
         r"""
-        Learn a sliced score matching function from Song et al.'s paper :cite:p:'ssm'.
+        Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
         We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
