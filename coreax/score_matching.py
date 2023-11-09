@@ -10,8 +10,18 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import inspect
-import sys
+"""
+Classes and associated functionality to perform score matching.
+
+The score function of some data is the derivative of the log-PDF. Score matching
+aims to determine a model by matching the score function of the model to that
+of the data. Exactly how the score function is modelled is specific to each
+child class of the abstract base class :class:`ScoreMatching`.
+
+When using :class:`SlicedScoreMatching`, the score function is approximated using a
+neural network.
+"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
@@ -32,16 +42,16 @@ from coreax.networks import ScoreNetwork, create_train_state
 class ScoreMatching(ABC):
     """
     Base class for score matching algorithms.
+
+    The score function of some data is the derivative of the log-PDF. Score matching
+    aims to determine a model by 'matching' the score function of the model to that
+    of the data. Exactly how the score function is modelled is specific to each
+    child class of this base class.
     """
 
     def __init__(self):
         r"""
         Define a score matching algorithm.
-
-        The score function of some data is the derivative of the log-PDF. Score matching
-        aims to determine a model by 'matching' the score function of the model to that
-        of the data. Exactly how the score function is modelled is specific to each
-        child class of this base class.
         """
 
     @classmethod
@@ -66,7 +76,40 @@ class ScoreMatching(ABC):
 
 class SlicedScoreMatching(ScoreMatching):
     """
-    Implementation of slice score matching, defined in [ssm]_.
+    Implementation of slice score matching, defined in :cite:p:'ssm'.
+
+    The score function of some data is the derivative of the log-PDF. Score matching
+    aims to determine a model by 'matching' the score function of the model to that
+    of the data. Exactly how the score function is modelled is specific to each
+    child class of this base class.
+
+    With sliced score matching, we train a neural network to directly approximate
+    the score function of the data. The approach is outlined in detail in
+    :cite:p:'ssm'.
+
+    TODO: Allow user to pass hidden_dim as a list and build network with
+        # layers = len(hidden_dim), with each layer size assigned as appropriate.
+
+    :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
+        :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
+        :class:`~jax.random`
+    :param random_key: Key for random number generation
+    :param noise_conditioning: Use the noise conditioning version of score matching.
+        Defaults to :data:`True`.
+    :param use_analytic: Use the analytic (reduced variance) objective or not.
+        Defaults to :data:`False`.
+    :param num_random_vectors: The number of random vectors to use per data vector.
+        Defaults to 1.
+    :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
+    :param num_epochs: Number of epochs for training. Defaults to 10.
+    :param batch_size: Size of minibatch. Defaults to 64.
+    :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
+    :param optimiser: The optax optimiser to use. Defaults to optax.adam.
+    :param num_noise_models: Number of noise models to use in noise
+        conditional score matching. Defaults to 100.
+    :param sigma: Initial noise standard deviation for noise geometric progression
+        in noise conditional score matching. Defaults to 1.
+    :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
     def __init__(
@@ -87,38 +130,6 @@ class SlicedScoreMatching(ScoreMatching):
     ):
         r"""
         Define a sliced score matching class.
-
-        The score function of some data is the derivative of the log-PDF. Score matching
-        aims to determine a model by 'matching' the score function of the model to that
-        of the data. Exactly how the score function is modelled is specific to each
-        child class of this base class.
-
-        With sliced score matching, we train a neural network to directly approximate
-        the score function of the data. The approach is outlined in detail in [ssm]_.
-
-        TODO: Allow user to pass hidden_dim as a list and build network with
-            # layers = len(hidden_dim), with each layer size assigned as appropriate.
-
-        :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
-            :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
-            :class:`~jax.random`
-        :param random_key: Key for random number generation
-        :param noise_conditioning: Use the noise conditioning version of score matching.
-            Defaults to :data:`True`.
-        :param use_analytic: Use the analytic (reduced variance) objective or not.
-            Defaults to :data:`False`.
-        :param num_random_vectors: The number of random vectors to use per data vector.
-            Defaults to 1.
-        :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
-        :param num_epochs: Number of epochs for training. Defaults to 10.
-        :param batch_size: Size of minibatch. Defaults to 64.
-        :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
-        :param optimiser: The optax optimiser to use. Defaults to optax.adam.
-        :param num_noise_models: Number of noise models to use in noise
-            conditional score matching. Defaults to 100.
-        :param sigma: Initial noise standard deviation for noise geometric progression
-            in noise conditional score matching. Defaults to 1.
-        :param gamma: Geometric progression ratio. Defaults to 0.95.
         """
         # Assign all inputs
         self.random_generator = random_generator
@@ -174,16 +185,17 @@ class SlicedScoreMatching(ScoreMatching):
         """
         Compute the score matching loss function.
 
-        Two objectives are proposed in [ssm]_, a general objective, and a simplification
-        with reduced variance that holds for particular assumptions. The choice between
-        the two is determined by the boolean ``use_analytic`` defined when the class is
-        initiated.
+        Two objectives are proposed in :cite:p:'ssm', a general objective, and a
+        simplification with reduced variance that holds for particular assumptions. The
+        choice between the two is determined by the boolean ``use_analytic`` defined
+        when the class is initiated.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in [ssm]_
+        :return: Evaluation of score matching objective, see equations 7 and 8 in
+            :cite:p:'ssm'
         """
         return cond(
             self.use_analytic,
@@ -210,7 +222,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in [ssm]_
+        :return: Evaluation of score matching objective, see equation 8 in :cite:p:'ssm'
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -235,7 +247,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 7 in [ssm]_
+        :return: Evaluation of score matching objective, see equation 7 in :cite:p:'ssm'
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -250,7 +262,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
-        score matching [ssm]_.
+        score matching :cite:p:'ssm'.
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -285,7 +297,7 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
-        :param state: The :class:`~flax.training.train_state.TrainState` object.
+        :param state: The :class:`~flax.training.train_state.TrainState` object
         :param x: The :math:`n \times d` data vectors
         :param random_vectors: The :math:`n \times m \times d` random vectors
         :return: The updated :class:`~flax.training.train_state.TrainState` object
@@ -314,7 +326,7 @@ class SlicedScoreMatching(ScoreMatching):
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See [improvedsgm]_ for details.
+        matching. See :cite:p:'improvedsgm' for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -374,7 +386,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def match(self, x: ArrayLike) -> Callable:
         r"""
-        Learn a sliced score matching function from Song et al.'s paper [ssm]_.
+        Learn a sliced score matching function from Song et al.'s paper :cite:p:'ssm'.
 
         We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
