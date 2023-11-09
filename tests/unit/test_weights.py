@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cmath
 import unittest
 
 import jax.numpy as jnp
@@ -65,7 +66,7 @@ class TestWeights(unittest.TestCase):
 
         """
 
-        calculate_BQ_weights_test = cw.calculate_BQ_weights(
+        calculate_bq_weights_test = cw.calculate_BQ_weights(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
             kernel=ck.rbf_kernel,
@@ -75,4 +76,81 @@ class TestWeights(unittest.TestCase):
         w2 = (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2)))
         expected_output = jnp.asarray([w1, w2])
 
-        self.assertTrue(jnp.allclose(calculate_BQ_weights_test, expected_output))
+        self.assertTrue(jnp.allclose(calculate_bq_weights_test, expected_output))
+
+    def test_simplex_weights(self) -> None:
+        r"""
+        Test calculation of weights via the simplex method for quadratic programming.
+
+        The simplex_weights() method solves the equation:
+
+        .. math::
+
+            0.5 \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w}
+            + \mathbf{z}^{\mathrm{T}} \mathbf{w} = 0
+
+        subject to
+
+        .. math::
+
+            \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gw} \le 0.
+
+        Here, :math:`z` is the row-mean of the kernel matrix :math:`k(X_c, X)`, i.e.,
+        the mean in the :math:`X` direction. The matrix :math:`K = k(X_c, X_c)`.
+
+        The constraints (see solve_qp() method in coreax/util.py), are imposed with
+        :math:`\mathbf{A}=1` and :math:`\mathbf{G}=-I`, ensuring the weights sum to 1
+        and are non-negative, respectively.
+
+        For the simple dataset of 3 points in 2D :math:`X`, with coreset :math:`X_c`,
+        given by:
+
+        .. math::
+
+            X = [[0,0], [1,1], [2,2]]
+
+            X_c = [[0,0], [1,1]]
+
+        and with the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+
+        .. math::
+
+            z^T = [\frac{1 + e^{-1} + e^{-4}}{3}, \frac{1 + 2e^{-1}}{3}]
+
+            K = [1, e^{-1}; e^{-1}, 1]
+
+        It follows that
+
+        .. math::
+
+            w_2 = (-1-2e^{3}+3e^{4}+\sqrt{1+4e^{3}-6e^4+28e^{6}-6e^{7}-21e^{8}})
+            /(6(e^4 - e^3))
+
+            w_1 = 1 - w_2
+
+        """
+
+        simplex_weights_test = cw.simplex_weights(
+            x=jnp.array([[0, 0], [1, 1], [2, 2]]),
+            x_c=jnp.array([[0, 0], [1, 1]]),
+            kernel=ck.rbf_kernel,
+        )
+
+        w2 = (
+            -1
+            - 2 * jnp.exp(3)
+            + 3 * jnp.exp(4)
+            + cmath.sqrt(
+                1
+                + 4 * jnp.exp(3)
+                - 6 * jnp.exp(4)
+                + 28 * jnp.exp(6)
+                - 6 * jnp.exp(7)
+                - 21 * jnp.exp(8)
+            )
+        ) / (6 * (jnp.exp(4) - jnp.exp(3)))
+        w2 = jnp.real(w2)
+        w1 = 1 - w2
+
+        expected_output = jnp.asarray([w1, w2])
+        self.assertTrue(jnp.allclose(simplex_weights_test, expected_output, rtol=1e-04))
