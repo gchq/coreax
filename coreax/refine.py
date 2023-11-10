@@ -25,10 +25,11 @@ from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
+from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
 
-class Refine(ABC):
+class Refine(DataReduction):
     """
     Base class for refinement functions.
 
