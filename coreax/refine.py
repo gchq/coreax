@@ -29,7 +29,7 @@ from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
 
-class Refine(DataReduction):
+class Refine(ABC):
     """
     Base class for refinement functions.
 
