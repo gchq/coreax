@@ -44,7 +44,9 @@ class TestWeights(unittest.TestCase):
         kernel matrix :math:`k(X_c, X)`, i.e., the mean in the :math:`X` direction. The
         matrix :math:`K = k(X_c, X_c)`.
 
-        Choosing the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+        Choosing the RBF kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
+        :math:`\text{length_scale} = 1/\sqrt{2}`, we have:
 
         .. math::
 
@@ -63,13 +65,11 @@ class TestWeights(unittest.TestCase):
         .. math::
 
             w = [1 - 2e^{-2} + e^{-4}, 1 + e^{-1} - e^{-2} - e^{-5}]/3(1 - e^{-2}).
-
         """
-
         calculate_bq_weights_test = cw.calculate_BQ_weights(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
+            kernel=ck.rbf_kernel(),
         )
 
         w1 = (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2)))
@@ -111,7 +111,9 @@ class TestWeights(unittest.TestCase):
 
             X_c = [[0,0], [1,1]]
 
-        and with the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+        and choosing  the RBF kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
+        :math:`\text{length_scale} = 1/\sqrt{2}`, we have:
 
         .. math::
 
