@@ -37,13 +37,13 @@ def calculate_BQ_weights(
     weighted version of kernel herding. The Bayesian quadrature weights, :math:`w_{BQ}`,
     are given by
 
-    ..math::
+    .. math::
 
         w_{BQ}^{(n)} = \sum_m z_m^T K_{mn}^{-1}
 
-    for a dataset X of n points, with coreset X_c of m points. Here, for given kernel
-    :math:`k`, we have :math:`z = \int k(X,X_c)p(x) dx` and :math:`K = k(X_c, X_c)` in
-    the above expression.
+    for a dataset :math:`X` of :math:`n` points, with coreset :math:`X_c` of :math:`m`
+    points. Here, for given kernel :math:`k`, we have :math:`z = \int k(X,X_c)p(x) dx`
+    and :math:`K = k(X_c, X_c)` in the above expression.
 
     The weights do not need to sum to 1, and are not even necessarily positive.
 
