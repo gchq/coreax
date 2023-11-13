@@ -24,13 +24,13 @@ import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-# import coreax.kernel as ck
+import coreax.kernel as ck
 from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
 
 class Refine(ABC):
-    """
+    r"""
     Base class for refinement functions.
 
     # TODO: Do we want to be able to refine by additional quality measures, e.g.
@@ -43,14 +43,10 @@ class Refine(ABC):
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
     :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`.
 
-    :param kernel: A :class:`coreax.kernel` object
     """
 
-    def __init__(self, data_reduction: DataReduction):
-        """
-        Initilise a refinement object.
-        """
-        self.kernel = data_reduction.kernel
+    def __init__(self):
+        """Initialise a refinement object."""
 
     @abstractmethod
     def refine(self, data_reduction: DataReduction) -> DataReduction:
@@ -60,12 +56,14 @@ class Refine(ABC):
         The refinement procedure replaces elements with points most reducing maximum
         mean discrepancy (MMD). The iteration is carried out over points in ``x``.
 
-        :param x: :math:`n \times d` original data
-        :param coreset_indices: :math:`m` coreset point indices
-        :return: :math:`m` Refined coreset point indices
+        :param data_reduction: coreax DataReduction object including :math:`n \times d`
+        original data, :math:`m` coreset point indices, coreset and kernel function.
+
+        :return: DataReduction object with updated, refine coreset and coreset indices
         """
         raise NotImplementedError
 
+    @staticmethod
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -75,7 +73,7 @@ class Refine(ABC):
         of methods inside this class.
         """
         children = ()  # dynamic values
-        aux_data = {"kernel": self.kernel}  # static values
+        aux_data = {}  # static values
         return children, aux_data
 
     @classmethod
@@ -91,7 +89,7 @@ class Refine(ABC):
 
 
 class RefineRegular(Refine):
-    """
+    r"""
     Define the RefineRegular class.
 
     # TODO: Update docstrings to better detail the differences between refine methods
@@ -100,14 +98,11 @@ class RefineRegular(Refine):
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
     :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`.
 
-    :param kernel: A :class:`coreax.kernel` object
     """
 
-    def __init__(self, data_reduction: DataReduction):
-        """
-        Initilise a RefineRegular object.
-        """
-        super().__init__(data_reduction)
+    def __init__(self):
+        """Initialise a refinement object."""
+        super().__init__()
 
     def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
@@ -118,24 +113,23 @@ class RefineRegular(Refine):
         is a post-processing step in coreset generation, through a generic reduction
         algorithm.
 
-        :param x: :math:`n \times d` original data
-        :param coreset_indices: ArrayLike: :math:`m` Coreset point indices
-        :return: :math:`m` Refined coreset point indices
-        """
+        :param data_reduction: coreax DataReduction object including :math:`n \times d`
+        original data, :math:`m` coreset point indices, coreset and kernel function.
 
+        :return: DataReduction object with updated, refine coreset and coreset indices
+        """
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
-        K_diag = vmap(self.kernel.compute)(x, x)
-        K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(
-            x, max_size=None, grads=None, nu=None
-        )
+        K_diag = vmap(data_reduction.kernel.compute)(x, x)
+        K_mean = data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
         body = partial(
             self._refine_body,
             x=x,
+            kernel=data_reduction.kernel,
             K_mean=K_mean,
             K_diag=K_diag,
         )
@@ -152,6 +146,7 @@ class RefineRegular(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> Array:
@@ -168,11 +163,12 @@ class RefineRegular(Refine):
         coreset_indices = jnp.asarray(coreset_indices)
         coreset_indices = coreset_indices.at[i].set(
             self._comparison(
-                coreset_indices[i],
-                coreset_indices,
-                x,
-                K_mean,
-                K_diag,
+                i=coreset_indices[i],
+                coreset_indices=coreset_indices,
+                x=x,
+                kernel=kernel,
+                K_mean=K_mean,
+                K_diag=K_diag,
             ).argmax()
         )
 
@@ -184,6 +180,7 @@ class RefineRegular(Refine):
         i: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> Array:
@@ -203,18 +200,20 @@ class RefineRegular(Refine):
         x = jnp.asarray(x)
         K_mean = jnp.asarray(K_mean)
         return (
-            self.kernel.compute(x[coreset_indices], x[i]).sum()
-            - self.kernel.compute(x, x[coreset_indices]).sum(axis=1)
-            + self.kernel.compute(x, x[i])[:, 0]
+            kernel.compute(x[coreset_indices], x[i]).sum()
+            - kernel.compute(x, x[coreset_indices]).sum(axis=1)
+            + kernel.compute(x, x[i])[:, 0]
             - K_diag
         ) / (num_points_in_coreset**2) - (K_mean[i] - K_mean) / num_points_in_coreset
 
 
 class RefineRandom(Refine):
-    def __init__(self, data_reduction: DataReduction, p: float = 0.1):
-        self.p = p
+    """TODO: create RefineRandom docstring."""
 
-        super().__init__(data_reduction)
+    def __init__(self, p: float = 0.1):
+        """Initialise a refinement object."""
+        self.p = p
+        super().__init__()
 
     def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
@@ -224,16 +223,16 @@ class RefineRandom(Refine):
         of candidate point. The candidate points are a random sample of :math:`n \times p`
         points from among the original data.
 
-        :param x: :math:`n \times d` original data
-        :param coreset_indices: Coreset point indices
-        :return: Refined coreset point indices
-        """
+        :param data_reduction: coreax DataReduction object including :math:`n \times d`
+        original data, :math:`m` coreset point indices, coreset and kernel function.
 
+        :return: DataReduction object with updated, refine coreset and coreset indices
+        """
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
-        K_diag = vmap(self.kernel.compute)(x, x)
-        K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
+        K_diag = vmap(data_reduction.kernel.compute)(x, x)
+        K_mean = data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
 
         coreset_indices = jnp.asarray(coreset_indices)
         x = jnp.asarray(x)
@@ -248,6 +247,7 @@ class RefineRandom(Refine):
             self._refine_rand_body,
             x=x,
             n_cand=n_cand,
+            kernel=data_reduction.kernel,
             K_mean=K_mean,
             K_diag=K_diag,
         )
@@ -264,11 +264,12 @@ class RefineRandom(Refine):
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> tuple[random.PRNGKeyArray, Array]:
         r"""
-        Execute main loop of the random refine method
+        Execute main loop of the random refine method.
 
         :param i: Loop counter
         :param val: Loop updatables
@@ -289,9 +290,10 @@ class RefineRandom(Refine):
             coreset_indices[i],
             cand,
             coreset_indices,
-            x,
-            K_mean,
-            K_diag,
+            x=x,
+            kernel=kernel,
+            K_mean=K_mean,
+            K_diag=K_diag,
         )
         coreset_indices = lax.cond(
             jnp.any(comps > 0),
@@ -312,6 +314,7 @@ class RefineRandom(Refine):
         cand: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> Array:
@@ -335,9 +338,9 @@ class RefineRandom(Refine):
         num_points_in_coreset = len(coreset_indices)
 
         return (
-            self.kernel.compute(x[coreset_indices], x[i]).sum()
-            - self.kernel.compute(x[cand, :], x[coreset_indices]).sum(axis=1)
-            + self.kernel.compute(x[cand, :], x[i])[:, 0]
+            kernel.compute(x[coreset_indices], x[i]).sum()
+            - kernel.compute(x[cand, :], x[coreset_indices]).sum(axis=1)
+            + kernel.compute(x[cand, :], x[i])[:, 0]
             - K_diag[cand]
         ) / (num_points_in_coreset**2) - (
             K_mean[i] - K_mean[cand]
@@ -367,7 +370,9 @@ class RefineRandom(Refine):
         self, i: int, coreset_indices: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
         r"""
-        Convenience function for leaving S unchanged (compare with refine.change). coreset_indices -> x.
+        Leave coreset indices unchanged (compare with refine.change).
+
+        coreset_indices -> x.
 
         :param i: Index in coreset_indices to replace. Not used
         :param coreset_indices: The dataset for replacement. Will remain unchanged
@@ -379,8 +384,11 @@ class RefineRandom(Refine):
 
 
 class RefineRev(Refine):
-    def __init__(self, data_reduction: DataReduction):
-        super().__init__(data_reduction)
+    """TODO: create RefineRev docstring."""
+
+    def __init__(self):
+        """Initialise RefineRev."""
+        super().__init__()
 
     def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
@@ -389,21 +397,22 @@ class RefineRev(Refine):
         This greedy refine method, the iteration is carried out over points in `x`, with
         x -> coreset_indices.
 
-        :param x: :math:`n \times d` original data
-        :param coreset_indices: :math:`m` Coreset point indices
-        :return: :math:`m` Refined coreset point indices
+        :param data_reduction: coreax DataReduction object including :math:`n \times d`
+        original data, :math:`m` coreset point indices, coreset and kernel function.
+        :return: DataReduction object with updated, refine coreset and coreset indices
         """
         x = jnp.asarray(data_reduction.original_data)
         coreset_indices = jnp.asarray(data_reduction.reduction_indices)
 
-        K_diag = vmap(self.kernel.compute)(x, x)
-        K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
+        K_diag = vmap(data_reduction.kernel.compute)(x, x)
+        K_mean = data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
 
         num_points_in_x = len(x)
 
         body = partial(
             self._refine_rev_body,
             x=x,
+            kernel=data_reduction.kernel,
             K_mean=K_mean,
             K_diag=K_diag,
         )
@@ -419,6 +428,7 @@ class RefineRev(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> Array:
@@ -436,6 +446,7 @@ class RefineRev(Refine):
             i,
             coreset_indices,
             x,
+            kernel,
             K_mean,
             K_diag,
         )
@@ -456,6 +467,7 @@ class RefineRev(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
+        kernel: ck.Kernel,
         K_mean: ArrayLike,
         K_diag: ArrayLike,
     ) -> Array:
@@ -478,9 +490,9 @@ class RefineRev(Refine):
         num_points_in_coreset = len(coreset_indices)
 
         return (
-            self.kernel.compute(x[coreset_indices], x[coreset_indices]).sum(axis=1)
-            - self.kernel.compute(x[coreset_indices], x[i]).sum()
-            + self.kernel.compute(x[coreset_indices], x[i])[:, 0]
+            kernel.compute(x[coreset_indices], x[coreset_indices]).sum(axis=1)
+            - kernel.compute(x[coreset_indices], x[i]).sum()
+            + kernel.compute(x[coreset_indices], x[i])[:, 0]
             - K_diag[coreset_indices]
         ) / (num_points_in_coreset**2) - (
             K_mean[coreset_indices] - K_mean[i]
@@ -508,9 +520,9 @@ class RefineRev(Refine):
         self, i: int, coreset_indices: ArrayLike, comps: ArrayLike
     ) -> Array:
         r"""
-        Convenience function for leaving S unchanged (compare with refine.change_rev).
+        Leave coreset indices unchanged (compare with refine.change_rev).
 
-        x -> S.
+        x -> coreset_indices.
 
         :param i: Value to replace into S. Not used
         :param coreset_indices: The dataset for replacement. Will remain unchanged
