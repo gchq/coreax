@@ -18,7 +18,8 @@ import unittest
 import jax.numpy as jnp
 
 import coreax.refine
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernel import RBFKernel
+from coreax.reduction import DataReduction
 
 
 class TestMetrics(unittest.TestCase):
@@ -38,11 +39,18 @@ class TestMetrics(unittest.TestCase):
 
         coreset_indices = jnp.array(list(best_indices))
 
-        refine_regular = coreax.refine.RefineRegular(kernel=SquaredExponentialKernel())
+        data_reduction_obj = DataReduction(
+            original_data=x, weight=None, kernel=RBFKernel()
+        )
+        data_reduction_obj.reduction_indices = coreset_indices
 
-        refine_test = refine_regular.refine(x=x, coreset_indices=coreset_indices)
+        refine_regular = coreax.refine.RefineRegular(data_reduction_obj)
 
-        self.assertSetEqual(set(refine_test.tolist()), best_indices)
+        refine_test = refine_regular.refine(data_reduction=data_reduction_obj)
+
+        refined_indices = refine_test.reduction_indices
+
+        self.assertSetEqual(set(refined_indices.tolist()), best_indices)
 
     def test_refine_ints(self) -> None:
         """
@@ -58,7 +66,7 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        refine_regular = coreax.refine.RefineRegular(kernel=SquaredExponentialKernel())
+        refine_regular = coreax.refine.RefineRegular(kernel=RBFKernel())
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))
@@ -84,9 +92,7 @@ class TestMetrics(unittest.TestCase):
 
         S = jnp.array(test_indices)
 
-        refine_rand = coreax.refine.RefineRandom(
-            kernel=SquaredExponentialKernel(), p=1.0
-        )
+        refine_rand = coreax.refine.RefineRandom(kernel=RBFKernel(), p=1.0)
 
         refine_test = refine_rand.refine(x, S)
 
@@ -106,7 +112,7 @@ class TestMetrics(unittest.TestCase):
 
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        refine_rev = coreax.refine.RefineRev(kernel=SquaredExponentialKernel())
+        refine_rev = coreax.refine.RefineRev(kernel=RBFKernel())
 
         for test_indices in index_pairs:
             S = jnp.array(list(test_indices))

@@ -248,6 +248,7 @@ class Kernel(ABC):
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
+                        Optional, defaults to  `None`
         :param grads: Array of gradients, if applicable, :math:`n \times d`
                       Optional, defaults to `None`
         :param nu: Base kernel bandwidth, if applicable, :math:`n \times d`
@@ -257,6 +258,9 @@ class Kernel(ABC):
         between a given point and all possible pairs of points that contain this given
         point.
         """
+        if max_size is None:
+            max_size = len(x)
+
         return self.calculate_kernel_matrix_row_sum(x, max_size, grads, nu) / (
             1.0 * x.shape[0]
         )

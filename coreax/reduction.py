@@ -28,7 +28,7 @@ from jax import Array, tree_util
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
-import coreax.coreset as cc
+# import coreax.coreset as cc
 import coreax.kernel as ck
 import coreax.metrics as cm
 import coreax.refine as cr
@@ -139,13 +139,9 @@ class DataReduction(ABC):
     @staticmethod
     def _create_instance_from_factory(
         factory_obj: cu.ClassFactory,
-        class_type: str
-        | type[cc.Coreset]
-        | type[cm.Metric]
-        | type[cr.Refine]
-        | type[cw.WeightsOptimiser],
+        class_type: str | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
         **kwargs,
-    ) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
+    ) -> cm.Metric | cr.Refine | cw.WeightsOptimiser:
         """
         Create a refine object for use with the fit method.
 
