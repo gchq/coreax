@@ -53,7 +53,7 @@ class Refine(ABC):
         self.kernel = data_reduction.kernel
 
     @abstractmethod
-    def refine(self, data_reduction: DataReduction) -> Array:
+    def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
         Compute the refined coreset, of m points in d dimensions.
 
@@ -109,7 +109,7 @@ class RefineRegular(Refine):
         """
         super().__init__(data_reduction)
 
-    def refine(self, data_reduction: DataReduction) -> Array:
+    def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
         Refine a coreset iteratively.
 
@@ -127,7 +127,9 @@ class RefineRegular(Refine):
         coreset_indices = data_reduction.reduction_indices
 
         K_diag = vmap(self.kernel.compute)(x, x)
-        K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
+        K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(
+            x, max_size=None, grads=None, nu=None
+        )
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
@@ -139,7 +141,10 @@ class RefineRegular(Refine):
         )
         coreset_indices = lax.fori_loop(0, num_points_in_coreset, body, coreset_indices)
 
-        return coreset_indices
+        data_reduction.reduction_indices = coreset_indices
+        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
+
+        return data_reduction
 
     @jit
     def _refine_body(
@@ -162,7 +167,7 @@ class RefineRegular(Refine):
         """
         coreset_indices = jnp.asarray(coreset_indices)
         coreset_indices = coreset_indices.at[i].set(
-            self.comparison(
+            self._comparison(
                 coreset_indices[i],
                 coreset_indices,
                 x,
@@ -174,7 +179,7 @@ class RefineRegular(Refine):
         return coreset_indices
 
     @jit
-    def comparison(
+    def _comparison(
         self,
         i: ArrayLike,
         coreset_indices: ArrayLike,
@@ -206,12 +211,12 @@ class RefineRegular(Refine):
 
 
 class RefineRandom(Refine):
-    def __init__(self, kernel: ck.Kernel, p: float = 0.1):
+    def __init__(self, data_reduction: DataReduction, p: float = 0.1):
         self.p = p
 
-        super().__init__(kernel)
+        super().__init__(data_reduction)
 
-    def refine(self, x, coreset_indices):
+    def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
          Refine a coreset iteratively.
 
@@ -223,6 +228,9 @@ class RefineRandom(Refine):
         :param coreset_indices: Coreset point indices
         :return: Refined coreset point indices
         """
+
+        x = data_reduction.original_data
+        coreset_indices = data_reduction.reduction_indices
 
         K_diag = vmap(self.kernel.compute)(x, x)
         K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
@@ -237,7 +245,7 @@ class RefineRandom(Refine):
         key = random.PRNGKey(42)
 
         body = partial(
-            self.refine_rand_body,
+            self._refine_rand_body,
             x=x,
             n_cand=n_cand,
             K_mean=K_mean,
@@ -245,9 +253,12 @@ class RefineRandom(Refine):
         )
         key, coreset_indices = lax.fori_loop(0, n_iter, body, (key, coreset_indices))
 
-        return coreset_indices
+        data_reduction.reduction_indices = coreset_indices
+        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
 
-    def refine_rand_body(
+        return data_reduction
+
+    def _refine_rand_body(
         self,
         i: int,
         val: tuple[random.PRNGKeyArray, ArrayLike],
@@ -274,7 +285,7 @@ class RefineRandom(Refine):
         key, subkey = random.split(key)
         cand = random.randint(subkey, (n_cand,), 0, len(x))
         # cand = random.choice(subkey, len(x), (n_cand,), replace=False)
-        comps = self.comparison_cand(
+        comps = self._comparison_cand(
             coreset_indices[i],
             cand,
             coreset_indices,
@@ -284,8 +295,8 @@ class RefineRandom(Refine):
         )
         coreset_indices = lax.cond(
             jnp.any(comps > 0),
-            self.change,
-            self.nochange,
+            self._change,
+            self._nochange,
             i,
             coreset_indices,
             cand,
@@ -295,7 +306,7 @@ class RefineRandom(Refine):
         return key, coreset_indices
 
     @jit
-    def comparison_cand(
+    def _comparison_cand(
         self,
         i: ArrayLike,
         cand: ArrayLike,
@@ -333,7 +344,7 @@ class RefineRandom(Refine):
         ) / num_points_in_coreset
 
     @jit
-    def change(
+    def _change(
         self, i: int, coreset_indices: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
         r"""
@@ -352,7 +363,7 @@ class RefineRandom(Refine):
         return coreset_indices.at[i].set(cand[comps.argmax()])
 
     @jit
-    def nochange(
+    def _nochange(
         self, i: int, coreset_indices: ArrayLike, cand: ArrayLike, comps: ArrayLike
     ) -> Array:
         r"""
@@ -368,10 +379,10 @@ class RefineRandom(Refine):
 
 
 class RefineRev(Refine):
-    def __init__(self, kernel: ck.Kernel):
-        super().__init__(kernel)
+    def __init__(self, data_reduction: DataReduction):
+        super().__init__(data_reduction)
 
-    def refine(self, x: ArrayLike, coreset_indices: ArrayLike) -> Array:
+    def refine(self, data_reduction: DataReduction) -> DataReduction:
         r"""
         Refine a coreset iteratively, replacing points which lead to the most improvement.
 
@@ -382,8 +393,8 @@ class RefineRev(Refine):
         :param coreset_indices: :math:`m` Coreset point indices
         :return: :math:`m` Refined coreset point indices
         """
-        x = jnp.asarray(x)
-        coreset_indices = jnp.asarray(coreset_indices)
+        x = jnp.asarray(data_reduction.original_data)
+        coreset_indices = jnp.asarray(data_reduction.reduction_indices)
 
         K_diag = vmap(self.kernel.compute)(x, x)
         K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
@@ -391,16 +402,19 @@ class RefineRev(Refine):
         num_points_in_x = len(x)
 
         body = partial(
-            self.refine_rev_body,
+            self._refine_rev_body,
             x=x,
             K_mean=K_mean,
             K_diag=K_diag,
         )
         coreset_indices = lax.fori_loop(0, num_points_in_x, body, coreset_indices)
 
-        return coreset_indices
+        data_reduction.reduction_indices = coreset_indices
+        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
 
-    def refine_rev_body(
+        return data_reduction
+
+    def _refine_rev_body(
         self,
         i: int,
         coreset_indices: ArrayLike,
@@ -418,7 +432,7 @@ class RefineRev(Refine):
         :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
         :returns: Updated loop variables `S`
         """
-        comps = self.comparison_rev(
+        comps = self._comparison_rev(
             i,
             coreset_indices,
             x,
@@ -427,8 +441,8 @@ class RefineRev(Refine):
         )
         coreset_indices = lax.cond(
             jnp.any(comps > 0),
-            self.change_rev,
-            self.nochange_rev,
+            self._change_rev,
+            self._nochange_rev,
             i,
             coreset_indices,
             comps,
@@ -437,7 +451,7 @@ class RefineRev(Refine):
         return coreset_indices
 
     @jit
-    def comparison_rev(
+    def _comparison_rev(
         self,
         i: int,
         coreset_indices: ArrayLike,
@@ -473,7 +487,9 @@ class RefineRev(Refine):
         ) / num_points_in_coreset
 
     @jit
-    def change_rev(self, i: int, coreset_indices: ArrayLike, comps: ArrayLike) -> Array:
+    def _change_rev(
+        self, i: int, coreset_indices: ArrayLike, comps: ArrayLike
+    ) -> Array:
         r"""
         Replace the maximum comps value point in S with i. x -> S.
 
@@ -488,7 +504,7 @@ class RefineRev(Refine):
         return coreset_indices.at[j].set(i)
 
     @jit
-    def nochange_rev(
+    def _nochange_rev(
         self, i: int, coreset_indices: ArrayLike, comps: ArrayLike
     ) -> Array:
         r"""
