@@ -18,7 +18,7 @@ import unittest
 import jax.numpy as jnp
 
 import coreax.refine
-from coreax.kernel import RBFKernel
+from coreax.kernel import SquaredExponentialKernel
 from coreax.reduction import DataReduction
 
 
@@ -34,23 +34,18 @@ class TestMetrics(unittest.TestCase):
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-
         best_indices = {0, 1}
-
         coreset_indices = jnp.array(list(best_indices))
 
         data_reduction_obj = DataReduction(
-            original_data=x, weight=None, kernel=RBFKernel()
+            original_data=x, weight=None, kernel=SquaredExponentialKernel()
         )
         data_reduction_obj.reduction_indices = coreset_indices
 
-        refine_regular = coreax.refine.RefineRegular(data_reduction_obj)
-
+        refine_regular = coreax.refine.RefineRegular()
         refine_test = refine_regular.refine(data_reduction=data_reduction_obj)
 
-        refined_indices = refine_test.reduction_indices
-
-        self.assertSetEqual(set(refined_indices.tolist()), best_indices)
+        self.assertSetEqual(set(refine_test.reduction_indices.tolist()), best_indices)
 
     def test_refine_ints(self) -> None:
         """
@@ -61,20 +56,25 @@ class TestMetrics(unittest.TestCase):
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-
         best_indices = {0, 2}
-
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        refine_regular = coreax.refine.RefineRegular(kernel=RBFKernel())
+        refine_regular = coreax.refine.RefineRegular()
 
         for test_indices in index_pairs:
-            S = jnp.array(list(test_indices))
+            coreset_indices = jnp.array(list(test_indices))
 
-            refine_test = refine_regular.refine(x, S)
+            data_reduction_obj = DataReduction(
+                original_data=x, weight=None, kernel=SquaredExponentialKernel()
+            )
+            data_reduction_obj.reduction_indices = coreset_indices
+
+            refine_test = refine_regular.refine(data_reduction=data_reduction_obj)
 
             with self.subTest(test_indices):
-                self.assertSetEqual(set(refine_test.tolist()), best_indices)
+                self.assertSetEqual(
+                    set(refine_test.reduction_indices.tolist()), best_indices
+                )
 
     def test_refine_rand(self):
         """
@@ -85,18 +85,19 @@ class TestMetrics(unittest.TestCase):
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-
         best_indices = {0, 2}
-
         test_indices = [2, 2]
+        coreset_indices = jnp.array(test_indices)
 
-        S = jnp.array(test_indices)
+        data_reduction_obj = DataReduction(
+            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        )
+        data_reduction_obj.reduction_indices = coreset_indices
 
-        refine_rand = coreax.refine.RefineRandom(kernel=RBFKernel(), p=1.0)
+        refine_rand = coreax.refine.RefineRandom(p=1.0)
+        refine_test = refine_rand.refine(data_reduction=data_reduction_obj)
 
-        refine_test = refine_rand.refine(x, S)
-
-        self.assertSetEqual(set(refine_test.tolist()), best_indices)
+        self.assertSetEqual(set(refine_test.reduction_indices.tolist()), best_indices)
 
     def test_refine_rev(self):
         """
@@ -107,17 +108,22 @@ class TestMetrics(unittest.TestCase):
         """
 
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-
         best_indices = {0, 2}
-
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        refine_rev = coreax.refine.RefineRev(kernel=RBFKernel())
+        refine_rev = coreax.refine.RefineRev()
 
         for test_indices in index_pairs:
-            S = jnp.array(list(test_indices))
+            coreset_indices = jnp.array(list(test_indices))
 
-            refine_test = refine_rev.refine(x, S)
+            data_reduction_obj = DataReduction(
+                original_data=x, weight=None, kernel=SquaredExponentialKernel()
+            )
+            data_reduction_obj.reduction_indices = coreset_indices
+
+            refine_test = refine_rev.refine(data_reduction=data_reduction_obj)
 
             with self.subTest(test_indices):
-                self.assertSetEqual(set(refine_test.tolist()), best_indices)
+                self.assertSetEqual(
+                    set(refine_test.reduction_indices.tolist()), best_indices
+                )
