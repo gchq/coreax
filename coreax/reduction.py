@@ -29,6 +29,7 @@ from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
 import coreax.coreset as cc
+import coreax.kernel as ck
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
@@ -44,7 +45,7 @@ class DataReduction(ABC):
         self,
         original_data: ArrayLike,
         weight: str | cw.WeightsOptimiser,
-        kernel: cu.KernelFunction,
+        kernel: ck.Kernel,
     ):
         r"""
         Class for performing data reduction.
@@ -112,9 +113,7 @@ class DataReduction(ABC):
         refiner = self._create_instance_from_factory(
             cr.refine_factory, refine_name, kernel=self.kernel
         )
-        return refiner.refine(
-            self.original_data, self.reduction_indices, kernel_mean
-        )  # TODO compute kernel mean here or in refine.py?
+        return refiner.refine(self)  # TODO compute kernel mean here or in refine.py?
 
     def compute_metric(
         self,
