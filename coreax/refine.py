@@ -24,7 +24,7 @@ import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
+# import coreax.kernel as ck
 from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
@@ -46,15 +46,14 @@ class Refine(ABC):
     :param kernel: A :class:`coreax.kernel` object
     """
 
-    def __init__(self, kernel: ck.Kernel):
+    def __init__(self, data_reduction: DataReduction):
         """
         Initilise a refinement object.
         """
-        # Assign kernel object
-        self.kernel = kernel
+        self.kernel = data_reduction.kernel
 
     @abstractmethod
-    def refine(self, x: ArrayLike, coreset_indices: ArrayLike) -> Array:
+    def refine(self, data_reduction: DataReduction) -> Array:
         r"""
         Compute the refined coreset, of m points in d dimensions.
 
@@ -104,13 +103,13 @@ class RefineRegular(Refine):
     :param kernel: A :class:`coreax.kernel` object
     """
 
-    def __init__(self, kernel: ck.Kernel):
+    def __init__(self, data_reduction: DataReduction):
         """
         Initilise a RefineRegular object.
         """
-        super().__init__(kernel)
+        super().__init__(data_reduction)
 
-    def refine(self, x: ArrayLike, coreset_indices: ArrayLike) -> Array:
+    def refine(self, data_reduction: DataReduction) -> Array:
         r"""
         Refine a coreset iteratively.
 
@@ -124,13 +123,16 @@ class RefineRegular(Refine):
         :return: :math:`m` Refined coreset point indices
         """
 
+        x = data_reduction.original_data
+        coreset_indices = data_reduction.reduction_indices
+
         K_diag = vmap(self.kernel.compute)(x, x)
         K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(x)
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
         body = partial(
-            self.refine_body,
+            self._refine_body,
             x=x,
             K_mean=K_mean,
             K_diag=K_diag,
@@ -140,7 +142,7 @@ class RefineRegular(Refine):
         return coreset_indices
 
     @jit
-    def refine_body(
+    def _refine_body(
         self,
         i: int,
         coreset_indices: ArrayLike,
