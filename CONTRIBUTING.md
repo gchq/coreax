@@ -87,7 +87,7 @@ A high level overview of the expected style is:
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
-  per line.
+  per line starting from the left margin and including any indentation.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
@@ -122,13 +122,18 @@ Avoid stating how the program will handle the error, e.g. avoid Aborting, since 
 
 Docstrings must:
 - Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
-- Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
+- Be written in [reStructured Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
 - Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
 - Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
 - Have a full stop at the end of the one-line descriptive sentence.
 - Use full stops in extended paragraphs of text.
 - Not have full stops at the end of parameter definitions.
+- If a `:param:` or similar line requires more than the max line length, use multiple lines. Each additional line should
+  be indented by a further 4 spaces.
+- Class `__init__` methods should not have docstrings. All constructor parameters should be listed at the end of the class
+  docstring. `__init__` docstrings will not be rendered by Sphinx. Any developer comments should be contained in a regular
+  comment.
 
 Each docstring for a public object should take the following structure:
 ```
@@ -161,7 +166,7 @@ Prioritise overfull lines for mathematical expressions over artificially splitti
 For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
 
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anywhere with `[RefYY]_`.
 
 ### Generating docs with Sphinx
 

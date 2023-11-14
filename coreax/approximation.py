@@ -25,7 +25,20 @@ from coreax.util import KernelFunction
 
 
 class KernelMeanApproximator(ABC):
-    """Base class for approximation methods to kernel means."""
+    r"""
+    Base class for approximation methods to kernel means.
+
+    Define an approximator to the mean of a kernel distance matrix. When a dataset is
+    very large, computing the mean distance between a given point and all other points
+    can be time-consuming. Instead, this property can be approximated by various
+    methods. :class:`~coreax.approximation.KernelMeanApproximator` is the base class
+    for implementing these approximation methods.
+
+    :param kernel_evaluation: Kernel function
+            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param random_key: Key for random number generation
+    :param num_kernel_points: Number of kernel evaluation points
+    """
 
     def __init__(
         self,
@@ -33,19 +46,7 @@ class KernelMeanApproximator(ABC):
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        r"""
-        Define an approximator to the mean of a kernel distance matrix.
-
-        When a dataset is very large, computing the mean distance between a given point
-        and all other points can be time-consuming. Instead, this property can be
-        approximated by various methods. KernelMeanApproximator is the base class for
-        implementing these approximation methods.
-
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        """
+        """Construct class instance."""
         self.kernel_evaluation = kernel_evaluation
         self.random_key = random_key
         self.num_kernel_points = num_kernel_points
@@ -56,12 +57,23 @@ class KernelMeanApproximator(ABC):
         Approximate kernel row mean.
 
         :param data: The original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by n
+        :return: Approximation of the kernel matrix row sum divided by :math:`n`
         """
 
 
 class RandomApproximator(KernelMeanApproximator):
-    """Approximation method to kernel mean through regression on random sampled points."""
+    r"""
+    Approximation to kernel mean through regression on random sampled points.
+
+    Approximate kernel row mean by regression on points selected randomly. Here, the
+    kernel row mean is the matrix row sum divided by :math:`n`.
+
+    :param kernel_evaluation: Kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param random_key: Key for random number generation
+    :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
+    """
 
     def __init__(
         self,
@@ -70,17 +82,7 @@ class RandomApproximator(KernelMeanApproximator):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        r"""
-        Approximate kernel row mean by regression on points selected randomly.
-
-        Here, the kernel row mean is the matrix row sum divided by n.
-
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel regression
-        """
+        """Construct class instance."""
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -98,7 +100,7 @@ class RandomApproximator(KernelMeanApproximator):
         Compute approximate kernel row mean by regression on randomly selected points.
 
         :param data: The original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by n
+        :return: Approximation of the kernel matrix row sum divided by :math:`n`
         """
         # Ensure data is the expected type
         data = jnp.asarray(data)
@@ -133,11 +135,17 @@ class RandomApproximator(KernelMeanApproximator):
 
 
 class ANNchorApproximator(KernelMeanApproximator):
-    """
+    r"""
     Approximation method to kernel mean through regression on ANNchor selected points.
 
-    The ANNchor implementation used can be found
-    `here<https://github.com/gchq/annchor>`_.
+    Here, the kernel row mean is the matrix row sum divided by :math:`n`. The ANNchor
+    implementation used can be found `here <https://github.com/gchq/annchor>`_.
+
+    :param kernel_evaluation: Kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param random_key: Key for random number generation
+    :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
     """
 
     def __init__(
@@ -147,17 +155,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        r"""
-        Approximate kernel row mean by regression on ANNchor selected points.
-
-        Here, the kernel row mean is the matrix row sum divided by n.
-
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel regression
-        """
+        """Construct class instance."""
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -175,7 +173,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         Compute approximate kernel row mean by regression on ANNchor selected points.
 
         :param data: The original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by n
+        :return: Approximation of the kernel matrix row sum divided by :math:`n`
         """
         # Ensure data is the expected type
         data = jnp.asarray(data)
@@ -211,11 +209,17 @@ class ANNchorApproximator(KernelMeanApproximator):
 
 
 class NystromApproximator(KernelMeanApproximator):
-    """
+    r"""
     Approximate kernel row mean by using Nystrom approximation.
 
-    Further details for Nystrom kernel mean embeddings can be found here
-    [chatalic2022nystrom]_.
+    Here, the kernel row mean is the matrix row sum divided by :math:`n`. Further
+    details for Nystrom kernel mean embeddings can be found in
+    :cite:p:`chatalic2022nystrom`.
+
+    :param kernel_evaluation: Kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param random_key: Key for random number generation
+    :param num_kernel_points: Number of kernel evaluation points
     """
 
     def __init__(
@@ -224,16 +228,7 @@ class NystromApproximator(KernelMeanApproximator):
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        r"""
-        Approximate kernel row mean by using Nystrom approximation.
-
-        Here, the kernel row mean is the matrix row sum divided by n.
-
-        :param kernel_evaluation: Kernel function
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        """
+        """Construct class instance."""
         # Initialise parent
         super().__init__(
             kernel_evaluation=kernel_evaluation,
@@ -249,7 +244,7 @@ class NystromApproximator(KernelMeanApproximator):
         Compute approximate kernel row mean by regression on ANNchor selected points.
 
         :param data: The original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by n
+        :return: Approximation of the kernel matrix row sum divided by :math:`n`
         """
         # Ensure data is the expected type
         data = jnp.asarray(data)
@@ -292,7 +287,7 @@ def anchor_body(
     :param data: Original :math:`n \times d` dataset
     :param kernel_function: Vectorised kernel function on pairs `(X,x)`:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :return: Updated loop variables `features`
+    :return: Updated loop variables ``features``
     """
     features = jnp.asarray(features)
     data = jnp.asarray(data)
