@@ -32,7 +32,7 @@ class TestMetrics(unittest.TestCase):
         r"""
         Test the class Metric initialises correctly.
         """
-        # Patch the abstract methods of the Metric ABC so it can be created
+        # Patch the abstract methods of the Metric ABC, so it can be created
         p = patch.multiple(cm.Metric, __abstractmethods__=set())
         p.start()
 
@@ -86,11 +86,11 @@ class TestMMD(unittest.TestCase):
         Test the MMD of a dataset with itself is zero, for several different kernels.
         """
         # Define a metric object using the RBF kernel
-        metric = cm.MMD(kernel=ck.RBFKernel(bandwidth=1.0))
+        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=1.0))
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
         # Define a metric object using the PCIMQ kernel
-        metric = cm.MMD(kernel=ck.PCIMQKernel(bandwidth=1.0))
+        metric = cm.MMD(kernel=ck.PCIMQKernel(length_scale=1.0))
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
     def test_mmd_ones(self):
@@ -134,13 +134,13 @@ class TestMMD(unittest.TestCase):
         # Setup data
         x = jnp.array([[0, 0], [1, 1], [0, 0], [1, 1]])
         y = jnp.array([[0, 0], [1, 1]])
-        bandwidth = 1.0
+        length_scale = 1.0
 
         # Set expected MMD
         expected_output = 0.0
 
         # Define a metric object using an RBF kernel
-        metric = cm.MMD(kernel=ck.RBFKernel(bandwidth=bandwidth))
+        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
 
         # Compute MMD using the metric object
         output = metric.compute(x=x, y=y)
@@ -191,13 +191,13 @@ class TestMMD(unittest.TestCase):
         # Setup data
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
         y = jnp.array([[0, 0], [1, 1]])
-        bandwidth = 1.0
+        length_scale = 1.0
 
         # Set expected MMD
         expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
 
         # Define a metric object using an RBF kernel
-        metric = cm.MMD(kernel=ck.RBFKernel(bandwidth=bandwidth))
+        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
 
         # Compute MMD using the metric object
         output = metric.compute(x=x, y=y)
@@ -210,13 +210,13 @@ class TestMMD(unittest.TestCase):
         Test that MMD computed from randomly generated test data agrees with mmd().
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute each term in the MMD formula
-        kernel_nn = kernel.compute_pairwise_no_grads(self.x, self.x)
-        kernel_mm = kernel.compute_pairwise_no_grads(self.y, self.y)
-        kernel_nm = kernel.compute_pairwise_no_grads(self.x, self.y)
+        kernel_nn = kernel.compute(self.x, self.x)
+        kernel_mm = kernel.compute(self.y, self.y)
+        kernel_nm = kernel.compute(self.x, self.y)
 
         # Compute overall MMD by
         expected_mmd = (
@@ -265,7 +265,7 @@ class TestMMD(unittest.TestCase):
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
         y = jnp.array([[0, 0], [1, 1]])
         weights_y = jnp.array([1, 0])
-        bandwidth = 1.0
+        length_scale = 1.0
 
         # Define expected output
         expected_output = jnp.sqrt(
@@ -273,7 +273,7 @@ class TestMMD(unittest.TestCase):
         )
 
         # Define a metric object
-        metric = cm.MMD(kernel=ck.RBFKernel(bandwidth=bandwidth))
+        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
 
         # Compute weighted mmd using the metric object
         output = metric.compute(x=x, y=y, weights_y=weights_y)
@@ -286,13 +286,13 @@ class TestMMD(unittest.TestCase):
         Test that WMMD computed from randomly generated test data agrees with wmmd().
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute each term in the MMD formula
-        kernel_nn = kernel.compute_pairwise_no_grads(self.x, self.x)
-        kernel_mm = kernel.compute_pairwise_no_grads(self.y, self.y)
-        kernel_nm = kernel.compute_pairwise_no_grads(self.x, self.y)
+        kernel_nn = kernel.compute(self.x, self.x)
+        kernel_mm = kernel.compute(self.y, self.y)
+        kernel_nm = kernel.compute(self.x, self.y)
 
         # Define expected output
         expected_output = (
@@ -315,8 +315,8 @@ class TestMMD(unittest.TestCase):
         Test that wmmd = mmd if weights are uniform, :math:`w_y = 1/m`.
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -390,8 +390,8 @@ class TestMMD(unittest.TestCase):
         expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
 
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -407,14 +407,14 @@ class TestMMD(unittest.TestCase):
         Test that mmd block-computed for random test data equals mmd_block().
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute MMD term with x and itself
         kernel_nn = 0.0
         for i1 in range(0, self.num_points_x, self.max_size):
             for i2 in range(0, self.num_points_x, self.max_size):
-                kernel_nn += kernel.compute_pairwise_no_grads(
+                kernel_nn += kernel.compute(
                     self.x[i1 : i1 + self.max_size, :],
                     self.x[i2 : i2 + self.max_size, :],
                 ).sum()
@@ -423,7 +423,7 @@ class TestMMD(unittest.TestCase):
         kernel_mm = 0.0
         for j1 in range(0, self.num_points_y, self.max_size):
             for j2 in range(0, self.num_points_y, self.max_size):
-                kernel_mm += kernel.compute_pairwise_no_grads(
+                kernel_mm += kernel.compute(
                     self.y[j1 : j1 + self.max_size, :],
                     self.y[j2 : j2 + self.max_size, :],
                 ).sum()
@@ -432,7 +432,7 @@ class TestMMD(unittest.TestCase):
         kernel_nm = 0.0
         for i in range(0, self.num_points_x, self.max_size):
             for j in range(0, self.num_points_y, self.max_size):
-                kernel_nm += kernel.compute_pairwise_no_grads(
+                kernel_nm += kernel.compute(
                     self.x[i : i + self.max_size, :], self.y[j : j + self.max_size, :]
                 ).sum()
 
@@ -457,8 +457,8 @@ class TestMMD(unittest.TestCase):
         Test that mmd() returns the same as mmd_block().
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -563,8 +563,8 @@ class TestMMD(unittest.TestCase):
         expected_output = jnp.sqrt(1 / 2 - jnp.exp(-1) / 2)
 
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -582,8 +582,8 @@ class TestMMD(unittest.TestCase):
         Test mmd_weight_block equals mmd when weights are uniform: w = 1/n, w_y = 1/m.
         """
         # Define a kernel object
-        bandwidth = 1.0
-        kernel = ck.RBFKernel(bandwidth=bandwidth)
+        length_scale = 1.0
+        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
