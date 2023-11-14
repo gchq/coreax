@@ -53,7 +53,7 @@ class TestApproximations(unittest.TestCase):
 
     def test_kernel_mean_approximator_creation(self) -> None:
         """
-        Test the class KernelMeanApproximator initilises correctly.
+        Test the class KernelMeanApproximator initialises correctly.
         """
         # Patch the abstract method (approximate) of the KernelMeanApproximator so it
         # can be created

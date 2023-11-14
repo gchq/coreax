@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Unit Tests and Coverage Assessment
 
 on:
   push:
@@ -7,26 +7,44 @@ on:
     branches: ["**"]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  tests:
+    # Tests only; save one version for coverage assessment below
     strategy:
       fail-fast: false
       max-parallel: 10
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11"]
-
+        exclude:
+          - os: ubuntu-latest
+            python-version: 3.11
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pytest
-        if [ -f requirements-dev.txt ]; then pip install --no-dependencies -r requirements-dev.txt; fi
+        pip install --no-dependencies -r requirements-test.txt
     - name: Test with pytest
       run: |
         pytest --ignore=tests/integration
+  tests-coverage:
+    name: tests & coverage (ubuntu-latest, 3.11)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.11
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --no-dependencies -r requirements-coverage.txt
+    - name: Test with pytest and assess code coverage
+      run: |
+        pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing
