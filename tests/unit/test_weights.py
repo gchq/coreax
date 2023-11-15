@@ -46,7 +46,7 @@ class TestWeights(unittest.TestCase):
 
         Choosing the RBF kernel,
         :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
-        :math:`\text{length_scale} = 1/\sqrt{2}`, we have:
+        :math:`\text{length_scale} = 1` (the default value), we have:
 
         .. math::
 
@@ -113,7 +113,7 @@ class TestWeights(unittest.TestCase):
 
         and choosing  the RBF kernel,
         :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
-        :math:`\text{length_scale} = 1/\sqrt{2}`, we have:
+        :math:`\text{length_scale} = 1` (the default value), we have:
 
         .. math::
 
