@@ -1,5 +1,6 @@
 abstractmethods
 adamw
+allclose
 amsmath
 arange
 argmax
@@ -60,6 +61,7 @@ pyroma
 pytest
 quickstart
 rightarrow
+rtol
 scikit
 scipy
 seealso
