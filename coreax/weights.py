@@ -33,6 +33,20 @@ def calculate_BQ_weights(
     :cite:p:`huszar2016optimallyweighted`. These are equivalent to the unconstrained
     weighted maximum mean discrepancy (MMD) optimum.
 
+    The BQ estimate of the integral :math:`\int f(x) p(x) dx` can be viewed as a
+    weighted version of kernel herding. The Bayesian quadrature weights, :math:`w_{BQ}`,
+    are given by
+
+    .. math::
+
+        w_{BQ}^{(n)} = \sum_m z_m^T K_{mn}^{-1}
+
+    for a dataset :math:`X` of :math:`n` points, with coreset :math:`X_c` of :math:`m`
+    points. Here, for given kernel :math:`k`, we have :math:`z = \int k(X,X_c)p(x) dx`
+    and :math:`K = k(X_c, X_c)` in the above expression.
+
+    The weights do not need to sum to 1, and are not even necessarily positive.
+
     :param x: The original :math:`n \times d` data
     :param x_c: :math:`m \times d` coreset
     :param kernel: Kernel function
@@ -68,7 +82,7 @@ def simplex_weights(
     k_pairwise = jit(
         vmap(vmap(kernel, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0)
     )
-    kbar = k_pairwise(x_c, x).sum(axis=1) / len(x)
-    Kmm = k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
-    sol = solve_qp(Kmm, kbar)
+    z = k_pairwise(x_c, x).sum(axis=1) / len(x)
+    K = k_pairwise(x_c, x_c) + 1e-10 * jnp.identity(len(x_c))
+    sol = solve_qp(kmm=K, kbar=z)
     return sol
