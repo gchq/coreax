@@ -90,9 +90,9 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     m = mmd_block(X, X[coreset], k, max_size=1000)
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_sample], k, max_size=1000).item()
 
     # print the MMDs
     print(f"Random MMD: {rm}")

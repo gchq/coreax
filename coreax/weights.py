@@ -30,7 +30,7 @@ def calculate_BQ_weights(
     Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
     References for this technique can be found in
-    :cite:p:`huszar2016optimallyweighted`. These are equivalent to the unconstrained
+    :cite:p:`huszar2016optimally`. These are equivalent to the unconstrained
     weighted maximum mean discrepancy (MMD) optimum.
 
     :param x: The original :math:`n \times d` data

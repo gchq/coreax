@@ -283,7 +283,7 @@ def anchor_body(
     Execute main loop of the ANNchor construction.
 
     :param idx: Loop counter
-    :param features: Loop updateables
+    :param features: Loop variables to be updated
     :param data: Original :math:`n \times d` dataset
     :param kernel_function: Vectorised kernel function on pairs `(X,x)`:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`

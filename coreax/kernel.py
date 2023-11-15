@@ -25,7 +25,7 @@ from jax.typing import ArrayLike
 from coreax.util import (
     KernelFunction,
     KernelFunctionWithGrads,
-    pdiff,
+    pairwise_diff,
     sq_dist,
     sq_dist_pairwise,
 )
@@ -115,7 +115,7 @@ def grad_rbf_y(
     else:
         gram_matrix = jnp.asarray(gram_matrix)
 
-    distances = pdiff(x_array, y_array)
+    distances = pairwise_diff(x_array, y_array)
 
     return distances * gram_matrix[:, :, None] / bandwidth**2
 
@@ -164,7 +164,7 @@ def grad_pc_imq_y(
         gram_matrix = pc_imq(x_array, y_array, bandwidth)
     else:
         gram_matrix = jnp.asarray(gram_matrix)
-    mq_array = pdiff(x_array, y_array)
+    mq_array = pairwise_diff(x_array, y_array)
 
     return gram_matrix[:, :, None] ** 3 * mq_array / scaling
 
