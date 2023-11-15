@@ -69,7 +69,7 @@ class TestWeights(unittest.TestCase):
         calculate_bq_weights_test = cw.calculate_BQ_weights(
             x=jnp.array([[0, 0], [1, 1], [2, 2]]),
             x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel(),
+            kernel=ck.rbf_kernel,
         )
 
         w1 = (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2)))
