@@ -44,7 +44,9 @@ class TestWeights(unittest.TestCase):
         kernel matrix :math:`k(X_c, X)`, i.e., the mean in the :math:`X` direction. The
         matrix :math:`K = k(X_c, X_c)`.
 
-        Choosing the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+        Choosing the SquaredExponentialKernel kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`,
+        setting ``length_scale`` to 1.0, we have:
 
         .. math::
 
@@ -63,7 +65,6 @@ class TestWeights(unittest.TestCase):
         .. math::
 
             w = [1 - 2e^{-2} + e^{-4}, 1 + e^{-1} - e^{-2} - e^{-5}]/3(1 - e^{-2}).
-
         """
         # Setup data
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
@@ -119,7 +120,9 @@ class TestWeights(unittest.TestCase):
 
             X_c = [[0,0], [1,1]]
 
-        and with the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, we have:
+        and with the SquaredExponentialKernel kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`,
+        setting ``length_scale`` to 1.0, we have:
 
         .. math::
 
@@ -135,15 +138,12 @@ class TestWeights(unittest.TestCase):
             /(6(e^4 - e^3))
 
             w_1 = 1 - w_2
-
         """
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
 
-        simplex_weights_test = cw.simplex_weights(
-            x=jnp.array([[0, 0], [1, 1], [2, 2]]),
-            x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
-        )
-
+        # Define expected output
         w2 = (
             -1
             - 2 * jnp.exp(3)
@@ -159,6 +159,13 @@ class TestWeights(unittest.TestCase):
         ) / (6 * (jnp.exp(4) - jnp.exp(3)))
         w2 = jnp.real(w2)
         w1 = 1 - w2
-
         expected_output = jnp.asarray([w1, w2])
-        self.assertTrue(jnp.allclose(simplex_weights_test, expected_output, rtol=1e-04))
+
+        # Define an optimiser
+        optimiser = cw.MMD(kernel=ck.SquaredExponentialKernel())
+
+        # Solve for the weights
+        output = optimiser.solve(x, y)
+
+        # Check output matches expected
+        self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
