@@ -216,5 +216,7 @@ words:
     "figsize",
     "xlabel",
     "ylabel",
-    "jumanjihouse"
+    "jumanjihouse",
+    "rtol",
+    "allclose"
   ]
