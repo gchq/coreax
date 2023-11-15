@@ -45,7 +45,7 @@ class WeightsOptimiser(ABC):
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
-        :return: Optimal weighting of points in y to represent ``x``
+        :return: Optimal weighting of points in ``y`` to represent ``x``
         """
 
     def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -92,7 +92,7 @@ class SBQ(WeightsOptimiser):
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
-        :return: Optimal weighting of points in y to represent ``x``
+        :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Format data
         x = jnp.asarray(x)
@@ -142,7 +142,7 @@ class MMD(WeightsOptimiser):
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
-        :return: Optimal weighting of points in y to represent ``x``
+        :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Format data
         x = jnp.asarray(x)
