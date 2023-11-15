@@ -39,7 +39,7 @@ Be sure to install Jax, and to install the preferred version for your system.
 Here are some of the most commonly used functions in the library.
 
 ## Kernel herding
-Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are curerntly variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
+Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are currently variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
 
 ```python
 from coreax.kernel_herding import kernel_herding_block
@@ -82,7 +82,7 @@ coreset = kernel_herding_refine_block(X, m, k):
 ```
 
 ## Stein kernel herding
-We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targetting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discerete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within GPU memory constraints.
+We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targeting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discerete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within GPU memory constraints.
 ```python
 from coreax.kernel import stein_kernel_pc_imq_element, rbf_grad_log_f_x
 from coreax.kernel_herding import stein_kernel_herding_block
