@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
+import coreax.kernel
 from coreax.util import ClassFactory, solve_qp
 
 
@@ -30,8 +30,8 @@ class WeightsOptimiser(ABC):
     :param kernel: Kernel object
     """
 
-    def __init__(self, kernel: ck.Kernel) -> None:
-        r"""
+    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
+        """
         Initilise a weights optimiser class.
 
         # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
@@ -40,7 +40,7 @@ class WeightsOptimiser(ABC):
 
     @abstractmethod
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
+        r"""
         Calculate the weights.
 
         :param x: The original :math:`n \times d` data
@@ -70,13 +70,6 @@ class SBQ(WeightsOptimiser):
     :param kernel: Kernel object
     """
 
-    def __init__(self, kernel: ck.Kernel) -> None:
-        """
-        Initilise a Sequential Bayesian Quadrature (SBQ) optimiser class.
-        """
-        # initialise parent
-        super().__init__(kernel)
-
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
@@ -87,8 +80,6 @@ class SBQ(WeightsOptimiser):
 
         Note that weights determined through SBQ do not need to sum to 1, and can be
         negative.
-
-        Optimal weights in this sense
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
@@ -109,10 +100,10 @@ class SBQ(WeightsOptimiser):
 
 
 class MMD(WeightsOptimiser):
-    """
+    r"""
     Define the MMD weights optimiser class.
 
-    This optimser solves a simplex weight problem of the form:
+    This optimiser solves a simplex weight problem of the form:
 
     .. math::
 
@@ -128,13 +119,6 @@ class MMD(WeightsOptimiser):
 
     :param kernel: Kernel object
     """
-
-    def __init__(self, kernel: ck.Kernel) -> None:
-        """
-        Initilise a Sequential Bayesian Quadrature (SBQ) optimiser class.
-        """
-        # initialise parent
-        super().__init__(kernel)
 
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -160,7 +144,6 @@ class MMD(WeightsOptimiser):
         return sol
 
 
-# Set up class factory
 weights_factory = ClassFactory(WeightsOptimiser)
 weights_factory.register("SBQ", SBQ)
 weights_factory.register("MMD", MMD)

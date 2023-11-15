@@ -70,7 +70,6 @@ class TestWeights(unittest.TestCase):
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
         y = jnp.array([[0, 0], [1, 1]])
 
-        # Define expected output
         expected_output = jnp.asarray(
             [
                 (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2))),
@@ -78,13 +77,11 @@ class TestWeights(unittest.TestCase):
             ]
         )
 
-        # Define an optimiser
         optimiser = cw.SBQ(kernel=ck.SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)
 
-        # Check output matches expected
         self.assertTrue(jnp.allclose(output, expected_output))
 
     def test_simplex_weights(self) -> None:
@@ -143,7 +140,6 @@ class TestWeights(unittest.TestCase):
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
         y = jnp.array([[0, 0], [1, 1]])
 
-        # Define expected output
         w2 = (
             -1
             - 2 * jnp.exp(3)
@@ -161,11 +157,9 @@ class TestWeights(unittest.TestCase):
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
 
-        # Define an optimiser
         optimiser = cw.MMD(kernel=ck.SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)
 
-        # Check output matches expected
         self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
