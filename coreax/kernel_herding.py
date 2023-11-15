@@ -45,7 +45,7 @@ def greedy_body(
     Execute main loop of greedy kernel herding.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :param X: Original :math:`n \times d` dataset
     :param k_vec: Vectorised kernel function on pairs `(X,x)`:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
@@ -84,7 +84,7 @@ def stein_greedy_body(
     Execute the main loop of greedy Stein herding.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :param X: Original :math:`n \times d` dataset
     :param k_vec: Vectorised kernel function on pairs ``(X,x,Y,y)``:
                   :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \times`
@@ -147,7 +147,7 @@ def kernel_herding_block(
     S = jnp.zeros(n_core, dtype=jnp.int32)
     K = jnp.zeros((n_core, n))
 
-    # Greedly select coreset points
+    # Greedily select coreset points
     body = partial(greedy_body, X=X, k_vec=k_vec, K_mean=K_mean, unique=unique)
     S, K, _ = lax.fori_loop(0, n_core, body, (S, K, K_t))
     Kbar = K.mean(axis=1)
@@ -208,7 +208,7 @@ def stein_kernel_herding_block(
     S = jnp.zeros(n_core, dtype=jnp.int32)
     K = jnp.zeros((n_core, n))
 
-    # Greedly select coreset points
+    # Greedily select coreset points
     body = partial(
         stein_greedy_body,
         X=X,
@@ -226,7 +226,7 @@ def stein_kernel_herding_block(
 
 
 @jit
-def fw_linesearch(arg_x_t: int, K: ArrayLike, Ek: ArrayLike) -> Array:
+def fw_line_search(arg_x_t: int, K: ArrayLike, Ek: ArrayLike) -> Array:
     r"""
     Execute Frank-Wolfe line search.
 
@@ -254,7 +254,7 @@ def herding_body(
     Execute body of default herding.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
@@ -277,7 +277,7 @@ def greedy_herding_body(
     Execute body of Stein thinning.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
@@ -300,7 +300,7 @@ def fw_herding_body(
     Execute body of Frank-Wolfe herding.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :return: Coreset indices, objective, Gram matrix mean and Gram matrix
     """
     S, objective, Kbar, K = val
@@ -310,7 +310,7 @@ def fw_herding_body(
     K = jnp.asarray(K)
     j = objective.argmax()
     S = S.at[i].set(j)
-    rho = fw_linesearch(S[i], K, Kbar)
+    rho = fw_line_search(S[i], K, Kbar)
     objective = objective * (1 - rho) + (Kbar - K[S[i]]) * rho
     return S, objective, Kbar, K
 
@@ -408,8 +408,8 @@ def scalable_herding(
     else:
         # build a kdtree
         kdtree = KDTree(X, leaf_size=size)
-        _, nindices, nodes, _ = kdtree.get_arrays()
-        new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
+        _, node_indices, nodes, _ = kdtree.get_arrays()
+        new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
         split_data = [X[n] for n in new_indices]
         # k = len(split_data)
         # print(n, k, n // k)

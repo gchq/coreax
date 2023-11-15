@@ -82,7 +82,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     )
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
 
     if weighted:
         # find the weights. Solves a QP
@@ -98,7 +98,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     m = float(m)
 
     # compute the MMD between X and the random sample
-    rm = float(mmd_block(X, X[rsample], k, max_size=1000))
+    rm = float(mmd_block(X, X[rand_sample], k, max_size=1000))
 
     # produce some scatter plots
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
@@ -108,7 +108,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     plt.show()
 
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
-    plt.scatter(X[rsample, 0], X[rsample, 1], s=10, color="red")
+    plt.scatter(X[rand_sample, 0], X[rand_sample, 1], s=10, color="red")
     plt.title("Random, m=%d, MMD=%.6f" % (C, rm))
     plt.axis("off")
 
