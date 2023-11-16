@@ -11,7 +11,7 @@ Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.rea
 A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ points whilst attempting to preserve the statistical properties of the full data set. Some algorithms return the $m$ points with weights, such that importance can be attributed to each point. These are often chosen from the simplex, i.e. such that they are non-negative and sum to 1.
 
 ## Quick example
-Here are $n=10,000$ points drawn from six $2$-D Gaussian distributions. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
+Here are $n=10,000$ points drawn from six $2$-D multivariate Gaussian distributions. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
 
 ![](examples/data/coreset_seq/coreset_seq.gif)
 ![](examples/data/random_seq/random_seq.gif)
@@ -82,7 +82,7 @@ coreset = kernel_herding_refine_block(X, m, k):
 ```
 
 ## Stein kernel herding
-We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targeting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discrete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within GPU memory constraints.
+We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targeting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discrete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within memory constraints.
 ```python
 from coreax.kernel import stein_kernel_pc_imq_element, rbf_grad_log_f_x
 from coreax.kernel_herding import stein_kernel_herding_block
