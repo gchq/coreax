@@ -20,7 +20,7 @@ import inspect
 import sys
 import jax.numpy as jnp
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
 from jax import Array
@@ -75,6 +75,7 @@ class DataReduction(ABC):
         )
         return weights_instance.solve(self.data, self.reduced_data, self.kernel)
 
+    @abstractmethod
     def fit(
         self,
         coreset_name: str | type[cc.Coreset],
@@ -86,12 +87,6 @@ class DataReduction(ABC):
             class object
         :return: TODO once OOPed coreset.py is implemented
         """
-        # Create a coreset object
-        coreset_instance = cu.create_instance_from_factory(
-            cc.coreset_factory,
-            coreset_name
-        )
-        return coreset_instance.fit(self.original_data, self.kernel)
 
     def refine(
         self,
@@ -105,7 +100,7 @@ class DataReduction(ABC):
 
         :param refine_name: Name of the refine type to use, or an uninstantiated
             class object
-        :return: :math:`m` Refined coreset point indices
+        :return: :math:`m` refined coreset point indices
         """
         # Create a refine object
         refiner = cu.create_instance_from_factory(
@@ -263,7 +258,7 @@ class MapReduce(ReductionStrategy):
             indices: ArrayLike,
             n_core: int,
             function: Callable[..., tuple[Array, Array, Array]],
-            w_function: cu.KernelFunction | None,
+            w_function: cw.WeightsOptimiser | None,
             size: int = 1000,
             parallel: bool = True,
             **kwargs,
