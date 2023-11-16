@@ -18,7 +18,9 @@
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
+from typing import Any
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
@@ -147,3 +149,96 @@ def solve_qp(kmm: ArrayLike, kbar: ArrayLike) -> Array:
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
     return sol.primal
+
+
+def call_with_excess_kwargs(call_obj: Callable, *args, **kwargs) -> Any:
+    """
+    Call an object when invalid parameters have been provided as keyword arguments.
+
+    Keyword arguments with invalid names are ignored.
+
+    Positional arguments before keyword arguments will be passed without filtering. If
+    too many positional arguments are passed, ``call_obj`` may raise an exception. If a
+    keyword argument is also covered by a positional argument, it will be ignored.
+
+    :param call_obj: Object to call
+    :return: ``call_obj`` called with arguments with valid names
+    """
+    arguments = inspect.signature(call_obj).parameters
+    # Construct list of argument names without positional arguments
+    kw_names = tuple(arguments)[len(args) :]
+    # Construct dictionary of keyword arguments to pass
+    kw_args = {kw: kwargs[kw] for kw in kw_names if kw in kwargs}
+    return call_obj(*args, **kw_args)
+
+
+class ClassFactory:
+    """
+    Factory to return classes that can be looked up by name.
+
+    Returned classes are uninstantiated objects.
+
+    To use this factory, create an instance in the appropriate module and call
+    :meth:`register` for each class to be registered. The instance may then be imported
+    to wherever requires output from the factory.
+    """
+
+    def __init__(self, class_type: type):
+        """
+        Initialise factory.
+
+        :param class_type: Type of class that factory produces
+        """
+        self.class_type = class_type
+        self.lookup_table: dict[str, class_type] = {}
+
+    def register(self, name: str, class_obj: type) -> None:
+        """
+        Register a class name.
+
+        :param name: Name to identify class
+        :param class_obj: Uninstantiated class to register
+        :raises ValueError: If an object has already been registered with ``name``
+        :raises TypeError: If ``obj`` does not match :attr:`~ClassFactory.obj_type`
+        """
+        if name in self.lookup_table:
+            raise ValueError(f"{name} already used for {self.lookup_table[name]}.")
+        if not isinstance(class_obj, type):
+            raise TypeError("class_obj must be an uninstantiated class object.")
+        if not issubclass(class_obj, self.class_type):
+            raise TypeError(
+                f"Class type {type(class_obj)} does not match type for class factory: "
+                f"{self.class_type}."
+            )
+        self.lookup_table[name] = class_obj
+
+    def get(self, name: str | type) -> type:
+        """
+        Get class by name or return input if an object of the required type is passed.
+
+        Passing an object already of the required type permits dependency injection. The
+        type is determined by :attr:`~ClassFactory.obj_type`.
+
+        :param name: Registered name of class to fetch, or uninstantiated class object
+            of a matching type
+        :raises TypeError: If a non-string that does not match the factory type is
+            passed, i.e. cannot be used for dependency injection
+        :raises KeyError: If the string name is not recognised
+        :return: Uninstantiated class object
+        """
+        # Check for dependency injection
+        if isinstance(name, type):
+            if issubclass(name, self.class_type):
+                return name
+            raise TypeError(f"{name} is not a subclass of {self.class_type}.")
+
+        if not isinstance(name, str):
+            raise TypeError(
+                f"name must be a string or a subclass of {self.class_type}."
+            )
+
+        # Get class by name
+        class_obj = self.lookup_table.get(name)
+        if class_obj is None:
+            raise KeyError(f"Class name {name} not recognised.")
+        return class_obj
