@@ -88,7 +88,7 @@ def refine_body(
     Execute main loop of the refine method, :math:`S \rightarrow x`.
 
     :param i: Loop counter
-    :param S: Loop updatables
+    :param S: Loop variables to be updated
     :param x: Original :math:`n \times d` dataset
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
@@ -209,7 +209,7 @@ def refine_rand_body(
     Execute main loop of the random refine method.
 
     :param i: Loop counter
-    :param val: Loop updatables
+    :param val: Loop variables to be updated
     :param x: Original :math:`n \times d` dataset
     :param n_cand: Number of candidates for comparison
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
@@ -228,7 +228,7 @@ def refine_rand_body(
     cand = random.randint(subkey, (n_cand,), 0, len(x))
     # cand = random.choice(subkey, len(x), (n_cand,), replace=False)
     comps = comparison_cand(S[i], cand, S, x, K_mean, K_diag, k_pairwise, k_vec)
-    S = lax.cond(jnp.any(comps > 0), change, nochange, i, S, cand, comps)
+    S = lax.cond(jnp.any(comps > 0), change, no_change, i, S, cand, comps)
 
     return key, S
 
@@ -296,7 +296,7 @@ def change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
 
 
 @jit
-def nochange(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
+def no_change(i: int, S: ArrayLike, cand: ArrayLike, comps: ArrayLike) -> Array:
     r"""
     Leave ``S`` unchanged.
 
@@ -373,7 +373,7 @@ def refine_rev_body(
     Execute main loop of the refine method, :math:`x \rightarrow S`.
 
     :param i: Loop counter
-    :param S: Loop updatables
+    :param S: Loop variables to be updated
     :param x: Original :math:`n \times d` dataset
     :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
     :param K_diag: Gram matrix diagonal, a :math:`1 \times n` array
@@ -384,7 +384,7 @@ def refine_rev_body(
     :returns: Updated loop variables ``S``
     """
     comps = comparison_rev(i, S, x, K_mean, K_diag, k_pairwise, k_vec)
-    S = lax.cond(jnp.any(comps > 0), change_rev, nochange_rev, i, S, comps)
+    S = lax.cond(jnp.any(comps > 0), change_rev, no_change_rev, i, S, comps)
 
     return S
 
@@ -447,7 +447,7 @@ def change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
 
 
 @jit
-def nochange_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
+def no_change_rev(i: int, S: ArrayLike, comps: ArrayLike) -> Array:
     r"""
     Leave ``S`` unchanged.
 

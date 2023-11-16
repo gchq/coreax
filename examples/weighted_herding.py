@@ -81,7 +81,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     )
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
 
     # the weighted bool turns the coreset weights on or off. If on, a quadratic program
     # is invoked to solve the weights' vector. This buys some increase in integration
@@ -103,7 +103,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     m = m.item()
 
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_sample], k, max_size=1000).item()
 
     # nudge the weights to avoid negative entries for plotting
     if weights.min() < 0:
@@ -117,7 +117,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     plt.show()
 
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
-    plt.scatter(X[rsample, 0], X[rsample, 1], s=10, color="red")
+    plt.scatter(X[rand_sample, 0], X[rand_sample, 1], s=10, color="red")
     plt.title("Random, m=%d, MMD=%.6f" % (C, rm))
     plt.axis("off")
 

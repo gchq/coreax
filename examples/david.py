@@ -103,7 +103,7 @@ def main(
 
     print("Choosing random subset...")
     # choose a random subset of C points from the original image
-    rpoints = np.random.choice(n, C, replace=False)
+    rand_points = np.random.choice(n, C, replace=False)
 
     # define a reference kernel to use for comparisons of MMD. We'll use an RBF
     def k(x, y):
@@ -113,7 +113,7 @@ def main(
     m = mmd_block(X, X[coreset], k, max_size=1000)
 
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rpoints], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_points], k, max_size=1000).item()
 
     # print the MMDs
     print("Random MMD")
@@ -148,9 +148,9 @@ def main(
     # plot the image of randomly sampled points
     plt.subplot(1, 3, 3)
     plt.scatter(
-        X[rpoints, 1],
-        -X[rpoints, 0],
-        c=X[rpoints, 2],
+        X[rand_points, 1],
+        -X[rand_points, 0],
+        c=X[rand_points, 2],
         s=1.0,
         cmap="gray",
         marker="h",

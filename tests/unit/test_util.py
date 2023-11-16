@@ -16,7 +16,7 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
 
-from coreax.util import pdiff, sq_dist, sq_dist_pairwise
+from coreax.util import pairwise_diff, sq_dist, sq_dist_pairwise
 
 
 class Test(unittest.TestCase):
@@ -40,18 +40,18 @@ class Test(unittest.TestCase):
         # create an orthonormal matrix
         d = 3
         m = ortho_group.rvs(dim=d)
-        tinner = sq_dist_pairwise(m, m)
+        dist = sq_dist_pairwise(m, m)
         # Use original numpy because Jax arrays are immutable
         ans = np.ones((d, d)) * 2.0
         np.fill_diagonal(ans, 0.0)
         # Frobenius norm
-        td = jnp.linalg.norm(tinner - ans)
+        td = jnp.linalg.norm(dist - ans)
         self.assertEqual(td.ndim, 0)
         self.assertAlmostEqual(float(td), 0.0, places=3)
 
-    def test_pdiff(self) -> None:
+    def test_pairwise_diff(self) -> None:
         """
-        Test the function pdiff.
+        Test the function pairwise_diff.
 
         This test ensures efficient computation of pairwise differences.
         """
@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         x_array = np.random.random((n, d))
         y_array = np.random.random((m, d))
         z_array = np.array([[x - y for y in y_array] for x in x_array])
-        tst = pdiff(x_array, y_array)
+        tst = pairwise_diff(x_array, y_array)
         self.assertAlmostEqual(float(jnp.linalg.norm(tst - z_array)), 0.0, places=3)
 
 

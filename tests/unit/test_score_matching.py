@@ -108,7 +108,7 @@ class TestScoreMatching(unittest.TestCase):
 
     def test_sliced_score_matching_loss(self) -> None:
         """
-        Test the loss function vmapped function.
+        Test the loss function with vmap.
         """
 
         #
@@ -122,9 +122,9 @@ class TestScoreMatching(unittest.TestCase):
             return x**2
 
         x = np.array([2.0, 7.0])
-        # arbitrary number of inputs
+        # Arbitrary number of inputs
         X = np.tile(x, (10, 1))
-        # arbitrary number of randoms, 1 per input
+        # Arbitrary number of random variables, one per input
         V = np.ones((10, 1, 2), dtype=float)
         out = sliced_score_matching_loss(score_fn, analytic_obj)(X, V)
         ans = np.ones((10, 1), dtype=float) * 1226.5
@@ -269,7 +269,7 @@ class TestScoreMatching(unittest.TestCase):
         comp = np.random.binomial(1, p, size=N)
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
-        def egrad(g: Callable) -> Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x, *rest):
                 y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -278,8 +278,8 @@ class TestScoreMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x: ArrayLike) -> ArrayLike:
-            logpdf = lambda y: jnp.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(logpdf)(x)
+            log_pdf = lambda y: jnp.log(norm.pdf(y, mus, std_devs) @ mix)
+            return e_grad(log_pdf)(x)
 
         x = np.linspace(-10, 10).reshape(-1, 1)
         y_t = true_score(x)
@@ -329,7 +329,7 @@ class TestScoreMatching(unittest.TestCase):
             [np.random.multivariate_normal(mus[c], Sigmas[c]) for c in comp]
         )
 
-        def egrad(g: Callable) -> Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x, *rest):
                 y, g_vjp = jax.vjp(lambda x: g(x, *rest), x)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -338,13 +338,13 @@ class TestScoreMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x: ArrayLike) -> ArrayLike:
-            def logpdf(y: ArrayLike) -> ArrayLike:
-                lpdf = 0.0
+            def log_pdf(y: ArrayLike) -> ArrayLike:
+                l_pdf = 0.0
                 for k in range(K):
-                    lpdf += multivariate_normal.pdf(y, mus[k], Sigmas[k]) * mix[k]
-                return jnp.log(lpdf)
+                    l_pdf += multivariate_normal.pdf(y, mus[k], Sigmas[k]) * mix[k]
+                return jnp.log(l_pdf)
 
-            return egrad(logpdf)(x)
+            return e_grad(log_pdf)(x)
 
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(d)])
         X = np.vstack([c.ravel() for c in coords]).T
