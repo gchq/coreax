@@ -106,7 +106,7 @@ class TestDataReduction(unittest.TestCase):
 
         with patch('coreax.util.call_with_excess_kwargs') as mock_call:
 
-            actual_out = self.test_class._create_instance_from_factory(MockClassFactory, 'class_a', a='a', b='b')
+            actual_out = cu.create_instance_from_factory(MockClassFactory, 'class_a', a='a', b='b')
 
             mock_call.assert_called_once_with('class_a', a='a', b='b')
 
