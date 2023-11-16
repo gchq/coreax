@@ -30,6 +30,7 @@ from multiprocessing.pool import ThreadPool
 from sklearn.neighbors import KDTree
 
 import coreax.coreset as cc
+import coreax.data as cd
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
@@ -39,26 +40,25 @@ import coreax.weights as cw
 class DataReduction(ABC):
     """
     Methods for reducing data.
+
+    Class for performing data reduction.
+
+    :param data: DataReader instance with original data before reduction
+    :param weight: Type of weighting to apply
+    :param kernel: Kernel function
+       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     """
 
     def __init__(
             self,
-            original_data: ArrayLike,
+            data: cd.DataReader,
             weight: str | cw.WeightsOptimiser,
             kernel: cu.KernelFunction):
-        r"""
-        Class for performing data reduction.
 
-        :param original_data: Original data before reduction
-        :param weight: Type of weighting to apply
-        :param kernel: Kernel function
-           :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        """
-        self.original_data = jnp.asarray(original_data)
-        self.reduced_data = original_data.copy()
+        self.data = data
         self.weight = weight
         self.kernel = kernel
-        self.reduction_indices = jnp.asarray(range(original_data.shape[0]))
+        self.reduction_indices = jnp.asarray(range(data.pre_reduction_array.shape[0]))
 
     def solve_weights(
             self,
@@ -73,7 +73,7 @@ class DataReduction(ABC):
             cw.WeightsOptimiser,
             self.weight,
         )
-        return weights_instance.solve(self.original_data, self.reduced_data, self.kernel)
+        return weights_instance.solve(self.data, self.reduced_data, self.kernel)
 
     def fit(
         self,
@@ -113,7 +113,7 @@ class DataReduction(ABC):
             refine_name,
             kernel=self.kernel
         )
-        return refiner.refine(self.original_data, self.reduction_indices, kernel_mean)  # TODO compute kernel mean here or in refine.py?
+        return refiner.refine(self.data, self.reduction_indices, kernel_mean)  # TODO compute kernel mean here or in refine.py?
 
     def compute_metric(
         self,
@@ -134,7 +134,7 @@ class DataReduction(ABC):
             weight=self.weight,
         )
 
-        return metric_instance.compute(self.original_data, self.reduced_data)
+        return metric_instance.compute(self.data, self.reduced_data)
 
     @staticmethod
     def _create_instance_from_factory(
@@ -162,13 +162,13 @@ class DataReduction(ABC):
         """
         TODO: once data.py is implemented
         """
-        return self.original_data.render_reduction()
+        return self.data.render_reduction()
 
     def save(self):
         """
         TODO: once data.py is implemented
         """
-        return self.original_data.save_reduction()
+        return self.data.save_reduction()
 
 
 class ReductionStrategy(ABC):
