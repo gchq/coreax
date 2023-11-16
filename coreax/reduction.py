@@ -59,6 +59,7 @@ class DataReduction(ABC):
         self.weight = weight
         self.kernel = kernel
         self.reduction_indices = jnp.asarray(range(data.pre_reduction_array.shape[0]))
+        self.reduced_data = data.pre_reduction_array
 
     def solve_weights(
             self,
