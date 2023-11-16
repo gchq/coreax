@@ -97,7 +97,7 @@ def diff(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @jit
-def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
+def pairwise_diff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 

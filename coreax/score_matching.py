@@ -159,7 +159,7 @@ def noise_conditional_loop_body(
     Sum objective function with noise perturbations.
 
     Inputs are perturbed by Gaussian random noise to improve performance of score
-    matching. See :cite:p:`improvedsgm` for details.
+    matching. See :cite:p:`improved_sgm` for details.
 
     :param i: Loop index
     :param obj: Running objective, i.e. the current partial sum
@@ -226,7 +226,7 @@ def noise_conditional_train_step(
 
 def sliced_score_matching(
     X: ArrayLike,
-    rgenerator: Callable,
+    rand_generator: Callable,
     noise_conditioning: bool = True,
     use_analytic: bool = False,
     M: int = 1,
@@ -246,7 +246,7 @@ def sliced_score_matching(
     the score function. Alternative network architectures can be considered.
 
     :param X: The :math:`n \times d` data vectors
-    :param rgenerator: Distribution sampler (key, shape, dtype) :math:`\rightarrow`
+    :param rand_generator: Distribution sampler (key, shape, dtype) :math:`\rightarrow`
         :class:`~jax.Array`, e.g. distributions in :class:`~jax.random`
     :param noise_conditioning: Use the noise conditioning version of score matching,
         defaults to True
@@ -255,7 +255,7 @@ def sliced_score_matching(
     :param M: The number of random vectors to use per data vector, defaults to 1
     :param lr: Optimiser learning rate, defaults to 1e-3
     :param epochs: Epochs for training, defaults to 10
-    :param batch_size: Size of minibatch, defaults to 64
+    :param batch_size: Size of mini-batch, defaults to 64
     :param hidden_dim: The ScoreNetwork hidden dimension, defaults to 128
     :param optimiser: The optax optimiser to use, defaults to :func:`~optax.adamw`
     :param L: Number of noise models to use in noise conditional score matching,
@@ -280,7 +280,7 @@ def sliced_score_matching(
 
     # random vector setup
     k1, k2 = random.split(random.PRNGKey(0))
-    V = rgenerator(k1, (n, M, d), dtype=float)
+    V = rand_generator(k1, (n, M, d), dtype=float)
 
     # training setup
     state = create_train_state(sn, k2, lr, d, optimiser)

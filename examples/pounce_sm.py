@@ -32,7 +32,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     Run the 'pounce' example for video sampling with score matching.
 
     Take a video of a pouncing cat, apply PCA and then generate a coreset using
-    score matching, in which we train a neural network to approximate the score functon
+    score matching, in which we train a neural network to approximate the score function
     of the underlying distribution. Compare the result from this to a coreset generated
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
@@ -90,9 +90,9 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     m = mmd_block(X, X[coreset], k, max_size=1000)
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_sample], k, max_size=1000).item()
 
     # print the MMDs
     print(f"Random MMD: {rm}")

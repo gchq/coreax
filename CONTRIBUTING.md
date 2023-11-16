@@ -91,6 +91,23 @@ A high level overview of the expected style is:
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
 
+### Spelling and grammar
+
+This project uses British English. Spelling is checked automatically by [cspell]. When a
+word is missing from the dictionary, double check that it is a real word spelled
+correctly. Contractions in object or reference names should be avoided unless the
+meaning is obvious; consider inserting an underscore to effectively split into two
+words. If you need to add a word to the dictionary, use the appropriate dictionary
+inside the `.cspell` folder:
+
+- `library-terms.txt` for object names in third-party libraries,
+- `people.txt` for the names of people,
+- `custom-misc.txt` for anything that does not fit into the above categories.
+
+If the word fragment only makes sense as part of a longer phase, add the longer phrase
+to avoid inadvertently permitting spelling errors elsewhere, e.g. add `Blu-Tack`
+instead of `Blu`.
+
 ### External dependencies
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
@@ -110,10 +127,10 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
-### Abstract Functions
+### Abstract functions
 Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
 
-### Exceptions and Error Messages
+### Exceptions and error messages
 Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
 
 Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
@@ -157,11 +174,11 @@ Comments must:
 - Not end in a full stop for single-line comments in code.
 - End with a full stop for multi-line comments.
 
-### Maths Overflow
+### Maths overflow
 
 Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
 
-### Thousands Separators
+### Thousands separators
 
 For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
 
@@ -195,3 +212,4 @@ sphinx-quickstart
 [lgpl]: https://opensource.org/license/lgpl-license-html/
 [unittest]: https://docs.python.org/3/library/unittest.html
 [pytest]: https://docs.pytest.org/
+[cspell]: https://cspell.org/
