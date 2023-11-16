@@ -69,7 +69,7 @@ class DataReduction(ABC):
         :return: TODO once OOPedweights.py is implemented
         """
         # Create a weights optimiser object
-        weights_instance = self._create_instance_from_factory(
+        weights_instance = cu.create_instance_from_factory(
             cw.WeightsOptimiser,
             self.weight,
         )
@@ -87,7 +87,7 @@ class DataReduction(ABC):
         :return: TODO once OOPed coreset.py is implemented
         """
         # Create a coreset object
-        coreset_instance = self._create_instance_from_factory(
+        coreset_instance = cu.create_instance_from_factory(
             cc.coreset_factory,
             coreset_name
         )
@@ -108,7 +108,7 @@ class DataReduction(ABC):
         :return: :math:`m` Refined coreset point indices
         """
         # Create a refine object
-        refiner = self._create_instance_from_factory(
+        refiner = cu.create_instance_from_factory(
             cr.refine_factory,
             refine_name,
             kernel=self.kernel
@@ -127,7 +127,7 @@ class DataReduction(ABC):
         :return: TODO: once OOPed metrics.py is implemented
         """
         # Create a metric object
-        metric_instance = self._create_instance_from_factory(
+        metric_instance = cu.create_instance_from_factory(
             cr.metric_factory,
             metric_name,
             kernel=self.kernel,
