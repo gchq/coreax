@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""TODO: Create top-level docstring."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -24,6 +26,11 @@ import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
+
+import coreax.coreset as cc
+import coreax.metrics as cm
+import coreax.refine as cr
+import coreax.weights as cw
 
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
@@ -240,3 +247,24 @@ class ClassFactory:
         if class_obj is None:
             raise KeyError(f"Class name {name} not recognised.")
         return class_obj
+
+
+def create_instance_from_factory(
+    factory_obj: ClassFactory,
+    class_type: str | type[cc.Coreset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+    **kwargs,
+) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
+    """
+    Create a refine object for use with the fit method.
+
+    :param class_type: The name of a class to use, or the uninstantiated class
+        directly as a dependency injection
+    :return: Class instance of the requested type
+    """
+    class_obj = factory_obj.get(class_type)
+
+    # Initialise, accounting for different classes having different numbers of parameters
+    return call_with_excess_kwargs(
+        class_obj,
+        **kwargs,
+    )
