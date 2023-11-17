@@ -77,15 +77,9 @@ class DataReduction(ABC):
         return weights_instance.solve(self.data, self.reduced_data, self.kernel)
 
     @abstractmethod
-    def fit(
-        self,
-        coreset_name: str | type[cc.Coreset],
-    ) -> None:
+    def fit(self) -> None:
         """
         Fit...TODO once coreset.py implemented
-
-        :param coreset_name: Name of the coreset method to use, or an uninstantiated
-            class object
         """
 
     def refine(
