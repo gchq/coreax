@@ -244,7 +244,7 @@ class MMD(Metric):
         num_points_x = weights_x.sum()
         num_points_y = weights_y.sum()
 
-        # needs changing to self.kernel.calculate_K_sum:
+        # TODO: Needs changing to self.kernel.calculate_K_sum:
         kernel_nn = self.sum_weighted_pairwise_distances(
             x, x, weights_x, weights_x, max_size
         )
@@ -332,8 +332,8 @@ class MMD(Metric):
         # If max_size is larger than both inputs, we don't need to consider block-wise
         # computation
         if max_size > max(num_points_x, num_points_y):
-            Kw = self.kernel.compute(x, y) * weights_y
-            output = (weights_x * Kw.T).sum()
+            kernel_weights = self.kernel.compute(x, y) * weights_y
+            output = (weights_x * kernel_weights.T).sum()
 
         else:
             output = 0
