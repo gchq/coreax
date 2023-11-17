@@ -157,7 +157,6 @@ class ReductionStrategy(ABC):
 
         return self.data_reduction.__init__(original_data, weight, kernel)
 
-
     @classmethod
     def _tree_unflatten(cls, aux_data, children):
         """
@@ -343,13 +342,12 @@ class MapReduce(ReductionStrategy):
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
-# are able to run. We rely on the naming convention that all child classes of
-# DataReduction include the sub-string DataReduction inside of them.
-for name, current_class in inspect.getmembers(sys.modules[__name__], inspect.isclass):
-    if "ReductionStrategy" in name and name != "ReductionStrategy":
-        tree_util.register_pytree_node(
-            current_class, current_class._tree_flatten, current_class._tree_unflatten
-        )
+# are able to run. This tuple must be updated when a new class object is defined.
+reduction_classes = (SizeReduce, ErrorReduce, MapReduce)
+for current_class in reduction_classes:
+    tree_util.register_pytree_node(
+        current_class, current_class._tree_flatten, current_class._tree_unflatten
+    )
 
 # Set up class factories
 data_reduction_factory = cu.ClassFactory(DataReduction)
