@@ -80,13 +80,12 @@ class DataReduction(ABC):
     def fit(
         self,
         coreset_name: str | type[cc.Coreset],
-    ) -> Array:
+    ) -> None:
         """
         Fit...TODO once coreset.py implemented
 
         :param coreset_name: Name of the coreset method to use, or an uninstantiated
             class object
-        :return: TODO once OOPed coreset.py is implemented
         """
 
     def refine(
@@ -132,39 +131,11 @@ class DataReduction(ABC):
 
         return metric_instance.compute(self.data, self.reduced_data)
 
-    @staticmethod
-    def _create_instance_from_factory(
-        factory_obj: cu.ClassFactory,
-        class_type: str | type[cc.Coreset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
-        **kwargs,
-    ) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
-        """
-        Create a refine object for use with the fit method.
-
-        :param class_type: The name of a class to use, or the uninstantiated class
-            directly as a dependency injection
-        :return: Class instance of the requested type
-        """
-        class_obj = factory_obj.get(class_type)
-
-        # Initialise, accounting for different classes having different numbers of
-        # parameters
-        return cu.call_with_excess_kwargs(
-            class_obj,
-            **kwargs,
-        )
-
     def render(self):
         """
         TODO: once data.py is implemented
         """
         return self.data.render_reduction()
-
-    def save(self):
-        """
-        TODO: once data.py is implemented
-        """
-        return self.data.save_reduction()
 
 
 class ReductionStrategy(ABC):
