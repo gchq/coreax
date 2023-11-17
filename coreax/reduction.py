@@ -131,11 +131,17 @@ class DataReduction(ABC):
 
         return metric_instance.compute(self.data, self.reduced_data)
 
+    def format(self):
+        """
+        TODO: once data.py is implemented
+        """
+        return self.data.format()
+
     def render(self):
         """
         TODO: once data.py is implemented
         """
-        return self.data.render_reduction()
+        return self.data.render()
 
 
 class ReductionStrategy(ABC):
