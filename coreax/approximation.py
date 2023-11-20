@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from jax import Array, jit, lax, random, vmap
 from jax.typing import ArrayLike
 
-from coreax.util import KernelFunction
+from coreax.util import ClassFactory, KernelFunction
 
 
 class KernelMeanApproximator(ABC):
@@ -304,3 +304,10 @@ def anchor_body(
     features = features.at[:, idx].set(kernel_function(data, data[max_entry]))
 
     return features
+
+
+# Set up class factory
+approximator_factory = ClassFactory(KernelMeanApproximator)
+approximator_factory.register("random", RandomApproximator)
+approximator_factory.register("annchor", ANNchorApproximator)
+approximator_factory.register("nystrom", NystromApproximator)
