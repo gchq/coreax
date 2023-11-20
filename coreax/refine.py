@@ -68,7 +68,7 @@ class Refine(ABC):
         """
 
     @staticmethod
-    def _tree_flatten():
+    def _tree_flatten(self):
         """
         Flatten a pytree.
 
