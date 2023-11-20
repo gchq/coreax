@@ -22,17 +22,15 @@ from coreax.kernel import SquaredExponentialKernel
 from coreax.reduction import DataReduction
 
 
-class TestMetrics(unittest.TestCase):
+class TestRefine(unittest.TestCase):
     """
     Tests related to refine.py functions.
     """
 
     def test_refine_ones(self) -> None:
         """
-        Test that refining an optimal coreset, specified by indices S, returns the same
-         indices.
+        Test that refining an optimal coreset leaves ``coreset_indices`` unchanged.
         """
-
         x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
@@ -43,18 +41,21 @@ class TestMetrics(unittest.TestCase):
         data_reduction_obj.reduction_indices = coreset_indices
 
         refine_regular = coreax.refine.RefineRegular()
-        refine_test = refine_regular.refine(data_reduction=data_reduction_obj)
+        refine_regular.refine(data_reduction=data_reduction_obj)
 
-        self.assertSetEqual(set(refine_test.reduction_indices.tolist()), best_indices)
+        self.assertSetEqual(
+            set(data_reduction_obj.reduction_indices.tolist()), best_indices
+        )
 
     def test_refine_ints(self) -> None:
         """
-        For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
-        the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
+        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
+        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
+        i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test this example, for any 2-point coreset, that refine returns [0, 2].
+        Test this example, for every 2-point coreset, that refine() updates the coreset
+        indices to [0, 2].
         """
-
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
@@ -69,21 +70,22 @@ class TestMetrics(unittest.TestCase):
             )
             data_reduction_obj.reduction_indices = coreset_indices
 
-            refine_test = refine_regular.refine(data_reduction=data_reduction_obj)
+            refine_regular.refine(data_reduction=data_reduction_obj)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(
-                    set(refine_test.reduction_indices.tolist()), best_indices
+                    set(data_reduction_obj.reduction_indices.tolist()), best_indices
                 )
 
     def test_refine_rand(self):
         """
-        For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
-        the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
+        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
+        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
+        i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, when given coreset indices [2,2], that refine_rand() returns [0, 2].
+        Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
+        coreset indices to ``[0, 2]``.
         """
-
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
         test_indices = [2, 2]
@@ -94,24 +96,27 @@ class TestMetrics(unittest.TestCase):
         )
         data_reduction_obj.reduction_indices = coreset_indices
 
-        refine_rand = coreax.refine.RefineRandom(p=1.0)
-        refine_test = refine_rand.refine(data_reduction=data_reduction_obj)
+        refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
+        refine_rand.refine(data_reduction=data_reduction_obj)
 
-        self.assertSetEqual(set(refine_test.reduction_indices.tolist()), best_indices)
+        self.assertSetEqual(
+            set(data_reduction_obj.reduction_indices.tolist()), best_indices
+        )
 
     def test_refine_rev(self):
         """
-        For a toy example, X = [[0,0], [1,1], [2,2]], the 2-point coreset that minimises
-        the MMD is specified by the indices S = [0, 2], ie X_c =  [[0,0], [[2,2]].
+        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
+        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
+        i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, for any 2-point coreset, that refine_rev() returns [0, 2].
+        Test, for every 2-point coreset, that ``refine_rev()`` updates the coreset
+        indices to ``[0, 2]``.
         """
-
         x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
         index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
 
-        refine_rev = coreax.refine.RefineRev()
+        refine_rev = coreax.refine.RefineReverse()
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
@@ -121,9 +126,28 @@ class TestMetrics(unittest.TestCase):
             )
             data_reduction_obj.reduction_indices = coreset_indices
 
-            refine_test = refine_rev.refine(data_reduction=data_reduction_obj)
+            refine_rev.refine(data_reduction=data_reduction_obj)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(
-                    set(refine_test.reduction_indices.tolist()), best_indices
+                    set(data_reduction_obj.reduction_indices.tolist()), best_indices
                 )
+
+    def test_kernel_mean_row_sum_approx(self):
+        """
+        Test that a ValueError raises when ``approximate_kernel_row_sum`` isn't boolean.
+        """
+        x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        best_indices = {0, 1}
+        coreset_indices = jnp.array(list(best_indices))
+
+        data_reduction_obj = DataReduction(
+            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        )
+        data_reduction_obj.reduction_indices = coreset_indices
+
+        refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum="true")
+
+        self.assertRaises(
+            ValueError, refine_regular.refine, data_reduction=data_reduction_obj
+        )
