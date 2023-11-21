@@ -31,6 +31,7 @@ from sklearn.neighbors import KDTree
 
 import coreax.coreset as cc
 import coreax.data as cd
+import coreax.kernel as ck
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
@@ -77,7 +78,7 @@ class DataReduction(ABC):
         return weights_instance.solve(self.data, self.reduced_data, self.kernel)
 
     @abstractmethod
-    def fit(self) -> None:
+    def fit(self, X: Array, kernel: ck.Kernel) -> None:
         """
         Fit...TODO once coreset.py implemented
         """
