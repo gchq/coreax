@@ -25,6 +25,7 @@ from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
+from coreax.approximation import KernelMeanApproximator
 from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
@@ -49,9 +50,21 @@ class Refine(ABC):
     ``approximate_kernel_row_sum = True`` when initializing the Refine object.
     """
 
-    def __init__(self, approximate_kernel_row_sum: bool = False):
-        """Initialise a refinement object."""
+    def __init__(
+        self,
+        approximate_kernel_row_sum: bool = False,
+        approximator: KernelMeanApproximator = None,
+    ):
+        """
+        Initialise a refinement object.
+
+        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+            sum is calculated. If ``True``, the sum is approximate.
+        :param approximator: coreax KernelMeanApproximator object for the kernel mean
+            approximation method
+        """
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
+        self.approximator = approximator
 
     @abstractmethod
     def refine(self, data_reduction: DataReduction) -> None:
@@ -61,13 +74,11 @@ class Refine(ABC):
         The DataReduction object is updated in-place. The refinement procedure replaces
         elements with points most reducing maximum mean discrepancy (MMD).
 
-        :param data_reduction: coreax DataReduction object including :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object.
-
-        :return: DataReduction object with newly-refined coreset and coreset indices.
+        :param data_reduction: coreax DataReduction object with :math:`n \times d`
+            original data, :math:`m` coreset point indices, coreset and kernel object
+        :return: Nothing
         """
 
-    @staticmethod
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -103,9 +114,23 @@ class RefineRegular(Refine):
     for a dataset ``X`` and corresponding coreset ``X_c``.
     """
 
-    def __init__(self, approximate_kernel_row_sum: bool = False):
-        """Initialise a RefineRegular object."""
-        super().__init__(approximate_kernel_row_sum=approximate_kernel_row_sum)
+    def __init__(
+        self,
+        approximate_kernel_row_sum: bool = False,
+        approximator: KernelMeanApproximator = None,
+    ):
+        """
+        Initialise a RefineRegular object.
+
+        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+            sum is calculated. If ``True``, the sum is approximate.
+        :param approximator: coreax KernelMeanApproximator object for the kernel mean
+            approximation method
+        """
+        super().__init__(
+            approximate_kernel_row_sum=approximate_kernel_row_sum,
+            approximator=approximator,
+        )
 
     def refine(self, data_reduction: DataReduction) -> None:
         r"""
@@ -114,28 +139,24 @@ class RefineRegular(Refine):
         The DataReduction object is updated in-place. The refinement procedure replaces
         elements with points most reducing maximum mean discrepancy (MMD).
 
-        :param data_reduction: coreax DataReduction object including :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object.
-
-        :return: DataReduction object with newly-refined coreset and coreset indices.
+        :param data_reduction: coreax DataReduction object with :math:`n \times d`
+            original data, :math:`m` coreset point indices, coreset and kernel object
+        :return: Nothing
         """
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
-        if self.approximate_kernel_row_sum is True:
+        if self.approximate_kernel_row_sum:
             kernel_mean_row_sum = (
-                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(x)
-            )
-        elif self.approximate_kernel_row_sum is False:
-            kernel_mean_row_sum = (
-                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(
+                    x, self.approximator
+                )
             )
         else:
-            raise ValueError(
-                "Boolean value expected for approximate_kernel_row_sum, "
-                "not " + str(type(self.approximate_kernel_row_sum))
+            kernel_mean_row_sum = (
+                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
             )
 
         coreset_indices = jnp.asarray(coreset_indices)
@@ -165,14 +186,14 @@ class RefineRegular(Refine):
         r"""
         Execute main loop of the refine method, ``coreset_indices`` -> ``x``.
 
-        :param i: Loop counter.
-        :param coreset_indices: Loop updatable-variables.
-        :param x: Original :math:`n \times d` dataset.
+        :param i: Loop counter
+        :param coreset_indices: Loop updatable-variables
+        :param x: Original :math:`n \times d` dataset
         :param kernel_mean_row_sum: Mean vector over rows for the Gram matrix,
-            a :math:`1 \times n` array.
+            a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal, a :math:`1 \times n`
-            array.
-        :returns: Updated loop variables `coreset_indices`.
+            array
+        :return: Updated loop variables `coreset_indices`
         """
         coreset_indices = jnp.asarray(coreset_indices)
         coreset_indices = coreset_indices.at[i].set(
@@ -206,14 +227,13 @@ class RefineRegular(Refine):
         The change calculated is from replacing point ``i`` in ``coreset_indices`` with
         any point in ``x``.
 
-        :param coreset_indices: Coreset point indices.
-        :param x: :math:`n \times d` original data.
+        :param coreset_indices: Coreset point indices
+        :param x: :math:`n \times d` original data
         :param kernel_mean_row_sum: :math:`1 \times n` row mean of the
-            :math:`n \times n` kernel matrix.
+            :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
-            a :math:`1 \times n` array.
-
-        :return: The MMD changes for each candidate point.
+            a :math:`1 \times n` array
+        :return: The MMD changes for each candidate point
         """
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
@@ -235,13 +255,27 @@ class RefineRandom(Refine):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
+        approximator: KernelMeanApproximator = None,
         p: float = 0.1,
         random_key: int = 0,
     ):
-        """Initialise a random refinement object."""
+        """
+        Initialise a random refinement object.
+
+        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+            sum is calculated. If ``True``, the sum is approximate.
+        :param approximator: coreax KernelMeanApproximator object for the kernel mean
+            approximation method
+        :param p: Proportion of original dataset to randomly sample for candidate points
+            to replace those in the coreset
+        :param random_key: Pseudo-random number generator key
+        """
         self.random_key = random_key
         self.p = p
-        super().__init__(approximate_kernel_row_sum=approximate_kernel_row_sum)
+        super().__init__(
+            approximate_kernel_row_sum=approximate_kernel_row_sum,
+            approximator=approximator,
+        )
 
     def refine(self, data_reduction: DataReduction) -> None:
         r"""
@@ -252,28 +286,24 @@ class RefineRandom(Refine):
         candidate points are a random sample of :math:`n \times p` points from among
         the original data.
 
-        :param data_reduction: coreax DataReduction object including :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object.
-
-        :return: DataReduction object with newly-refined coreset and coreset indices.
+        :param data_reduction: coreax DataReduction object with :math:`n \times d`
+            original data, :math:`m` coreset point indices, coreset and kernel object
+        :return: Nothing
         """
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
-        if self.approximate_kernel_row_sum is True:
+        if self.approximate_kernel_row_sum:
             kernel_mean_row_sum = (
-                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(x)
-            )
-        elif self.approximate_kernel_row_sum is False:
-            kernel_mean_row_sum = (
-                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(
+                    x, self.approximator
+                )
             )
         else:
-            raise ValueError(
-                "Boolean value expected for approximate_kernel_row_sum, "
-                "not " + str(type(self.approximate_kernel_row_sum))
+            kernel_mean_row_sum = (
+                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
             )
 
         coreset_indices = jnp.asarray(coreset_indices)
@@ -311,15 +341,15 @@ class RefineRandom(Refine):
         r"""
         Execute main loop of the random refine method.
 
-        :param i: Loop counter.
-        :param val: Loop updatable-variables.
-        :param x: Original :math:`n \times d` dataset.
-        :param n_cand: Number of candidates for comparison.
+        :param i: Loop counter
+        :param val: Loop updatable-variables
+        :param x: Original :math:`n \times d` dataset
+        :param n_cand: Number of candidates for comparison
         :param kernel_mean_row_sum: Mean vector over rows for the Gram matrix,
-            a :math:`1 \times n` array.
+            a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
-            a :math:`1 \times n` array.
-        :returns: Updated loop variables ``coreset_indices``.
+            a :math:`1 \times n` array
+        :return: Updated loop variables ``coreset_indices``
         """
         key, coreset_indices = val
         coreset_indices = jnp.asarray(coreset_indices)
@@ -364,17 +394,16 @@ class RefineRandom(Refine):
 
         The change in MMD arises from replacing `i` in `S` with `x`.
 
-        :param i: A coreset index.
+        :param i: A coreset index
         :param candidate_indices: Indices for randomly sampled candidate points among
-            the original data.
-        :param coreset_indices: Coreset point indices.
-        :param x: :math:`n \times d` original data.
+            the original data
+        :param coreset_indices: Coreset point indices
+        :param x: :math:`n \times d` original data
         :param kernel_mean_row_sum: :math:`1 \times n` row mean of the
-            :math:`n \times n` kernel matrix.
+            :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
-            a :math:`1 \times n` array.
-
-        :return: The MMD changes for each candidate point.
+            a :math:`1 \times n` array
+        :return: The MMD changes for each candidate point
         """
         coreset_indices = jnp.asarray(coreset_indices)
         x = jnp.asarray(x)
@@ -400,17 +429,16 @@ class RefineRandom(Refine):
         comparisons: ArrayLike,
     ) -> Array:
         r"""
-        Replace the i'th point in ``coreset_indices``.
+        Replace the ``i``th point in ``coreset_indices``.
 
-        The point is replaces with the candidate in ``candidate_indices`` with maximum
+        The point is replaced with the candidate in ``candidate_indices`` with maximum
         value in ``comparisons``. ``coreset_indices`` -> ``x``.
 
-        :param i: Index in ``coreset_indices`` to replace.
-        :param coreset_indices: Indices in the original dataset for replacement.
-        :param candidate_indices: A set of candidates for replacement.
-        :param comparisons: Comparison values for each candidate.
-
-        :return: Updated ``coreset_indices``, with i'th point replaced.
+        :param i: Index in ``coreset_indices`` to replace
+        :param coreset_indices: Indices in the original dataset for replacement
+        :param candidate_indices: A set of candidates for replacement
+        :param comparisons: Comparison values for each candidate
+        :return: Updated ``coreset_indices``, with ``i``th point replaced
         """
         coreset_indices = jnp.asarray(coreset_indices)
         candidate_indices = jnp.asarray(candidate_indices)
@@ -425,7 +453,7 @@ class RefineRandom(Refine):
         comparisons: ArrayLike,
     ) -> Array:
         r"""
-        Leave coreset indices unchanged (compare with refine.change).
+        Leave coreset indices unchanged (compare with :meth:`_change`).
 
         ``coreset_indices`` -> ``x``.
 
@@ -433,8 +461,7 @@ class RefineRandom(Refine):
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
         :param candidate_indices: A set of candidates for replacement. Not used.
         :param comparisons: Comparison values for each candidate. Not used.
-
-        :return: The original ``coreset_indices``, unchanged.
+        :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
 
@@ -442,9 +469,16 @@ class RefineRandom(Refine):
 class RefineReverse(Refine):
     """TODO: create RefineRev docstring."""
 
-    def __init__(self, approximate_kernel_row_sum: bool = False):
+    def __init__(
+        self,
+        approximate_kernel_row_sum: bool = False,
+        approximator: KernelMeanApproximator = None,
+    ):
         """Initialise a RefineRev (refine reverse) object."""
-        super().__init__(approximate_kernel_row_sum=approximate_kernel_row_sum)
+        super().__init__(
+            approximate_kernel_row_sum=approximate_kernel_row_sum,
+            approximator=approximator,
+        )
 
     def refine(self, data_reduction: DataReduction) -> None:
         r"""
@@ -453,28 +487,24 @@ class RefineReverse(Refine):
         The DataReduction object is updated in-place. In this greedy refine method, the
         iteration is carried out over points in ``x``. ``x`` -> ``coreset_indices``.
 
-        :param data_reduction: coreax DataReduction object including :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object.
-
-        :return: DataReduction object with newly-refined coreset and coreset indices.
+        :param data_reduction: coreax DataReduction object with :math:`n \times d`
+            original data, :math:`m` coreset point indices, coreset and kernel object
+        :return: Nothing
         """
         x = jnp.asarray(data_reduction.original_data)
         coreset_indices = jnp.asarray(data_reduction.reduction_indices)
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
-        if self.approximate_kernel_row_sum is True:
+        if self.approximate_kernel_row_sum:
             kernel_mean_row_sum = (
-                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(x)
-            )
-        elif self.approximate_kernel_row_sum is False:
-            kernel_mean_row_sum = (
-                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                data_reduction.kernel.approximate_kernel_matrix_row_sum_mean(
+                    x, self.approximator
+                )
             )
         else:
-            raise ValueError(
-                "Boolean value expected for approximate_kernel_row_sum, "
-                "not " + str(type(self.approximate_kernel_row_sum))
+            kernel_mean_row_sum = (
+                data_reduction.kernel.calculate_kernel_matrix_row_sum_mean(x)
             )
 
         num_points_in_x = len(x)
@@ -503,14 +533,14 @@ class RefineReverse(Refine):
         r"""
         Execute main loop of the refine method, ``x`` -> ``coreset_indices``.
 
-        :param i: Loop counter.
-        :param coreset_indices: Loop updatable-variables.
-        :param x: Original :math:`n \times d` dataset.
+        :param i: Loop counter
+        :param coreset_indices: Loop updatable-variables
+        :param x: Original :math:`n \times d` dataset
         :param kernel_mean_row_sum: Mean vector over rows for the Gram matrix,
-            a :math:`1 \times n` array.
+            a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
-            a :math:`1 \times n` array.
-        :returns: Updated loop variables `coreset_indices`.
+            a :math:`1 \times n` array
+        :return: Updated loop variables `coreset_indices`
         """
         comps = self._comparison_rev(
             i,
@@ -547,14 +577,13 @@ class RefineReverse(Refine):
         ``x`` -> ``coreset_indices``. The change in MMD occurs by replacing a point in
         ``coreset_indices`` with ``x[i]``.
 
-        :param i: Index for original data.
-        :param coreset_indices: Coreset point indices.
-        :param x: :math:`n \times d` original data.
+        :param i: Index for original data
+        :param coreset_indices: Coreset point indices
+        :param x: :math:`n \times d` original data
         :param kernel_mean_row_sum: :math:`1 \times n` row mean of the
-            :math:`n \times n` kernel matrix.
+            :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
-            a :math:`1 \times n` array.
-
+            a :math:`1 \times n` array
         :return: The MMD changes for each point
         """
         coreset_indices = jnp.asarray(coreset_indices)
@@ -577,15 +606,15 @@ class RefineReverse(Refine):
         self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
     ) -> Array:
         r"""
-        Replace the maximum comps value point in coreset_indices with i.
+        Replace the maximum comparison value point in ``coreset_indices`` with ``i``.
 
         ``x`` -> ``coreset_indices``.
 
-        :param i: Value to replace into ``coreset_indices``.
-        :param coreset_indices: The dataset for replacement.
-        :param comparisons: Comparison values for each candidate.
-
-        :return: Updated ``coreset_indices``, with maximum comps point replaced.
+        :param i: Value to replace into ``coreset_indices``
+        :param coreset_indices: The dataset for replacement
+        :param comparisons: Comparison values for each candidate
+        :return: Updated ``coreset_indices``, with maximum ``comparisons`` point
+            replaced
         """
         coreset_indices = jnp.asarray(coreset_indices)
         comparisons = jnp.asarray(comparisons)
@@ -604,7 +633,6 @@ class RefineReverse(Refine):
         :param i: Value to replace into ``coreset_indices``. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
         :param comparisons: Comparison values for each candidate. Not used.
-
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
