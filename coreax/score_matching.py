@@ -449,8 +449,8 @@ class SlicedScoreMatching(ScoreMatching):
 
 # Define the pytree node for the added class to ensure methods with jit decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-kernel_classes = (SlicedScoreMatching,)
-for current_class in kernel_classes:
+score_matching_classes = (SlicedScoreMatching,)
+for current_class in score_matching_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
