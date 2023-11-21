@@ -494,7 +494,7 @@ class Kernel(ABC):
         # parameters
         return cu.call_with_excess_kwargs(
             approximator_obj,
-            kernel_evaluation=self._compute_elementwise,
+            kernel=self,
             random_key=random_key,
             num_kernel_points=num_kernel_points,
             num_train_points=num_train_points,
