@@ -49,6 +49,8 @@ class TestRefine(unittest.TestCase):
 
     def test_refine_ints(self) -> None:
         """
+        Test the regular refine method with a toy example.
+
         For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
@@ -79,6 +81,8 @@ class TestRefine(unittest.TestCase):
 
     def test_refine_rand(self):
         """
+        Test the random refine method with a toy example.
+
         For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
@@ -103,8 +107,10 @@ class TestRefine(unittest.TestCase):
             set(data_reduction_obj.reduction_indices.tolist()), best_indices
         )
 
-    def test_refine_rev(self):
+    def test_refine_reverse(self):
         """
+        Test the reverse refine method with a toy example.
+
         For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
@@ -135,7 +141,7 @@ class TestRefine(unittest.TestCase):
 
     def test_kernel_mean_row_sum_approx(self):
         """
-        Test that a ValueError raises when ``approximate_kernel_row_sum`` isn't boolean.
+        Test for error when approximate_kernel_row_sum = True and no approximator given
         """
         x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
@@ -146,8 +152,8 @@ class TestRefine(unittest.TestCase):
         )
         data_reduction_obj.reduction_indices = coreset_indices
 
-        refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum="true")
+        refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum=True)
 
         self.assertRaises(
-            ValueError, refine_regular.refine, data_reduction=data_reduction_obj
+            TypeError, refine_regular.refine, data_reduction=data_reduction_obj
         )
