@@ -869,7 +869,8 @@ class SteinKernel(Kernel):
     (#TODO: link to score matching), computed explicitly from a density function, or
     known analytically.
 
-    :param base_kernel: Initialised kernel object to evaluate the Stein kernel with
+    :param base_kernel: Initialised kernel object with which to evaluate the Stein
+        kernel, e.g. return from :func:`construct_kernel`
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
     :param output_scale: Output scale to use
@@ -943,5 +944,28 @@ for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
+
+
+# Set up class factory
+kernel_factory = cu.ClassFactory(Kernel)
+kernel_factory.register("squared_exponential", SquaredExponentialKernel)
+kernel_factory.register("laplace", LaplacianKernel)
+kernel_factory.register("pcimq", PCIMQKernel)
+kernel_factory.register("stein", SteinKernel)
+
+
+def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
+    """
+    Instantiate a kernel by name.
+
+    :param name: Name of kernel in :data:`kernel_factory`, or class object to
+        instantiate
+    :param args: Positional arguments to pass to instantiated class
+    :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
+    :return: Instance of selected :class:`Kernel` class
+    """
+    class_obj = kernel_factory.get(name)
+    return cu.call_with_excess_kwargs(class_obj, args, kwargs)
+
 
 # TODO: Do we want weights to be used to align with MMD?
