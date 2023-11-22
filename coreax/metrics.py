@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Classes and associated functionality to compute metrics assessing similarity of inputs.
+
+Large parts of this codebase consider the generic problem of taking a
+:math:`n \times d` dataset and creating an alternative representation of it in some way.
+Having attained an alternative representation, we can then assess the quality of this
+representation using some appropriate metric. Such metrics are implemented within this
+module, all of which implement :class:`Metric`.
+"""
+
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
@@ -57,16 +67,25 @@ class Metric(ABC):
 
 class MMD(Metric):
     r"""
-    Calculation for maximum mean discrepancy.
+    Calculation for maximum mean discrepancy between two datasets in d dimensions.
+
+    For dataset of n points in d dimensions, :math:`X`, and another dataset
+    :math:`Y` of m points in d dimensions, the maximum mean discrepancy is given
+    by:
+
+    .. math::
+
+        \text{MMD}^2(X,Y) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(Y,Y))
+        - 2\mathbb{E}(k(X,Y))
+
+    :param kernel: Kernel object with compute method defined mapping
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param precision_threshold: Positive threshold we compare against for precision
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
         r"""
         Calculate maximum mean discrepancy between two datasets in d dimensions.
-
-        :param kernel: Kernel object with compute method defined mapping
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param precision_threshold: Positive threshold we compare against for precision
         """
         self.kernel = kernel
         self.precision_threshold = precision_threshold
