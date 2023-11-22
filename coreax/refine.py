@@ -12,6 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+r"""
+Classes and associated functionality to perform refinement of coresets.
+
+Several greedy algorithms are implemented within this codebase that generate a
+compressed representation (coreset) of an original :math:`n \times d` dataset. As these
+methods are greedy, it can be beneficial to apply a refinement step after generation,
+which is yet another greedy strategy to improve the coreset generated.
+
+Generally, refinement strategies loop through the elements of a corset and consider if
+some metric assessing coreset quality can be improved by replacing this element with
+another from the original dataset.
+
+All refinement approaches implement :class:`Refine`, in-particular with a method
+:meth:`refine` that manipulates a :class:`~coreax.reduction.DataReduction` object.
+"""
+
 from functools import partial
 
 import jax.lax as lax
