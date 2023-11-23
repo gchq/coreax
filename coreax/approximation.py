@@ -58,6 +58,7 @@ class KernelMeanApproximator(ABC):
         :param data: The original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by n
         """
+        pass
 
 
 class RandomApproximator(KernelMeanApproximator):
@@ -67,8 +68,8 @@ class RandomApproximator(KernelMeanApproximator):
         self,
         kernel_evaluation: KernelFunction,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
+        num_kernel_points: int = 10000,
+        num_train_points: int = 10000,
     ):
         r"""
         Approximate kernel row mean by regression on points selected randomly.
@@ -144,8 +145,8 @@ class ANNchorApproximator(KernelMeanApproximator):
         self,
         kernel_evaluation: KernelFunction,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
+        num_kernel_points: int = 10000,
+        num_train_points: int = 10000,
     ):
         r"""
         Approximate kernel row mean by regression on ANNchor selected points.
@@ -222,7 +223,7 @@ class NystromApproximator(KernelMeanApproximator):
         self,
         kernel_evaluation: KernelFunction,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
+        num_kernel_points: int = 10000,
     ):
         r"""
         Approximate kernel row mean by using Nystrom approximation.
