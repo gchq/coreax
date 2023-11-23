@@ -944,4 +944,5 @@ for current_class in kernel_classes:
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
 
+# TODO: Laplace kernel
 # TODO: Do we want weights to be used to align with MMD?
