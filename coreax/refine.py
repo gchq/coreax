@@ -14,8 +14,6 @@
 
 """TODO: Create top-level docstring."""
 
-import inspect
-import sys
 from abc import ABC, abstractmethod
 from functools import partial
 
@@ -48,6 +46,11 @@ class Refine(ABC):
     The default calculates the kernel mean row sum in full. To reduce computational
     load, the kernel mean row sum can be approximated by setting the variable
     ``approximate_kernel_row_sum = True`` when initializing the Refine object.
+
+    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+        sum is calculated. If ``True``, the sum is approximate.
+    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object for the kernel mean
+        approximation method
     """
 
     def __init__(
@@ -55,14 +58,7 @@ class Refine(ABC):
         approximate_kernel_row_sum: bool = False,
         approximator: KernelMeanApproximator = None,
     ):
-        """
-        Initialise a refinement object.
-
-        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-            sum is calculated. If ``True``, the sum is approximate.
-        :param approximator: coreax KernelMeanApproximator object for the kernel mean
-            approximation method
-        """
+        """Initialise a refinement object."""
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
 
@@ -87,8 +83,10 @@ class Refine(ABC):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = ()  # dynamic values
-        aux_data = {}  # static values
+        # dynamic values:
+        children = ()
+        # static values:
+        aux_data = {}
         return children, aux_data
 
     @classmethod
@@ -113,24 +111,6 @@ class RefineRegular(Refine):
     :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
     for a dataset ``X`` and corresponding coreset ``X_c``.
     """
-
-    def __init__(
-        self,
-        approximate_kernel_row_sum: bool = False,
-        approximator: KernelMeanApproximator = None,
-    ):
-        """
-        Initialise a RefineRegular object.
-
-        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-            sum is calculated. If ``True``, the sum is approximate.
-        :param approximator: coreax KernelMeanApproximator object for the kernel mean
-            approximation method
-        """
-        super().__init__(
-            approximate_kernel_row_sum=approximate_kernel_row_sum,
-            approximator=approximator,
-        )
 
     def refine(self, data_reduction: DataReduction) -> None:
         r"""
@@ -250,7 +230,21 @@ class RefineRegular(Refine):
 
 
 class RefineRandom(Refine):
-    """TODO: create RefineRandom docstring."""
+    r"""
+    Define the RefineRandom class.
+
+    The refinement procedure replaces a random element with the best point among a set
+    of candidate points. The candidate points are a random sample of :math:`n \times p`
+    points from among the original data.
+
+    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+        sum is calculated. If ``True``, the sum is approximate.
+    :param approximator: coreax KernelMeanApproximator object for the kernel mean
+        approximation method
+    :param p: Proportion of original dataset to randomly sample for candidate points
+        to replace those in the coreset
+    :param random_key: Pseudo-random number generator key
+    """
 
     def __init__(
         self,
@@ -259,17 +253,7 @@ class RefineRandom(Refine):
         p: float = 0.1,
         random_key: int = 0,
     ):
-        """
-        Initialise a random refinement object.
-
-        :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-            sum is calculated. If ``True``, the sum is approximate.
-        :param approximator: coreax KernelMeanApproximator object for the kernel mean
-            approximation method
-        :param p: Proportion of original dataset to randomly sample for candidate points
-            to replace those in the coreset
-        :param random_key: Pseudo-random number generator key
-        """
+        """Initialise a random refinement object."""
         self.random_key = random_key
         self.p = p
         super().__init__(
@@ -392,7 +376,7 @@ class RefineRandom(Refine):
         r"""
         Calculate the change in maximum mean discrepancy (MMD).
 
-        The change in MMD arises from replacing `i` in `S` with `x`.
+        The change in MMD arises from replacing ``i`` in ``coreset_indices`` with ``x``.
 
         :param i: A coreset index
         :param candidate_indices: Indices for randomly sampled candidate points among
@@ -467,18 +451,12 @@ class RefineRandom(Refine):
 
 
 class RefineReverse(Refine):
-    """TODO: create RefineRev docstring."""
+    """
+    Define the RefineRev (refine reverse) object.
 
-    def __init__(
-        self,
-        approximate_kernel_row_sum: bool = False,
-        approximator: KernelMeanApproximator = None,
-    ):
-        """Initialise a RefineRev (refine reverse) object."""
-        super().__init__(
-            approximate_kernel_row_sum=approximate_kernel_row_sum,
-            approximator=approximator,
-        )
+    This performs the same style of refinement as :class:'coreax.refine.RefineRegular'
+    but reverses the order.
+    """
 
     def refine(self, data_reduction: DataReduction) -> None:
         r"""
