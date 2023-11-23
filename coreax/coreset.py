@@ -13,8 +13,11 @@
 # limitations under the License.
 
 """
-This module contains classes for methods of constructing coresets.
+Classes and associated functionality to construct coresets.
 
+Given a :math:`n \times d` dataset, one may wish to construct a compressed
+:math:`m \times d` dataset representation of this dataset, where :math:`m << n`. This
+module contains implementations of approaches to do such a construction using coresets.
 Coresets are a type of data reduction, so these inherit from
 :class:`~coreax.reduction.DataReduction`. The aim is to select a samll set of indices
 that represent the key features of a larger dataset.
@@ -25,6 +28,23 @@ The abstract base class is :class:`Coreset`. Concrete implementations are:
     kernels.
 *   :class:`RandomSample` selects points for the coreset using random sampling. It is
     typically only used for benchmarking against other coreset methods.
+
+**:class:`KernelHerding`**
+Kernel herding is a deterministic, iterative and greedy approach to determine this
+compressed representation.
+
+Given one has selected ``T`` data points for their compressed representation of the
+original dataset, kernel herding selects the next point as:
+
+.. math::
+
+    x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
+        \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
+
+where ``k`` is the kernel used, the expectation :math:`\mathbb{E}` is taken over the
+entire dataset, and the search is over the entire dataset. This can informally be seen
+as a balance between using points at which the underlying density is high (the first
+term) and exploration of distinct regions of the space (the second term).
 """
 
 from abc import abstractmethod
