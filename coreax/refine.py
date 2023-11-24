@@ -657,4 +657,4 @@ for current_class in refine_classes:
 refine_factory = ClassFactory(Refine)
 refine_factory.register("regular", RefineRegular)
 refine_factory.register("random", RefineRandom)
-refine_factory.register("rev", RefineReverse)
+refine_factory.register("reverse", RefineReverse)
