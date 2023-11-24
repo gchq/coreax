@@ -27,11 +27,10 @@ another from the original dataset.
 All refinement approaches implement :class:`Refine`, in-particular with a method
 :meth:`refine` that manipulates a :class:`~coreax.reduction.DataReduction` object.
 
-The other mandatory method to implement when defining a new kernel is
-:meth:`_tree_flatten`. To improve performance, kernel computation is jit compiled. As a
-result, definitions of dynamic and static values inside :meth:`_tree_flatten` ensure the
-kernel object can be mutated and the corresponding jit compilation does not yield
-unexpected results.
+The other mandatory method to implement is :meth:`_tree_flatten`. To improve
+performance, refine computation is jit compiled. As a result, definitions of dynamic
+and static values inside :meth:`_tree_flatten` ensure the refine object can be mutated
+and the corresponding jit compilation does not yield unexpected results.
 """
 
 from abc import ABC, abstractmethod
