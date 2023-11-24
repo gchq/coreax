@@ -33,6 +33,10 @@ and static values inside :meth:`_tree_flatten` ensure the refine object can be m
 and the corresponding jit compilation does not yield unexpected results.
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from functools import partial
 
@@ -75,7 +79,7 @@ class Refine(ABC):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
-        approximator: KernelMeanApproximator = None,
+        approximator: type[KernelMeanApproximator] | None = None,
     ):
         """Initialise a refinement object."""
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
