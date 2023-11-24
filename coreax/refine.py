@@ -12,7 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TODO: Create top-level docstring."""
+r"""
+Classes and associated functionality to perform refinement of coresets.
+
+Several greedy algorithms are implemented within this codebase that generate a
+compressed representation (coreset) of an original :math:`n \times d` dataset. As these
+methods are greedy, it can be beneficial to apply a refinement step after generation,
+which is yet another greedy strategy to improve the coreset generated.
+
+Generally, refinement strategies loop through the elements of a corset and consider if
+some metric assessing coreset quality can be improved by replacing this element with
+another from the original dataset.
+
+All refinement approaches implement :class:`Refine`, in-particular with a method
+:meth:`refine` that manipulates a :class:`~coreax.reduction.DataReduction` object.
+
+The other mandatory method to implement when defining a new kernel is
+:meth:`_tree_flatten`. To improve performance, kernel computation is jit compiled. As a
+result, definitions of dynamic and static values inside :meth:`_tree_flatten` ensure the
+kernel object can be mutated and the corresponding jit compilation does not yield
+unexpected results.
+"""
 
 from abc import ABC, abstractmethod
 from functools import partial
@@ -45,12 +65,12 @@ class Refine(ABC):
 
     The default calculates the kernel mean row sum in full. To reduce computational
     load, the kernel mean row sum can be approximated by setting the variable
-    ``approximate_kernel_row_sum = True`` when initializing the Refine object.
+    ``approximate_kernel_row_sum`` = :data:`True` when initializing the Refine object.
 
     :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-        sum is calculated. If ``True``, the sum is approximate.
-    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object for the kernel mean
-        approximation method
+        sum is calculated. If :data:`True`, the sum is approximate.
+    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
+        for the kernel mean approximation method
     """
 
     def __init__(
@@ -67,11 +87,13 @@ class Refine(ABC):
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
 
-        The DataReduction object is updated in-place. The refinement procedure replaces
-        elements with points most reducing maximum mean discrepancy (MMD).
+        The :class:`~coreax.reduction.DataReduction` object is updated in-place. The
+        refinement procedure replaces elements with points most reducing maximum mean
+        discrepancy (MMD).
 
-        :param data_reduction: coreax DataReduction object with :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object
+        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+            :math:`n \times d` original data, :math:`m` coreset point indices, coreset
+            and kernel object
         :return: Nothing
         """
 
@@ -119,8 +141,9 @@ class RefineRegular(Refine):
         The DataReduction object is updated in-place. The refinement procedure replaces
         elements with points most reducing maximum mean discrepancy (MMD).
 
-        :param data_reduction: coreax DataReduction object with :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object
+        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+            :math:`n \times d` original data, :math:`m` coreset point indices, coreset
+            and kernel object
         :return: Nothing
         """
         x = data_reduction.original_data
@@ -239,8 +262,8 @@ class RefineRandom(Refine):
 
     :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
         sum is calculated. If ``True``, the sum is approximate.
-    :param approximator: coreax KernelMeanApproximator object for the kernel mean
-        approximation method
+    :param approximator: :class:'~coreax.approximation.KernelMeanApproximator` object
+        for the kernel mean approximation method
     :param p: Proportion of original dataset to randomly sample for candidate points
         to replace those in the coreset
     :param random_key: Pseudo-random number generator key
@@ -270,8 +293,9 @@ class RefineRandom(Refine):
         candidate points are a random sample of :math:`n \times p` points from among
         the original data.
 
-        :param data_reduction: coreax DataReduction object with :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object
+        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+            :math:`n \times d` original data, :math:`m` coreset point indices, coreset
+            and kernel object
         :return: Nothing
         """
         x = data_reduction.original_data
@@ -454,7 +478,7 @@ class RefineReverse(Refine):
     """
     Define the RefineRev (refine reverse) object.
 
-    This performs the same style of refinement as :class:'coreax.refine.RefineRegular'
+    This performs the same style of refinement as :class:'~coreax.refine.RefineRegular'
     but reverses the order.
     """
 
@@ -465,8 +489,9 @@ class RefineReverse(Refine):
         The DataReduction object is updated in-place. In this greedy refine method, the
         iteration is carried out over points in ``x``. ``x`` -> ``coreset_indices``.
 
-        :param data_reduction: coreax DataReduction object with :math:`n \times d`
-            original data, :math:`m` coreset point indices, coreset and kernel object
+        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+            :math:`n \times d` original data, :math:`m` coreset point indices, coreset
+            and kernel object
         :return: Nothing
         """
         x = jnp.asarray(data_reduction.original_data)
