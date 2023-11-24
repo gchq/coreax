@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Coreax (|version|)
-==================================
+==================
 
 .. toctree::
    :maxdepth: 2
@@ -20,5 +20,6 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+* :ref:`changelog`
 * :ref:`faq`
 * :ref:`bibliography`
