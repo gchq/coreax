@@ -16,8 +16,8 @@ r"""
 Classes and associated functionality to use kernel functions.
 
 A kernel is a non-negative, real-valued integrable function that can take two inputs,
-``x`` and ``y`` and returns a value that decreases as ``x`` and ``y`` move further away
-in space from each other. Note that 'further' here may account for cyclic behaviour in
+``x`` and ``y``, and returns a value that decreases as ``x`` and ``y`` move further away
+in space from each other. Note that *further* here may account for cyclic behaviour in
 the data, for example.
 
 In this library, we often use kernels as a smoothing tool: given a dataset of distinct
@@ -27,32 +27,33 @@ of the data with kernels.
 All kernels in this module implement the base class :class:`Kernel`. They therefore must
 define some ``length_scale`` and ``output_scale``, with the former controlling the
 amount of smoothing applied, and the latter acting as a normalisation constant. A common
-kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined as:
+kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined as
 
 .. math::
 
-    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2)
+    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2).
 
 One can see that, if ``output_scale`` takes the value
 :math:`\frac{1}{\sqrt{2\pi}\text{length_scale}}`, then the
 :class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
 
 There are only two mandatory methods to implement when defining a new kernel. The first
-is  :meth:`_compute_elementwise`, that is, given two floating values ``x`` and ``y``,
-what does the kernel return. Performance improvements can be gained when kernels are
-used in other areas of the codebase by also implementing :meth:`_grad_x_elementwise` and
-:meth:`_grad_y_elementwise` which are simply the gradients of the kernel with respect to
-``x`` and ``y`` respectively. Finally, :meth:`_divergence_x_grad_y_elementwise`, the
-divergence with respect to ``x`` of the gradient of the kernel with respect to ``y`` can
-allow analytical computation of the :class:`SteinKernel`, which itself requires a base
-kernel. However, if this property is not known, one can turn to the approaches in
+is :meth:`~Kernel._compute_elementwise`, which returns the floating point value after
+evaluating the kernel on two floats, ``x`` and ``y``. Performance improvements can be
+gained when kernels are used in other areas of the codebase by also implementing
+:meth:`~Kernel._grad_x_elementwise` and :meth:`~Kernel._grad_y_elementwise` which are
+simply the gradients of the kernel with respect to ``x`` and ``y`` respectively.
+Finally, :meth:`~Kernel._divergence_x_grad_y_elementwise`, the divergence with respect
+to ``x`` of the gradient of the kernel with respect to ``y`` can allow analytical
+computation of the :class:`SteinKernel`, which itself requires a base kernel. However,
+if this property is not known, one can turn to the approaches in
 :class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
 
 The other mandatory method to implement when defining a new kernel is
-:meth:`_tree_flatten`. To improve performance, kernel computation is jit compiled. As a
-result, definitions of dynamic and static values inside :meth:`_tree_flatten` ensure the
-kernel object can be mutated and the corresponding jit compilation does not yield
-unexpected results.
+:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is jit
+compiled. As a result, definitions of dynamic and static values inside
+:meth:`~Kernel._tree_flatten` ensure the kernel object can be mutated and the
+corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10

@@ -26,7 +26,8 @@ some metric assessing coreset quality can be improved by replacing this element 
 another from the original dataset.
 
 All refinement approaches implement :class:`Refine`, in-particular with a method
-:meth:`refine` that manipulates a :class:`~coreax.reduction.DataReduction` object.
+:meth:`~Refine.refine` that manipulates a :class:`~coreax.reduction.DataReduction`
+object.
 """
 
 from functools import partial
