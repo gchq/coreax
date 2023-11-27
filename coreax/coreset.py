@@ -26,6 +26,7 @@ The abstract base class is :class:`Coreset`. Concrete implementations are:
 *   :class:`RandomSample` selects points for the coreset using random sampling. It is
     typically only used for benchmarking against other coreset methods.
 """
+from __future__ import annotations
 
 from abc import abstractmethod
 from functools import partial
@@ -33,7 +34,7 @@ from multiprocessing.pool import ThreadPool
 
 import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array, jit, random, vmap
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
@@ -48,27 +49,29 @@ class Coreset(DataReduction):
     """Abstract base class for a method to construct a coreset."""
 
     def __init__(
-            self,
-            data: DataReader,
-            weight: str | WeightsOptimiser,
-            kernel: Kernel,
-            size: int
+        self,
+        data: DataReader,
+        weight: str | WeightsOptimiser,
+        kernel: Kernel,
+        size: int,
     ):
         """
+        TODO: remove ``weight`` and ``kernel`` from ABC as these aren't in all children.
 
         :param size: Number of coreset points to calculate
         """
-
         self.coreset_size = size
         super().__init__(data, weight, kernel)
 
         self.reduction_indices = jnp.asarray(range(data.pre_reduction_data.shape[0]))
 
     @abstractmethod
-    def fit(self, X: Array, kernel: Kernel,) -> None:
-        """
-        Fit...TODO once children implemented
-        """
+    def fit(
+        self,
+        X: Array,
+        kernel: Kernel,
+    ) -> None:
+        """Fit...TODO once children implemented."""
 
 
 class KernelHerding(Coreset):
@@ -79,29 +82,26 @@ class KernelHerding(Coreset):
     """
 
     def __init__(
-            self,
-            data: DataReader,
-            weight: str | WeightsOptimiser,
-            kernel: Kernel,
-            size: int):
-        """
-
-        :param size: Number of coreset points to calculate
-        """
-
+        self,
+        data: DataReader,
+        weight: str | WeightsOptimiser,
+        kernel: Kernel,
+        size: int,
+    ):
+        """:param size: Number of coreset points to calculate."""
         # Initialise Coreset parent
         super().__init__(data, weight, kernel, size)
 
     def fit_by_partition(
-            self,
-            X: Array,
-            w_function: Kernel | None,
-            block_size: int = 10_000,
-            K_mean: Array | None = None,
-            unique: bool = True,
-            nu: float = 1.0,
-            partition_size: int = 1000,
-            parallel: bool = True
+        self,
+        X: Array,
+        w_function: Kernel | None,
+        block_size: int = 10_000,
+        K_mean: Array | None = None,
+        unique: bool = True,
+        nu: float = 1.0,
+        partition_size: int = 1000,
+        parallel: bool = True,
     ) -> tuple[Array, Array]:
         r"""
         Execute scalable kernel herding.
@@ -167,7 +167,7 @@ class KernelHerding(Coreset):
             # build a kdtree
             kdtree = KDTree(X, leaf_size=partition_size)
             _, nindices, nodes, _ = kdtree.get_arrays()
-            new_indices = [jnp.array(nindices[nd[0]: nd[1]]) for nd in nodes if nd[2]]
+            new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
             split_data = [X[n] for n in new_indices]
 
             # generate a coreset on each partition
@@ -175,7 +175,10 @@ class KernelHerding(Coreset):
             kwargs["self.size"] = self.coreset_size
             if parallel:
                 with ThreadPool() as pool:
-                    res = pool.map_async(partial(self.fit, self.kernel, block_size, K_mean, unique, nu), split_data)
+                    res = pool.map_async(
+                        partial(self.fit, self.kernel, block_size, K_mean, unique, nu),
+                        split_data,
+                    )
                     res.wait()
                     for herding_output, idx in zip(res.get(), new_indices):
                         c, _, _ = herding_output
@@ -204,12 +207,12 @@ class KernelHerding(Coreset):
         return coreset, weights
 
     def fit(
-            self,
-            X: Array,
-            block_size: int = 10_000,
-            K_mean: Array | None = None,
-            unique: bool = True,
-            nu: float = 1.0,
+        self,
+        X: Array,
+        block_size: int = 10_000,
+        K_mean: Array | None = None,
+        unique: bool = True,
+        nu: float = 1.0,
     ) -> tuple[Array, Array, Array]:
         r"""
         Execute kernel herding algorithm with Jax.
@@ -220,7 +223,6 @@ class KernelHerding(Coreset):
         :param unique: Flag for enforcing unique elements
         :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
         """
-
         n = len(X)
         if K_mean is None:
             K_mean = kernel.calculate_kernel_matrix_row_sum_mean(X, max_size=block_size)
@@ -231,7 +233,9 @@ class KernelHerding(Coreset):
         K = jnp.zeros((self.coreset_size, n))
 
         # Greedly select coreset points
-        body = partial(self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique)
+        body = partial(
+            self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique
+        )
         S, K, _ = lax.fori_loop(0, self.coreset_size, body, (S, K, K_t))
         Kbar = K.mean(axis=1)
         gram_matrix = K[:, S]
@@ -240,13 +244,13 @@ class KernelHerding(Coreset):
 
     @partial(jit, static_argnames=["k_vec", "unique"])
     def _greedy_body(
-            self,
-            X: Array,
-            i: int,
-            val: tuple[ArrayLike, ArrayLike, ArrayLike],
-            k_vec: KernelFunction,
-            K_mean: ArrayLike,
-            unique: bool,
+        self,
+        X: Array,
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        k_vec: KernelFunction,
+        K_mean: ArrayLike,
+        unique: bool,
     ) -> tuple[Array, Array, Array]:
         r"""
         Execute main loop of greedy kernel herding.
@@ -273,4 +277,52 @@ class KernelHerding(Coreset):
 
         return S, K, K_t
 
+
+class RandomSample(Coreset):
+    """Reduce a dataset by simply randomly sampling ``n`` points."""
+
+    def __init__(self, data: DataReader, size: int, random_key: int = 0):
+        r"""
+        Initialise a random sampling object.
+
+        :param data: The :math:`n \times d` dataset to be reduced
+        :param size: Number of  points to randomly sample from ``data``
+        :param random_key: Pseudo-random number generator key for sampling
+        """
+        self.random_key = random_key
+
+        # Initialise Coreset parent
+        super().__init__(data, size)
+
+    def fit(
+        self,
+        X,
+        unique: bool = True,
+    ) -> Array:
+        r"""
+        Reduce a dataset by randomly sampling ``n`` points from the original dataset.
+
+        TODO: input ``X`` is equal to self.data, so replace ``X`` with self.data and
+        remove this input?
+
+        :param X: :math:`n \times d` dataset to randomly sample from
+        :param unique: Flag for enforcing unique elements
+        :returns: Reduced dataset point indices
+        """
+        key = random.PRNGKey(self.random_key)
+        n = len(X)
+
+        if unique:
+            random_indices = random.choice(
+                key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=False
+            )
+        else:
+            random_indices = random.choice(
+                key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=True
+            )
+
+        return random_indices
+
+
 data_reduction_factory.register("kernel_herding", KernelHerding)
+data_reduction_factory.register("random_sample", RandomSample)
