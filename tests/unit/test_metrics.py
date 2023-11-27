@@ -52,13 +52,15 @@ class TestMMD(unittest.TestCase):
         r"""
         Generate data for shared use across unit tests.
 
-        Generate n random points in d dimensions from a uniform distribution [0, 1).
-        Randomly select m points for second dataset Y.
-        Generate weights: w for original data, w_y for second dataset Y.
+        Generate ``num_points_x`` random points in ``d`` dimensions from a uniform
+        distribution [0, 1).
+        Randomly select ``num_points_y`` points for second dataset ``Y``.
+        Generate weights: ``weights_x`` for original data, ``weights_y`` for second
+        dataset ``Y``.
 
-        :n: Number of test data points
+        :num_points_x: Number of test data points
         :d: Dimension of data
-        :m: Number of points to randomly select for second dataset Y
+        :m: Number of points to randomly select for second dataset ``Y``
         :max_size: Maximum number of points for block calculations
         """
         # Define data parameters
@@ -85,11 +87,15 @@ class TestMMD(unittest.TestCase):
         r"""
         Test the MMD of a dataset with itself is zero, for several different kernels.
         """
-        # Define a metric object using the RBF kernel
+        # Define a metric object using the SquaredExponentialKernel
         metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=1.0))
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
-        # Define a metric object using the PCIMQ kernel
+        # Define a metric object using the LaplacianKernel
+        metric = cm.MMD(kernel=ck.LaplacianKernel(length_scale=1.0))
+        self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
+
+        # Define a metric object using the PCIMQKernel
         metric = cm.MMD(kernel=ck.PCIMQKernel(length_scale=1.0))
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
