@@ -81,7 +81,7 @@ class SlicedScoreMatching(ScoreMatching):
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
     of the data. Exactly how the score function is modelled is specific to each
-    child class of this base class.
+    child class of :class:`ScoreMatching`.
 
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
@@ -420,10 +420,10 @@ class SlicedScoreMatching(ScoreMatching):
         # Define a training state
         state = create_train_state(
             score_network,
-            random_key_2,
             self.learning_rate,
             data_dimension,
             self.optimiser,
+            random_key_2,
         )
         _, random_key_4 = random.split(random_key_2)
         batch_key = random.PRNGKey(random_key_4[-1])

@@ -364,7 +364,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = cn.create_train_state(
-            score_network, jax.random.PRNGKey(0), 1e-3, 2, sgd
+            score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
         )
 
         # Jax is row-based, so we have to work with the kernel transpose

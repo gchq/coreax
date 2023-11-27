@@ -266,7 +266,7 @@ class NystromApproximator(KernelMeanApproximator):
     approximated by various methods. NystromApproximator is a class that does such an
     approximation using a Nystrom approximation on a subset of points selected at
     random from the data. Further details for Nystrom kernel mean embeddings can be
-    found here [chatalic2022nystrom]_.
+    found here :cite:p:`chatalic2022nystrom`.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
