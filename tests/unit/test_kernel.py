@@ -68,7 +68,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     Tests related to the SquaredExponentialKernel defined in kernel.py
     """
 
-    def test_se_kernel_init(self) -> None:
+    def test_squared_exponential_kernel_init(self) -> None:
         r"""
         Test the initilisation of SquaredExponentialKernel with a negative length_scale.
         """
@@ -76,7 +76,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # raised
         self.assertRaises(ValueError, ck.SquaredExponentialKernel, length_scale=-1.0)
 
-    def test_se_kernel_compute_two_floats(self) -> None:
+    def test_squared_exponential_kernel_compute_two_floats(self) -> None:
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
@@ -137,7 +137,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-    def test_se_kernel_compute_two_vectors(self) -> None:
+    def test_squared_exponential_kernel_compute_two_vectors(self) -> None:
         r"""
         Test the class SquaredExponentialKernel distance computations.
 
@@ -145,6 +145,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
 
         For the two input vectors
+
         .. math::
 
             x = [0, 1, 2, 3]
@@ -158,7 +159,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             ||x - y||^2 &= (0 - 1)^2 + (1 - 2)^2 + (2 - 3)^2 + (3 - 4)^2
                         &= 4
 
-        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the ``length_scale`` to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 4 / \pi)
                     &= 0.279923327
         """
@@ -181,7 +182,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-    def test_se_kernel_compute_two_arrays(self) -> None:
+    def test_squared_exponential_kernel_compute_two_arrays(self) -> None:
         r"""
         Test the class SquaredExponentialKernel distance computations on arrays.
 
@@ -201,7 +202,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
             ||x - y||^2 = [4, 0]
 
-        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the ``length_scale`` to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
             k(x[0], y[1]) &= \exp(- 100 / \pi)
@@ -231,7 +232,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check the output matches the expected distance
         np.testing.assert_array_almost_equal(output, expected_distances, decimal=5)
 
-    def test_se_kernel_gradients_wrt_x(self) -> None:
+    def test_squared_exponential_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class SquaredExponentialKernel gradient computations.
 
@@ -270,7 +271,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    def test_scaled_se_kernel_gradients_wrt_x(self) -> None:
+    def test_scaled_squared_exponential_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class SquaredExponentialKernel gradient computations; with scaling.
 
@@ -283,7 +284,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         # Define some data
         length_scale = 1 / np.pi
-        s = np.e
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -294,14 +295,16 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    -s
+                    -output_scale
                     * (x_ - y_)
                     / length_scale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
                 )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.SquaredExponentialKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -311,13 +314,13 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    def test_se_kernel_gradients_wrt_y(self) -> None:
+    def test_squared_exponential_kernel_gradients_wrt_y(self) -> None:
         r"""
         Test the class SquaredExponentialKernel gradient computations.
 
         The SquaredExponential kernel is defined as
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
-        The gradient of this with respect to y is:
+        The gradient of this with respect to ``y`` is:
 
         ..math:
             \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
@@ -350,9 +353,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
-    def test_define_pairwise_kernel_evaluation_no_grads(self) -> None:
+    def test_pairwise_kernel_evaluation(self) -> None:
         r"""
-        Test the definition of pairwise kernel evaluation functions, without gradients.
+        Test the definition of pairwise kernel evaluation functions.
 
         Pairwise distances mean, given two input arrays, we should return a matrix
         where the values correspond to the distance, as judged by the kernel, between
@@ -362,7 +365,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         If we have two input arrays:
 
-        ..math:
+        .. math:
             x = [0.0, 1.0, 2.0, 3.0, 4.0]
             y = [10.0, 3.0, 0.0]
 
@@ -510,7 +513,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_se_div_x_grad_y(self) -> None:
+    def test_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``.
         """
@@ -534,14 +537,13 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_scaled_se_div_x_grad_y(self) -> None:
+    def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
         """
         # Setup data
         length_scale = 1 / np.pi
-        s = np.e
-        sc = length_scale**2
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -552,10 +554,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 dp = np.dot(x_ - y_, x_ - y_)
-                k = s * np.exp(-dp / (2.0 * sc))
-                expected_output[i, j] = k / sc * (dimension - dp / sc)
+                k = output_scale * np.exp(-dp / (2.0 * length_scale**2))
+                expected_output[i, j] = (
+                    k / length_scale**2 * (dimension - dp / length_scale**2)
+                )
         # Compute output using Kernel class
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.SquaredExponentialKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -596,11 +602,11 @@ class TestLaplacianKernel(unittest.TestCase):
             ||x - y|| &= |0.5 - 2.0|
                         &= 1.5
 
-        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the ``length_scale`` to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 1.5 / \pi)
                     &= 0.62035410351
 
-        If the length_scale is instead taken to be :math:`\sqrt{\pi}`, we get:
+        If the ``length_scale`` is instead taken to be :math:`\sqrt{\pi}`, we get:
             k(x, y) &= \exp(- 1.5 / (2.0\pi))
                     &= 0.78762561126
         """
@@ -657,7 +663,7 @@ class TestLaplacianKernel(unittest.TestCase):
             \lVert x - y \rVert_1 &= |0 - 1| + |1 - 2| + |2 - 3| + |3 - 4|
                         &= 4
 
-        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the ``length_scale`` to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x, y) &= \exp(- 4 / \pi)
                     &= 0.279923327
         """
@@ -688,6 +694,7 @@ class TestLaplacianKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
 
         For the two input vectors
+
         .. math::
 
             x = [ [0, 1, 2, 3], [5, 6, 7, 8] ]
@@ -700,7 +707,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
             ||x - y||_1 = [[4, 20], [16, 0]]
 
-        If we take the length_scale to be :math:`\sqrt{\pi / 2.0}` we get:
+        If we take the ``length_scale`` to be :math:`\sqrt{\pi / 2.0}` we get:
             k(x[0], y[0]) &= \exp(- 4 / \pi)
                           &= 0.279923327
             k(x[0], y[1]) &= \exp(- 20 / \pi)
@@ -775,16 +782,16 @@ class TestLaplacianKernel(unittest.TestCase):
         Test the class LaplacianKernel gradient computations; with scaling.
 
         The scaled Laplacian kernel is defined as
-        :math:`k(x,y) = s\exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`.
+        :math:`k(x,y) = \text{output_scale}\exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
         .. math:
-            - s\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
-              \rVert_1}{2 \text{length_scale}^2}}
+
+            - \text{output_scale}\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y\rVert_1}{2 \text{length_scale}^2}}
         """
         # Define some data
         length_scale = 1 / np.pi
-        s = np.e
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -795,14 +802,16 @@ class TestLaplacianKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 true_gradients[i, j] = (
-                    -s
+                    -output_scale
                     * np.sign(x_ - y_)
                     / (2 * length_scale**2)
                     * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
                 )
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.LaplacianKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -818,9 +827,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         The Laplacian kernel is defined as
         :math:`k(x,y) = \exp (-\lVert x-y \rVert_1/2 * \text{length_scale}^2)`. The
-        gradient of this with respect to y is:
+        gradient of this with respect to ``y`` is:
 
-        ..math:
+        .. math:
             \operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y
               \rVert_1}{2 \text{length_scale}^2}}
         """
@@ -885,8 +894,7 @@ class TestLaplacianKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.pi
-        s = np.e
-        sc = length_scale**2
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -897,13 +905,15 @@ class TestLaplacianKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 expected_output[i, j] = (
-                    -s
+                    -output_scale
                     * dimension
                     / (4 * length_scale**4)
                     * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
                 )
         # Compute output using Kernel class
-        kernel = ck.LaplacianKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.LaplacianKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -953,7 +963,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_pcimq_kernel_gradients_wrt_x(self) -> None:
         r"""
-        Test the class PCIMQ gradient computations with respect to x.
+        Test the class PCIMQ gradient computations with respect to ``x``.
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
@@ -979,7 +989,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
-        Test the class PCIMQ gradient computations with respect to y.
+        Test the class PCIMQ gradient computations with respect to ``y``.
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
@@ -1005,11 +1015,11 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_scaled_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
-        Test the class PCIMQ gradient computations with respect to y; with scaling
+        Test the class PCIMQ gradient computations with respect to ``y``; with scaling.
         """
         # Setup data
         length_scale = 1 / np.pi
-        s = np.e
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -1020,7 +1030,7 @@ class TestPCIMQKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 expected_output[i, j] = (
-                    s
+                    output_scale
                     / (2 * length_scale**2)
                     * (x_ - y_)
                     / (1 + (np.linalg.norm(x_ - y_) ** 2) / (2 * length_scale**2))
@@ -1028,7 +1038,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 )
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=output_scale)
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
@@ -1052,6 +1062,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 dp = np.dot(x_ - y_, x_ - y_)
                 den = (1 + dp) ** (3 / 2)
                 expected_output[i, j] = dimension / den - 3 * dp / den ** (5 / 3)
+
         # Compute output using Kernel class
         kernel = ck.PCIMQKernel(length_scale=length_scale)
         output = kernel.divergence_x_grad_y(x, y)
@@ -1065,7 +1076,7 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.pi
-        s = np.e
+        output_scale = np.e
         num_points = 10
         dimension = 2
         x = np.random.random((num_points, dimension))
@@ -1076,17 +1087,17 @@ class TestPCIMQKernel(unittest.TestCase):
         for i, x_ in enumerate(x):
             for j, y_ in enumerate(y):
                 dp = np.dot(x_ - y_, x_ - y_)
-                k = s / ((1 + dp / (2 * length_scale**2)) ** (1 / 2))
+                k = output_scale / ((1 + dp / (2 * length_scale**2)) ** (1 / 2))
                 expected_output[i, j] = (
-                    s
+                    output_scale
                     / (2 * length_scale**2)
                     * (
-                        dimension * (k / s) ** 3
-                        - 3 * dp * (k / s) ** 5 / (2 * length_scale**2)
+                        dimension * (k / output_scale) ** 3
+                        - 3 * dp * (k / output_scale) ** 5 / (2 * length_scale**2)
                     )
                 )
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=s)
+        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=output_scale)
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected

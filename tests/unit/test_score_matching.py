@@ -46,8 +46,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         r"""
         Test the core objective function, analytic version.
 
-        We consider two orthogonal vectors, u and v, and a score vector of ones. The
-        analytic objective is given by:
+        We consider two orthogonal vectors, ``u`` and ``v``, and a score vector of ones.
+        The analytic objective is given by:
 
         .. math::
 
@@ -59,7 +59,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             0.5 * ||s||^2
 
-        which equals 1.0 in the case of s being a vector of ones.
+        which equals 1.0 in the case of ``s`` being a vector of ones.
         """
         # Define data
         u = np.array([0.0, 1.0])
@@ -108,7 +108,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        which evaluates to 7456.0 when substituting in the given values of u, v and s.
+        which evaluates to 7456.0 when substituting in the given values of ``u``, ``v``
+        and ``s``.
         """
         # Define data
         u = np.arange(3, dtype=float)
@@ -158,8 +159,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        We consider orthogonal vectors v and u, meaning we only evaluate the second term
-        to get the expected output.
+        We consider orthogonal vectors ``v`` and ``u``, meaning we only evaluate the
+        second term to get the expected output.
         """
         # Define data - orthogonal u and v vectors should give back half squared dot
         # product of v and s
@@ -285,7 +286,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
@@ -325,7 +326,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
