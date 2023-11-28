@@ -26,7 +26,6 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 from coreax.approximation import KernelMeanApproximator
-from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
 
 
@@ -67,7 +66,7 @@ class Refine(ABC):
         self.approximator = approximator
 
     @abstractmethod
-    def refine(self, data_reduction: DataReduction) -> None:
+    def refine(self, data_reduction: "DataReduction") -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
 
@@ -132,7 +131,7 @@ class RefineRegular(Refine):
             approximator=approximator,
         )
 
-    def refine(self, data_reduction: DataReduction) -> None:
+    def refine(self, data_reduction: "DataReduction") -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
 
@@ -277,7 +276,7 @@ class RefineRandom(Refine):
             approximator=approximator,
         )
 
-    def refine(self, data_reduction: DataReduction) -> None:
+    def refine(self, data_reduction: "DataReduction") -> None:
         r"""
         Refine a coreset iteratively.
 
@@ -480,7 +479,7 @@ class RefineReverse(Refine):
             approximator=approximator,
         )
 
-    def refine(self, data_reduction: DataReduction) -> None:
+    def refine(self, data_reduction: "DataReduction") -> None:
         r"""
         Refine a coreset iteratively, replacing points which yield the most improvement.
 
