@@ -50,7 +50,7 @@ if this property is not known, one can turn to the approaches in
 :class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
 
 The other mandatory method to implement when defining a new kernel is
-:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is jit
+:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is JIT
 compiled. As a result, definitions of dynamic and static values inside
 :meth:`~Kernel._tree_flatten` ensure the kernel object can be mutated and the
 corresponding JIT compilation does not yield unexpected results.
