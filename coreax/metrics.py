@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Classes and associated functionality to compute metrics assessing similarity of inputs.
+
+Large parts of this codebase consider the generic problem of taking a
+:math:`n \times d` dataset and creating an alternative representation of it in some way.
+Having attained an alternative representation, we can then assess the quality of this
+representation using some appropriate metric. Such metrics are implemented within this
+module, all of which implement :class:`Metric`.
+"""
+
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
@@ -45,28 +55,37 @@ class Metric(ABC):
         Return a zero-dimensional array.
 
         :param x: An :math:`n \times d` array defining the full dataset
-        :param y: An :math:`n \times d` array defining a representation of x
+        :param y: An :math:`n \times d` array defining a representation of ``x``
         :param max_size: Size of matrix block to process
         :param weights_x: An :math:`1 \times n` array of weights for associated points
-            in x
+            in ``x``
         :param weights_y: An :math:`1 \times n` array of weights for associated points
-            in y
+            in ``y``
         :return: Metric computed as a zero-dimensional array.
         """
 
 
 class MMD(Metric):
     r"""
-    Calculation for maximum mean discrepancy.
+    Calculation for maximum mean discrepancy between two datasets.
+
+    For dataset of :math:`n` points in :math:`d` dimensions, :math:`X`, and another
+    dataset :math:`Y` of :math:`m` points in :math:`d` dimensions, the maximum mean
+    discrepancy is given by:
+
+    .. math::
+
+        \text{MMD}^2(X,Y) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(Y,Y))
+        - 2\mathbb{E}(k(X,Y)).
+
+    :param kernel: Kernel object with compute method defined mapping
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param precision_threshold: Positive threshold we compare against for precision
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
         r"""
         Calculate maximum mean discrepancy between two datasets in d dimensions.
-
-        :param kernel: Kernel object with compute method defined mapping
-            :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-        :param precision_threshold: Positive threshold we compare against for precision
         """
         self.kernel = kernel
         self.precision_threshold = precision_threshold
@@ -85,7 +104,7 @@ class MMD(Metric):
         r"""
         Calculate maximum mean discrepancy.
 
-        If no weights (for the dataset y) are given, standard MMD is calculated. If
+        If no weights (for the dataset ``y``) are given, standard MMD is calculated. If
         weights are given, weighted MMD is calculated. For both cases, if the size of
         matrix blocks to process is less than the size of both datasets, the calculation
         is done block-wise to limit memory requirements.
@@ -93,8 +112,8 @@ class MMD(Metric):
         :param x: The original :math:`n \times d` data
         :param y: :math:`m \times d` dataset
         :param max_size: (Optional) Size of matrix block to process, for memory limits
-        :param weights_x: (Optional)  :math:`n \times 1` weights for original data x
-        :param weights_y: (Optional)  :math:`m \times 1` weights for dataset y
+        :param weights_x: (Optional)  :math:`n \times 1` weights for original data ``x``
+        :param weights_y: (Optional)  :math:`m \times 1` weights for dataset ``y``
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Compute number of points in each input dataset

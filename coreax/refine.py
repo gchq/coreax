@@ -25,12 +25,13 @@ some metric assessing coreset quality can be improved by replacing this element 
 another from the original dataset.
 
 All refinement approaches implement :class:`Refine`, in-particular with a method
-:meth:`refine` that manipulates a :class:`~coreax.reduction.DataReduction` object.
+:meth:`~Refine.refine` that manipulates a :class:`~coreax.reduction.DataReduction`
+object.
 
-The other mandatory method to implement is :meth:`_tree_flatten`. To improve
-performance, refine computation is jit compiled. As a result, definitions of dynamic
-and static values inside :meth:`_tree_flatten` ensure the refine object can be mutated
-and the corresponding jit compilation does not yield unexpected results.
+The other mandatory method to implement is :meth:`~Refine._tree_flatten`. To improve
+performance, refine computation is JIT compiled. As a result, definitions of dynamic
+and static values inside :meth:`~Refine._tree_flatten` ensure the refine object can be
+mutated and the corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
@@ -645,8 +646,7 @@ class RefineReverse(Refine):
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
-# are able to run. We rely on the naming convention that all child classes of
-# ScoreMatching include the sub-string ScoreMatching inside of them.
+# are able to run. This tuple must be updated when a new class object is defined.
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for current_class in refine_classes:
     tree_util.register_pytree_node(
