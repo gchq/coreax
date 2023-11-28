@@ -50,7 +50,7 @@ class Kernel(ABC):
     """
     Base class for kernels.
 
-    :param length_scale: Kernel length_scale to use
+    :param length_scale: Kernel ``length_scale`` to use
     :param output_scale: Output scale to use
     """
 

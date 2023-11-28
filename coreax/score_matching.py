@@ -19,7 +19,8 @@ of the data. Exactly how the score function is modelled is specific to each
 child class of the abstract base class :class:`ScoreMatching`.
 
 When using :class:`SlicedScoreMatching`, the score function is approximated using a
-neural network.
+neural network, whereas in :class:`KernelDensityMatching`, it is approximated by fitting
+and then differentiating a kernel density estimate to the data.
 """
 
 from abc import ABC, abstractmethod
@@ -27,6 +28,7 @@ from collections.abc import Callable
 from functools import partial
 
 import jax
+import numpy as np
 import optax
 from flax.training.train_state import TrainState
 from jax import jit, jvp
@@ -36,6 +38,7 @@ from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
 
+import coreax.kernel as ck
 from coreax.networks import ScoreNetwork, create_train_state
 
 
@@ -447,9 +450,100 @@ class SlicedScoreMatching(ScoreMatching):
         return lambda x_: state.apply_fn({"params": state.params}, x_)
 
 
+class KernelDensityMatching(ScoreMatching):
+    r"""
+    Implementation of a kernel density estimate to determine a score function.
+
+    The score function of some data is the derivative of the log-PDF. Score matching
+    aims to determine a model by 'matching' the score function of the model to that
+    of the data. Exactly how the score function is modelled is specific to each
+    child class of this base class.
+
+    With kernel density matching, we approximate the underlying distribution function
+    from a dataset using kernel density estimation, and then differentiate this to
+    compute an estimate of the score function. A Gaussian kernel is used to construct
+    the kernel density estimate.
+
+    :param length_scale: Kernel ``length_scale`` to use when fitting the kernel density
+        estimate
+    :param kde_data: Set of :math:`n \times d` samples from the underlying distribution
+        that are used to build the kernel density estimate
+    """
+
+    def __init__(self, length_scale: float, kde_data: ArrayLike):
+        r"""
+        Define the kernel density matching class.
+        """
+        # Define a normalised Gaussian kernel (which is a special cases of the squared
+        # exponential kernel) to construct the kernel density estimate
+        self.kernel = ck.SquaredExponentialKernel(
+            length_scale=length_scale,
+            output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
+        )
+
+        # Hold the data the kernel density estimate will be built from, which will be
+        # needed for any call of the score function.
+        self.kde_data = kde_data
+
+        # Initialise parent
+        super().__init__()
+
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = (self.kde_data,)
+        aux_data = {"kernel": self.kernel}
+
+        return children, aux_data
+
+    def match(self, x: ArrayLike) -> Callable:
+        r"""
+        Learn a score function using kernel density estimation to model a distribution.
+
+        For the kernel density matching approach, the score function is determined by
+        fitting a kernel density estimate to samples from the underlying distribution
+        and then differentiating this. Therefore, learning in this context refers to
+        simply defining the score function and kernel density estimate given some
+        samples we wish to evaluate the score function at, and the data used to build
+        the kernel density estimate.
+
+        :param x: The :math:`n \times d` data vectors. Unused in this implementation.
+        :return: A function that applies the learned score function to input ``x``
+        """
+
+        def score_function(x_):
+            r"""
+            Compute the score function using a kernel density estimation.
+
+            The score function is determined by fitting a kernel density estimate to
+            samples from the underlying distribution and then differentiating this. The
+            kernel density estimate is create using a Gaussian kernel.
+
+            :param x_: The :math:`n \times d` data vectors we wish to evaluate the score
+                function at
+            """
+            # Check format
+            x_ = jnp.atleast_2d(x_)
+
+            # Get the gram matrix row means
+            gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
+
+            # Compute gradients with respect to x
+            gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
+
+            return gradients / gram_matrix_row_means[:, None]
+
+        return score_function
+
+
 # Define the pytree node for the added class to ensure methods with jit decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-score_matching_classes = (SlicedScoreMatching,)
+score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
