@@ -107,7 +107,7 @@ For large $d$, it is usually worth reducing dimensionality using PCA.
 The score function, $\nabla \log f_X(\mathbf{x})$, of a distribution is the derivative
 of the log-density function. This function is required when evaluating Stein kernels.
 However, it may be difficult to analytically specify in practice. To avoid this, we have
-implemented :cite:p:`ssm` to approximate the
+implemented {cite:p}`ssm` to approximate the
 score function with a neural network. See `coreax.score_matching` for implementations.
 This approximation to the true score function can then be passed directly to a Stein
 kernel, removing any requirement for the analytical derivation.
