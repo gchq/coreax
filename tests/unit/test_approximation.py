@@ -107,6 +107,51 @@ class TestApproximations(unittest.TestCase):
         self.assertEqual(approximator.random_key[1], self.random_key[1])
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
 
+    def test_kernel_mean_approximator_creation_invalid_types(self) -> None:
+        """
+        Test the class KernelMeanApproximator rejects invalid input types.
+        """
+        # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
+        # can be created
+        p = patch.multiple(ca.KernelMeanApproximator, __abstractmethods__=set())
+        p.start()
+
+        # Define the approximator with an incorrect kernel type
+        self.assertRaises(
+            TypeError,
+            ca.KernelMeanApproximator,
+            kernel="not_a_kernel",
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+        )
+
+        # Define the approximator with an incorrect random_key type
+        self.assertRaises(
+            TypeError,
+            ca.KernelMeanApproximator,
+            kernel=self.kernel,
+            random_key=123,
+            num_kernel_points=self.num_kernel_points,
+        )
+
+        # Define the approximator with an incorrect num_kernel_points type
+        self.assertRaises(
+            TypeError,
+            ca.KernelMeanApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+        )
+
+        # Define the approximator with a negative value of num_kernel_points
+        self.assertRaises(
+            ValueError,
+            ca.KernelMeanApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+        )
+
     def test_random_approximator(self) -> None:
         """
         Verify random approximator performance on toy problem.
@@ -154,6 +199,79 @@ class TestApproximations(unittest.TestCase):
             np.square(self.true_distances - approximate_kernel_mean_partial)
         )
         self.assertTrue(approx_error_full <= approx_error_partial)
+
+    def test_random_approximator_creation_invalid_types(self) -> None:
+        """
+        Test the class RandomApproximator rejects invalid input types.
+        """
+        # Define the approximator with an incorrect kernel type
+        self.assertRaises(
+            TypeError,
+            ca.RandomApproximator,
+            kernel="not_a_kernel",
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect random_key type
+        self.assertRaises(
+            TypeError,
+            ca.RandomApproximator,
+            kernel=self.kernel,
+            random_key=123,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect num_kernel_points type
+        self.assertRaises(
+            TypeError,
+            ca.RandomApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with a negative value of num_kernel_points
+        self.assertRaises(
+            ValueError,
+            ca.RandomApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect num_train_points type
+        self.assertRaises(
+            TypeError,
+            ca.RandomApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+            num_train_points=10.0,
+        )
+
+        # Define the approximator with a negative value of num_train_points
+        self.assertRaises(
+            ValueError,
+            ca.RandomApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+            num_train_points=-10,
+        )
+
+        # Define a valid approximator, but call approximate with an invalid input
+        approximator = ca.RandomApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.data.shape[0],
+            num_train_points=self.data.shape[0],
+        )
+        self.assertRaises(TypeError, approximator.approximate, "not_data")
 
     def test_annchor_approximator(self) -> None:
         """
@@ -203,6 +321,79 @@ class TestApproximations(unittest.TestCase):
         )
         self.assertTrue(approx_error_full <= approx_error_partial)
 
+    def test_annchor_approximator_creation_invalid_types(self) -> None:
+        """
+        Test the class ANNchorApproximator rejects invalid input types.
+        """
+        # Define the approximator with an incorrect kernel type
+        self.assertRaises(
+            TypeError,
+            ca.ANNchorApproximator,
+            kernel="not_a_kernel",
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect random_key type
+        self.assertRaises(
+            TypeError,
+            ca.ANNchorApproximator,
+            kernel=self.kernel,
+            random_key=123,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect num_kernel_points type
+        self.assertRaises(
+            TypeError,
+            ca.ANNchorApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with a negative value of num_kernel_points
+        self.assertRaises(
+            ValueError,
+            ca.ANNchorApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+            num_train_points=10,
+        )
+
+        # Define the approximator with an incorrect num_train_points type
+        self.assertRaises(
+            TypeError,
+            ca.ANNchorApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+            num_train_points=10.0,
+        )
+
+        # Define the approximator with a negative value of num_train_points
+        self.assertRaises(
+            ValueError,
+            ca.ANNchorApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+            num_train_points=-10,
+        )
+
+        # Define a valid approximator, but call approximate with an invalid input
+        approximator = ca.ANNchorApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.data.shape[0],
+            num_train_points=self.data.shape[0],
+        )
+        self.assertRaises(TypeError, approximator.approximate, "not_data")
+
     def test_nystrom_approximator(self) -> None:
         """
         Verify Nystrom approximator performance on toy problem.
@@ -249,6 +440,54 @@ class TestApproximations(unittest.TestCase):
             np.square(self.true_distances - approximate_kernel_mean_partial)
         )
         self.assertTrue(approx_error_full <= approx_error_partial)
+
+    def test_nystrom_approximator_creation_invalid_types(self) -> None:
+        """
+        Test the class NystromApproximator rejects invalid input types.
+        """
+        # Define the approximator with an incorrect kernel type
+        self.assertRaises(
+            TypeError,
+            ca.NystromApproximator,
+            kernel="not_a_kernel",
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+        )
+
+        # Define the approximator with an incorrect random_key type
+        self.assertRaises(
+            TypeError,
+            ca.NystromApproximator,
+            kernel=self.kernel,
+            random_key=123,
+            num_kernel_points=self.num_kernel_points,
+        )
+
+        # Define the approximator with an incorrect num_kernel_points type
+        self.assertRaises(
+            TypeError,
+            ca.NystromApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=1.0 * self.num_kernel_points,
+        )
+
+        # Define the approximator with a negative value of num_kernel_points
+        self.assertRaises(
+            ValueError,
+            ca.NystromApproximator,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=-self.num_kernel_points,
+        )
+
+        # Define a valid approximator, but call approximate with an invalid input
+        approximator = ca.NystromApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.data.shape[0],
+        )
+        self.assertRaises(TypeError, approximator.approximate, "not_data")
 
 
 if __name__ == "__main__":
