@@ -53,7 +53,7 @@ from multiprocessing.pool import ThreadPool
 
 import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array, jit
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
@@ -225,25 +225,23 @@ class KernelHerding(Coreset):
 
     def fit(
             self,
-            X: Array,
-            block_size: int = 10_000,
+            block_size: int = 10000,
             K_mean: Array | None = None,
             unique: bool = True,
             nu: float = 1.0,
-    ) -> tuple[Array, Array, Array]:
+    ) -> tuple[Array, Array]:
         r"""
         Execute kernel herding algorithm with Jax.
 
-        :param X: :math:`n \times d` dataset to find a coreset from
         :param block_size: Size of matrix blocks to process
         :param K_mean: Row sum of kernel matrix divided by `n`
         :param unique: Flag for enforcing unique elements
-        :returns: Coreset point indices, coreset Gram matrix and coreset Gram mean
+        :returns: coreset Gram matrix and coreset Gram mean
         """
 
-        n = len(X)
+        n = len(self.reduced_data)
         if K_mean is None:
-            K_mean = kernel.calculate_kernel_matrix_row_sum_mean(X, max_size=block_size)
+            K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(self.reduced_data, max_size=block_size)
 
         # Initialise loop updateables
         K_t = jnp.zeros(n)
@@ -252,16 +250,15 @@ class KernelHerding(Coreset):
 
         # Greedly select coreset points
         body = partial(self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique)
-        S, K, _ = lax.fori_loop(0, self.coreset_size, body, (S, K, K_t))
+        self.reduction_indices, K, _ = lax.fori_loop(0, self.coreset_size, body, (S, K, K_t))
         Kbar = K.mean(axis=1)
-        gram_matrix = K[:, S]
+        gram_matrix = K[:, self.reduction_indices]
 
-        return S, gram_matrix, Kbar
+        return gram_matrix, Kbar
 
-    @partial(jit, static_argnames=["k_vec", "unique"])
+    @partial(jit, static_argnames=["self", "k_vec", "unique"])
     def _greedy_body(
             self,
-            X: Array,
             i: int,
             val: tuple[ArrayLike, ArrayLike, ArrayLike],
             k_vec: KernelFunction,
@@ -271,7 +268,6 @@ class KernelHerding(Coreset):
         r"""
         Execute main loop of greedy kernel herding.
 
-        :param X: :math:`n \times d` dataset to find a coreset from
         :param i: Loop counter
         :param val: Loop updatables
         :param k_vec: Vectorised kernel function on pairs `(X,x)`:
@@ -284,7 +280,7 @@ class KernelHerding(Coreset):
         S = jnp.asarray(S)
         K = jnp.asarray(K)
         j = (K_mean - K_t / (i + 1)).argmax()
-        kv = k_vec(X, X[j])
+        kv = k_vec(self.reduced_data, self.reduced_data[j])
         K_t = K_t + kv
         S = S.at[i].set(j)
         K = K.at[i].set(kv)
@@ -292,5 +288,6 @@ class KernelHerding(Coreset):
             K_t = K_t.at[j].set(jnp.inf)
 
         return S, K, K_t
+
 
 data_reduction_factory.register("kernel_herding", KernelHerding)
