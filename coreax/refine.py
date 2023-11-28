@@ -39,11 +39,6 @@ from jax.typing import ArrayLike
 
 from coreax.util import KernelFunction
 
-#
-# Refine Functions
-#
-# These functions take a coreset S as an input and refine it by replacing elements to improve the MMD.
-
 
 def refine(
     x: ArrayLike,
