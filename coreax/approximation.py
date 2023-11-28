@@ -74,7 +74,7 @@ from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
-from coreax.util import ClassFactory, KernelFunction
+from coreax.util import ClassFactory, KernelFunction, is_array_like
 
 
 class KernelMeanApproximator(ABC):
@@ -100,6 +100,19 @@ class KernelMeanApproximator(ABC):
         """
         Define an approximator to the mean of the row sum of a kernel distance matrix.
         """
+        # Validate inputs
+        if not isinstance(kernel, ck.Kernel):
+            raise TypeError(f"kernel must be of type coreax.kernel.Kernel.")
+        if not is_array_like(random_key):
+            raise TypeError(f"random_key must be of type array-like.")
+        if not isinstance(num_kernel_points, int):
+            raise TypeError(f"num_kernel_points must be of type int.")
+        if num_kernel_points <= 0:
+            raise ValueError(
+                f"num_kernel_points must be above zero, but got {num_kernel_points}."
+            )
+
+        # Assign inputs
         self.kernel = kernel
         self.random_key = random_key
         self.num_kernel_points = num_kernel_points
@@ -141,6 +154,15 @@ class RandomApproximator(KernelMeanApproximator):
         """
         Approximate kernel row mean by regression on points selected randomly.
         """
+        # Validate inputs
+        if not isinstance(num_train_points, int):
+            raise TypeError(f"num_train_points must be of type int.")
+        if num_train_points <= 0:
+            raise ValueError(
+                f"num_train_points must be above zero, but got {num_train_points}."
+            )
+
+        # Assign inputs
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -161,6 +183,10 @@ class RandomApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
+        # Validate inputs
+        if not is_array_like(data):
+            raise TypeError(f"data must be of type array-like.")
+
         # Ensure data is the expected type
         data = jnp.asarray(data)
         num_data_points = len(data)
@@ -213,6 +239,15 @@ class ANNchorApproximator(KernelMeanApproximator):
         """
         Approximate kernel row mean by regression on ANNchor selected points.
         """
+        # Validate inputs
+        if not isinstance(num_train_points, int):
+            raise TypeError(f"num_train_points must be of type int.")
+        if num_train_points <= 0:
+            raise ValueError(
+                f"num_train_points must be above zero, but got {num_train_points}."
+            )
+
+        # Assign inputs
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -233,6 +268,10 @@ class ANNchorApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
+        # Validate inputs
+        if not is_array_like(data):
+            raise TypeError(f"data must be of type array-like.")
+
         # Ensure data is the expected type
         data = jnp.asarray(data)
         num_data_points = len(data)
@@ -241,7 +280,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         features = jnp.zeros((num_data_points, self.num_kernel_points))
 
         features = features.at[:, 0].set(self.kernel.compute(data, data[0])[:, 0])
-        body = partial(anchor_body, data=data, kernel_function=self.kernel.compute)
+        body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
         features = lax.fori_loop(1, self.num_kernel_points, body, features)
 
         train_idx = random.choice(
@@ -300,6 +339,10 @@ class NystromApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
+        # Validate inputs
+        if not is_array_like(data):
+            raise TypeError(f"data must be of type array-like.")
+
         # Ensure data is the expected type
         data = jnp.asarray(data)
         num_data_points = len(data)
@@ -318,7 +361,7 @@ class NystromApproximator(KernelMeanApproximator):
 
 
 @partial(jit, static_argnames=["kernel_function"])
-def anchor_body(
+def _anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
