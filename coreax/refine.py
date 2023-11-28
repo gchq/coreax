@@ -646,8 +646,7 @@ class RefineReverse(Refine):
 
 
 # Define the pytree node for the added class to ensure methods with jit decorators
-# are able to run. We rely on the naming convention that all child classes of
-# ScoreMatching include the sub-string ScoreMatching inside of them.
+# are able to run. This tuple must be updated when a new class object is defined.
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for current_class in refine_classes:
     tree_util.register_pytree_node(
