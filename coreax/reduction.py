@@ -54,7 +54,7 @@ class DataReduction(ABC):
             self,
             data: cd.DataReader,
             weight: str | cw.WeightsOptimiser,
-            kernel: cu.KernelFunction):
+            kernel: ck.Kernel):
 
         self.data = data
         self.weight = weight
