@@ -18,6 +18,12 @@ aims to determine a model by matching the score function of the model to that
 of the data. Exactly how the score function is modelled is specific to each
 child class of the abstract base class :class:`ScoreMatching`.
 
+An example use of score matching arises when trying to work with a
+:class:`~coreax.kernel.SteinKernel`, which requires as an input a score function. If
+this is known analytically, one can provide an exact score function. In other cases,
+approximations to the score function are required, which can be determined using
+:class:`ScoreMatching`.
+
 When using :class:`SlicedScoreMatching`, the score function is approximated using a
 neural network.
 """

@@ -10,6 +10,25 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 # Support annotations with | in Python < 3.10
+
+"""
+Example coreset generation using randomly generated point clouds and score matching.
+
+This example showcases how a coreset can be generated from a dataset containing ``n``
+points sampled from ``k`` clusters in space.
+
+A coreset is generated using Stein kernel herding, with a PCIMQ base kernel. The score
+function (gradient of the log-density function) for the Stein kernel is estimated by
+applying kernel density estimation (KDE) to the data, and then taking gradients. The
+initial coreset generated from this procedure is then weighted, with weights determined
+such that the weighted coreset achieves a better maximum mean discrepancy when compared
+to the original dataset than the unweighted coreset.
+
+The coreset attained from Stein kernel herding is compared to a coreset generated via
+uniform random sampling. Coreset quality is measured using maximum mean discrepancy
+(MMD).
+"""
+
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 

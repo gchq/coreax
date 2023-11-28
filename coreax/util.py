@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Functionality to perform simple, generic tasks and operations.
+
+The functions within this module are simple solutions to various problems or
+requirements that are sufficiently generic to be useful across multiple areas of the
+codebase. Examples of this include computation of squared distances, definition of
+class factories and checks for numerical precision.
+"""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
