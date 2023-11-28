@@ -27,10 +27,6 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-import coreax.coreset as cc
-import coreax.metrics as cm
-import coreax.refine as cr
-import coreax.weights as cw
 
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
@@ -251,9 +247,9 @@ class ClassFactory:
 
 def create_instance_from_factory(
     factory_obj: ClassFactory,
-    class_type: str | type[cc.Coreset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+    class_type: str | type["Coreset"] | type["Metric"] | type["Refine"] | type["WeightsOptimiser"],
     **kwargs,
-) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
+) -> "Coreset" | "Metric" | "Refine" | "WeightsOptimiser":
     """
     Create a refine object for use with the fit method.
 
