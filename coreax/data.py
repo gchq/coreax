@@ -30,11 +30,15 @@ class DataReader(ABC):
     """DataReader."""
 
     def __init__(
-        self, original_data: ArrayLike, pre_reduction_array: list[list[float]]
+        self,
+        original_data: ArrayLike,
+        pre_reduction_array: list[list[float]],
+        reduction_indices: list[int] = [],
     ) -> None:
         """Initialise DataReader."""
         self.original_data = original_data
         self.pre_reduction_array = pre_reduction_array
+        self.reduction_indices = reduction_indices
         # self._dimension_reduction_meta: dict | None
 
     @classmethod
