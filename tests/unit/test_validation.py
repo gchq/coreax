@@ -125,6 +125,13 @@ class TestInputValidation(unittest.TestCase):
             variable_name="var",
             type_caster=int,
         )
+        self.assertRaises(
+            TypeError,
+            cast_variable_as_type,
+            x="120.0ABC",
+            variable_name="var",
+            type_caster=float,
+        )
 
 
 if __name__ == "__main__":
