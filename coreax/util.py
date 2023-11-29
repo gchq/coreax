@@ -249,16 +249,3 @@ class ClassFactory:
         if class_obj is None:
             raise KeyError(f"Class name {name} not recognised.")
         return class_obj
-
-
-def is_array_like(x: Any) -> bool:
-    """
-    Verify an input is array-like.
-
-    Validation of inputs often relies on ensuring objects are arrays of some form. Here
-    we verify this by inspecting their attributes, ensuring they have attributes of
-    standard arrays.
-
-    :param x: object we wish to check the type of
-    """
-    return hasattr(x, "__array__") or hasattr(x, "__array_interface__")
