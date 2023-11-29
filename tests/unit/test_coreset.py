@@ -55,7 +55,9 @@ class TestKernelHerding(unittest.TestCase):
             # Define class
             test_class = KernelHerding(mock_reader, 'MMD', mock_kernel, size=3)
 
-            with self.subTest("mean_supplied"):
+            with self.subTest("mean_supplied_no_refine"):
+                # Mean supplied but no refine
+                # Mean calculation should not happen and neither should refinement
 
                 gram_matrix, Kbar = test_class.fit(K_mean=2.5)
 
@@ -73,11 +75,19 @@ class TestKernelHerding(unittest.TestCase):
                 np.testing.assert_array_equal(Kbar,
                                               jnp.asarray([2.5, 6.5, 10.5]))
 
-            with self.subTest("mean_not_supplied"):
-                # Mean not supplied.
-                # Only difference to above test is mean is calculated so don't check anything else again.
+            with self.subTest("mean_not_supplied_with_refine"):
+                # Mean not supplied. Refine called for. No approximation.
+                # TODO Mean calculation should happen and so should refinement but without approximation
 
-                _, _ = test_class.fit()
+                _, _ = test_class.fit(refine='RefineRegular')
+
+                mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_called_once()
+
+            with self.subTest("mean_not_supplied_with_refine_approximate"):
+                # Mean not supplied. Refine called for. With approximation.
+                # TODO Mean calculation should happen and so should refinement and with approximation
+
+                _, _ = test_class.fit(refine='RefineRegular', approximator='approximator')
 
                 mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_called_once()
 
