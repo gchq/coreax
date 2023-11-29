@@ -74,7 +74,12 @@ from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
-from coreax.util import ClassFactory, KernelFunction, is_array_like
+from coreax.util import ClassFactory, KernelFunction
+from coreax.validation import (
+    cast_variable_as_type,
+    validate_number_in_range,
+    validate_variable_is_instance,
+)
 
 
 class KernelMeanApproximator(ABC):
@@ -100,17 +105,21 @@ class KernelMeanApproximator(ABC):
         """
         Define an approximator to the mean of the row sum of a kernel distance matrix.
         """
-        # Validate inputs
-        if not isinstance(kernel, ck.Kernel):
-            raise TypeError(f"kernel must be of type coreax.kernel.Kernel.")
-        if not is_array_like(random_key):
-            raise TypeError(f"random_key must be of type array-like.")
-        if not isinstance(num_kernel_points, int):
-            raise TypeError(f"num_kernel_points must be of type int.")
-        if num_kernel_points <= 0:
-            raise ValueError(
-                f"num_kernel_points must be above zero, but got {num_kernel_points}."
-            )
+        # Validate inputs of coreax defined classes
+        validate_variable_is_instance(kernel, "kernel", ck.Kernel)
+
+        # Validate inputs of non-coreax defined classes
+        random_key = cast_variable_as_type(
+            x=random_key, variable_name="random_key", type_caster=jnp.asarray
+        )
+        num_kernel_points = cast_variable_as_type(
+            x=num_kernel_points, variable_name="num_kernel_points", type_caster=int
+        )
+
+        # Validate inputs lie within accepted ranges
+        validate_number_in_range(
+            x=num_kernel_points, variable_name="num_kernel_points", lower_limit=0
+        )
 
         # Assign inputs
         self.kernel = kernel
@@ -154,13 +163,15 @@ class RandomApproximator(KernelMeanApproximator):
         """
         Approximate kernel row mean by regression on points selected randomly.
         """
-        # Validate inputs
-        if not isinstance(num_train_points, int):
-            raise TypeError(f"num_train_points must be of type int.")
-        if num_train_points <= 0:
-            raise ValueError(
-                f"num_train_points must be above zero, but got {num_train_points}."
-            )
+        # Validate inputs of non-coreax defined classes
+        num_train_points = cast_variable_as_type(
+            x=num_train_points, variable_name="num_train_points", type_caster=int
+        )
+
+        # Validate inputs lie within accepted ranges
+        validate_number_in_range(
+            x=num_train_points, variable_name="num_train_points", lower_limit=0
+        )
 
         # Assign inputs
         self.num_train_points = num_train_points
@@ -184,11 +195,11 @@ class RandomApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        if not is_array_like(data):
-            raise TypeError(f"data must be of type array-like.")
+        data = cast_variable_as_type(
+            x=data, variable_name="data", type_caster=jnp.asarray
+        )
 
-        # Ensure data is the expected type
-        data = jnp.asarray(data)
+        # Record dataset size
         num_data_points = len(data)
 
         # Randomly select points for kernel regression
@@ -239,13 +250,15 @@ class ANNchorApproximator(KernelMeanApproximator):
         """
         Approximate kernel row mean by regression on ANNchor selected points.
         """
-        # Validate inputs
-        if not isinstance(num_train_points, int):
-            raise TypeError(f"num_train_points must be of type int.")
-        if num_train_points <= 0:
-            raise ValueError(
-                f"num_train_points must be above zero, but got {num_train_points}."
-            )
+        # Validate inputs of non-coreax defined classes
+        num_train_points = cast_variable_as_type(
+            x=num_train_points, variable_name="num_train_points", type_caster=int
+        )
+
+        # Validate inputs lie within accepted ranges
+        validate_number_in_range(
+            x=num_train_points, variable_name="num_train_points", lower_limit=0
+        )
 
         # Assign inputs
         self.num_train_points = num_train_points
@@ -269,11 +282,11 @@ class ANNchorApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        if not is_array_like(data):
-            raise TypeError(f"data must be of type array-like.")
+        data = cast_variable_as_type(
+            x=data, variable_name="data", type_caster=jnp.asarray
+        )
 
-        # Ensure data is the expected type
-        data = jnp.asarray(data)
+        # Record dataset size
         num_data_points = len(data)
 
         # Select point for kernel regression using ANNchor construction
@@ -340,11 +353,11 @@ class NystromApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        if not is_array_like(data):
-            raise TypeError(f"data must be of type array-like.")
+        data = cast_variable_as_type(
+            x=data, variable_name="data", type_caster=jnp.asarray
+        )
 
-        # Ensure data is the expected type
-        data = jnp.asarray(data)
+        # Record dataset size
         num_data_points = len(data)
 
         # Randomly select points for kernel regression
@@ -377,8 +390,11 @@ def _anchor_body(
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
     :return: Updated loop variables `features`
     """
-    features = jnp.asarray(features)
-    data = jnp.asarray(data)
+    # Validate inputs
+    features = cast_variable_as_type(
+        x=features, variable_name="features", type_caster=jnp.asarray
+    )
+    data = cast_variable_as_type(x=data, variable_name="data", type_caster=jnp.asarray)
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
