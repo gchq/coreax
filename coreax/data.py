@@ -12,127 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""DataReader and data classes."""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from pathlib import Path
+from abc import ABC
 
-import cv2
-import numpy as np
-from matplotlib import pyplot as plt
+from jax.typing import ArrayLike
+from matplotlib import figure
 
-import coreax.reduction as cr
-import coreax.util as cu
+from coreax.reduction import DataReduction, ReductionStrategy
 
 
 class DataReader(ABC):
-    """Base class for reading data."""
+    """DataReader."""
 
-    loaded_file = None
+    def __init__(
+        self, original_data: ArrayLike, pre_reduction_array: list[list[float]]
+    ) -> None:
+        """Initialise DataReader."""
+        self.original_data = original_data
+        self.pre_reduction_array = pre_reduction_array
+        # self._dimension_reduction_meta: dict | None
 
-    @abstractmethod
-    def load(self, file_path: Path):
-        r"""
-        Read in a file and save to class instance.
-
-        :param file_path: Path to file to be read in
+    @classmethod
+    def load(cls, original_data: ArrayLike) -> DataReader:
         """
+        Construct DataReader.
 
-    @abstractmethod
-    def reduce(
-        self,
-        reduction_strategy: str | cr.ReductionStrategy,
-        data_reduction: str | cr.DataReduction,
-    ) -> cr.DataReduction:
-        r"""
-        Reduce the original data.
+        Use instead of __init__.
 
-        :param reduction_strategy: Reduction strategy to be applied
-        :param data_reduction: Data reduction of the original data
+        :param original_data:
+        :return:
         """
-
-    @abstractmethod
-    def render(self, data_reduction: cr.DataReduction | None):
-        r"""
-        Render the original data or the coreset onscreen.
-
-        :param data_reduction: Data reduction of the original data
-        """
-
-    @abstractmethod
-    def save_reduction(self, file_path, data_reduction: cr.DataReduction):
-        r"""
-        Save the original data or the coreset to a file.
-
-        :param file_path: File path to save data to
-        :param data_reduction: Data reduction of the original data
-        """
-
-
-class Image(DataReader):
-    """
-    TODO
-    """
-
-    def __init__(self):
-        self.loaded_data = None
-
-    def load(self, file_path):
-        # path to original image
-        orig = cv2.imread(str(file_path))
-
-        print(f"Image dimensions: {orig.shape}")
-        X_ = np.column_stack(np.where(orig < 255))
-        vals = orig[orig < 255]
-        X = np.column_stack((X_, vals)).astype(np.float32)
-
-        self.loaded_data = X
+        # Calculate pre_reduction_array
+        pre_reduction_array = []
+        return cls(original_data, pre_reduction_array)
 
     def reduce(
         self,
-        reduction_strategy: str | cr.ReductionStrategy,
-        data_reduction: str | cr.DataReduction,
-    ):
-        reduction_strategy_obj = cr.reduction_strategy_factory.get(reduction_strategy)
-        data_reduction_obj = cr.data_reduction_factory.get(data_reduction)
-        reduction_strategy_obj.__init__(data_reduction_obj)
-        reduction_strategy_obj.reduce()
+        reduction_strategy: str | ReductionStrategy,
+        data_reducer: str | DataReduction,
+    ) -> DataReduction:
+        """
+        Reduce data.
 
-        return reduction_strategy_obj
+        :param reduction_strategy:
+        :param data_reducer:
+        :return:
+        """
+        raise NotImplementedError
 
-    def render(self, data_reduction: cr.DataReduction | None):
-        if isinstance(data_reduction, cr.DataReduction):
-            coreset = self.loaded_data[data_reduction.reduction_indices]
-            plt.figure(figsize=(10, 5))
-            plt.imshow(coreset, cmap="gray")
-            plt.title("Coreset")
-            plt.axis("off")
-            plt.show()
-        else:
-            plt.figure(figsize=(10, 5))
-            plt.imshow(self.loaded_file, cmap="gray")
-            plt.title("Original")
-            plt.axis("off")
-            plt.show()
+    def render(self, data_reduction: DataReduction | None) -> figure:
+        """
+        Create matplotlib figure of data.
 
-    def save_reduction(self, file_path, data_reduction: cr.DataReduction | None):
-        data_reduction.render(file_path)
-        if isinstance(data_reduction, cr.DataReduction):
-            coreset = self.loaded_data[data_reduction.reduction_indices]
-            plt.figure(figsize=(10, 5))
-            plt.imshow(coreset, cmap="gray")
-            plt.title("Coreset")
-            plt.axis("off")
-            plt.savefig(file_path)
-        else:
-            plt.figure(figsize=(10, 5))
-            plt.imshow(self.loaded_file, cmap="gray")
-            plt.title("Original")
-            plt.axis("off")
-            plt.show()
+        :param data_reduction:
+        :return:
+        """
+        raise NotImplementedError
 
+    def reduce_dimension(self, num_dimension: int) -> None:
+        """
+        Run PCA.
 
-data_reader_factory = cu.ClassFactory(DataReader)
-data_reader_factory.register("image", Image)
+        :param num_dimension: Number of dimensions.
+        """
+        raise NotImplementedError
+
+    def restore_dimension(self, data_reduction: DataReduction | None) -> ArrayLike:
+        """
+        Expand principle components into original dimensions.
+
+        :param data_reduction:
+        :return:
+        """
+        raise NotImplementedError
