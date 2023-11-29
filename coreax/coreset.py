@@ -26,6 +26,8 @@ The abstract base class is :class:`Coreset`. Concrete implementations are:
 *   :class:`RandomSample` selects points for the coreset using random sampling. It is
     typically only used for benchmarking against other coreset methods.
 """
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -279,49 +281,49 @@ class KernelHerding(Coreset):
 
 
 class RandomSample(Coreset):
-    """Reduce a dataset by simply randomly sampling ``n`` points."""
+    r"""
+    Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
-    def __init__(self, data: DataReader, size: int, random_key: int = 0):
-        r"""
-        Initialise a random sampling object.
+    :param data: The :math:`n \times d` dataset to be reduced
+    :param coreset_size: Number of  points to randomly sample from ``data``
+    :param random_key: Pseudo-random number generator key for sampling
+    :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
+        without replacement
+    """
 
-        :param data: The :math:`n \times d` dataset to be reduced
-        :param size: Number of  points to randomly sample from ``data``
-        :param random_key: Pseudo-random number generator key for sampling
-        """
+    def __init__(
+        self,
+        data: DataReader,
+        coreset_size: int,
+        random_key: ArrayLike = 0,
+        unique: bool = True,
+    ):
+        """Initialise a random sampling object."""
         self.random_key = random_key
+        self.unique_flag = unique
 
         # Initialise Coreset parent
-        super().__init__(data, size)
+        super().__init__(data, coreset_size)
 
-    def fit(
-        self,
-        X,
-        unique: bool = True,
-    ) -> Array:
+    def fit(self) -> None:
         r"""
         Reduce a dataset by randomly sampling ``n`` points from the original dataset.
 
-        TODO: input ``X`` is equal to self.data, so replace ``X`` with self.data and
-        remove this input?
+        The DataReduction object is updated in-place. The randomly sampled points are
+        stored in the `reduction_indices` attribute.
 
-        :param X: :math:`n \times d` dataset to randomly sample from
-        :param unique: Flag for enforcing unique elements
-        :returns: Reduced dataset point indices
+        :return: Nothing, the DataReduction object is updated in-place
         """
         key = random.PRNGKey(self.random_key)
+        X = self.data.pre_reduction_array
         n = len(X)
 
-        if unique:
-            random_indices = random.choice(
-                key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=False
-            )
-        else:
-            random_indices = random.choice(
-                key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=True
-            )
+        replace = not self.unique_flag
+        random_indices = random.choice(
+            key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=replace
+        )
 
-        return random_indices
+        self.reduction_indices = random_indices
 
 
 data_reduction_factory.register("kernel_herding", KernelHerding)
