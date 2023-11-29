@@ -49,18 +49,18 @@ term) and exploration of distinct regions of the space (the second term).
 
 from abc import abstractmethod
 from functools import partial
-from multiprocessing.pool import ThreadPool
 
 import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit
+from jax import Array, jit, random
 from jax.typing import ArrayLike
-from sklearn.neighbors import KDTree
 
+from coreax.approximation import KernelMeanApproximator, approximator_factory
 from coreax.data import DataReader
 from coreax.kernel import Kernel
 from coreax.reduction import DataReduction, data_reduction_factory
-from coreax.util import KernelFunction
+from coreax.refine import Refine, refine_factory
+from coreax.util import KernelFunction, create_instance_from_factory
 from coreax.weights import WeightsOptimiser
 
 
@@ -118,6 +118,10 @@ class KernelHerding(Coreset):
             K_mean: Array | None = None,
             unique: bool = True,
             nu: float = 1.0,
+            refine: str | Refine | None = None,
+            approximator: str | KernelMeanApproximator | None = None,
+            random_key: random.PRNGKeyArray = random.PRNGKey(0),
+            num_kernel_points: int = 10_000,
     ) -> tuple[Array, Array]:
         r"""
         Execute kernel herding algorithm with Jax.
@@ -125,11 +129,18 @@ class KernelHerding(Coreset):
         :param block_size: Size of matrix blocks to process
         :param K_mean: Row sum of kernel matrix divided by `n`
         :param unique: Flag for enforcing unique elements
+        :param refine: Refine method to use or None (default) if no refinement required
+        :param approximator: coreax KernelMeanApproximator object for the kernel mean
+            approximation method. If None (default) then calculation is exact.
+        :param random_key: Key for random number generation
+        :param num_kernel_points: Number of kernel evaluation points for approximation
         :returns: coreset Gram matrix and coreset Gram mean
         """
 
         n = len(self.reduced_data)
         if K_mean is None:
+            # TODO: for the reviewer, the issue ticket says we should "incorporate the caching of K_mean from
+            #  kernel_herding_refine into KernelHerding" but the mean is needed here before being calculated in Refine.refine
             K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(self.reduced_data, max_size=block_size)
 
         # Initialise loop updateables
@@ -142,6 +153,28 @@ class KernelHerding(Coreset):
         self.reduction_indices, K, _ = lax.fori_loop(0, self.coreset_size, body, (S, K, K_t))
         Kbar = K.mean(axis=1)
         gram_matrix = K[:, self.reduction_indices]
+
+        # TODO: for reviewer, this whole block seems clunky...
+        if refine is not None:
+            if approximator is not None:
+                # Create an approximator object
+                approximator_instance = create_instance_from_factory(
+                    approximator_factory,
+                    approximator,
+                    random_key=random_key,
+                    num_kernel_points=num_kernel_points,
+                )
+            else:
+                approximator_instance = None
+            # Create a Refine object
+            refine_instance = create_instance_from_factory(
+                refine_factory,
+                refine,
+                approximate_kernel_row_sum=False if approximator is None else True,
+                approximator=approximator_instance,
+            )
+            # refine
+            refine_instance.refine(data_reduction=self)
 
         return gram_matrix, Kbar
 
