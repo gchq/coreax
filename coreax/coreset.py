@@ -55,17 +55,17 @@ class Coreset(DataReduction):
         data: DataReader,
         weight: str | WeightsOptimiser,
         kernel: Kernel,
-        size: int,
+        coreset_size: int,
     ):
         """
         TODO: remove ``weight`` and ``kernel`` from ABC as these aren't in all children.
 
-        :param size: Number of coreset points to calculate
+        :param coreset_size: Number of coreset points to calculate
         """
-        self.coreset_size = size
+        self.coreset_size = coreset_size
         super().__init__(data, weight, kernel)
 
-        self.reduction_indices = jnp.asarray(range(data.pre_reduction_data.shape[0]))
+        self.reduction_indices = jnp.asarray(range(data.pre_reduction_array.shape[0]))
 
     @abstractmethod
     def fit(
@@ -303,9 +303,9 @@ class RandomSample(Coreset):
         self.unique_flag = unique
 
         # Initialise Coreset parent
-        super().__init__(data, coreset_size)
+        super().__init__(data=data, weight="", kernel="", coreset_size=coreset_size)
 
-    def fit(self) -> None:
+    def fit(self) -> DataReader:
         r"""
         Reduce a dataset by randomly sampling ``n`` points from the original dataset.
 
@@ -324,6 +324,8 @@ class RandomSample(Coreset):
         )
 
         self.reduction_indices = random_indices
+
+        return self
 
 
 data_reduction_factory.register("kernel_herding", KernelHerding)
