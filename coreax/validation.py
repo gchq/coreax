@@ -79,7 +79,13 @@ def cast_variable_as_type(x: Any, variable_name: str, type_caster: Callable) -> 
     """
     try:
         return type_caster(x)
-    except:
-        raise TypeError(
-            f"{variable_name} cannot be cast using {type_caster}. Given value {x}."
+    except Exception as e:
+        error_text = (
+            f"{variable_name} cannot be cast using {type_caster}. "
+            f"Given value {x}.\n"
         )
+        if hasattr(e, "message"):
+            error_text += e.message
+        else:
+            error_text += str(e)
+        raise TypeError(error_text)
