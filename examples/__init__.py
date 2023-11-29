@@ -15,6 +15,6 @@
 """
 Example use cases of the coreax library.
 
-Examples showcases coreset generation on different datasets, as-well as using different
+Examples showcase coreset generation on different datasets, as well as using different
 coreset generation algorithms to illustrate the capabilities of the library.
 """
