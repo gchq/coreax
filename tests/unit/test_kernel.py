@@ -252,9 +252,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     -(x_ - y_)
                     / length_scale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
@@ -292,9 +292,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     -output_scale
                     * (x_ - y_)
                     / length_scale**2
@@ -358,7 +358,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test the definition of pairwise kernel evaluation functions.
 
         Pairwise distances mean, given two input arrays, we should return a matrix
-        where the values correspond to the distance, as judged by the kernel, between
+        where the values correspond to the distance, as defined by the kernel, between
         each point in the first array and each point in the second array.
 
         The SquaredExponential kernel is defined as
@@ -383,9 +383,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 3])
-        for x_index, x_ in enumerate(x):
-            for y_index, y_ in enumerate(y):
-                expected_output[x_index, y_index] = kernel.compute(x_, y_)[0, 0]
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = kernel.compute(x_, y_)[0, 0]
 
         # Compute the pairwise distances between the data using the kernel
         output = kernel.compute(x, y)
@@ -417,9 +417,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # and columns) and then adding the pairwise distances up to this point. Any
         # pairs of points beyond this subset of indices should not be computed
         expected_output = np.zeros([5, 5])
-        for x_1_index, x_1 in enumerate(x[0:max_size]):
-            for x_2_index, x_2 in enumerate(x[0:max_size]):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
+        for x_1_idx, x_1 in enumerate(x[0:max_size]):
+            for x_2_idx, x_2 in enumerate(x[0:max_size]):
+                expected_output[x_1_idx, x_2_idx] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.sum(axis=1)
 
         # Compute the kernel matrix row sum with the class
@@ -446,9 +446,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 5])
-        for x_1_index, x_1 in enumerate(x):
-            for x_2_index, x_2 in enumerate(x):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
+        for x_1_idx, x_1 in enumerate(x):
+            for x_2_idx, x_2 in enumerate(x):
+                expected_output[x_1_idx, x_2_idx] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.sum(axis=1)
 
         # Compute the kernel matrix row sum with the class
@@ -473,9 +473,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Define expected output for pairwise distances, then take the mean of them
         expected_output = np.zeros([5, 5])
-        for x_1_index, x_1 in enumerate(x):
-            for x_2_index, x_2 in enumerate(x):
-                expected_output[x_1_index, x_2_index] = kernel.compute(x_1, x_2)[0, 0]
+        for x_1_idx, x_1 in enumerate(x):
+            for x_2_idx, x_2 in enumerate(x):
+                expected_output[x_1_idx, x_2_idx] = kernel.compute(x_1, x_2)[0, 0]
         expected_output = expected_output.mean(axis=1)
 
         # Compute the kernel matrix row sum mean with the class
@@ -499,9 +499,11 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute expected output using standard implementation of the Gaussian PDF
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = scipy.stats.norm(y_, length_scale).pdf(x_)
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = scipy.stats.norm(y_, length_scale).pdf(
+                    x_
+                )
 
         # Compute the normalised PDF output using the kernel class
         kernel = ck.SquaredExponentialKernel(
@@ -526,10 +528,12 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                dp = np.dot(x_ - y_, x_ - y_)
-                expected_output[i, j] = 2 * np.exp(-dp) * (dimension - 2 * dp)
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                dot_product = np.dot(x_ - y_, x_ - y_)
+                expected_output[x_idx, y_idx] = (
+                    2 * np.exp(-dot_product) * (dimension - 2 * dot_product)
+                )
         # Compute output using Kernel class
         kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
         output = kernel.divergence_x_grad_y(x, y)
@@ -551,12 +555,16 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                dp = np.dot(x_ - y_, x_ - y_)
-                k = output_scale * np.exp(-dp / (2.0 * length_scale**2))
-                expected_output[i, j] = (
-                    k / length_scale**2 * (dimension - dp / length_scale**2)
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                dot_product = np.dot(x_ - y_, x_ - y_)
+                kernel_scaled = output_scale * np.exp(
+                    -dot_product / (2.0 * length_scale**2)
+                )
+                expected_output[x_idx, y_idx] = (
+                    kernel_scaled
+                    / length_scale**2
+                    * (dimension - dot_product / length_scale**2)
                 )
         # Compute output using Kernel class
         kernel = ck.SquaredExponentialKernel(
@@ -575,7 +583,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
     def test_laplacian_kernel_init(self) -> None:
         r"""
-        Test the initilisation of LaplacianKernel with a negative length_scale.
+        Test the initilisation of LaplacianKernel with a negative ``length_scale``.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -758,9 +766,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     -np.sign(x_ - y_)
                     / (2 * length_scale**2)
                     * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
@@ -799,9 +807,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     -output_scale
                     * np.sign(x_ - y_)
                     / (2 * length_scale**2)
@@ -842,9 +850,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     np.sign(x_ - y_)
                     / (2 * length_scale**2)
                     * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
@@ -874,9 +882,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = (
                     -dimension
                     / (4 * length_scale**4)
                     * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
@@ -902,9 +910,9 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = (
                     -output_scale
                     * dimension
                     / (4 * length_scale**4)
@@ -948,9 +956,9 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Compute expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = 1.0 / np.sqrt(
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = 1.0 / np.sqrt(
                     1.0 + ((x_[0] - y_[0]) / length_scale) ** 2 / 2.0
                 )
 
@@ -974,9 +982,9 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = -(x_ - y_) / (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = -(x_ - y_) / (
                     1 + np.linalg.norm(x_ - y_) ** 2
                 ) ** (3 / 2)
 
@@ -1000,9 +1008,9 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = (x_ - y_) / (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = (x_ - y_) / (
                     1 + np.linalg.norm(x_ - y_) ** 2
                 ) ** (3 / 2)
 
@@ -1027,9 +1035,9 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                expected_output[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = (
                     output_scale
                     / (2 * length_scale**2)
                     * (x_ - y_)
@@ -1057,11 +1065,13 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                dp = np.dot(x_ - y_, x_ - y_)
-                den = (1 + dp) ** (3 / 2)
-                expected_output[i, j] = dimension / den - 3 * dp / den ** (5 / 3)
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                dot_product = np.dot(x_ - y_, x_ - y_)
+                denominator = (1 + dot_product) ** (3 / 2)
+                expected_output[
+                    x_idx, y_idx
+                ] = dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
 
         # Compute output using Kernel class
         kernel = ck.PCIMQKernel(length_scale=length_scale)
@@ -1084,16 +1094,21 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                dp = np.dot(x_ - y_, x_ - y_)
-                k = output_scale / ((1 + dp / (2 * length_scale**2)) ** (1 / 2))
-                expected_output[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                dot_product = np.dot(x_ - y_, x_ - y_)
+                kernel_scaled = output_scale / (
+                    (1 + dot_product / (2 * length_scale**2)) ** (1 / 2)
+                )
+                expected_output[x_idx, y_idx] = (
                     output_scale
                     / (2 * length_scale**2)
                     * (
-                        dimension * (k / output_scale) ** 3
-                        - 3 * dp * (k / output_scale) ** 5 / (2 * length_scale**2)
+                        dimension * (kernel_scaled / output_scale) ** 3
+                        - 3
+                        * dot_product
+                        * (kernel_scaled / output_scale) ** 5
+                        / (2 * length_scale**2)
                     )
                 )
         # Compute output using Kernel class
@@ -1219,10 +1234,10 @@ class TestSteinKernel(unittest.TestCase):
         # Compute the output step-by-step with the element method
         expected_output = np.zeros([x.shape[0], y.shape[0]])
         output = kernel.compute(x, y)
-        for i, x__ in enumerate(x):
-            for j, y__ in enumerate(y):
+        for x_idx, x__ in enumerate(x):
+            for y_idx, y__ in enumerate(y):
                 # Compute via our hand-coded kernel evaluation
-                expected_output[i, j] = k_x_y(x__, y__)
+                expected_output[x_idx, y_idx] = k_x_y(x__, y__)
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)

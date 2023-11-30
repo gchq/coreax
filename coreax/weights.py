@@ -27,7 +27,7 @@ class WeightsOptimiser(ABC):
     """
     Base class for calculating weights.
 
-    :param kernel: Kernel object
+    :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
     def __init__(self, kernel: coreax.kernel.Kernel) -> None:
@@ -51,6 +51,10 @@ class WeightsOptimiser(ABC):
     def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Calculate approximate weights.
+
+        :param x: The original :math:`n \times d` data
+        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :return: Approximately optimal weighting of points in ``y`` to represent ``x``
         """
         warnings.warn(
             "solve_approximate() not yet implemented. "
@@ -67,7 +71,7 @@ class SBQ(WeightsOptimiser):
     Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
 
-    :param kernel: Kernel object
+    :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -117,7 +121,7 @@ class MMD(WeightsOptimiser):
 
     using the OSQP quadratic programming solver.
 
-    :param kernel: Kernel object
+    :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
     def solve(self, x: ArrayLike, y: ArrayLike, epsilon: float = 1e-10) -> Array:

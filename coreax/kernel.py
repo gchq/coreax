@@ -40,7 +40,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         0-dimensional array
     """
     # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(cu.sq_dist_pairwise(x, x), k=1)
+    square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
     median_square_distance = jnp.median(
         square_distances[jnp.triu_indices_from(square_distances, k=1)]
@@ -537,7 +537,7 @@ class SquaredExponentialKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         return self.output_scale * jnp.exp(
-            -cu.sq_dist(x, y) / (2 * self.length_scale**2)
+            -cu.squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     def _grad_x_elementwise(
@@ -605,7 +605,7 @@ class SquaredExponentialKernel(Kernel):
         k = self._compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
-        return scale * k * (d - scale * cu.sq_dist(x, y))
+        return scale * k * (d - scale * cu.squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
@@ -752,7 +752,7 @@ class PCIMQKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         scaling = 2 * self.length_scale**2
-        mq_array = cu.sq_dist(x, y) / scaling
+        mq_array = cu.squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     def _grad_x_elementwise(
@@ -821,7 +821,7 @@ class PCIMQKernel(Kernel):
         return (
             self.output_scale
             / scale
-            * (d * k**3 - 3 * k**5 * cu.sq_dist(x, y) / scale)
+            * (d * k**3 - 3 * k**5 * cu.squared_distance(x, y) / scale)
         )
 
 

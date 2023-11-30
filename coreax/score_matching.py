@@ -49,11 +49,6 @@ class ScoreMatching(ABC):
     child class of this base class.
     """
 
-    def __init__(self):
-        r"""
-        Define a score matching algorithm.
-        """
-
     @classmethod
     def _tree_unflatten(cls, aux_data, children):
         """
@@ -128,7 +123,7 @@ class SlicedScoreMatching(ScoreMatching):
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
-        r"""
+        """
         Define a sliced score matching class.
         """
         # Assign all inputs
@@ -258,7 +253,7 @@ class SlicedScoreMatching(ScoreMatching):
     def _loss_element(
         self, x: ArrayLike, v: ArrayLike, score_network: Callable
     ) -> float:
-        r"""
+        """
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
@@ -273,7 +268,7 @@ class SlicedScoreMatching(ScoreMatching):
         return self._objective_function(v, u, s)
 
     def _loss(self, score_network: Callable) -> Callable:
-        r"""
+        """
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
