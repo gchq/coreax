@@ -54,13 +54,13 @@ class TestMMD(unittest.TestCase):
 
         Generate ``num_points_x`` random points in ``d`` dimensions from a uniform
         distribution [0, 1).
-        Randomly select ``num_points_y`` points for second dataset ``Y``.
+        Randomly select ``num_points_y`` points for second dataset ``y``.
         Generate weights: ``weights_x`` for original data, ``weights_y`` for second
-        dataset ``Y``.
+        dataset ``y``.
 
         :num_points_x: Number of test data points
         :d: Dimension of data
-        :m: Number of points to randomly select for second dataset ``Y``
+        :m: Number of points to randomly select for second dataset ``y``
         :max_size: Maximum number of points for block calculations
         """
         # Define data parameters
@@ -103,34 +103,34 @@ class TestMMD(unittest.TestCase):
         r"""
         Test mmd function with a small example dataset of ones and zeros.
 
-        For the dataset of 4 points in 2 dimensions, :math:`X`, and another dataset
-        :math:`Y`, given by:
+        For the dataset of 4 points in 2 dimensions, :math:`x`, and another dataset
+        :math:`y`, given by:
 
         .. math::
 
-            X = [[0,0], [1,1], [0,0], [1,1]]
+            x = [[0,0], [1,1], [0,0], [1,1]]
 
-            Y = [[0,0], [1,1]]
+            y = [[0,0], [1,1]]
 
         the Gaussian (aka radial basis function) kernel,
         :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
 
         .. math::
 
-            k(X,X) = \exp(-\begin{bmatrix}0 & 2 & 0 & 2 \\ 2 & 0 & 2 & 0\\ 0 & 2 & 0 &
+            k(x,x) = \exp(-\begin{bmatrix}0 & 2 & 0 & 2 \\ 2 & 0 & 2 & 0\\ 0 & 2 & 0 &
             2 \\ 2 & 0 & 2 & 0\end{bmatrix}/2\sigma^2).
 
-            k(Y,Y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \end{bmatrix}/2\sigma^2).
+            k(y,y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \end{bmatrix}/2\sigma^2).
 
-            k(X,Y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \\0 & 2  \\ 2 & 0
+            k(x,y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \\0 & 2  \\ 2 & 0
             \end{bmatrix}/2\sigma^2).
 
         Then
 
         .. math::
 
-            \text{MMD}^2(X,Y) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(Y,Y)) -
-            2\mathbb{E}(k(X,Y))
+            \text{MMD}^2(x,y) = \mathbb{E}(k(x,x)) + \mathbb{E}(k(y,y)) -
+            2\mathbb{E}(k(x,y))
 
             = \frac{1}{2} + e^{-1/2} + \frac{1}{2} + e^{-1/2} - 2\left(\frac{1}{2}
             + e^{-1/2}\right)
@@ -158,27 +158,27 @@ class TestMMD(unittest.TestCase):
         r"""
         Test MMD function with a small example dataset of integers.
 
-        For the dataset of 3 points in 2 dimensions, :math:`X`, and second dataset
-        :math:`Y`, given by:
+        For the dataset of 3 points in 2 dimensions, :math:`x`, and second dataset
+        :math:`y`, given by:
 
         .. math::
 
-            X = [[0,0], [1,1], [2,2]]
+            x = [[0,0], [1,1], [2,2]]
 
-            Y = [[0,0], [1,1]]
+            y = [[0,0], [1,1]]
 
         the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
 
         .. math::
 
-            k(X,X) = \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \\ 8 & 2 & 0
+            k(x,x) = \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \\ 8 & 2 & 0
             \end{bmatrix}/2\sigma^2) = \begin{bmatrix}1 & e^{-1} & e^{-4} \\ e^{-1} &
             1 & e^{-1} \\ e^{-4} & e^{-1} & 1\end{bmatrix}.
 
-            k(Y,Y) = \exp(-\begin{bmatrix}0 & 2 \\ 2 & 0 \end{bmatrix}/2\sigma^2) =
+            k(y,y) = \exp(-\begin{bmatrix}0 & 2 \\ 2 & 0 \end{bmatrix}/2\sigma^2) =
              \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix}.
 
-            k(X,Y) =  \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \end{bmatrix}
+            k(x,y) =  \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \end{bmatrix}
             /2\sigma^2) = \begin{bmatrix}1 & e^{-1} \\  e^{-1} & 1 \\ e^{-4} & e^{-1}
             \end{bmatrix}.
 
@@ -186,8 +186,8 @@ class TestMMD(unittest.TestCase):
 
         .. math::
 
-            \text{MMD}^2(X,Y) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(Y,Y)) -
-            2\mathbb{E}(k(X,Y))
+            \text{MMD}^2(x,y) = \mathbb{E}(k(x,x)) + \mathbb{E}(k(y,y)) -
+            2\mathbb{E}(k(x,y))
 
             = \frac{3+4e^{-1}+2e^{-4}}{9} + \frac{2 + 2e^{-1}}{2} -2 \times
             \frac{2 + 3e^{-1}+e^{-4}}{6}
@@ -245,14 +245,14 @@ class TestMMD(unittest.TestCase):
         wmmd is calculated if and only if weights_y are provided. When weights_y =
         None, the MMD class computes the standard, non-weighted mmd.
 
-        For the dataset of 3 points in 2 dimensions :math:`X`, second dataset :math:`Y`,
+        For the dataset of 3 points in 2 dimensions :math:`x`, second dataset :math:`y`,
         and weights for this second dataset :math:`w_y`, given by:
 
         .. math::
 
-            X = [[0,0], [1,1], [2,2]]
+            x = [[0,0], [1,1], [2,2]]
 
-            Y = [[0,0], [1,1]]
+            y = [[0,0], [1,1]]
 
             w_y = [1,0]
 
@@ -260,8 +260,8 @@ class TestMMD(unittest.TestCase):
 
         .. math::
 
-            \text{WMMD}^2(X,Y) = \mathbb{E}(k(X,X)) + w_y^T k(Y,Y) w_y
-             - 2\mathbb{E}_X(k(X,Y)) w_y
+            \text{WMMD}^2(x,y) = \mathbb{E}(k(x,x)) + w_y^T k(y,y) w_y
+             - 2\mathbb{E}_x(k(x,y)) w_y
 
             = \frac{3+4e^{-1}+2e^{-4}}{9} + 1 - 2 \times \frac{1 + e^{-1} + e^{-4}}{3}
 
@@ -344,14 +344,14 @@ class TestMMD(unittest.TestCase):
         r"""
         Test sum_pairwise_distances() with a small integer example.
 
-        For the dataset of 3 points in 2 dimensions :math:`X`, and second dataset
-        :math:`Y`:
+        For the dataset of 3 points in 2 dimensions :math:`x`, and second dataset
+        :math:`y`:
 
         .. math::
 
-            X = [[0,0], [1,1], [2,2]]
+            x = [[0,0], [1,1], [2,2]]
 
-            Y = [[0,0], [1,1]]
+            y = [[0,0], [1,1]]
 
         the pairwise square distances are given by the matrix:
 
@@ -370,7 +370,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = cu.sq_dist_pairwise
+        kernel.compute = cu.squared_distance_pairwise
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -480,20 +480,20 @@ class TestMMD(unittest.TestCase):
         r"""
         Test sum_weight_K(), which calculates w^T*K*w matrices in blocks of max_size.
 
-        For the dataset of 3 points in 2 dimensions :math:`X`, and second dataset
-        :math:`Y`:
+        For the dataset of 3 points in 2 dimensions :math:`x`, and second dataset
+        :math:`y`:
 
         .. math::
 
-            X = [[0,0], [1,1], [2,2]]
+            x = [[0,0], [1,1], [2,2]]
 
-            Y = [[0,0], [1,1]]
+            y = [[0,0], [1,1]]
 
         the pairwise square distances are given by the matrix:
 
         .. math::
 
-            k(X, Y) = \begin{bmatrix}0 & 2 \\ 2 & 0 \\ 8 & 2 \end{bmatrix}.
+            k(x, y) = \begin{bmatrix}0 & 2 \\ 2 & 0 \\ 8 & 2 \end{bmatrix}.
 
         Then, for weights vectors:
 
@@ -503,7 +503,7 @@ class TestMMD(unittest.TestCase):
 
             w_y = [1, 0]
 
-        the product :math:`w^T*k(X, Y)*w_y = 1`.
+        the product :math:`w^T*k(x, y)*w_y = 1`.
         """
         # Setup some data
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
@@ -516,7 +516,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = cu.sq_dist_pairwise
+        kernel.compute = cu.squared_distance_pairwise
 
         # Define a metric object
         metric = cm.MMD(kernel=kernel)
@@ -536,9 +536,9 @@ class TestMMD(unittest.TestCase):
         For
         .. math::
 
-            X = [[0,0], [1,1], [2,2]],
+            x = [[0,0], [1,1], [2,2]],
 
-            Y = [[0,0], [1,1]],
+            y = [[0,0], [1,1]],
 
             w^T = [0.5, 0.5, 0],
 
@@ -548,8 +548,8 @@ class TestMMD(unittest.TestCase):
 
         .. math::
 
-            \text{WMMD}^2(X, Y) =
-            w^T k(X,X) w + w_y^T k(Y, Y) w_y - 2 w^T k(X, Y) w_y
+            \text{WMMD}^2(x, x) =
+            w^T k(x, x) w + w_y^T k(y, y) w_y - 2 w^T k(x, y) w_y
 
         which, when :math:`k(x,y)` is the RBF kernel, reduces to:
 
@@ -585,7 +585,8 @@ class TestMMD(unittest.TestCase):
 
     def test_mmd_weight_block_equals_mmd(self) -> None:
         r"""
-        Test mmd_weight_block equals mmd when weights are uniform: w = 1/n, w_y = 1/m.
+        Test mmd_weight_block equals mmd when weights are uniform: :math:`w = 1/n`,
+        :math:`w_y = 1/m`.
         """
         # Define a kernel object
         length_scale = 1.0

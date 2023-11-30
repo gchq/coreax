@@ -19,9 +19,9 @@ from scipy.stats import ortho_group
 from coreax.util import (
     ClassFactory,
     call_with_excess_kwargs,
-    pdiff,
-    sq_dist,
-    sq_dist_pairwise,
+    pairwise_difference,
+    squared_distance,
+    squared_distance_pairwise,
 )
 
 
@@ -30,27 +30,29 @@ class Test(unittest.TestCase):
     Tests for general utility functions.
     """
 
-    def test_sq_dist(self) -> None:
+    def test_squared_distance_dist(self) -> None:
         """
         Test square distance under float32.
         """
         x, y = ortho_group.rvs(dim=2)
         expected_distance = jnp.linalg.norm(x - y) ** 2
-        output_distance = sq_dist(x, y)
+        output_distance = squared_distance(x, y)
         self.assertAlmostEqual(output_distance, expected_distance, places=3)
-        output_distance = sq_dist(x, x)
+        output_distance = squared_distance(x, x)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
-        output_distance = sq_dist(y, y)
+        output_distance = squared_distance(y, y)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
 
-    def test_sq_dist_pairwise(self) -> None:
+    def test_squared_distance_dist_pairwise(self) -> None:
         """
         Test vmap version of sq distance.
         """
         # create an orthonormal matrix
         dimension = 3
         orthonormal_matrix = ortho_group.rvs(dim=dimension)
-        inner_distance = sq_dist_pairwise(orthonormal_matrix, orthonormal_matrix)
+        inner_distance = squared_distance_pairwise(
+            orthonormal_matrix, orthonormal_matrix
+        )
         # Use original numpy because Jax arrays are immutable
         expected_output = np.ones((dimension, dimension)) * 2.0
         np.fill_diagonal(expected_output, 0.0)
@@ -59,9 +61,9 @@ class Test(unittest.TestCase):
         self.assertEqual(difference_in_distances.ndim, 0)
         self.assertAlmostEqual(float(difference_in_distances), 0.0, places=3)
 
-    def test_pdiff(self) -> None:
+    def test_pairwise_difference(self) -> None:
         """
-        Test the function pdiff.
+        Test the function pairwise_difference.
 
         This test ensures efficient computation of pairwise differences.
         """
@@ -71,7 +73,7 @@ class Test(unittest.TestCase):
         x_array = np.random.random((num_points_x, dimension))
         y_array = np.random.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
-        output = pdiff(x_array, y_array)
+        output = pairwise_difference(x_array, y_array)
         self.assertAlmostEqual(
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )

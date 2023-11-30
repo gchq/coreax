@@ -58,7 +58,7 @@ def apply_negative_precision_threshold(
 
 
 @jit
-def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     """
     Calculate the squared distance between two vectors.
 
@@ -71,7 +71,7 @@ def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @jit
-def sq_dist_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise square distance between two arrays.
 
@@ -82,13 +82,15 @@ def sq_dist_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     fn = vmap(
-        vmap(sq_dist, in_axes=(None, 0), out_axes=0), in_axes=(0, None), out_axes=0
+        vmap(squared_distance, in_axes=(None, 0), out_axes=0),
+        in_axes=(0, None),
+        out_axes=0,
     )
     return fn(x, y)
 
 
 @jit
-def diff(x: ArrayLike, y: ArrayLike) -> Array:
+def difference(x: ArrayLike, y: ArrayLike) -> Array:
     """
     Calculate vector difference for a pair of vectors.
 
@@ -100,7 +102,7 @@ def diff(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @jit
-def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
+def pairwise_difference(x_array: ArrayLike, y_array: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
@@ -109,7 +111,9 @@ def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
-    fn = vmap(vmap(diff, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1)
+    fn = vmap(
+        vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
+    )
     return fn(x_array, y_array)
 
 
