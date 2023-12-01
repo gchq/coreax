@@ -334,9 +334,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for i, x_ in enumerate(x):
-            for j, y_ in enumerate(y):
-                true_gradients[i, j] = (
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                true_gradients[x_idx, y_idx] = (
                     (x_ - y_)
                     / length_scale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
