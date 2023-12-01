@@ -305,7 +305,7 @@ class RandomSample(Coreset):
         # Initialise Coreset parent
         super().__init__(data=data, weight="", kernel="", coreset_size=coreset_size)
 
-    def fit(self) -> DataReader:
+    def fit(self) -> None:
         r"""
         Reduce a dataset by randomly sampling ``n`` points from the original dataset.
 
@@ -322,10 +322,7 @@ class RandomSample(Coreset):
         random_indices = random.choice(
             key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=replace
         )
-
-        self.reduction_indices = random_indices
-
-        return self
+        self.data.reduction_indices = random_indices
 
 
 data_reduction_factory.register("kernel_herding", KernelHerding)

@@ -49,7 +49,9 @@ class TestRandomSample(unittest.TestCase):
             shape=(self.num_points_in_data, self.dimension),
         )
 
-        data_obj = DataReader(original_data=x, pre_reduction_array=[])
+        data_obj = DataReader(
+            original_data=x, pre_reduction_array=[], reduction_indices=[]
+        )
         data_obj.pre_reduction_array = x
 
         self.data_obj = data_obj
@@ -70,6 +72,8 @@ class TestRandomSample(unittest.TestCase):
             random_key=self.random_sampling_key,
         )
 
-        data_obj = random_sample.fit()
+        random_sample.fit()
 
-        self.assertEqual(len(data_obj.reduction_indices), self.num_points_in_coreset)
+        self.assertEqual(
+            len(self.data_obj.reduction_indices), self.num_points_in_coreset
+        )
