@@ -21,16 +21,15 @@ import sys
 import jax.numpy as jnp
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from functools import partial
 from jax import Array
-from jax.typing import ArrayLike
 from jax import tree_util
 from multiprocessing.pool import ThreadPool
 from sklearn.neighbors import KDTree
 
 import coreax.coreset as cc
 import coreax.data as cd
+import coreax.kernel as ck
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
@@ -137,7 +136,6 @@ class DataReduction(ABC):
         """
         return self.data.render()
 
-
 class ReductionStrategy(ABC):
     """
     TODO
@@ -219,30 +217,30 @@ class ErrorReduce(ReductionStrategy):
 
 class MapReduce(ReductionStrategy):
 
-    def __init__(self, n, reduction_method: DataReduction):
+    def __init__(self, size, reduction_method: DataReduction):
 
         super().__init__(reduction_method)
-        self.n = n
+        self.size = size
 
     def map_reduce(
             self,
-            indices: ArrayLike,
-            n_core: int,
-            function: Callable[..., tuple[Array, Array, Array]],
-            w_function: cw.WeightsOptimiser | None,
-            size: int = 1000,
-            parallel: bool = True,
-            **kwargs,
+            w_function: ck.Kernel | None,
+            block_size: int = 10_000,
+            K_mean: Array | None = None,
+            unique: bool = True,
+            nu: float = 1.0,
+            partition_size: int = 1000,
+            parallel: bool = True
     ) -> tuple[Array, Array]:
         r"""
-        # TODO: note for review - this function is largely copy-pasted from kernel_herding, I have not tried to change it other than fit it into the class structure.
-
-        Execute scalable kernel herding.
+        Execute scalable reduction.
 
         This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a
-        kernel herding problem is solved.
+        reduction problem is solved.
 
         There is some intricate setup:
+
+        TODO: review for herding references
 
             #.  Parameter `n_core` must be less than `size`.
             #.  If we have :math:`n` points, unweighted herding is executed recursively on
@@ -260,70 +258,79 @@ class MapReduce(ReductionStrategy):
             #.  Once :math:`n_core < n_r \leq size`, we run a final weighted herding (if
                 weighting is requested) to give :math:`n_core` points.
 
-        :param n_core: Number of coreset points to calculate
-        :param function: Kernel herding function to call on each block
-        :param w_function: Weights function. If unweighted, this is `None` # TODO: is this self.kernel or actually 'weights'
-        :param size: Region size in number of points. Optional, defaults to `1000`
+        :param kernel: Kernel function
+                       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        :param w_function: Weights function. If unweighted, this is `None`
+        :param block_size: Size of matrix blocks to process
+        :param K_mean: Row sum of kernel matrix divided by `n`
+        :param unique: Flag for enforcing unique elements
+        :param partition_size: Region size in number of points. Optional, defaults to `1000`
         :param parallel: Use multiprocessing. Optional, defaults to `True`
         :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
         :return: Coreset and weights, where weights is empty if unweighted
         """
-        # check parameters to see if we need to invoke the kd-tree and recursion.
-        if n_core >= size:
-            raise OverflowError(
-                f"Number of coreset points requested {n_core} is larger than the region size {size}. "
-                f"Try increasing the size argument, or reducing the number of coreset points"
-            )
+        # use reduced data in case this is not the first reduction applied
+        data_to_reduce = self.data_reduction.data.reduced_data
 
-        n = self.reduced_data.shape[0]
+        # check parameters to see if we need to invoke the kd-tree and recursion.
+        if self.size >= partition_size:
+            raise OverflowError(
+                f"Number of coreset points requested {self.size} is larger than the region size {partition_size}. "
+                f"Try increasing the size argument, or reducing the number of coreset points."
+            )
+        n = data_to_reduce.shape[0]
         weights = None
-        if n <= n_core:
-            coreset = indices
+
+        # fewer data points than requested coreset points so return all
+        if n <= self.size:
+            coreset = self.reduction_indices
             if w_function is not None:
-                _, Kc, Kbar = function(X=self.reduced_data, n_core=n_core, **kwargs)
+                _, Kc, Kbar = self.data_reduction.fit(data_to_reduce, self.data_reduction.kernel, block_size, K_mean, unique, nu)
                 weights = w_function(Kc, Kbar)
-        elif n_core < n <= size:
-            # Tail case
-            c, Kc, Kbar = function(X=self.reduced_data, n_core=n_core, **kwargs)
-            coreset = indices[c]
+
+        # coreset points < data points <= partition size, so no partitioning required
+        elif self.size < n <= partition_size:
+            c, Kc, Kbar = self.data_reduction.fit(data_to_reduce, self.data_reduction.kernel, block_size, K_mean, unique, nu)
+            coreset = self.reduction_indices[c]
             if w_function is not None:
                 weights = w_function(Kc, Kbar)
+
+        # partitions required
         else:
             # build a kdtree
-            kdtree = KDTree(self.reduced_data, leaf_size=size)
+            kdtree = KDTree(data_to_reduce, leaf_size=partition_size)
             _, nindices, nodes, _ = kdtree.get_arrays()
-            new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
-            split_data = [self.reduced_data[n] for n in new_indices]
+            new_indices = [jnp.array(nindices[nd[0]: nd[1]]) for nd in nodes if nd[2]]
+            split_data = [data_to_reduce[n] for n in new_indices]
 
-            # run k coreset problems
+            # generate a coreset on each partition
             coreset = []
-            kwargs["n_core"] = n_core
+            kwargs["self.size"] = self.size
             if parallel:
                 with ThreadPool() as pool:
-                    res = pool.map_async(partial(function, **kwargs), split_data)
+                    res = pool.map_async(partial(self.data_reduction.fit, self.data_reduction.kernel, block_size, K_mean, unique, nu), split_data)
                     res.wait()
                     for herding_output, idx in zip(res.get(), new_indices):
-                        # different herding algorithms return different things
-                        if isinstance(herding_output, tuple):
-                            c, _, _ = herding_output
-                        else:
-                            c = herding_output
+                        c, _, _ = herding_output
                         coreset.append(idx[c])
 
             else:
                 for X_, idx in zip(split_data, new_indices):
-                    c, _, _ = function(X_, **kwargs)
+                    c, _, _ = self.data_reduction.fit(X_, self.data_reduction.kernel, block_size, K_mean, unique, nu)
                     coreset.append(idx[c])
 
             coreset = jnp.concatenate(coreset)
-            self.reduction_indices = self.reduction_indices[coreset].copy()
-            # recurse; n_core is already in kwargs
+            Xc = data_to_reduce[coreset]
+            self.reduction_indices = self.reduction_indices[coreset]
+            # recurse;
             coreset, weights = self.map_reduce(
-                function=function,
-                w_function=w_function,
-                size=size,
-                parallel=parallel,
-                **kwargs,
+                w_function,
+                block_size,
+                K_mean,
+                unique,
+                nu,
+                partition_size,
+                parallel,
             )
 
         return coreset, weights
