@@ -77,7 +77,7 @@ import coreax.kernel as ck
 from coreax.util import ClassFactory, KernelFunction
 from coreax.validation import (
     cast_variable_as_type,
-    validate_number_in_range,
+    validate_in_range,
     validate_variable_is_instance,
 )
 
@@ -117,7 +117,7 @@ class KernelMeanApproximator(ABC):
         )
 
         # Validate inputs lie within accepted ranges
-        validate_number_in_range(
+        validate_in_range(
             x=num_kernel_points, variable_name="num_kernel_points", lower_limit=0
         )
 
@@ -169,7 +169,7 @@ class RandomApproximator(KernelMeanApproximator):
         )
 
         # Validate inputs lie within accepted ranges
-        validate_number_in_range(
+        validate_in_range(
             x=num_train_points, variable_name="num_train_points", lower_limit=0
         )
 
@@ -256,7 +256,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         )
 
         # Validate inputs lie within accepted ranges
-        validate_number_in_range(
+        validate_in_range(
             x=num_train_points, variable_name="num_train_points", lower_limit=0
         )
 
