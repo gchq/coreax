@@ -70,6 +70,10 @@ class WeightsOptimiser(ABC):
     def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
         """
         Calculate approximate weights.
+
+        :param x: The original :math:`n \times d` data
+        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :return: Approximately optimal weighting of points in ``y`` to represent ``x``
         """
         warnings.warn(
             "solve_approximate() not yet implemented. "
@@ -139,14 +143,20 @@ class MMD(WeightsOptimiser):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def solve(self, x: ArrayLike, y: ArrayLike, epsilon: float = 1e-10) -> Array:
         r"""
         Compute optimal weights given the simplex constraint.
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+            numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
+        # Validate input
+        if epsilon < 0:
+            raise ValueError(f"epsilon must be non-negative; given value {epsilon}.")
+
         # Format data
         x = jnp.asarray(x)
         y = jnp.asarray(y)
@@ -155,7 +165,7 @@ class MMD(WeightsOptimiser):
         # can numerically compute the result, we add a small perturbation to the kernel
         # matrix.
         kernel_nm = self.kernel.compute(y, x).sum(axis=1) / len(x)
-        kernel_mm = self.kernel.compute(y, y) + 1e-10 * jnp.identity(len(y))
+        kernel_mm = self.kernel.compute(y, y) + epsilon * jnp.identity(len(y))
 
         # Call the QP solver
         sol = solve_qp(kernel_mm, kernel_nm)

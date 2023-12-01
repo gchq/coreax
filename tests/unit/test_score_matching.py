@@ -28,12 +28,12 @@ class TestNetwork(nn.Module):
     A simple neural network for use in testing of sliced score matching.
     """
 
-    hidden_dim: int
-    output_dim: int
+    num_hidden_dim: int
+    num_output_dim: int
 
     @nn.compact
     def __call__(self, x: csm.ArrayLike) -> csm.ArrayLike:
-        x = nn.Dense(self.hidden_dim)(x)
+        x = nn.Dense(self.num_hidden_dim)(x)
         return x
 
 
@@ -46,20 +46,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
         r"""
         Test the core objective function, analytic version.
 
-        We consider two orthogonal vectors, u and v, and a score vector of ones. The
-        analytic objective is given by:
+        We consider two orthogonal vectors, ``u`` and ``v``, and a score vector of ones.
+        The analytic objective is given by:
 
         .. math::
 
             v' u + 0.5 * ||s||^2
 
-        In the case of v and u being orthogonal, this reduces to:
+        In the case of ``v`` and ``u`` being orthogonal, this reduces to:
 
         .. math::
 
             0.5 * ||s||^2
 
-        which equals 1.0 in the case of s being a vector of ones.
+        which equals 1.0 in the case of ``s`` being a vector of ones.
         """
         # Define data
         u = np.array([0.0, 1.0])
@@ -108,7 +108,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        which evaluates to 7456.0 when substituting in the given values of u, v and s.
+        which evaluates to 7456.0 when substituting in the given values of ``u``, ``v``
+        and ``s``.
         """
         # Define data
         u = np.arange(3, dtype=float)
@@ -158,8 +159,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        We consider orthogonal vectors v and u, meaning we only evaluate the second term
-        to get the expected output.
+        We consider orthogonal vectors ``v`` and ``u``, meaning we only evaluate the
+        second term to get the expected output.
         """
         # Define data - orthogonal u and v vectors should give back half squared dot
         # product of v and s
@@ -234,7 +235,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param y: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``y``
             """
             return y**2
 
@@ -285,7 +286,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
@@ -325,7 +326,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
@@ -364,7 +365,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = cn.create_train_state(
-            score_network, jax.random.PRNGKey(0), 1e-3, 2, sgd
+            score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
@@ -546,16 +547,19 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # higher than dimension=2)
         np.random.seed(0)
         dimension = 2
-        k = 10
+        num_components = 10
         mus = np.random.multivariate_normal(
-            np.zeros(dimension), np.eye(dimension), size=k
+            np.zeros(dimension), np.eye(dimension), size=num_components
         )
         sigmas = np.array(
-            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+            [
+                np.random.gamma(2.0, 1.0) * np.eye(dimension)
+                for _ in range(num_components)
+            ]
         )
-        mix = np.random.dirichlet(np.ones(k))
+        mix = np.random.dirichlet(np.ones(num_components))
         num_points = 500
-        comp = np.random.choice(k, size=num_points, p=mix)
+        comp = np.random.choice(num_components, size=num_points, p=mix)
         samples = np.array(
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
@@ -571,8 +575,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
             def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
                 lpdf = 0.0
-                for k_ in range(k):
-                    lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
+                for component in range(num_components):
+                    lpdf += (
+                        multivariate_normal.pdf(y, mus[component], sigmas[component])
+                        * mix[component]
+                    )
                 return jax.numpy.log(lpdf)
 
             return egrad(logpdf)(x_)

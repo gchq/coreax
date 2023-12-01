@@ -55,11 +55,6 @@ class ScoreMatching(ABC):
     child class of this base class.
     """
 
-    def __init__(self):
-        r"""
-        Define a score matching algorithm.
-        """
-
     @classmethod
     def _tree_unflatten(cls, aux_data, children):
         """
@@ -87,7 +82,7 @@ class SlicedScoreMatching(ScoreMatching):
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
     of the data. Exactly how the score function is modelled is specific to each
-    child class of this base class.
+    child class of :class:`ScoreMatching`.
 
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
@@ -134,7 +129,7 @@ class SlicedScoreMatching(ScoreMatching):
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
-        r"""
+        """
         Define a sliced score matching class.
         """
         # Assign all inputs
@@ -264,7 +259,7 @@ class SlicedScoreMatching(ScoreMatching):
     def _loss_element(
         self, x: ArrayLike, v: ArrayLike, score_network: Callable
     ) -> float:
-        r"""
+        """
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
@@ -279,7 +274,7 @@ class SlicedScoreMatching(ScoreMatching):
         return self._objective_function(v, u, s)
 
     def _loss(self, score_network: Callable) -> Callable:
-        r"""
+        """
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
@@ -426,10 +421,10 @@ class SlicedScoreMatching(ScoreMatching):
         # Define a training state
         state = create_train_state(
             score_network,
-            random_key_2,
             self.learning_rate,
             data_dimension,
             self.optimiser,
+            random_key_2,
         )
         _, random_key_4 = random.split(random_key_2)
         batch_key = random.PRNGKey(random_key_4[-1])

@@ -266,7 +266,7 @@ class NystromApproximator(KernelMeanApproximator):
     approximated by various methods. NystromApproximator is a class that does such an
     approximation using a Nystrom approximation on a subset of points selected at
     random from the data. Further details for Nystrom kernel mean embeddings can be
-    found here [chatalic2022nystrom]_.
+    found here :cite:p:`chatalic2022nystrom`.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
@@ -296,6 +296,10 @@ class NystromApproximator(KernelMeanApproximator):
         r"""
         Compute approximate kernel row mean by regression on ANNchor selected points.
 
+        We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
+        subset of this to approximate the kernel matrix row sum mean. The ``m`` points
+        are selected using the ANNchor method.
+
         :param data: The original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
@@ -310,11 +314,11 @@ class NystromApproximator(KernelMeanApproximator):
         )
 
         # Solve for kernel distances
-        k_mn = self.kernel.compute(data[sample_points], data)
-        k_mm = self.kernel.compute(data[sample_points], data[sample_points])
-        alpha = (jnp.linalg.pinv(k_mm) @ k_mn).sum(axis=1) / num_data_points
+        kernel_mn = self.kernel.compute(data[sample_points], data)
+        kernel_mm = self.kernel.compute(data[sample_points], data[sample_points])
+        alpha = (jnp.linalg.pinv(kernel_mm) @ kernel_mn).sum(axis=1) / num_data_points
 
-        return k_mn.T @ alpha
+        return kernel_mn.T @ alpha
 
 
 @partial(jit, static_argnames=["kernel_function"])
