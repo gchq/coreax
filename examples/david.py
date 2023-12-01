@@ -11,6 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+Example coreset generation using an image of the statue of David.
+
+This example showcases how a coreset can be generated from image data. In this context,
+a coreset is a set of pixels that best capture the information in the original image.
+
+The coreset is generated using scalable Stein kernel herding, with a PCIMQ base kernel.
+The score function (gradient of the log-density function) for the Stein kernel is
+estimated by applying kernel density estimation (KDE) to the data, and then taking
+gradients.
+
+The coreset attained from Stein kernel herding is compared to a coreset generated via
+uniform random sampling. Coreset quality is measured using maximum mean discrepancy
+(MMD).
+"""
+
 import os
 from pathlib import Path
 

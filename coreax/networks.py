@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Classes and associated functionality to define neural networks.
+
+Neural networks are used throughout the codebase as functional approximators.
+"""
+
 from typing import Callable
 
 from flax import linen as nn
@@ -25,6 +31,9 @@ from jax.typing import ArrayLike
 class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
+
+    See :class:'~coreax.score_matching.SlicedScoreMatching' for an example usage of this
+    class.
     """
 
     hidden_dim: int

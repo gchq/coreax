@@ -103,8 +103,16 @@ For some idea of performance, `scalable_herding` on a `ml.p3.8xlarge` gives the 
 ```
 For large $d$, it is usually worth reducing dimensionality using PCA.
 
+## Score matching
+The score function, $\nabla \log f_X(\mathbf{x})$, of a distribution is the derivative
+of the log-density function. This function is required when evaluating Stein kernels.
+However, it may be difficult to analytically specify in practice. To avoid this, we have
+implemented {cite:p}`ssm` to approximate the
+score function with a neural network. See `coreax.score_matching` for implementations.
+This approximation to the true score function can then be passed directly to a Stein
+kernel, removing any requirement for the analytical derivation.
+
 # Coming soon
 Some of the features coming soon include
-- Score matching to estimate $\nabla \log f_X(\mathbf{x})$ in the Stein kernel.
 - Coordinate bootstrapping for high-dimensional data.
 - Other coreset-style algorithms, including kernel thinning and recombination.
