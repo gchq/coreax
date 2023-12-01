@@ -12,6 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Classes and associated functionality to use kernel functions.
+
+A kernel is a non-negative, real-valued integrable function that can take two inputs,
+``x`` and ``y``, and returns a value that decreases as ``x`` and ``y`` move further away
+in space from each other. Note that *further* here may account for cyclic behaviour in
+the data, for example.
+
+In this library, we often use kernels as a smoothing tool: given a dataset of distinct
+points, we can reconstruct the underlying data generating distribution through smoothing
+of the data with kernels.
+
+All kernels in this module implement the base class :class:`Kernel`. They therefore must
+define some ``length_scale`` and ``output_scale``, with the former controlling the
+amount of smoothing applied, and the latter acting as a normalisation constant. A common
+kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined as
+
+.. math::
+
+    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2).
+
+One can see that, if ``output_scale`` takes the value
+:math:`\frac{1}{\sqrt{2\pi}\text{length_scale}}`, then the
+:class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
+
+There are only two mandatory methods to implement when defining a new kernel. The first
+is :meth:`~Kernel._compute_elementwise`, which returns the floating point value after
+evaluating the kernel on two floats, ``x`` and ``y``. Performance improvements can be
+gained when kernels are used in other areas of the codebase by also implementing
+:meth:`~Kernel._grad_x_elementwise` and :meth:`~Kernel._grad_y_elementwise` which are
+simply the gradients of the kernel with respect to ``x`` and ``y`` respectively.
+Finally, :meth:`~Kernel._divergence_x_grad_y_elementwise`, the divergence with respect
+to ``x`` of the gradient of the kernel with respect to ``y`` can allow analytical
+computation of the :class:`SteinKernel`, which itself requires a base kernel. However,
+if this property is not known, one can turn to the approaches in
+:class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
+
+The other mandatory method to implement when defining a new kernel is
+:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is JIT
+compiled. As a result, definitions of dynamic and static values inside
+:meth:`~Kernel._tree_flatten` ensure the kernel object can be mutated and the
+corresponding JIT compilation does not yield unexpected results.
+"""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -867,8 +911,8 @@ class SteinKernel(Kernel):
     The score function
     :math:`\nabla_\mathbf{x} \log f_X: \mathbb{R}^d \to \mathbb{R}^d` can be any
     suitable Lipschitz score function, e.g. one that is learned from score matching
-    (#TODO: link to score matching), computed explicitly from a density function, or
-    known analytically.
+    (:class:`~coreax.score_matching.ScoreMatching`), computed explicitly from a density
+    function, or known analytically.
 
     :param base_kernel: Initialised kernel object with which to evaluate the Stein
         kernel, e.g. return from :func:`construct_kernel`

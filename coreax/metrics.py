@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Classes and associated functionality to compute metrics assessing similarity of inputs.
+
+Large parts of this codebase consider the generic problem of taking a
+:math:`n \times d` dataset and creating an alternative representation of it in some way.
+Having attained an alternative representation, we can then assess the quality of this
+representation using some appropriate metric. Such metrics are implemented within this
+module, all of which implement :class:`Metric`.
+"""
+
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
@@ -49,9 +59,9 @@ class Metric(ABC):
             example a coreset
         :param max_size: Size of matrix block to process
         :param weights_x: An :math:`1 \times n` array of weights for associated points
-            in x
+            in ``x``
         :param weights_y: An :math:`1 \times m` array of weights for associated points
-            in y
+            in ``y``
         :return: Metric computed as a zero-dimensional array.
         """
 
