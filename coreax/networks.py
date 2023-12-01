@@ -24,7 +24,7 @@ from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
 from jax import numpy as jnp
-from jax.random import PRNGKey
+from jax import random
 from jax.typing import ArrayLike
 
 
@@ -42,10 +42,10 @@ class ScoreNetwork(nn.Module):
     @nn.compact
     def __call__(self, x: ArrayLike) -> ArrayLike:
         r"""
-        Forward pass through a three-layer network with softplus activations
+        Compute forward pass through a three-layer network with softplus activations.
 
         :param x: Batch input data :math:`b \times m \times n`
-        :return: Network output on batch :math:`b \times` self.output_dim
+        :return: Network output on batch :math:`b \times` ``self.output_dim``
         """
         x = nn.Dense(self.hidden_dim)(x)
         x = nn.softplus(x)
@@ -59,21 +59,21 @@ class ScoreNetwork(nn.Module):
 
 def create_train_state(
     module: Module,
-    rng: PRNGKey,
     learning_rate: float,
-    dimension: int,
+    data_dimension: int,
     optimiser: Callable,
+    random_key: random.PRNGKey = random.PRNGKey(0),
 ) -> TrainState:
     """
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
 
     :param module: Subclass of :class:`~flax.nn.Module`
-    :param rng: Random number generator
     :param learning_rate: Optimiser learning rate
-    :param dimension: Data dimension
+    :param data_dimension: Data dimension
     :param optimiser: optax optimiser, e.g. :class:`~optax.adam`
+    :param random_key: Key for random number generation
     :return: :class:`~flax.training.train_state.TrainState` object
     """
-    params = module.init(rng, jnp.ones((1, dimension)))["params"]
+    params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
     return TrainState.create(apply_fn=module.apply, params=params, tx=tx)
