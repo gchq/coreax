@@ -24,26 +24,28 @@ passed to classes, functions and methods throughout the coreax codebase.
 from __future__ import annotations
 
 from collections.abc import Callable
-from numbers import Number
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 
+T = TypeVar("T")
 
-def validate_number_in_range(
-    x: Number,
+
+def validate_in_range(
+    x: T,
     variable_name: str,
-    lower_limit: Number = -np.inf,
-    upper_limit: Number = np.inf,
+    lower_limit: T = -np.inf,
+    upper_limit: T = np.inf,
 ) -> None:
     """
-    Verify that a given number is in a specified range.
+    Verify that a given input is in a specified range.
 
     :param x: Variable we wish to verify lies in the specified range
     :param variable_name: Name of ``x`` to display if limits are broken
     :param lower_limit: Lower limit placed on ``x``
     :param upper_limit: Upper limit placed on ``x``
-    :raises: ValueError
+    :raises ValueError: Raised if ``x`` does not fall between ``lower_limit`` and
+        ``upper_limit``
     """
     if not lower_limit < x < upper_limit:
         raise ValueError(
@@ -61,7 +63,7 @@ def validate_variable_is_instance(
     :param x: Variable we wish to verify lies in the specified range
     :param variable_name: Name of ``x`` to display if limits are broken
     :param expected_type: The expected type of ``x``
-    :raises: TypeError
+    :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """
     if not isinstance(x, expected_type):
         raise TypeError(f"{variable_name} must be of type {expected_type}.")
@@ -75,7 +77,7 @@ def cast_variable_as_type(x: Any, variable_name: str, type_caster: Callable) -> 
     :param variable_name: Name of the variable being considered
     :param type_caster: Callable that ``x`` will be passed
     :return: ``x``, but cast as the type specified by ``type_caster``
-    :raises: TypeError
+    :raises TypeError: Raised if ``x`` cannot be cast using ``type_caster``
     """
     try:
         return type_caster(x)
