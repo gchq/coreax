@@ -143,7 +143,7 @@ class TestInputValidation(unittest.TestCase):
             type_caster=int,
         )
         self.assertRaises(
-            TypeError,
+            ValueError,
             cast_as_type,
             x="120.0ABC",
             object_name="var",

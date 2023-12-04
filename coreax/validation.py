@@ -101,7 +101,7 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
     """
     try:
         return type_caster(x)
-    except Exception as e:
+    except TypeError as e:
         error_text = (
             f"{object_name} cannot be cast using {type_caster}. " f"Given value {x}.\n"
         )
@@ -110,3 +110,12 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
         else:
             error_text += str(e)
         raise TypeError(error_text)
+    except ValueError as e:
+        error_text = (
+            f"{object_name} cannot be cast using {type_caster}. " f"Given value {x}.\n"
+        )
+        if hasattr(e, "message"):
+            error_text += e.message
+        else:
+            error_text += str(e)
+        raise ValueError(error_text)
