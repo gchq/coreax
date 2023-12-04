@@ -75,11 +75,7 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 from coreax.util import ClassFactory, KernelFunction
-from coreax.validation import (
-    cast_variable_as_type,
-    validate_in_range,
-    validate_variable_is_instance,
-)
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 class KernelMeanApproximator(ABC):
@@ -106,19 +102,22 @@ class KernelMeanApproximator(ABC):
         Define an approximator to the mean of the row sum of a kernel distance matrix.
         """
         # Validate inputs of coreax defined classes
-        validate_variable_is_instance(kernel, "kernel", ck.Kernel)
+        validate_is_instance(kernel, "kernel", ck.Kernel)
 
         # Validate inputs of non-coreax defined classes
-        random_key = cast_variable_as_type(
-            x=random_key, variable_name="random_key", type_caster=jnp.asarray
+        random_key = cast_as_type(
+            x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
-        num_kernel_points = cast_variable_as_type(
-            x=num_kernel_points, variable_name="num_kernel_points", type_caster=int
+        num_kernel_points = cast_as_type(
+            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
         validate_in_range(
-            x=num_kernel_points, variable_name="num_kernel_points", lower_limit=0
+            x=num_kernel_points,
+            object_name="num_kernel_points",
+            strict_inequalities=True,
+            lower_bound=0,
         )
 
         # Assign inputs
@@ -164,13 +163,16 @@ class RandomApproximator(KernelMeanApproximator):
         Approximate kernel row mean by regression on points selected randomly.
         """
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_variable_as_type(
-            x=num_train_points, variable_name="num_train_points", type_caster=int
+        num_train_points = cast_as_type(
+            x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
         validate_in_range(
-            x=num_train_points, variable_name="num_train_points", lower_limit=0
+            x=num_train_points,
+            object_name="num_train_points",
+            strict_inequalities=True,
+            lower_bound=0,
         )
 
         # Assign inputs
@@ -195,9 +197,7 @@ class RandomApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_variable_as_type(
-            x=data, variable_name="data", type_caster=jnp.asarray
-        )
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
 
         # Record dataset size
         num_data_points = len(data)
@@ -251,13 +251,16 @@ class ANNchorApproximator(KernelMeanApproximator):
         Approximate kernel row mean by regression on ANNchor selected points.
         """
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_variable_as_type(
-            x=num_train_points, variable_name="num_train_points", type_caster=int
+        num_train_points = cast_as_type(
+            x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
         validate_in_range(
-            x=num_train_points, variable_name="num_train_points", lower_limit=0
+            x=num_train_points,
+            object_name="num_train_points",
+            strict_inequalities=True,
+            lower_bound=0,
         )
 
         # Assign inputs
@@ -282,9 +285,7 @@ class ANNchorApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_variable_as_type(
-            x=data, variable_name="data", type_caster=jnp.asarray
-        )
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
 
         # Record dataset size
         num_data_points = len(data)
@@ -353,9 +354,7 @@ class NystromApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_variable_as_type(
-            x=data, variable_name="data", type_caster=jnp.asarray
-        )
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
 
         # Record dataset size
         num_data_points = len(data)
@@ -391,10 +390,8 @@ def _anchor_body(
     :return: Updated loop variables `features`
     """
     # Validate inputs
-    features = cast_variable_as_type(
-        x=features, variable_name="features", type_caster=jnp.asarray
-    )
-    data = cast_variable_as_type(x=data, variable_name="data", type_caster=jnp.asarray)
+    features = cast_as_type(x=features, object_name="features", type_caster=jnp.asarray)
+    data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])

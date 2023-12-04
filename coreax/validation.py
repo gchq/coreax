@@ -26,55 +26,75 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-import numpy as np
-
 T = TypeVar("T")
 
 
 def validate_in_range(
     x: T,
-    variable_name: str,
-    lower_limit: T = -np.inf,
-    upper_limit: T = np.inf,
+    object_name: str,
+    strict_inequalities: bool,
+    lower_bound: T | None = None,
+    upper_bound: T | None = None,
 ) -> None:
     """
     Verify that a given input is in a specified range.
 
     :param x: Variable we wish to verify lies in the specified range
-    :param variable_name: Name of ``x`` to display if limits are broken
-    :param lower_limit: Lower limit placed on ``x``
-    :param upper_limit: Upper limit placed on ``x``
+    :param object_name: Name of ``x`` to display if limits are broken
+    :param strict_inequalities: If true, checks are applied using strict inequalities,
+        otherwise they are not
+    :param lower_bound: Lower limit placed on ``x``, or :data:`None`
+    :param upper_bound: Upper limit placed on ``x``, or :data:`None`
     :raises ValueError: Raised if ``x`` does not fall between ``lower_limit`` and
         ``upper_limit``
+    :raises TypeError: Raised if x cannot be compared to a value using >, >=, < or <=
     """
-    if not lower_limit < x < upper_limit:
-        raise ValueError(
-            f"{variable_name} must be between {lower_limit} and {upper_limit}. "
-            f"Given value {x}."
+    try:
+        if strict_inequalities:
+            if lower_bound is not None and not x > lower_bound:
+                raise ValueError(
+                    f"{object_name} must be strictly above {lower_bound}. "
+                    f"Given value {x}."
+                )
+            if upper_bound is not None and not x < upper_bound:
+                raise ValueError(
+                    f"{object_name} must be strictly below {lower_bound}. "
+                    f"Given value {x}."
+                )
+        else:
+            if lower_bound is not None and not x >= lower_bound:
+                raise ValueError(
+                    f"{object_name} must be {lower_bound} or above. Given value {x}."
+                )
+            if upper_bound is not None and not x <= upper_bound:
+                raise ValueError(
+                    f"{object_name} must be {lower_bound} or lower. Given value {x}."
+                )
+    except TypeError:
+        raise TypeError(
+            f"{object_name} must have a valid comparison <, <=, > and >= implemented."
         )
 
 
-def validate_variable_is_instance(
-    x: Any, variable_name: str, expected_type: Any
-) -> None:
+def validate_is_instance(x: T, object_name: str, expected_type: type[T]) -> None:
     """
-    Verify that a given variable is of a given type.
+    Verify that a given object is of a given type.
 
     :param x: Variable we wish to verify lies in the specified range
-    :param variable_name: Name of ``x`` to display if limits are broken
+    :param object_name: Name of ``x`` to display if limits are broken
     :param expected_type: The expected type of ``x``
     :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """
     if not isinstance(x, expected_type):
-        raise TypeError(f"{variable_name} must be of type {expected_type}.")
+        raise TypeError(f"{object_name} must be of type {expected_type}.")
 
 
-def cast_variable_as_type(x: Any, variable_name: str, type_caster: Callable) -> Any:
+def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
     """
-    Cast a variable as a specified type.
+    Cast an object as a specified type.
 
     :param x: Variable to cast as specified type
-    :param variable_name: Name of the variable being considered
+    :param object_name: Name of the object being considered
     :param type_caster: Callable that ``x`` will be passed
     :return: ``x``, but cast as the type specified by ``type_caster``
     :raises TypeError: Raised if ``x`` cannot be cast using ``type_caster``
@@ -83,8 +103,7 @@ def cast_variable_as_type(x: Any, variable_name: str, type_caster: Callable) -> 
         return type_caster(x)
     except Exception as e:
         error_text = (
-            f"{variable_name} cannot be cast using {type_caster}. "
-            f"Given value {x}.\n"
+            f"{object_name} cannot be cast using {type_caster}. " f"Given value {x}.\n"
         )
         if hasattr(e, "message"):
             error_text += e.message
