@@ -2,7 +2,7 @@ name: Pre-commit Checks
 
 on:
   push:
-    branches: ["main", "feature/self_hosted_runner"]
+    branches: ["main"]
   pull_request:
     branches: ["**"]
 
