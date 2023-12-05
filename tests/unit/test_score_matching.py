@@ -68,7 +68,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match()
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -102,7 +102,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match()
         score_result = learned_score(data_stacked)
 
         # Check learned score and true score align
@@ -145,7 +145,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match()
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -202,7 +202,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match()
         score_result = learned_score(x_stacked)
 
         # Check learned score and true score align
