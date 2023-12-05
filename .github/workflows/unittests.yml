@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
         exclude:
           - os: ubuntu-latest
             python-version: 3.11
@@ -34,8 +34,8 @@ jobs:
       run: |
         pytest --ignore=tests/integration
   tests-coverage:
-    name: tests & coverage (ubuntu-latest, 3.11)
-    runs-on: ubuntu-latest
+    name: tests & coverage (self-hosted, 3.11)
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
