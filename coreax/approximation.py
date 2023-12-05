@@ -197,7 +197,7 @@ class RandomApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
 
         # Record dataset size
         num_data_points = len(data)
@@ -285,7 +285,7 @@ class ANNchorApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
 
         # Record dataset size
         num_data_points = len(data)
@@ -354,7 +354,7 @@ class NystromApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
+        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
 
         # Record dataset size
         num_data_points = len(data)
@@ -385,13 +385,15 @@ def _anchor_body(
     :param idx: Loop counter
     :param features: Loop updateables
     :param data: Original :math:`n \times d` dataset
-    :param kernel_function: Vectorised kernel function on pairs `(X,x)`:
+    :param kernel_function: Vectorised kernel function on pairs ``(X,x)``:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
     :return: Updated loop variables `features`
     """
     # Validate inputs
-    features = cast_as_type(x=features, object_name="features", type_caster=jnp.asarray)
-    data = cast_as_type(x=data, object_name="data", type_caster=jnp.asarray)
+    features = cast_as_type(
+        x=features, object_name="features", type_caster=jnp.atleast_2d
+    )
+    data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
