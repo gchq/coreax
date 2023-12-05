@@ -2,7 +2,7 @@ name: Unit Tests and Coverage Assessment
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feature/self_hosted_runner"]
   pull_request:
     branches: ["**"]
 
@@ -13,11 +13,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11"]
         exclude:
           - os: ubuntu-latest
             python-version: 3.11
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
