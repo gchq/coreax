@@ -15,9 +15,9 @@ import unittest
 from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
-class TestInputValidation(unittest.TestCase):
+class TestInputValidationRange(unittest.TestCase):
     """
-    Tests relating to validation of inputs provided by the user.
+    Tests relating to validation of inputs provided by the user lying in a given range.
     """
 
     def test_validate_in_range_equal_lower_strict(self) -> None:
@@ -66,6 +66,38 @@ class TestInputValidation(unittest.TestCase):
             strict_inequalities=True,
             lower_bound=0.0,
             upper_bound=100.0,
+        )
+
+    def test_validate_in_range_equal_upper_strict(self) -> None:
+        """
+        Test the function validate_in_range with the input matching the lower bound.
+
+        The inequality is strict here, so this should be flagged as invalid.
+        """
+        self.assertRaises(
+            ValueError,
+            validate_in_range,
+            x=100.0,
+            object_name="var",
+            strict_inequalities=True,
+            lower_bound=0.0,
+            upper_bound=100.0,
+        )
+
+    def test_validate_in_range_equal_upper_not_strict(self) -> None:
+        """
+        Test the function validate_in_range with the input matching the lower bound.
+
+        The inequality is not strict here, so this should not be flagged as invalid.
+        """
+        self.assertIsNone(
+            validate_in_range(
+                x=100.0,
+                object_name="var",
+                strict_inequalities=False,
+                lower_bound=0.0,
+                upper_bound=100.0,
+            )
         )
 
     def test_validate_in_range_above_upper(self) -> None:
@@ -134,6 +166,56 @@ class TestInputValidation(unittest.TestCase):
             upper_bound=100.0,
         )
 
+    def test_validate_in_range_input_no_lower_bound(self) -> None:
+        """
+        Test the function validate_in_range with the input between the two bounds.
+
+        The input is below the upper bound, so this should not be flagged as invalid.
+        """
+        self.assertIsNone(
+            validate_in_range(
+                x=50.0,
+                object_name="var",
+                strict_inequalities=True,
+                upper_bound=100.0,
+            )
+        )
+
+    def test_validate_in_range_input_no_upper_bound(self) -> None:
+        """
+        Test the function validate_in_range with the input between the two bounds.
+
+        The input is above the lower bound, so this should not be flagged as invalid.
+        """
+        self.assertIsNone(
+            validate_in_range(
+                x=50.0,
+                object_name="var",
+                strict_inequalities=True,
+                lower_bound=0.0,
+            )
+        )
+
+    def test_validate_in_range_input_no_lower_or_upper_bound(self) -> None:
+        """
+        Test the function validate_in_range with the input between the two bounds.
+
+        The input is below the upper bound, so this should not be flagged as invalid.
+        """
+        self.assertIsNone(
+            validate_in_range(
+                x=50.0,
+                object_name="var",
+                strict_inequalities=True,
+            )
+        )
+
+
+class TestInputValidationInstance(unittest.TestCase):
+    """
+    Tests relating to validation of inputs provided by the user are a given type.
+    """
+
     def test_validate_is_instance_float_to_int(self) -> None:
         """
         Test the function validate_is_instance comparing a float to an int.
@@ -194,6 +276,12 @@ class TestInputValidation(unittest.TestCase):
             validate_is_instance(x="500", object_name="var", expected_type=str)
         )
 
+
+class TestInputValidationConversion(unittest.TestCase):
+    """
+    Tests relating to validation of inputs provided by the user convert to a given type.
+    """
+
     def test_cast_as_type_int_to_float(self) -> None:
         """
         Test the function cast_as_type converting an int to a float.
@@ -237,7 +325,7 @@ class TestInputValidation(unittest.TestCase):
         to cause the conversion to fail.
         """
         self.assertRaises(
-            ValueError,
+            TypeError,
             cast_as_type,
             x="120.0ABC",
             object_name="var",

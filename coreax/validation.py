@@ -41,13 +41,14 @@ def validate_in_range(
 
     :param x: Variable we wish to verify lies in the specified range
     :param object_name: Name of ``x`` to display if limits are broken
-    :param strict_inequalities: If true, checks are applied using strict inequalities,
-        otherwise they are not
+    :param strict_inequalities: If :data:`True`, checks are applied using strict
+        inequalities, otherwise they are not
     :param lower_bound: Lower limit placed on ``x``, or :data:`None`
     :param upper_bound: Upper limit placed on ``x``, or :data:`None`
     :raises ValueError: Raised if ``x`` does not fall between ``lower_limit`` and
         ``upper_limit``
-    :raises TypeError: Raised if x cannot be compared to a value using >, >=, < or <=
+    :raises TypeError: Raised if x cannot be compared to a value using ``>``, ``>=``,
+        ``<`` or ``<=``
     """
     try:
         if strict_inequalities:
@@ -61,9 +62,14 @@ def validate_in_range(
             if upper_bound is not None and not x <= upper_bound:
                 raise ValueError(f"{object_name} must be {upper_bound} or lower.")
     except TypeError:
-        raise TypeError(
-            f"{object_name} must have a valid comparison <, <=, > and >= implemented."
-        )
+        if strict_inequalities:
+            raise TypeError(
+                f"{object_name} must have a valid comparison < and > implemented."
+            )
+        else:
+            raise TypeError(
+                f"{object_name} must have a valid comparison <= and >= implemented."
+            )
 
 
 def validate_is_instance(x: T, object_name: str, expected_type: type[T]) -> None:
@@ -97,8 +103,4 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
             error_text += e.message
         else:
             error_text += str(e)
-
-        if isinstance(e, TypeError):
-            raise TypeError(error_text)
-        else:
-            raise ValueError(error_text)
+        raise TypeError(error_text)
