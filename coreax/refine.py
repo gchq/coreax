@@ -104,8 +104,8 @@ class Refine(ABC):
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array. If this variable has been pre-calculated, pass
-            it to refine() to reduce computational load. If this variable is passed,
-            ```self.approximate_kernel_row_sum` is ignored.
+            it here to reduce computational load. If this variable is passed,
+            `self.approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
 
@@ -162,8 +162,8 @@ class RefineRegular(Refine):
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array. If this variable has been pre-calculated, pass
-            it to refine() to reduce computational load. If this variable is passed,
-            ```self.approximate_kernel_row_sum` is ignored.
+            it here to reduce computational load. If this variable is passed,
+            `self.approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
         x = data_reduction.original_data
@@ -323,9 +323,9 @@ class RefineRandom(Refine):
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-             pass it to refine() to reduce computational load. If this variable is
-             passed, ``self.approximate_kernel_row_sum`` is ignored.
+            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated,
+             pass it here to reduce computational load. If this variable is passed,
+              `self.approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
         x = data_reduction.original_data
@@ -529,9 +529,9 @@ class RefineReverse(Refine):
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-             pass it to refine() to reduce computational load. If this variable is
-             passed, ``self.approximate_kernel_row_sum`` is ignored.
+            matrix, a :math:`1 \times n` array. If this variable has been
+            pre-calculated, pass it here to reduce computational load. If this variable
+            is passed, `self.approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
         x = jnp.asarray(data_reduction.original_data)
