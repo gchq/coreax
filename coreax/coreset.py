@@ -303,26 +303,29 @@ class RandomSample(Coreset):
         self.unique_flag = unique
 
         # Initialise Coreset parent
-        super().__init__(data=data, weight="", kernel="", coreset_size=coreset_size)
+        super().__init__(data=data, weight=None, kernel=None, coreset_size=coreset_size)
 
     def fit(self) -> None:
         r"""
-        Reduce a dataset by randomly sampling ``n`` points from the original dataset.
+        Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
-        The DataReduction object is updated in-place. The randomly sampled points are
-        stored in the `reduction_indices` attribute.
+        This class is updated in-place. The randomly sampled points are stored in the
+        `reduction_indices` attribute.
 
-        :return: Nothing, the DataReduction object is updated in-place
+        :return: Nothing, the coreset is assigned to :attr:coreset
         """
         key = random.PRNGKey(self.random_key)
-        X = self.data.pre_reduction_array
-        n = len(X)
+        orig_data = self.data.pre_reduction_array
+        n = len(orig_data)
 
-        replace = not self.unique_flag
         random_indices = random.choice(
-            key, a=jnp.arange(0, n), shape=(self.coreset_size,), replace=replace
+            key,
+            a=jnp.arange(0, n),
+            shape=(self.coreset_size,),
+            replace=not self.unique_flag,
         )
-        self.data.reduction_indices = random_indices
+        self.reduction_indices = random_indices
+        self.coreset = orig_data[random_indices]
 
 
 data_reduction_factory.register("kernel_herding", KernelHerding)
