@@ -141,7 +141,7 @@ class TestRefine(unittest.TestCase):
 
     def test_kernel_mean_row_sum_approx(self):
         """
-        Test for error when approximate_kernel_row_sum = True and no approximator given
+        Test for error when approximate_kernel_row_sum = True and no approximator given.
         """
         x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
