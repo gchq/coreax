@@ -163,3 +163,7 @@ class TestWeights(unittest.TestCase):
         output = optimiser.solve(x, y)
 
         self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
+
+
+if __name__ == "__main__":
+    unittest.main()
