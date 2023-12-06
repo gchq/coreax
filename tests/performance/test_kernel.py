@@ -24,7 +24,7 @@ import coreax.kernel as ck
 
 def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     """
-    A before and after run of a function, catching timings of each for JIT testing.
+    Verify JIT performance by comparing timings of a before and after run of a function.
 
     The function is called with supplied arguments twice, and timed for each run. These
     timings are returned in a 2-tuple
@@ -32,18 +32,34 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     :param fn: function callable to test
     :return: (first run time, second run time)
     """
-    st = time.time()
+    start_time = time.time()
     fn(*args, **kwargs)
-    en = time.time()
-    pre_delta = en - st
-    st = time.time()
+    end_time = time.time()
+    pre_delta = end_time - start_time
+    start_time = time.time()
     fn(*args, **kwargs)
-    en = time.time()
-    post_delta = en - st
-    return (pre_delta, post_delta)
+    end_time = time.time()
+    post_delta = end_time - start_time
+    return pre_delta, post_delta
 
 
-class TestSquaredExponentialKernel(unittest.TestCase):
+class TestKernel(unittest.TestCase):
+    """
+    Base class with common setUp for all kernels.
+    """
+
+    def setUp(self) -> None:
+        # p-value threshold to pass/fail test
+        self.threshold = 0.05
+        # number of independent observations to generate (for each of the two samples)
+        self.num_samples_to_generate = 10
+        # number of data points per 'observation'
+        self.num_data_points_per_observation = 10
+        # dimensionality of observations
+        self.dimension = 10
+
+
+class TestSquaredExponentialKernel(TestKernel):
     """
     Tests related to the SquaredExponentialKernel defined in kernel.py
     """
@@ -55,30 +71,31 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.SquaredExponentialKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_x(self):
         """
@@ -87,30 +104,31 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.SquaredExponentialKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_y(self):
         """
@@ -119,30 +137,31 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.SquaredExponentialKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -151,23 +170,24 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.SquaredExponentialKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
@@ -178,10 +198,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
 
-class TestLaplacianKernel(unittest.TestCase):
+class TestLaplacianKernel(TestKernel):
     """
     Tests related to the LaplacianKernel defined in kernel.py
     """
@@ -193,30 +213,31 @@ class TestLaplacianKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.LaplacianKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_x(self):
         """
@@ -225,30 +246,31 @@ class TestLaplacianKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.LaplacianKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_y(self):
         """
@@ -257,30 +279,31 @@ class TestLaplacianKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.LaplacianKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -289,23 +312,24 @@ class TestLaplacianKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.LaplacianKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
@@ -316,10 +340,10 @@ class TestLaplacianKernel(unittest.TestCase):
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
 
-class TestPCIMQKernel(unittest.TestCase):
+class TestPCIMQKernel(TestKernel):
     """
     Tests related to the PCIMQKernel defined in kernel.py
     """
@@ -331,30 +355,31 @@ class TestPCIMQKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.PCIMQKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_x(self):
         """
@@ -363,30 +388,31 @@ class TestPCIMQKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.PCIMQKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_y(self):
         """
@@ -395,30 +421,31 @@ class TestPCIMQKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.PCIMQKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -427,23 +454,24 @@ class TestPCIMQKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
         kernel = ck.PCIMQKernel()
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
@@ -454,10 +482,10 @@ class TestPCIMQKernel(unittest.TestCase):
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
 
-class TestSteinKernel(unittest.TestCase):
+class TestSteinKernel(TestKernel):
     """
     Tests related to the SteinKernel defined in kernel.py
     """
@@ -469,19 +497,20 @@ class TestSteinKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
 
         def score_function(x_):
             return -x_
@@ -492,14 +521,14 @@ class TestSteinKernel(unittest.TestCase):
         )
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_x(self):
         """
@@ -508,19 +537,20 @@ class TestSteinKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
 
         def score_function(x_):
             return -x_
@@ -531,14 +561,14 @@ class TestSteinKernel(unittest.TestCase):
         )
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_grad_y(self):
         """
@@ -547,19 +577,20 @@ class TestSteinKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
 
         def score_function(x_):
             return -x_
@@ -570,14 +601,14 @@ class TestSteinKernel(unittest.TestCase):
         )
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -586,19 +617,20 @@ class TestSteinKernel(unittest.TestCase):
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
         sequential function calls, in order to catch sub-optimal JIT tracing.
         """
-        # p-value threshold to pass/fail test
-        thres = 0.05
-
-        # number of independent observations to generate (for each of the two samples)
-        N = 10
-
-        # number of data points per 'observation'
-        n = 10
-
-        # data dimension
-        d = 10
-        x = np.random.random((N, n, d))
-        y = np.random.random((N, n, d))
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        y = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
 
         def score_function(x_):
             return -x_
@@ -609,7 +641,7 @@ class TestSteinKernel(unittest.TestCase):
         )
         pre = []
         post = []
-        for i in range(N):
+        for i in range(self.num_samples_to_generate):
             deltas = jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
@@ -620,7 +652,7 @@ class TestSteinKernel(unittest.TestCase):
             pre.append(deltas[0])
             post.append(deltas[1])
         pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, thres)
+        self.assertLessEqual(pval, self.threshold)
 
 
 if __name__ == "__main__":
