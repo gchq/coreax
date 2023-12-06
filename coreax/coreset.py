@@ -47,6 +47,10 @@ as a balance between using points at which the underlying density is high (the f
 term) and exploration of distinct regions of the space (the second term).
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from abc import abstractmethod
 from functools import partial
 
@@ -212,4 +216,53 @@ class KernelHerding(Coreset):
         return S, K, K_t
 
 
+class RandomSample(Coreset):
+    r"""
+    Reduce a dataset by uniformly randomly sampling a fixed number of points.
+
+    :param data: The :math:`n \times d` dataset to be reduced
+    :param coreset_size: Number of  points to randomly sample from ``data``
+    :param random_key: Pseudo-random number generator key for sampling
+    :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
+        without replacement
+    """
+
+    def __init__(
+        self,
+        data: DataReader,
+        coreset_size: int,
+        random_key: ArrayLike = 0,
+        unique: bool = True,
+    ):
+        """Initialise a random sampling object."""
+        self.random_key = random_key
+        self.unique_flag = unique
+
+        # Initialise Coreset parent
+        super().__init__(data=data, weight=None, kernel=None, coreset_size=coreset_size)
+
+    def fit(self) -> None:
+        r"""
+        Reduce a dataset by uniformly randomly sampling a fixed number of points.
+
+        This class is updated in-place. The randomly sampled points are stored in the
+        ``reduction_indices`` attribute.
+
+        :return: Nothing, the coreset is assigned to :attr:`coreset`
+        """
+        key = random.PRNGKey(self.random_key)
+        orig_data = self.data.pre_reduction_array
+        n = len(orig_data)
+
+        random_indices = random.choice(
+            key,
+            a=jnp.arange(0, n),
+            shape=(self.coreset_size,),
+            replace=not self.unique_flag,
+        )
+        self.reduction_indices = random_indices
+        self.coreset = orig_data[random_indices]
+
+
 data_reduction_factory.register("kernel_herding", KernelHerding)
+data_reduction_factory.register("random_sample", RandomSample)
