@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
@@ -28,10 +28,10 @@ from jax.typing import ArrayLike
 from jaxopt import OSQP
 
 
-KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+KernelFunction: TypeVar = Callable[[ArrayLike, ArrayLike], Array]
 
 # Pairwise kernel evaluation if grads and nu are defined
-KernelFunctionWithGrads = Callable[
+KernelFunctionWithGrads: TypeVar = Callable[
     [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
 ]
 
@@ -245,22 +245,30 @@ class ClassFactory:
         return class_obj
 
 
+T = TypeVar("T")
+
+
 def create_instance_from_factory(
     factory_obj: ClassFactory,
-    class_type: str | type["Coreset"] | type["Metric"] | type["Refine"] | type["WeightsOptimiser"],
+    class_type: str | type[T],
+    *args,
     **kwargs,
-) -> "Coreset" | "Metric" | "Refine" | "WeightsOptimiser":
+) -> T:
     """
-    Create a refine object for use with the fit method.
+    Create an instance of a class from a class factory.
 
-    :param class_type: The name of a class to use, or the uninstantiated class
-        directly as a dependency injection
-    :return: Class instance of the requested type
+    :param factory_obj: Class factory
+    :param class_type: The name of a class to use from the factory, or an uninstantiated
+        class of the type in ``factory_obj`` if using dependency injection
+    :param args: Positional arguments to pass to class constructor
+    :param kwargs: Keyword arguments to pass to class constructor
+    :return: Populated instance of requested class
     """
     class_obj = factory_obj.get(class_type)
 
     # Initialise, accounting for different classes having different numbers of parameters
     return call_with_excess_kwargs(
         class_obj,
+        *args,
         **kwargs,
     )
