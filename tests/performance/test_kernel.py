@@ -459,5 +459,171 @@ class TestPCIMQKernel(unittest.TestCase):
         self.assertLessEqual(pval, thres)
 
 
+class TestSteinKernel(unittest.TestCase):
+    """
+    Tests related to the SteinKernel defined in kernel.py
+    """
+
+    def test_compute(self) -> None:
+        """
+        Test the performance of the SteinKernel computation.
+
+        Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
+        sequential function calls, in order to catch sub-optimal JIT tracing.
+        """
+        # p-value threshold to pass/fail test
+        thres = 0.05
+
+        # number of independent observations to generate (for each of the two samples)
+        N = 10
+
+        # number of data points per 'observation'
+        n = 10
+
+        # data dimension
+        d = 10
+        x = np.random.random((N, n, d))
+        y = np.random.random((N, n, d))
+
+        def score_function(x_):
+            return -x_
+
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(),
+            score_function=score_function,
+        )
+        pre = []
+        post = []
+        for i in range(N):
+            deltas = jit_test(
+                jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
+            )
+            pre.append(deltas[0])
+            post.append(deltas[1])
+        pval = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(pval, thres)
+
+    def test_grad_x(self):
+        """
+        Test the performance of the SteinKernel computation.
+
+        Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
+        sequential function calls, in order to catch sub-optimal JIT tracing.
+        """
+        # p-value threshold to pass/fail test
+        thres = 0.05
+
+        # number of independent observations to generate (for each of the two samples)
+        N = 10
+
+        # number of data points per 'observation'
+        n = 10
+
+        # data dimension
+        d = 10
+        x = np.random.random((N, n, d))
+        y = np.random.random((N, n, d))
+
+        def score_function(x_):
+            return -x_
+
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(),
+            score_function=score_function,
+        )
+        pre = []
+        post = []
+        for i in range(N):
+            deltas = jit_test(
+                jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
+            )
+            pre.append(deltas[0])
+            post.append(deltas[1])
+        pval = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(pval, thres)
+
+    def test_grad_y(self):
+        """
+        Test the performance of the SteinKernel computation.
+
+        Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
+        sequential function calls, in order to catch sub-optimal JIT tracing.
+        """
+        # p-value threshold to pass/fail test
+        thres = 0.05
+
+        # number of independent observations to generate (for each of the two samples)
+        N = 10
+
+        # number of data points per 'observation'
+        n = 10
+
+        # data dimension
+        d = 10
+        x = np.random.random((N, n, d))
+        y = np.random.random((N, n, d))
+
+        def score_function(x_):
+            return -x_
+
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(),
+            score_function=score_function,
+        )
+        pre = []
+        post = []
+        for i in range(N):
+            deltas = jit_test(
+                jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
+            )
+            pre.append(deltas[0])
+            post.append(deltas[1])
+        pval = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(pval, thres)
+
+    def test_div_x_grad_y(self):
+        """
+        Test the performance of the SteinKernel computation.
+
+        Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
+        sequential function calls, in order to catch sub-optimal JIT tracing.
+        """
+        # p-value threshold to pass/fail test
+        thres = 0.05
+
+        # number of independent observations to generate (for each of the two samples)
+        N = 10
+
+        # number of data points per 'observation'
+        n = 10
+
+        # data dimension
+        d = 10
+        x = np.random.random((N, n, d))
+        y = np.random.random((N, n, d))
+
+        def score_function(x_):
+            return -x_
+
+        kernel = ck.SteinKernel(
+            base_kernel=ck.PCIMQKernel(),
+            score_function=score_function,
+        )
+        pre = []
+        post = []
+        for i in range(N):
+            deltas = jit_test(
+                jit(
+                    lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
+                ),
+                x[i],
+                y[i],
+            )
+            pre.append(deltas[0])
+            post.append(deltas[1])
+        pval = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(pval, thres)
+
+
 if __name__ == "__main__":
     unittest.main()
