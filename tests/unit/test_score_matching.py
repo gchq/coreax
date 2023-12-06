@@ -19,6 +19,7 @@ from jax.random import rademacher
 from jax.scipy.stats import multivariate_normal, norm
 from optax import sgd
 
+import coreax.kernel as ck
 import coreax.networks as cn
 import coreax.score_matching as csm
 
@@ -28,13 +29,184 @@ class TestNetwork(nn.Module):
     A simple neural network for use in testing of sliced score matching.
     """
 
-    hidden_dim: int
-    output_dim: int
+    num_hidden_dim: int
+    num_output_dim: int
 
     @nn.compact
     def __call__(self, x: csm.ArrayLike) -> csm.ArrayLike:
-        x = nn.Dense(self.hidden_dim)(x)
+        x = nn.Dense(self.num_hidden_dim)(x)
         return x
+
+
+class TestKernelDensityMatching(unittest.TestCase):
+    """
+    Tests related to the class in score_matching.py
+    """
+
+    def test_univariate_gaussian_score(self) -> None:
+        """
+        Test a simple univariate Gaussian with a known score function.
+        """
+        # Setup univariate Gaussian
+        mu = 0.0
+        std_dev = 1.0
+        num_points = 500
+        np.random.seed(0)
+        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            return -(x_ - mu) / std_dev**2
+
+        # Define data
+        x = np.linspace(-2, 2).reshape(-1, 1)
+        true_score_result = true_score(x)
+
+        # Define a kernel density matching object
+        kernel_density_matcher = csm.KernelDensityMatching(
+            length_scale=ck.median_heuristic(samples), kde_data=samples
+        )
+
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
+
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    def test_multivariate_gaussian_score(self) -> None:
+        """
+        Test a simple multivariate Gaussian with a known score function.
+        """
+        # Setup multivariate Gaussian
+        dimension = 2
+        mu = np.zeros(dimension)
+        sigma_matrix = np.eye(dimension)
+        lambda_matrix = np.linalg.pinv(sigma_matrix)
+        num_points = 500
+        np.random.seed(0)
+        samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
+
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
+
+        # Define data
+        x, y = np.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
+        data_stacked = np.vstack([x.ravel(), y.ravel()]).T
+        true_score_result = true_score(data_stacked)
+
+        # Define a kernel density matching object
+        kernel_density_matcher = csm.KernelDensityMatching(
+            length_scale=ck.median_heuristic(samples), kde_data=samples
+        )
+
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(data_stacked)
+
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
+
+    def test_univariate_gmm_score(self):
+        """
+        Test a univariate Gaussian mixture model with a known score function.
+        """
+        # Define the univariate Gaussian mixture model
+        mus = np.array([-4.0, 4.0])
+        std_devs = np.array([1.0, 2.0])
+        p = 0.7
+        mix = np.array([1 - p, p])
+        num_points = 1000
+        np.random.seed(0)
+        comp = np.random.binomial(1, p, size=num_points)
+        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+
+        def egrad(g: csm.Callable) -> csm.Callable:
+            def wrapped(x_, *rest):
+                y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
+                (x_bar,) = g_vjp(np.ones_like(y))
+                return x_bar
+
+            return wrapped
+
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            return egrad(log_pdf)(x_)
+
+        # Define data
+        x = np.linspace(-10, 10).reshape(-1, 1)
+        true_score_result = true_score(x)
+
+        # Define a kernel density matching object
+        kernel_density_matcher = csm.KernelDensityMatching(
+            length_scale=ck.median_heuristic(samples), kde_data=samples
+        )
+
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
+
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    def test_multivariate_gmm_score(self):
+        """
+        Test a multivariate Gaussian mixture model with a known score function.
+        """
+        # Define the multivariate Gaussian mixture model (we don't want to go much
+        # higher than dimension=2)
+        np.random.seed(0)
+        dimension = 2
+        k = 10
+        mus = np.random.multivariate_normal(
+            np.zeros(dimension), np.eye(dimension), size=k
+        )
+        sigmas = np.array(
+            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+        )
+        mix = np.random.dirichlet(np.ones(k))
+        num_points = 500
+        comp = np.random.choice(k, size=num_points, p=mix)
+        samples = np.array(
+            [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
+        )
+
+        def egrad(g: csm.Callable) -> csm.Callable:
+            def wrapped(x_, *rest):
+                y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
+                (x_bar,) = g_vjp(np.ones_like(y))
+                return x_bar
+
+            return wrapped
+
+        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+            def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
+                lpdf = 0.0
+                for k_ in range(k):
+                    lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
+                return jax.numpy.log(lpdf)
+
+            return egrad(logpdf)(x_)
+
+        # Define data
+        coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
+        x_stacked = np.vstack([c.ravel() for c in coords]).T
+        true_score_result = true_score(x_stacked)
+
+        # Define a kernel density matching object
+        kernel_density_matcher = csm.KernelDensityMatching(
+            length_scale=ck.median_heuristic(samples), kde_data=samples
+        )
+
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x_stacked)
+
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
 
 class TestSlicedScoreMatching(unittest.TestCase):
@@ -46,20 +218,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
         r"""
         Test the core objective function, analytic version.
 
-        We consider two orthogonal vectors, u and v, and a score vector of ones. The
-        analytic objective is given by:
+        We consider two orthogonal vectors, ``u`` and ``v``, and a score vector of ones.
+        The analytic objective is given by:
 
         .. math::
 
             v' u + 0.5 * ||s||^2
 
-        In the case of v and u being orthogonal, this reduces to:
+        In the case of ``v`` and ``u`` being orthogonal, this reduces to:
 
         .. math::
 
             0.5 * ||s||^2
 
-        which equals 1.0 in the case of s being a vector of ones.
+        which equals 1.0 in the case of ``s`` being a vector of ones.
         """
         # Define data
         u = np.array([0.0, 1.0])
@@ -108,7 +280,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        which evaluates to 7456.0 when substituting in the given values of u, v and s.
+        which evaluates to 7456.0 when substituting in the given values of ``u``, ``v``
+        and ``s``.
         """
         # Define data
         u = np.arange(3, dtype=float)
@@ -158,8 +331,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             v' u + 0.5 * (v' s)^2
 
-        We consider orthogonal vectors v and u, meaning we only evaluate the second term
-        to get the expected output.
+        We consider orthogonal vectors ``v`` and ``u``, meaning we only evaluate the
+        second term to get the expected output.
         """
         # Define data - orthogonal u and v vectors should give back half squared dot
         # product of v and s
@@ -234,7 +407,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param y: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``y``
             """
             return y**2
 
@@ -285,7 +458,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
@@ -325,7 +498,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             Basic score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at x
+            :return: score function (gradient of log density) evaluated at ``x_``
             """
             return x_**2
 
@@ -364,7 +537,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = cn.create_train_state(
-            score_network, jax.random.PRNGKey(0), 1e-3, 2, sgd
+            score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
@@ -401,7 +574,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_univariate_gaussian_score(self):
         """
-        Test a simple univariate Gaussian known score function.
+        Test a simple univariate Gaussian with a known score function.
         """
         # Setup univariate Gaussian
         mu = 0.0
@@ -443,7 +616,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_multivariate_gaussian_score(self) -> None:
         """
-        Test a simple multivariate Gaussian known score function.
+        Test a simple multivariate Gaussian with a known score function.
         """
         # Setup multivariate Gaussian
         dimension = 2
@@ -487,7 +660,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_univariate_gmm_score(self):
         """
-        Test a univariate Gaussian mixture model known score function.
+        Test a univariate Gaussian mixture model with a known score function.
         """
         # Define the univariate Gaussian mixture model
         mus = np.array([-4.0, 4.0])
@@ -540,22 +713,25 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_multivariate_gmm_score(self):
         """
-        Test a multivariate Gaussian mixture model known score function.
+        Test a multivariate Gaussian mixture model with a known score function.
         """
         # Define the multivariate Gaussian mixture model (we don't want to go much
         # higher than dimension=2)
         np.random.seed(0)
         dimension = 2
-        k = 10
+        num_components = 10
         mus = np.random.multivariate_normal(
-            np.zeros(dimension), np.eye(dimension), size=k
+            np.zeros(dimension), np.eye(dimension), size=num_components
         )
         sigmas = np.array(
-            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+            [
+                np.random.gamma(2.0, 1.0) * np.eye(dimension)
+                for _ in range(num_components)
+            ]
         )
-        mix = np.random.dirichlet(np.ones(k))
+        mix = np.random.dirichlet(np.ones(num_components))
         num_points = 500
-        comp = np.random.choice(k, size=num_points, p=mix)
+        comp = np.random.choice(num_components, size=num_points, p=mix)
         samples = np.array(
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
@@ -571,8 +747,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
             def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
                 lpdf = 0.0
-                for k_ in range(k):
-                    lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
+                for component in range(num_components):
+                    lpdf += (
+                        multivariate_normal.pdf(y, mus[component], sigmas[component])
+                        * mix[component]
+                    )
                 return jax.numpy.log(lpdf)
 
             return egrad(logpdf)(x_)
