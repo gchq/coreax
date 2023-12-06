@@ -13,19 +13,16 @@
 # limitations under the License.
 import time
 import unittest
-from unittest.mock import patch
+from collections.abc import Callable
 
 import numpy as np
-import scipy.stats
 from jax import jit
-from jax import numpy as jnp
 from scipy.stats import ks_2samp
 
-import coreax.approximation as ca
 import coreax.kernel as ck
 
 
-def jit_test(fn, *args, **kwargs) -> tuple:
+def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     """
     A before and after run of a function, catching timings of each for JIT testing.
 
