@@ -310,9 +310,9 @@ class RandomSample(Coreset):
         Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
         This class is updated in-place. The randomly sampled points are stored in the
-        `reduction_indices` attribute.
+        ``reduction_indices`` attribute.
 
-        :return: Nothing, the coreset is assigned to :attr:coreset
+        :return: Nothing, the coreset is assigned to :attr:`coreset`
         """
         key = random.PRNGKey(self.random_key)
         orig_data = self.data.pre_reduction_array
