@@ -327,8 +327,6 @@ class Kernel(ABC):
         i: int,
         j: int,
         kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
-        grads: ArrayLike | None = None,
-        length_scale: float | None = None,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -350,12 +348,8 @@ class Kernel(ABC):
             :math:`1 \times n`
         :param i: Kernel matrix block start
         :param j: Kernel matrix block end
-        :param max_size: Size of matrix block to process
         :param kernel_pairwise: Pairwise kernel evaluation function
-        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
-            defaults to :data:`None`
-        :param length_scale: Base kernel length_scale; optional, defaults to
-            :data:`None`
+        :param max_size: Size of matrix block to process
         :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
             ``j``:``j`` + ``max_size`` populated
         """
@@ -365,20 +359,7 @@ class Kernel(ABC):
         num_datapoints = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
-        if grads is None:
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size], x[j : j + max_size]
-            )
-        else:
-            grads = jnp.asarray(grads)
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size],
-                x[j : j + max_size],
-                grads[i : i + max_size],
-                grads[j : j + max_size],
-                num_datapoints,
-                length_scale,
-            )
+        kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
 
         # Assign the kernel row sum to the relevant part of this full matrix
         kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
@@ -396,8 +377,6 @@ class Kernel(ABC):
         self,
         x: ArrayLike,
         max_size: int = 10_000,
-        grads: ArrayLike | None = None,
-        length_scale: ArrayLike | None = None,
     ) -> Array:
         r"""
         Compute the row sum of the kernel matrix.
@@ -412,30 +391,17 @@ class Kernel(ABC):
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
-            defaults to :data:`None`
-        :param length_scale: Base kernel length_scale, if applicable,
-            :math:`n \times d`; optional, defaults to :data:`None`
         :return: Kernel matrix row sum
         """
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
-        if grads is None:
-            kernel_pairwise = jit(
-                vmap(
-                    vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
-                    in_axes=(None, 0),
-                    out_axes=1,
-                )
+        kernel_pairwise = jit(
+            vmap(
+                vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+                in_axes=(None, 0),
+                out_axes=1,
             )
-        else:
-            kernel_pairwise = jit(
-                vmap(
-                    vmap(self._compute_elementwise, (None, 0, None, 0, None, None), 0),
-                    (0, None, 0, None, None, None),
-                    0,
-                )
-            )
+        )
 
         # Ensure data format is as required
         x = jnp.asarray(x)
@@ -450,8 +416,6 @@ class Kernel(ABC):
                     i,
                     j,
                     kernel_pairwise,
-                    grads,
-                    length_scale,
                     max_size,
                 )
         return kernel_row_sum
@@ -459,8 +423,6 @@ class Kernel(ABC):
     def calculate_kernel_matrix_row_sum_mean(
         self,
         x: ArrayLike,
-        grads: ArrayLike | None = None,
-        length_scale: ArrayLike | None = None,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -472,14 +434,8 @@ class Kernel(ABC):
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d`;
-            optional, defaults to :data:`None`
-        :param length_scale: Base kernel length_scale, if applicable,
-            :math:`n \times d`; optional, defaults to :data:`None`
         """
-        return self.calculate_kernel_matrix_row_sum(
-            x, max_size, grads, length_scale
-        ) / (1.0 * x.shape[0])
+        return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
     def approximate_kernel_matrix_row_sum_mean(
         self,
