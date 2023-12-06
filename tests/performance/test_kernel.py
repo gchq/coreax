@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
 import unittest
 from unittest.mock import patch
 
 import numpy as np
 import scipy.stats
-from jax import numpy as jnp, jit
+from jax import jit
+from jax import numpy as jnp
 from scipy.stats import ks_2samp
-import time
 
 import coreax.approximation as ca
 import coreax.kernel as ck
