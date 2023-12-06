@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TODO: Create top-level docstring."""
+"""
+Functionality to perform simple, generic tasks and operations.
+
+The functions within this module are simple solutions to various problems or
+requirements that are sufficiently generic to be useful across multiple areas of the
+codebase. Examples of this include computation of squared distances, definition of
+class factories and checks for numerical precision.
+"""
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
@@ -48,7 +55,7 @@ def apply_negative_precision_threshold(
 
     :param x: Scalar value we wish to compare to 0.0
     :param precision_threshold: Positive threshold we compare against for precision
-    :return: x, rounded to 0.0 if it is between -`precision_threshold` and 0.0
+    :return: ``x``, rounded to 0.0 if it is between -`precision_threshold` and 0.0
     """
     # Cast to float. Will raise TypeError if array is not zero-dimensional.
     x = float(x)
@@ -65,63 +72,66 @@ def apply_negative_precision_threshold(
 
 
 @jit
-def sq_dist(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     """
     Calculate the squared distance between two vectors.
 
     :param x: First vector argument
     :param y: Second vector argument
-    :return: Dot product of `x - y` and `x - y`, the square distance between `x` and `y`
+    :return: Dot product of ```x - y`` and ``x - y``, the square distance between ``x``
+        and ``y``
     """
     return jnp.dot(x - y, x - y)
 
 
 @jit
-def sq_dist_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise square distance between two arrays.
 
     :param x: First set of vectors as a :math:`n \times d` array
     :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between `x_array` and `y_array` as an
+    :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
     # Use vmap to turn distance between individual vectors into a pairwise distance.
-    d1 = vmap(sq_dist, in_axes=(None, 0), out_axes=0)
-    d2 = vmap(d1, in_axes=(0, None), out_axes=0)
-
-    return d2(x, y)
+    fn = vmap(
+        vmap(squared_distance, in_axes=(None, 0), out_axes=0),
+        in_axes=(0, None),
+        out_axes=0,
+    )
+    return fn(x, y)
 
 
 @jit
-def diff(x: ArrayLike, y: ArrayLike) -> Array:
+def difference(x: ArrayLike, y: ArrayLike) -> Array:
     """
     Calculate vector difference for a pair of vectors.
 
     :param x: First vector
     :param y: Second vector
-    :return: Vector difference `x - y`
+    :return: Vector difference ``x - y``
     """
     return x - y
 
 
 @jit
-def pdiff(x_array: ArrayLike, y_array: ArrayLike) -> Array:
+def pairwise_difference(x_array: ArrayLike, y_array: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
     :param x_array: First set of vectors as a :math:`n \times d` array
     :param y_array: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between `x_array` and `y_array` as an
+    :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
-    d1 = vmap(diff, in_axes=(0, None), out_axes=0)
-    d2 = vmap(d1, in_axes=(None, 0), out_axes=1)
+    fn = vmap(
+        vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
+    )
+    return fn(x_array, y_array)
 
-    return d2(x_array, y_array)
 
-
-def solve_qp(kmm: ArrayLike, kbar: ArrayLike) -> Array:
+def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
     r"""
     Solve quadratic programs with :mod:`jaxopt`.
 
@@ -137,18 +147,25 @@ def solve_qp(kmm: ArrayLike, kbar: ArrayLike) -> Array:
 
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
-    :param kmm: :math:`m \times m` coreset Gram matrix
-    :param kbar: :math`m \times d` array of Gram matrix means
+    :param kernel_mm: :math:`m \times m` coreset Gram matrix
+    :param kernel_matrix_row_sum_mean: :math`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
-    q_array = jnp.array(kmm)
-    c = -jnp.array(kbar)
-    m = q_array.shape[0]
-    a_array = jnp.ones((1, m))
-    b = jnp.array([1.0])
-    g_array = jnp.eye(m) * -1.0
-    h = jnp.zeros(m)
+    # Setup optimisation problem - all variable names are consistent with the OSQP
+    # terminology. Begin with the objective parameters
+    q_array = jnp.array(kernel_mm)
+    c = -jnp.array(kernel_matrix_row_sum_mean)
 
+    # Define the equality constraint parameters
+    num_points = q_array.shape[0]
+    a_array = jnp.ones((1, num_points))
+    b = jnp.array([1.0])
+
+    # Define the inequality constraint parameters
+    g_array = jnp.eye(num_points) * -1.0
+    h = jnp.zeros(num_points)
+
+    # Define solver object and run solver
     qp = OSQP()
     sol = qp.run(
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)

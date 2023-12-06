@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """
-Example use cases of the coreax library.
+Tests to verify performance of the coreax library.
 
-Examples showcase coreset generation on different datasets, as well as using different
-coreset generation algorithms to illustrate the capabilities of the library.
+Tests for specific functions, methods and classes in the coreax library, to ensure
+performance is as expected.
 """

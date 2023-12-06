@@ -12,6 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Classes and associated functionality to use kernel functions.
+
+A kernel is a non-negative, real-valued integrable function that can take two inputs,
+``x`` and ``y``, and returns a value that decreases as ``x`` and ``y`` move further away
+in space from each other. Note that *further* here may account for cyclic behaviour in
+the data, for example.
+
+In this library, we often use kernels as a smoothing tool: given a dataset of distinct
+points, we can reconstruct the underlying data generating distribution through smoothing
+of the data with kernels.
+
+All kernels in this module implement the base class :class:`Kernel`. They therefore must
+define some ``length_scale`` and ``output_scale``, with the former controlling the
+amount of smoothing applied, and the latter acting as a normalisation constant. A common
+kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined as
+
+.. math::
+
+    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2).
+
+One can see that, if ``output_scale`` takes the value
+:math:`\frac{1}{\sqrt{2\pi}\text{length_scale}}`, then the
+:class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
+
+There are only two mandatory methods to implement when defining a new kernel. The first
+is :meth:`~Kernel._compute_elementwise`, which returns the floating point value after
+evaluating the kernel on two floats, ``x`` and ``y``. Performance improvements can be
+gained when kernels are used in other areas of the codebase by also implementing
+:meth:`~Kernel._grad_x_elementwise` and :meth:`~Kernel._grad_y_elementwise` which are
+simply the gradients of the kernel with respect to ``x`` and ``y`` respectively.
+Finally, :meth:`~Kernel._divergence_x_grad_y_elementwise`, the divergence with respect
+to ``x`` of the gradient of the kernel with respect to ``y`` can allow analytical
+computation of the :class:`SteinKernel`, which itself requires a base kernel. However,
+if this property is not known, one can turn to the approaches in
+:class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
+
+The other mandatory method to implement when defining a new kernel is
+:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is JIT
+compiled. As a result, definitions of dynamic and static values inside
+:meth:`~Kernel._tree_flatten` ensure the kernel object can be mutated and the
+corresponding JIT compilation does not yield unexpected results.
+"""
+
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
@@ -32,13 +76,16 @@ def median_heuristic(x: ArrayLike) -> Array:
     r"""
     Compute the median heuristic for setting kernel bandwidth.
 
+    Analysis of the performance of the median heuristic can be found in
+    :cite:p:`garreau2018medianheuristic`.
+
     :param x: Input array of vectors
     :return: Bandwidth parameter, computed from the median heuristic, as a
         0-dimensional array
     """
-    # calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(cu.sq_dist_pairwise(x, x), k=1)
-    # calculate the median
+    # Calculate square distances as an upper triangular matrix
+    square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
+    # Calculate the median of the square distances
     median_square_distance = jnp.median(
         square_distances[jnp.triu_indices_from(square_distances, k=1)]
     )
@@ -50,7 +97,7 @@ class Kernel(ABC):
     """
     Base class for kernels.
 
-    :param length_scale: Kernel length_scale to use
+    :param length_scale: Kernel ``length_scale`` to use
     :param output_scale: Output scale to use
     """
 
@@ -171,12 +218,10 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`m \times n \times d` array of pairwise Jacobians
         """
-        fn = jit(
-            vmap(
-                vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
-                in_axes=(None, 0),
-                out_axes=1,
-            )
+        fn = vmap(
+            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
         )
         return fn(x, y)
 
@@ -282,8 +327,6 @@ class Kernel(ABC):
         i: int,
         j: int,
         kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
-        grads: ArrayLike | None = None,
-        length_scale: float | None = None,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -305,12 +348,8 @@ class Kernel(ABC):
             :math:`1 \times n`
         :param i: Kernel matrix block start
         :param j: Kernel matrix block end
-        :param max_size: Size of matrix block to process
         :param kernel_pairwise: Pairwise kernel evaluation function
-        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
-            defaults to :data:`None`
-        :param length_scale: Base kernel length_scale; optional, defaults to
-            :data:`None`
+        :param max_size: Size of matrix block to process
         :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
             ``j``:``j`` + ``max_size`` populated
         """
@@ -320,20 +359,7 @@ class Kernel(ABC):
         num_datapoints = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
-        if grads is None:
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size], x[j : j + max_size]
-            )
-        else:
-            grads = jnp.asarray(grads)
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size],
-                x[j : j + max_size],
-                grads[i : i + max_size],
-                grads[j : j + max_size],
-                num_datapoints,
-                length_scale,
-            )
+        kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
 
         # Assign the kernel row sum to the relevant part of this full matrix
         kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
@@ -351,8 +377,6 @@ class Kernel(ABC):
         self,
         x: ArrayLike,
         max_size: int = 10_000,
-        grads: ArrayLike | None = None,
-        length_scale: ArrayLike | None = None,
     ) -> Array:
         r"""
         Compute the row sum of the kernel matrix.
@@ -367,30 +391,17 @@ class Kernel(ABC):
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d`; optional,
-            defaults to :data:`None`
-        :param length_scale: Base kernel length_scale, if applicable,
-            :math:`n \times d`; optional, defaults to :data:`None`
         :return: Kernel matrix row sum
         """
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
-        if grads is None:
-            kernel_pairwise = jit(
-                vmap(
-                    vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
-                    in_axes=(None, 0),
-                    out_axes=1,
-                )
+        kernel_pairwise = jit(
+            vmap(
+                vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+                in_axes=(None, 0),
+                out_axes=1,
             )
-        else:
-            kernel_pairwise = jit(
-                vmap(
-                    vmap(self._compute_elementwise, (None, 0, None, 0, None, None), 0),
-                    (0, None, 0, None, None, None),
-                    0,
-                )
-            )
+        )
 
         # Ensure data format is as required
         x = jnp.asarray(x)
@@ -405,8 +416,6 @@ class Kernel(ABC):
                     i,
                     j,
                     kernel_pairwise,
-                    grads,
-                    length_scale,
                     max_size,
                 )
         return kernel_row_sum
@@ -414,8 +423,6 @@ class Kernel(ABC):
     def calculate_kernel_matrix_row_sum_mean(
         self,
         x: ArrayLike,
-        grads: ArrayLike | None = None,
-        length_scale: ArrayLike | None = None,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -427,14 +434,8 @@ class Kernel(ABC):
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
-        :param grads: Array of gradients, if applicable, :math:`n \times d`;
-            optional, defaults to :data:`None`
-        :param length_scale: Base kernel length_scale, if applicable,
-            :math:`n \times d`; optional, defaults to :data:`None`
         """
-        return self.calculate_kernel_matrix_row_sum(
-            x, max_size, grads, length_scale
-        ) / (1.0 * x.shape[0])
+        return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
     def approximate_kernel_matrix_row_sum_mean(
         self,
@@ -494,7 +495,7 @@ class Kernel(ABC):
         # parameters
         return cu.call_with_excess_kwargs(
             approximator_obj,
-            kernel_evaluation=self._compute_elementwise,
+            kernel=self,
             random_key=random_key,
             num_kernel_points=num_kernel_points,
             num_train_points=num_train_points,
@@ -536,7 +537,7 @@ class SquaredExponentialKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         return self.output_scale * jnp.exp(
-            -cu.sq_dist(x, y) / (2 * self.length_scale**2)
+            -cu.squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     def _grad_x_elementwise(
@@ -604,7 +605,7 @@ class SquaredExponentialKernel(Kernel):
         k = self._compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
-        return scale * k * (d - scale * cu.sq_dist(x, y))
+        return scale * k * (d - scale * cu.squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
@@ -751,7 +752,7 @@ class PCIMQKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         scaling = 2 * self.length_scale**2
-        mq_array = cu.sq_dist(x, y) / scaling
+        mq_array = cu.squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     def _grad_x_elementwise(
@@ -820,7 +821,7 @@ class PCIMQKernel(Kernel):
         return (
             self.output_scale
             / scale
-            * (d * k**3 - 3 * k**5 * cu.sq_dist(x, y) / scale)
+            * (d * k**3 - 3 * k**5 * cu.squared_distance(x, y) / scale)
         )
 
 
@@ -866,10 +867,11 @@ class SteinKernel(Kernel):
     The score function
     :math:`\nabla_\mathbf{x} \log f_X: \mathbb{R}^d \to \mathbb{R}^d` can be any
     suitable Lipschitz score function, e.g. one that is learned from score matching
-    (#TODO: link to score matching), computed explicitly from a density function, or
-    known analytically.
+    (:class:`~coreax.score_matching.ScoreMatching`), computed explicitly from a density
+    function, or known analytically.
 
-    :param base_kernel: Initialised kernel object to evaluate the Stein kernel with
+    :param base_kernel: Initialised kernel object with which to evaluate the Stein
+        kernel, e.g. return from :func:`construct_kernel`
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
     :param output_scale: Output scale to use
@@ -943,5 +945,28 @@ for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
+
+
+# Set up class factory
+kernel_factory = cu.ClassFactory(Kernel)
+kernel_factory.register("squared_exponential", SquaredExponentialKernel)
+kernel_factory.register("laplace", LaplacianKernel)
+kernel_factory.register("pcimq", PCIMQKernel)
+kernel_factory.register("stein", SteinKernel)
+
+
+def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
+    """
+    Instantiate a kernel by name.
+
+    :param name: Name of kernel in :data:`kernel_factory`, or class object to
+        instantiate
+    :param args: Positional arguments to pass to instantiated class
+    :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
+    :return: Instance of selected :class:`Kernel` class
+    """
+    class_obj = kernel_factory.get(name)
+    return cu.call_with_excess_kwargs(class_obj, args, kwargs)
+
 
 # TODO: Do we want weights to be used to align with MMD?
