@@ -24,6 +24,7 @@ passed to classes, functions and methods throughout the coreax codebase.
 from __future__ import annotations
 
 from collections.abc import Callable
+from types import UnionType
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -53,36 +54,47 @@ def validate_in_range(
     try:
         if strict_inequalities:
             if lower_bound is not None and not x > lower_bound:
-                raise ValueError(f"{object_name} must be strictly above {lower_bound}.")
+                raise ValueError(f"{object_name} must be strictly above {lower_bound}")
             if upper_bound is not None and not x < upper_bound:
-                raise ValueError(f"{object_name} must be strictly below {upper_bound}.")
+                raise ValueError(f"{object_name} must be strictly below {upper_bound}")
         else:
             if lower_bound is not None and not x >= lower_bound:
-                raise ValueError(f"{object_name} must be {lower_bound} or above.")
+                raise ValueError(f"{object_name} must be {lower_bound} or above")
             if upper_bound is not None and not x <= upper_bound:
-                raise ValueError(f"{object_name} must be {upper_bound} or lower.")
+                raise ValueError(f"{object_name} must be {upper_bound} or lower")
     except TypeError:
         if strict_inequalities:
             raise TypeError(
-                f"{object_name} must have a valid comparison < and > implemented."
+                f"{object_name} must have a valid comparison < and > implemented"
             )
         else:
             raise TypeError(
-                f"{object_name} must have a valid comparison <= and >= implemented."
+                f"{object_name} must have a valid comparison <= and >= implemented"
             )
 
 
-def validate_is_instance(x: T, object_name: str, expected_type: type[T]) -> None:
+def validate_is_instance(
+    x: object,
+    object_name: str,
+    expected_type: type | UnionType | tuple[type | UnionType, ...],
+) -> None:
     """
     Verify that a given object is of a given type.
 
     :param x: Variable we wish to verify lies in the specified range
     :param object_name: Name of ``x`` to display if it is not of type ``expected_type``
-    :param expected_type: The expected type of ``x``
+    :param expected_type: Expected type of ``x``, can be a tuple or union to specify a
+        choice of valid types
     :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """
-    if not isinstance(x, expected_type):
-        raise TypeError(f"{object_name} must be of type {expected_type}.")
+    # Try-except to guard against an invalid expected_type in isinstance
+    try:
+        valid = isinstance(x, expected_type)
+    except TypeError:
+        raise TypeError("expected_type must be a type, tuple of types or a union")
+
+    if not valid:
+        raise TypeError(f"{object_name} must be of type {expected_type}")
 
 
 def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
@@ -98,7 +110,7 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
     try:
         return type_caster(x)
     except (TypeError, ValueError) as e:
-        error_text = f"{object_name} cannot be cast using {type_caster}. \n"
+        error_text = f"{object_name} cannot be cast using {type_caster}: \n"
         if hasattr(e, "message"):
             error_text += e.message
         else:
