@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
-from jax import Array
 
-import coreax.coreset as cc
+import coreax.metrics as cm
 import coreax.reduction as cr
-import coreax.util as cu
 import coreax.weights as cw
 
 
@@ -29,110 +28,47 @@ class TestDataReduction(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.original_data = jnp.array([0, 0.3, 0.75, 1])
-        self.weight = "MMD"
-        self.kernel = jnp.array([0, 0.5, 0.6, 0.5, 0])
-        self.test_class = cr.DataReduction(self.original_data, self.weight, self.kernel)
-        # make reduced data distinguishable from original data without calling an actual reduction
-        self.reduced_data = self.original_data[jnp.array([0, 1, 3])]
-        self.test_class.reduced_data = reduced_data
+        self.original_data = MagicMock()
+        self.original_data.pre_coreset_array = jnp.array([0, 0.3, 0.75, 1])
+        self.weights = "MMD"
+        self.kernel = MagicMock()
+        self.test_class = cr.Coreset(self.original_data, self.weights, self.kernel)
+        self.coreset = self.original_data[jnp.array([0, 1, 3])]
+        self.test_class.coreset = self.coreset
 
     def test_solve_weights(self) -> None:
         """
-        Test the solve_weights method of :class:`coreax.reduction.DataReduction`.
+        Test calls within ``solve_weights``.
         """
-
-        with patch(
-            "coreax.reduction.DataReduction._create_instance_from_factory"
-        ) as mock_create_instance:
+        with patch("coreax.util.create_instance_from_factory") as mock_create_instance:
             mock_create_instance.return_value = MockCreatedInstance()
-
             actual_out = self.test_class.solve_weights()
-
             mock_create_instance.assert_called_once_with(
-                cw.weights_factory, self.weight
+                cw.weights_factory, self.weights, self.kernel
             )
-
+            # MockCreatedInstance returns tuple of input arguments
             self.assertEqual(
-                actual_out, (self.original_data, self.reduced_data, self.kernel)
+                actual_out, (self.original_data.pre_coreset_array, self.coreset)
             )
-
-    def test_fit(self) -> None:
-        """
-        Test the fit method of :class:`coreax.reduction.DataReduction`.
-        """
-
-        with patch(
-            "coreax.reduction.DataReduction._create_instance_from_factory"
-        ) as mock_create_instance:
-            mock_create_instance.return_value = MockCreatedInstance()
-
-            actual_out = self.test_class.fit("coreset_a")
-
-            mock_create_instance.assert_called_once_with(
-                cc.coreset_factory, "coreset_a"
-            )
-
-            self.assertEqual(actual_out, (self.original_data, self.kernel))
-
-    def test_refine(self) -> None:
-        """
-        Test the refine method of :class:`coreax.reduction.DataReduction`.
-        """
-
-        with patch(
-            "coreax.reduction.DataReduction._create_instance_from_factory"
-        ) as mock_create_instance:
-            mock_create_instance.return_value = MockCreatedInstance()
-
-            actual_out = self.test_class.refine("refine_a")
-
-            mock_create_instance.assert_called_once_with(
-                cc.refine_factory, "refine_a", kernel=self.kernel
-            )
-
-            self.assertEqual(actual_out, (self.original_data, self.kernel, kernel_mean))
 
     def test_compute_metric(self) -> None:
         """
         Test the compute_metric method of :class:`coreax.reduction.DataReduction`.
         """
-
-        with patch(
-            "coreax.reduction.DataReduction._create_instance_from_factory"
-        ) as mock_create_instance:
+        with patch("coreax.util.create_instance_from_factory") as mock_create_instance:
             mock_create_instance.return_value = MockCreatedInstance()
-
             actual_out = self.test_class.compute_metric("metric_a")
-
             mock_create_instance.assert_called_once_with(
-                cc.refine_factory, "metric_a", kernel=self.kernel, weight=self.weight
+                cm.metric_factory, "metric_a", kernel=self.kernel
             )
-
-            self.assertEqual(actual_out, (self.original_data, self.reduced_data))
-
-    def test_create_instance_from_factory(self) -> None:
-        """
-        Test the _create_instance_from_factory method of :class:`coreax.reduction.DataReduction`.
-        """
-
-        with patch("coreax.util.call_with_excess_kwargs") as mock_call:
-            actual_out = cu.create_instance_from_factory(
-                MockClassFactory, "class_a", a="a", b="b"
+            # MockCreatedInstance returns tuple of input arguments
+            self.assertEqual(
+                actual_out, (self.original_data.pre_coreset_array, self.coreset)
             )
-
-            mock_call.assert_called_once_with("class_a", a="a", b="b")
 
 
 # Mocked output of reduction.DataReduction._create_instance_from_factory
 class MockCreatedInstance:
     @staticmethod
     def solve(*args):
-        return tuple(*args)
-
-
-# Mocked ClassFactory
-class MockClassFactory:
-    @staticmethod
-    def get(*args):
         return tuple(*args)

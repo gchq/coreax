@@ -33,12 +33,7 @@ import coreax.util as cu
 
 
 class Metric(ABC):
-    """
-    Base class for calculating metrics.
-    """
-
-    def __init__(self) -> None:
-        pass
+    """Base class for calculating metrics."""
 
     @abstractmethod
     def compute(
@@ -87,9 +82,7 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
-        r"""
-        Calculate maximum mean discrepancy between two datasets in d dimensions.
-        """
+        """Initialise class."""
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
@@ -377,3 +370,7 @@ class MMD(Metric):
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 
         return weighted_pairwise_distance_sum
+
+
+metric_factory = cu.ClassFactory(Metric)
+metric_factory.register("MMD", MMD)

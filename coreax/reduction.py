@@ -48,6 +48,10 @@ import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
 import coreax.weights as cw
+from coreax.metrics import Metric, metric_factory
+from coreax.util import NotCalculatedError
+from coreax.validation import validate_is_instance
+from coreax.weights import weights_factory
 
 
 class Coreset(ABC):
@@ -56,80 +60,73 @@ class Coreset(ABC):
 
     Class for performing data reduction.
 
-    :param data: DataReader instance with original data before reduction
-    :param weight: Type of weighting to apply
+    :param original_data: Instance of :class:`~coreax.data.DataReader` containing
+        the data we wish to reduce
+    :param weights: Type of weighting to apply, or :data:`None` if unweighted
     :param kernel: Kernel function
-       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
+       :data:`None` if not applicable
     """
 
     def __init__(
         self,
-        data: cd.DataReader,
-        weight: str | cw.WeightsOptimiser,
-        kernel: cu.KernelFunction,
+        original_data: cd.DataReader,
+        weights: str | type[cw.WeightsOptimiser] | None = None,
+        kernel: cu.KernelFunction | None = None,
     ):
         """Initialise class."""
-        self.original_data = data
-        self.weight = weight
+        validate_is_instance(original_data, "original_data", cd.DataReader)
+        self.original_data = original_data
+        validate_is_instance(weights, "weights", (str, type[cw.WeightsOptimiser], None))
+        self.weights = weights
+        validate_is_instance(kernel, "kernel", (cu.KernelFunction, None))
         self.kernel = kernel
-        self.reduction_indices = jnp.asarray(range(data.pre_reduction_array.shape[0]))
-        self.coreset: Array = data.pre_reduction_array
-
-    def solve_weights(
-        self,
-    ) -> Array:
-        """
-        Solve for weights.
-
-        :return: TODO once OOPedweights.py is implemented
-        """
-        # Create a weights optimiser object
-        weights_instance = cu.create_instance_from_factory(
-            cw.WeightsOptimiser,
-            self.weight,
-        )
-        return weights_instance.solve(self.data, self.reduced_data, self.kernel)
+        self.coreset: Array | None = None
 
     @abstractmethod
-    def fit(self, original_data: "DataReader") -> None:
+    def fit(self) -> None:
         """
         Compute coreset.
 
         The resulting coreset is saved in-place to :attr:`coreset`.
 
-        :param original_data: Instance of :class:`~coreax.data.DataReader` containing
-            the data we wish to reduce
         :return: Nothing
         """
 
-    def refine(
+    def solve_weights(
         self,
-        refine_name: str | type[cr.Refine],
     ) -> Array:
         """
-        Compute the refined coreset, of m points in d dimensions.
+        Solve for optimal weighting of points in :attr:`coreset`.
 
-        The refinement procedure replaces elements with points most reducing maximum mean
-        discrepancy (MMD). The iteration is carried out over points in original_data.
-
-        :param refine_name: Name of the refine type to use, or an uninstantiated
-            class object
-        :return: :math:`m` refined coreset point indices
+        :return: Optimal weighting of points in :attr:`coreset` to represent the
+            original data
         """
-        # Create a refine object
-        refiner = cu.create_instance_from_factory(
-            cr.refine_factory, refine_name, kernel=self.kernel
+        if self.weights is None:
+            raise TypeError("Cannot solve weights for unweighted data")
+        if self.coreset is None:
+            raise NotCalculatedError("Need to call fit() before solving weights")
+
+        # Create a weights optimiser object
+        weights_instance = cu.create_instance_from_factory(
+            weights_factory,
+            self.weights,
+            kernel=self.kernel,
         )
-        return refiner.refine(
-            self.data, self.reduction_indices, kernel_mean
-        )  # TODO compute kernel mean here or in refine.py?
+        return weights_instance.solve(
+            self.original_data.pre_coreset_array, self.coreset
+        )
 
     def compute_metric(
         self,
-        metric_name: str | type[cm.Metric],
+        metric_name: str | type[Metric],
     ) -> Array:
         """
         Compute metric comparing the coreset with the original data.
+
+        The metric is computed unweighted. A weighted version may be implemented in
+        future. For now, more options are available by calling the chosen
+        :class:`~coreax.Metric` class directly.
 
         :param metric_name: Name of the metric type to use, or an uninstantiated
             class object
@@ -137,20 +134,21 @@ class Coreset(ABC):
         """
         # Create a metric object
         metric_instance = cu.create_instance_from_factory(
-            cr.metric_factory,
+            metric_factory,
             metric_name,
             kernel=self.kernel,
-            weight=self.weight,
         )
 
-        return metric_instance.compute(self.data, self.reduced_data)
+        return metric_instance.compute(
+            self.original_data.pre_coreset_array, self.coreset
+        )
 
     def format(self) -> Array:
         """Format coreset to match the shape of the original data."""
         return self.original_data.format()
 
-    def render(self) -> matplotlib.axes:
-        """Render coreset using :mod:`matplotlib`."""
+    def render(self) -> None:
+        """Plot coreset interactively using :mod:`~matplotlib.pyplot`."""
         return self.original_data.render()
 
 

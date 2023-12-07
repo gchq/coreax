@@ -47,6 +47,10 @@ KernelFunctionWithGrads = Callable[
 ]
 
 
+class NotCalculatedError(Exception):
+    """Raise when trying to use a variable that has not been calculated yet."""
+
+
 def apply_negative_precision_threshold(
     x: ArrayLike, precision_threshold: float = 1e-8
 ) -> float:
@@ -268,7 +272,11 @@ class ClassFactory:
 
 def create_instance_from_factory(
     factory_obj: ClassFactory,
-    class_type: str | type[cc.Coreset] | type[cm.Metric] | type[cr.Refine] | type[cw.WeightsOptimiser],
+    class_type: str
+    | type[cc.Coreset]
+    | type[cm.Metric]
+    | type[cr.Refine]
+    | type[cw.WeightsOptimiser],
     **kwargs,
 ) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
     """
