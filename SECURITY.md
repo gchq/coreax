@@ -11,11 +11,15 @@ Currently supported versions of this project are detailed below.
 
 ## Reporting a Vulnerability
 
-We encourage all users of the Coreax repository to be security conscious in their
-development practices and use.
+Disclosures of vulnerabilities in Coreax are always welcomed. Whilst we aim to write
+clean and secure code free from bugs, we recognise that this is an open source project,
+relying on other of open source libraries that are modified and updated on a regular
+basis. We hope that the community will continue to support us as we endeavour to
+maintain and develop this tool together.
 
 If you believe that you have identified a potential vulnerability in the code base,
-please report this promptly to [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk).
+please report this promptly to [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk). Please describe the problem in as
+much detail as possible, ideally with examples.
 
 Tell them where to go, how often they can expect to get an update on a
 reported vulnerability, what to expect if the vulnerability is accepted or
