@@ -13,83 +13,133 @@
 # limitations under the License.
 
 """
-DataReader and data classes.
+Classes for reading different structures of input data.
+
+In order to calculate a coreset, an instance of a subclass of :class:`DataReader` is
+passed to :class:`~coreax.ReductionStrategy`. It is necessary to use
+:class:`DataReader` because :class:`~coreax.ReductionStrategy` requires a
+two-dimensional :class:`~jax.Array`. Data reductions are performed along the first
+dimension.
+
+The user should read in their data files using their preferred library that returns a
+:class:`jax.Array` or :class:`numpy.Array`. This array is passed to a
+:meth:`DataReader.load` method. The user should not normally call
+:meth:`DataReader.__init__` directly. The user should select an appropriate subclass
+of :class:`DataReader` to match the structure of the input array. The :meth:`load`
+method on the subclass will rearrange the original data into the required
+two-dimensional format.
+
+Various post-processing methods may be implemented if applicable to visualise or
+restore a calculated coreset to match the format of the original data. To save a
+copy of a coreset, call :meth:`format` to return an :class:`~jax.Array`, which can
+be passed to the chosen IO library to write a file.
 """
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
+from jax import Array
 from jax.typing import ArrayLike
-from matplotlib import figure
 
-from coreax.reduction import DataReduction, ReductionStrategy
+from coreax.reduction import Coreset, ReductionStrategy
 
 
 class DataReader(ABC):
     """
-    DataReader.
+    Class to apply pre- and post-processing to data.
+
+    :param original_data: Array of data to be reduced to a coreset
+    :param pre_coreset_array: Two-dimensional array already rearranged to be ready for
+        calculating a coreset
     """
 
-    def __init__(
-        self, original_data: ArrayLike, pre_reduction_array: list[list[float]]
-    ) -> None:
-        self.original_data = original_data
-        self.pre_reduction_array = pre_reduction_array
-        # self._dimension_reduction_meta: dict | None
+    def __init__(self, original_data: ArrayLike, pre_coreset_array: ArrayLike):
+        """
+        Initialise class.
+
+        Should not normally be called by the user: use :meth:`load` instead.
+        """
+        self.original_data: Array = original_data
+        self.pre_coreset_array: Array = pre_coreset_array
 
     @classmethod
     def load(cls, original_data: ArrayLike) -> DataReader:
         """
-        Construct DataReader.
+        Construct :class:`DataReader` from an array of original data.
 
-        Use instead of __init__.
+        This class method restructures the original data into the layout required for
+        :class:`Coreset`.
 
-        :param original_data:
-        :return:
+        The user should not normally initialise this class directly; instead use this
+        constructor.
+
+        :param original_data: Array of data to be reduced to a coreset
+        :return: Populated instance of :class:`DataReader`
         """
-        # Calculate pre_reduction_array
-        pre_reduction_array = []
-        return cls(original_data, pre_reduction_array)
 
     def reduce(
         self,
-        reduction_strategy: str | ReductionStrategy,
-        data_reducer: str | DataReduction,
-    ) -> DataReduction:
+        coreset_method: str | type[Coreset],
+        reduction_strategy: str | type[ReductionStrategy],
+    ) -> Coreset:
         """
-        Reduce data.
+        Reduce original data stored in this class to a coreset.
 
-        :param reduction_strategy:
-        :param data_reducer:
-        :return:
-        """
-        raise NotImplementedError
-
-    def render(self, data_reduction: DataReduction | None) -> figure:
-        """
-        Create matplotlib figure of data.
-
-        :param data_reduction:
-        :return:
+        :param coreset_method: Type of coreset to generate, expressed either as a string
+            name or uninstantiated class
+        :param reduction_strategy: Reduction strategy to use when calculating this
+            coreset, expressed either as a string name or uninstantiated class
+        :return: Instance of :class:`~coreax.reduction.Coreset` containing the
+            calculated coreset
         """
         raise NotImplementedError
 
-    def reduce_dimension(self, num_dimension: int) -> None:
+    @abstractmethod
+    def format(self, coreset: Coreset) -> Array:
         """
-        Run PCA.
+        Format coreset to match the shape of the original data.
 
-        :param num_dimension: Number of dimensions.
+        If the number of columns was reduced by :meth:`reduce_dimension`, it will be
+        reverted by this method via a call to :meth:`restore_dimension`.
+
+        :param coreset: Coreset to format
+        :return: Array of coreset in format matching original data
+        """
+
+    @abstractmethod
+    def render(self, coreset: Coreset | None) -> None:
+        """
+        Plot coreset or original data interactively using :mod:`~matplotlib.pyplot`.
+
+        :param coreset: Coreset to plot, or :data:`None` to plot original data
+        :return: Nothing
+        """
+
+    def reduce_dimension(self, num_dimensions: int) -> None:
+        """
+        Reduce dimensionality of :attr:`pre_coreset_array`.
+
+        Performed using pricipal component analysis (PCA).
+
+        :attr:`pre_coreset_array` is updated in place. Meta data detailing the type of
+        reduction are save to this class to enable reconstruction later.
+
+        :param num_dimensions: Target number of dimensions
+        :return: Nothing
         """
         raise NotImplementedError
 
-    def restore_dimension(self, data_reduction: DataReduction | None) -> ArrayLike:
+    def restore_dimension(self, coreset: Coreset | None) -> Array:
         """
         Expand principle components into original dimensions.
 
-        :param data_reduction:
-        :return:
+        Some data will have been lost due to reduction in dimensionality, so the
+        restored data will not exactly match the original data.
+
+        :param coreset: Coreset to restore, or :data:`None` to restore original data
+        :return: Array matching original number of columns of :attr:`pre_coreset_data`
         """
         raise NotImplementedError
