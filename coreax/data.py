@@ -69,6 +69,7 @@ class DataReader(ABC):
         self.pre_coreset_array: Array = cast_as_type(pre_coreset_array, jnp.atleast_2d)
 
     @classmethod
+    @abstractmethod
     def load(cls, original_data: ArrayLike) -> DataReader:
         """
         Construct :class:`DataReader` from an array of original data.
