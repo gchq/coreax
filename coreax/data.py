@@ -46,7 +46,7 @@ from jax import Array
 from jax.typing import ArrayLike
 
 from coreax.reduction import Coreset, ReductionStrategy, reduction_strategy_factory
-from coreax.util import create_instance_from_factory
+from coreax.util import ClassFactory, create_instance_from_factory
 from coreax.validation import cast_as_type
 
 
@@ -156,3 +156,7 @@ class DataReader(ABC):
         :return: Array matching original number of columns of :attr:`pre_coreset_data`
         """
         raise NotImplementedError
+
+
+# Register all instances with factory
+data_reader_factory = ClassFactory(DataReader)
