@@ -17,14 +17,21 @@ from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 
+import coreax.data as cd
 import coreax.metrics as cm
 import coreax.reduction as cr
 import coreax.weights as cw
 
 
-class TestDataReduction(unittest.TestCase):
+class MockCreatedInstance:
+    @staticmethod
+    def solve(*args):
+        return tuple(*args)
+
+
+class TestCoreset(unittest.TestCase):
     """
-    Tests related to kernel.py functions.
+    Tests related to :class:`Coreset`.
     """
 
     def setUp(self) -> None:
@@ -67,8 +74,17 @@ class TestDataReduction(unittest.TestCase):
             )
 
 
-# Mocked output of reduction.DataReduction._create_instance_from_factory
-class MockCreatedInstance:
-    @staticmethod
-    def solve(*args):
-        return tuple(*args)
+class TestSizeReduce(unittest.TestCase):
+    """Test :class:`SizeReduce`."""
+
+    def test_random_sample(self):
+        """Test reduction with :class:`RandomSample`."""
+        orig_data = cd.ArrayData.load([[i, 2 * i] for i in range(20)])
+        strategy = cr.SizeReduce("random", num_points=10)
+        coreset = strategy.reduce(orig_data)
+        # Check shape of output
+        self.assertEqual(coreset.coreset.format().shape, [10, 2])
+
+
+if __name__ == "__main__":
+    unittest.main()
