@@ -49,7 +49,7 @@ import coreax.refine as cr
 import coreax.util as cu
 import coreax.weights as cw
 from coreax.metrics import Metric, metric_factory
-from coreax.util import NotCalculatedError
+from coreax.util import NotCalculatedError, create_instance_from_factory
 from coreax.validation import validate_is_instance
 from coreax.weights import weights_factory
 
@@ -84,12 +84,13 @@ class Coreset(ABC):
         self.coreset: Array | None = None
 
     @abstractmethod
-    def fit(self) -> None:
+    def fit(self, num_points: int) -> None:
         """
         Compute coreset.
 
         The resulting coreset is saved in-place to :attr:`coreset`.
 
+        :param num_points: Number of points to include in coreset
         :return: Nothing
         """
 
@@ -154,17 +155,22 @@ class Coreset(ABC):
 
 class ReductionStrategy(ABC):
     """
-    Define a strategy for how to reduce a dataset to a coreset.
+    Define a strategy for how to construct a coreset for a given type of coreset.
 
-    :param coreset_type: Type of coreset to calculate
+    The strategy determines the size of the coreset, approximation strategies to aid
+    memory management and other similar aspects that wrap around the type of coreset.
+
+    :param coreset_method: Type of coreset to calculate
+    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
     """
 
-    def __init__(self, coreset_type: type[Coreset]):
+    def __init__(self, coreset_method: str | type[Coreset], **kwargs):
         """Initialise class."""
-        self.coreset_type = coreset_type
+        self.coreset_method = coreset_method
+        self.coreset_kwargs = kwargs
 
     @abstractmethod
-    def reduce(self, original_data: DataReader) -> Coreset:
+    def reduce(self, original_data: "data.DataReader") -> Coreset:
         """
         Reduce a dataset to a coreset.
 
@@ -192,26 +198,30 @@ class SizeReduce(ReductionStrategy):
     """
     Calculate coreset containing a given number of points.
 
-    :param coreset_type: Type of coreset to calculate
+    :param coreset_method: Type of coreset to calculate
     :param num_points: Number of points to include in coreset
     """
 
-    def __init__(self, coreset_type: type[Coreset], num_points: int):
+    def __init__(self, coreset_method: str | type[Coreset], num_points: int, **kwargs):
         """Initialise class."""
-        super().__init__(coreset_type)
+        super().__init__(coreset_method, **kwargs)
         self.num_points = num_points
 
-    def reduce(self, original_data: DataReader) -> Coreset:
+    def reduce(self, original_data: "data.DataReader") -> Coreset:
         """
         Reduce a dataset to a coreset.
 
         :param original_data: Data to be reduced
         :return: Coreset calculated according to chosen type and this reduction strategy
         """
-        coreset = self.coreset_type(original_data=original_data)
-        coreset.fit()
-
-        return coreset
+        coreset_obj = create_instance_from_factory(
+            coreset_factory,
+            self.coreset_method,
+            original_data=original_data,
+            **self.coreset_kwargs,
+        )
+        coreset_obj.fit(num_points=self.num_points)
+        return coreset_obj
 
     def _tree_flatten(self) -> tuple[tuple, dict]:
         """
@@ -222,7 +232,7 @@ class SizeReduce(ReductionStrategy):
         of methods inside this class.
         """
         children = (
-            self.coreset_type,
+            self.coreset_method,
             self.num_points,
         )
         aux_data = {}
