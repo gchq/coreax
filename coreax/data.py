@@ -41,10 +41,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-from coreax.reduction import Coreset, ReductionStrategy
+from coreax.reduction import Coreset, ReductionStrategy, reduction_strategy_factory
+from coreax.util import create_instance_from_factory
+from coreax.validation import cast_as_type
 
 
 class DataReader(ABC):
@@ -62,8 +65,8 @@ class DataReader(ABC):
 
         Should not normally be called by the user: use :meth:`load` instead.
         """
-        self.original_data: Array = original_data
-        self.pre_coreset_array: Array = pre_coreset_array
+        self.original_data: Array = cast_as_type(original_data, jnp.asarray)
+        self.pre_coreset_array: Array = cast_as_type(pre_coreset_array, jnp.atleast_2d)
 
     @classmethod
     def load(cls, original_data: ArrayLike) -> DataReader:
@@ -84,6 +87,7 @@ class DataReader(ABC):
         self,
         coreset_method: str | type[Coreset],
         reduction_strategy: str | type[ReductionStrategy],
+        **kwargs,
     ) -> Coreset:
         """
         Reduce original data stored in this class to a coreset.
@@ -92,10 +96,18 @@ class DataReader(ABC):
             name or uninstantiated class
         :param reduction_strategy: Reduction strategy to use when calculating this
             coreset, expressed either as a string name or uninstantiated class
+        :param kwargs: Keyword arguments to be passed during initialisation of
+            :class:`~coreax.reduction.Coreset` or
+            :class:`~coreax.reduction.ReductionStrategy` as appropriate
         :return: Instance of :class:`~coreax.reduction.Coreset` containing the
             calculated coreset
         """
-        raise NotImplementedError
+        return create_instance_from_factory(
+            reduction_strategy_factory,
+            reduction_strategy,
+            coreset_method=coreset_method,
+            **kwargs,
+        ).reduce(self)
 
     @abstractmethod
     def format(self, coreset: Coreset) -> Array:
