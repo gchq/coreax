@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from unittest.mock import MagicMock
 
 from jax import Array
 from jax.typing import ArrayLike
@@ -31,9 +32,6 @@ class DataReaderConcrete(cd.DataReader):
     def format(self, coreset: cr.Coreset) -> Array:
         raise NotImplementedError
 
-    def render(self, coreset: cr.Coreset | None) -> None:
-        raise NotImplementedError
-
 
 class TestDataReader(unittest.TestCase):
     """Test operation of DataReader class."""
@@ -43,6 +41,25 @@ class TestDataReader(unittest.TestCase):
         actual = DataReaderConcrete(original_data=1, pre_coreset_array=2)
         self.assertEqual(actual.original_data, Array(1))
         self.assertEqual(actual.pre_coreset_array, Array([[2]]))
+
+
+class TestArrayData(unittest.TestCase):
+    """Test ArrayData class."""
+
+    def test_load(self):
+        """Check that no preprocessing is done during load."""
+        original_data = Array([[1, 2]])
+        actual = cd.ArrayData.load(original_data)
+        self.assertEqual(actual.original_data, original_data)
+        self.assertEqual(actual.pre_coreset_array, original_data)
+
+    def test_format(self):
+        """Check that coreset is returned without further formatting."""
+        coreset_array = Array([[2, 3], [4, 5]])
+        coreset_obj = MagicMock()
+        coreset_obj.coreset = coreset_array
+        data_reader = cd.DataReader(Array([[2, 3], [4, 5], [6, 7]]))
+        self.assertEqual(data_reader.format(coreset_obj), coreset_array)
 
 
 if __name__ == "__main__":

@@ -122,20 +122,22 @@ class DataReader(ABC):
         :return: Array of coreset in format matching original data
         """
 
-    @abstractmethod
     def render(self, coreset: Coreset | None) -> None:
         """
         Plot coreset or original data interactively using :mod:`~matplotlib.pyplot`.
 
+        This method is only implemented when applicable for the data type.
+
         :param coreset: Coreset to plot, or :data:`None` to plot original data
         :return: Nothing
         """
+        raise NotImplementedError
 
     def reduce_dimension(self, num_dimensions: int) -> None:
         """
         Reduce dimensionality of :attr:`pre_coreset_array`.
 
-        Performed using pricipal component analysis (PCA).
+        Performed using principal component analysis (PCA).
 
         :attr:`pre_coreset_array` is updated in place. Meta data detailing the type of
         reduction are save to this class to enable reconstruction later.
@@ -158,5 +160,51 @@ class DataReader(ABC):
         raise NotImplementedError
 
 
+class ArrayData(DataReader):
+    """
+    Class to apply pre- and post-processing to two-dimensional array data.
+
+    Data should already be in a format accepted by :class:`~coreax.Coreset`. Thus, if no
+    dimensionality reduction is performed, this class is an identity wrapper and
+    :attr:`pre_coreset_array` is equal to :attr:`original_data`.
+
+    :param original_data: Array of data to be reduced to a coreset
+    :param pre_coreset_array: Two-dimensional array already rearranged to be ready for
+        calculating a coreset
+    """
+
+    @classmethod
+    def load(cls, original_data: ArrayLike) -> DataReader:
+        """
+        Construct :class:`ArrayData` from a two-dimensional array of data.
+
+        This constructor does not modify the provided data.
+
+        The user should not normally initialise this class directly; instead use this
+        constructor.
+
+        :param original_data: Array of data to be reduced to a coreset
+        :return: Populated instance of :class:`ArrayData`
+        """
+        original_data = cast_as_type(original_data, jnp.atleast_2d)
+        return cls(original_data, original_data)
+
+    def format(self, coreset: Coreset) -> Array:
+        """
+        Format coreset to match the shape of the original data.
+
+        As the original data was already in the required format for
+        :class:`~coreax.Coreset`, no reformatting takes place.
+
+        If the number of columns was reduced by :meth:`reduce_dimension`, it will be
+        reverted by this method via a call to :meth:`restore_dimension`.
+
+        :param coreset: Coreset to format
+        :return: Array of coreset in format matching original data
+        """
+        return coreset.coreset
+
+
 # Register all instances with factory
 data_reader_factory = ClassFactory(DataReader)
+data_reader_factory.register("array", ArrayData)
