@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 Classes and associated functionality to construct coresets.
 
 Given a :math:`n \times d` dataset, one may wish to construct a compressed
 :math:`m \times d` dataset representation of this dataset, where :math:`m << n`. This
 module contains implementations of approaches to do such a construction using coresets.
 Coresets are a type of data reduction, so these inherit from
-:class:`~coreax.reduction.DataReduction`. The aim is to select a samll set of indices
+:class:`~coreax.reduction.DataReduction`. The aim is to select a small set of indices
 that represent the key features of a larger dataset.
 
 The abstract base class is :class:`Coreset`. Concrete implementations are:
@@ -62,40 +62,47 @@ from jax.typing import ArrayLike
 from coreax.approximation import KernelMeanApproximator, approximator_factory
 from coreax.data import DataReader
 from coreax.kernel import Kernel
-from coreax.reduction import DataReduction, data_reduction_factory
+from coreax.reduction import Coreset, coreset_factory
 from coreax.refine import Refine, refine_factory
 from coreax.util import KernelFunction, create_instance_from_factory
 from coreax.weights import WeightsOptimiser
 
 
-class Coreset(DataReduction):
+class CoreSubset(Coreset):
     """Abstract base class for a method to construct a coreset."""
 
     def __init__(
-            self,
-            data: DataReader,
-            weight: str | WeightsOptimiser,
-            kernel: Kernel,
-            size: int
+        self,
+        data: DataReader,
+        weight: str | WeightsOptimiser,
+        kernel: Kernel,
+        size: int,
     ):
         """
+        TODO: write docstring.
 
         :param size: Number of coreset points to calculate
         """
-
         self.coreset_size = size
         super().__init__(data, weight, kernel)
 
         self.reduction_indices = jnp.asarray(range(data.pre_reduction_data.shape[0]))
 
     @abstractmethod
-    def fit(self, X: Array, kernel: Kernel,) -> None:
+    def fit(
+        self,
+        X: Array,
+        kernel: Kernel,
+    ) -> None:
         """
-        Fit...TODO once children implemented
+        Fit...TODO once children implemented.
+
+        :param X: data
+        :param kernel: kernel
         """
 
 
-class KernelHerding(Coreset):
+class KernelHerding(CoreSubset):
     """
     Apply kernel herding to a dataset.
 
@@ -103,29 +110,30 @@ class KernelHerding(Coreset):
     """
 
     def __init__(
-            self,
-            data: DataReader,
-            weight: str | WeightsOptimiser,
-            kernel: Kernel,
-            size: int):
+        self,
+        data: DataReader,
+        weight: str | WeightsOptimiser,
+        kernel: Kernel,
+        size: int,
+    ):
         """
+        TODO: write docstring.
 
         :param size: Number of coreset points to calculate
         """
-
         # Initialise Coreset parent
         super().__init__(data, weight, kernel, size)
 
     def fit(
-            self,
-            block_size: int = 10000,
-            K_mean: Array | None = None,
-            unique: bool = True,
-            nu: float = 1.0,
-            refine: str | Refine | None = None,
-            approximator: str | KernelMeanApproximator | None = None,
-            random_key: random.PRNGKeyArray = random.PRNGKey(0),
-            num_kernel_points: int = 10_000,
+        self,
+        block_size: int = 10000,
+        K_mean: Array | None = None,
+        unique: bool = True,
+        nu: float = 1.0,
+        refine: str | Refine | None = None,
+        approximator: str | KernelMeanApproximator | None = None,
+        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        num_kernel_points: int = 10_000,
     ) -> tuple[Array, Array]:
         r"""
         Execute kernel herding algorithm with Jax.
@@ -140,12 +148,13 @@ class KernelHerding(Coreset):
         :param num_kernel_points: Number of kernel evaluation points for approximation
         :returns: coreset Gram matrix and coreset Gram mean
         """
-
         n = len(self.reduced_data)
         if K_mean is None:
             # TODO: for the reviewer, the issue ticket says we should "incorporate the caching of K_mean from
             #  kernel_herding_refine into KernelHerding" but the mean is needed here before being calculated in Refine.refine
-            K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(self.reduced_data, max_size=block_size)
+            K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(
+                self.reduced_data, max_size=block_size
+            )
 
         # Initialise loop updateables
         K_t = jnp.zeros(n)
@@ -153,8 +162,12 @@ class KernelHerding(Coreset):
         K = jnp.zeros((self.coreset_size, n))
 
         # Greedly select coreset points
-        body = partial(self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique)
-        self.reduction_indices, K, _ = lax.fori_loop(0, self.coreset_size, body, (S, K, K_t))
+        body = partial(
+            self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique
+        )
+        self.reduction_indices, K, _ = lax.fori_loop(
+            0, self.coreset_size, body, (S, K, K_t)
+        )
         Kbar = K.mean(axis=1)
         gram_matrix = K[:, self.reduction_indices]
 
@@ -184,12 +197,12 @@ class KernelHerding(Coreset):
 
     @partial(jit, static_argnames=["self", "k_vec", "unique"])
     def _greedy_body(
-            self,
-            i: int,
-            val: tuple[ArrayLike, ArrayLike, ArrayLike],
-            k_vec: KernelFunction,
-            K_mean: ArrayLike,
-            unique: bool,
+        self,
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        k_vec: KernelFunction,
+        K_mean: ArrayLike,
+        unique: bool,
     ) -> tuple[Array, Array, Array]:
         r"""
         Execute main loop of greedy kernel herding.
@@ -216,7 +229,7 @@ class KernelHerding(Coreset):
         return S, K, K_t
 
 
-class RandomSample(Coreset):
+class RandomSample(CoreSubset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
@@ -264,5 +277,5 @@ class RandomSample(Coreset):
         self.coreset = orig_data[random_indices]
 
 
-data_reduction_factory.register("kernel_herding", KernelHerding)
-data_reduction_factory.register("random_sample", RandomSample)
+coreset_factory.register("kernel_herding", KernelHerding)
+coreset_factory.register("random_sample", RandomSample)
