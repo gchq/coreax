@@ -24,6 +24,7 @@ import coreax.reduction as cr
 class DataReaderConcrete(cd.DataReader):
     """Concrete implementation of DataReader class to allow testing."""
 
+    @classmethod
     def load(cls, original_data: ArrayLike) -> cd.DataReader:
         raise NotImplementedError
 
