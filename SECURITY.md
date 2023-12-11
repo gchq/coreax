@@ -20,5 +20,5 @@ maintain and develop this tool together.
 If you believe that you have identified a potential vulnerability in the code base,
 please report this promptly to [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk). Please describe the problem in as
 much detail as possible, ideally with examples. Each report will be dealt with on a
-case-by-case basis with clear. You will receive regular communication on the resolution
+case-by-case basis. You will receive regular communication on the resolution
 and progress of your report.
