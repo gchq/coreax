@@ -41,7 +41,7 @@ import jax.numpy as jnp
 from jax import Array, tree_util
 from sklearn.neighbors import KDTree
 
-import coreax.coreset as cc
+import coreax.coresubset as cc
 import coreax.data as cd
 import coreax.kernel as ck
 import coreax.metrics as cm
@@ -208,7 +208,10 @@ class SizeReduce(ReductionStrategy):
         :param original_data: Data to be reduced
         :return: Coreset calculated according to chosen type and this reduction strategy
         """
-        raise NotImplementedError
+        coreset = self.coreset_type(original_data=original_data)
+        coreset.fit()
+
+        return coreset
 
     def _tree_flatten(self) -> tuple[tuple, dict]:
         """
