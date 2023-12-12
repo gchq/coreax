@@ -40,7 +40,7 @@ class Metric(ABC):
         self,
         x: ArrayLike,
         y: ArrayLike,
-        max_size: int = None,
+        block_size: int | None = None,
         weights_x: ArrayLike = None,
         weights_y: ArrayLike = None,
     ) -> Array:
@@ -52,7 +52,8 @@ class Metric(ABC):
         :param x: An :math:`n \times d` array defining the full dataset
         :param y: An :math:`m \times d` array defining a representation of ``x``, for
             example a coreset
-        :param max_size: Size of matrix block to process
+        :param block_size: Size of matrix block to process, or :data:`None` to not split
+            into blocks
         :param weights_x: An :math:`1 \times n` array of weights for associated points
             in ``x``
         :param weights_y: An :math:`1 \times m` array of weights for associated points
@@ -93,9 +94,9 @@ class MMD(Metric):
         self,
         x: ArrayLike,
         y: ArrayLike,
+        block_size: int = None,
         weights_x: ArrayLike = None,
         weights_y: ArrayLike = None,
-        max_size: int = None,
     ) -> Array:
         r"""
         Calculate maximum mean discrepancy.

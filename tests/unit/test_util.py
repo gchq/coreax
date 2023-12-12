@@ -25,7 +25,7 @@ from coreax.util import (
 )
 
 
-class Test(unittest.TestCase):
+class TestUtil(unittest.TestCase):
     """
     Tests for general utility functions.
     """

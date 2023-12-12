@@ -83,6 +83,9 @@ def validate_is_instance(
 
     Unlike built-in :func:`isinstance`, :data:`None` may be passed to `expected_type`.
 
+    :func:`cast_as_type` should generally be used where possible with this function
+    reserved for classes or other object types that do not have a reliable caster.
+
     :param x: Variable we wish to verify lies in the specified range
     :param object_name: Name of ``x`` to display if it is not of type ``expected_type``
     :param expected_type: Expected type of ``x``, can be a tuple or union to specify a
