@@ -239,44 +239,6 @@ class SizeReduce(ReductionStrategy):
         return children, aux_data
 
 
-class ErrorReduce(ReductionStrategy):
-    """
-    Calculate coreset of minimal size meeting a given error tolerance.
-
-    :param coreset_type: Type of coreset to calculate
-    :param error_tol: Maximum error tolerance in coreset
-    """
-
-    def __init__(self, coreset_type: type[Coreset], error_tol: float):
-        """Initialise class."""
-        super().__init__(coreset_type)
-        self.error_tol = error_tol
-
-    def reduce(self, original_data: DataReader) -> Coreset:
-        """
-        Reduce a dataset to a coreset.
-
-        :param original_data: Data to be reduced
-        :return: Coreset calculated according to chosen type and this reduction strategy
-        """
-        raise NotImplementedError
-
-    def _tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
-        of methods inside this class.
-        """
-        children = (
-            self.coreset_type,
-            self.error_tol,
-        )
-        aux_data = {}
-        return children, aux_data
-
-
 class MapReduce(ReductionStrategy):
     """
     Calculate coreset of a given number of points using scalable reduction on blocks.
