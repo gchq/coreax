@@ -116,7 +116,7 @@ def validate_is_instance(
         raise TypeError(f"{object_name} must be of type {expected_type}")
 
 
-def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
+def cast_as_type(x: Any, object_name: str, type_caster: Callable[[Any], T]) -> T:
     """
     Cast an object as a specified type.
 
