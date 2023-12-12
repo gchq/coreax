@@ -69,6 +69,7 @@ from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.util as cu
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 @jit
@@ -106,14 +107,24 @@ class Kernel(ABC):
         Define a kernel.
         """
         # TODO: generalise length_scale to multiple dimensions.
-        # Check that length_scale is above zero (the isinstance check here is to ensure
+        # Check that length_scale is above zero (the validate_is_instance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
         # code)
-        if isinstance(length_scale, float) and length_scale <= 0.0:
+
+        # Validate inputs
+        validate_is_instance(
+            x=length_scale, object_name="length_scale", expected_type=float
+        )
+
+        validate_is_instance(
+            x=output_scale, object_name="output_scale", expected_type=float
+        )
+
+        if length_scale <= 0.0:
             raise ValueError(
                 f"Length scale must be above zero. Current value {length_scale}."
             )
-        if isinstance(output_scale, float) and output_scale <= 0.0:
+        if output_scale <= 0.0:
             raise ValueError(
                 f"Output scale must be above zero. Current value {output_scale}."
             )
@@ -159,8 +170,9 @@ class Kernel(ABC):
         :return: Kernel evaluations between points in ``x`` and ``y``. If ``x`` = ``y``,
             then this is the Gram matrix corresponding to the RKHS inner product.
         """
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
         fn = vmap(
             vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -196,6 +208,10 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`n \times m \times d` array of pairwise Jacobians
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+
         fn = vmap(
             vmap(self._grad_x_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -218,6 +234,10 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`m \times n \times d` array of pairwise Jacobians
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+
         fn = vmap(
             vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -285,6 +305,10 @@ class Kernel(ABC):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Array of Laplace-style operator traces :math:`n \times m` array
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+
         fn = vmap(
             vmap(
                 self._divergence_x_grad_y_elementwise,
@@ -353,9 +377,18 @@ class Kernel(ABC):
         :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
             ``j``:``j`` + ``max_size`` populated
         """
+        # Validate inputs
+        validate_is_instance(x=i, object_name="i", expected_type=int)
+        validate_is_instance(x=j, object_name="j", expected_type=int)
+        validate_in_range(
+            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
+        )
+
         # Ensure data format is as required
-        x = jnp.asarray(x)
-        kernel_row_sum = jnp.asarray(kernel_row_sum)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.asarray)
+        kernel_row_sum = cast_as_type(
+            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.asarray
+        )
         num_datapoints = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
@@ -393,6 +426,11 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         :return: Kernel matrix row sum
         """
+        # Validate inputs
+        validate_in_range(
+            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
+        )
+
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
         kernel_pairwise = jit(
@@ -404,9 +442,11 @@ class Kernel(ABC):
         )
 
         # Ensure data format is as required
-        x = jnp.asarray(x)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.asarray)
         num_datapoints = len(x)
-        kernel_row_sum = jnp.zeros(num_datapoints)
+        kernel_row_sum = cast_as_type(
+            x=num_datapoints, object_name="kernel_row_sum", type_caster=jnp.zeros
+        )
         # Iterate over upper triangular blocks
         for i in range(0, num_datapoints, max_size):
             for j in range(i, num_datapoints, max_size):
@@ -435,6 +475,11 @@ class Kernel(ABC):
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
         """
+        # Validate inputs
+        validate_in_range(
+            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
+        )
+
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
     def approximate_kernel_matrix_row_sum_mean(
