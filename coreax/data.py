@@ -139,8 +139,8 @@ class DataReader(ABC):
 
         Performed using principal component analysis (PCA).
 
-        :attr:`pre_coreset_array` is updated in place. Meta data detailing the type of
-        reduction are save to this class to enable reconstruction later.
+        :attr:`pre_coreset_array` is updated in place. Metadata detailing the type of
+        reduction are saved to this class to enable reconstruction later.
 
         :param num_dimensions: Target number of dimensions
         :return: Nothing
@@ -149,13 +149,18 @@ class DataReader(ABC):
 
     def restore_dimension(self, coreset: Coreset | None) -> Array:
         """
-        Expand principle components into original dimensions.
+        Expand principal components into original number of columns in two dimensions.
 
         Some data will have been lost due to reduction in dimensionality, so the
         restored data will not exactly match the original data.
 
+        Call :meth:`format` instead to restore to multiple dimensions if the original
+        data format had more than two dimensions.
+
         :param coreset: Coreset to restore, or :data:`None` to restore original data
-        :return: Array matching original number of columns of :attr:`pre_coreset_data`
+        :return: Array with the same number of columns as :attr:`pre_coreset_data` had
+            prior to calling :meth:`reduce_dimension` and the same number of rows as the
+            coreset
         """
         raise NotImplementedError
 

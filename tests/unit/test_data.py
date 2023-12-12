@@ -15,6 +15,7 @@
 import unittest
 from unittest.mock import MagicMock
 
+import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
@@ -39,8 +40,21 @@ class TestDataReader(unittest.TestCase):
     def test_init_scalars(self):
         """Test that scalars are cast properly."""
         actual = DataReaderConcrete(original_data=1, pre_coreset_array=2)
-        self.assertEqual(actual.original_data, Array(1))
-        self.assertEqual(actual.pre_coreset_array, Array([[2]]))
+        self.assertEqual(actual.original_data, jnp.array(1))
+        self.assertEqual(actual.pre_coreset_array, jnp.array([[2]]))
+
+    def test_reduce(self):
+        """
+        Test reduce on a simple reduction strategy and coreset method.
+
+        Request a random sample of a fixed number of points.
+
+        This is more of an integration test.
+        """
+        original_data = jnp.array([[i, 2 * i] for i in range(20)])
+        data_reader = DataReaderConcrete(original_data, original_data)
+        coreset = data_reader.reduce("random", "size", num_points=10)
+        self.assertEqual(coreset.coreset.shape, (10, 2))
 
 
 class TestArrayData(unittest.TestCase):
@@ -48,17 +62,18 @@ class TestArrayData(unittest.TestCase):
 
     def test_load(self):
         """Check that no preprocessing is done during load."""
-        original_data = Array([[1, 2]])
+        original_data = jnp.array([[1, 2]])
         actual = cd.ArrayData.load(original_data)
         self.assertEqual(actual.original_data, original_data)
         self.assertEqual(actual.pre_coreset_array, original_data)
 
     def test_format(self):
         """Check that coreset is returned without further formatting."""
-        coreset_array = Array([[2, 3], [4, 5]])
+        original_data = jnp.array([[2, 3], [4, 5], [6, 7]])
+        coreset_array = jnp.array([[2, 3], [4, 5]])
         coreset_obj = MagicMock()
         coreset_obj.coreset = coreset_array
-        data_reader = cd.DataReader(Array([[2, 3], [4, 5], [6, 7]]))
+        data_reader = cd.ArrayData(original_data, original_data)
         self.assertEqual(data_reader.format(coreset_obj), coreset_array)
 
 
