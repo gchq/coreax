@@ -33,6 +33,7 @@ interface for which particular methods can be implemented.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import copy
 from functools import partial
 from multiprocessing.pool import ThreadPool
 from typing import Self
@@ -47,11 +48,14 @@ import coreax.kernel as ck
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.util as cu
-import coreax.weights as cw
+
+# import coreax.weights as cw
+from coreax.data import ArrayData, DataReader
+from coreax.kernel import Kernel
 from coreax.metrics import Metric, metric_factory
 from coreax.util import NotCalculatedError, create_instance_from_factory
-from coreax.validation import validate_is_instance
-from coreax.weights import weights_factory
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+from coreax.weights import WeightsOptimiser
 
 
 class Coreset(ABC):
@@ -60,68 +64,69 @@ class Coreset(ABC):
 
     Class for performing data reduction.
 
-    :param original_data: Instance of :class:`~coreax.data.DataReader` containing
-        the data we wish to reduce
     :param weights: Type of weighting to apply, or :data:`None` if unweighted
     :param kernel: Kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
     """
 
-    def __init__(
-        self,
-        original_data: cd.DataReader,
-        weights: str | type[cw.WeightsOptimiser] | None = None,
-        kernel: cu.KernelFunction | None = None,
-    ):
-        """Initialise class."""
-        validate_is_instance(original_data, "original_data", cd.DataReader)
-        self.original_data = original_data
-        validate_is_instance(weights, "weights", (str, type[cw.WeightsOptimiser], None))
+    def __init__(self, weights: WeightsOptimiser | None, kernel: Kernel | None = None):
+        """Initialise class and set internal attributes to defaults."""
+        validate_is_instance(weights, "weights", (WeightsOptimiser, None))
         self.weights = weights
-        validate_is_instance(kernel, "kernel", (cu.KernelFunction, None))
+        validate_is_instance(kernel, "kernel", (Kernel, None))
         self.kernel = kernel
+        self.original_data: DataReader | None = None
         self.coreset: Array | None = None
 
+    def copy_empty(self) -> Self:
+        """
+        Create an empty copy of this class with all data removed.
+
+        Only initialisation parameters should remain.
+
+        This copy is shallow so :attr:`weights` etc. still point to the original object.
+
+        .. warning::
+            If any additional data attributes are added in a subclass, it should
+            reimplement this method.
+
+        :return: Reinitialised copy of this class
+        """
+        new_obj = copy(self)
+        new_obj.original_data = None
+        new_obj.coreset = None
+        return new_obj
+
     @abstractmethod
-    def fit(self, num_points: int) -> None:
+    def fit(self, original_data: DataReader, num_points: int) -> None:
         """
         Compute coreset.
 
         The resulting coreset is saved in-place to :attr:`coreset`.
 
+        Any concrete implementation should call this super method to set
+        :attr:`original_data`.
+
+        :param original_data: Instance of :class:`~coreax.data.DataReader` containing
+            the data we wish to reduce
         :param num_points: Number of points to include in coreset
         :return: Nothing
         """
+        validate_is_instance(original_data, "original_data", DataReader)
+        self.original_data = original_data
 
-    def solve_weights(
-        self,
-    ) -> Array:
+    def solve_weights(self) -> Array:
         """
         Solve for optimal weighting of points in :attr:`coreset`.
 
         :return: Optimal weighting of points in :attr:`coreset` to represent the
             original data
         """
-        if self.weights is None:
-            raise TypeError("Cannot solve weights for unweighted data")
-        if self.coreset is None:
-            raise NotCalculatedError("Need to call fit() before solving weights")
+        self._validate_fitted("solve_weights")
+        return self.weights.solve(self.original_data.pre_coreset_array, self.coreset)
 
-        # Create a weights optimiser object
-        weights_instance = cu.create_instance_from_factory(
-            weights_factory,
-            self.weights,
-            kernel=self.kernel,
-        )
-        return weights_instance.solve(
-            self.original_data.pre_coreset_array, self.coreset
-        )
-
-    def compute_metric(
-        self,
-        metric_name: str | type[Metric],
-    ) -> Array:
+    def compute_metric(self, metric: Metric, block_size: int | None = None) -> Array:
         """
         Compute metric comparing the coreset with the original data.
 
@@ -129,28 +134,40 @@ class Coreset(ABC):
         future. For now, more options are available by calling the chosen
         :class:`~coreax.Metric` class directly.
 
-        :param metric_name: Name of the metric type to use, or an uninstantiated
-            class object
+        :param metric: Instance of :class:`~coreax.Metric` to use
+        :param block_size: Size of matrix block to process, or :data:`None` to not split
+            into blocks
         :return: Metric computed as a zero-dimensional array
         """
-        # Create a metric object
-        metric_instance = cu.create_instance_from_factory(
-            metric_factory,
-            metric_name,
-            kernel=self.kernel,
-        )
-
-        return metric_instance.compute(
-            self.original_data.pre_coreset_array, self.coreset
+        validate_is_instance(metric, "metric", Metric)
+        max_size = cast_as_type(max_size, "max_size")
+        return metric.compute(
+            self.original_data.pre_coreset_array, self.coreset, max_size=max_size
         )
 
     def format(self) -> Array:
         """Format coreset to match the shape of the original data."""
-        return self.original_data.format()
+        self._validate_fitted("format")
+        return self.original_data.format(self)
 
     def render(self) -> None:
         """Plot coreset interactively using :mod:`~matplotlib.pyplot`."""
-        return self.original_data.render()
+        self._validate_fitted("render")
+        return self.original_data.render(self)
+
+    def _validate_fitted(self, caller_name: str) -> None:
+        """
+        Raise :exc:`~coreax.util.NotCalculatedError` if coreset has not been fitted yet.
+
+        :param caller_name: Name of calling method to display in error message
+        :raises NotCalculatedError: If :attr:`original_data` or :attr:`coreset` is
+            :data:`None`
+        :return: Nothing
+        """
+        if not isinstance(self.original_data, DataReader) or not isinstance(
+            self.coreset, Array
+        ):
+            raise NotCalculatedError(f"Need to call fit before calling {caller_name}")
 
 
 class ReductionStrategy(ABC):
@@ -200,11 +217,15 @@ class SizeReduce(ReductionStrategy):
 
     :param coreset_method: Type of coreset to calculate
     :param num_points: Number of points to include in coreset
+    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
     """
 
     def __init__(self, coreset_method: str | type[Coreset], num_points: int, **kwargs):
         """Initialise class."""
         super().__init__(coreset_method, **kwargs)
+
+        num_points = cast_as_type(num_points, "num_points", int)
+        validate_in_range(num_points, "num_points", True, lower_bound=0)
         self.num_points = num_points
 
     def reduce(self, original_data: "data.DataReader") -> Coreset:
@@ -240,81 +261,128 @@ class SizeReduce(ReductionStrategy):
 
 
 class MapReduce(ReductionStrategy):
-    """
+    r"""
     Calculate coreset of a given number of points using scalable reduction on blocks.
 
     This is a less memory-intensive alternative to :class:`SizeReduce`.
 
+    It uses a :class:`~sklearn.neighbors.KDTree` to partition the original data
+    into patches. Upon each of these a coreset of size :attr:`num_points` is calculated.
+    These coresets are concatenated to produce a larger coreset covering the whole of
+    the original data, which thus has size greater than :attr:`num_points`. This coreset
+    is now treated as the original data and reduced recursively until its size is equal
+    to :attr:`num_points`.
+
+    There is some intricate set-up:
+
+    #.  :attr:`num_points` must be less than :attr:`partition_size`.
+    #.  Unweighted coresets are calculated on each patch of roughly
+        :attr:`partition_size` points and then concatenated. More specifically, each
+        patch contains between :attr:`partition_size` and
+        :math:`2 \times` :attr:`partition_size` points, inclusive.
+    #.  Recursively calculate ever smaller coresets until a global coreset with size
+        :attr:`num_points` is obtained.
+    #.  If the input data on the final iteration is smaller than :attr:`num_points`, the
+        whole input data is returned as the coreset and thus is smaller than the
+        requested size.
+    #.  If a weights function is specified, calculate the weights.
+
+    Let :math:`n_k` be the number of points after each recursion with :math:`n_0` equal
+    to the size of the original data. Then, each recursion reduces the size of the
+    coreset such that
+
+    .. math::
+        n_k <= \frac{n_{k - 1}}{\texttt{partition_size}} \texttt{num_points},
+
+    so
+
+    .. math::
+        n_k <= \left( \frac{\texttt{num_points}}{\texttt{partition_size}} \right)^k n_0.
+
+    Thus, the number of iterations required is roughly (find :math:`k` when
+    :math:`n_k =` :attr:`num_points`)
+
+    .. math::
+        \frac{\log{\texttt{num_points}} - \log{\left( \text{original data size} \right)}}
+        {\log{\texttt{num_points}} - \log{\texttt{partition_size}}} .
+
     :param coreset_type: Type of coreset to calculate
     :param num_points: Number of points to include in coreset
+    :param partition_size: Approximate number of points to include in each partition;
+        actual partition sizes vary non-strictly between :attr:`partition_size` and
+        :math:`2 \times` :attr:`partition_size`; must be greater than :attr:`num_points`
+    :param parallel: If :data:`True`, calculate coresets on partitions in parallel
+    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
     """
 
-    def __init__(self, coreset_type: type[Coreset], num_points: int):
+    def __init__(
+        self,
+        coreset_method: type[Coreset],
+        num_points: int,
+        partition_size: int,
+        parallel: bool = True,
+        **kwargs,
+    ):
         """Initialise class."""
-        super().__init__(coreset_type)
+        super().__init__(coreset_method, **kwargs)
+
+        num_points = cast_as_type(num_points, "num_points", int)
+        validate_in_range(num_points, "num_points", True, lower_bound=0)
         self.num_points = num_points
 
-    def reduce(
+        partition_size = cast_as_type(partition_size, "partition_size", int)
+        validate_in_range(
+            partition_size, "partition_size", True, lower_bound=num_points
+        )
+        self.partition_size = partition_size
+
+        self.parallel = cast_as_type(parallel, "parallel", bool)
+
+    def reduce(self, original_data: DataReader) -> Coreset:
+        """
+        Reduce a dataset to a coreset using scalable reduction.
+
+        It is performed using recursive calls to :meth:`_reduce_recursive`.
+
+        :param original_data: Data to be reduced
+        :return: Coreset calculated according to chosen type and this reduction strategy
+        """
+        coreset = self._reduce_recursive(ArrayData.load(original_data.pre_coreset_data))
+        # Redirect original_data on coreset to point to true original
+        coreset.original_data = original_data
+        return coreset
+
+    def _reduce_recursive(
         self,
+        input_data: "data.ArrayData",
         w_function: ck.Kernel | None,
         block_size: int = 10_000,
         K_mean: Array | None = None,
-        unique: bool = True,
         nu: float = 1.0,
         partition_size: int = 1000,
         parallel: bool = True,
     ) -> tuple[Array, Array]:
         r"""
-        Execute scalable reduction.
+        Recursively execute scalable reduction.
 
-        This uses a `kd-tree` to partition `X`-space into patches. Upon each of these a
-        reduction problem is solved.
-
-        There is some intricate setup:
-
-        TODO: review for herding references
-
-            #.  Parameter `n_core` must be less than `size`.
-            #.  If we have :math:`n` points, unweighted herding is executed recursively on
-                each patch of :math:`\lceil \frac{n}{size} \rceil` points.
-            #.  If :math:`r` is the recursion depth, then we recurse unweighted for
-                :math:`r` iterations where
-
-                .. math::
-
-                         r = \lfloor \log_{frac{n_core}{size}}(\frac{n_core}{n})\rfloor
-
-                Each recursion gives :math:`n_r = C \times k_{r-1}` points. Unpacking the
-                recursion, this gives
-                :math:`n_r \approx n_0 \left( \frac{n_core}{n_size}\right)^r`.
-            #.  Once :math:`n_core < n_r \leq size`, we run a final weighted herding (if
-                weighting is requested) to give :math:`n_core` points.
+        :param input_data: Data to reduce on this iteration
 
         :param kernel: Kernel function
                        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         :param w_function: Weights function. If unweighted, this is `None`
         :param block_size: Size of matrix blocks to process
         :param K_mean: Row sum of kernel matrix divided by `n`
-        :param unique: Flag for enforcing unique elements
         :param partition_size: Region size in number of points. Optional, defaults to `1000`
         :param parallel: Use multiprocessing. Optional, defaults to `True`
         :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
         :return: Coreset and weights, where weights is empty if unweighted
         """
-        # use reduced data in case this is not the first reduction applied
-        data_to_reduce = self.data_reduction.data.reduced_data
+        input_len = input_data.pre_coreset_array.shape[0]
 
-        # check parameters to see if we need to invoke the kd-tree and recursion.
-        if self.size >= partition_size:
-            raise OverflowError(
-                f"Number of coreset points requested {self.size} is larger than the region size {partition_size}. "
-                f"Try increasing the size argument, or reducing the number of coreset points."
-            )
-        n = data_to_reduce.shape[0]
-        weights = None
+        # Fewer data points than requested coreset size so return all
+        if input_len <= self.num_points:
+            coreset = self.coreset_method.copy_empty()
 
-        # fewer data points than requested coreset points so return all
-        if n <= self.size:
             coreset = self.reduction_indices
             if w_function is not None:
                 _, Kc, Kbar = self.data_reduction.fit(
@@ -411,7 +479,7 @@ class MapReduce(ReductionStrategy):
 
 # Define the pytree node for the added class to ensure methods with jit decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-reduction_classes = (SizeReduce, ErrorReduce, MapReduce)
+reduction_classes = (SizeReduce, MapReduce)
 for current_class in reduction_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
@@ -422,5 +490,4 @@ coreset_factory = cu.ClassFactory(Coreset)
 
 reduction_strategy_factory = cu.ClassFactory(ReductionStrategy)
 reduction_strategy_factory.register("size", SizeReduce)
-reduction_strategy_factory.register("error", ErrorReduce)
 reduction_strategy_factory.register("map", MapReduce)

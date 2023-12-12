@@ -20,6 +20,7 @@ import jax.numpy as jnp
 import coreax.data as cd
 import coreax.metrics as cm
 import coreax.reduction as cr
+import coreax.util as cu
 import coreax.weights as cw
 
 
@@ -27,6 +28,13 @@ class MockCreatedInstance:
     @staticmethod
     def solve(*args):
         return tuple(*args)
+
+
+class CoresetTest(cr.Coreset):
+    """Test version of :class:`Coreset` with all methods implemented."""
+
+    def fit(self, original_data: cd.DataReader, num_points: int) -> None:
+        raise NotImplementedError
 
 
 class TestCoreset(unittest.TestCase):
@@ -39,9 +47,33 @@ class TestCoreset(unittest.TestCase):
         self.original_data.pre_coreset_array = jnp.array([0, 0.3, 0.75, 1])
         self.weights = "MMD"
         self.kernel = MagicMock()
-        self.test_class = cr.Coreset(self.original_data, self.weights, self.kernel)
+        self.test_class = cr.Coreset(self.weights, self.kernel)
         self.coreset = self.original_data[jnp.array([0, 1, 3])]
         self.test_class.coreset = self.coreset
+
+    def test_copy_empty(self) -> None:
+        """Check that a copy is returned and data deleted by copy_empty."""
+        # Define original instance
+        weights = MagicMock()
+        kernel = MagicMock()
+        original_data = MagicMock()
+        coreset = MagicMock()
+        original = CoresetTest(weights=weights, kernel=kernel)
+        original.original_data = original_data
+        original.coreset = coreset
+
+        # Create copy
+        duplicate = original.copy_empty()
+
+        # Check identities of attributes on original and duplicate
+        self.assertIs(original.weights, weights)
+        self.assertIs(duplicate.weights, weights)
+        self.assertIs(original.kernel, kernel)
+        self.assertIs(duplicate.kernel, kernel)
+        self.assertIs(original.original_data, original_data)
+        self.assertIsNone(duplicate.original_data)
+        self.assertIs(original.coreset, coreset)
+        self.assertIsNone(duplicate.coreset)
 
     def test_solve_weights(self) -> None:
         """
@@ -72,6 +104,25 @@ class TestCoreset(unittest.TestCase):
             self.assertEqual(
                 actual_out, (self.original_data.pre_coreset_array, self.coreset)
             )
+
+    def test_validate_fitted_ok(self):
+        """Check no error raised when fit has been called."""
+        obj = CoresetTest(None, None)
+        obj.original_data = cd.ArrayData(1, 1)
+        obj.coreset = jnp.array(1)
+        obj._validate_fitted("func")
+
+    def test_validate_fitted_no_original(self):
+        """Check error is raised when original data is missing."""
+        obj = CoresetTest(None, None)
+        obj.coreset = jnp.array(1)
+        self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
+
+    def test_validate_fitted_no_coreset(self):
+        """Check error is raised when coreset is missing."""
+        obj = CoresetTest(None, None)
+        obj.original_data = cd.ArrayData(1, 1)
+        self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
 
 
 class TestSizeReduce(unittest.TestCase):
