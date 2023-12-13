@@ -18,11 +18,11 @@ Classes and associated functionality to construct coresets.
 Given a :math:`n \times d` dataset, one may wish to construct a compressed
 :math:`m \times d` dataset representation of this dataset, where :math:`m << n`. This
 module contains implementations of approaches to do such a construction using coresets.
-Coresets are a type of data reduction, so these inherit from
-:class:`~coreax.reduction.DataReduction`. The aim is to select a small set of indices
+Coresets are a type of data reduction, and these inherit from
+:class:`~coreax.reduction.Coreset`. The aim is to select a small set of indices
 that represent the key features of a larger dataset.
 
-The abstract base class is :class:`Coreset`. Concrete implementations are:
+The abstract base class is :class:`CoreSubset`. Concrete implementations are:
 
 *   :class:`KernelHerding` defines the kernel herding method for both regular and Stein
     kernels.

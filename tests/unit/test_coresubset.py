@@ -13,27 +13,26 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-import coreax.coreset
-from coreax.coreset import KernelHerding
+from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import DataReader
 from coreax.kernel import Kernel
 
 
-class TestCoreset(unittest.TestCase):
+class TestCoreSubset(unittest.TestCase):
     """
-    Tests related to the Coreset class in coreset.py
+    Tests related to the CoreSubset class in coresubset.py
     """
 
 
 class TestKernelHerding(unittest.TestCase):
     """
-    Tests related to the KernelHerding class defined in coreset.py
+    Tests related to the KernelHerding class defined in coresubset.py
     """
 
     def test_fit(self) -> None:
@@ -43,19 +42,22 @@ class TestKernelHerding(unittest.TestCase):
         Methods called by this method are mocked and assumed tested elsewhere.
         """
 
-        with (patch('coreax.kernel.Kernel') as mock_kernel, \
-              patch('coreax.data.DataReader') as mock_reader, \
-                patch('jax.lax.fori_loop') as mock_loop):
-
-            mock_gram_matrix = jnp.asarray([[1, 2, 3, 4],
-                                            [5, 6, 7, 8],
-                                            [9, 10, 11, 12]],
-                                           dtype=jnp.float32)
-            mock_loop.return_value = jnp.array(
-                [3, 1, 2]), mock_gram_matrix, jnp.asarray([])
+        with (
+            patch("coreax.kernel.Kernel") as mock_kernel,
+            patch("coreax.data.DataReader") as mock_reader,
+            patch("jax.lax.fori_loop") as mock_loop,
+        ):
+            mock_gram_matrix = jnp.asarray(
+                [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], dtype=jnp.float32
+            )
+            mock_loop.return_value = (
+                jnp.array([3, 1, 2]),
+                mock_gram_matrix,
+                jnp.asarray([]),
+            )
 
             # Define class
-            test_class = KernelHerding(mock_reader, 'MMD', mock_kernel, size=3)
+            test_class = KernelHerding(mock_reader, "MMD", mock_kernel, size=3)
 
             with self.subTest("mean_supplied_no_refine"):
                 # Mean supplied but no refine
@@ -65,23 +67,24 @@ class TestKernelHerding(unittest.TestCase):
 
                 mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_not_called()
 
-                np.testing.assert_array_equal(test_class.reduction_indices,
-                                              jnp.array([3, 1, 2]))
+                np.testing.assert_array_equal(
+                    test_class.reduction_indices, jnp.array([3, 1, 2])
+                )
 
-                np.testing.assert_array_equal(gram_matrix,
-                                              jnp.asarray([[4, 2, 3],
-                                                           [8, 6, 7],
-                                                           [12, 10, 11]],
-                                                          dtype=jnp.float32))
+                np.testing.assert_array_equal(
+                    gram_matrix,
+                    jnp.asarray(
+                        [[4, 2, 3], [8, 6, 7], [12, 10, 11]], dtype=jnp.float32
+                    ),
+                )
 
-                np.testing.assert_array_equal(Kbar,
-                                              jnp.asarray([2.5, 6.5, 10.5]))
+                np.testing.assert_array_equal(Kbar, jnp.asarray([2.5, 6.5, 10.5]))
 
             with self.subTest("mean_not_supplied_with_refine"):
                 # Mean not supplied. Refine called for. No approximation.
                 # TODO Mean calculation should happen and so should refinement but without approximation
 
-                _, _ = test_class.fit(refine='RefineRegular')
+                _, _ = test_class.fit(refine="RefineRegular")
 
                 mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_called_once()
 
@@ -89,7 +92,9 @@ class TestKernelHerding(unittest.TestCase):
                 # Mean not supplied. Refine called for. With approximation.
                 # TODO Mean calculation should happen and so should refinement and with approximation
 
-                _, _ = test_class.fit(refine='RefineRegular', approximator='approximator')
+                _, _ = test_class.fit(
+                    refine="RefineRegular", approximator="approximator"
+                )
 
                 mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_called_once()
 
@@ -100,12 +105,13 @@ class TestKernelHerding(unittest.TestCase):
         Methods called by this method are mocked and assumed tested elsewhere.
         """
 
-        with (patch('coreax.kernel.Kernel') as mock_kernel, \
-              patch('coreax.data.DataReader') as mock_reader):
-
-            mock_reader.pre_reduced_array = jnp.asarray([[5, 4, 1, 2],
-                                                         [3, 1, 4, 7],
-                                                         [8, 4, 0, 3]])
+        with (
+            patch("coreax.kernel.Kernel") as mock_kernel,
+            patch("coreax.data.DataReader") as mock_reader,
+        ):
+            mock_reader.pre_reduced_array = jnp.asarray(
+                [[5, 4, 1, 2], [3, 1, 4, 7], [8, 4, 0, 3]]
+            )
 
             K_mean = jnp.asarray([3, 3.75, 3.75])
 
@@ -113,7 +119,7 @@ class TestKernelHerding(unittest.TestCase):
             mock_k_vec.return_value = jnp.asarray([0.5, 1, 1])
 
             # Define class
-            test_class = KernelHerding(mock_reader, 'MMD', mock_kernel, size=3)
+            test_class = KernelHerding(mock_reader, "MMD", mock_kernel, size=3)
 
             S0 = jnp.zeros(2, dtype=jnp.int32)
             K0 = jnp.zeros((2, 3))
@@ -123,51 +129,54 @@ class TestKernelHerding(unittest.TestCase):
                 # Run the method twice to replicate the looping of it in higher methods
                 # First and second runs it selects the second element.
 
-                S1, K1, K_t1 = test_class._greedy_body(0, (S0, K0, K_t0), mock_k_vec,
-                                                       K_mean=K_mean, unique=False)
+                S1, K1, K_t1 = test_class._greedy_body(
+                    0, (S0, K0, K_t0), mock_k_vec, K_mean=K_mean, unique=False
+                )
 
                 np.testing.assert_array_equal(S1, jnp.asarray([1, 0]))
-                np.testing.assert_array_equal(K1, jnp.asarray([[0.5, 1, 1],
-                                                              [0, 0, 0]]))
+                np.testing.assert_array_equal(K1, jnp.asarray([[0.5, 1, 1], [0, 0, 0]]))
                 np.testing.assert_array_equal(K_t1, jnp.asarray([0.5, 1, 1]))
 
-                S2, K2, K_t2 = test_class._greedy_body(1, (S1, K1, K_t1), mock_k_vec,
-                                                       K_mean=K_mean, unique=False)
+                S2, K2, K_t2 = test_class._greedy_body(
+                    1, (S1, K1, K_t1), mock_k_vec, K_mean=K_mean, unique=False
+                )
 
                 np.testing.assert_array_equal(S2, jnp.asarray([1, 1]))
-                np.testing.assert_array_equal(K2, jnp.asarray([[0.5, 1, 1],
-                                                              [0.5, 1, 1]]))
+                np.testing.assert_array_equal(
+                    K2, jnp.asarray([[0.5, 1, 1], [0.5, 1, 1]])
+                )
                 np.testing.assert_array_equal(K_t2, jnp.asarray([1, 2, 2]))
 
             with self.subTest("unique"):
                 # Unique elements. This time we don't pick the same index twice.
 
-                S1, K1, K_t1 = test_class._greedy_body(0, (S0, K0, K_t0), mock_k_vec,
-                                                       K_mean=K_mean, unique=True)
+                S1, K1, K_t1 = test_class._greedy_body(
+                    0, (S0, K0, K_t0), mock_k_vec, K_mean=K_mean, unique=True
+                )
 
                 np.testing.assert_array_equal(S1, jnp.asarray([1, 0]))
-                np.testing.assert_array_equal(K1, jnp.asarray([[0.5, 1, 1],
-                                                               [0, 0, 0]]))
+                np.testing.assert_array_equal(K1, jnp.asarray([[0.5, 1, 1], [0, 0, 0]]))
                 np.testing.assert_array_equal(K_t1, jnp.asarray([0.5, jnp.inf, 1]))
 
-                S2, K2, K_t2 = test_class._greedy_body(1, (S1, K1, K_t1), mock_k_vec,
-                                                       K_mean=K_mean, unique=True)
+                S2, K2, K_t2 = test_class._greedy_body(
+                    1, (S1, K1, K_t1), mock_k_vec, K_mean=K_mean, unique=True
+                )
 
                 np.testing.assert_array_equal(S2, jnp.asarray([1, 2]))
-                np.testing.assert_array_equal(K2, jnp.asarray([[0.5, 1, 1],
-                                                               [0.5, 1, 1]]))
+                np.testing.assert_array_equal(
+                    K2, jnp.asarray([[0.5, 1, 1], [0.5, 1, 1]])
+                )
                 np.testing.assert_array_equal(K_t2, jnp.asarray([1, jnp.inf, jnp.inf]))
 
 
 class MockKernel(Mock(spec=Kernel)):
-
     def __init__(self):
-        self.compute = lambda x: jnp.exp(-x**2)
+        self.compute = lambda x: jnp.exp(-(x**2))
 
 
 class TestRandomSample(unittest.TestCase):
     """
-    Tests related to RandomSample class in coreset.py.
+    Tests related to RandomSample class in coresubset.py.
     """
 
     def setUp(self):
@@ -200,7 +209,7 @@ class TestRandomSample(unittest.TestCase):
 
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""
-        random_sample = coreax.coreset.RandomSample(
+        random_sample = RandomSample(
             data=self.data_obj,
             coreset_size=self.num_points_in_coreset,
             random_key=self.random_sampling_key,
@@ -230,7 +239,7 @@ class TestRandomSample(unittest.TestCase):
          seeds in setUp(). The parameters self.num_points_in_coreset = 10 and
         self.random_sampling_key = 42 ensure a repeated coreset point when unique=False.
         """
-        random_sample = coreax.coreset.RandomSample(
+        random_sample = RandomSample(
             data=self.data_obj,
             coreset_size=self.num_points_in_coreset,
             random_key=self.random_sampling_key,
