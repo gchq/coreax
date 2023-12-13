@@ -29,7 +29,7 @@ Reporting issues
 
 Pull requests
 -------------
-Currently, we are using [GitHub Flow][github-flow] as our approach to development.
+Currently, we are using a [GitHub Flow][github-flow] development approach.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
@@ -41,8 +41,6 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests].
-
- **TODO: detail CI/CD workflows executed once a PR has been opened.**
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
@@ -196,7 +194,7 @@ sphinx-quickstart
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
 [gh-feature-request]: https://github.com/gchq/coreax/issues/new?assignees=&labels=enhancement%2Cnew&projects=&template=feature_request.yml&title=%5BFeature%5D%3A+
 [gh-prs]: https://github.com/gchq/coreax/pulls
-
+[run-tests]: https://github.com/gchq/coreax/actions/workflows/unittests.yml
 [conventional_commits]: https://www.conventionalcommits.org
 [git-feature-branch]: https://www.atlassian.com/git/tutorials/comparing-workflows
 [pr-draft]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
