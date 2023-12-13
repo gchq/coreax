@@ -104,7 +104,12 @@ For some idea of performance, `scalable_herding` on a `ml.p3.8xlarge` gives the 
 ```
 For large $d$, it is usually worth reducing dimensionality using PCA.
 
-# Coming soon
+# Release Cycle
+We anticipate two release types: feature releases and security releases. Security
+releases will be issued as needed in accordance with the
+[security policy](https://github.com/gchq/coreax/security/policy). Feature releases will
+be issued as appropriate, dependent on the feature pipeline and development priorities.
+
 Some of the features coming soon include
 - Score matching to estimate $\nabla \log f_X(\mathbf{x})$ in the Stein kernel.
 - Coordinate bootstrapping for high-dimensional data.
