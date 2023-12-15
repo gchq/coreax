@@ -65,8 +65,12 @@ class DataReader(ABC):
 
         Should not normally be called by the user: use :meth:`load` instead.
         """
-        self.original_data: Array = cast_as_type(original_data, jnp.asarray)
-        self.pre_coreset_array: Array = cast_as_type(pre_coreset_array, jnp.atleast_2d)
+        self.original_data: Array = cast_as_type(
+            original_data, "original_data", jnp.asarray
+        )
+        self.pre_coreset_array: Array = cast_as_type(
+            pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
+        )
 
     @classmethod
     @abstractmethod
@@ -191,7 +195,7 @@ class ArrayData(DataReader):
         :param original_data: Array of data to be reduced to a coreset
         :return: Populated instance of :class:`ArrayData`
         """
-        original_data = cast_as_type(original_data, jnp.atleast_2d)
+        original_data = cast_as_type(original_data, "original_data", jnp.atleast_2d)
         return cls(original_data, original_data)
 
     def format(self, coreset: Coreset) -> Array:
