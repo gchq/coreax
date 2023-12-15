@@ -67,7 +67,7 @@ class TestMMD(unittest.TestCase):
         self.num_points_x = 30
         self.dimension = 10
         self.num_points_y = 5
-        self.max_size = 3
+        self.block_size = 3
 
         # Define example datasets
         self.x = random.uniform(
@@ -376,7 +376,7 @@ class TestMMD(unittest.TestCase):
         metric = cm.MMD(kernel=kernel)
 
         # Compute the sum of pairwise distances using the metric object
-        output = metric.sum_pairwise_distances(x=x, y=y, max_size=2)
+        output = metric.sum_pairwise_distances(x=x, y=y, block_size=2)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
@@ -385,7 +385,7 @@ class TestMMD(unittest.TestCase):
         r"""
         Test mmd_block calculation of MMD while limiting memory requirements.
 
-        This test uses the same 2D, three-point dataset and second datset as
+        This test uses the same 2D, three-point dataset and second dataset as
         test_mmd_ints().
         """
         # Setup data
@@ -403,7 +403,7 @@ class TestMMD(unittest.TestCase):
         metric = cm.MMD(kernel=kernel)
 
         # Compute MMD block-wise
-        mmd_block_test = metric.compute(x=x, y=y, max_size=2)
+        mmd_block_test = metric.compute(x=x, y=y, block_size=2)
 
         # Check output matches expected
         self.assertAlmostEqual(float(mmd_block_test), float(expected_output), places=5)
@@ -418,28 +418,29 @@ class TestMMD(unittest.TestCase):
 
         # Compute MMD term with x and itself
         kernel_nn = 0.0
-        for i1 in range(0, self.num_points_x, self.max_size):
-            for i2 in range(0, self.num_points_x, self.max_size):
+        for i1 in range(0, self.num_points_x, self.block_size):
+            for i2 in range(0, self.num_points_x, self.block_size):
                 kernel_nn += kernel.compute(
-                    self.x[i1 : i1 + self.max_size, :],
-                    self.x[i2 : i2 + self.max_size, :],
+                    self.x[i1 : i1 + self.block_size, :],
+                    self.x[i2 : i2 + self.block_size, :],
                 ).sum()
 
         # Compute MMD term with y and itself
         kernel_mm = 0.0
-        for j1 in range(0, self.num_points_y, self.max_size):
-            for j2 in range(0, self.num_points_y, self.max_size):
+        for j1 in range(0, self.num_points_y, self.block_size):
+            for j2 in range(0, self.num_points_y, self.block_size):
                 kernel_mm += kernel.compute(
-                    self.y[j1 : j1 + self.max_size, :],
-                    self.y[j2 : j2 + self.max_size, :],
+                    self.y[j1 : j1 + self.block_size, :],
+                    self.y[j2 : j2 + self.block_size, :],
                 ).sum()
 
         # Compute MMD term with x and y
         kernel_nm = 0.0
-        for i in range(0, self.num_points_x, self.max_size):
-            for j in range(0, self.num_points_y, self.max_size):
+        for i in range(0, self.num_points_x, self.block_size):
+            for j in range(0, self.num_points_y, self.block_size):
                 kernel_nm += kernel.compute(
-                    self.x[i : i + self.max_size, :], self.y[j : j + self.max_size, :]
+                    self.x[i : i + self.block_size, :],
+                    self.y[j : j + self.block_size, :],
                 ).sum()
 
         # Compute expected output from MMD
@@ -453,7 +454,7 @@ class TestMMD(unittest.TestCase):
         metric = cm.MMD(kernel=kernel)
 
         # Compute MMD
-        output = metric.compute(self.x, self.y, max_size=self.max_size)
+        output = metric.compute(self.x, self.y, block_size=self.block_size)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
@@ -472,7 +473,7 @@ class TestMMD(unittest.TestCase):
         # Check outputs are the same
         self.assertAlmostEqual(
             float(metric.compute(self.x, self.y)),
-            float(metric.compute(self.x, self.y, max_size=self.max_size)),
+            float(metric.compute(self.x, self.y, block_size=self.block_size)),
             places=5,
         )
 
@@ -523,7 +524,7 @@ class TestMMD(unittest.TestCase):
 
         # Compute sum of weighted pairwise distances
         output = metric.sum_weighted_pairwise_distances(
-            x=x, y=y, weights_x=weights_x, weights_y=weights_y, max_size=2
+            x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2
         )
 
         # Check output matches expected
@@ -577,7 +578,7 @@ class TestMMD(unittest.TestCase):
 
         # Compute weighted MMD block-wise
         output = metric.compute(
-            x=x, y=y, weights_x=weights_x, weights_y=weights_y, max_size=2
+            x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2
         )
 
         # Check output matches expected
@@ -601,7 +602,7 @@ class TestMMD(unittest.TestCase):
             self.y,
             weights_x=jnp.ones(self.num_points_x) / self.num_points_x,
             weights_y=jnp.ones(self.num_points_y) / self.num_points_y,
-            max_size=self.max_size,
+            block_size=self.block_size,
         )
 
         # Check output matches expected
