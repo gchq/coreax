@@ -34,13 +34,16 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-
-KernelFunction: TypeVar = Callable[[ArrayLike, ArrayLike], Array]
+KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
 # Pairwise kernel evaluation if grads and nu are defined
-KernelFunctionWithGrads: TypeVar = Callable[
+KernelFunctionWithGrads = Callable[
     [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
 ]
+
+
+class NotCalculatedError(Exception):
+    """Raise when trying to use a variable that has not been calculated yet."""
 
 
 def apply_negative_precision_threshold(
@@ -241,7 +244,7 @@ class ClassFactory:
             of a matching type
         :raises TypeError: If a non-string that does not match the factory type is
             passed, i.e. cannot be used for dependency injection
-        :raises KeyError: If the string name is not recognised
+        :raises KeyError: If the string name is not recognized
         :return: Uninstantiated class object
         """
         # Check for dependency injection
@@ -258,7 +261,7 @@ class ClassFactory:
         # Get class by name
         class_obj = self.lookup_table.get(name)
         if class_obj is None:
-            raise KeyError(f"Class name {name} not recognised.")
+            raise KeyError(f"Class name {name} not recognized.")
         return class_obj
 
 
@@ -268,24 +271,19 @@ T = TypeVar("T")
 def create_instance_from_factory(
     factory_obj: ClassFactory,
     class_type: str | type[T],
-    *args,
     **kwargs,
 ) -> T:
     """
-    Create an instance of a class from a class factory.
+    Create a refine object for use with the fit method.
 
-    :param factory_obj: Class factory
-    :param class_type: The name of a class to use from the factory, or an uninstantiated
-        class of the type in ``factory_obj`` if using dependency injection
-    :param args: Positional arguments to pass to class constructor
-    :param kwargs: Keyword arguments to pass to class constructor
-    :return: Populated instance of requested class
+    :param class_type: The name of a class to use, or the uninstantiated class
+        directly as a dependency injection
+    :return: Class instance of the requested type
     """
     class_obj = factory_obj.get(class_type)
 
-    # Initialise accounting for different classes having different numbers of parameters
+    # Initialise, accounting for different classes having different numbers of parameters
     return call_with_excess_kwargs(
         class_obj,
-        *args,
         **kwargs,
     )

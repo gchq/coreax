@@ -22,6 +22,7 @@ from jax import random
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import DataReader
 from coreax.kernel import Kernel
+from tests.unit.test_data import DataReaderConcrete
 
 
 class TestCoreSubset(unittest.TestCase):
@@ -203,14 +204,14 @@ class TestRandomSample(unittest.TestCase):
             shape=(self.num_points_in_data, self.dimension),
         )
 
-        data_obj = DataReader(original_data=x, pre_reduction_array=x)
+        data_obj = DataReaderConcrete(original_data=x, pre_coreset_array=x)
 
         self.data_obj = data_obj
 
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""
         random_sample = RandomSample(
-            data=self.data_obj,
+            original_data=self.data_obj,
             coreset_size=self.num_points_in_coreset,
             random_key=self.random_sampling_key,
         )
@@ -224,7 +225,7 @@ class TestRandomSample(unittest.TestCase):
         # Convert lists to set of tuples
         coreset_set = set(map(tuple, np.array(random_sample.coreset)))
         orig_data_set = set(
-            map(tuple, np.array(random_sample.data.pre_reduction_array))
+            map(tuple, np.array(random_sample.original_data.pre_coreset_array))
         )
         # Find common rows
         num_common_rows = len(coreset_set & orig_data_set)
@@ -240,7 +241,7 @@ class TestRandomSample(unittest.TestCase):
         self.random_sampling_key = 42 ensure a repeated coreset point when unique=False.
         """
         random_sample = RandomSample(
-            data=self.data_obj,
+            original_data=self.data_obj,
             coreset_size=self.num_points_in_coreset,
             random_key=self.random_sampling_key,
             unique=False,

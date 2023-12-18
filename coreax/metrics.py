@@ -21,6 +21,7 @@ Having attained an alternative representation, we can then assess the quality of
 representation using some appropriate metric. Such metrics are implemented within this
 module, all of which implement :class:`Metric`.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
@@ -33,12 +34,7 @@ import coreax.util as cu
 
 
 class Metric(ABC):
-    """
-    Base class for calculating metrics.
-    """
-
-    def __init__(self) -> None:
-        pass
+    """Base class for calculating metrics."""
 
     @abstractmethod
     def compute(
@@ -87,9 +83,7 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
-        r"""
-        Calculate maximum mean discrepancy between two datasets in d dimensions.
-        """
+        """Calculate maximum mean discrepancy between two datasets in d dimensions."""
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
