@@ -84,6 +84,8 @@ def median_heuristic(x: ArrayLike) -> Array:
     :return: Bandwidth parameter, computed from the median heuristic, as a
         0-dimensional array
     """
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
@@ -107,27 +109,30 @@ class Kernel(ABC):
         Define a kernel.
         """
         # TODO: generalise length_scale to multiple dimensions.
-        # Check that length_scale is above zero (the validate_is_instance check here is to ensure
-        # that we don't check a trace of an array when jit decorators interact with
-        # code)
+        # Check that length_scale is above zero (the cast_as_type check here is to
+        # ensure that we don't check a trace of an array when jit decorators interact
+        # with code)
 
         # Validate inputs
-        validate_is_instance(
-            x=length_scale, object_name="length_scale", expected_type=float
+        length_scale = cast_as_type(
+            x=length_scale, object_name="length_scale", type_caster=float
+        )
+        output_scale = cast_as_type(
+            x=output_scale, object_name="output_scale", type_caster=float
+        )
+        validate_in_range(
+            x=length_scale,
+            object_name="length_scale",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        validate_in_range(
+            x=output_scale,
+            object_name="output_scale",
+            strict_inequalities=True,
+            lower_bound=0,
         )
 
-        validate_is_instance(
-            x=output_scale, object_name="output_scale", expected_type=float
-        )
-
-        if length_scale <= 0.0:
-            raise ValueError(
-                f"Length scale must be above zero. Current value {length_scale}."
-            )
-        if output_scale <= 0.0:
-            raise ValueError(
-                f"Output scale must be above zero. Current value {output_scale}."
-            )
         self.length_scale = length_scale
         self.output_scale = output_scale
 
@@ -378,17 +383,21 @@ class Kernel(ABC):
             ``j``:``j`` + ``max_size`` populated
         """
         # Validate inputs
-        validate_is_instance(x=i, object_name="i", expected_type=int)
-        validate_is_instance(x=j, object_name="j", expected_type=int)
+        i = cast_as_type(x=i, object_name="i", type_caster=int)
+        j = cast_as_type(x=j, object_name="j", type_caster=int)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        kernel_row_sum = cast_as_type(
+            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
+        )
+        validate_is_instance(
+            x=kernel_pairwise,
+            object_name="kernel_pairwise",
+            expected_type=cu.KernelFunction | cu.KernelFunctionWithGrads,
+        )
         validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
 
-        # Ensure data format is as required
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.asarray)
-        kernel_row_sum = cast_as_type(
-            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.asarray
-        )
         num_datapoints = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
@@ -427,6 +436,8 @@ class Kernel(ABC):
         :return: Kernel matrix row sum
         """
         # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
@@ -442,11 +453,8 @@ class Kernel(ABC):
         )
 
         # Ensure data format is as required
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.asarray)
         num_datapoints = len(x)
-        kernel_row_sum = cast_as_type(
-            x=num_datapoints, object_name="kernel_row_sum", type_caster=jnp.zeros
-        )
+        kernel_row_sum = jnp.zeros(num_datapoints)
         # Iterate over upper triangular blocks
         for i in range(0, num_datapoints, max_size):
             for j in range(i, num_datapoints, max_size):
