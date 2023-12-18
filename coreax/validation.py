@@ -81,6 +81,8 @@ def validate_is_instance(x: T, object_name: str, expected_type: type[T]) -> None
     :param expected_type: The expected type of ``x``
     :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """
+    if type(expected_type) is tuple:
+        expected_type = tuple((map(type, expected_type)))
     if not isinstance(x, expected_type):
         raise TypeError(f"{object_name} must be of type {expected_type}.")
 

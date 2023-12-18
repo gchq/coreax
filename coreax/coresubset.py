@@ -53,6 +53,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from functools import partial
+from typing import TYPE_CHECKING
 
 import jax.lax as lax
 import jax.numpy as jnp
@@ -60,12 +61,14 @@ from jax import Array, jit, random
 from jax.typing import ArrayLike
 
 from coreax.approximation import KernelMeanApproximator, approximator_factory
-from coreax.data import DataReader
 from coreax.kernel import Kernel
 from coreax.reduction import Coreset, coreset_factory
 from coreax.refine import Refine, refine_factory
 from coreax.util import KernelFunction, create_instance_from_factory
 from coreax.weights import WeightsOptimiser
+
+if TYPE_CHECKING:
+    from coreax.data import DataReader
 
 
 class CoreSubset(Coreset):
@@ -73,8 +76,8 @@ class CoreSubset(Coreset):
 
     def __init__(
         self,
-        data: DataReader,
-        weight: str | WeightsOptimiser,
+        original_data: DataReader,
+        weights: str | WeightsOptimiser,
         kernel: Kernel,
         size: int,
     ):
@@ -84,9 +87,11 @@ class CoreSubset(Coreset):
         :param size: Number of coreset points to calculate
         """
         self.coreset_size = size
-        super().__init__(data, weight, kernel)
+        super().__init__(original_data, weights, kernel)
 
-        self.reduction_indices = jnp.asarray(range(data.pre_reduction_data.shape[0]))
+        self.reduction_indices = jnp.asarray(
+            range(original_data.pre_coreset_array.shape[0])
+        )
 
     @abstractmethod
     def fit(
@@ -111,8 +116,8 @@ class KernelHerding(CoreSubset):
 
     def __init__(
         self,
-        data: DataReader,
-        weight: str | WeightsOptimiser,
+        original_data: DataReader,
+        weights: str | WeightsOptimiser,
         kernel: Kernel,
         size: int,
     ):
@@ -122,7 +127,7 @@ class KernelHerding(CoreSubset):
         :param size: Number of coreset points to calculate
         """
         # Initialise Coreset parent
-        super().__init__(data, weight, kernel, size)
+        super().__init__(original_data, weights, kernel, size)
 
     def fit(
         self,
@@ -233,7 +238,7 @@ class RandomSample(CoreSubset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
-    :param data: The :math:`n \times d` dataset to be reduced
+    :param original_data: The :math:`n \times d` dataset to be reduced
     :param coreset_size: Number of  points to randomly sample from ``data``
     :param random_key: Pseudo-random number generator key for sampling
     :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
@@ -242,7 +247,7 @@ class RandomSample(CoreSubset):
 
     def __init__(
         self,
-        data: DataReader,
+        original_data: DataReader,
         coreset_size: int,
         random_key: ArrayLike = 0,
         unique: bool = True,
@@ -252,7 +257,9 @@ class RandomSample(CoreSubset):
         self.unique_flag = unique
 
         # Initialise Coreset parent
-        super().__init__(data=data, weight=None, kernel=None, coreset_size=coreset_size)
+        super().__init__(
+            original_data=original_data, weights=None, kernel=None, size=coreset_size
+        )
 
     def fit(self) -> None:
         r"""
@@ -264,7 +271,7 @@ class RandomSample(CoreSubset):
         :return: Nothing, the coreset is assigned to :attr:`coreset`
         """
         key = random.PRNGKey(self.random_key)
-        orig_data = self.data.pre_reduction_array
+        orig_data = self.original_data.pre_coreset_array
         n = len(orig_data)
 
         random_indices = random.choice(

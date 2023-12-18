@@ -25,7 +25,7 @@ some metric assessing coreset quality can be improved by replacing this element 
 another from the original dataset.
 
 All refinement approaches implement :class:`Refine`, in-particular with a method
-:meth:`~Refine.refine` that manipulates a :class:`~coreax.reduction.DataReduction`
+:meth:`~Refine.refine` that manipulates a :class:`~coreax.reduction.Coreset`
 object.
 
 The other mandatory method to implement is :meth:`~Refine._tree_flatten`. To improve
@@ -40,6 +40,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import TYPE_CHECKING
 
 import jax.lax as lax
 import jax.numpy as jnp
@@ -47,9 +48,11 @@ from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.kernel as ck
-from coreax.approximation import KernelMeanApproximator
-from coreax.reduction import DataReduction
-from coreax.util import ClassFactory
+import coreax.util as cu
+
+if TYPE_CHECKING:
+    from coreax.approximation import KernelMeanApproximator
+    from coreax.reduction import Coreset
 
 
 class Refine(ABC):
@@ -89,17 +92,17 @@ class Refine(ABC):
     @abstractmethod
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: "coreax.reduction.Coreset",
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
 
-        The :class:`~coreax.reduction.DataReduction` object is updated in-place. The
+        The :class:`~coreax.reduction.Coreset` object is updated in-place. The
         refinement procedure replaces elements with points most reducing maximum mean
         discrepancy (MMD).
 
-        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+        :param data_reduction: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
@@ -148,16 +151,16 @@ class RefineRegular(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: "coreax.reduction.Coreset",
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
 
-        The DataReduction object is updated in-place. The refinement procedure replaces
+        The Coreset object is updated in-place. The refinement procedure replaces
         elements with points most reducing maximum mean discrepancy (MMD).
 
-        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+        :param data_reduction: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
@@ -308,18 +311,18 @@ class RefineRandom(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: "coreax.reduction.Coreset",
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Refine a coreset iteratively.
 
-        The DataReduction object is updated in-place. The refinement procedure replaces
+        The Coreset object is updated in-place. The refinement procedure replaces
         a random element with the best point among a set of candidate points. The
         candidate points are a random sample of :math:`n \times p` points from among
         the original data.
 
-        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+        :param data_reduction: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
@@ -516,16 +519,16 @@ class RefineReverse(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: "coreax.reduction.Coreset",
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Refine a coreset iteratively, replacing points which yield the most improvement.
 
-        The DataReduction object is updated in-place. In this greedy refine method, the
+        The Coreset object is updated in-place. In this greedy refine method, the
         iteration is carried out over points in ``x``. ``x`` -> ``coreset_indices``.
 
-        :param data_reduction: :class:`~coreax.reduction.DataReduction` object with
+        :param data_reduction: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
         :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
@@ -693,7 +696,7 @@ for current_class in refine_classes:
 
 
 # Set up class factory
-refine_factory = ClassFactory(Refine)
+refine_factory = cu.ClassFactory(Refine)
 refine_factory.register("regular", RefineRegular)
 refine_factory.register("random", RefineRandom)
 refine_factory.register("reverse", RefineReverse)
