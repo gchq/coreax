@@ -104,3 +104,16 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
         else:
             error_text += str(e)
         raise TypeError(error_text)
+
+
+def validate_array_size(x: T, object_name: str, expected_size: int) -> None:
+    """
+    Verify that an array is of a certain size.
+
+    :param x: Variable we wish to verify the size of
+    :param object_name: Name of ``x`` to display if it is not of size``expected_size``
+    :param expected_size: The expected size of ``x``
+    :raises ValueError: Raised if ``x`` is not of size ``expected_size``
+    """
+    if not x.shape[0] == expected_size:
+        raise ValueError(f"{object_name} is not the expected size of {expected_size}")

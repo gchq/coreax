@@ -69,7 +69,12 @@ from jax.typing import ArrayLike
 
 import coreax.approximation as ca
 import coreax.util as cu
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+from coreax.validation import (
+    cast_as_type,
+    validate_array_size,
+    validate_in_range,
+    validate_is_instance,
+)
 
 
 @jit
@@ -388,6 +393,9 @@ class Kernel(ABC):
         x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
         kernel_row_sum = cast_as_type(
             x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
+        )
+        validate_array_size(
+            x=kernel_row_sum, object_name="kernel_row_sum", expected_size=1
         )
         validate_is_instance(
             x=kernel_pairwise,
