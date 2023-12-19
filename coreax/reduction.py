@@ -83,15 +83,17 @@ class Coreset(ABC):
         """
         Create an empty copy of this class with all data removed.
 
-        Only initialisation parameters should remain.
+        Other parameters are retained.
 
-        This copy is shallow so :attr:`weights` etc. still point to the original object.
+        .. warning::
+            This copy is shallow so :attr:`weights` etc. still point to the original
+            object.
 
         .. warning::
             If any additional data attributes are added in a subclass, it should
             reimplement this method.
 
-        :return: Reinitialised copy of this class
+        :return: Copy of this class with data removed
         """
         new_obj = copy(self)
         new_obj.original_data = None
@@ -140,9 +142,9 @@ class Coreset(ABC):
         :return: Metric computed as a zero-dimensional array
         """
         validate_is_instance(metric, "metric", Metric)
-        max_size = cast_as_type(max_size, "max_size")
+        # block_size will be validated by metric.compute()
         return metric.compute(
-            self.original_data.pre_coreset_array, self.coreset, max_size=max_size
+            self.original_data.pre_coreset_array, self.coreset, block_size=block_size
         )
 
     def format(self) -> Array:
@@ -177,17 +179,15 @@ class ReductionStrategy(ABC):
     The strategy determines the size of the coreset, approximation strategies to aid
     memory management and other similar aspects that wrap around the type of coreset.
 
-    :param coreset_method: Type of coreset to calculate
-    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
+    :param coreset_method: :class:`Coreset` instance to populate
     """
 
-    def __init__(self, coreset_method: str | type[Coreset], **kwargs):
+    def __init__(self, coreset_method: Coreset):
         """Initialise class."""
         self.coreset_method = coreset_method
-        self.coreset_kwargs = kwargs
 
     @abstractmethod
-    def reduce(self, original_data: "data.DataReader") -> Coreset:
+    def reduce(self, original_data: DataReader) -> Coreset:
         """
         Reduce a dataset to a coreset.
 
@@ -215,34 +215,31 @@ class SizeReduce(ReductionStrategy):
     """
     Calculate coreset containing a given number of points.
 
-    :param coreset_method: Type of coreset to calculate
+    :param coreset_method: :class:`Coreset` instance to populate
     :param num_points: Number of points to include in coreset
-    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
     """
 
-    def __init__(self, coreset_method: str | type[Coreset], num_points: int, **kwargs):
+    def __init__(self, coreset_method: Coreset, num_points: int):
         """Initialise class."""
-        super().__init__(coreset_method, **kwargs)
+        super().__init__(coreset_method)
 
         num_points = cast_as_type(num_points, "num_points", int)
         validate_in_range(num_points, "num_points", True, lower_bound=0)
         self.num_points = num_points
 
-    def reduce(self, original_data: "data.DataReader") -> Coreset:
+    def reduce(self, original_data: DataReader) -> Coreset:
         """
         Reduce a dataset to a coreset.
+
+        The coreset is saved to the instance provided in :attr:`coreset_method` and this
+        instance is returned by this method.
 
         :param original_data: Data to be reduced
         :return: Coreset calculated according to chosen type and this reduction strategy
         """
-        coreset_obj = create_instance_from_factory(
-            coreset_factory,
-            self.coreset_method,
-            original_data=original_data,
-            **self.coreset_kwargs,
-        )
-        coreset_obj.fit(num_points=self.num_points)
-        return coreset_obj
+        validate_is_instance(original_data, "original_data", DataReader)
+        self.coreset_method.fit(original_data=original_data, num_points=self.num_points)
+        return self.coreset_method
 
     def _tree_flatten(self) -> tuple[tuple, dict]:
         """
@@ -252,11 +249,11 @@ class SizeReduce(ReductionStrategy):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = (
-            self.coreset_method,
-            self.num_points,
-        )
-        aux_data = {}
+        children = ()
+        aux_data = {
+            "coreset_method": self.coreset_method,
+            "num_points": self.num_points,
+        }
         return children, aux_data
 
 
@@ -285,7 +282,6 @@ class MapReduce(ReductionStrategy):
     #.  If the input data on the final iteration is smaller than :attr:`num_points`, the
         whole input data is returned as the coreset and thus is smaller than the
         requested size.
-    #.  If a weights function is specified, calculate the weights.
 
     Let :math:`n_k` be the number of points after each recursion with :math:`n_0` equal
     to the size of the original data. Then, each recursion reduces the size of the
@@ -306,13 +302,12 @@ class MapReduce(ReductionStrategy):
         \frac{\log{\texttt{num_points}} - \log{\left( \text{original data size} \right)}}
         {\log{\texttt{num_points}} - \log{\texttt{partition_size}}} .
 
-    :param coreset_type: Type of coreset to calculate
+    :param coreset_method: :class:`Coreset` instance to populate
     :param num_points: Number of points to include in coreset
     :param partition_size: Approximate number of points to include in each partition;
         actual partition sizes vary non-strictly between :attr:`partition_size` and
         :math:`2 \times` :attr:`partition_size`; must be greater than :attr:`num_points`
     :param parallel: If :data:`True`, calculate coresets on partitions in parallel
-    :param kwargs: Keyword arguments to be passed to initialisation of :class:`Coreset`
     """
 
     def __init__(
@@ -321,10 +316,9 @@ class MapReduce(ReductionStrategy):
         num_points: int,
         partition_size: int,
         parallel: bool = True,
-        **kwargs,
     ):
         """Initialise class."""
-        super().__init__(coreset_method, **kwargs)
+        super().__init__(coreset_method)
 
         num_points = cast_as_type(num_points, "num_points", int)
         validate_in_range(num_points, "num_points", True, lower_bound=0)
@@ -354,7 +348,7 @@ class MapReduce(ReductionStrategy):
 
     def _reduce_recursive(
         self,
-        input_data: "data.ArrayData",
+        input_data: ArrayData,
         w_function: ck.Kernel | None,
         block_size: int = 10_000,
         K_mean: Array | None = None,
@@ -382,43 +376,26 @@ class MapReduce(ReductionStrategy):
         # Fewer data points than requested coreset size so return all
         if input_len <= self.num_points:
             coreset = self.coreset_method.copy_empty()
+            coreset.coreset = input_data
 
-            coreset = self.reduction_indices
-            if w_function is not None:
-                _, Kc, Kbar = self.data_reduction.fit(
-                    data_to_reduce,
-                    self.data_reduction.kernel,
-                    block_size,
-                    K_mean,
-                    unique,
-                    nu,
-                )
-                weights = w_function(Kc, Kbar)
+        # Coreset points < data points <= partition size, so no partitioning required
+        elif self.num_points < input_len <= self.partition_size:
+            coreset = self.coreset_method.copy_empty()
+            coreset.fit(input_data, self.num_points)
 
-        # coreset points < data points <= partition size, so no partitioning required
-        elif self.size < n <= partition_size:
-            c, Kc, Kbar = self.data_reduction.fit(
-                data_to_reduce,
-                self.data_reduction.kernel,
-                block_size,
-                K_mean,
-                unique,
-                nu,
-            )
-            coreset = self.reduction_indices[c]
-            if w_function is not None:
-                weights = w_function(Kc, Kbar)
-
-        # partitions required
+        # Partitions required
         else:
+            data_to_reduce = input_data.pre_coreset_array
             # build a kdtree
             kdtree = KDTree(data_to_reduce, leaf_size=partition_size)
-            _, nindices, nodes, _ = kdtree.get_arrays()
-            new_indices = [jnp.array(nindices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
+            _, node_indices, nodes, _ = kdtree.get_arrays()
+            new_indices = [
+                jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]
+            ]
             split_data = [data_to_reduce[n] for n in new_indices]
 
-            # generate a coreset on each partition
-            coreset = []
+            # Generate a coreset on each partition
+            partition_coresets = []
             kwargs["self.size"] = self.size
             if parallel:
                 with ThreadPool() as pool:
@@ -469,11 +446,11 @@ class MapReduce(ReductionStrategy):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = (
-            self.data_reduction,
-            self.n,
-        )
-        aux_data = {}
+        children = ()
+        aux_data = {
+            "coreset_method": self.coreset_method,
+            "num_points": self.num_points,
+        }
         return children, aux_data
 
 
@@ -484,10 +461,3 @@ for current_class in reduction_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-# Set up class factories
-coreset_factory = cu.ClassFactory(Coreset)
-
-reduction_strategy_factory = cu.ClassFactory(ReductionStrategy)
-reduction_strategy_factory.register("size", SizeReduce)
-reduction_strategy_factory.register("map", MapReduce)
