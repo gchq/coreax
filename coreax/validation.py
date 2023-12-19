@@ -27,6 +27,7 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 
 def validate_in_range(
@@ -85,7 +86,7 @@ def validate_is_instance(x: T, object_name: str, expected_type: type[T]) -> None
         raise TypeError(f"{object_name} must be of type {expected_type}.")
 
 
-def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
+def cast_as_type(x: U, object_name: str, type_caster: Callable[[U], T]) -> T:
     """
     Cast an object as a specified type.
 
