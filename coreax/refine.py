@@ -50,6 +50,7 @@ import coreax.kernel as ck
 from coreax.approximation import KernelMeanApproximator
 from coreax.reduction import DataReduction
 from coreax.util import ClassFactory
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 class Refine(ABC):
@@ -82,7 +83,20 @@ class Refine(ABC):
         approximate_kernel_row_sum: bool = False,
         approximator: type[KernelMeanApproximator] | None = None,
     ):
-        """Initialise a refinement object."""
+        """
+        Initialise a refinement object.
+        """
+        # Validate inputs
+        approximate_kernel_row_sum = cast_as_type(
+            x=approximate_kernel_row_sum,
+            object_name="approximate_kernel_row_sum",
+            type_caster=bool,
+        )
+        validate_is_instance(
+            x=approximator,
+            object_name="approximator",
+            expected_type=type[KernelMeanApproximator] | None,
+        )
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
 
@@ -166,6 +180,16 @@ class RefineRegular(Refine):
             :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
+        # Validate inputs
+        validate_is_instance(
+            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        )
+        validate_is_instance(
+            x=kernel_mean_row_sum,
+            object_name="kernel_mean_row_sum",
+            expected_type=None | ArrayLike,
+        )
+
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
