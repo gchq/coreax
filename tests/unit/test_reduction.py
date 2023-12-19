@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 
+import coreax.coresubset as cc
 import coreax.data as cd
 import coreax.metrics as cm
 import coreax.reduction as cr
@@ -131,7 +132,7 @@ class TestSizeReduce(unittest.TestCase):
     def test_random_sample(self):
         """Test reduction with :class:`RandomSample`."""
         orig_data = cd.ArrayData.load([[i, 2 * i] for i in range(20)])
-        strategy = cr.SizeReduce("random", num_points=10)
+        strategy = cr.SizeReduce(cc.RandomSample(), num_points=10)
         coreset = strategy.reduce(orig_data)
         # Check shape of output
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
