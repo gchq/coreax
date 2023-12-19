@@ -52,19 +52,20 @@ class TestCoreset(unittest.TestCase):
         self.coreset = self.original_data[jnp.array([0, 1, 3])]
         self.test_class.coreset = self.coreset
 
-    def test_copy_empty(self) -> None:
-        """Check that a copy is returned and data deleted by copy_empty."""
+    def test_clone_empty(self) -> None:
+        """Check that a copy is returned and data deleted by clone_empty."""
         # Define original instance
         weights = MagicMock()
         kernel = MagicMock()
         original_data = MagicMock()
         coreset = MagicMock()
+        coreset_indices = MagicMock()
         original = CoresetTest(weights=weights, kernel=kernel)
         original.original_data = original_data
         original.coreset = coreset
 
         # Create copy
-        duplicate = original.copy_empty()
+        duplicate = original.clone_empty()
 
         # Check identities of attributes on original and duplicate
         self.assertIs(original.weights, weights)
@@ -75,6 +76,8 @@ class TestCoreset(unittest.TestCase):
         self.assertIsNone(duplicate.original_data)
         self.assertIs(original.coreset, coreset)
         self.assertIsNone(duplicate.coreset)
+        self.assertIs(original.coreset_indices, coreset_indices)
+        self.assertIsNone(duplicate.coreset_indices)
 
     def test_solve_weights(self) -> None:
         """
