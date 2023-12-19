@@ -36,7 +36,7 @@ from abc import ABC, abstractmethod
 from copy import copy
 from functools import partial
 from multiprocessing.pool import ThreadPool
-from typing import Self
+from typing import Self, TypeVar
 
 import jax.numpy as jnp
 from jax import Array, tree_util
@@ -110,9 +110,20 @@ class Coreset(ABC):
         Any concrete implementation should call this super method to set
         :attr:`original_data`.
 
+        If ``num_points`` is greater than the number of data points in
+        :attr:`original_data`, the resulting coreset may be larger than the original
+        data, if the coreset method permits. A :exc:`ValueError` is raised if it is not
+        possible to generate a coreset of size ``num_points``.
+
+        If ``num_points`` is equal to the number of data points in
+        :attr:`original_data`, the resulting coreset is not necessarily equal to the
+        original data, depending on the coreset method.
+
         :param original_data: Instance of :class:`~coreax.data.DataReader` containing
             the data we wish to reduce
         :param num_points: Number of points to include in coreset
+        :raises ValueError: When it is not possible to generate a coreset of size
+            ``num_points``
         :return: Nothing
         """
         validate_is_instance(original_data, "original_data", DataReader)
@@ -172,6 +183,9 @@ class Coreset(ABC):
             raise NotCalculatedError(f"Need to call fit before calling {caller_name}")
 
 
+CoresetMethod = TypeVar("CoresetMethod", bound=Coreset)
+
+
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -182,12 +196,12 @@ class ReductionStrategy(ABC):
     :param coreset_method: :class:`Coreset` instance to populate
     """
 
-    def __init__(self, coreset_method: Coreset):
+    def __init__(self, coreset_method: CoresetMethod):
         """Initialise class."""
         self.coreset_method = coreset_method
 
     @abstractmethod
-    def reduce(self, original_data: DataReader) -> Coreset:
+    def reduce(self, original_data: DataReader) -> CoresetMethod:
         """
         Reduce a dataset to a coreset.
 
@@ -219,7 +233,7 @@ class SizeReduce(ReductionStrategy):
     :param num_points: Number of points to include in coreset
     """
 
-    def __init__(self, coreset_method: Coreset, num_points: int):
+    def __init__(self, coreset_method: CoresetMethod, num_points: int):
         """Initialise class."""
         super().__init__(coreset_method)
 
@@ -227,7 +241,7 @@ class SizeReduce(ReductionStrategy):
         validate_in_range(num_points, "num_points", True, lower_bound=0)
         self.num_points = num_points
 
-    def reduce(self, original_data: DataReader) -> Coreset:
+    def reduce(self, original_data: DataReader) -> CoresetMethod:
         """
         Reduce a dataset to a coreset.
 
@@ -269,6 +283,10 @@ class MapReduce(ReductionStrategy):
     the original data, which thus has size greater than :attr:`num_points`. This coreset
     is now treated as the original data and reduced recursively until its size is equal
     to :attr:`num_points`.
+
+    :attr:`num_points` <= :attr:`partition_size` to prevent exponential growth of
+    coreset size at each iteration. If for whatever reason you wish to break this
+    restriction, use :class:`SizeReduce` instead.
 
     There is some intricate set-up:
 
@@ -312,7 +330,7 @@ class MapReduce(ReductionStrategy):
 
     def __init__(
         self,
-        coreset_method: type[Coreset],
+        coreset_method: CoresetMethod,
         num_points: int,
         partition_size: int,
         parallel: bool = True,
@@ -332,7 +350,7 @@ class MapReduce(ReductionStrategy):
 
         self.parallel = cast_as_type(parallel, "parallel", bool)
 
-    def reduce(self, original_data: DataReader) -> Coreset:
+    def reduce(self, original_data: DataReader) -> CoresetMethod:
         """
         Reduce a dataset to a coreset using scalable reduction.
 
@@ -355,7 +373,7 @@ class MapReduce(ReductionStrategy):
         nu: float = 1.0,
         partition_size: int = 1000,
         parallel: bool = True,
-    ) -> tuple[Array, Array]:
+    ) -> CoresetMethod:
         r"""
         Recursively execute scalable reduction.
 
@@ -371,6 +389,50 @@ class MapReduce(ReductionStrategy):
         :param kwargs: Keyword arguments to be passed to `function` after `X` and `n_core`
         :return: Coreset and weights, where weights is empty if unweighted
         """
+        # Check if no partitions are required
+        if input_data.pre_coreset_array.shape[0] <= self.partition_size:
+            # Length of input_data < num_points is only possible if input_data is the
+            # original data, so it is safe to request a coreset of size larger than the
+            # original data (if of limited use)
+            return self._coreset_copy_fit(input_data)
+
+        # Partitions required
+        data_to_reduce = input_data.pre_coreset_array
+
+        # Build a kdtree
+        kdtree = KDTree(data_to_reduce, leaf_size=partition_size)
+        _, node_indices, nodes, _ = kdtree.get_arrays()
+        new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
+        split_data = [data_to_reduce[n] for n in new_indices]
+
+        # Generate a coreset on each partition
+        partition_coresets = []
+        kwargs["self.size"] = self.size
+        if parallel:
+            with ThreadPool() as pool:
+                res = pool.map_async(
+                    partial(
+                        self.data_reduction.fit,
+                        self.data_reduction.kernel,
+                        block_size,
+                        K_mean,
+                        unique,
+                        nu,
+                    ),
+                    split_data,
+                )
+                res.wait()
+                for herding_output, idx in zip(res.get(), new_indices):
+                    c, _, _ = herding_output
+                    coreset.append(idx[c])
+
+        else:
+            for X_, idx in zip(split_data, new_indices):
+                c, _, _ = self.data_reduction.fit(
+                    X_, self.data_reduction.kernel, block_size, K_mean, unique, nu
+                )
+                coreset.append(idx[c])
+
         input_len = input_data.pre_coreset_array.shape[0]
 
         # Fewer data points than requested coreset size so return all
@@ -386,13 +448,14 @@ class MapReduce(ReductionStrategy):
         # Partitions required
         else:
             data_to_reduce = input_data.pre_coreset_array
-            # build a kdtree
+
+            # Build a kdtree
             kdtree = KDTree(data_to_reduce, leaf_size=partition_size)
             _, node_indices, nodes, _ = kdtree.get_arrays()
             new_indices = [
                 jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]
             ]
-            split_data = [data_to_reduce[n] for n in new_indices]
+            split_data = [ArrayData.load(data_to_reduce[n]) for n in new_indices]
 
             # Generate a coreset on each partition
             partition_coresets = []
@@ -437,6 +500,17 @@ class MapReduce(ReductionStrategy):
             )
 
         return coreset, weights
+
+    def _coreset_copy_fit(self, input_data: ArrayData) -> CoresetMethod:
+        """
+        Create a new instance of :attr:`coreset_method` and fit to given data.
+
+        :param input_data: Data to fit
+        :return: New instance :attr:`coreset_method` fitted to ``input_data``
+        """
+        coreset = self.coreset_method.copy_empty()
+        coreset.fit(input_data, self.num_points)
+        return coreset
 
     def _tree_flatten(self):
         """
