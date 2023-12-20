@@ -95,7 +95,7 @@ class Refine(ABC):
         validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=type[KernelMeanApproximator] | None,
+            expected_type=(type[KernelMeanApproximator], None),
         )
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
@@ -187,7 +187,7 @@ class RefineRegular(Refine):
         validate_is_instance(
             x=kernel_mean_row_sum,
             object_name="kernel_mean_row_sum",
-            expected_type=None | ArrayLike,
+            expected_type=(None, ArrayLike),
         )
 
         x = data_reduction.original_data
