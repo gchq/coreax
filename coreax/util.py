@@ -34,12 +34,9 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
-# Pairwise kernel evaluation if grads and nu are defined
-KernelFunctionWithGrads = Callable[
-    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
-]
+KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
 
 def apply_negative_precision_threshold(
@@ -52,8 +49,17 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between -`precision_threshold` and 0.0
     """
-    # Cast to float. Will raise TypeError if array is not zero-dimensional.
-    x = float(x)
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=float)
+    precision_threshold = cast_as_type(
+        x=precision_threshold, object_name="precision_threshold", type_caster=float
+    )
+    validate_in_range(
+        x=precision_threshold,
+        object_name="precision_threshold",
+        strict_inequalities=False,
+        lower_bound=0,
+    )
 
     if precision_threshold < 0.0:
         raise ValueError(
@@ -76,6 +82,9 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Dot product of ```x - y`` and ``x - y``, the square distance between ``x``
         and ``y``
     """
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return jnp.dot(x - y, x - y)
 
 
@@ -89,6 +98,9 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     fn = vmap(
         vmap(squared_distance, in_axes=(None, 0), out_axes=0),
@@ -107,23 +119,29 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     :param y: Second vector
     :return: Vector difference ``x - y``
     """
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return x - y
 
 
 @jit
-def pairwise_difference(x_array: ArrayLike, y_array: ArrayLike) -> Array:
+def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
-    :param x_array: First set of vectors as a :math:`n \times d` array
-    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param x: First set of vectors as a :math:`n \times d` array
+    :param y: Second set of vectors as a :math:`m \times d` array
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
+    # Validate inputs
+    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     fn = vmap(
         vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
     )
-    return fn(x_array, y_array)
+    return fn(x, y)
 
 
 def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
@@ -146,6 +164,14 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     :param kernel_matrix_row_sum_mean: :math`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
+    # Validate inputs
+    validate_is_instance(x=kernel_mm, object_name="kernel_mm", expected_type=ArrayLike)
+    validate_is_instance(
+        x=kernel_matrix_row_sum_mean,
+        object_name="kernel_matrix_row_sum_mean",
+        expected_type=ArrayLike,
+    )
+
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters
     q_array = jnp.array(kernel_mm)
