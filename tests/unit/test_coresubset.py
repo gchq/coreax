@@ -19,6 +19,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
+import coreax.kernel as ck
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import DataReader
 from coreax.kernel import Kernel
@@ -36,6 +37,37 @@ class TestKernelHerding(unittest.TestCase):
     Tests related to the KernelHerding class defined in coresubset.py
     """
 
+    def setUp(self):
+        r"""
+        Generate data for use across unit tests.
+
+        Generate n random points in d dimensions from a uniform distribution [0, 1).
+
+        ``n``: Number of test data points
+        ``d``: Dimension of data
+        ``m``: Number of points to randomly select for second dataset Y
+        ``max_size``: Maximum number of points for block calculations
+        """
+        # Define data parameters
+        self.num_points_in_data = 10
+        self.dimension = 3
+        self.random_data_generation_key = 0
+        self.num_points_in_coreset = 5
+        self.random_sampling_key = 42
+        self.kernel = ck.SquaredExponentialKernel
+
+        # Define example dataset
+        x = random.uniform(
+            random.PRNGKey(self.random_data_generation_key),
+            shape=(self.num_points_in_data, self.dimension),
+        )
+
+        data_obj = DataReaderConcrete(original_data=x, pre_coreset_array=x)
+
+        self.kernel_matrix = self.kernel().compute(x, x)
+
+        self.data_obj = data_obj
+
     def test_fit(self) -> None:
         r"""
         Test the fit method of the KernelHerding class.
@@ -43,33 +75,43 @@ class TestKernelHerding(unittest.TestCase):
         Methods called by this method are mocked and assumed tested elsewhere.
         """
 
-        with (
-            patch("coreax.kernel.Kernel") as mock_kernel,
-            patch("coreax.data.DataReader") as mock_reader,
-            patch("jax.lax.fori_loop") as mock_loop,
-        ):
-            mock_gram_matrix = jnp.asarray(
-                [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], dtype=jnp.float32
-            )
-            mock_loop.return_value = (
-                jnp.array([3, 1, 2]),
-                mock_gram_matrix,
-                jnp.asarray([]),
-            )
+        with patch("coreax.data.DataReader") as mock_reader:
+            # (
+            #     # patch("coreax.kernel.Kernel") as mock_kernel,
+            #     # patch("coreax.data.DataReader") as mock_reader,
+            #     # patch("jax.lax.fori_loop") as mock_loop,
+            # ):
+            # mock_kernel = Mock(spec=ck.Kernel())
+            # mock_gram_matrix = jnp.asarray(
+            #     [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]], dtype=jnp.float32
+            # )
+            # mock_loop.return_value = (
+            #     jnp.array([3, 1, 2]),
+            #     mock_gram_matrix,
+            #     jnp.asarray([]),
+            # )
+            # print(type(mock_kernel))
 
             # Define class
-            test_class = KernelHerding(mock_reader, "MMD", mock_kernel, size=3)
+            test_class = KernelHerding(
+                original_data=self.data_obj, weights=None, kernel=self.kernel, size=3
+            )
+            # Alter the kernel so that we can check correct
+            mock_kernel = MagicMock()
+            test_class.kernel = mock_kernel
 
             with self.subTest("mean_supplied_no_refine"):
                 # Mean supplied but no refine
                 # Mean calculation should not happen and neither should refinement
 
-                gram_matrix, Kbar = test_class.fit(K_mean=2.5)
+                K_mean = sum(sum(self.kernel_matrix)) / self.num_points_in_data**2
 
-                mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_not_called()
+                gram_matrix, Kbar = test_class.fit(K_mean=K_mean, refine=None)
+
+                test_class.kernel.calculate_kernel_matrix_row_sum_mean.assert_not_called()
 
                 np.testing.assert_array_equal(
-                    test_class.reduction_indices, jnp.array([3, 1, 2])
+                    test_class.coreset_indices, jnp.array([3, 1, 2])
                 )
 
                 np.testing.assert_array_equal(
@@ -85,7 +127,8 @@ class TestKernelHerding(unittest.TestCase):
                 # Mean not supplied. Refine called for. No approximation.
                 # TODO Mean calculation should happen and so should refinement but without approximation
 
-                _, _ = test_class.fit(refine="RefineRegular")
+                test_class.kernel = ck.SquaredExponentialKernel()
+                _, _ = test_class.fit(refine="regular")
 
                 mock_kernel.calculate_kernel_matrix_row_sum_mean.assert_called_once()
 
@@ -218,9 +261,7 @@ class TestRandomSample(unittest.TestCase):
         random_sample.fit()
 
         # Assert the number of indices in the reduced data is as expected
-        self.assertEqual(
-            len(random_sample.reduction_indices), self.num_points_in_coreset
-        )
+        self.assertEqual(len(random_sample.coreset_indices), self.num_points_in_coreset)
 
         # Convert lists to set of tuples
         coreset_set = set(map(tuple, np.array(random_sample.coreset)))
@@ -248,9 +289,9 @@ class TestRandomSample(unittest.TestCase):
         )
         random_sample.fit()
 
-        unique_reduction_indices = jnp.unique(random_sample.reduction_indices)
+        unique_reduction_indices = jnp.unique(random_sample.coreset_indices)
         self.assertTrue(
-            len(unique_reduction_indices) < len(random_sample.reduction_indices)
+            len(unique_reduction_indices) < len(random_sample.coreset_indices)
         )
 
 

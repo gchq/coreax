@@ -169,8 +169,8 @@ class RefineRegular(Refine):
             :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
-        x = data_reduction.original_data
-        coreset_indices = data_reduction.reduction_indices
+        x = data_reduction.original_data.pre_coreset_array
+        coreset_indices = data_reduction.coreset_indices
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
@@ -199,7 +199,12 @@ class RefineRegular(Refine):
         coreset_indices = lax.fori_loop(0, num_points_in_coreset, body, coreset_indices)
 
         data_reduction.reduction_indices = coreset_indices
-        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
+        print("coreset_indices: ", coreset_indices)
+        print("pre_coreset_array: ", data_reduction.original_data.pre_coreset_array)
+        data_reduction.reduced_data = data_reduction.original_data.pre_coreset_array[
+            coreset_indices, :
+        ]
+        # coreset_obj.coreset = coreset_obj.original_data.pre_coreset_array[coreset_indices, :]
 
     @jit
     def _refine_body(
