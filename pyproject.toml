@@ -52,6 +52,7 @@ dev = [
     "numpy",
     "opencv-python",
     "pre-commit",
+    "pylint",
     "pyqt5",
     "scipy",
 ]
