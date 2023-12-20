@@ -42,11 +42,16 @@ doc = [
 ]
 # Run unit tests
 test = [
+    "pytest",
+]
+# Run unit tests with coverage assessment
+coverage = [
     "pytest-cov",
 ]
 # All tools for a developer
+# Should not need to specify test dependencies if also installing coverage but no harm
 dev = [
-    "coreax[doc, test]",
+    "coreax[doc, test, coverage]",
     "imageio",
     "matplotlib",
     "numpy",
