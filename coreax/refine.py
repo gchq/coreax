@@ -57,11 +57,8 @@ class Refine(ABC):
     r"""
     Base class for refinement functions.
 
-    # TODO: Do we want to be able to refine by additional quality measures, e.g.
-        KL Divergence, ...?
-
-    # TODO: Related to the above, we could see if using the metrics objects offer an
-        easier way to incorporate a generic quality measure
+    # TODO: Integrate usage of metrics module to allow refinement via any choice of
+        metric
 
     The refinement process happens iteratively. Coreset elements are replaced by
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
@@ -323,8 +320,27 @@ class RefineRandom(Refine):
         random_key: int = 0,
     ):
         """Initialise a random refinement object."""
-        self.random_key = random_key
+        # Perform input validation
+        p = cast_as_type(x=p, object_name="p", type_caster=float)
+        validate_in_range(
+            x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
+        )
+        validate_in_range(
+            x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
+        )
+        random_key = cast_as_type(
+            x=random_key, object_name="random_key", type_caster=int
+        )
+        validate_in_range(
+            x=random_key,
+            object_name="random_key",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
+
+        # Assign attributes
         self.p = p
+        self.random_key = random_key
         super().__init__(
             approximate_kernel_row_sum=approximate_kernel_row_sum,
             approximator=approximator,
@@ -352,6 +368,16 @@ class RefineRandom(Refine):
             :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
+        # Validate inputs
+        validate_is_instance(
+            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        )
+        validate_is_instance(
+            x=kernel_mean_row_sum,
+            object_name="kernel_mean_row_sum",
+            expected_type=(None, ArrayLike),
+        )
+
         x = data_reduction.original_data
         coreset_indices = data_reduction.reduction_indices
 
@@ -558,6 +584,16 @@ class RefineReverse(Refine):
             :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
+        # Validate inputs
+        validate_is_instance(
+            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        )
+        validate_is_instance(
+            x=kernel_mean_row_sum,
+            object_name="kernel_mean_row_sum",
+            expected_type=(None, ArrayLike),
+        )
+
         x = jnp.asarray(data_reduction.original_data)
         coreset_indices = jnp.asarray(data_reduction.reduction_indices)
 

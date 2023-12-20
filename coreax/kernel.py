@@ -360,7 +360,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
+        kernel_pairwise: cu.KernelFunction,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -400,7 +400,7 @@ class Kernel(ABC):
         validate_is_instance(
             x=kernel_pairwise,
             object_name="kernel_pairwise",
-            expected_type=cu.KernelFunction | cu.KernelFunctionWithGrads,
+            expected_type=cu.KernelFunction,
         )
         validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
