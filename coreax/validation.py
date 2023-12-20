@@ -74,9 +74,9 @@ def validate_in_range(
 
 
 def validate_is_instance(
-    x: T,
+    x: object,
     object_name: str,
-    expected_type: type[T] | UnionType | tuple[type[T] | UnionType | None, ...] | None,
+    expected_type: type | UnionType | tuple[type | UnionType | None, ...] | None,
 ) -> None:
     """
     Verify that a given object is of a given type.
@@ -86,7 +86,7 @@ def validate_is_instance(
     :func:`cast_as_type` should generally be used where possible with this function
     reserved for classes or other object types that do not have a reliable caster.
 
-    :param x: Variable we wish to verify lies in the specified range
+    :param x: Object we wish to validate
     :param object_name: Name of ``x`` to display if it is not of type ``expected_type``
     :param expected_type: Expected type of ``x``, can be a tuple or union to specify a
         choice of valid types
