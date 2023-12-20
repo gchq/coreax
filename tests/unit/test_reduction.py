@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import jax.numpy as jnp
+import numpy as np
 
 import coreax.coresubset as cc
 import coreax.data as cd
-import coreax.metrics as cm
 import coreax.reduction as cr
 import coreax.util as cu
-import coreax.weights as cw
 
 
 class MockCreatedInstance:
@@ -31,36 +30,29 @@ class MockCreatedInstance:
         return tuple(*args)
 
 
-class CoresetTest(cr.Coreset):
+class CoresetMock(cr.Coreset):
     """Test version of :class:`Coreset` with all methods implemented."""
 
-    def fit(self, original_data: cd.DataReader, num_points: int) -> None:
+    def fit_to_size(self, num_points: int) -> None:
         raise NotImplementedError
 
 
 class TestCoreset(unittest.TestCase):
-    """
-    Tests related to :class:`Coreset`.
-    """
+    """Tests related to :class:`Coreset`."""
 
-    def setUp(self) -> None:
-        self.original_data = MagicMock()
-        self.original_data.pre_coreset_array = jnp.array([0, 0.3, 0.75, 1])
-        self.weights = "MMD"
-        self.kernel = MagicMock()
-        self.test_class = cr.Coreset(self.weights, self.kernel)
-        self.coreset = self.original_data[jnp.array([0, 1, 3])]
-        self.test_class.coreset = self.coreset
+    def test_clone_empty(self):
+        """
+        Check that a copy is returned and data deleted by clone_empty.
 
-    def test_clone_empty(self) -> None:
-        """Check that a copy is returned and data deleted by clone_empty."""
+        Also test attributes are populated by init.
+        """
         # Define original instance
         weights = MagicMock()
         kernel = MagicMock()
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
-        original = CoresetTest(weights=weights, kernel=kernel)
+        original = CoresetMock(weights=weights, kernel=kernel)
         original.original_data = original_data
         original.coreset = coreset
 
@@ -79,52 +71,92 @@ class TestCoreset(unittest.TestCase):
         self.assertIs(original.coreset_indices, coreset_indices)
         self.assertIsNone(duplicate.coreset_indices)
 
-    def test_solve_weights(self) -> None:
-        """
-        Test calls within ``solve_weights``.
-        """
-        with patch("coreax.util.create_instance_from_factory") as mock_create_instance:
-            mock_create_instance.return_value = MockCreatedInstance()
-            actual_out = self.test_class.solve_weights()
-            mock_create_instance.assert_called_once_with(
-                cw.weights_factory, self.weights, self.kernel
-            )
-            # MockCreatedInstance returns tuple of input arguments
-            self.assertEqual(
-                actual_out, (self.original_data.pre_coreset_array, self.coreset)
-            )
+    def test_fit(self):
+        """Test that original data is saved and reduction strategy called."""
+        coreset = CoresetMock()
+        original_data = MagicMock(spec=cd.DataReader)
+        strategy = MagicMock(spec=cr.ReductionStrategy)
+        coreset.fit(original_data, strategy)
+        self.assertIs(coreset.original_data, original_data)
+        strategy.reduce.assert_called_once_with(coreset)
 
-    def test_compute_metric(self) -> None:
-        """
-        Test the compute_metric method of :class:`coreax.reduction.DataReduction`.
-        """
-        with patch("coreax.util.create_instance_from_factory") as mock_create_instance:
-            mock_create_instance.return_value = MockCreatedInstance()
-            actual_out = self.test_class.compute_metric("metric_a")
-            mock_create_instance.assert_called_once_with(
-                cm.metric_factory, "metric_a", kernel=self.kernel
-            )
-            # MockCreatedInstance returns tuple of input arguments
-            self.assertEqual(
-                actual_out, (self.original_data.pre_coreset_array, self.coreset)
-            )
+    def test_solve_weights(self):
+        """Check that solve_weights is called correctly."""
+        weights = MagicMock()
+        coreset = CoresetMock(weights=weights)
+        coreset.original_data = MagicMock(spec=cd.DataReader)
+
+        # First try prior to fitting a coreset
+        self.assertRaises(cu.NotCalculatedError, coreset.solve_weights)
+
+        # Now test with a calculated coreset
+        coreset.coreset = MagicMock(spec=cr.Coreset)
+        coreset.solve_weights()
+        weights.solve.assert_called_once_with(
+            coreset.original_data.pre_coreset_array, coreset.coreset
+        )
+
+    def test_compute_metric(self):
+        """Check that compute_metric is called correctly."""
+        coreset = CoresetMock()
+        coreset.original_data = MagicMock(spec=cd.DataReader)
+        metric = MagicMock()
+        block_size = 10
+
+        # First try prior to fitting a coreset
+        self.assertRaises(
+            cu.NotCalculatedError, coreset.compute_metric, metric, block_size
+        )
+
+        # Now test with a calculated coreset
+        coreset.coreset = MagicMock(spec=cr.Coreset)
+        coreset.compute_metric(metric, block_size)
+        metric.compute.assert_called_once_with(
+            coreset.original_data.pre_coreset_array, coreset.coreset, block_size
+        )
+
+    def test_copy_fit_shallow(self):
+        """Check that default behaviour of copy_fit points to other coreset array."""
+        array = jnp.array([[1, 2], [3, 4]])
+        indices = jnp.array([5, 6])
+        this_obj = CoresetMock()
+        other = CoresetMock()
+        other.coreset = array
+        other.coreset_indices = indices
+        this_obj.copy_fit(other)
+        self.assertIs(this_obj.coreset, array)
+        self.assertIs(this_obj.coreset_indices, indices)
+
+    def test_copy_fit_deep(self):
+        """Check that copy_fit with deep=True creates copies of coreset arrays."""
+        array = jnp.array([[1, 2], [3, 4]])
+        indices = jnp.array([5, 6])
+        this_obj = CoresetMock()
+        other = CoresetMock()
+        other.coreset = array
+        other.coreset_indices = indices
+        this_obj.copy_fit(other, True)
+        self.assertIsNot(this_obj.coreset, array)
+        np.testing.assert_equal(this_obj.coreset, array)
+        self.assertIsNot(this_obj.coreset_indices, indices)
+        np.testing.assert_equal(this_obj.coreset_indices, indices)
 
     def test_validate_fitted_ok(self):
         """Check no error raised when fit has been called."""
-        obj = CoresetTest(None, None)
+        obj = CoresetMock()
         obj.original_data = cd.ArrayData(1, 1)
         obj.coreset = jnp.array(1)
         obj._validate_fitted("func")
 
     def test_validate_fitted_no_original(self):
         """Check error is raised when original data is missing."""
-        obj = CoresetTest(None, None)
+        obj = CoresetMock()
         obj.coreset = jnp.array(1)
         self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
 
     def test_validate_fitted_no_coreset(self):
         """Check error is raised when coreset is missing."""
-        obj = CoresetTest(None, None)
+        obj = CoresetMock()
         obj.original_data = cd.ArrayData(1, 1)
         self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
 
