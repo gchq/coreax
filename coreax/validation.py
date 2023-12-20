@@ -25,9 +25,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from types import UnionType
-from typing import Any, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 
 def validate_in_range(
@@ -86,7 +87,7 @@ def validate_is_instance(
     :func:`cast_as_type` should generally be used where possible with this function
     reserved for classes or other object types that do not have a reliable caster.
 
-    :param x: Variable we wish to verify lies in the specified range
+    :param x: Object we wish to validate
     :param object_name: Name of ``x`` to display if it is not of type ``expected_type``
     :param expected_type: Expected type of ``x``, can be a tuple or union to specify a
         choice of valid types
@@ -119,7 +120,7 @@ def validate_is_instance(
         raise TypeError(f"{object_name} must be of type {expected_type}")
 
 
-def cast_as_type(x: Any, object_name: str, type_caster: Callable[[Any], T]) -> T:
+def cast_as_type(x: U, object_name: str, type_caster: Callable[[U], T]) -> T:
     """
     Cast an object as a specified type.
 
