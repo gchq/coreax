@@ -96,7 +96,7 @@ class DataReader(ABC):
         coreset_method: str | type[Coreset],
         reduction_strategy: str | type[ReductionStrategy],
         **kwargs,
-    ) -> "Coreset":
+    ) -> Coreset:
         """
         Reduce original data stored in this class to a coreset.
 

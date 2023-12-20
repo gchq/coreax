@@ -89,7 +89,7 @@ class CoreSubset(Coreset):
         self.coreset_size = size
         super().__init__(original_data, weights, kernel)
 
-        self.reduction_indices = jnp.asarray(
+        self.coreset_indices = jnp.asarray(
             range(original_data.pre_coreset_array.shape[0])
         )
 
@@ -134,7 +134,6 @@ class KernelHerding(CoreSubset):
         block_size: int = 10000,
         K_mean: Array | None = None,
         unique: bool = True,
-        nu: float = 1.0,
         refine: str | Refine | None = None,
         approximator: str | KernelMeanApproximator | None = None,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
@@ -153,28 +152,35 @@ class KernelHerding(CoreSubset):
         :param num_kernel_points: Number of kernel evaluation points for approximation
         :returns: coreset Gram matrix and coreset Gram mean
         """
-        n = len(self.reduced_data)
+        n = len(self.original_data.pre_coreset_array)
         if K_mean is None:
             # TODO: for the reviewer, the issue ticket says we should "incorporate the caching of K_mean from
             #  kernel_herding_refine into KernelHerding" but the mean is needed here before being calculated in Refine.refine
+            print(type(self.kernel))
             K_mean = self.kernel.calculate_kernel_matrix_row_sum_mean(
-                self.reduced_data, max_size=block_size
+                x=self.original_data.pre_coreset_array, max_size=block_size
             )
 
         # Initialise loop updateables
         K_t = jnp.zeros(n)
         S = jnp.zeros(self.coreset_size, dtype=jnp.int32)
+        print("S: ", S)
         K = jnp.zeros((self.coreset_size, n))
 
         # Greedly select coreset points
         body = partial(
             self._greedy_body, k_vec=self.kernel.compute, K_mean=K_mean, unique=unique
         )
-        self.reduction_indices, K, _ = lax.fori_loop(
-            0, self.coreset_size, body, (S, K, K_t)
+        # self.coreset_indices, K, _ = lax.fori_loop(
+        #     lower=0, upper=self.coreset_size, body_fun=body, init_val=(S, K, K_t)
+        # )
+        self.coreset_indices, K_t = lax.fori_loop(
+            lower=0, upper=self.coreset_size, body_fun=body, init_val=(S, K_t)
         )
+        print("self.coreset_indices: ", self.coreset_indices)
         Kbar = K.mean(axis=1)
-        gram_matrix = K[:, self.reduction_indices]
+        # gram_matrix = K[:, self.coreset_indices]
+        gram_matrix = []
 
         # TODO: for reviewer, this whole block seems clunky...
         if refine is not None:
@@ -198,17 +204,20 @@ class KernelHerding(CoreSubset):
             # refine
             refine_instance.refine(data_reduction=self)
 
-        return gram_matrix, Kbar
+        # self.coreset_indices = coreset_indices
+        self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+        return gram_matrix, Kbar  # delete this
 
     @partial(jit, static_argnames=["self", "k_vec", "unique"])
     def _greedy_body(
         self,
         i: int,
-        val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        val: tuple[ArrayLike, ArrayLike],
+        # S: ArrayLike,
         k_vec: KernelFunction,
         K_mean: ArrayLike,
         unique: bool,
-    ) -> tuple[Array, Array, Array]:
+    ) -> tuple[Array, Array]:  # tuple[Array, Array, Array]:
         r"""
         Execute main loop of greedy kernel herding.
 
@@ -218,20 +227,23 @@ class KernelHerding(CoreSubset):
                       :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
         :param K_mean: Mean vector over rows for the Gram matrix, a :math:`1 \times n` array
         :param unique: Flag for enforcing unique elements
-        :returns: Updated loop variables (`coreset`, `Gram matrix`, `objective`)
+        :returns: Updated loop variables (`coreset indices`, `Gram matrix`, `objective`)
         """
-        S, K, K_t = val
+        # print("val[0]: ", val[0])
+        # S, K, K_t = val
+        S, K_t = val
         S = jnp.asarray(S)
-        K = jnp.asarray(K)
+        # K = jnp.asarray(K)
         j = (K_mean - K_t / (i + 1)).argmax()
-        kv = k_vec(self.reduced_data, self.reduced_data[j])
-        K_t = K_t + kv
+        # kv = k_vec(self.original_data.pre_coreset_array[S,:], self.original_data.pre_coreset_array[S[j],:])
+        # K_t = K_t + kv
         S = S.at[i].set(j)
-        K = K.at[i].set(kv)
-        if unique:
-            K_t = K_t.at[j].set(jnp.inf)
+        print(S)
+        # K = K.at[i].set(kv)
+        # if unique:
+        #     K_t = K_t.at[j].set(jnp.inf)
 
-        return S, K, K_t
+        return S, K_t  # , K, K_t
 
 
 class RandomSample(CoreSubset):
@@ -280,7 +292,7 @@ class RandomSample(CoreSubset):
             shape=(self.coreset_size,),
             replace=not self.unique_flag,
         )
-        self.reduction_indices = random_indices
+        self.coreset_indices = random_indices
         self.coreset = orig_data[random_indices]
 
 
