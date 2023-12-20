@@ -46,6 +46,7 @@ from tqdm import tqdm
 
 import coreax.kernel as ck
 from coreax.networks import ScoreNetwork, create_train_state
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 class ScoreMatching(ABC):
@@ -116,43 +117,6 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
-    def __init__(
-        self,
-        random_generator: Callable,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        noise_conditioning: bool = True,
-        use_analytic: bool = False,
-        num_random_vectors: int = 1,
-        learning_rate: float = 1e-3,
-        num_epochs: int = 10,
-        batch_size: int = 64,
-        hidden_dim: int = 128,
-        optimiser: Callable = optax.adamw,
-        num_noise_models: int = 100,
-        sigma: float = 1.0,
-        gamma: float = 0.95,
-    ):
-        """
-        Define a sliced score matching class.
-        """
-        # Assign all inputs
-        self.random_generator = random_generator
-        self.random_key = random_key
-        self.noise_conditioning = noise_conditioning
-        self.use_analytic = use_analytic
-        self.num_random_vectors = num_random_vectors
-        self.learning_rate = learning_rate
-        self.num_epochs = num_epochs
-        self.batch_size = batch_size
-        self.hidden_dim = hidden_dim
-        self.optimiser = optimiser
-        self.num_noise_models = num_noise_models
-        self.sigma = sigma
-        self.gamma = gamma
-
-        # Initialise parent
-        super().__init__()
-
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -179,6 +143,122 @@ class SlicedScoreMatching(ScoreMatching):
         }
 
         return children, aux_data
+
+    def __init__(
+        self,
+        random_generator: Callable,
+        random_key: random.PRNGKeyArray | ArrayLike = random.PRNGKey(0),
+        noise_conditioning: bool = True,
+        use_analytic: bool = False,
+        num_random_vectors: int = 1,
+        learning_rate: float = 1e-3,
+        num_epochs: int = 10,
+        batch_size: int = 64,
+        hidden_dim: int = 128,
+        optimiser: Callable = optax.adamw,
+        num_noise_models: int = 100,
+        sigma: float = 1.0,
+        gamma: float = 0.95,
+    ):
+        """
+        Define a sliced score matching class.
+        """
+        # Validate all inputs
+        validate_is_instance(
+            x=random_generator, object_name="random_generator", expected_type=Callable
+        )
+        validate_is_instance(
+            x=random_key, object_name="random_key", expected_type=ArrayLike
+        )
+        noise_conditioning = cast_as_type(
+            x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
+        )
+        use_analytic = cast_as_type(
+            x=use_analytic, object_name="use_analytic", type_caster=bool
+        )
+        num_random_vectors = cast_as_type(
+            x=num_random_vectors, object_name="num_random_vectors", type_caster=int
+        )
+        validate_in_range(
+            x=num_random_vectors,
+            object_name="num_random_vectors",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        learning_rate = cast_as_type(
+            x=learning_rate, object_name="learning_rate", type_caster=float
+        )
+        validate_in_range(
+            x=learning_rate,
+            object_name="learning_rate",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        num_epochs = cast_as_type(
+            x=num_epochs, object_name="num_epochs", type_caster=int
+        )
+        validate_in_range(
+            x=num_epochs,
+            object_name="num_epochs",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        batch_size = cast_as_type(
+            x=batch_size, object_name="batch_size", type_caster=int
+        )
+        validate_in_range(
+            x=batch_size,
+            object_name="batch_size",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        hidden_dim = cast_as_type(
+            x=hidden_dim, object_name="hidden_dim", type_caster=int
+        )
+        validate_in_range(
+            x=hidden_dim,
+            object_name="hidden_dim",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        validate_is_instance(
+            x=optimiser, object_name="optimiser", expected_type=Callable
+        )
+        num_noise_models = cast_as_type(
+            x=num_noise_models, object_name="num_noise_models", type_caster=int
+        )
+        validate_in_range(
+            x=num_noise_models,
+            object_name="num_noise_models",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        sigma = cast_as_type(x=sigma, object_name="sigma", type_caster=float)
+        validate_in_range(
+            x=sigma, object_name="sigma", strict_inequalities=True, lower_bound=0
+        )
+        gamma = cast_as_type(x=gamma, object_name="gamma", type_caster=float)
+        validate_in_range(
+            x=gamma, object_name="gamma", strict_inequalities=True, lower_bound=0
+        )
+
+        # Assign all inputs
+        self.random_generator = random_generator
+        self.random_key = random_key
+        self.noise_conditioning = noise_conditioning
+        self.use_analytic = use_analytic
+        self.num_random_vectors = num_random_vectors
+        self.learning_rate = learning_rate
+        self.num_epochs = num_epochs
+        self.batch_size = batch_size
+        self.hidden_dim = hidden_dim
+        self.optimiser = optimiser
+        self.num_noise_models = num_noise_models
+        self.sigma = sigma
+        self.gamma = gamma
+
+        # Initialise parent
+        super().__init__()
 
     def _objective_function(
         self,
@@ -399,6 +479,9 @@ class SlicedScoreMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
         score_network = ScoreNetwork(self.hidden_dim, data_dimension)
@@ -475,6 +558,20 @@ class KernelDensityMatching(ScoreMatching):
         r"""
         Define the kernel density matching class.
         """
+        # Validate inputs
+        length_scale = cast_as_type(
+            x=length_scale, object_name="length_scale", type_caster=float
+        )
+        validate_in_range(
+            x=length_scale,
+            object_name="length_scale",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        kde_data = cast_as_type(
+            x=kde_data, object_name="kde_data", type_caster=jnp.atleast_2d
+        )
+
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = ck.SquaredExponentialKernel(
@@ -516,6 +613,8 @@ class KernelDensityMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors. Unused in this implementation.
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        validate_is_instance(x=x, object_name="x", expected_type=(ArrayLike, None))
 
         def score_function(x_):
             r"""
@@ -529,7 +628,7 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
-            x_ = jnp.atleast_2d(x_)
+            x_ = cast_as_type(x=x_, object_name="x_", type_caster=jnp.atleast_2d)
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
