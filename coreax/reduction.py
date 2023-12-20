@@ -62,7 +62,9 @@ class Coreset(ABC):
        :data:`None` if not applicable
     """
 
-    def __init__(self, weights: WeightsOptimiser | None, kernel: Kernel | None):
+    def __init__(
+        self, *, weights: WeightsOptimiser | None = None, kernel: Kernel | None = None
+    ):
         """Initialise class and set internal attributes to defaults."""
         validate_is_instance(weights, "weights", (WeightsOptimiser, None))
         self.weights = weights
