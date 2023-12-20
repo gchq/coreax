@@ -30,6 +30,12 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 import coreax.util as cu
+from coreax.validation import (
+    cast_as_type,
+    validate_array_size,
+    validate_in_range,
+    validate_is_instance,
+)
 
 
 class Metric(ABC):
@@ -90,6 +96,12 @@ class MMD(Metric):
         r"""
         Calculate maximum mean discrepancy between two datasets in d dimensions.
         """
+        # Validate inputs
+        precision_threshold = cast_as_type(
+            x=precision_threshold, object_name="precision_threshold", type_caster=float
+        )
+        validate_is_instance(x=kernel, object_name="kernel", expected_type=ck.Kernel)
+
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
@@ -119,8 +131,19 @@ class MMD(Metric):
         :param weights_y: (Optional)  :math:`m \times 1` weights for dataset ``y``
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
-        num_points_x = len(jnp.asarray(x))
-        num_points_y = len(jnp.asarray(y))
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        weights_x = cast_as_type(
+            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
+        )
+        weights_y = cast_as_type(
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+        )
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+
+        num_points_x = len(x)
+        num_points_y = len(y)
 
         if weights_y is None:
             if max_size is None or max_size > max(num_points_x, num_points_y):
@@ -156,6 +179,10 @@ class MMD(Metric):
             example a coreset
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+
         # Compute each term in the MMD formula
         kernel_nn = self.kernel.compute(x, x)
         kernel_mm = self.kernel.compute(y, y)
@@ -185,7 +212,11 @@ class MMD(Metric):
         :return: Weighted maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        x = jnp.asarray(x)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        weights_y = cast_as_type(
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+        )
         num_points_x = float(len(x))
 
         # Compute each term in the weighted MMD formula
@@ -221,8 +252,9 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         num_points_x = float(len(x))
         num_points_y = float(len(y))
 
@@ -265,8 +297,15 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        weights_x = jnp.asarray(weights_x)
-        weights_y = jnp.asarray(weights_y)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        weights_x = cast_as_type(
+            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
+        )
+        weights_y = cast_as_type(
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+        )
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         num_points_x = weights_x.sum()
         num_points_y = weights_y.sum()
 
@@ -311,8 +350,9 @@ class MMD(Metric):
         :return: The sum of pairwise distances between points in ``x`` and ``y``
         """
         # Ensure data is in desired format
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         num_points_x = len(x)
         num_points_y = len(y)
 
@@ -354,8 +394,15 @@ class MMD(Metric):
             with contributions weighted as defined by ``weights_x`` and ``weights_y``
         """
         # Ensure data is in desired format
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        weights_x = cast_as_type(
+            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
+        )
+        weights_y = cast_as_type(
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+        )
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         num_points_x = len(x)
         num_points_y = len(y)
 
