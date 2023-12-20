@@ -220,8 +220,9 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         Test the function validate_is_instance comparing a float to an int.
         """
-        self.assertRaises(
+        self.assertRaisesRegex(
             TypeError,
+            "^var must be of type",
             validate_is_instance,
             x=120.0,
             object_name="var",
@@ -232,8 +233,9 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         Test the function validate_is_instance comparing an int to a float.
         """
-        self.assertRaises(
+        self.assertRaisesRegex(
             TypeError,
+            "^var must be of type",
             validate_is_instance,
             x=120,
             object_name="var",
@@ -244,8 +246,9 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         Test the function validate_is_instance comparing a float to a str.
         """
-        self.assertRaises(
+        self.assertRaisesRegex(
             TypeError,
+            "^var must be of type",
             validate_is_instance,
             x=120.0,
             object_name="var",
@@ -274,6 +277,57 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         self.assertIsNone(
             validate_is_instance(x="500", object_name="var", expected_type=str)
+        )
+
+    def test_type_tuple(self) -> None:
+        """Check that validation passes if a tuple of types is passed."""
+        validate_is_instance(x="500", object_name="var", expected_type=(int, str))
+
+    def test_invalid_expected_type(self) -> None:
+        """
+        Test that correct TypeError is raised if an invalid type is expected.
+
+        A list of types is invalid; needs to be a tuple or union.
+        """
+        self.assertRaisesRegex(
+            TypeError,
+            "expected_type must be a type, tuple of types or a union",
+            validate_is_instance,
+            x=500,
+            object_name="var",
+            expected_type=[int, str],
+        )
+
+    def test_none_valid(self):
+        """Test that validates when object is :data:`None`."""
+        validate_is_instance(x=None, object_name="var", expected_type=None)
+
+    def test_none_invalid(self):
+        """Test that raises when object is not :data:`None` but expected type is."""
+        self.assertRaisesRegex(
+            TypeError,
+            "^var must be of type",
+            validate_is_instance,
+            x=120.0,
+            object_name="var",
+            expected_type=None,
+        )
+
+    def test_tuple_none_valid(self):
+        """
+        Test that validates when object is :data:`None` and have a tuple of types.
+        """
+        validate_is_instance(x=None, object_name="var", expected_type=(str, None))
+
+    def test_tuple_none_invalid(self):
+        """Test that raises when :data:`None` is in tuple of expected types."""
+        self.assertRaisesRegex(
+            TypeError,
+            "^var must be of type",
+            validate_is_instance,
+            x=120.0,
+            object_name="var",
+            expected_type=(str, None),
         )
 
 
