@@ -12,7 +12,14 @@
 
 import unittest
 
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import jax.numpy as jnp
+
+from coreax.validation import (
+    cast_as_type,
+    validate_array_size,
+    validate_in_range,
+    validate_is_instance,
+)
 
 
 class TestInputValidationRange(unittest.TestCase):
@@ -384,6 +391,27 @@ class TestInputValidationConversion(unittest.TestCase):
             x="120.0ABC",
             object_name="var",
             type_caster=float,
+        )
+
+    def test_validate_array_size_valid(self):
+        self.assertIsNone(
+            validate_array_size(
+                x=jnp.array([1, 2, 3]), object_name="arr", expected_size=3
+            )
+        )
+
+    def test_validate_array_size_invalid(self):
+        self.assertRaises(
+            ValueError,
+            validate_array_size,
+            x=jnp.array([1, 2, 3]),
+            object_name="arr",
+            expected_size=4,
+        )
+
+    def test_validate_array_size_empty_array(self):
+        self.assertIsNone(
+            validate_array_size(x=jnp.array([]), object_name="arr", expected_size=0)
         )
 
 
