@@ -27,6 +27,8 @@ from jax import numpy as jnp
 from jax import random
 from jax.typing import ArrayLike
 
+from coreax.validation import cast_as_type, validate_is_instance
+
 
 class ScoreNetwork(nn.Module):
     """
@@ -47,6 +49,9 @@ class ScoreNetwork(nn.Module):
         :param x: Batch input data :math:`b \times m \times n`
         :return: Network output on batch :math:`b \times` ``self.output_dim``
         """
+        # Validate input
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+
         x = nn.Dense(self.hidden_dim)(x)
         x = nn.softplus(x)
         x = nn.Dense(self.hidden_dim)(x)
@@ -74,6 +79,19 @@ def create_train_state(
     :param random_key: Key for random number generation
     :return: :class:`~flax.training.train_state.TrainState` object
     """
+    # Validate inputs
+    validate_is_instance(x=module, object_name="module", expected_type=Module)
+    learning_rate = cast_as_type(
+        x=learning_rate, object_name="learning_rate", type_caster=float
+    )
+    data_dimension = cast_as_type(
+        x=data_dimension, object_name="data_dimension", type_caster=int
+    )
+    validate_is_instance(x=optimiser, object_name="optimiser", expected_type=Callable)
+    validate_is_instance(
+        x=random_key, object_name="random_key", expected_type=random.PRNGKey
+    )
+
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
     return TrainState.create(apply_fn=module.apply, params=params, tx=tx)
