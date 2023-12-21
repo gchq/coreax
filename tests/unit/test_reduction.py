@@ -47,12 +47,12 @@ class TestCoreset(unittest.TestCase):
         Also test attributes are populated by init.
         """
         # Define original instance
-        weights = MagicMock()
+        weights_optimiser = MagicMock()
         kernel = MagicMock()
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
-        original = CoresetMock(weights=weights, kernel=kernel)
+        original = CoresetMock(weights_optimiser=weights_optimiser, kernel=kernel)
         original.original_data = original_data
         original.coreset = coreset
 
@@ -60,8 +60,8 @@ class TestCoreset(unittest.TestCase):
         duplicate = original.clone_empty()
 
         # Check identities of attributes on original and duplicate
-        self.assertIs(original.weights, weights)
-        self.assertIs(duplicate.weights, weights)
+        self.assertIs(original.weights_optimiser, weights_optimiser)
+        self.assertIs(duplicate.weights_optimiser, weights_optimiser)
         self.assertIs(original.kernel, kernel)
         self.assertIs(duplicate.kernel, kernel)
         self.assertIs(original.original_data, original_data)
@@ -82,8 +82,8 @@ class TestCoreset(unittest.TestCase):
 
     def test_solve_weights(self):
         """Check that solve_weights is called correctly."""
-        weights = MagicMock()
-        coreset = CoresetMock(weights=weights)
+        weights_optimiser = MagicMock()
+        coreset = CoresetMock(weights_optimiser=weights_optimiser)
         coreset.original_data = MagicMock(spec=cd.DataReader)
 
         # First try prior to fitting a coreset
@@ -92,7 +92,7 @@ class TestCoreset(unittest.TestCase):
         # Now test with a calculated coreset
         coreset.coreset = MagicMock(spec=cr.Coreset)
         coreset.solve_weights()
-        weights.solve.assert_called_once_with(
+        weights_optimiser.solve.assert_called_once_with(
             coreset.original_data.pre_coreset_array, coreset.coreset
         )
 
