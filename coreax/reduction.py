@@ -62,9 +62,7 @@ from coreax.weights import WeightsOptimiser
 
 class Coreset(ABC):
     r"""
-    Methods for reducing data.
-
-    Class for performing data reduction.
+    Class for reducing data to a coreset.
 
     :param weights_optimiser: Type of weighting to apply, or :data:`None` if unweighted
     :param kernel: Kernel function
@@ -86,7 +84,11 @@ class Coreset(ABC):
         validate_is_instance(kernel, "kernel", (Kernel, None))
         self.kernel = kernel
         self.original_data: DataReader | None = None  #: Data to be reduced
-        self.coreset: Array | None = None  #: Calculated coreset
+        self.coreset: Array | None = None
+        """
+        Calculated coreset. The order of rows need not be monotonic with those in the
+        original data (applicable only to coresubset).
+        """
         self.coreset_indices: Array | None = None
         """
         Indices of :attr:`coreset` points in :attr:`original_data`, if applicable. The
