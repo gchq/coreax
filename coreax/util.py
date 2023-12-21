@@ -34,7 +34,7 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-import coreax.coreset as cc
+import coreax.coresubset as cc
 import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.weights as cw
@@ -288,7 +288,8 @@ def create_instance_from_factory(
     """
     class_obj = factory_obj.get(class_type)
 
-    # Initialise, accounting for different classes having different numbers of parameters
+    # Initialise, accounting for different classes having different numbers of
+    # parameters
     return call_with_excess_kwargs(
         class_obj,
         **kwargs,
