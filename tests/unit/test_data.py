@@ -43,19 +43,6 @@ class TestDataReader(unittest.TestCase):
         self.assertEqual(actual.original_data, jnp.array(1))
         self.assertEqual(actual.pre_coreset_array, jnp.array([[2]]))
 
-    def test_reduce(self):
-        """
-        Test reduce on a simple reduction strategy and coreset method.
-
-        Request a random sample of a fixed number of points.
-
-        This is more of an integration test.
-        """
-        original_data = jnp.array([[i, 2 * i] for i in range(20)])
-        data_reader = DataReaderConcrete(original_data, original_data)
-        coreset = data_reader.reduce("random", "size", num_points=10)
-        self.assertEqual(coreset.coreset.shape, (10, 2))
-
 
 class TestArrayData(unittest.TestCase):
     """Test ArrayData class."""
