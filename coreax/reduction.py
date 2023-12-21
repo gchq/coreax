@@ -207,6 +207,7 @@ class Coreset(ABC):
             :math:`1 \times n` array. If this variable has been pre-calculated pass it
             here to reduce computational load. Otherwise, it will be calculated when
             required.
+        :raises RuntimeError: When called on a class that does not generate coresubsets
         :return: Nothing
         """
         self._validate_fitted("refine")
