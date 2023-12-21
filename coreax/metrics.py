@@ -30,12 +30,7 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 import coreax.util as cu
-from coreax.validation import (
-    cast_as_type,
-    validate_array_size,
-    validate_in_range,
-    validate_is_instance,
-)
+from coreax.validation import cast_as_type, validate_is_instance
 
 
 class Metric(ABC):
