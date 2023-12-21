@@ -98,9 +98,7 @@ class KernelMeanApproximator(ABC):
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        """
-        Define an approximator to the mean of the row sum of a kernel distance matrix.
-        """
+        """Define approximator to the mean of the row sum of kernel distance matrix."""
         # Validate inputs of coreax defined classes
         validate_is_instance(kernel, "kernel", ck.Kernel)
 
@@ -159,9 +157,7 @@ class RandomApproximator(KernelMeanApproximator):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        """
-        Approximate kernel row mean by regression on points selected randomly.
-        """
+        """Approximate kernel row mean by regression on points selected randomly."""
         # Validate inputs of non-coreax defined classes
         num_train_points = cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
@@ -247,9 +243,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        """
-        Approximate kernel row mean by regression on ANNchor selected points.
-        """
+        """Approximate kernel row mean by regression on ANNchor selected points."""
         # Validate inputs of non-coreax defined classes
         num_train_points = cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
@@ -332,9 +326,7 @@ class NystromApproximator(KernelMeanApproximator):
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        """
-        Approximate kernel row mean by using Nystrom approximation.
-        """
+        """Approximate kernel row mean by using Nystrom approximation."""
         # Initialise parent
         super().__init__(
             kernel=kernel,

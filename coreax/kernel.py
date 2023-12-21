@@ -77,7 +77,7 @@ def median_heuristic(x: ArrayLike) -> Array:
     Compute the median heuristic for setting kernel bandwidth.
 
     Analysis of the performance of the median heuristic can be found in
-    :cite:p:`garreau2018medianheuristic`.
+    :cite:p:`garreau2018median`.
 
     :param x: Input array of vectors
     :return: Bandwidth parameter, computed from the median heuristic, as a
@@ -102,9 +102,7 @@ class Kernel(ABC):
     """
 
     def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
-        """
-        Define a kernel.
-        """
+        """Define a kernel."""
         # TODO: generalise length_scale to multiple dimensions.
         # Check that length_scale is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when jit decorators interact with
@@ -356,7 +354,7 @@ class Kernel(ABC):
         # Ensure data format is as required
         x = jnp.asarray(x)
         kernel_row_sum = jnp.asarray(kernel_row_sum)
-        num_datapoints = x.shape[0]
+        num_data_points = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
         kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
@@ -405,11 +403,11 @@ class Kernel(ABC):
 
         # Ensure data format is as required
         x = jnp.asarray(x)
-        num_datapoints = len(x)
-        kernel_row_sum = jnp.zeros(num_datapoints)
+        num_data_points = len(x)
+        kernel_row_sum = jnp.zeros(num_data_points)
         # Iterate over upper triangular blocks
-        for i in range(0, num_datapoints, max_size):
-            for j in range(i, num_datapoints, max_size):
+        for i in range(0, num_data_points, max_size):
+            for j in range(i, num_data_points, max_size):
                 kernel_row_sum = self.update_kernel_matrix_row_sum(
                     x,
                     kernel_row_sum,
@@ -454,7 +452,7 @@ class Kernel(ABC):
         approximation can be used in place of the true value.
 
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Name of the approximator to use, or an uninstatiated
+        :param approximator: Name of the approximator to use, or an uninstantiated
             class object
         :param random_key: Key for random number generation
         :param num_kernel_points: Number of kernel evaluation points
@@ -892,9 +890,7 @@ class SteinKernel(Kernel):
         score_function: Callable[[ArrayLike], Array],
         output_scale: float = 1.0,
     ):
-        """
-        Define the Stein kernel, i.e. the application of the Stein operator.
-        """
+        """Define the Stein kernel, i.e. the application of the Stein operator."""
         self.base_kernel = base_kernel
         self.score_function = score_function
         self.output_scale = output_scale
@@ -910,8 +906,8 @@ class SteinKernel(Kernel):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        # TODO: score functon is assumed to not change here - but it might if the kernel
-        #  changes - but does not work when specified in children
+        # TODO: score function is assumed to not change here - but it might if the
+        #  kernel changes - but does not work when specified in children
         children = (self.base_kernel,)
         aux_data = {
             "score_function": self.score_function,

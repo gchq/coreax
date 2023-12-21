@@ -70,7 +70,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_squared_exponential_kernel_init(self) -> None:
         r"""
-        Test the initilisation of SquaredExponentialKernel with a negative length_scale.
+        Test the initialisation of SquaredExponentialKernel with a negative length_scale.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -583,7 +583,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
     def test_laplacian_kernel_init(self) -> None:
         r"""
-        Test the initilisation of LaplacianKernel with a negative ``length_scale``.
+        Test the initialisation of LaplacianKernel with a negative ``length_scale``.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -935,7 +935,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
     def test_pcimq_kernel_init(self) -> None:
         r"""
-        Test the class PCIMQKernel initilisation with a negative length_scale.
+        Test the class PCIMQKernel initialisation with a negative length_scale.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -1175,7 +1175,7 @@ class TestSteinKernel(unittest.TestCase):
             r"""
             The Stein kernel.
 
-            Throughout this docstring, x_input and y_input are simply refered to as x
+            Throughout this docstring, x_input and y_input are simply referred to as x
             and y.
 
             The base kernel is :math:`(1 + \lvert \mathbf{x} - \mathbf{y}

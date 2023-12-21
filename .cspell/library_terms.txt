@@ -33,6 +33,7 @@ inproceedings
 intercal
 intersphinx
 isort
+jacrev
 jaxopt
 jumanjihouse
 linalg
@@ -50,10 +51,12 @@ nabla
 ndim
 numpy
 opencv
+operatorname
 optax
 OSQP
 params_ineq
 pinv
+pvalue
 pydocstyle
 pyproject
 pyqt
@@ -62,6 +65,7 @@ pytest
 quickstart
 rightarrow
 rtol
+samp
 scikit
 scipy
 seealso
@@ -75,6 +79,7 @@ tqdm
 triu
 typehints
 undoc
+unflatten
 viewcode
 vmap
 xlabel

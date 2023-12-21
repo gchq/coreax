@@ -414,7 +414,7 @@ class RefineRandom(Refine):
         coreset_indices = lax.cond(
             jnp.any(comparisons > 0),
             self._change,
-            self._nochange,
+            self._no_change,
             i,
             coreset_indices,
             candidate_indices,
@@ -490,7 +490,7 @@ class RefineRandom(Refine):
         return coreset_indices.at[i].set(candidate_indices[comparisons.argmax()])
 
     @jit
-    def _nochange(
+    def _no_change(
         self,
         i: int,
         coreset_indices: ArrayLike,
@@ -608,7 +608,7 @@ class RefineReverse(Refine):
         coreset_indices = lax.cond(
             jnp.any(comps > 0),
             self._change_rev,
-            self._nochange_rev,
+            self._no_change_rev,
             i,
             coreset_indices,
             comps,
@@ -677,7 +677,7 @@ class RefineReverse(Refine):
         return coreset_indices.at[j].set(i)
 
     @jit
-    def _nochange_rev(
+    def _no_change_rev(
         self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
     ) -> Array:
         r"""
