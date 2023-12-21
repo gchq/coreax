@@ -166,11 +166,16 @@ class TestSizeReduce(unittest.TestCase):
 
     def test_random_sample(self):
         """Test reduction with :class:`RandomSample`."""
-        orig_data = cd.ArrayData.load([[i, 2 * i] for i in range(20)])
-        strategy = cr.SizeReduce(cc.RandomSample(), num_points=10)
-        coreset = strategy.reduce(orig_data)
+        orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(20)))
+        strategy = cr.SizeReduce(10)
+        coreset = cc.RandomSample()
+        coreset.original_data = orig_data
+        strategy.reduce(coreset)
         # Check shape of output
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
 
 if __name__ == "__main__":
