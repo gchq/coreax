@@ -87,13 +87,13 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
-        r"""
-        Calculate maximum mean discrepancy between two datasets in d dimensions.
+        """
+        Calculate maximum mean discrepancy between two datasets in :math:`d` dimensions.
         """
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
-        # initialise parent
+        # Initialise parent
         super().__init__()
 
     def compute(

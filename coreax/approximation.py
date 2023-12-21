@@ -130,7 +130,7 @@ class KernelMeanApproximator(ABC):
         r"""
         Approximate kernel matrix row sum mean.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
@@ -192,7 +192,7 @@ class RandomApproximator(KernelMeanApproximator):
         r"""
         Compute approximate kernel row mean by regression on randomly selected points.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
@@ -224,7 +224,7 @@ class RandomApproximator(KernelMeanApproximator):
 
 
 class ANNchorApproximator(KernelMeanApproximator):
-    """
+    r"""
     Approximation method to kernel mean through regression on ANNchor selected points.
 
     When a dataset is very large, computing the mean distance between a given point
@@ -280,7 +280,7 @@ class ANNchorApproximator(KernelMeanApproximator):
         r"""
         Compute approximate kernel row mean by regression on ANNchor selected points.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
@@ -319,7 +319,7 @@ class NystromApproximator(KernelMeanApproximator):
     approximated by various methods. NystromApproximator is a class that does such an
     approximation using a Nystrom approximation on a subset of points selected at
     random from the data. Further details for Nystrom kernel mean embeddings can be
-    found here :cite:p:`chatalic2022nystrom`.
+    found in :cite:p:`chatalic2022nystrom`.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
@@ -332,7 +332,7 @@ class NystromApproximator(KernelMeanApproximator):
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        r"""
+        """
         Approximate kernel row mean by using Nystrom approximation.
         """
         # Initialise parent
@@ -353,7 +353,7 @@ class NystromApproximator(KernelMeanApproximator):
         subset of this to approximate the kernel matrix row sum mean. The ``m`` points
         are selected using the ANNchor method.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
@@ -387,11 +387,11 @@ def _anchor_body(
     Execute main loop of the ANNchor construction.
 
     :param idx: Loop counter
-    :param features: Loop updateables
+    :param features: Loop variables to be updated
     :param data: Original :math:`n \times d` dataset
     :param kernel_function: Vectorised kernel function on pairs ``(X,x)``:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :return: Updated loop variables `features`
+    :return: Updated loop variables ``features``
     """
     # Validate inputs
     features = cast_as_type(
