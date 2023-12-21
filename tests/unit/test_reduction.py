@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 
 import jax.numpy as jnp
 import numpy as np
+from jax import Array
 
 import coreax.coresubset as cc
 import coreax.data as cd
@@ -109,11 +110,29 @@ class TestCoreset(unittest.TestCase):
         )
 
         # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=cr.Coreset)
+        coreset.coreset = MagicMock(spec=Array)
         coreset.compute_metric(metric, block_size)
         metric.compute.assert_called_once_with(
             coreset.original_data.pre_coreset_array, coreset.coreset, block_size
         )
+
+    def test_refine(self):
+        """Check that refine is called correctly."""
+        coreset = CoresetMock()
+        coreset.original_data = MagicMock(spec=cd.DataReader)
+        refine_method = MagicMock()
+
+        # First try prior to fitting a coreset
+        self.assertRaises(cu.NotCalculatedError, coreset.refine, refine_method)
+
+        # Test with a calculated coreset but not a coresubset
+        coreset.coreset = MagicMock(spec=Array)
+        self.assertRaises(RuntimeError, coreset.refine, refine_method)
+
+        # Test with a coresubset
+        gram_matrix = MagicMock()
+        coreset.refine(refine_method, gram_matrix)
+        refine_method.refine.assert_called_once_with(coreset, gram_matrix)
 
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
