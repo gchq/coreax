@@ -55,6 +55,7 @@ from sklearn.neighbors import KDTree
 from coreax.data import ArrayData, DataReader
 from coreax.kernel import Kernel
 from coreax.metrics import Metric
+from coreax.refine import Refine
 from coreax.util import NotCalculatedError
 from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 from coreax.weights import WeightsOptimiser
@@ -190,6 +191,29 @@ class Coreset(ABC):
         return metric.compute(
             self.original_data.pre_coreset_array, self.coreset, block_size=block_size
         )
+
+    def refine(
+        self, method: Refine, kernel_mean_row_sum: ArrayLike | None = None
+    ) -> None:
+        r"""
+        Refine coreset.
+
+        Only applicable to coreset methods that generate coresubsets.
+
+        :attr:`coreset` is updated in place.
+
+        :param method: Instance of refinement method to use
+        :param kernel_mean_row_sum: Mean vector over rows for the Gram matrix, a
+            :math:`1 \times n` array. If this variable has been pre-calculated pass it
+            here to reduce computational load. Otherwise, it will be calculated when
+            required.
+        :return: Nothing
+        """
+        self._validate_fitted("refine")
+        if self.coreset_indices is None:
+            raise RuntimeError("Cannot refine when not finding a coresubset")
+        validate_is_instance(method, "method", Refine)
+        method.refine(self, kernel_mean_row_sum)
 
     def format(self) -> Array:
         """
