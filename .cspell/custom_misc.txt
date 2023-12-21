@@ -1,5 +1,6 @@
 ANNchor
 approximator
+approximators
 cand
 coreax
 coreset
@@ -17,5 +18,6 @@ PCIMQ
 PMLR
 PRNG
 refs
+RKHS
 sigmas
 WMMd

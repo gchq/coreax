@@ -33,12 +33,7 @@ import coreax.util as cu
 
 
 class Metric(ABC):
-    """
-    Base class for calculating metrics.
-    """
-
-    def __init__(self) -> None:
-        pass
+    """Base class for calculating metrics."""
 
     @abstractmethod
     def compute(
@@ -87,9 +82,7 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
-        """
-        Calculate maximum mean discrepancy between two datasets in :math:`d` dimensions.
-        """
+        """Calculate maximum mean discrepancy between two datasets."""
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 

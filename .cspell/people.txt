@@ -4,8 +4,12 @@ Ermon
 Ferenc
 Frobenius
 Garg
+Garreau
 Huszar
 Jiaxin
+Jitkrittum
+Kanagawa
+Motonobu
 Nystr
 Nystrom
 Rademacher
@@ -13,3 +17,5 @@ Rosasco
 Rudi
 Sahaj
 Schreuder
+Smirnov
+Wittawat

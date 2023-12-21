@@ -10,10 +10,6 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-"""TODO: Write module docstring."""
-
-# Support annotations with | in Python < 3.10
-
 """
 Example coreset generation using randomly generated point clouds and score matching.
 
@@ -32,6 +28,7 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 (MMD).
 """
 
+# Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
