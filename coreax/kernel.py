@@ -73,7 +73,7 @@ import coreax.util as cu
 
 @jit
 def median_heuristic(x: ArrayLike) -> Array:
-    r"""
+    """
     Compute the median heuristic for setting kernel bandwidth.
 
     Analysis of the performance of the median heuristic can be found in
@@ -81,7 +81,7 @@ def median_heuristic(x: ArrayLike) -> Array:
 
     :param x: Input array of vectors
     :return: Bandwidth parameter, computed from the median heuristic, as a
-        0-dimensional array
+        zero-dimensional array
     """
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
@@ -505,6 +505,9 @@ class Kernel(ABC):
 class SquaredExponentialKernel(Kernel):
     """
     Define a squared exponential kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
     def _tree_flatten(self):
@@ -611,6 +614,9 @@ class SquaredExponentialKernel(Kernel):
 class LaplacianKernel(Kernel):
     """
     Define a Laplacian kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
     def _tree_flatten(self):
@@ -720,6 +726,9 @@ class LaplacianKernel(Kernel):
 class PCIMQKernel(Kernel):
     """
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
     def _tree_flatten(self):

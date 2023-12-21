@@ -35,7 +35,7 @@ Project maintainers have the right and responsibility to remove, edit, or reject
 Enforcement
 -----------
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible
+Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported to the community leaders responsible
 for enforcement at [oss@gchq.gov.uk](mailto:oss@gchq.gov.uk). All complaints will be reviewed and investigated promptly and fairly, and will
 result in a response that is deemed necessary and appropriate to the circumstances. The community leaders responsible
 for enforcement are obligated to maintain confidentiality with regard to the reporter of an incident.

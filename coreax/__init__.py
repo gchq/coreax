@@ -21,6 +21,4 @@ such that the generated dataset contains as much of the information from the ori
 dataset as possible. The generated dataset is often called a coreset.
 """
 
-# __init__.py
-
 __version__ = "0.1.0"

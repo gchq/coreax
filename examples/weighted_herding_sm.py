@@ -9,6 +9,9 @@
 # the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
+
+"""TODO: Write module docstring."""
+
 # Support annotations with | in Python < 3.10
 
 """
@@ -56,7 +59,8 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     function. Compare results to coresets generated via uniform random sampling. Coreset
     quality is measured using maximum mean discrepancy (MMD).
 
-    :param out_path: Path to save output to, if not None. Default None.
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :param weighted: Boolean flag for whether to use weighted or unweighted herding
     :return: Coreset MMD, random sample MMD
     """
@@ -97,7 +101,7 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     )
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
 
     if weighted:
         # find the weights. Solves a QP
@@ -110,8 +114,10 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
         # compute the MMD between X and the coreset, unweighted version
         m = mmd_block(X, X[coreset], k, max_size=1000)
 
+    m = float(m)
+
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000)
+    rm = float(mmd_block(X, X[rand_sample], k, max_size=1000))
 
     # produce some scatter plots
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
@@ -121,11 +127,13 @@ def main(out_path: Path | None = None, weighted: bool = True) -> tuple[float, fl
     plt.show()
 
     plt.scatter(X[:, 0], X[:, 1], s=2.0, alpha=0.1)
-    plt.scatter(X[rsample, 0], X[rsample, 1], s=10, color="red")
+    plt.scatter(X[rand_sample, 0], X[rand_sample, 1], s=10, color="red")
     plt.title("Random, m=%d, MMD=%.6f" % (C, rm))
     plt.axis("off")
 
     if out_path is not None:
+        if out_path is not None and not out_path.is_absolute():
+            out_path = Path(__file__).parent / out_path
         plt.savefig(out_path)
 
     plt.show()
