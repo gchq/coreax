@@ -197,5 +197,33 @@ class TestSizeReduce(unittest.TestCase):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
 
+class TestMapReduce(unittest.TestCase):
+    """Test :class:`MapReduce`."""
+
+    def test_random_sample(self):
+        """Test map reduction with :class:`RandomSample`."""
+        orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(100)))
+        strategy = cr.MapReduce(num_points=10, leaf_size=20)
+        coreset = cc.RandomSample()
+        coreset.original_data = orig_data
+        strategy.reduce(coreset)
+        # Check shape of output
+        self.assertEqual(coreset.coreset.format().shape, [10, 2])
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
+    def test_random_sample_big_leaves(self):
+        """Test map reduction with :class:`RandomSample`."""
+        n = 100
+        orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(n)))
+        # Check for no partitioning of orig_data when leaf_size = len(orig_data)
+        strategy = cr.MapReduce(num_points=10, leaf_size=n)
+        coreset = cc.RandomSample()
+        coreset.original_data = orig_data
+        strategy.reduce(coreset)
+        coreset._coreset_copy_fit.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
