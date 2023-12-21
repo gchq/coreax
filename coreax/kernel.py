@@ -406,8 +406,6 @@ class Kernel(ABC):
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
 
-        num_datapoints = x.shape[0]
-
         # Compute the kernel row sum for this particular chunk of data
         kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
 
