@@ -15,14 +15,24 @@
 r"""
 This module reduces a large dataset down to a coreset.
 
-To prepare data for reduction, convert it into a two-dimensional :math:`n \times d`
-:class:`~jax.Array`. The resulting coreset will be :math:`m \times d` where
-:math:`m \ll n` but still retain similar statistical properties.
+To prepare data for reduction, convert it into a :class:`~jax.Array` and pass to an
+appropriate instance of :class:`~coreax.data.DataReader`. The class will convert the
+data internally to be an :math:`n \times d` :class:`~jax.Array`. The resulting coreset
+will be :math:`m \times d` where :math:`m \ll n` but still retain similar statistical
+properties.
 
-When ready, the user selects a :class:`ReductionStrategy` to use to generate a chosen
-type of :class:`Coreset`. As a simple example, the user may obtain a uniform random
+The user selects a method by choosing a :class:`Coreset` and a
+:class:`ReductionStrategy`. For example, the user may obtain a uniform random
 sample of :math:`m` points by using the :class:`SizeReduce` strategy and a
-:class:`~coreax.coresubset.RandomSample` coreset.
+:class:`~coreax.coresubset.RandomSample` coreset. This may be implemented for
+:class:`~coreax.data.ArrayData` by calling
+
+```python
+original_data = ArrayData.load(input_data)
+coreset = RandomSample()
+coreset.reduce(original_data, SizeReduce(m))
+print(coreset.format())
+```
 
 :class:`ReductionStrategy` and :class:`Coreset` are abstract base classes defining the
 interface for which particular methods can be implemented.
@@ -78,7 +88,10 @@ class Coreset(ABC):
         self.original_data: DataReader | None = None  #: Data to be reduced
         self.coreset: Array | None = None  #: Calculated coreset
         self.coreset_indices: Array | None = None
-        """Indices of :attr:`coreset` points in :attr:`original_data`, if applicable"""
+        """
+        Indices of :attr:`coreset` points in :attr:`original_data`, if applicable. The
+        order matches the rows of :attr:`coreset`.
+        """
 
     def clone_empty(self) -> Self:
         """
@@ -206,6 +219,7 @@ class Coreset(ABC):
         :return: Nothing
         """
         validate_is_instance(other, "other", type[self])
+        other._validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
             self.coreset_indices = copy(other.coreset_indices)
@@ -294,17 +308,17 @@ class MapReduce(ReductionStrategy):
     is now treated as the original data and reduced recursively until its size is equal
     to :attr:`num_points`.
 
-    :attr:`num_points` <= :attr:`partition_size` to prevent exponential growth of
-    coreset size at each iteration. If for whatever reason you wish to break this
-    restriction, use :class:`SizeReduce` instead.
+    :attr:`num_points` < :attr:`leaf_size` to ensure the algorithm converges. If
+    for whatever reason you wish to break this restriction, use :class:`SizeReduce`
+    instead.
 
     There is some intricate set-up:
 
-    #.  :attr:`num_points` must be less than :attr:`partition_size`.
+    #.  :attr:`num_points` must be less than :attr:`leaf_size`.
     #.  Unweighted coresets are calculated on each patch of roughly
-        :attr:`partition_size` points and then concatenated. More specifically, each
-        patch contains between :attr:`partition_size` and
-        :math:`2 \times` :attr:`partition_size` points, inclusive.
+        :attr:`leaf_size` points and then concatenated. More specifically, each
+        patch contains between :attr:`leaf_size` and
+        :math:`2 \times` :attr:`leaf_size` points, inclusive.
     #.  Recursively calculate ever smaller coresets until a global coreset with size
         :attr:`num_points` is obtained.
     #.  If the input data on the final iteration is smaller than :attr:`num_points`, the
@@ -317,13 +331,13 @@ class MapReduce(ReductionStrategy):
 
     .. math::
 
-        n_k <= \frac{n_{k - 1}}{\texttt{partition_size}} \texttt{num_points},
+        n_k <= \frac{n_{k - 1}}{\texttt{leaf_size}} \texttt{num_points},
 
     so
 
     .. math::
 
-        n_k <= \left( \frac{\texttt{num_points}}{\texttt{partition_size}} \right)^k n_0.
+        n_k <= \left( \frac{\texttt{num_points}}{\texttt{leaf_size}} \right)^k n_0.
 
     Thus, the number of iterations required is roughly (find :math:`k` when
     :math:`n_k =` :attr:`num_points`)
@@ -331,19 +345,20 @@ class MapReduce(ReductionStrategy):
     .. math::
 
         \frac{\log{\texttt{num_points}} - \log{\left( \text{original data size} \right)}}
-        {\log{\texttt{num_points}} - \log{\texttt{partition_size}}} .
+        {\log{\texttt{num_points}} - \log{\texttt{leaf_size}}} .
 
     :param num_points: Number of points to include in coreset
-    :param partition_size: Approximate number of points to include in each partition;
-        actual partition sizes vary non-strictly between :attr:`partition_size` and
-        :math:`2 \times` :attr:`partition_size`; must be greater than :attr:`num_points`
+    :param leaf_size: Approximate number of points to include in each partition;
+        corresponds to ``leaf_size`` in :class:`~sklearn.neighbors.KDTree`;
+        actual partition sizes vary non-strictly between :attr:`leaf_size` and
+        :math:`2 \times` :attr:`leaf_size`; must be greater than :attr:`num_points`
     :param parallel: If :data:`True`, calculate coresets on partitions in parallel
     """
 
     def __init__(
         self,
         num_points: int,
-        partition_size: int,
+        leaf_size: int,
         parallel: bool = True,
     ):
         """Initialise class."""
@@ -353,11 +368,9 @@ class MapReduce(ReductionStrategy):
         validate_in_range(num_points, "num_points", True, lower_bound=0)
         self.num_points = num_points
 
-        partition_size = cast_as_type(partition_size, "partition_size", int)
-        validate_in_range(
-            partition_size, "partition_size", True, lower_bound=num_points
-        )
-        self.partition_size = partition_size
+        leaf_size = cast_as_type(leaf_size, "leaf_size", int)
+        validate_in_range(leaf_size, "leaf_size", True, lower_bound=num_points)
+        self.leaf_size = leaf_size
 
         self.parallel = cast_as_type(parallel, "parallel", bool)
 
@@ -376,7 +389,7 @@ class MapReduce(ReductionStrategy):
         coreset.copy_fit(
             self._reduce_recursive(
                 template=coreset,
-                input_data=ArrayData.load(input_data),
+                input_data=input_data,
                 input_indices=jnp.array(range(input_data.shape[0])),
             )
         )
@@ -384,7 +397,7 @@ class MapReduce(ReductionStrategy):
     def _reduce_recursive(
         self,
         template: C,
-        input_data: ArrayData,
+        input_data: ArrayLike,
         input_indices: ArrayLike | None,
     ) -> C:
         r"""
@@ -396,7 +409,7 @@ class MapReduce(ReductionStrategy):
         :return: Copy of ``template`` containing fitted coreset
         """
         # Check if no partitions are required
-        if input_data.pre_coreset_array.shape[0] <= self.partition_size:
+        if input_data.pre_coreset_array.shape[0] <= self.leaf_size:
             # Length of input_data < num_points is only possible if input_data is the
             # original data, so it is safe to request a coreset of size larger than the
             # original data (if of limited use)
@@ -406,7 +419,7 @@ class MapReduce(ReductionStrategy):
         data_to_reduce = input_data.pre_coreset_array
 
         # Build a kdtree
-        kdtree = KDTree(data_to_reduce, leaf_size=self.partition_size)
+        kdtree = KDTree(data_to_reduce, leaf_size=self.leaf_size)
         _, node_indices, nodes, _ = kdtree.get_arrays()
         new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
         split_data = [data_to_reduce[n] for n in new_indices]
@@ -442,7 +455,7 @@ class MapReduce(ReductionStrategy):
         )
 
     def _coreset_copy_fit(
-        self, template: C, input_data: ArrayData, input_indices: ArrayLike | None
+        self, template: C, input_data: ArrayLike, input_indices: ArrayLike | None
     ) -> C:
         """
         Create a new instance of a :class:`Coreset` and fit to given data.
@@ -457,7 +470,7 @@ class MapReduce(ReductionStrategy):
         :return: New instance :attr:`coreset_method` fitted to ``input_data``
         """
         coreset = template.clone_empty()
-        coreset.original_data = input_data
+        coreset.original_data = ArrayData.load(input_data)
         coreset.fit_to_size(self.num_points)
         # Update indices
         if coreset.coreset_indices is not None:
