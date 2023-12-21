@@ -132,7 +132,7 @@ class Coreset(ABC):
 
         If ``num_points`` is equal to the number of data points in
         :attr:`original_data`, the resulting coreset is not necessarily equal to the
-        original data, depending on the coreset method.
+        original data, depending on the coreset method, metric and weighting.
 
         :param num_points: Number of points to include in coreset
         :raises ValueError: When it is not possible to generate a coreset of size
