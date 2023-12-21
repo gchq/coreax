@@ -490,6 +490,8 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         """
         # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
         validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
@@ -521,6 +523,23 @@ class Kernel(ABC):
             regression. This is ignored if not applicable to the approximator method.
         :return: Approximation to the kernel matrix row sum
         """
+        # Validate inputs
+        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        validate_is_instance(
+            x=approximator,
+            object_name="approximator",
+            expected_type=(str, type[ca.KernelMeanApproximator]),
+        )
+        validate_is_instance(
+            x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
+        )
+        num_kernel_points = cast_as_type(
+            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
+        )
+        num_train_points = cast_as_type(
+            x=num_train_points, object_name="num_train_points", type_caster=int
+        )
+
         # Create an approximator object
         approximator = self.create_approximator(
             approximator=approximator,
@@ -548,6 +567,22 @@ class Kernel(ABC):
             regression. This is ignored if not applicable to the approximator method.
         :return: Approximator object
         """
+        # Validate inputs
+        validate_is_instance(
+            x=approximator,
+            object_name="approximator",
+            expected_type=(str, type[ca.KernelMeanApproximator]),
+        )
+        validate_is_instance(
+            x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
+        )
+        num_kernel_points = cast_as_type(
+            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
+        )
+        num_train_points = cast_as_type(
+            x=num_train_points, object_name="num_train_points", type_caster=int
+        )
+
         approximator_obj = ca.approximator_factory.get(approximator)
 
         # Initialise, accounting for different classes having different numbers of
@@ -945,6 +980,17 @@ class SteinKernel(Kernel):
         """
         Define the Stein kernel, i.e. the application of the Stein operator.
         """
+        # Validate inputs
+        validate_is_instance(
+            x=base_kernel, object_name="base_kernel", expected_type=Kernel
+        )
+        validate_is_instance(
+            x=score_function, object_name="score_function", expected_type=Callable
+        )
+        output_scale = cast_as_type(
+            x=output_scale, object_name="output_scale", type_caster=float
+        )
+
         self.base_kernel = base_kernel
         self.score_function = score_function
         self.output_scale = output_scale
@@ -1024,6 +1070,9 @@ def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
     :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
     :return: Instance of selected :class:`Kernel` class
     """
+    # Validate inputs
+    validate_is_instance(x=name, object_name="name", expected_type=(str, type[Kernel]))
+
     class_obj = kernel_factory.get(name)
     return cu.call_with_excess_kwargs(class_obj, args, kwargs)
 
