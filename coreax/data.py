@@ -183,7 +183,7 @@ class ArrayData(DataReader):
     """
 
     @classmethod
-    def load(cls, original_data: ArrayLike) -> DataReader:
+    def load(cls, original_data: ArrayLike) -> ArrayData:
         """
         Construct :class:`ArrayData` from a two-dimensional array of data.
 
