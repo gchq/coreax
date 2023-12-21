@@ -76,13 +76,15 @@ class Coreset(ABC):
     def __init__(
         self,
         original_data: DataReader | None = None,
-        weights: WeightsOptimiser | None = None,
+        weights_optimiser: WeightsOptimiser | None = None,
         kernel: Kernel | None = None,
     ):
         """Initialise class and set internal attributes to defaults."""
-        validate_is_instance(weights, "weights", (WeightsOptimiser, None))
-        self.weights = weights
-        validate_is_instance(kernel, "kernel", (Kernel, None))
+        # TODO: Put these back in when happy
+        validate_is_instance(weights_optimiser, "weights", (WeightsOptimiser, None))
+        # validate_is_instance(kernel, "kernel", (Kernel, None))
+
+        self.weights_optimiser = weights_optimiser
         self.kernel = kernel
         self.original_data = original_data
         self.coreset: Array | None = None
