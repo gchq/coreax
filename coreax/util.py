@@ -26,6 +26,7 @@ class factories and checks for numerical precision.
 from __future__ import annotations
 
 import inspect
+import time
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -287,3 +288,24 @@ def create_instance_from_factory(
         class_obj,
         **kwargs,
     )
+
+
+def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
+    """
+    Verify JIT performance by comparing timings of a before and after run of a function.
+
+    The function is called with supplied arguments twice, and timed for each run. These
+    timings are returned in a 2-tuple
+
+    :param fn: function callable to test
+    :return: (first run time, second run time)
+    """
+    start_time = time.time()
+    fn(*args, **kwargs)
+    end_time = time.time()
+    pre_delta = end_time - start_time
+    start_time = time.time()
+    fn(*args, **kwargs)
+    end_time = time.time()
+    post_delta = end_time - start_time
+    return pre_delta, post_delta

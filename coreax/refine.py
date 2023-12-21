@@ -198,13 +198,10 @@ class RefineRegular(Refine):
         )
         coreset_indices = lax.fori_loop(0, num_points_in_coreset, body, coreset_indices)
 
-        data_reduction.reduction_indices = coreset_indices
-        print("coreset_indices: ", coreset_indices)
-        print("pre_coreset_array: ", data_reduction.original_data.pre_coreset_array)
-        data_reduction.reduced_data = data_reduction.original_data.pre_coreset_array[
+        data_reduction.coreset_indices = coreset_indices
+        data_reduction.coreset = data_reduction.original_data.pre_coreset_array[
             coreset_indices, :
         ]
-        # coreset_obj.coreset = coreset_obj.original_data.pre_coreset_array[coreset_indices, :]
 
     @jit
     def _refine_body(
@@ -337,7 +334,7 @@ class RefineRandom(Refine):
         :return: Nothing
         """
         x = data_reduction.original_data
-        coreset_indices = data_reduction.reduction_indices
+        coreset_indices = data_reduction.coreset_indices
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
@@ -373,8 +370,8 @@ class RefineRandom(Refine):
         )
         key, coreset_indices = lax.fori_loop(0, n_iter, body, (key, coreset_indices))
 
-        data_reduction.reduction_indices = coreset_indices
-        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
+        data_reduction.coreset_indices = coreset_indices
+        data_reduction.coreset = data_reduction.original_data[coreset_indices, :]
 
     def _refine_rand_body(
         self,
@@ -543,7 +540,7 @@ class RefineReverse(Refine):
         :return: Nothing
         """
         x = jnp.asarray(data_reduction.original_data)
-        coreset_indices = jnp.asarray(data_reduction.reduction_indices)
+        coreset_indices = jnp.asarray(data_reduction.coreset_indices)
 
         kernel_gram_matrix_diagonal = vmap(data_reduction.kernel.compute)(x, x)
 
@@ -571,8 +568,8 @@ class RefineReverse(Refine):
         )
         coreset_indices = lax.fori_loop(0, num_points_in_x, body, coreset_indices)
 
-        data_reduction.reduction_indices = coreset_indices
-        data_reduction.reduced_data = data_reduction.original_data[coreset_indices, :]
+        data_reduction.coreset_indices = coreset_indices
+        data_reduction.coreset = data_reduction.original_data[coreset_indices, :]
 
     def _refine_rev_body(
         self,

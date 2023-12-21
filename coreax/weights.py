@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 Classes and associated functionality to optimise weighted representations of data.
 
 Several aspects of this codebase take a :math:`n \times d` dataset and generate an
@@ -47,15 +47,19 @@ class WeightsOptimiser(ABC):
     Base class for calculating weights.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+            numerical solver computations. Not used in all solvers.
     """
 
-    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
-        """
-        Initilise a weights optimiser class.
+    def __init__(self, kernel: coreax.kernel.Kernel, epsilon: float = 1e-10) -> None:
+        """Initilise a weights optimiser class."""
+        # TODO: Add validation of inputs
+        # Validate input
+        if epsilon < 0:
+            raise ValueError(f"epsilon must be non-negative; given value {epsilon}.")
 
-        # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
-        """
         self.kernel = kernel
+        self.epsilon = epsilon
 
     @abstractmethod
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -68,7 +72,7 @@ class WeightsOptimiser(ABC):
         """
 
     def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
+        r"""
         Calculate approximate weights.
 
         :param x: The original :math:`n \times d` data
@@ -91,6 +95,8 @@ class SBQ(WeightsOptimiser):
     discrepancy (MMD) optimum.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+            numerical solver computations. Not used in all solvers.
     """
 
     def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -141,22 +147,18 @@ class MMD(WeightsOptimiser):
     using the OSQP quadratic programming solver.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+        numerical solver computations. Not used in all solvers.
     """
 
-    def solve(self, x: ArrayLike, y: ArrayLike, epsilon: float = 1e-10) -> Array:
+    def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Compute optimal weights given the simplex constraint.
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m times d` representation of ``x``, e.g. a coreset
-        :param epsilon: Small positive value to add to the kernel Gram matrix to aid
-            numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Validate input
-        if epsilon < 0:
-            raise ValueError(f"epsilon must be non-negative; given value {epsilon}.")
-
         # Format data
         x = jnp.asarray(x)
         y = jnp.asarray(y)
@@ -165,7 +167,7 @@ class MMD(WeightsOptimiser):
         # can numerically compute the result, we add a small perturbation to the kernel
         # matrix.
         kernel_nm = self.kernel.compute(y, x).sum(axis=1) / len(x)
-        kernel_mm = self.kernel.compute(y, y) + epsilon * jnp.identity(len(y))
+        kernel_mm = self.kernel.compute(y, y) + self.epsilon * jnp.identity(len(y))
 
         # Call the QP solver
         sol = solve_qp(kernel_mm, kernel_nm)
