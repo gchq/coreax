@@ -56,18 +56,23 @@ class Coreset(ABC):
 
     Class for performing data reduction.
 
-    :param weights: Type of weighting to apply, or :data:`None` if unweighted
+    :param weights_optimiser: Type of weighting to apply, or :data:`None` if unweighted
     :param kernel: Kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
     """
 
     def __init__(
-        self, *, weights: WeightsOptimiser | None = None, kernel: Kernel | None = None
+        self,
+        *,
+        weights_optimiser: WeightsOptimiser | None = None,
+        kernel: Kernel | None = None,
     ):
         """Initialise class and set internal attributes to defaults."""
-        validate_is_instance(weights, "weights", (WeightsOptimiser, None))
-        self.weights = weights
+        validate_is_instance(
+            weights_optimiser, "weights_optimiser", (WeightsOptimiser, None)
+        )
+        self.weights_optimiser = weights_optimiser
         validate_is_instance(kernel, "kernel", (Kernel, None))
         self.kernel = kernel
         self.original_data: DataReader | None = None  #: Data to be reduced
@@ -81,8 +86,8 @@ class Coreset(ABC):
 
         Other parameters are retained.
 
-        .. warning:: This copy is shallow so :attr:`weights` etc. still point to the
-            original object.
+        .. warning:: This copy is shallow so :attr:`weights_optimiser` etc. still point
+            to the original object.
 
         .. warning:: If any additional data attributes are added in a subclass, it
             should reimplement this method.
@@ -148,7 +153,9 @@ class Coreset(ABC):
             original data
         """
         self._validate_fitted("solve_weights")
-        return self.weights.solve(self.original_data.pre_coreset_array, self.coreset)
+        return self.weights_optimiser.solve(
+            self.original_data.pre_coreset_array, self.coreset
+        )
 
     def compute_metric(self, metric: Metric, block_size: int | None = None) -> Array:
         """
