@@ -152,10 +152,8 @@ class TestCoreset(unittest.TestCase):
 
         # Test with a coresubset
         coreset.coreset_indices = MagicMock(spec=Array)
-        gram_matrix = MagicMock()
-        coreset.kernel_mean_row_sum = gram_matrix
         coreset.refine()
-        refine_method.refine.assert_called_once_with(coreset, gram_matrix)
+        refine_method.refine.assert_called_once_with(coreset)
 
         # Test again with refine_method unset but a suitable coreset calculated
         coreset.refine_method = None

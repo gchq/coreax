@@ -93,10 +93,9 @@ class Refine(ABC):
     def refine(
         self,
         coreset: Coreset,
-        kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
-        Compute the refined coreset, of ``m`` points in ``d`` dimensions.
+        Compute the refined coreset, of :math:`m` points in :math:`d` dimensions.
 
         The :class:`~coreax.reduction.Coreset` object is updated in-place. The
         refinement procedure replaces elements with points most reducing maximum mean
@@ -105,10 +104,6 @@ class Refine(ABC):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-            pass it here to reduce computational load. If this variable is passed,
-            :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
 
@@ -157,7 +152,6 @@ class RefineRegular(Refine):
     def refine(
         self,
         coreset: Coreset,
-        kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
@@ -168,35 +162,34 @@ class RefineRegular(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-            pass it here to reduce computational load. If this variable is passed,
-            :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
-        x = coreset.original_data
+        original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 
-        kernel_gram_matrix_diagonal = vmap(coreset_indices.kernel.compute)(x, x)
+        kernel_gram_matrix_diagonal = vmap(coreset_indices.kernel.compute)(
+            original_array, original_array
+        )
 
-        # If the user hasn't passed kernel_mean_row_sum, calculate it:
+        # If not already done on Coreset, calculate kernel_mean_row_sum
+        kernel_mean_row_sum = coreset.kernel_mean_row_sum
         if kernel_mean_row_sum is None:
             if self.approximate_kernel_row_sum:
                 kernel_mean_row_sum = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
-                        x, self.approximator
+                        original_array, self.approximator
                     )
                 )
             else:
                 kernel_mean_row_sum = (
-                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
                 )
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
         body = partial(
             self._refine_body,
-            x=x,
+            x=original_array,
             kernel=coreset.kernel,
             kernel_mean_row_sum=kernel_mean_row_sum,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
@@ -204,7 +197,7 @@ class RefineRegular(Refine):
         coreset_indices = lax.fori_loop(0, num_points_in_coreset, body, coreset_indices)
 
         coreset.coreset_indices = coreset_indices
-        coreset.coreset = coreset.original_data[coreset_indices, :]
+        coreset.coreset = original_array[coreset_indices, :]
 
     @jit
     def _refine_body(
@@ -317,7 +310,6 @@ class RefineRandom(Refine):
     def refine(
         self,
         coreset: Coreset,
-        kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Refine a coreset iteratively.
@@ -330,34 +322,32 @@ class RefineRandom(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-            pass it here to reduce computational load. If this variable is passed,
-            :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
-        x = coreset.original_data
+        original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 
-        kernel_gram_matrix_diagonal = vmap(coreset.kernel.compute)(x, x)
+        kernel_gram_matrix_diagonal = vmap(coreset.kernel.compute)(
+            original_array, original_array
+        )
 
-        # If the user hasn't passed kernel_mean_row_sum, calculate it:
+        # If not already done on Coreset, calculate kernel_mean_row_sum
+        kernel_mean_row_sum = coreset.kernel_mean_row_sum
         if kernel_mean_row_sum is None:
             if self.approximate_kernel_row_sum:
                 kernel_mean_row_sum = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
-                        x, self.approximator
+                        original_array, self.approximator
                     )
                 )
             else:
                 kernel_mean_row_sum = (
-                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
                 )
 
         coreset_indices = jnp.asarray(coreset_indices)
-        x = jnp.asarray(x)
         num_points_in_coreset = len(coreset_indices)
-        num_points_in_x = len(x)
+        num_points_in_x = len(original_array)
         n_cand = int(num_points_in_x * self.p)
         n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
 
@@ -365,7 +355,7 @@ class RefineRandom(Refine):
 
         body = partial(
             self._refine_rand_body,
-            x=x,
+            x=original_array,
             n_cand=n_cand,
             kernel=coreset.kernel,
             kernel_mean_row_sum=kernel_mean_row_sum,
@@ -374,7 +364,7 @@ class RefineRandom(Refine):
         key, coreset_indices = lax.fori_loop(0, n_iter, body, (key, coreset_indices))
 
         coreset.coreset_indices = coreset_indices
-        coreset.coreset = coreset.original_data[coreset_indices, :]
+        coreset.coreset = original_array[coreset_indices, :]
 
     def _refine_rand_body(
         self,
@@ -530,7 +520,6 @@ class RefineReverse(Refine):
     def refine(
         self,
         coreset: Coreset,
-        kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
         Refine a coreset iteratively, replacing points which yield the most improvement.
@@ -542,35 +531,34 @@ class RefineReverse(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :param kernel_mean_row_sum: (Optional) Mean vector over rows for the Gram
-            matrix, a :math:`1 \times n` array. If this variable has been pre-calculated
-            pass it here to reduce computational load. If this variable is passed,
-            :attr:`approximate_kernel_row_sum` is ignored.
         :return: Nothing
         """
-        x = jnp.asarray(coreset.original_data)
-        coreset_indices = jnp.asarray(coreset.coreset_indices)
+        original_array = coreset.original_data.pre_coreset_array
+        coreset_indices = coreset.coreset_indices
 
-        kernel_gram_matrix_diagonal = vmap(coreset.kernel.compute)(x, x)
+        kernel_gram_matrix_diagonal = vmap(coreset.kernel.compute)(
+            original_array, original_array
+        )
 
-        # If the user hasn't passed kernel_mean_row_sum, calculate it:
+        # If not already done on Coreset, calculate kernel_mean_row_sum
+        kernel_mean_row_sum = coreset.kernel_mean_row_sum
         if kernel_mean_row_sum is None:
             if self.approximate_kernel_row_sum:
                 kernel_mean_row_sum = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
-                        x, self.approximator
+                        original_array, self.approximator
                     )
                 )
             else:
                 kernel_mean_row_sum = (
-                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(x)
+                    coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
                 )
 
-        num_points_in_x = len(x)
+        num_points_in_x = len(original_array)
 
         body = partial(
             self._refine_rev_body,
-            x=x,
+            x=original_array,
             kernel=coreset.kernel,
             kernel_mean_row_sum=kernel_mean_row_sum,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
@@ -578,7 +566,7 @@ class RefineReverse(Refine):
         coreset_indices = lax.fori_loop(0, num_points_in_x, body, coreset_indices)
 
         coreset.coreset_indices = coreset_indices
-        coreset.coreset = coreset.original_data[coreset_indices, :]
+        coreset.coreset = original_array[coreset_indices, :]
 
     def _refine_rev_body(
         self,
