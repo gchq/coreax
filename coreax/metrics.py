@@ -87,11 +87,11 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
-        """Initialise class."""
+        """Calculate maximum mean discrepancy between two datasets."""
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
-        # initialise parent
+        # Initialise parent
         super().__init__()
 
     def compute(

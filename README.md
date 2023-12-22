@@ -11,23 +11,24 @@ Coreax is a library for **coreset algorithms**, written in [Jax](https://jax.rea
 A coreset algorithm takes a $n \times d$ data set and reduces it to $m \ll n$ points whilst attempting to preserve the statistical properties of the full data set. Some algorithms return the $m$ points with weights, such that importance can be attributed to each point. These are often chosen from the simplex, i.e. such that they are non-negative and sum to 1.
 
 ## Quick example
-Here are $n=10,000$ points drawn from six $2$-D Gaussians. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
-<p align="middle">
-<img src="examples/data/coreset_seq/coreset_seq.gif" width="49%"/>
-<img src="examples/data/random_seq/random_seq.gif" width="49%"/>
-</p>
+Here are $n=10,000$ points drawn from six $2$-D multivariate Gaussian distributions. The coreset size, which we set, is $m=100$. Run `examples/weighted_herding.py` to replicate.
+
+![](examples/data/coreset_seq/coreset_seq.gif)
+![](examples/data/random_seq/random_seq.gif)
 
 The key property to observe is the maximum mean discrepancy (MMD) between the coreset and full set. This is an integral probability metric, which measures the distance between the empirical distributions of the full dataset and the coreset. For coreset algorithms, we would like this to be significantly smaller than random sampling (as above).
 
 # Example applications
 **Choosing pixels from an image**: In the below, we request ~20% of the original pixels. (Centre) 8000 coreset points chosen using Stein kernel herding, with point size a function of weight. (Right) 8000 points chosen randomly. Run `examples/david.py` to replicate.
-<img src="examples/data/david_coreset.png" width="100%">
+
+![](examples/data/david_coreset.png)
+
 
 **Video event detection**: Here we identify representative frames such that most of the useful information in a video is preserved. Run `examples/pounce.py` to replicate.
-<p align="middle">
-<img src="examples/pounce/pounce.gif" width="49%">
-<img src="examples/pounce/pounce_coreset.gif" width="49%">
-</p>
+
+![](examples/pounce/pounce.gif)
+![](examples/pounce/pounce_coreset.gif)
+
 
 # Setup
 Be sure to install Jax, and to install the preferred version for your system.
@@ -38,7 +39,7 @@ Be sure to install Jax, and to install the preferred version for your system.
 Here are some of the most commonly used functions in the library.
 
 ## Kernel herding
-Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are curerntly variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
+Basic kernel herding can be invoked using `kernel_herding_block` from `coreax.kernel_herding`. All the algorithms are currently variants of [kernel herding](https://arxiv.org/abs/1203.3472), and they will return indices into the original dataset. You can optionally compute weights to infer the importance of each coreset point. The "block" refers to block processing the Gram matrix to avoid GPU memory issues (there are "full matrix" versions of these functions, which will work if your GPU has enough memory to hold an $n \times n$ Gram matrix).
 
 ```python
 from coreax.kernel_herding import kernel_herding_block
@@ -81,7 +82,7 @@ coreset = kernel_herding_refine_block(X, m, k):
 ```
 
 ## Stein kernel herding
-We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targetting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discerete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within GPU memory constraints.
+We have implemented a version of kernel herding that uses a **Stein kernel**, which targets [kernelised Stein discrepancy (KSD)](https://arxiv.org/abs/1602.03253) rather than MMD. This can often give better integration error in practice, but it can be slower than using a simpler kernel targeting MMD. To use Stein kernel herding, we have to define a continuous approximation to the discrete measure, e.g. using a KDE, or estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel with an inverse multi-quadric base kernel; computing the score function explicitly (score matching coming soon). Again, there are block versions for fitting within memory constraints.
 ```python
 from coreax.kernel import stein_kernel_pc_imq_element, rbf_grad_log_f_x
 from coreax.kernel_herding import stein_kernel_herding_block
@@ -111,6 +112,12 @@ implemented {cite:p}`ssm` to approximate the
 score function with a neural network. See `coreax.score_matching` for implementations.
 This approximation to the true score function can then be passed directly to a Stein
 kernel, removing any requirement for the analytical derivation.
+
+# Release cycle
+We anticipate two release types: feature releases and security releases. Security
+releases will be issued as needed in accordance with the
+[security policy](https://github.com/gchq/coreax/security/policy). Feature releases will
+be issued as appropriate, dependent on the feature pipeline and development priorities.
 
 # Coming soon
 Some of the features coming soon include

@@ -94,8 +94,8 @@ class TestSquaredExponentialKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
@@ -127,8 +127,8 @@ class TestSquaredExponentialKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
@@ -160,8 +160,8 @@ class TestSquaredExponentialKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -197,8 +197,8 @@ class TestSquaredExponentialKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestLaplacianKernel(TestKernel):
@@ -236,8 +236,8 @@ class TestLaplacianKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
@@ -269,8 +269,8 @@ class TestLaplacianKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
@@ -302,8 +302,8 @@ class TestLaplacianKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -339,8 +339,8 @@ class TestLaplacianKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestPCIMQKernel(TestKernel):
@@ -378,8 +378,8 @@ class TestPCIMQKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
@@ -411,8 +411,8 @@ class TestPCIMQKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
@@ -444,8 +444,8 @@ class TestPCIMQKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -481,8 +481,8 @@ class TestPCIMQKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestSteinKernel(TestKernel):
@@ -527,8 +527,8 @@ class TestSteinKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
@@ -567,8 +567,8 @@ class TestSteinKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
@@ -607,8 +607,8 @@ class TestSteinKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
@@ -651,8 +651,8 @@ class TestSteinKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 if __name__ == "__main__":
