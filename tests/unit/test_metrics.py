@@ -385,7 +385,7 @@ class TestMMD(unittest.TestCase):
         r"""
         Test mmd_block calculation of MMD while limiting memory requirements.
 
-        This test uses the same 2D, three-point dataset and second datset as
+        This test uses the same 2D, three-point dataset and second dataset as
         test_mmd_ints().
         """
         # Setup data

@@ -40,17 +40,14 @@ be passed to the chosen IO library to write a file.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
+from coreax.reduction import Coreset, ReductionStrategy, reduction_strategy_factory
 from coreax.util import ClassFactory, create_instance_from_factory
 from coreax.validation import cast_as_type
-
-if TYPE_CHECKING:
-    from coreax.reduction import Coreset, ReductionStrategy, reduction_strategy_factory
 
 
 class DataReader(ABC):
@@ -118,7 +115,7 @@ class DataReader(ABC):
         ).reduce(self)
 
     @abstractmethod
-    def format(self, coreset: "Coreset") -> Array:
+    def format(self, coreset: Coreset) -> Array:
         """
         Format coreset to match the shape of the original data.
 
@@ -129,7 +126,7 @@ class DataReader(ABC):
         :return: Array of coreset in format matching original data
         """
 
-    def render(self, coreset: "Coreset" | None) -> None:
+    def render(self, coreset: Coreset | None) -> None:
         """
         Plot coreset or original data interactively using :mod:`~matplotlib.pyplot`.
 
@@ -154,7 +151,7 @@ class DataReader(ABC):
         """
         raise NotImplementedError
 
-    def restore_dimension(self, coreset: "Coreset" | None) -> Array:
+    def restore_dimension(self, coreset: Coreset | None) -> Array:
         """
         Expand principal components into original number of columns in two dimensions.
 

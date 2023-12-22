@@ -52,7 +52,7 @@ class WeightsOptimiser(ABC):
     """
 
     def __init__(self, kernel: coreax.kernel.Kernel, epsilon: float = 1e-10) -> None:
-        """Initilise a weights optimiser class."""
+        """Initialise a weights optimiser class."""
         # TODO: Add validation of inputs
         # Validate input
         if epsilon < 0:
@@ -90,7 +90,7 @@ class SBQ(WeightsOptimiser):
     """
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
-    References for this technique can be found in :cite:p:`huszar2016optimallyweighted`.
+    References for this technique can be found in :cite:p:`huszar2016optimally`.
     Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
 
@@ -104,7 +104,7 @@ class SBQ(WeightsOptimiser):
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
         References for this technique can be found in
-        :cite:p:`huszar2016optimallyweighted`. These are equivalent to the unconstrained
+        :cite:p:`huszar2016optimally`. These are equivalent to the unconstrained
         weighted maximum mean discrepancy (MMD) optimum.
 
         Note that weights determined through SBQ do not need to sum to 1, and can be
