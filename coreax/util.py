@@ -246,7 +246,7 @@ class ClassFactory:
             of a matching type
         :raises TypeError: If a non-string that does not match the factory type is
             passed, i.e. cannot be used for dependency injection
-        :raises KeyError: If the string name is not recognized
+        :raises KeyError: If the string name is not recognised
         :return: Uninstantiated class object
         """
         # Check for dependency injection
@@ -263,7 +263,7 @@ class ClassFactory:
         # Get class by name
         class_obj = self.lookup_table.get(name)
         if class_obj is None:
-            raise KeyError(f"Class name {name} not recognized.")
+            raise KeyError(f"Class name {name} not recognised.")
         return class_obj
 
 
@@ -296,10 +296,10 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     Verify JIT performance by comparing timings of a before and after run of a function.
 
     The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple
+    timings are returned in a 2-tuple.
 
-    :param fn: function callable to test
-    :return: (first run time, second run time)
+    :param fn: Function callable to test
+    :return: (First run time, Second run time)
     """
     start_time = time.time()
     fn(*args, **kwargs)
