@@ -18,8 +18,16 @@ import unittest
 import jax.numpy as jnp
 
 import coreax.refine
+from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel
 from coreax.reduction import Coreset
+
+
+class CoresetMock(Coreset):
+    """Test version of :class:`Coreset` with all methods implemented."""
+
+    def fit_to_size(self, num_points: int) -> None:
+        raise NotImplementedError
 
 
 class TestRefine(unittest.TestCase):
@@ -31,14 +39,15 @@ class TestRefine(unittest.TestCase):
         """
         Test that refining an optimal coreset leaves ``coreset_indices`` unchanged.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
 
-        coreset_obj = Coreset(
-            original_data=x, weights_optimiser=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_regular = coreax.refine.RefineRegular()
         refine_regular.refine(coreset=coreset_obj)
@@ -56,21 +65,24 @@ class TestRefine(unittest.TestCase):
         Test this example, for every 2-point coreset, that refine() updates the coreset
         indices to [0, 2].
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
-        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
+        index_pairs = (
+            set(combo)
+            for combo in itertools.combinations(range(len(original_array)), 2)
+        )
 
         refine_regular = coreax.refine.RefineRegular()
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
 
-            coreset_obj = Coreset(
-                original_data=x,
+            coreset_obj = CoresetMock(
                 weights_optimiser=None,
                 kernel=SquaredExponentialKernel(),
             )
             coreset_obj.coreset_indices = coreset_indices
+            coreset_obj.original_data = ArrayData.load(original_array)
 
             refine_regular.refine(coreset=coreset_obj)
 
@@ -90,15 +102,16 @@ class TestRefine(unittest.TestCase):
         Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
         coreset indices to ``[0, 2]``.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
         test_indices = [2, 2]
         coreset_indices = jnp.array(test_indices)
 
-        coreset_obj = Coreset(
-            original_data=x, weights_optimiser=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
         refine_rand.refine(coreset=coreset_obj)
@@ -116,21 +129,24 @@ class TestRefine(unittest.TestCase):
         Test, for every 2-point coreset, that ``refine_rev()`` updates the coreset
         indices to ``[0, 2]``.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
-        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
+        index_pairs = (
+            set(combo)
+            for combo in itertools.combinations(range(len(original_array)), 2)
+        )
 
         refine_rev = coreax.refine.RefineReverse()
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
 
-            coreset_obj = Coreset(
-                original_data=x,
+            coreset_obj = CoresetMock(
                 weights_optimiser=None,
                 kernel=SquaredExponentialKernel(),
             )
             coreset_obj.coreset_indices = coreset_indices
+            coreset_obj.original_data = ArrayData.load(original_array)
 
             refine_rev.refine(coreset=coreset_obj)
 
@@ -143,14 +159,15 @@ class TestRefine(unittest.TestCase):
         """
         Test for error when approximate_kernel_row_sum = True and no approximator given.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
 
-        coreset_obj = Coreset(
-            original_data=x, weights_optimiser=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum=True)
 
