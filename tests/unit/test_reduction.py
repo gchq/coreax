@@ -37,7 +37,7 @@ class MockCreatedInstance:
 class CoresetMock(cr.Coreset):
     """Test version of :class:`Coreset` with all methods implemented."""
 
-    def fit_to_size(self, num_points: int) -> None:
+    def fit_to_size(self, coreset_size: int) -> None:
         raise NotImplementedError
 
 
