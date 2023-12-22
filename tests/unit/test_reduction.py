@@ -209,6 +209,9 @@ class TestMapReduce(unittest.TestCase):
         strategy.reduce(coreset)
         # Check shape of output
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
+        # Check _reduce_recursive is called at least twice
+        num_calls = strategy._reduce_recursive.call_count
+        self.assertGreaterEqual(num_calls, 2)
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
