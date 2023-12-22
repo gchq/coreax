@@ -140,24 +140,11 @@ class TestCoreset(unittest.TestCase):
         # Test with refine_method unset
         self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
 
-        # Try prior to fitting a coreset
-        coreset.refine_method = refine_method
-        self.assertRaises(cu.NotCalculatedError, coreset.refine, refine_method)
-
-        # Test with a calculated coreset but not a coresubset
-        coreset.coreset = MagicMock(spec=Array)
-        self.assertRaisesRegex(
-            TypeError, "when not finding a coresubset", coreset.refine
-        )
-
         # Test with a coresubset
+        coreset.refine_method = refine_method
         coreset.coreset_indices = MagicMock(spec=Array)
         coreset.refine()
         refine_method.refine.assert_called_once_with(coreset)
-
-        # Test again with refine_method unset but a suitable coreset calculated
-        coreset.refine_method = None
-        self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
 
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
@@ -190,19 +177,19 @@ class TestCoreset(unittest.TestCase):
         obj = CoresetMock()
         obj.original_data = cd.ArrayData(1, 1)
         obj.coreset = jnp.array(1)
-        obj._validate_fitted("func")
+        obj.validate_fitted("func")
 
     def test_validate_fitted_no_original(self):
         """Check error is raised when original data is missing."""
         obj = CoresetMock()
         obj.coreset = jnp.array(1)
-        self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
+        self.assertRaises(cu.NotCalculatedError, obj.validate_fitted, "func")
 
     def test_validate_fitted_no_coreset(self):
         """Check error is raised when coreset is missing."""
         obj = CoresetMock()
         obj.original_data = cd.ArrayData(1, 1)
-        self.assertRaises(cu.NotCalculatedError, obj._validate_fitted, "func")
+        self.assertRaises(cu.NotCalculatedError, obj.validate_fitted, "func")
 
 
 class TestSizeReduce(unittest.TestCase):

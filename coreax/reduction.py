@@ -215,14 +215,11 @@ class Coreset(ABC):
         :attr:`coreset` is updated in place.
 
         :raises TypeError: When :attr:`refine_method` is :data:`None`
-        :raises TypeError: When called on a class that does not generate coresubsets
         :return: Nothing
         """
         if self.refine_method is None:
             raise TypeError("Cannot refine without a refine_method")
-        self._validate_fitted("refine")
-        if self.coreset_indices is None:
-            raise TypeError("Cannot refine when not finding a coresubset")
+        # Validate appropriate attributes are set on coreset inside refine_method.refine
         self.refine_method.refine(self)
 
     def format(self) -> Array:
@@ -263,7 +260,7 @@ class Coreset(ABC):
             self.coreset = other.coreset
             self.coreset_indices = other.coreset_indices
 
-    def _validate_fitted(self, caller_name: str) -> None:
+    def validate_fitted(self, caller_name: str) -> None:
         """
         Raise :exc:`~coreax.util.NotCalculatedError` if coreset has not been fitted yet.
 
