@@ -1,12 +1,16 @@
-default_install_hook_types: [pre-commit, pre-merge-commit]
+default_install_hook_types:
+  - pre-commit
+  - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
       - id: check-added-large-files
-        args: [--enforce-all, --maxkb=5000]
+        args:
+          - --enforce-all
+          - --maxkb=5000
       # Check valid Python syntax
       - id: check-ast
       # Require literal syntax when initializing empty or zero python builtin types
@@ -17,9 +21,9 @@ repos:
       - id: check-docstring-first
       # Check for files that contain merge conflict strings
       - id: check-merge-conflict
-      # Check TOML files for parseable syntax
+      # Check TOML files for parsable syntax
       - id: check-toml
-      # Check YAML files for parseable syntax
+      # Check YAML files for parsable syntax
       - id: check-yaml
       # Files must end in a single newline
       - id: end-of-file-fixer
@@ -27,6 +31,12 @@ repos:
       - id: trailing-whitespace
       # Prevent commit to main/master
       - id: no-commit-to-branch
+      # Sort spell check custom dictionary
+      - id: file-contents-sorter
+        files: ^.cspell/(custom_misc|library_terms|people).txt$
+        args:
+          - --ignore-case
+          - --unique
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
@@ -44,19 +54,20 @@ repos:
     hooks:
       # Check for binary files
       - id: forbid-binary
-        exclude: examples/.+/.+.(gif|png)
+        exclude: ^examples/.+/.+.(gif|png)$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.4
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
+        exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
       # Place isort options in pyproject.toml
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.9.1
+    rev: 23.12.0
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
@@ -65,3 +76,38 @@ repos:
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: "6.3.0"
+    hooks:
+      # Check PEP-257 and other docstring guidance
+      - id: pydocstyle
+        additional_dependencies:
+          - tomli
+        exclude: |
+          (?x)^(
+            tests|
+            documentation/source/conf.py
+          )
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v8.1.1
+    hooks:
+      # run a spellcheck (words pulled from cspell.config.yaml)
+        - id: cspell
+          exclude: |
+            (?x)^(
+              .gitignore|
+              .*.properties|
+              requirements(-.*)?.txt|
+              documentation/make.bat|
+              documentation/Makefile
+            )$
+  - repo: local
+    hooks:
+      # Check for non-ascii characters in files
+      - id: require-ascii
+        name: Check file encoding
+        description: Ensure file is ascii-encoded
+        entry: python pre_commit_hooks/require_ascii.py
+        language: python
+        types:
+          - text

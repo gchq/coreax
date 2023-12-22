@@ -29,6 +29,10 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
@@ -79,7 +83,7 @@ class ScoreMatching(ABC):
 
 
 class SlicedScoreMatching(ScoreMatching):
-    """
+    r"""
     Implementation of slice score matching, defined in :cite:p:`ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
@@ -106,7 +110,7 @@ class SlicedScoreMatching(ScoreMatching):
         Defaults to 1.
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
-    :param batch_size: Size of minibatch. Defaults to 64.
+    :param batch_size: Size of mini-batch. Defaults to 64.
     :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
     :param optimiser: The optax optimiser to use. Defaults to optax.adam.
     :param num_noise_models: Number of noise models to use in noise
@@ -132,9 +136,7 @@ class SlicedScoreMatching(ScoreMatching):
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
-        """
-        Define a sliced score matching class.
-        """
+        """Define a sliced score matching class."""
         # Assign all inputs
         self.random_generator = random_generator
         self.random_key = random_key
@@ -330,7 +332,7 @@ class SlicedScoreMatching(ScoreMatching):
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:p:`improvedsgm` for details.
+        matching. See :cite:p:`improved_sgm` for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -472,9 +474,7 @@ class KernelDensityMatching(ScoreMatching):
     """
 
     def __init__(self, length_scale: float, kde_data: ArrayLike):
-        r"""
-        Define the kernel density matching class.
-        """
+        """Define the kernel density matching class."""
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = ck.SquaredExponentialKernel(

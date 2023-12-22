@@ -29,7 +29,7 @@ Reporting issues
 
 Pull requests
 -------------
-Currently, we are using [GitHub Flow][github-flow] as our approach to development.
+Currently, we are using a [GitHub Flow][github-flow] development approach.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
@@ -41,8 +41,6 @@ Currently, we are using [GitHub Flow][github-flow] as our approach to developmen
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests].
-
- **TODO: detail CI/CD workflows executed once a PR has been opened.**
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
@@ -87,9 +85,26 @@ A high level overview of the expected style is:
 - Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
-  per line.
+  per line starting from the left margin and including any indentation.
 - Avoid using inline comments.
 - Type annotations must be used for all function or method parameters.
+
+### Spelling and grammar
+
+This project uses British English. Spelling is checked automatically by [cspell]. When a
+word is missing from the dictionary, double check that it is a real word spelled
+correctly. Contractions in object or reference names should be avoided unless the
+meaning is obvious; consider inserting an underscore to effectively split into two
+words. If you need to add a word to the dictionary, use the appropriate dictionary
+inside the `.cspell` folder:
+
+- `library-terms.txt` for object names in third-party libraries,
+- `people.txt` for the names of people,
+- `custom-misc.txt` for anything that does not fit into the above categories.
+
+If the word fragment only makes sense as part of a longer phase, add the longer phrase
+to avoid inadvertently permitting spelling errors elsewhere, e.g. add `Blu-Tack`
+instead of `Blu`.
 
 ### External dependencies
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
@@ -110,17 +125,30 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
+### Abstract functions
+Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
+
+### Exceptions and error messages
+Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
+
+Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
+
 ### Docstrings
 
 Docstrings must:
 - Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
-- Be written in [reStructed Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
+- Be written in [reStructured Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
 - Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
 - Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
 - Have a full stop at the end of the one-line descriptive sentence.
 - Use full stops in extended paragraphs of text.
 - Not have full stops at the end of parameter definitions.
+- If a `:param:` or similar line requires more than the max line length, use multiple lines. Each additional line should
+  be indented by a further 4 spaces.
+- Class `__init__` methods should not have docstrings. All constructor parameters should be listed at the end of the class
+  docstring. `__init__` docstrings will not be rendered by Sphinx. Any developer comments should be contained in a regular
+  comment.
 
 Each docstring for a public object should take the following structure:
 ```
@@ -144,12 +172,16 @@ Comments must:
 - Not end in a full stop for single-line comments in code.
 - End with a full stop for multi-line comments.
 
-### Maths Overflow
+### Maths overflow
 
 Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
 
+### Thousands separators
+
+For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
+
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anwhere with `[RefYY]_`.
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anywhere with `[RefYY]_`.
 
 ### Generating docs with Sphinx
 
@@ -162,7 +194,7 @@ sphinx-quickstart
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
 [gh-feature-request]: https://github.com/gchq/coreax/issues/new?assignees=&labels=enhancement%2Cnew&projects=&template=feature_request.yml&title=%5BFeature%5D%3A+
 [gh-prs]: https://github.com/gchq/coreax/pulls
-
+[run-tests]: https://github.com/gchq/coreax/actions/workflows/unittests.yml
 [conventional_commits]: https://www.conventionalcommits.org
 [git-feature-branch]: https://www.atlassian.com/git/tutorials/comparing-workflows
 [pr-draft]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
@@ -178,3 +210,4 @@ sphinx-quickstart
 [lgpl]: https://opensource.org/license/lgpl-license-html/
 [unittest]: https://docs.python.org/3/library/unittest.html
 [pytest]: https://docs.pytest.org/
+[cspell]: https://cspell.org/

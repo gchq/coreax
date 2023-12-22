@@ -144,6 +144,11 @@ class RefineRegular(Refine):
     mean discrepancy (MMD). The MMD is defined by:
     :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
     for a dataset ``X`` and corresponding coreset ``X_c``.
+
+    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+        sum is calculated. If :data:`True`, the sum is approximate.
+    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
+        for the kernel mean approximation method
     """
 
     def refine(
@@ -409,7 +414,7 @@ class RefineRandom(Refine):
         coreset_indices = lax.cond(
             jnp.any(comparisons > 0),
             self._change,
-            self._nochange,
+            self._no_change,
             i,
             coreset_indices,
             candidate_indices,
@@ -485,7 +490,7 @@ class RefineRandom(Refine):
         return coreset_indices.at[i].set(candidate_indices[comparisons.argmax()])
 
     @jit
-    def _nochange(
+    def _no_change(
         self,
         i: int,
         coreset_indices: ArrayLike,
@@ -512,6 +517,11 @@ class RefineReverse(Refine):
 
     This performs the same style of refinement as :class:`~coreax.refine.RefineRegular`
     but reverses the order.
+
+    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
+        sum is calculated. If :data:`True`, the sum is approximate.
+    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
+        for the kernel mean approximation method
     """
 
     def refine(
@@ -598,7 +608,7 @@ class RefineReverse(Refine):
         coreset_indices = lax.cond(
             jnp.any(comps > 0),
             self._change_rev,
-            self._nochange_rev,
+            self._no_change_rev,
             i,
             coreset_indices,
             comps,
@@ -667,7 +677,7 @@ class RefineReverse(Refine):
         return coreset_indices.at[j].set(i)
 
     @jit
-    def _nochange_rev(
+    def _no_change_rev(
         self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
     ) -> Array:
         r"""

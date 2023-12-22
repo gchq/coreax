@@ -29,7 +29,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 (MMD).
 """
 
-import os
 from pathlib import Path
 
 import imageio
@@ -48,9 +47,7 @@ from coreax.kernel_herding import stein_kernel_herding_block
 from coreax.metrics import mmd_block
 
 
-def main(
-    directory: Path = Path(os.path.dirname(__file__)) / "../examples/data/pounce",
-) -> tuple[float, float]:
+def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with Stein kernel herding.
 
@@ -59,16 +56,21 @@ def main(
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param directory: Path to directory containing input video.
+    :param directory: Path to directory containing input video, assumed relative to this
+        module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
+    # Convert directory to absolute path
+    if not directory.is_absolute():
+        directory = Path(__file__).parent / directory
 
     # path to directory containing video as sequence of images
-    fn = "pounce.gif"
-    os.makedirs(directory / "coreset", exist_ok=True)
+    fn = Path("pounce.gif")
+    coreset_dir = directory / Path("coreset")
+    coreset_dir.mkdir(exist_ok=True)
 
     # read in as video. Frame 0 is missing A from RGBA.
-    Y_ = np.array(imageio.v2.mimread(f"{directory}/{fn}")[1:])
+    Y_ = np.array(imageio.v2.mimread(directory / fn)[1:])
     Y = Y_.reshape(Y_.shape[0], -1)
 
     # run PCA to reduce the dimension of the images whilst minimising effects on some of
@@ -102,9 +104,9 @@ def main(
     m = mmd_block(X, X[coreset], k, max_size=1000)
 
     # get a random sample of points to compare against
-    rsample = np.random.choice(N, size=C, replace=False)
+    rand_sample = np.random.choice(N, size=C, replace=False)
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rsample], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_sample], k, max_size=1000).item()
 
     # print the MMDs
     print(f"Random MMD: {rm}")
@@ -112,7 +114,7 @@ def main(
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = Y_[coreset]
-    imageio.mimsave(directory / "coreset" / "coreset.gif", coreset_images)
+    imageio.mimsave(coreset_dir / Path("coreset.gif"), coreset_images)
 
     # plot to visualise which frames were chosen from the sequence
     # action frames are where the "pounce" occurs
@@ -131,7 +133,7 @@ def main(
     plt.savefig(directory / "coreset" / "frames.png")
     plt.close()
 
-    return m, rm
+    return float(m), float(rm)
 
 
 if __name__ == "__main__":
