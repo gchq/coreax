@@ -40,6 +40,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import TYPE_CHECKING
 
 import jax.lax as lax
 import jax.numpy as jnp
@@ -48,8 +49,10 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 from coreax.approximation import KernelMeanApproximator
-from coreax.reduction import Coreset
 from coreax.util import ClassFactory
+
+if TYPE_CHECKING:
+    from coreax.reduction import Coreset
 
 
 class Refine(ABC):
