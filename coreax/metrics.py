@@ -21,7 +21,6 @@ Having attained an alternative representation, we can then assess the quality of
 representation using some appropriate metric. Such metrics are implemented within this
 module, all of which implement :class:`Metric`.
 """
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 

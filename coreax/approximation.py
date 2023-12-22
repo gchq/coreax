@@ -132,7 +132,6 @@ class KernelMeanApproximator(ABC):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
-        pass
 
 
 class RandomApproximator(KernelMeanApproximator):
@@ -155,8 +154,8 @@ class RandomApproximator(KernelMeanApproximator):
         self,
         kernel: "ck.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10000,
-        num_train_points: int = 10000,
+        num_kernel_points: int = 10_000,
+        num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on points selected randomly."""
         # Validate inputs of non-coreax defined classes
@@ -241,8 +240,8 @@ class ANNchorApproximator(KernelMeanApproximator):
         self,
         kernel: "ck.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10000,
-        num_train_points: int = 10000,
+        num_kernel_points: int = 10_000,
+        num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on ANNchor selected points."""
         # Validate inputs of non-coreax defined classes
@@ -325,7 +324,7 @@ class NystromApproximator(KernelMeanApproximator):
         self,
         kernel: "ck.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10000,
+        num_kernel_points: int = 10_000,
     ):
         """Approximate kernel row mean by using Nystrom approximation."""
         # Initialise parent
