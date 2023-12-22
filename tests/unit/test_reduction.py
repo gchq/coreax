@@ -21,8 +21,11 @@ from jax import Array
 
 import coreax.coresubset as cc
 import coreax.data as cd
+import coreax.kernel as ck
 import coreax.reduction as cr
+import coreax.refine as c_ref
 import coreax.util as cu
+import coreax.weights as cw
 
 
 class MockCreatedInstance:
@@ -48,14 +51,22 @@ class TestCoreset(unittest.TestCase):
         Also test attributes are populated by init.
         """
         # Define original instance
-        weights_optimiser = MagicMock()
-        kernel = MagicMock()
+        weights_optimiser = MagicMock(bound=cw.WeightsOptimiser)
+        kernel = MagicMock(bound=ck.Kernel)
+        refine_method = MagicMock(bound=c_ref.Refine)
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
-        original = CoresetMock(weights_optimiser=weights_optimiser, kernel=kernel)
+        kernel_mean_row_sum = MagicMock()
+        original = CoresetMock(
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
+        )
         original.original_data = original_data
         original.coreset = coreset
+        original.coreset_indices = coreset_indices
+        original.kernel_mean_row_sum = kernel_mean_row_sum
 
         # Create copy
         duplicate = original.clone_empty()
@@ -65,12 +76,16 @@ class TestCoreset(unittest.TestCase):
         self.assertIs(duplicate.weights_optimiser, weights_optimiser)
         self.assertIs(original.kernel, kernel)
         self.assertIs(duplicate.kernel, kernel)
+        self.assertIs(original.refine_method, refine_method)
+        self.assertIs(duplicate.refine_method, refine_method)
         self.assertIs(original.original_data, original_data)
         self.assertIsNone(duplicate.original_data)
         self.assertIs(original.coreset, coreset)
         self.assertIsNone(duplicate.coreset)
         self.assertIs(original.coreset_indices, coreset_indices)
         self.assertIsNone(duplicate.coreset_indices)
+        self.assertIs(original.kernel_mean_row_sum, kernel_mean_row_sum)
+        self.assertIsNone(duplicate.kernel_mean_row_sum)
 
     def test_fit(self):
         """Test that original data is saved and reduction strategy called."""
@@ -120,19 +135,31 @@ class TestCoreset(unittest.TestCase):
         """Check that refine is called correctly."""
         coreset = CoresetMock()
         coreset.original_data = MagicMock(spec=cd.DataReader)
-        refine_method = MagicMock()
+        refine_method = MagicMock(spec=c_ref.Refine)
 
-        # First try prior to fitting a coreset
+        # Test with refine_method unset
+        self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
+
+        # Try prior to fitting a coreset
+        coreset.refine_method = refine_method
         self.assertRaises(cu.NotCalculatedError, coreset.refine, refine_method)
 
         # Test with a calculated coreset but not a coresubset
         coreset.coreset = MagicMock(spec=Array)
-        self.assertRaises(RuntimeError, coreset.refine, refine_method)
+        self.assertRaisesRegex(
+            TypeError, "when not finding a coresubset", coreset.refine
+        )
 
         # Test with a coresubset
+        coreset.coreset_indices = MagicMock(spec=Array)
         gram_matrix = MagicMock()
-        coreset.refine(refine_method, gram_matrix)
+        coreset.kernel_mean_row_sum = gram_matrix
+        coreset.refine()
         refine_method.refine.assert_called_once_with(coreset, gram_matrix)
+
+        # Test again with refine_method unset but a suitable coreset calculated
+        coreset.refine_method = None
+        self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
 
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
