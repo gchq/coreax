@@ -223,7 +223,7 @@ class Coreset(ABC):
         self._validate_fitted("refine")
         if self.coreset_indices is None:
             raise TypeError("Cannot refine when not finding a coresubset")
-        self.refine_method.refine(self, self.kernel_mean_row_sum)
+        self.refine_method.refine(self)
 
     def format(self) -> Array:
         """

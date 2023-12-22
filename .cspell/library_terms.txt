@@ -73,6 +73,7 @@ setuptools
 sklearn
 softplus
 sphinxcontrib
+texttt
 toctree
 tomli
 tqdm
