@@ -107,6 +107,19 @@ class Refine(ABC):
         :return: Nothing
         """
 
+    @staticmethod
+    def _validate_coreset(coreset: Coreset) -> None:
+        """
+        Validate that refinement can be performed on this coreset.
+
+        :raises TypeError: When called on a class that does not generate coresubsets
+        :return: Nothing
+        """
+        # validate_fitted checks original_data
+        coreset.validate_fitted("refine")
+        if coreset.coreset_indices is None:
+            raise TypeError("Cannot refine when not finding a coresubset")
+
     def _tree_flatten(self):
         """
         Flatten a pytree.
@@ -164,6 +177,7 @@ class RefineRegular(Refine):
             and kernel object
         :return: Nothing
         """
+        self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 
@@ -324,6 +338,7 @@ class RefineRandom(Refine):
             and kernel object
         :return: Nothing
         """
+        self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 
@@ -533,6 +548,7 @@ class RefineReverse(Refine):
             and kernel object
         :return: Nothing
         """
+        self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 

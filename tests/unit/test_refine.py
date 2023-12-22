@@ -21,6 +21,7 @@ import coreax.refine
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel
 from coreax.reduction import Coreset
+from coreax.util import NotCalculatedError
 
 
 class CoresetMock(Coreset):
@@ -34,6 +35,29 @@ class TestRefine(unittest.TestCase):
     """
     Tests related to refine.py functions.
     """
+
+    def test_validate_coreset_ok(self) -> None:
+        """Check validation passes with populated coresubset."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        coreset.coreset = jnp.array(1)
+        coreset.coreset_indices = jnp.array(0)
+        coreax.refine.Refine._validate_coreset(coreset)
+
+    def test_validate_coreset_no_fit(self) -> None:
+        """Check validation fails when coreset has not been calculated."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        self.assertRaises(
+            NotCalculatedError, coreax.refine.Refine._validate_coreset, coreset
+        )
+
+    def test_validate_coreset_not_coresubset(self) -> None:
+        """Check validation raises TypeError when not a coresubset."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        coreset.coreset = jnp.array(1)
+        self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
 
     def test_refine_ones(self) -> None:
         """
