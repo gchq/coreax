@@ -28,6 +28,10 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 (MMD).
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -48,10 +52,8 @@ from coreax.util import solve_qp
 
 
 def main(
-    in_path: Path = (
-        Path(os.path.dirname(__file__)) / Path("../examples/data/david_orig.png")
-    ),
-    out_path: Path = None,
+    in_path: Path = Path("../examples/data/david_orig.png"),
+    out_path: Path | None = None,
 ) -> tuple[float, float]:
     """
     Run the 'david' example for image sampling.
@@ -61,10 +63,17 @@ def main(
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param in_path: Path to input image
-    :param out_path: Path to save output to, if not None. Default None.
+    :param in_path: Path to input image, assumed relative to this module file unless an
+        absolute path is given
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
+    # Convert to absolute paths
+    if not in_path.is_absolute():
+        in_path = Path(__file__).parent / in_path
+    if out_path is not None and not out_path.is_absolute():
+        out_path = Path(__file__).parent / out_path
 
     # path to original image
     orig = cv2.imread(str(in_path))
@@ -109,7 +118,7 @@ def main(
 
     print("Choosing random subset...")
     # choose a random subset of C points from the original image
-    rpoints = np.random.choice(n, C, replace=False)
+    rand_points = np.random.choice(n, C, replace=False)
 
     # define a reference kernel to use for comparisons of MMD. We'll use an RBF
     def k(x, y):
@@ -119,7 +128,7 @@ def main(
     m = mmd_block(X, X[coreset], k, max_size=1000)
 
     # compute the MMD between X and the random sample
-    rm = mmd_block(X, X[rpoints], k, max_size=1000).item()
+    rm = mmd_block(X, X[rand_points], k, max_size=1000).item()
 
     # print the MMDs
     print("Random MMD")
@@ -154,9 +163,9 @@ def main(
     # plot the image of randomly sampled points
     plt.subplot(1, 3, 3)
     plt.scatter(
-        X[rpoints, 1],
-        -X[rpoints, 0],
-        c=X[rpoints, 2],
+        X[rand_points, 1],
+        -X[rand_points, 0],
+        c=X[rand_points, 2],
         s=1.0,
         cmap="gray",
         marker="h",
@@ -171,7 +180,7 @@ def main(
 
     plt.show()
 
-    return m, rm
+    return float(m), float(rm)
 
 
 if __name__ == "__main__":
