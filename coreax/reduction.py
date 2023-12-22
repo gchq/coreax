@@ -65,7 +65,8 @@ class Coreset(ABC):
     r"""
     Class for reducing data to a coreset.
 
-    :param weights_optimiser: Type of weighting to apply, or :data:`None` if unweighted
+    :param weights_optimiser: Optimiser so determine weights for coreset points to
+        optimise some quality metric, or :data:`None` if unweighted
     :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
