@@ -66,9 +66,11 @@ class Coreset(ABC):
     Class for reducing data to a coreset.
 
     :param weights_optimiser: Type of weighting to apply, or :data:`None` if unweighted
-    :param kernel: Kernel function
+    :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
+    :param refine_method: Refinement method to use, or :data:`None` if not applicable;
+        only applicable to reduction methods that generate coresubsets
     """
 
     def __init__(
@@ -76,6 +78,7 @@ class Coreset(ABC):
         *,
         weights_optimiser: WeightsOptimiser | None = None,
         kernel: Kernel | None = None,
+        refine_method: Refine | None = None,
     ):
         """Initialise class and set internal attributes to defaults."""
         validate_is_instance(
@@ -84,6 +87,10 @@ class Coreset(ABC):
         self.weights_optimiser = weights_optimiser
         validate_is_instance(kernel, "kernel", (Kernel, None))
         self.kernel = kernel
+        validate_is_instance(refine_method, "refine_method", (Refine, None))
+        self.refine_method = refine_method
+
+        # Data attributes not set in init
         self.original_data: DataReader | None = None  #: Data to be reduced
         self.coreset: Array | None = None
         """
@@ -94,6 +101,12 @@ class Coreset(ABC):
         """
         Indices of :attr:`coreset` points in :attr:`original_data`, if applicable. The
         order matches the rows of :attr:`coreset`.
+        """
+        self.kernel_mean_row_sum: ArrayLike | None = None
+        """
+        Mean vector over rows for the Gram matrix, a :math:`1 \times n` array. If
+        :meth:`fit_to_size` calculates this, it will be saved here automatically to save
+        recalculating it in :meth:`refine`.
         """
 
     def clone_empty(self) -> Self:
@@ -114,6 +127,7 @@ class Coreset(ABC):
         new_obj.original_data = None
         new_obj.coreset = None
         new_obj.coreset_indices = None
+        new_obj.kernel_mean_row_sum = None
         return new_obj
 
     def fit(self, original_data: DataReader, strategy: ReductionStrategy) -> None:
@@ -192,29 +206,24 @@ class Coreset(ABC):
             self.original_data.pre_coreset_array, self.coreset, block_size=block_size
         )
 
-    def refine(
-        self, method: Refine, kernel_mean_row_sum: ArrayLike | None = None
-    ) -> None:
-        r"""
+    def refine(self) -> None:
+        """
         Refine coreset.
 
         Only applicable to coreset methods that generate coresubsets.
 
         :attr:`coreset` is updated in place.
 
-        :param method: Instance of refinement method to use
-        :param kernel_mean_row_sum: Mean vector over rows for the Gram matrix, a
-            :math:`1 \times n` array. If this variable has been pre-calculated pass it
-            here to reduce computational load. Otherwise, it will be calculated when
-            required.
-        :raises RuntimeError: When called on a class that does not generate coresubsets
+        :raises TypeError: When :attr:`refine_method` is :data:`None`
+        :raises TypeError: When called on a class that does not generate coresubsets
         :return: Nothing
         """
+        if self.refine_method is None:
+            raise TypeError("Cannot refine without a refine_method")
         self._validate_fitted("refine")
         if self.coreset_indices is None:
-            raise RuntimeError("Cannot refine when not finding a coresubset")
-        validate_is_instance(method, "method", Refine)
-        method.refine(self, kernel_mean_row_sum)
+            raise TypeError("Cannot refine when not finding a coresubset")
+        self.refine_method.refine(self, self.kernel_mean_row_sum)
 
     def format(self) -> Array:
         """
