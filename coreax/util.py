@@ -39,9 +39,10 @@ import coreax.metrics as cm
 import coreax.refine as cr
 import coreax.weights as cw
 
+#: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
-# Pairwise kernel evaluation if grads and nu are defined
+#: Pairwise kernel evaluation function if gradients and bandwidth are defined.
 KernelFunctionWithGrads = Callable[
     [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
 ]
@@ -59,7 +60,7 @@ def apply_negative_precision_threshold(
 
     :param x: Scalar value we wish to compare to 0.0
     :param precision_threshold: Positive threshold we compare against for precision
-    :return: ``x``, rounded to 0.0 if it is between -`precision_threshold` and 0.0
+    :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
     # Cast to float. Will raise TypeError if array is not zero-dimensional.
     x = float(x)
@@ -82,7 +83,7 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
 
     :param x: First vector argument
     :param y: Second vector argument
-    :return: Dot product of ```x - y`` and ``x - y``, the square distance between ``x``
+    :return: Dot product of ``x - y`` and ``x - y``, the square distance between ``x``
         and ``y``
     """
     return jnp.dot(x - y, x - y)

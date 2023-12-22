@@ -147,14 +147,14 @@ class TestExamples(unittest.TestCase):
         ):
             with self.subTest(msg="Weighted herding"):
                 # run weighted herding example
-                outpath = Path(tmp_dir) / "weighted_herding.png"
+                out_path = Path(tmp_dir) / "weighted_herding.png"
                 mmd_coreset, mmd_random = weighted_herding_main(
-                    out_path=outpath, weighted=True
+                    out_path=out_path, weighted=True
                 )
 
                 mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(outpath)
+                self.assert_is_file(out_path)
 
                 self.assertLess(
                     mmd_coreset,
@@ -167,14 +167,14 @@ class TestExamples(unittest.TestCase):
 
             with self.subTest(msg="Unweighted herding"):
                 # run weighted herding example
-                outpath = Path(tmp_dir) / "unweighted_herding.png"
+                out_path = Path(tmp_dir) / "unweighted_herding.png"
                 mmd_coreset, mmd_random = weighted_herding_main(
-                    out_path=outpath, weighted=False
+                    out_path=out_path, weighted=False
                 )
 
                 mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(outpath)
+                self.assert_is_file(out_path)
 
                 self.assertLess(
                     mmd_coreset,
@@ -198,14 +198,14 @@ class TestExamples(unittest.TestCase):
         ) as mock_show:
             with self.subTest(msg="Weighted herding (score matching)"):
                 # run weighted herding example
-                outpath = Path(tmp_dir) / "weighted_herding_sm.png"
+                out_path = Path(tmp_dir) / "weighted_herding_sm.png"
                 mmd_coreset, mmd_random = weighted_herding_sm_main(
-                    out_path=outpath, weighted=True
+                    out_path=out_path, weighted=True
                 )
 
                 mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(outpath)
+                self.assert_is_file(out_path)
 
                 self.assertLess(
                     mmd_coreset,
@@ -218,14 +218,14 @@ class TestExamples(unittest.TestCase):
 
             with self.subTest(msg="Unweighted herding (score matching)"):
                 # run weighted herding example
-                outpath = Path(tmp_dir) / "unweighted_herding_sm.png"
+                out_path = Path(tmp_dir) / "unweighted_herding_sm.png"
                 mmd_coreset, mmd_random = weighted_herding_sm_main(
-                    out_path=outpath, weighted=False
+                    out_path=out_path, weighted=False
                 )
 
                 mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(outpath)
+                self.assert_is_file(out_path)
 
                 self.assertLess(
                     mmd_coreset,

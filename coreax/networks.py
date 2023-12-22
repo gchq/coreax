@@ -18,7 +18,7 @@ Classes and associated functionality to define neural networks.
 Neural networks are used throughout the codebase as functional approximators.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from flax import linen as nn
 from flax.linen import Module
