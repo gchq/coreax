@@ -1,0 +1,18 @@
+---
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+version: '0.2'
+language: en-GB
+dictionaries:
+  - custom-misc
+  - library-terms
+  - people
+dictionaryDefinitions:
+  - name: custom-misc
+    path: ./.cspell/custom_misc.txt
+    addWords: true
+  - name: library-terms
+    path: ./.cspell/library_terms.txt
+    addWords: true
+  - name: people
+    path: ./.cspell/people.txt
+    addWords: true

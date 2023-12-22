@@ -11,12 +11,14 @@
 # governing permissions and limitations under the License.
 
 import unittest
+from collections.abc import Callable
 
 import jax.random
 import numpy as np
 from flax import linen as nn
 from jax.random import rademacher
 from jax.scipy.stats import multivariate_normal, norm
+from jax.typing import ArrayLike
 from optax import sgd
 
 import coreax.kernel as ck
@@ -33,7 +35,7 @@ class TestNetwork(nn.Module):
     num_output_dim: int
 
     @nn.compact
-    def __call__(self, x: csm.ArrayLike) -> csm.ArrayLike:
+    def __call__(self, x: ArrayLike) -> ArrayLike:
         x = nn.Dense(self.num_hidden_dim)(x)
         return x
 
@@ -54,7 +56,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(num_points, 1))
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
 
         # Define data
@@ -87,7 +89,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
@@ -122,7 +124,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         comp = np.random.binomial(1, p, size=num_points)
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -130,9 +132,9 @@ class TestKernelDensityMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(log_pdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
@@ -173,7 +175,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -181,14 +183,14 @@ class TestKernelDensityMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
-                lpdf = 0.0
+        def true_score(x_: ArrayLike) -> ArrayLike:
+            def log_pdf(y: ArrayLike) -> ArrayLike:
+                l_pdf = 0.0
                 for k_ in range(k):
-                    lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
-                return jax.numpy.log(lpdf)
+                    l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
+                return jax.numpy.log(l_pdf)
 
-            return egrad(logpdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
@@ -402,7 +404,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         We use the analytic loss function in this example.
         """
 
-        def score_function(y: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(y: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -453,7 +455,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         We use the non-analytic loss function in this example.
         """
 
-        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -490,10 +492,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_sliced_score_matching_loss(self) -> None:
         """
-        Test the vmapped loss function.
+        Test the loss function with vmap.
         """
 
-        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -583,7 +585,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(num_points, 1))
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
 
         # Define data
@@ -627,7 +629,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
@@ -672,7 +674,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         comp = np.random.binomial(1, p, size=num_points)
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -680,9 +682,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(log_pdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
@@ -736,7 +738,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -744,17 +746,17 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
-                lpdf = 0.0
+        def true_score(x_: ArrayLike) -> ArrayLike:
+            def log_pdf(y: ArrayLike) -> ArrayLike:
+                l_pdf = 0.0
                 for component in range(num_components):
-                    lpdf += (
+                    l_pdf += (
                         multivariate_normal.pdf(y, mus[component], sigmas[component])
                         * mix[component]
                     )
-                return jax.numpy.log(lpdf)
+                return jax.numpy.log(l_pdf)
 
-            return egrad(logpdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
