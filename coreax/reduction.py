@@ -65,7 +65,7 @@ class Coreset(ABC):
     r"""
     Class for reducing data to a coreset.
 
-    :param weights_optimiser: Optimiser so determine weights for coreset points to
+    :param weights_optimiser: Optimiser to determine weights for coreset points to
         optimise some quality metric, or :data:`None` if unweighted
     :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
@@ -183,7 +183,7 @@ class Coreset(ABC):
         :return: Optimal weighting of points in :attr:`coreset` to represent the
             original data
         """
-        self._validate_fitted("solve_weights")
+        self.validate_fitted("solve_weights")
         return self.weights_optimiser.solve(
             self.original_data.pre_coreset_array, self.coreset
         )
@@ -229,7 +229,7 @@ class Coreset(ABC):
 
         :return: Array of formatted data
         """
-        self._validate_fitted("format")
+        self.validate_fitted("format")
         return self.original_data.format(self)
 
     def render(self) -> None:
@@ -238,7 +238,7 @@ class Coreset(ABC):
 
         :return: Nothing
         """
-        self._validate_fitted("render")
+        self.validate_fitted("render")
         return self.original_data.render(self)
 
     def copy_fit(self, other: Self, deep: bool = False) -> None:
@@ -253,7 +253,7 @@ class Coreset(ABC):
         :return: Nothing
         """
         validate_is_instance(other, "other", type[self])
-        other._validate_fitted("copy_fit from another Coreset")
+        other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
             self.coreset_indices = copy(other.coreset_indices)
