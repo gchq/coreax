@@ -72,8 +72,7 @@ class KernelHerding(Coreset):
     kernels.
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
-       :data:`None` if not applicable
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param weights_optimiser: Optimiser to determine weights for coreset points to
         optimise some quality metric, or :data:`None` if unweighted
     :param block_size: Size of matrix blocks to process when computing the kernel
@@ -155,9 +154,6 @@ class KernelHerding(Coreset):
         self.random_key = random_key
         self.num_kernel_points = num_kernel_points
         self.num_train_points = num_train_points
-
-        # Predefine coreset indices
-        self.coreset_indices = None
 
         # Initialise parent
         super().__init__(
@@ -304,8 +300,8 @@ class KernelHerding(Coreset):
             x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
                 \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
 
-        where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
-        the entire dataset, and the search is over the entire dataset.
+        where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken
+        over the entire dataset, and the search is over the entire dataset.
 
         The kernel matrix row sum mean, :math:`\mathbb{E}[k(x, x')]` does not change
         across iterations. Each iteration, the set of coreset points updates with the
