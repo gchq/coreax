@@ -40,16 +40,26 @@ doc = [
     "sphinx-autodoc-typehints",
     "sphinxcontrib-bibtex",
 ]
+# Additional dependencies for tests excluding the testing tool
+test-without-tester = [
+    "numpy",
+]
 # Run unit tests
 test = [
+    "coreax[test-without-tester]",
+    "pytest",
+]
+# Run unit tests with coverage assessment
+coverage = [
+    "coreax[test-without-tester]",
     "pytest-cov",
 ]
 # All tools for a developer
+# Should not need to specify test dependencies if also installing coverage but no harm
 dev = [
-    "coreax[doc, test]",
+    "coreax[doc, test, coverage]",
     "imageio",
     "matplotlib",
-    "numpy",
     "opencv-python",
     "pre-commit",
     "pyqt5",
