@@ -13,47 +13,26 @@
 # limitations under the License.
 
 r"""
-Classes and associated functionality to construct coresets.
+Classes and associated functionality to construct coresubsets.
 
 Given a :math:`n \times d` dataset, one may wish to construct a compressed
-:math:`m \times d` dataset representation of this dataset, where :math:`m << n`. This
-module contains implementations of approaches to do such a construction using coresets.
-Coresets are a type of data reduction, and these inherit from
+:math:`m \times d` representation of this dataset, where :math:`m << n`. This
+compressed representation is often referred to as a coreset. When the elements of a
+coreset are required to be elements of the original dataset, we denote this a
+coresubset. This module contains implementations of approaches to construct coresubsets.
+Coresets and coresubset are a type of data reduction, and these inherit from
 :class:`~coreax.reduction.Coreset`. The aim is to select a small set of indices
 that represent the key features of a larger dataset.
 
-The abstract base class is :class:`CoreSubset`. Concrete implementations are:
-
-*   :class:`KernelHerding` defines the kernel herding method for both standard and Stein
-    kernels.
-*   :class:`RandomSample` selects points for the coreset using random sampling. It is
-    typically only used for benchmarking against other coreset methods.
-
-**:class:`KernelHerding`**
-Kernel herding is a deterministic, iterative and greedy approach to determine this
-compressed representation.
-
-Given one has selected ``T`` data points for their compressed representation of the
-original dataset, kernel herding selects the next point as
-
-.. math::
-
-    x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
-
-where ``k`` is the kernel used, the expectation :math:`\mathbb{E}` is taken over the
-entire dataset, and the search is over the entire dataset. This can informally be seen
-as a balance between using points at which the underlying density is high (the first
-term) and exploration of distinct regions of the space (the second term).
+The abstract base class is :class:`~coreax.reduction.Coreset`.
 """
 
 # Support annotations with | in Python < 3.10
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING
 
 import jax.lax as lax
 import jax.numpy as jnp
@@ -62,14 +41,11 @@ from jax.typing import ArrayLike
 
 from coreax.approximation import KernelMeanApproximator, approximator_factory
 from coreax.kernel import Kernel
-from coreax.reduction import Coreset, coreset_factory
-from coreax.refine import Refine, refine_factory
+from coreax.reduction import Coreset
+from coreax.refine import Refine
 from coreax.util import KernelFunction, create_instance_from_factory
 from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 from coreax.weights import WeightsOptimiser
-
-if TYPE_CHECKING:
-    from coreax.data import DataReader
 
 
 class KernelHerding(Coreset):
@@ -79,15 +55,15 @@ class KernelHerding(Coreset):
     Kernel herding is a deterministic, iterative and greedy approach to determine this
     compressed representation.
 
-    Given one has selected ``T`` data points for their compressed representation of the
-    original dataset, kernel herding selects the next point as:
+    Given one has selected :math:`T` data points for their compressed representation of
+    the original dataset, kernel herding selects the next point as:
 
     .. math::
 
         x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
             \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
 
-    where ``k`` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
+    where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
     the entire dataset, and the search is over the entire dataset. This can informally
     be seen as a balance between using points at which the underlying density is high
     (the first term) and exploration of distinct regions of the space (the second term).
@@ -95,21 +71,19 @@ class KernelHerding(Coreset):
     This class works with all children of `~coreax.kernel.Kernel`, including Stein
     kernels.
 
-    :param weights_optimiser: Optimiser so determine weights for coreset points to
-        optimise some quality metric
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
+       :data:`None` if not applicable
+    :param weights_optimiser: Optimiser to determine weights for coreset points to
+        optimise some quality metric, or :data:`None` if unweighted
     :param block_size: Size of matrix blocks to process when computing the kernel
         matrix row sum mean. Larger blocks will require more memory in the system.
-    :param kernel_matrix_row_sum_mean: Row sum of kernel matrix divided by the
-        number of points. If given, re-computation will be avoided and performance
-        gains are expected.
-    :param unique: Boolean, that enforces the resulting coreset will only contain
+    :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
-    :param refine: Refine method to use or None (default) if no refinement required.
-        Refinement is performed after the herding procedure is complete.
+    :param refine_method: Refinement method to use, or :data:`None` if not required
     :param approximator: The name of an approximator class to use, or the
         uninstantiated class directly as a dependency injection. If None (default)
-        then calculation is exact, but can be computational intensive.
+        then calculation is exact, but can be computationally intensive.
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points for approximation
         of the kernel matrix row sum mean. Only used if ``approximator`` is not
@@ -122,25 +96,21 @@ class KernelHerding(Coreset):
     def __init__(
         self,
         *,
-        weights_optimiser: str | WeightsOptimiser | None,
         kernel: Kernel,
-        block_size: int = 10000,
-        kernel_matrix_row_sum_mean: Array | None = None,
+        weights_optimiser: WeightsOptimiser | None = None,
+        block_size: int = 10_000,
         unique: bool = True,
-        refine: str | Refine | None = None,
+        refine_method: Refine | None = None,
         approximator: str | KernelMeanApproximator | None = None,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
         """Initialise a KernelHerding class."""
-        # Validate inputs
+        # Validate inputs. Note that inputs passed to the parent are validated within
+        # that class, however a valid kernel object must be passed for kernel
+        # herding, so this is verified here.
         validate_is_instance(x=kernel, object_name="kernel", expected_type=Kernel)
-        validate_is_instance(
-            x=weights_optimiser,
-            object_name="weights_optimiser",
-            expected_type=(str, WeightsOptimiser, None),
-        )
         block_size = cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -150,15 +120,7 @@ class KernelHerding(Coreset):
             strict_inequalities=True,
             lower_bound=0,
         )
-        validate_is_instance(
-            x=kernel_matrix_row_sum_mean,
-            object_name="kernel_matrix_row_sum_mean",
-            expected_type=(ArrayLike, None),
-        )
         unique = cast_as_type(x=unique, object_name="unique", type_caster=bool)
-        validate_is_instance(
-            x=refine, object_name="refine", expected_type=(str, Refine, None)
-        )
         validate_is_instance(
             x=approximator,
             object_name="approximator",
@@ -188,7 +150,6 @@ class KernelHerding(Coreset):
 
         # Assign herding-specific attributes
         self.block_size = block_size
-        self.kernel_matrix_row_sum_mean = kernel_matrix_row_sum_mean
         self.unique = unique
         self.approximator = approximator
         self.random_key = random_key
@@ -200,23 +161,36 @@ class KernelHerding(Coreset):
 
         # Initialise parent
         super().__init__(
-            weights_optimiser=weights_optimiser, kernel=kernel, refine=refine
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
         )
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         # TODO: Check JIT performance & validity with this definition when OOP complete
-        children = (self.kernel, self.kernel_matrix_row_sum_mean, self.coreset_indices)
+        children = (
+            self.kernel,
+            self.kernel_matrix_row_sum_mean,
+            self.coreset_indices,
+            self.coreset,
+        )
         aux_data = {
             "block_size": self.block_size,
             "unique": self.unique,
-            "refine": self.refine,
+            "refine_method": self.refine_method,
             "weights_optimiser": self.weights_optimiser,
             "approximator": self.approximator,
             "random_key": self.random_key,
@@ -225,10 +199,7 @@ class KernelHerding(Coreset):
         }
         return children, aux_data
 
-    def fit_to_size(
-        self,
-        coreset_size: int,
-    ):
+    def fit_to_size(self, coreset_size: int) -> None:
         r"""
         Execute kernel herding algorithm with Jax.
 
@@ -238,6 +209,7 @@ class KernelHerding(Coreset):
         from those already in the coreset.
 
         :param coreset_size: The size of the of coreset to generate
+        :return: Nothing
         """
         # Validate inputs
         coreset_size = cast_as_type(
@@ -286,12 +258,13 @@ class KernelHerding(Coreset):
                     )
                 )
 
-        # Initialise loop updateables - as local variables and assign the coreset
-        # indices to the object when the entire set is created
+        # Initialise variables that will be updated throughout the loop. These are
+        # initially local variables, with the coreset indices being assigned to self
+        # when the entire set is created
         kernel_similarity_penalty = jnp.zeros(num_data_points)
         coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
 
-        # Greedly select coreset points
+        # Greedily select coreset points
         body = partial(
             self._greedy_body,
             x=self.original_data.pre_coreset_array,
@@ -306,8 +279,7 @@ class KernelHerding(Coreset):
             init_val=(coreset_indices, kernel_similarity_penalty),
         )
 
-        # Assign coreset indices & coreset to original data object, so that they can be
-        # refined if needed in the next step
+        # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
@@ -332,7 +304,7 @@ class KernelHerding(Coreset):
             x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
                 \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
 
-        where ``k`` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
+        where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
         the entire dataset, and the search is over the entire dataset.
 
         The kernel matrix row sum mean, :math:`\mathbb{E}[k(x, x')]` does not change
@@ -420,25 +392,29 @@ class RandomSample(Coreset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
-    :param random_key: Pseudo-random number generator key for sampling
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
+       :data:`None` if not applicable. Note that if this is supplied, it is only used
+       for refinement, not during creation of the initial coreset.
+    :param weights_optimiser: Optimiser to determine weights for coreset points to
+        optimise some quality metric, or :data:`None` if unweighted
     :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
         without replacement
+    :param refine_method: Refinement method to use, or :data:`None` if not required
+    :param random_key: Pseudo-random number generator key for sampling
     """
 
     def __init__(
         self,
         *,
-        weights_optimiser: str | WeightsOptimiser | None = None,
-        random_key: ArrayLike = 0,
+        kernel: Kernel | None = None,
+        weights_optimiser: WeightsOptimiser | None = None,
         unique: bool = True,
+        refine_method: Refine | None = None,
+        random_key: ArrayLike = 0,
     ):
         """Initialise a random sampling object."""
         # Validate inputs
-        validate_is_instance(
-            x=weights_optimiser,
-            object_name="weights_optimiser",
-            expected_type=(str, WeightsOptimiser, None),
-        )
         random_key = cast_as_type(
             x=random_key, object_name="random_key", type_caster=int
         )
@@ -454,25 +430,39 @@ class RandomSample(Coreset):
         self.random_key = random_key
         self.unique = unique
 
-        # Predefine coreset indices
-        self.coreset_indices = None
-
         # Initialise Coreset parent
-        super().__init__(weights_optimiser=weights_optimiser, kernel=None, refine=None)
+        super().__init__(
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
+        )
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
-        # TODO: Check JIT performance & validity with this definition when OOP complete
-        children = ()
+        # TODO: Check JIT performance & validity with this definition when OOP complete.
+        # TODO: If kernel is None, does this work?
+        children = (
+            self.kernel,
+            self.kernel_matrix_row_sum_mean,
+            self.coreset_indices,
+            self.coreset,
+        )
         aux_data = {
-            "unique": self.unique,
             "weights_optimiser": self.weights_optimiser,
+            "refine_method": self.refine_method,
+            "unique": self.unique,
             "random_key": self.random_key,
         }
         return children, aux_data
@@ -512,7 +502,3 @@ class RandomSample(Coreset):
         # Assign coreset indices and coreset to the object
         self.coreset_indices = random_indices
         self.coreset = self.original_data.pre_coreset_array[random_indices]
-
-
-coreset_factory.register("kernel_herding", KernelHerding)
-coreset_factory.register("random_sample", RandomSample)
