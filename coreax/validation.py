@@ -140,14 +140,19 @@ def cast_as_type(x: Any, object_name: str, type_caster: Callable) -> Any:
         raise TypeError(error_text)
 
 
-def validate_array_size(x: T, object_name: str, expected_size: int) -> None:
+def validate_array_size(
+    x: T, object_name: str, dimension: int, expected_size: int
+) -> None:
     """
-    Verify that an array is of a certain size.
+    Validate the size of an array dimension.
 
-    :param x: Variable we wish to verify the size of
-    :param object_name: Name of ``x`` to display if it is not of size``expected_size``
-    :param expected_size: The expected size of ``x``
-    :raises ValueError: Raised if ``x`` is not of size ``expected_size``
+    :param x: Variable with a dimension
+    :param object_name: Name of ``x`` to display if ``dimension`` is not size ``expected_size``
+    :param dimension: The dimension to check meets ``expected_size``
+    :param expected_size: The expected size of ``dimension``
+    :raises ValueError: Raised if the ``dimension`` of ``x`` is not of size ``expected_size``
     """
-    if not x.shape[0] == expected_size:
-        raise ValueError(f"{object_name} is not the expected size of {expected_size}")
+    if not x.shape[dimension] == expected_size:
+        raise ValueError(
+            f"Dimension {dimension} of {object_name} is not the expected size of {expected_size}"
+        )
