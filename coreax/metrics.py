@@ -30,7 +30,7 @@ from jax.typing import ArrayLike
 
 import coreax.kernel as ck
 import coreax.util as cu
-from coreax.validation import cast_as_type, validate_is_instance
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 class Metric(ABC):
@@ -136,6 +136,12 @@ class MMD(Metric):
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
         max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+        validate_in_range(
+            x=max_size,
+            object_name="max_size",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
 
         num_points_x = len(x)
         num_points_y = len(y)
@@ -250,6 +256,13 @@ class MMD(Metric):
         x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
         y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
         max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+        validate_in_range(
+            x=max_size,
+            object_name="max_size",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
+
         num_points_x = float(len(x))
         num_points_y = float(len(y))
 
@@ -301,6 +314,13 @@ class MMD(Metric):
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
         max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+        validate_in_range(
+            x=max_size,
+            object_name="max_size",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
+
         num_points_x = weights_x.sum()
         num_points_y = weights_y.sum()
 
@@ -348,6 +368,13 @@ class MMD(Metric):
         x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
         y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
         max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+        validate_in_range(
+            x=max_size,
+            object_name="max_size",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
+
         num_points_x = len(x)
         num_points_y = len(y)
 
@@ -398,6 +425,13 @@ class MMD(Metric):
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
         max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
+        validate_in_range(
+            x=max_size,
+            object_name="max_size",
+            strict_inequalities=True,
+            lower_bound=0.0,
+        )
+
         num_points_x = len(x)
         num_points_y = len(y)
 

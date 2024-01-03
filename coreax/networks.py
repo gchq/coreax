@@ -27,7 +27,7 @@ from jax import numpy as jnp
 from jax import random
 from jax.typing import ArrayLike
 
-from coreax.validation import cast_as_type, validate_is_instance
+from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
 
 
 class ScoreNetwork(nn.Module):
@@ -86,6 +86,18 @@ def create_train_state(
     )
     data_dimension = cast_as_type(
         x=data_dimension, object_name="data_dimension", type_caster=int
+    )
+    validate_in_range(
+        x=learning_rate,
+        object_name="learning_rate",
+        strict_inequalities=False,
+        lower_bound=0.0,
+    )
+    validate_in_range(
+        x=data_dimension,
+        object_name="data_dimension",
+        strict_inequalities=False,
+        lower_bound=0.0,
     )
     validate_is_instance(x=optimiser, object_name="optimiser", expected_type=Callable)
     validate_is_instance(
