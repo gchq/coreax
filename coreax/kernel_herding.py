@@ -317,7 +317,7 @@ def fw_herding_body(
 
 def scalable_stein_kernel_pc_imq_element(*args, **kwargs) -> Callable[..., Array]:
     r"""
-    Apply rapper for scalable (parallelised) herding with a decorated function.
+    Apply wrapper for scalable (parallelised) herding with a decorated function.
 
     This function is deprecated, and scheduled for removal.
 

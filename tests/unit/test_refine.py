@@ -18,8 +18,17 @@ import unittest
 import jax.numpy as jnp
 
 import coreax.refine
+from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import DataReduction
+from coreax.reduction import Coreset
+from coreax.util import NotCalculatedError
+
+
+class CoresetMock(Coreset):
+    """Test version of :class:`Coreset` with all methods implemented."""
+
+    def fit_to_size(self, coreset_size: int) -> None:
+        raise NotImplementedError
 
 
 class TestRefine(unittest.TestCase):
@@ -27,25 +36,47 @@ class TestRefine(unittest.TestCase):
     Tests related to refine.py functions.
     """
 
+    def test_validate_coreset_ok(self) -> None:
+        """Check validation passes with populated coresubset."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        coreset.coreset = jnp.array(1)
+        coreset.coreset_indices = jnp.array(0)
+        coreax.refine.Refine._validate_coreset(coreset)
+
+    def test_validate_coreset_no_fit(self) -> None:
+        """Check validation fails when coreset has not been calculated."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        self.assertRaises(
+            NotCalculatedError, coreax.refine.Refine._validate_coreset, coreset
+        )
+
+    def test_validate_coreset_not_coresubset(self) -> None:
+        """Check validation raises TypeError when not a coresubset."""
+        coreset = CoresetMock()
+        coreset.original_data = ArrayData.load(1)
+        coreset.coreset = jnp.array(1)
+        self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
+
     def test_refine_ones(self) -> None:
         """
         Test that refining an optimal coreset leaves ``coreset_indices`` unchanged.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
 
-        data_reduction_obj = DataReduction(
-            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
-        data_reduction_obj.reduction_indices = coreset_indices
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_regular = coreax.refine.RefineRegular()
-        refine_regular.refine(data_reduction=data_reduction_obj)
+        refine_regular.refine(coreset=coreset_obj)
 
-        self.assertSetEqual(
-            set(data_reduction_obj.reduction_indices.tolist()), best_indices
-        )
+        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
 
     def test_refine_ints(self) -> None:
         """
@@ -58,25 +89,30 @@ class TestRefine(unittest.TestCase):
         Test this example, for every 2-point coreset, that refine() updates the coreset
         indices to [0, 2].
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
-        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
+        index_pairs = (
+            set(combo)
+            for combo in itertools.combinations(range(len(original_array)), 2)
+        )
 
         refine_regular = coreax.refine.RefineRegular()
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
 
-            data_reduction_obj = DataReduction(
-                original_data=x, weight=None, kernel=SquaredExponentialKernel()
+            coreset_obj = CoresetMock(
+                weights_optimiser=None,
+                kernel=SquaredExponentialKernel(),
             )
-            data_reduction_obj.reduction_indices = coreset_indices
+            coreset_obj.coreset_indices = coreset_indices
+            coreset_obj.original_data = ArrayData.load(original_array)
 
-            refine_regular.refine(data_reduction=data_reduction_obj)
+            refine_regular.refine(coreset=coreset_obj)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(
-                    set(data_reduction_obj.reduction_indices.tolist()), best_indices
+                    set(coreset_obj.coreset_indices.tolist()), best_indices
                 )
 
     def test_refine_rand(self):
@@ -90,22 +126,21 @@ class TestRefine(unittest.TestCase):
         Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
         coreset indices to ``[0, 2]``.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
         test_indices = [2, 2]
         coreset_indices = jnp.array(test_indices)
 
-        data_reduction_obj = DataReduction(
-            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
-        data_reduction_obj.reduction_indices = coreset_indices
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
-        refine_rand.refine(data_reduction=data_reduction_obj)
+        refine_rand.refine(coreset=coreset_obj)
 
-        self.assertSetEqual(
-            set(data_reduction_obj.reduction_indices.tolist()), best_indices
-        )
+        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
 
     def test_refine_reverse(self):
         """
@@ -118,42 +153,46 @@ class TestRefine(unittest.TestCase):
         Test, for every 2-point coreset, that ``refine_rev()`` updates the coreset
         indices to ``[0, 2]``.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         best_indices = {0, 2}
-        index_pairs = (set(combo) for combo in itertools.combinations(range(len(x)), 2))
+        index_pairs = (
+            set(combo)
+            for combo in itertools.combinations(range(len(original_array)), 2)
+        )
 
         refine_rev = coreax.refine.RefineReverse()
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
 
-            data_reduction_obj = DataReduction(
-                original_data=x, weight=None, kernel=SquaredExponentialKernel()
+            coreset_obj = CoresetMock(
+                weights_optimiser=None,
+                kernel=SquaredExponentialKernel(),
             )
-            data_reduction_obj.reduction_indices = coreset_indices
+            coreset_obj.coreset_indices = coreset_indices
+            coreset_obj.original_data = ArrayData.load(original_array)
 
-            refine_rev.refine(data_reduction=data_reduction_obj)
+            refine_rev.refine(coreset=coreset_obj)
 
             with self.subTest(test_indices):
                 self.assertSetEqual(
-                    set(data_reduction_obj.reduction_indices.tolist()), best_indices
+                    set(coreset_obj.coreset_indices.tolist()), best_indices
                 )
 
     def test_kernel_mean_row_sum_approx(self):
         """
         Test for error when approximate_kernel_row_sum = True and no approximator given.
         """
-        x = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
 
-        data_reduction_obj = DataReduction(
-            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=SquaredExponentialKernel()
         )
-        data_reduction_obj.reduction_indices = coreset_indices
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = ArrayData.load(original_array)
 
         refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum=True)
 
-        self.assertRaises(
-            TypeError, refine_regular.refine, data_reduction=data_reduction_obj
-        )
+        self.assertRaises(TypeError, refine_regular.refine, coreset=coreset_obj)
