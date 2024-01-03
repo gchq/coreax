@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -212,17 +212,20 @@ class TestSizeReduce(unittest.TestCase):
 class TestMapReduce(unittest.TestCase):
     """Test :class:`MapReduce`."""
 
-    def test_random_sample(self):
+    @patch.object(
+        cr.MapReduce, "_reduce_recursive", wraps=cr.MapReduce._reduce_recursive
+    )
+    def test_random_sample(self, mock_method):
         """Test map reduction with :class:`RandomSample`."""
         orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(100)))
-        strategy = cr.MapReduce(num_points=10, leaf_size=20)
+        strategy = cr.MapReduce(coreset_size=10, leaf_size=20)
         coreset = cc.RandomSample()
         coreset.original_data = orig_data
         strategy.reduce(coreset)
         # Check shape of output
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
         # Check _reduce_recursive is called at least twice
-        num_calls = strategy._reduce_recursive.call_count
+        num_calls = mock_method.call_count
         self.assertGreaterEqual(num_calls, 2)
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
@@ -233,7 +236,7 @@ class TestMapReduce(unittest.TestCase):
         n = 100
         orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(n)))
         # Check for no partitioning of orig_data when leaf_size = len(orig_data)
-        strategy = cr.MapReduce(num_points=10, leaf_size=n)
+        strategy = cr.MapReduce(coreset_size=10, leaf_size=n)
         coreset = cc.RandomSample()
         coreset.original_data = orig_data
         strategy.reduce(coreset)
