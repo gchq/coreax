@@ -324,8 +324,8 @@ class KernelHerding(Coreset):
         :returns: Updated loop variables ``current_coreset_indices`` and
             ``current_kernel_similarity_penalty``
         """
-        # Unpack the components of the updatable
-        (current_coreset_indices, current_kernel_similarity_penalty) = val
+        # Unpack the components of the loop variables
+        current_coreset_indices, current_kernel_similarity_penalty = val
 
         # Format inputs - note that the calls in jax for loops already validate the
         # ``i`` variable before calling.
@@ -365,9 +365,7 @@ class KernelHerding(Coreset):
         penalty_update = kernel_vectorised(
             x, jnp.atleast_2d(x[index_to_include_in_coreset])
         )[:, 0]
-        current_kernel_similarity_penalty = (
-            current_kernel_similarity_penalty + penalty_update
-        )
+        current_kernel_similarity_penalty += penalty_update
 
         # Update the coreset indices to include the selected point
         current_coreset_indices = current_coreset_indices.at[i].set(
