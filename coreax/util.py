@@ -35,10 +35,16 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-import coreax.coresubset as cc
-import coreax.metrics as cm
-import coreax.refine as cr
-import coreax.weights as cw
+import coreax.coresubset
+import coreax.metrics
+import coreax.refine
+import coreax.weights
+
+# TODO: REMOVE
+# import coreax.coresubset as cc
+# import coreax.metrics as cm
+# import coreax.refine as cr
+# import coreax.weights as cw
 
 #: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
@@ -273,10 +279,10 @@ T = TypeVar("T")
 def create_instance_from_factory(
     factory_obj: ClassFactory,
     class_type: str
-    | type[cc.Coreset]
-    | type[cm.Metric]
-    | type[cr.Refine]
-    | type[cw.WeightsOptimiser],
+    | type[coreax.refine.Coreset]
+    | type[coreax.metrics.Metric]
+    | type[coreax.refine.Refine]
+    | type[coreax.weights.WeightsOptimiser],
     **kwargs,
 ) -> T:
     """
