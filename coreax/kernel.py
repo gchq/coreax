@@ -390,6 +390,12 @@ class Kernel(ABC):
         # Validate inputs
         i = cast_as_type(x=i, object_name="i", type_caster=int)
         j = cast_as_type(x=j, object_name="j", type_caster=int)
+        validate_in_range(
+            x=i, object_name="i", strict_inequalities=False, lower_bound=0
+        )
+        validate_in_range(
+            x=j, object_name="i", strict_inequalities=False, lower_bound=0
+        )
         x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
         kernel_row_sum = cast_as_type(
             x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
@@ -538,6 +544,18 @@ class Kernel(ABC):
         )
         num_train_points = cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
+        )
+        validate_in_range(
+            x=num_kernel_points,
+            object_name="num_kernel_points",
+            strict_inequalities=False,
+            lower_bound=0,
+        )
+        validate_in_range(
+            x=num_train_points,
+            object_name="num_train_points",
+            strict_inequalities=False,
+            lower_bound=0,
         )
 
         # Create an approximator object
@@ -989,6 +1007,12 @@ class SteinKernel(Kernel):
         )
         output_scale = cast_as_type(
             x=output_scale, object_name="output_scale", type_caster=float
+        )
+        validate_in_range(
+            x=output_scale,
+            object_name="output_scale",
+            strict_inequalities=True,
+            lower_bound=0,
         )
 
         self.base_kernel = base_kernel
