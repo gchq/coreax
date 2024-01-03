@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from types import UnionType
-from typing import Any, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 U = TypeVar("U")

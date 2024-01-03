@@ -5,6 +5,8 @@ cand
 coreax
 coreset
 coresets
+coresubset
+coresubsets
 diag
 docstrings
 elementwise
