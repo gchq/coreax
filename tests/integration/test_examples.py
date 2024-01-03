@@ -23,7 +23,7 @@ from unittest.mock import call, patch
 
 from examples.david import main as david_main
 from examples.pounce import main as pounce_main
-from examples.pounce_sm import main as pounce_sm_main
+from examples.pounce_map_reduce_ssm import main as pounce_sm_main
 from examples.weighted_herding import main as weighted_herding_main
 from examples.weighted_herding_sm import main as weighted_herding_sm_main
 
@@ -106,9 +106,9 @@ class TestExamples(unittest.TestCase):
 
     def test_pounce_sm(self) -> None:
         """
-        Test pounce_sm.py example.
+        Test pounce_map_reduce_ssm.py example.
 
-        An end-to-end test to check pounce_sm.py runs without error, generates output,
+        An end-to-end test to check pounce_map_reduce_ssm.py runs without error, generates output,
         and has coreset MMD better than MMD from random sampling.
         """
         directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
@@ -121,7 +121,7 @@ class TestExamples(unittest.TestCase):
                     sub.unlink()
 
         with patch("builtins.print"):
-            # run pounce_sm.py
+            # run pounce_map_reduce_ssm.py
             mmd_coreset, mmd_random = pounce_sm_main(directory=directory)
 
             self.assert_is_file(directory / Path("coreset_sm/coreset_sm.gif"))

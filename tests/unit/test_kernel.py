@@ -18,8 +18,8 @@ import numpy as np
 import scipy.stats
 from jax import numpy as jnp
 
-import coreax.approximation as ca
-import coreax.kernel as ck
+import coreax.approximation
+import coreax.kernel
 
 
 class TestKernelABC(unittest.TestCase):
@@ -32,18 +32,18 @@ class TestKernelABC(unittest.TestCase):
         Test creation of approximation object within the Kernel class.
         """
         # Patch the abstract methods of the Kernel ABC, so it can be created
-        p = patch.multiple(ck.Kernel, __abstractmethods__=set())
+        p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
         p.start()
 
         # Define known approximator names
         known_approximators = {
-            "random": ca.RandomApproximator,
-            "nystrom": ca.NystromApproximator,
-            "annchor": ca.ANNchorApproximator,
+            "random": coreax.approximation.RandomApproximator,
+            "nystrom": coreax.approximation.NystromApproximator,
+            "annchor": coreax.approximation.ANNchorApproximator,
         }
 
         # Create the kernel
-        kernel = ck.Kernel()
+        kernel = coreax.kernel.Kernel()
 
         # Call the approximation method with an invalid approximator string
         self.assertRaises(KeyError, kernel.create_approximator, approximator="example")
@@ -57,8 +57,10 @@ class TestKernelABC(unittest.TestCase):
         # Pre-create a KernelMeanApproximator and check that it is returned when passed
         self.assertTrue(
             isinstance(
-                kernel.create_approximator(approximator=ca.RandomApproximator),
-                ca.RandomApproximator,
+                kernel.create_approximator(
+                    approximator=coreax.approximation.RandomApproximator
+                ),
+                coreax.approximation.RandomApproximator,
             )
         )
 
@@ -74,7 +76,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
-        self.assertRaises(ValueError, ck.SquaredExponentialKernel, length_scale=-1.0)
+        self.assertRaises(
+            ValueError, coreax.kernel.SquaredExponentialKernel, length_scale=-1.0
+        )
 
     def test_squared_exponential_kernel_compute_two_floats(self) -> None:
         r"""
@@ -115,7 +119,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_distance = 0.48860678
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -173,7 +177,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_distance = 0.279923327
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -224,7 +228,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the Gram matrix between ``x`` and ``y``
         output = kernel.compute(x, y)
@@ -261,7 +265,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -302,7 +306,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(
+        kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale, output_scale=output_scale
         )
 
@@ -343,7 +347,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Evaluate the gradient
         output = kernel.grad_y(x, y)
@@ -379,7 +383,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         y = np.array([10.0, 3.0, 0.0]).reshape(-1, 1)
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 3])
@@ -410,7 +414,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         kernel_row_sum = jnp.zeros(len(x))
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define expected output for pairwise distances - in this case we are looking
         # from the start index (0) to start index + max_size (0 + 3) in both axis (rows
@@ -442,7 +446,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define expected output for pairwise distances
         expected_output = np.zeros([5, 5])
@@ -469,7 +473,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
         # Define the kernel object
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define expected output for pairwise distances, then take the mean of them
         expected_output = np.zeros([5, 5])
@@ -506,7 +510,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                 )
 
         # Compute the normalised PDF output using the kernel class
-        kernel = ck.SquaredExponentialKernel(
+        kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1 / (np.sqrt(2 * np.pi) * length_scale),
         )
@@ -535,7 +539,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     2 * np.exp(-dot_product) * (dimension - 2 * dot_product)
                 )
         # Compute output using Kernel class
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -567,7 +571,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     * (dimension - dot_product / length_scale**2)
                 )
         # Compute output using Kernel class
-        kernel = ck.SquaredExponentialKernel(
+        kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale, output_scale=output_scale
         )
         output = kernel.divergence_x_grad_y(x, y)
@@ -587,7 +591,7 @@ class TestLaplacianKernel(unittest.TestCase):
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
-        self.assertRaises(ValueError, ck.LaplacianKernel, length_scale=-1.0)
+        self.assertRaises(ValueError, coreax.kernel.LaplacianKernel, length_scale=-1.0)
 
     def test_laplacian_kernel_compute_two_floats(self) -> None:
         r"""
@@ -628,7 +632,7 @@ class TestLaplacianKernel(unittest.TestCase):
         expected_distance = 0.62035410351
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -685,7 +689,7 @@ class TestLaplacianKernel(unittest.TestCase):
         expected_distance = 0.279923327
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the distance between the two vectors x
         # and y
@@ -737,7 +741,7 @@ class TestLaplacianKernel(unittest.TestCase):
         )
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
 
         # Evaluate the kernel - which computes the Gram matrix between ``x`` and ``y``
         output = kernel.compute(x, y)
@@ -775,7 +779,7 @@ class TestLaplacianKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
 
         # Evaluate the gradient
         output = kernel.grad_x(x, y)
@@ -817,7 +821,7 @@ class TestLaplacianKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(
+        kernel = coreax.kernel.LaplacianKernel(
             length_scale=length_scale, output_scale=output_scale
         )
 
@@ -859,7 +863,7 @@ class TestLaplacianKernel(unittest.TestCase):
                 )
 
         # Create the kernel
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
 
         # Evaluate the gradient
         output = kernel.grad_y(x, y)
@@ -890,7 +894,7 @@ class TestLaplacianKernel(unittest.TestCase):
                     * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
                 )
         # Compute output using Kernel class
-        kernel = ck.LaplacianKernel(length_scale=length_scale)
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -919,7 +923,7 @@ class TestLaplacianKernel(unittest.TestCase):
                     * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
                 )
         # Compute output using Kernel class
-        kernel = ck.LaplacianKernel(
+        kernel = coreax.kernel.LaplacianKernel(
             length_scale=length_scale, output_scale=output_scale
         )
         output = kernel.divergence_x_grad_y(x, y)
@@ -939,7 +943,7 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
-        self.assertRaises(ValueError, ck.PCIMQKernel, length_scale=-1.0)
+        self.assertRaises(ValueError, coreax.kernel.PCIMQKernel, length_scale=-1.0)
 
     def test_pcimq_kernel_compute(self) -> None:
         r"""
@@ -963,7 +967,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 )
 
         # Compute distance using the kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale)
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
         output = kernel.compute(x, y)
 
         # Check output matches expected
@@ -989,7 +993,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale)
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
         output = kernel.grad_x(x, y)
 
         # Check output matches expected
@@ -1015,7 +1019,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale)
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
@@ -1046,7 +1050,9 @@ class TestPCIMQKernel(unittest.TestCase):
                 )
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=output_scale)
+        kernel = coreax.kernel.PCIMQKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
         output = kernel.grad_y(x, y)
 
         # Check output matches expected
@@ -1074,7 +1080,7 @@ class TestPCIMQKernel(unittest.TestCase):
                 ] = dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
 
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale)
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -1112,7 +1118,9 @@ class TestPCIMQKernel(unittest.TestCase):
                     )
                 )
         # Compute output using Kernel class
-        kernel = ck.PCIMQKernel(length_scale=length_scale, output_scale=output_scale)
+        kernel = coreax.kernel.PCIMQKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
         output = kernel.divergence_x_grad_y(x, y)
 
         # Check output matches expected
@@ -1148,8 +1156,8 @@ class TestSteinKernel(unittest.TestCase):
         expected_size = (10, 5)
 
         # Compute output using Kernel class
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(length_scale=length_scale),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(length_scale=length_scale),
             score_function=score_function,
         )
         output = kernel.compute(x, y)
@@ -1226,8 +1234,8 @@ class TestSteinKernel(unittest.TestCase):
         y = np.random.random((num_points_y, dimension))
 
         # Compute output using Kernel class
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(length_scale=length_scale),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(length_scale=length_scale),
             score_function=score_function,
         )
 

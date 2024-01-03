@@ -17,14 +17,14 @@ import unittest
 
 import jax.numpy as jnp
 
+import coreax.data
+import coreax.kernel
+import coreax.reduction
 import coreax.refine
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import Coreset
-from coreax.util import NotCalculatedError
+import coreax.util
 
 
-class CoresetMock(Coreset):
+class CoresetMock(coreax.reduction.Coreset):
     """Test version of :class:`Coreset` with all methods implemented."""
 
     def fit_to_size(self, coreset_size: int) -> None:
@@ -39,7 +39,7 @@ class TestRefine(unittest.TestCase):
     def test_validate_coreset_ok(self) -> None:
         """Check validation passes with populated coresubset."""
         coreset = CoresetMock()
-        coreset.original_data = ArrayData.load(1)
+        coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
         coreax.refine.Refine._validate_coreset(coreset)
@@ -47,15 +47,17 @@ class TestRefine(unittest.TestCase):
     def test_validate_coreset_no_fit(self) -> None:
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
-        coreset.original_data = ArrayData.load(1)
+        coreset.original_data = coreax.data.ArrayData.load(1)
         self.assertRaises(
-            NotCalculatedError, coreax.refine.Refine._validate_coreset, coreset
+            coreax.util.NotCalculatedError,
+            coreax.refine.Refine._validate_coreset,
+            coreset,
         )
 
     def test_validate_coreset_not_coresubset(self) -> None:
         """Check validation raises TypeError when not a coresubset."""
         coreset = CoresetMock()
-        coreset.original_data = ArrayData.load(1)
+        coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
 
@@ -68,10 +70,11 @@ class TestRefine(unittest.TestCase):
         coreset_indices = jnp.array(list(best_indices))
 
         coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=SquaredExponentialKernel()
+            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = ArrayData.load(original_array)
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
 
         refine_regular = coreax.refine.RefineRegular()
         refine_regular.refine(coreset=coreset_obj)
@@ -103,10 +106,11 @@ class TestRefine(unittest.TestCase):
 
             coreset_obj = CoresetMock(
                 weights_optimiser=None,
-                kernel=SquaredExponentialKernel(),
+                kernel=coreax.kernel.SquaredExponentialKernel(),
             )
             coreset_obj.coreset_indices = coreset_indices
-            coreset_obj.original_data = ArrayData.load(original_array)
+            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+            coreset_obj.coreset = original_array[coreset_indices, :]
 
             refine_regular.refine(coreset=coreset_obj)
 
@@ -132,10 +136,11 @@ class TestRefine(unittest.TestCase):
         coreset_indices = jnp.array(test_indices)
 
         coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=SquaredExponentialKernel()
+            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = ArrayData.load(original_array)
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
 
         refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
         refine_rand.refine(coreset=coreset_obj)
@@ -167,10 +172,11 @@ class TestRefine(unittest.TestCase):
 
             coreset_obj = CoresetMock(
                 weights_optimiser=None,
-                kernel=SquaredExponentialKernel(),
+                kernel=coreax.kernel.SquaredExponentialKernel(),
             )
             coreset_obj.coreset_indices = coreset_indices
-            coreset_obj.original_data = ArrayData.load(original_array)
+            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+            coreset_obj.coreset = original_array[coreset_indices, :]
 
             refine_rev.refine(coreset=coreset_obj)
 
@@ -188,11 +194,11 @@ class TestRefine(unittest.TestCase):
         coreset_indices = jnp.array(list(best_indices))
 
         coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=SquaredExponentialKernel()
+            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
         )
         coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = ArrayData.load(original_array)
-
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
         refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum=True)
 
         self.assertRaises(TypeError, refine_regular.refine, coreset=coreset_obj)

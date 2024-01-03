@@ -19,9 +19,9 @@ import numpy as np
 from jax import jit
 from scipy.stats import ks_2samp
 
-import coreax.coresubset as cs
-import coreax.kernel as ck
-from coreax.util import jit_test
+import coreax.coresubset
+import coreax.kernel
+import coreax.util
 
 
 class TestCoreSubset(unittest.TestCase):
@@ -61,16 +61,16 @@ class TestCoreSubset(unittest.TestCase):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
 
         # Create a kernel herding object
-        herding_object = cs.KernelHerding(kernel=kernel)
+        herding_object = coreax.coresubset.KernelHerding(kernel=kernel)
 
         # Test performance
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: herding_object._greedy_body(
                         *args, **kwargs

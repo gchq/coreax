@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
 from jax import Array
 
-import coreax.coresubset as cc
-import coreax.data as cd
-import coreax.kernel as ck
-import coreax.reduction as cr
-import coreax.refine as c_ref
-import coreax.util as cu
-import coreax.weights as cw
+import coreax.coresubset
+import coreax.data
+import coreax.kernel
+import coreax.reduction
+import coreax.refine
+import coreax.util
+import coreax.weights
 
 
 class MockCreatedInstance:
@@ -34,7 +34,7 @@ class MockCreatedInstance:
         return tuple(*args)
 
 
-class CoresetMock(cr.Coreset):
+class CoresetMock(coreax.reduction.Coreset):
     """Test version of :class:`Coreset` with all methods implemented."""
 
     def fit_to_size(self, coreset_size: int) -> None:
@@ -50,19 +50,20 @@ class TestCoreset(unittest.TestCase):
 
         Also test attributes are populated by init.
         """
-        # Define original instance
-        weights_optimiser = MagicMock(bound=cw.WeightsOptimiser)
-        kernel = MagicMock(bound=ck.Kernel)
-        refine_method = MagicMock(bound=c_ref.Refine)
-        original_data = MagicMock()
-        coreset = MagicMock()
-        coreset_indices = MagicMock()
-        kernel_matrix_row_sum_mean = MagicMock()
-        original = CoresetMock(
-            weights_optimiser=weights_optimiser,
-            kernel=kernel,
-            refine_method=refine_method,
-        )
+        with patch("coreax.validation.validate_is_instance") as _:
+            # Define original instance
+            weights_optimiser = MagicMock(bound=coreax.weights.WeightsOptimiser)
+            kernel = MagicMock(bound=coreax.kernel.Kernel)
+            refine_method = MagicMock(bound=coreax.refine.Refine)
+            original_data = MagicMock()
+            coreset = MagicMock()
+            coreset_indices = MagicMock()
+            kernel_matrix_row_sum_mean = MagicMock()
+            original = CoresetMock(
+                weights_optimiser=weights_optimiser,
+                kernel=kernel,
+                refine_method=refine_method,
+            )
         original.original_data = original_data
         original.coreset = coreset
         original.coreset_indices = coreset_indices
@@ -90,52 +91,57 @@ class TestCoreset(unittest.TestCase):
     def test_fit(self):
         """Test that original data is saved and reduction strategy called."""
         coreset = CoresetMock()
-        original_data = MagicMock(spec=cd.DataReader)
-        strategy = MagicMock(spec=cr.ReductionStrategy)
+        original_data = MagicMock(spec=coreax.data.DataReader)
+        strategy = MagicMock(spec=coreax.reduction.ReductionStrategy)
         coreset.fit(original_data, strategy)
         self.assertIs(coreset.original_data, original_data)
         strategy.reduce.assert_called_once_with(coreset)
 
     def test_solve_weights(self):
         """Check that solve_weights is called correctly."""
-        weights_optimiser = MagicMock()
-        coreset = CoresetMock(weights_optimiser=weights_optimiser)
-        coreset.original_data = MagicMock(spec=cd.DataReader)
+        with (patch("coreax.validation.validate_is_instance") as _,):
+            weights_optimiser = MagicMock()
+            coreset = CoresetMock(weights_optimiser=weights_optimiser)
+            coreset.original_data = MagicMock(spec=coreax.data.DataReader)
 
-        # First try prior to fitting a coreset
-        self.assertRaises(cu.NotCalculatedError, coreset.solve_weights)
+            # First try prior to fitting a coreset
+            self.assertRaises(coreax.util.NotCalculatedError, coreset.solve_weights)
 
-        # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=cr.Coreset)
-        coreset.solve_weights()
-        weights_optimiser.solve.assert_called_once_with(
-            coreset.original_data.pre_coreset_array, coreset.coreset
-        )
+            # Now test with a calculated coreset
+            coreset.coreset = MagicMock(spec=coreax.reduction.Coreset)
+            coreset.solve_weights()
+            weights_optimiser.solve.assert_called_once_with(
+                coreset.original_data.pre_coreset_array, coreset.coreset
+            )
 
     def test_compute_metric(self):
         """Check that compute_metric is called correctly."""
-        coreset = CoresetMock()
-        coreset.original_data = MagicMock(spec=cd.DataReader)
-        metric = MagicMock()
-        block_size = 10
+        with patch("coreax.validation.validate_is_instance") as _:
+            coreset = CoresetMock()
+            coreset.original_data = MagicMock(spec=coreax.data.DataReader)
+            metric = MagicMock()
+            block_size = 10
 
-        # First try prior to fitting a coreset
-        self.assertRaises(
-            cu.NotCalculatedError, coreset.compute_metric, metric, block_size
-        )
+            # First try prior to fitting a coreset
+            self.assertRaises(
+                coreax.util.NotCalculatedError,
+                coreset.compute_metric,
+                metric,
+                block_size,
+            )
 
-        # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=Array)
-        coreset.compute_metric(metric, block_size)
-        metric.compute.assert_called_once_with(
-            coreset.original_data.pre_coreset_array, coreset.coreset, block_size
-        )
+            # Now test with a calculated coreset
+            coreset.coreset = MagicMock(spec=Array)
+            coreset.compute_metric(metric, block_size)
+            metric.compute.assert_called_once_with(
+                coreset.original_data.pre_coreset_array, coreset.coreset, block_size
+            )
 
     def test_refine(self):
         """Check that refine is called correctly."""
         coreset = CoresetMock()
-        coreset.original_data = MagicMock(spec=cd.DataReader)
-        refine_method = MagicMock(spec=c_ref.Refine)
+        coreset.original_data = MagicMock(spec=coreax.data.DataReader)
+        refine_method = MagicMock(spec=coreax.refine.Refine)
 
         # Test with refine_method unset
         self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
@@ -148,34 +154,36 @@ class TestCoreset(unittest.TestCase):
 
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
-        array = jnp.array([[1, 2], [3, 4]])
-        indices = jnp.array([5, 6])
-        this_obj = CoresetMock()
-        other = CoresetMock()
-        other.coreset = array
-        other.coreset_indices = indices
-        this_obj.copy_fit(other)
-        self.assertIs(this_obj.coreset, array)
-        self.assertIs(this_obj.coreset_indices, indices)
+        with patch("coreax.validation.validate_is_instance") as _:
+            array = jnp.array([[1, 2], [3, 4]])
+            indices = jnp.array([5, 6])
+            this_obj = CoresetMock()
+            other = CoresetMock()
+            other.coreset = array
+            other.coreset_indices = indices
+            this_obj.copy_fit(other)
+            self.assertIs(this_obj.coreset, array)
+            self.assertIs(this_obj.coreset_indices, indices)
 
     def test_copy_fit_deep(self):
         """Check that copy_fit with deep=True creates copies of coreset arrays."""
-        array = jnp.array([[1, 2], [3, 4]])
-        indices = jnp.array([5, 6])
-        this_obj = CoresetMock()
-        other = CoresetMock()
-        other.coreset = array
-        other.coreset_indices = indices
-        this_obj.copy_fit(other, True)
-        self.assertIsNot(this_obj.coreset, array)
-        np.testing.assert_equal(this_obj.coreset, array)
-        self.assertIsNot(this_obj.coreset_indices, indices)
-        np.testing.assert_equal(this_obj.coreset_indices, indices)
+        with patch("coreax.validation.validate_is_instance") as _:
+            array = jnp.array([[1, 2], [3, 4]])
+            indices = jnp.array([5, 6])
+            this_obj = CoresetMock()
+            other = CoresetMock()
+            other.coreset = array
+            other.coreset_indices = indices
+            this_obj.copy_fit(other, True)
+            self.assertIsNot(this_obj.coreset, array)
+            np.testing.assert_equal(this_obj.coreset, array)
+            self.assertIsNot(this_obj.coreset_indices, indices)
+            np.testing.assert_equal(this_obj.coreset_indices, indices)
 
     def test_validate_fitted_ok(self):
         """Check no error raised when fit has been called."""
         obj = CoresetMock()
-        obj.original_data = cd.ArrayData(1, 1)
+        obj.original_data = coreax.data.ArrayData(1, 1)
         obj.coreset = jnp.array(1)
         obj.validate_fitted("func")
 
@@ -183,13 +191,13 @@ class TestCoreset(unittest.TestCase):
         """Check error is raised when original data is missing."""
         obj = CoresetMock()
         obj.coreset = jnp.array(1)
-        self.assertRaises(cu.NotCalculatedError, obj.validate_fitted, "func")
+        self.assertRaises(coreax.util.NotCalculatedError, obj.validate_fitted, "func")
 
     def test_validate_fitted_no_coreset(self):
         """Check error is raised when coreset is missing."""
         obj = CoresetMock()
-        obj.original_data = cd.ArrayData(1, 1)
-        self.assertRaises(cu.NotCalculatedError, obj.validate_fitted, "func")
+        obj.original_data = coreax.data.ArrayData(1, 1)
+        self.assertRaises(coreax.util.NotCalculatedError, obj.validate_fitted, "func")
 
 
 class TestSizeReduce(unittest.TestCase):
@@ -197,9 +205,9 @@ class TestSizeReduce(unittest.TestCase):
 
     def test_random_sample(self):
         """Test reduction with :class:`RandomSample`."""
-        orig_data = cd.ArrayData.load(jnp.array([i, 2 * i] for i in range(20)))
-        strategy = cr.SizeReduce(10)
-        coreset = cc.RandomSample()
+        orig_data = coreax.data.ArrayData.load(jnp.array([i, 2 * i] for i in range(20)))
+        strategy = coreax.reduction.SizeReduce(10)
+        coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
         strategy.reduce(coreset)
         # Check shape of output
