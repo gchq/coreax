@@ -401,7 +401,7 @@ class Kernel(ABC):
             x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
         )
         validate_array_size(
-            x=kernel_row_sum, object_name="kernel_row_sum", expected_size=1
+            x=kernel_row_sum, object_name="kernel_row_sum", dimension=0, expected_size=1
         )
         validate_is_instance(
             x=kernel_pairwise,
