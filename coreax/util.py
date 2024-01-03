@@ -26,8 +26,9 @@ class factories and checks for numerical precision.
 from __future__ import annotations
 
 import inspect
+import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
@@ -41,11 +42,6 @@ import coreax.weights as cw
 
 #: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
-
-#: Pairwise kernel evaluation function if gradients and bandwidth are defined.
-KernelFunctionWithGrads = Callable[
-    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
-]
 
 
 class NotCalculatedError(Exception):
@@ -271,6 +267,9 @@ class ClassFactory:
         return class_obj
 
 
+T = TypeVar("T")
+
+
 def create_instance_from_factory(
     factory_obj: ClassFactory,
     class_type: str
@@ -279,7 +278,7 @@ def create_instance_from_factory(
     | type[cr.Refine]
     | type[cw.WeightsOptimiser],
     **kwargs,
-) -> cc.Coreset | cm.Metric | cr.Refine | cw.WeightsOptimiser:
+) -> T:
     """
     Create a refine object for use with the fit method.
 
@@ -295,3 +294,24 @@ def create_instance_from_factory(
         class_obj,
         **kwargs,
     )
+
+
+def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
+    """
+    Verify JIT performance by comparing timings of a before and after run of a function.
+
+    The function is called with supplied arguments twice, and timed for each run. These
+    timings are returned in a 2-tuple.
+
+    :param fn: Function callable to test
+    :return: (First run time, Second run time)
+    """
+    start_time = time.time()
+    fn(*args, **kwargs)
+    end_time = time.time()
+    pre_delta = end_time - start_time
+    start_time = time.time()
+    fn(*args, **kwargs)
+    end_time = time.time()
+    post_delta = end_time - start_time
+    return pre_delta, post_delta

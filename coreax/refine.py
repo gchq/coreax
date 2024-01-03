@@ -120,13 +120,19 @@ class Refine(ABC):
         if coreset.coreset_indices is None:
             raise TypeError("Cannot refine when not finding a coresubset")
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         # dynamic values:
         children = ()

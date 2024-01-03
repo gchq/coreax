@@ -11,36 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
 import unittest
-from collections.abc import Callable
 
 import numpy as np
 from jax import jit
 from scipy.stats import ks_2samp
 
 import coreax.kernel as ck
-
-
-def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
-    """
-    Verify JIT performance by comparing timings of a before and after run of a function.
-
-    The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple
-
-    :param fn: function callable to test
-    :return: (first run time, second run time)
-    """
-    start_time = time.time()
-    fn(*args, **kwargs)
-    end_time = time.time()
-    pre_delta = end_time - start_time
-    start_time = time.time()
-    fn(*args, **kwargs)
-    end_time = time.time()
-    post_delta = end_time - start_time
-    return pre_delta, post_delta
+from coreax.util import jit_test
 
 
 class TestKernel(unittest.TestCase):
@@ -69,7 +47,7 @@ class TestSquaredExponentialKernel(TestKernel):
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -102,7 +80,7 @@ class TestSquaredExponentialKernel(TestKernel):
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -135,7 +113,7 @@ class TestSquaredExponentialKernel(TestKernel):
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -168,7 +146,7 @@ class TestSquaredExponentialKernel(TestKernel):
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -211,7 +189,7 @@ class TestLaplacianKernel(TestKernel):
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -244,7 +222,7 @@ class TestLaplacianKernel(TestKernel):
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -277,7 +255,7 @@ class TestLaplacianKernel(TestKernel):
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -310,7 +288,7 @@ class TestLaplacianKernel(TestKernel):
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -353,7 +331,7 @@ class TestPCIMQKernel(TestKernel):
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -386,7 +364,7 @@ class TestPCIMQKernel(TestKernel):
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -419,7 +397,7 @@ class TestPCIMQKernel(TestKernel):
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -452,7 +430,7 @@ class TestPCIMQKernel(TestKernel):
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -495,7 +473,7 @@ class TestSteinKernel(TestKernel):
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -535,7 +513,7 @@ class TestSteinKernel(TestKernel):
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -575,7 +553,7 @@ class TestSteinKernel(TestKernel):
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -615,7 +593,7 @@ class TestSteinKernel(TestKernel):
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
