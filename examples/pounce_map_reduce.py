@@ -42,7 +42,7 @@ from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.metrics import MMD
-from coreax.reduction import SizeReduce
+from coreax.reduction import MapReduce
 from coreax.score_matching import KernelDensityMatching
 
 
@@ -65,7 +65,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Define path to directory containing video as sequence of images
     file_name = Path("pounce.gif")
-    coreset_dir = directory / Path("coreset")
+    coreset_dir = directory / Path("coreset_map_reduce_sliced_score_matching")
     coreset_dir.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
@@ -96,29 +96,13 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     )
     length_scale = median_heuristic(principle_components_data[idx])
 
-    # TODO: Why does this not work?
-    # # Learn a score function via kernel density estimation
-    # sliced_score_matcher = KernelDensityMatching(
-    #     length_scale=length_scale, kde_data=principle_components_data[idx, :]
-    # )
-    # score_function = sliced_score_matcher.match()
-
-    # TODO: Temp until KernelDensityMatching is fixed
-    from jax.random import rademacher
-
-    from coreax.score_matching import SlicedScoreMatching
-
-    sliced_score_matcher = SlicedScoreMatching(
-        random_generator=rademacher,
-        use_analytic=True,
-        num_epochs=100,
-        num_random_vectors=1,
-        sigma=1.0,
-        gamma=0.95,
+    # Learn a score function via kernel density estimation
+    sliced_score_matcher = KernelDensityMatching(
+        length_scale=length_scale, kde_data=principle_components_data[idx]
     )
-    score_function = sliced_score_matcher.match(principle_components_data)
+    score_function = sliced_score_matcher.match()
 
-    # Run kernel herding with a Stein kernel
+    # Run kernel herding with a Stein kernel in block mode to avoid GPU memory issues
     herding_object = KernelHerding(
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
@@ -126,7 +110,8 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
         )
     )
     herding_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
     )
 
     # Get and sort the coreset indices ready for producing the output video
@@ -148,7 +133,8 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     # Generate a coreset via uniform random sampling for comparison
     random_sample_object = RandomSample(unique=True)
     random_sample_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
     )
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
@@ -162,7 +148,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
-    imageio.mimsave(coreset_dir / Path("coreset.gif"), coreset_images)
+    imageio.mimsave(coreset_dir / Path("coreset_map_reduce.gif"), coreset_images)
 
     # Plot to visualise which frames were chosen from the sequence action frames are
     # where the "pounce" occurs
@@ -178,7 +164,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
-    plt.savefig(directory / "coreset" / "frames.png")
+    plt.savefig(directory / "coreset_map_reduce" / "frames_map_reduce.png")
     plt.close()
 
     return (

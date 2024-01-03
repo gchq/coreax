@@ -21,9 +21,9 @@ from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
 
-import coreax.kernel as ck
-import coreax.networks as cn
-import coreax.score_matching as csm
+import coreax.kernel
+import coreax.networks
+import coreax.score_matching
 
 
 class TestNetwork(nn.Module):
@@ -64,8 +64,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -98,8 +98,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -141,8 +141,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -198,8 +198,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -245,7 +245,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 1.0
 
         # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -295,7 +295,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output_general = 7456.0
 
         # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -346,7 +346,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 0.5
 
         # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -387,7 +387,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 7456.0
 
         # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -424,7 +424,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -475,7 +475,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -514,7 +514,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = np.ones((10, 1), dtype=float) * 1226.5
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
         output = sliced_score_matcher._loss(score_function)(x, random_vectors)
@@ -530,7 +530,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         score_network = TestNetwork(2, 2)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher,
             use_analytic=True,
             random_key=jax.random.PRNGKey(0),
@@ -538,7 +538,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
-        state = cn.create_train_state(
+        state = coreax.networks.create_train_state(
             score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
         )
 
@@ -593,7 +593,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -638,7 +638,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -691,7 +691,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -764,7 +764,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,

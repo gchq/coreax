@@ -16,13 +16,7 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
 
-from coreax.util import (
-    ClassFactory,
-    call_with_excess_kwargs,
-    pairwise_difference,
-    squared_distance,
-    squared_distance_pairwise,
-)
+import coreax.util
 
 
 class TestUtil(unittest.TestCase):
@@ -36,11 +30,11 @@ class TestUtil(unittest.TestCase):
         """
         x, y = ortho_group.rvs(dim=2)
         expected_distance = jnp.linalg.norm(x - y) ** 2
-        output_distance = squared_distance(x, y)
+        output_distance = coreax.util.squared_distance(x, y)
         self.assertAlmostEqual(output_distance, expected_distance, places=3)
-        output_distance = squared_distance(x, x)
+        output_distance = coreax.util.squared_distance(x, x)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
-        output_distance = squared_distance(y, y)
+        output_distance = coreax.util.squared_distance(y, y)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
 
     def test_squared_distance_dist_pairwise(self) -> None:
@@ -50,7 +44,7 @@ class TestUtil(unittest.TestCase):
         # create an orthonormal matrix
         dimension = 3
         orthonormal_matrix = ortho_group.rvs(dim=dimension)
-        inner_distance = squared_distance_pairwise(
+        inner_distance = coreax.util.squared_distance_pairwise(
             orthonormal_matrix, orthonormal_matrix
         )
         # Use original numpy because Jax arrays are immutable
@@ -73,7 +67,7 @@ class TestUtil(unittest.TestCase):
         x_array = np.random.random((num_points_x, dimension))
         y_array = np.random.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
-        output = pairwise_difference(x_array, y_array)
+        output = coreax.util.pairwise_difference(x_array, y_array)
         self.assertAlmostEqual(
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )
@@ -93,7 +87,9 @@ class TestCallWithExcessKwargs(unittest.TestCase):
 
     def test_function_empty(self):
         """Test that no arguments are passed to trial function."""
-        self.assertEqual(call_with_excess_kwargs(self.trial_function), (1, 2, 3))
+        self.assertEqual(
+            coreax.util.call_with_excess_kwargs(self.trial_function), (1, 2, 3)
+        )
 
     def test_function_mixed(self):
         """
@@ -102,7 +98,8 @@ class TestCallWithExcessKwargs(unittest.TestCase):
         For trial function.
         """
         self.assertEqual(
-            call_with_excess_kwargs(self.trial_function, 4, c=5, d=6), (4, 2, 5)
+            coreax.util.call_with_excess_kwargs(self.trial_function, 4, c=5, d=6),
+            (4, 2, 5),
         )
 
     def test_class_mixed(self):
@@ -111,7 +108,7 @@ class TestCallWithExcessKwargs(unittest.TestCase):
 
         For trial class.
         """
-        actual = call_with_excess_kwargs(self.TrialClass, 4, c=5, d=6)
+        actual = coreax.util.call_with_excess_kwargs(self.TrialClass, 4, c=5, d=6)
         self.assertEqual(actual.a, 4)
         self.assertEqual(actual.b, 2)
         self.assertEqual(actual.c, 5)
@@ -147,7 +144,7 @@ class TestClassFactory(unittest.TestCase):
         """
         Test factory by trying all operations.
         """
-        factory = ClassFactory(self.BaseClass)
+        factory = coreax.util.ClassFactory(self.BaseClass)
 
         # Register some objects
         factory.register("a", self.AClass)

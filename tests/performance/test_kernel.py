@@ -17,8 +17,8 @@ import numpy as np
 from jax import jit
 from scipy.stats import ks_2samp
 
-import coreax.kernel as ck
-from coreax.util import jit_test
+import coreax.kernel
+import coreax.util
 
 
 class TestKernel(unittest.TestCase):
@@ -63,11 +63,11 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -96,11 +96,11 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -129,11 +129,11 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -162,11 +162,11 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -205,11 +205,11 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -238,11 +238,11 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -271,11 +271,11 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -304,11 +304,11 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -347,11 +347,11 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -380,11 +380,11 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -413,11 +413,11 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -446,11 +446,11 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -493,14 +493,14 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -533,14 +533,14 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -573,14 +573,14 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
@@ -613,14 +613,14 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
