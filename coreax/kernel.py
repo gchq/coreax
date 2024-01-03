@@ -67,8 +67,12 @@ import jax.numpy as jnp
 from jax import Array, grad, jacrev, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.approximation as ca
-import coreax.util as cu
+import coreax.approximation
+import coreax.util
+
+# TODO: REMOVE
+# import coreax.approximation as ca
+# import coreax.util as cu
 
 
 @jit
@@ -84,7 +88,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         zero-dimensional array
     """
     # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
+    square_distances = jnp.triu(coreax.util.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
     median_square_distance = jnp.median(
         square_distances[jnp.triu_indices_from(square_distances, k=1)]
@@ -330,7 +334,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
+        kernel_pairwise: coreax.util.KernelFunction,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -444,7 +448,7 @@ class Kernel(ABC):
     def approximate_kernel_matrix_row_sum_mean(
         self,
         x: ArrayLike,
-        approximator: str | type[ca.KernelMeanApproximator],
+        approximator: str | type[coreax.approximation.KernelMeanApproximator],
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -477,11 +481,11 @@ class Kernel(ABC):
 
     def create_approximator(
         self,
-        approximator: str | type[ca.KernelMeanApproximator],
+        approximator: str | type[coreax.approximation.KernelMeanApproximator],
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
-    ) -> ca.KernelMeanApproximator:
+    ) -> coreax.approximation.KernelMeanApproximator:
         r"""
         Create an approximator object for use with the kernel matrix row sum mean.
 
@@ -493,11 +497,11 @@ class Kernel(ABC):
             regression. This is ignored if not applicable to the approximator method.
         :return: Approximator object
         """
-        approximator_obj = ca.approximator_factory.get(approximator)
+        approximator_obj = coreax.approximation.approximator_factory.get(approximator)
 
         # Initialise, accounting for different classes having different numbers of
         # parameters
-        return cu.call_with_excess_kwargs(
+        return coreax.util.call_with_excess_kwargs(
             approximator_obj,
             kernel=self,
             random_key=random_key,
@@ -550,7 +554,7 @@ class SquaredExponentialKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         return self.output_scale * jnp.exp(
-            -cu.squared_distance(x, y) / (2 * self.length_scale**2)
+            -coreax.util.squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     def _grad_x_elementwise(
@@ -618,7 +622,7 @@ class SquaredExponentialKernel(Kernel):
         k = self._compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
-        return scale * k * (d - scale * cu.squared_distance(x, y))
+        return scale * k * (d - scale * coreax.util.squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
@@ -783,7 +787,7 @@ class PCIMQKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         scaling = 2 * self.length_scale**2
-        mq_array = cu.squared_distance(x, y) / scaling
+        mq_array = coreax.util.squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     def _grad_x_elementwise(
@@ -852,7 +856,7 @@ class PCIMQKernel(Kernel):
         return (
             self.output_scale
             / scale
-            * (d * k**3 - 3 * k**5 * cu.squared_distance(x, y) / scale)
+            * (d * k**3 - 3 * k**5 * coreax.util.squared_distance(x, y) / scale)
         )
 
 
@@ -983,11 +987,12 @@ for current_class in kernel_classes:
 
 
 # Set up class factory
-kernel_factory = cu.ClassFactory(Kernel)
-kernel_factory.register("squared_exponential", SquaredExponentialKernel)
-kernel_factory.register("laplace", LaplacianKernel)
-kernel_factory.register("pcimq", PCIMQKernel)
-kernel_factory.register("stein", SteinKernel)
+if __name__ == "__main__":
+    kernel_factory = coreax.util.ClassFactory(Kernel)
+    kernel_factory.register("squared_exponential", SquaredExponentialKernel)
+    kernel_factory.register("laplace", LaplacianKernel)
+    kernel_factory.register("pcimq", PCIMQKernel)
+    kernel_factory.register("stein", SteinKernel)
 
 
 def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
@@ -1001,7 +1006,7 @@ def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
     :return: Instance of selected :class:`Kernel` class
     """
     class_obj = kernel_factory.get(name)
-    return cu.call_with_excess_kwargs(class_obj, args, kwargs)
+    return coreax.util.call_with_excess_kwargs(class_obj, args, kwargs)
 
 
 # TODO: Do we want weights to be used to align with MMD?

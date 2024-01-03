@@ -73,9 +73,9 @@ import jax.numpy as jnp
 from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-from coreax.util import ClassFactory, KernelFunction
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.kernel
+import coreax.util
+import coreax.validation
 
 
 class KernelMeanApproximator(ABC):
@@ -94,24 +94,24 @@ class KernelMeanApproximator(ABC):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
         """Define approximator to the mean of the row sum of kernel distance matrix."""
         # Validate inputs of coreax defined classes
-        validate_is_instance(kernel, "kernel", ck.Kernel)
+        coreax.validation.validate_is_instance(kernel, "kernel", coreax.kernel.Kernel)
 
         # Validate inputs of non-coreax defined classes
-        random_key = cast_as_type(
+        random_key = coreax.validation.cast_as_type(
             x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
-        num_kernel_points = cast_as_type(
+        num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_kernel_points,
             object_name="num_kernel_points",
             strict_inequalities=True,
@@ -159,12 +159,12 @@ class RandomApproximator(KernelMeanApproximator):
     ):
         """Approximate kernel row mean by regression on points selected randomly."""
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_train_points,
             object_name="num_train_points",
             strict_inequalities=True,
@@ -193,7 +193,9 @@ class RandomApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -238,19 +240,19 @@ class ANNchorApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on ANNchor selected points."""
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_train_points,
             object_name="num_train_points",
             strict_inequalities=True,
@@ -279,7 +281,9 @@ class ANNchorApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -322,7 +326,7 @@ class NystromApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
@@ -350,7 +354,9 @@ class NystromApproximator(KernelMeanApproximator):
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -373,7 +379,7 @@ def _anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
-    kernel_function: KernelFunction,
+    kernel_function: "coreax.util.KernelFunction",
 ) -> Array:
     r"""
     Execute main loop of the ANNchor construction.
@@ -386,10 +392,12 @@ def _anchor_body(
     :return: Updated loop variables ``features``
     """
     # Validate inputs
-    features = cast_as_type(
+    features = coreax.validation.cast_as_type(
         x=features, object_name="features", type_caster=jnp.atleast_2d
     )
-    data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+    data = coreax.validation.cast_as_type(
+        x=data, object_name="data", type_caster=jnp.atleast_2d
+    )
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
@@ -398,7 +406,8 @@ def _anchor_body(
 
 
 # Set up class factory
-approximator_factory = ClassFactory(KernelMeanApproximator)
-approximator_factory.register("random", RandomApproximator)
-approximator_factory.register("annchor", ANNchorApproximator)
-approximator_factory.register("nystrom", NystromApproximator)
+if __name__ == "__main__":
+    approximator_factory = coreax.util.ClassFactory(KernelMeanApproximator)
+    approximator_factory.register("random", RandomApproximator)
+    approximator_factory.register("annchor", ANNchorApproximator)
+    approximator_factory.register("nystrom", NystromApproximator)

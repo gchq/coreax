@@ -47,12 +47,12 @@ import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-from coreax.approximation import KernelMeanApproximator
-from coreax.util import ClassFactory
+import coreax.approximation
+import coreax.kernel
+import coreax.util
 
 if TYPE_CHECKING:
-    from coreax.reduction import Coreset
+    import coreax.reduction
 
 
 class Refine(ABC):
@@ -83,7 +83,7 @@ class Refine(ABC):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
-        approximator: type[KernelMeanApproximator] | None = None,
+        approximator: type[coreax.approximation.KernelMeanApproximator] | None = None,
     ):
         """Initialise a refinement object."""
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
@@ -92,7 +92,7 @@ class Refine(ABC):
     @abstractmethod
     def refine(
         self,
-        coreset: Coreset,
+        coreset: coreax.reduction.Coreset,
     ) -> None:
         r"""
         Compute the refined coreset, of :math:`m` points in :math:`d` dimensions.
@@ -108,7 +108,7 @@ class Refine(ABC):
         """
 
     @staticmethod
-    def _validate_coreset(coreset: Coreset) -> None:
+    def _validate_coreset(coreset: coreax.reduction.Coreset) -> None:
         """
         Validate that refinement can be performed on this coreset.
 
@@ -170,7 +170,7 @@ class RefineRegular(Refine):
 
     def refine(
         self,
-        coreset: Coreset,
+        coreset: coreax.reduction.Coreset,
     ) -> None:
         r"""
         Compute the refined coreset, of ``m`` points in ``d`` dimensions.
@@ -187,7 +187,7 @@ class RefineRegular(Refine):
         original_array = coreset.original_data.pre_coreset_array
         coreset_indices = coreset.coreset_indices
 
-        kernel_gram_matrix_diagonal = vmap(coreset_indices.kernel.compute)(
+        kernel_gram_matrix_diagonal = vmap(coreset.kernel.compute)(
             original_array, original_array
         )
 
@@ -225,7 +225,7 @@ class RefineRegular(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -261,7 +261,7 @@ class RefineRegular(Refine):
         i: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -315,7 +315,7 @@ class RefineRandom(Refine):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
-        approximator: KernelMeanApproximator = None,
+        approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
         random_key: int = 0,
     ):
@@ -329,7 +329,7 @@ class RefineRandom(Refine):
 
     def refine(
         self,
-        coreset: Coreset,
+        coreset: coreax.reduction.Coreset,
     ) -> None:
         r"""
         Refine a coreset iteratively.
@@ -393,7 +393,7 @@ class RefineRandom(Refine):
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> tuple[random.PRNGKeyArray, Array]:
@@ -444,7 +444,7 @@ class RefineRandom(Refine):
         candidate_indices: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -541,7 +541,7 @@ class RefineReverse(Refine):
 
     def refine(
         self,
-        coreset: Coreset,
+        coreset: coreax.reduction.Coreset,
     ) -> None:
         r"""
         Refine a coreset iteratively, replacing points which yield the most improvement.
@@ -596,7 +596,7 @@ class RefineReverse(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -637,7 +637,7 @@ class RefineReverse(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -717,7 +717,8 @@ for current_class in refine_classes:
     )
 
 # Set up class factory
-refine_factory = ClassFactory(Refine)
-refine_factory.register("regular", RefineRegular)
-refine_factory.register("random", RefineRandom)
-refine_factory.register("reverse", RefineReverse)
+if __name__ == "__main__":
+    refine_factory = coreax.util.ClassFactory(Refine)
+    refine_factory.register("regular", RefineRegular)
+    refine_factory.register("random", RefineRandom)
+    refine_factory.register("reverse", RefineReverse)

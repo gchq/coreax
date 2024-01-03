@@ -52,13 +52,22 @@ from jax import Array
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
 
-from coreax.data import ArrayData, DataReader
-from coreax.kernel import Kernel
-from coreax.metrics import Metric
-from coreax.refine import Refine
-from coreax.util import NotCalculatedError
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
-from coreax.weights import WeightsOptimiser
+import coreax.data
+import coreax.kernel
+import coreax.metrics
+import coreax.refine
+import coreax.util
+import coreax.validation
+import coreax.weights
+
+# TODO: REMOVE
+# from coreax.data import ArrayData, DataReader
+# from coreax.kernel import Kernel
+# from coreax.metrics import Metric
+# from coreax.refine import Refine
+# from coreax.util import NotCalculatedError
+# from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+# from coreax.weights import WeightsOptimiser
 
 
 class Coreset(ABC):
@@ -77,22 +86,28 @@ class Coreset(ABC):
     def __init__(
         self,
         *,
-        weights_optimiser: WeightsOptimiser | None = None,
-        kernel: Kernel | None = None,
-        refine_method: Refine | None = None,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
+        kernel: coreax.kernel.Kernel | None = None,
+        refine_method: coreax.refine.Refine | None = None,
     ):
         """Initialise class and set internal attributes to defaults."""
-        validate_is_instance(
-            weights_optimiser, "weights_optimiser", (WeightsOptimiser, None)
+        coreax.validation.validate_is_instance(
+            weights_optimiser,
+            "weights_optimiser",
+            (coreax.weights.WeightsOptimiser, None),
         )
         self.weights_optimiser = weights_optimiser
-        validate_is_instance(kernel, "kernel", (Kernel, None))
+        coreax.validation.validate_is_instance(
+            kernel, "kernel", (coreax.kernel.Kernel, None)
+        )
         self.kernel = kernel
-        validate_is_instance(refine_method, "refine_method", (Refine, None))
+        coreax.validation.validate_is_instance(
+            refine_method, "refine_method", (coreax.refine.Refine, None)
+        )
         self.refine_method = refine_method
 
-        # Data attributes not set in init
-        self.original_data: DataReader | None = None  #: Data to be reduced
+        # Data attributes not set in init, original data is the data to be reduced
+        self.original_data: coreax.data.DataReader | None = None
         self.coreset: Array | None = None
         """
         Calculated coreset. The order of rows need not be monotonic with those in the
@@ -104,7 +119,7 @@ class Coreset(ABC):
         order matches the rows of :attr:`coreset`.
         """
         self.kernel_matrix_row_sum_mean: ArrayLike | None = None
-        """
+        r"""
         Mean vector over rows for the Gram matrix, a :math:`1 \times n` array. If
         :meth:`fit_to_size` calculates this, it will be saved here automatically to save
         recalculating it in :meth:`refine`.
@@ -131,7 +146,9 @@ class Coreset(ABC):
         new_obj.kernel_matrix_row_sum_mean = None
         return new_obj
 
-    def fit(self, original_data: DataReader, strategy: ReductionStrategy) -> None:
+    def fit(
+        self, original_data: coreax.data.DataReader, strategy: ReductionStrategy
+    ) -> None:
         """
         Compute coreset using a given reduction strategy.
 
@@ -142,8 +159,10 @@ class Coreset(ABC):
         :param strategy: Reduction strategy to use
         :return: Nothing
         """
-        validate_is_instance(original_data, "original_data", DataReader)
-        validate_is_instance(strategy, "strategy", ReductionStrategy)
+        coreax.validation.validate_is_instance(
+            original_data, "original_data", coreax.data.DataReader
+        )
+        coreax.validation.validate_is_instance(strategy, "strategy", ReductionStrategy)
         self.original_data = original_data
         strategy.reduce(self)
 
@@ -188,7 +207,9 @@ class Coreset(ABC):
             self.original_data.pre_coreset_array, self.coreset
         )
 
-    def compute_metric(self, metric: Metric, block_size: int | None = None) -> Array:
+    def compute_metric(
+        self, metric: coreax.metrics.Metric, block_size: int | None = None
+    ) -> Array:
         """
         Compute metric comparing the coreset with the original data.
 
@@ -201,7 +222,7 @@ class Coreset(ABC):
             into blocks
         :return: Metric computed as a zero-dimensional array
         """
-        validate_is_instance(metric, "metric", Metric)
+        coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
         # block_size will be validated by metric.compute()
         return metric.compute(
             self.original_data.pre_coreset_array, self.coreset, block_size=block_size
@@ -252,7 +273,7 @@ class Coreset(ABC):
             :attr:`coreset_indices`; otherwise, reference same objects
         :return: Nothing
         """
-        validate_is_instance(other, "other", type[self])
+        coreax.validation.validate_is_instance(other, "other", type[self])
         other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
@@ -270,10 +291,12 @@ class Coreset(ABC):
             :data:`None`
         :return: Nothing
         """
-        if not isinstance(self.original_data, DataReader) or not isinstance(
+        if not isinstance(self.original_data, coreax.data.DataReader) or not isinstance(
             self.coreset, Array
         ):
-            raise NotCalculatedError(f"Need to call fit before calling {caller_name}")
+            raise coreax.util.NotCalculatedError(
+                f"Need to call fit before calling {caller_name}"
+            )
 
 
 C = TypeVar("C", bound=Coreset)
@@ -313,8 +336,10 @@ class SizeReduce(ReductionStrategy):
         """Initialise class."""
         super().__init__()
 
-        coreset_size = cast_as_type(coreset_size, "coreset_size", int)
-        validate_in_range(coreset_size, "coreset_size", True, lower_bound=0)
+        coreset_size = coreax.validation.cast_as_type(coreset_size, "coreset_size", int)
+        coreax.validation.validate_in_range(
+            coreset_size, "coreset_size", True, lower_bound=0
+        )
         self.coreset_size = coreset_size
 
     def reduce(self, coreset: Coreset) -> None:
@@ -398,15 +423,19 @@ class MapReduce(ReductionStrategy):
         """Initialise class."""
         super().__init__()
 
-        coreset_size = cast_as_type(coreset_size, "coreset_size", int)
-        validate_in_range(coreset_size, "coreset_size", True, lower_bound=0)
+        coreset_size = coreax.validation.cast_as_type(coreset_size, "coreset_size", int)
+        coreax.validation.validate_in_range(
+            coreset_size, "coreset_size", True, lower_bound=0
+        )
         self.coreset_size = coreset_size
 
-        leaf_size = cast_as_type(leaf_size, "leaf_size", int)
-        validate_in_range(leaf_size, "leaf_size", True, lower_bound=coreset_size)
+        leaf_size = coreax.validation.cast_as_type(leaf_size, "leaf_size", int)
+        coreax.validation.validate_in_range(
+            leaf_size, "leaf_size", True, lower_bound=coreset_size
+        )
         self.leaf_size = leaf_size
 
-        self.parallel = cast_as_type(parallel, "parallel", bool)
+        self.parallel = coreax.validation.cast_as_type(parallel, "parallel", bool)
 
     def reduce(self, coreset: Coreset) -> None:
         """
@@ -504,7 +533,7 @@ class MapReduce(ReductionStrategy):
         :return: New instance :attr:`coreset_method` fitted to ``input_data``
         """
         coreset = template.clone_empty()
-        coreset.original_data = ArrayData.load(input_data)
+        coreset.original_data = coreax.data.ArrayData.load(input_data)
         coreset.fit_to_size(self.coreset_size)
         # Update indices
         if coreset.coreset_indices is not None:

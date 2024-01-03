@@ -39,7 +39,7 @@ from jax import Array
 from jax.typing import ArrayLike
 
 import coreax.kernel
-from coreax.util import ClassFactory, solve_qp
+import coreax.util
 
 
 class WeightsOptimiser(ABC):
@@ -49,7 +49,7 @@ class WeightsOptimiser(ABC):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
+    def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
         """
         Initialise a weights optimiser class.
 
@@ -168,11 +168,12 @@ class MMD(WeightsOptimiser):
         kernel_mm = self.kernel.compute(y, y) + epsilon * jnp.identity(len(y))
 
         # Call the QP solver
-        sol = solve_qp(kernel_mm, kernel_nm)
+        sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
 
 
-weights_factory = ClassFactory(WeightsOptimiser)
-weights_factory.register("SBQ", SBQ)
-weights_factory.register("MMD", MMD)
+if __name__ == "__main__":
+    weights_factory = coreax.util.ClassFactory(WeightsOptimiser)
+    weights_factory.register("SBQ", SBQ)
+    weights_factory.register("MMD", MMD)
