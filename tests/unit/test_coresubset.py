@@ -63,20 +63,20 @@ class TestKernelHerding(unittest.TestCase):
         data = ArrayData.load(x)
 
         # Create a kernel herding object
-        data_reduction_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = KernelHerding(kernel=kernel)
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        data_reduction_object_herding.fit(
+        coresubset_object_herding.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        herding_coreset = data_reduction_object_herding.coreset
+        herding_coreset = coresubset_object_herding.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
-        data_reduction_object_random = RandomSample(random_key=0, unique=True)
-        data_reduction_object_random.fit(
+        coresubset_object_random = RandomSample(random_key=0, unique=True)
+        coresubset_object_random.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        random_coreset = data_reduction_object_random.coreset
+        random_coreset = coresubset_object_random.coreset
 
         # Define a metric and compare quality of produced coresets
         metric = MMD(kernel=kernel)
@@ -86,8 +86,8 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a coreset via kernel herding with refinement, to check refinement
         # improves the coreset quality
-        data_reduction_object_herding.refine()
-        refined_herding_coreset = data_reduction_object_herding.coreset
+        coresubset_object_herding.refine()
+        refined_herding_coreset = coresubset_object_herding.coreset
 
         # Compare quality of refined coreset to non-refined coreset
         refined_herding_metric = metric.compute(x, refined_herding_coreset)
@@ -112,21 +112,21 @@ class TestKernelHerding(unittest.TestCase):
         data = ArrayData.load(x)
 
         # Create a kernel herding object
-        data_reduction_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = KernelHerding(kernel=kernel)
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        data_reduction_object_herding.fit(
+        coresubset_object_herding.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        herding_coreset = data_reduction_object_herding.coreset
+        herding_coreset = coresubset_object_herding.coreset
 
         # Compute the kernel matrix row sum mean outside of the herding object
         kernel_matrix_row_sum = kernel.calculate_kernel_matrix_row_sum_mean(x=x)
-        data_reduction_object_herding.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
-        data_reduction_object_herding.fit(
+        coresubset_object_herding.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
+        coresubset_object_herding.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        herding_coreset_pre_computed_mean = data_reduction_object_herding.coreset
+        herding_coreset_pre_computed_mean = coresubset_object_herding.coreset
 
         # Check the two coresets agree
         np.testing.assert_array_equal(
@@ -137,13 +137,13 @@ class TestKernelHerding(unittest.TestCase):
         # test the passed kernel matrix row sum is being used. To do this, we give an
         # incorrect random kernel matrix row sum and check the resulting coreset is
         # different.
-        data_reduction_object_herding.kernel_matrix_row_sum_mean = (
+        coresubset_object_herding.kernel_matrix_row_sum_mean = (
             0.5 * kernel_matrix_row_sum
         )
-        data_reduction_object_herding.fit(
+        coresubset_object_herding.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        herding_coreset_invalid_mean = data_reduction_object_herding.coreset
+        herding_coreset_invalid_mean = coresubset_object_herding.coreset
         coreset_difference = abs(herding_coreset - herding_coreset_invalid_mean)
         self.assertGreater(coreset_difference.sum(), 0)
 
@@ -179,22 +179,20 @@ class TestKernelHerding(unittest.TestCase):
         data = ArrayData.load(x)
 
         # Create a kernel herding object
-        data_reduction_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = KernelHerding(kernel=kernel)
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        data_reduction_object_herding.fit(
+        coresubset_object_herding.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        herding_coreset = data_reduction_object_herding.coreset
+        herding_coreset = coresubset_object_herding.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
-        data_reduction_object_random = RandomSample(
-            weights_optimiser=None, kernel=kernel
-        )
-        data_reduction_object_random.fit(
+        coresubset_object_random = RandomSample(weights_optimiser=None, kernel=kernel)
+        coresubset_object_random.fit(
             original_data=data, coreset_size=SizeReduce(self.coreset_size)
         )
-        random_coreset = data_reduction_object_random.coreset
+        random_coreset = coresubset_object_random.coreset
 
         # Define a metric and compare quality of produced coresets
         metric = MMD(kernel=kernel)
@@ -308,7 +306,7 @@ class TestRandomSample(unittest.TestCase):
         self.num_points_in_data = 30
         self.dimension = 10
         self.random_data_generation_key = 0
-        self.num_points_in_coreset = 10
+        self.coreset_size = 10
         self.random_sampling_key = 42
 
         # Define example dataset
@@ -328,7 +326,7 @@ class TestRandomSample(unittest.TestCase):
         )
 
         # Assert the number of indices in the reduced data is as expected
-        self.assertEqual(len(random_sample.coreset_indices), self.num_points_in_coreset)
+        self.assertEqual(len(random_sample.coreset_indices), self.coreset_size)
 
         # Convert lists to set of tuples
         coreset_set = set(map(tuple, np.array(random_sample.coreset)))
