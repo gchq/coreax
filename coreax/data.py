@@ -15,9 +15,9 @@
 """
 Classes for reading different structures of input data.
 
-In order to calculate a coreset, an instance of a subclass of :class:`DataReader` is
-passed to :class:`~coreax.ReductionStrategy`. It is necessary to use
-:class:`DataReader` because :class:`~coreax.ReductionStrategy` requires a
+In order to calculate a coreset, :meth:`~coreax.Coreset.fit` requires an instance of a
+subclass of :class:`DataReader`. It is necessary to use
+:class:`DataReader` because :class:`~coreax.Coreset` requires a
 two-dimensional :class:`~jax.Array`. Data reductions are performed along the first
 dimension.
 
@@ -40,14 +40,17 @@ be passed to the chosen IO library to write a file.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-from coreax.reduction import Coreset, ReductionStrategy, reduction_strategy_factory
-from coreax.util import ClassFactory, create_instance_from_factory
+from coreax.util import ClassFactory
 from coreax.validation import cast_as_type
+
+if TYPE_CHECKING:
+    from coreax.reduction import Coreset
 
 
 class DataReader(ABC):
@@ -79,7 +82,7 @@ class DataReader(ABC):
         Construct :class:`DataReader` from an array of original data.
 
         This class method restructures the original data into the layout required for
-        :class:`Coreset`.
+        :class:`~coreax.Coreset`.
 
         The user should not normally initialise this class directly; instead use this
         constructor.
@@ -87,32 +90,6 @@ class DataReader(ABC):
         :param original_data: Array of data to be reduced to a coreset
         :return: Populated instance of :class:`DataReader`
         """
-
-    def reduce(
-        self,
-        coreset_method: str | type[Coreset],
-        reduction_strategy: str | type[ReductionStrategy],
-        **kwargs,
-    ) -> Coreset:
-        """
-        Reduce original data stored in this class to a coreset.
-
-        :param coreset_method: Type of coreset to generate, expressed either as a string
-            name or uninstantiated class
-        :param reduction_strategy: Reduction strategy to use when calculating this
-            coreset, expressed either as a string name or uninstantiated class
-        :param kwargs: Keyword arguments to be passed during initialisation of
-            :class:`~coreax.reduction.Coreset` or
-            :class:`~coreax.reduction.ReductionStrategy` as appropriate
-        :return: Instance of :class:`~coreax.reduction.Coreset` containing the
-            calculated coreset
-        """
-        return create_instance_from_factory(
-            reduction_strategy_factory,
-            reduction_strategy,
-            coreset_method=coreset_method,
-            **kwargs,
-        ).reduce(self)
 
     @abstractmethod
     def format(self, coreset: Coreset) -> Array:
@@ -183,7 +160,7 @@ class ArrayData(DataReader):
     """
 
     @classmethod
-    def load(cls, original_data: ArrayLike) -> DataReader:
+    def load(cls, original_data: ArrayLike) -> ArrayData:
         """
         Construct :class:`ArrayData` from a two-dimensional array of data.
 
