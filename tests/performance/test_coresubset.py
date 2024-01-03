@@ -22,7 +22,6 @@ from scipy.stats import ks_2samp
 import coreax.coresubset as cs
 import coreax.kernel as ck
 from coreax.util import jit_test
-from tests.unit.test_data import DataReaderConcrete
 
 
 class TestCoreSubset(unittest.TestCase):
@@ -63,15 +62,9 @@ class TestCoreSubset(unittest.TestCase):
             )
         )
         kernel = ck.SquaredExponentialKernel()
-        data = DataReaderConcrete(original_data=x, pre_coreset_array=x)
 
         # Create a kernel herding object
-        herding_object = cs.KernelHerding(
-            original_data=data,
-            weights_optimiser=None,
-            kernel=kernel,
-            coreset_size=self.coreset_size,
-        )
+        herding_object = cs.KernelHerding(kernel=kernel)
 
         # Test performance
         pre = []
