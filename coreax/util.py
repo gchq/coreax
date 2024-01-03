@@ -43,11 +43,6 @@ import coreax.weights as cw
 #: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
-#: Pairwise kernel evaluation function if gradients and bandwidth are defined.
-KernelFunctionWithGrads = Callable[
-    [ArrayLike, ArrayLike, ArrayLike, ArrayLike, int, float], Array
-]
-
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
