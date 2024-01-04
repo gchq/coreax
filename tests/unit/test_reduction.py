@@ -215,13 +215,15 @@ class TestSizeReduce(unittest.TestCase):
 
     def test_random_sample(self):
         """Test reduction with :class:`RandomSample`."""
-        orig_data = coreax.data.ArrayData.load(jnp.array([i, 2 * i] for i in range(20)))
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(20)])
+        )
         strategy = coreax.reduction.SizeReduce(10)
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
         strategy.reduce(coreset)
         # Check shape of output
-        self.assertEqual(coreset.coreset.format().shape, [10, 2])
+        self.assertEqual(coreset.coreset.shape, (10, 2))
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_array_equal(row, np.array([idx, 2 * idx]))
