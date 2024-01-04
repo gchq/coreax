@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import jax.numpy as jnp
 import numpy as np
@@ -22,6 +22,7 @@ from jax import Array
 import coreax.coresubset
 import coreax.data
 import coreax.kernel
+import coreax.metrics
 import coreax.reduction
 import coreax.refine
 import coreax.util
@@ -98,15 +99,17 @@ class TestCoreset(unittest.TestCase):
 
     def test_solve_weights(self):
         """Check that solve_weights is called correctly."""
-        weights_optimiser = MagicMock()
+        weights_optimiser = MagicMock(spec=coreax.weights.WeightsOptimiser)
         coreset = CoresetMock(weights_optimiser=weights_optimiser)
         coreset.original_data = MagicMock(spec=coreax.data.DataReader)
+        coreset.original_data.pre_coreset_array = MagicMock(spec=Array)
 
         # First try prior to fitting a coreset
-        self.assertRaises(coreax.util.NotCalculatedError, coreset.solve_weights)
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            coreset.solve_weights()
 
         # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=coreax.reduction.Coreset)
+        coreset.coreset = MagicMock(spec=Array)
         coreset.solve_weights()
         weights_optimiser.solve.assert_called_once_with(
             coreset.original_data.pre_coreset_array, coreset.coreset
@@ -116,22 +119,21 @@ class TestCoreset(unittest.TestCase):
         """Check that compute_metric is called correctly."""
         coreset = CoresetMock()
         coreset.original_data = MagicMock(spec=coreax.data.DataReader)
-        metric = MagicMock()
+        coreset.original_data.pre_coreset_array = MagicMock(spec=Array)
+        metric = MagicMock(spec=coreax.metrics.Metric)
         block_size = 10
 
         # First try prior to fitting a coreset
-        self.assertRaises(
-            coreax.util.NotCalculatedError,
-            coreset.compute_metric,
-            metric,
-            block_size,
-        )
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            coreset.compute_metric(metric, block_size)
 
         # Now test with a calculated coreset
         coreset.coreset = MagicMock(spec=Array)
         coreset.compute_metric(metric, block_size)
         metric.compute.assert_called_once_with(
-            coreset.original_data.pre_coreset_array, coreset.coreset, block_size
+            coreset.original_data.pre_coreset_array,
+            coreset.coreset,
+            block_size=block_size,
         )
 
     def test_refine(self):
@@ -141,7 +143,8 @@ class TestCoreset(unittest.TestCase):
         refine_method = MagicMock(spec=coreax.refine.Refine)
 
         # Test with refine_method unset
-        self.assertRaisesRegex(TypeError, "without a refine_method", coreset.refine)
+        with self.assertRaisesRegex(TypeError, "without a refine_method"):
+            coreset.refine()
 
         # Test with a coresubset
         coreset.refine_method = refine_method
@@ -153,11 +156,16 @@ class TestCoreset(unittest.TestCase):
         """Check that default behaviour of copy_fit points to other coreset array."""
         array = jnp.array([[1, 2], [3, 4]])
         indices = jnp.array([5, 6])
+        data = MagicMock(spec=coreax.data.DataReader)
         this_obj = CoresetMock()
         other = CoresetMock()
+        other.original_data = MagicMock(spec=coreax.data.DataReader)
         other.coreset = array
         other.coreset_indices = indices
         this_obj.copy_fit(other)
+        # Check original_data not copied
+        self.assertIsNot(this_obj.original_data, data)
+        # Check copy
         self.assertIs(this_obj.coreset, array)
         self.assertIs(this_obj.coreset_indices, indices)
 
@@ -165,15 +173,20 @@ class TestCoreset(unittest.TestCase):
         """Check that copy_fit with deep=True creates copies of coreset arrays."""
         array = jnp.array([[1, 2], [3, 4]])
         indices = jnp.array([5, 6])
+        data = MagicMock(spec=coreax.data.DataReader)
         this_obj = CoresetMock()
         other = CoresetMock()
+        other.original_data = data
         other.coreset = array
         other.coreset_indices = indices
         this_obj.copy_fit(other, True)
+        # Check original_data not copied
+        self.assertIsNot(this_obj.original_data, data)
+        # Check copy
         self.assertIsNot(this_obj.coreset, array)
-        np.testing.assert_equal(this_obj.coreset, array)
+        np.testing.assert_array_equal(this_obj.coreset, array)
         self.assertIsNot(this_obj.coreset_indices, indices)
-        np.testing.assert_equal(this_obj.coreset_indices, indices)
+        np.testing.assert_array_equal(this_obj.coreset_indices, indices)
 
     def test_validate_fitted_ok(self):
         """Check no error raised when fit has been called."""
@@ -186,13 +199,15 @@ class TestCoreset(unittest.TestCase):
         """Check error is raised when original data is missing."""
         obj = CoresetMock()
         obj.coreset = jnp.array(1)
-        self.assertRaises(coreax.util.NotCalculatedError, obj.validate_fitted, "func")
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            obj.validate_fitted("func")
 
     def test_validate_fitted_no_coreset(self):
         """Check error is raised when coreset is missing."""
         obj = CoresetMock()
         obj.original_data = coreax.data.ArrayData(1, 1)
-        self.assertRaises(coreax.util.NotCalculatedError, obj.validate_fitted, "func")
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            obj.validate_fitted("func")
 
 
 class TestSizeReduce(unittest.TestCase):
@@ -209,7 +224,7 @@ class TestSizeReduce(unittest.TestCase):
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
-            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+            np.testing.assert_array_equal(row, np.array([idx, 2 * idx]))
 
 
 if __name__ == "__main__":

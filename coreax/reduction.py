@@ -223,6 +223,7 @@ class Coreset(ABC):
         :return: Metric computed as a zero-dimensional array
         """
         coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
+        self.validate_fitted("compute_metric")
         # block_size will be validated by metric.compute()
         return metric.compute(
             self.original_data.pre_coreset_array, self.coreset, block_size=block_size
@@ -266,7 +267,9 @@ class Coreset(ABC):
         """
         Copy fitted coreset from other instance to this instance.
 
-        The other coreset must be of the same type as this instance.
+        The other coreset must be of the same type as this instance and
+        :attr:`original_data` must also be populated on ``other``. The user must ensure
+        :attr:`original_data` is correctly populated on this instance.
 
         :param other: :class:`Coreset` from which to copy calculated coreset
         :param deep: If :data:`True`, make a shallow copy of :attr:`coreset` and
