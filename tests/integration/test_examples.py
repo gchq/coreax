@@ -21,10 +21,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.david import main as david_main
+from examples.david_map_reduce_weighted import main as david_main
+from examples.herding_stein_weighted import main as weighted_herding_main
 from examples.pounce import main as pounce_main
 from examples.pounce_map_reduce_ssm import main as pounce_sm_main
-from examples.weighted_herding import main as weighted_herding_main
 from examples.weighted_herding_sm import main as weighted_herding_sm_main
 
 
@@ -42,9 +42,9 @@ class TestExamples(unittest.TestCase):
 
     def test_david(self) -> None:
         """
-        Test david.py example.
+        Test david_map_reduce_weighted.py example.
 
-        An end-to-end test to check david.py runs without error, generates output, and
+        An end-to-end test to check david_map_reduce_weighted.py runs without error, generates output, and
         has coreset MMD better than MMD from random sampling.
         """
         with (
@@ -52,7 +52,7 @@ class TestExamples(unittest.TestCase):
             patch("builtins.print") as mock_print,
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # run david.py
+            # run david_map_reduce_weighted.py
             in_path = Path(os.path.dirname(__file__)) / Path(
                 "../../examples/data/david_orig.png"
             )
@@ -135,9 +135,9 @@ class TestExamples(unittest.TestCase):
 
     def test_weighted_herding(self) -> None:
         """
-        Test weighted_herding.py example.
+        Test herding_stein_weighted.py example.
 
-        An end-to-end test to check weighted_herding.py runs without error, generates
+        An end-to-end test to check herding_stein_weighted.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
         """
         with (

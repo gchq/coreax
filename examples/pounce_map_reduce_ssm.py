@@ -17,11 +17,11 @@ This example showcases how a coreset can be generated from video data. In this c
 a coreset is a set of frames that best capture the information in the original video.
 
 Firstly, principal component analysis (PCA) is applied to the video data to reduce
-dimensionality. Then, a coreset is generated using Stein kernel herding, with a PCIMQ
-base kernel. The score function (gradient of the log-density function) for the Stein
-kernel is estimated by applying sliced score matching from :cite:p:`ssm`. This trains a
-neural network to approximate the score function, and then passes the trained neural
-network to the Stein kernel.
+dimensionality. Then, a coreset is generated using Stein kernel herding, with a
+SquaredExponentialKernel base kernel. The score function (gradient of the log-density
+function) for the Stein kernel is estimated by applying sliced score matching from
+:cite:p:`ssm`. This trains a neural network to approximate the score function, and then
+passes the trained neural network to the Stein kernel.
 
 The coreset attained from Stein kernel herding is compared to a coreset generated via
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
