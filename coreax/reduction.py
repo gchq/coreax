@@ -273,7 +273,7 @@ class Coreset(ABC):
             :attr:`coreset_indices`; otherwise, reference same objects
         :return: Nothing
         """
-        coreax.validation.validate_is_instance(other, "other", type[self])
+        coreax.validation.validate_is_instance(other, "other", type(self))
         other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
