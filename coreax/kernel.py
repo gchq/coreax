@@ -121,13 +121,19 @@ class Kernel(ABC):
         self.output_scale = output_scale
 
     @abstractmethod
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
 
     @classmethod
@@ -507,13 +513,19 @@ class SquaredExponentialKernel(Kernel):
     Define a squared exponential kernel.
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -613,13 +625,19 @@ class LaplacianKernel(Kernel):
     Define a Laplacian kernel.
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -722,13 +740,19 @@ class PCIMQKernel(Kernel):
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -893,13 +917,19 @@ class SteinKernel(Kernel):
         # Initialise parent
         super().__init__(output_scale=output_scale)
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         # TODO: score functon is assumed to not change here - but it might if the kernel
         #  changes - but does not work when specified in children
