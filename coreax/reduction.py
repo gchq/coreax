@@ -273,7 +273,7 @@ class Coreset(ABC):
             :attr:`coreset_indices`; otherwise, reference same objects
         :return: Nothing
         """
-        coreax.validation.validate_is_instance(other, "other", type[self])
+        coreax.validation.validate_is_instance(other, "other", type(self))
         other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
@@ -472,7 +472,7 @@ class MapReduce(ReductionStrategy):
         :return: Copy of ``template`` containing fitted coreset
         """
         # Check if no partitions are required
-        if input_data.pre_coreset_array.shape[0] <= self.leaf_size:
+        if input_data.shape[0] <= self.leaf_size:
             # Length of input_data < coreset_size is only possible if input_data is the
             # original data, so it is safe to request a coreset of size larger than the
             # original data (if of limited use)
