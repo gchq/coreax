@@ -51,9 +51,9 @@ class TestCoreset(unittest.TestCase):
         Also test attributes are populated by init.
         """
         # Define original instance
-        weights_optimiser = MagicMock(bound=coreax.weights.WeightsOptimiser)
-        kernel = MagicMock(bound=coreax.kernel.Kernel)
-        refine_method = MagicMock(bound=coreax.refine.Refine)
+        weights_optimiser = MagicMock(spec=coreax.weights.WeightsOptimiser)
+        kernel = MagicMock(spec=coreax.kernel.Kernel)
+        refine_method = MagicMock(spec=coreax.refine.Refine)
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
