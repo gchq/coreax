@@ -21,11 +21,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.david_map_reduce_weighted import main as david_main
-from examples.herding_stein_weighted import main as weighted_herding_main
+from examples.david_map_reduce_weighted import main as david_map_reduce_weighted_main
+from examples.herding_approximate_gram_matrix import (
+    main as herding_approximate_gram_matrix_main,
+)
+from examples.herding_basic import main as herding_basic_main
+from examples.herding_refine import main as herding_refine_main
+from examples.herding_stein_weighted import main as herding_stein_weighted_main
+from examples.herding_stein_weighted_ssm import main as herding_stein_weighted_ssm_main
 from examples.pounce import main as pounce_main
-from examples.pounce_map_reduce_ssm import main as pounce_sm_main
-from examples.weighted_herding_sm import main as weighted_herding_sm_main
+from examples.pounce_map_reduce import main as pounce_map_reduce_main
+from examples.pounce_map_reduce_ssm import main as pounce_map_reduce_ssm_main
 
 
 class TestExamples(unittest.TestCase):
@@ -40,24 +46,26 @@ class TestExamples(unittest.TestCase):
             Path(path).resolve().is_file(), msg=f"File does not exist: {path}"
         )
 
-    def test_david(self) -> None:
+    def test_david_map_reduce_weighted(self) -> None:
         """
         Test david_map_reduce_weighted.py example.
 
-        An end-to-end test to check david_map_reduce_weighted.py runs without error, generates output, and
-        has coreset MMD better than MMD from random sampling.
+        An end-to-end test to check david_map_reduce_weighted.py runs without error,
+        generates output, and has coreset MMD better than MMD from random sampling.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
             patch("builtins.print") as mock_print,
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # run david_map_reduce_weighted.py
+            # Run david_map_reduce_weighted.py
             in_path = Path(os.path.dirname(__file__)) / Path(
                 "../../examples/data/david_orig.png"
             )
             out_path = Path(tmp_dir) / "david_coreset.png"
-            mmd_coreset, mmd_random = david_main(in_path=in_path, out_path=out_path)
+            mmd_coreset, mmd_random = david_map_reduce_weighted_main(
+                in_path=in_path, out_path=out_path
+            )
 
             self.assertEqual(
                 call("Image dimensions: (215, 180)"),
@@ -79,12 +87,12 @@ class TestExamples(unittest.TestCase):
         """
         Test pounce.py example.
 
-        An end-to-end test to check pounce.py runs without error, generates output, and
+        An end-to-end test to check pounce.py runs without error, generates  output, and
         has coreset MMD better than MMD from random sampling.
         """
         directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
 
-        # delete output files if already present
+        # Delete output files if already present
         out_dir = directory / "coreset"
         if out_dir.exists():
             for sub in out_dir.iterdir():
@@ -92,7 +100,7 @@ class TestExamples(unittest.TestCase):
                     sub.unlink()
 
         with patch("builtins.print"):
-            # run pounce.py
+            # Run pounce_map_reduce.py
             mmd_coreset, mmd_random = pounce_main(directory=directory)
 
             self.assert_is_file(directory / Path("coreset/coreset.gif"))
@@ -104,28 +112,28 @@ class TestExamples(unittest.TestCase):
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
 
-    def test_pounce_sm(self) -> None:
+    def test_pounce_map_reduce(self) -> None:
         """
-        Test pounce_map_reduce_ssm.py example.
+        Test pounce_map_reduce.py example.
 
-        An end-to-end test to check pounce_map_reduce_ssm.py runs without error, generates output,
-        and has coreset MMD better than MMD from random sampling.
+        An end-to-end test to check pounce_map_reduce.py runs without error, generates
+        output, and has coreset MMD better than MMD from random sampling.
         """
         directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
 
-        # delete output files if already present
-        out_dir = directory / "coreset_sm"
+        # Delete output files if already present
+        out_dir = directory / "coreset_map_reduce"
         if out_dir.exists():
             for sub in out_dir.iterdir():
-                if sub.name in {"coreset_sm.gif", "frames_sm.png"}:
+                if sub.name in {"coreset_map_reduce.gif", "frames_map_reduce.png"}:
                     sub.unlink()
 
         with patch("builtins.print"):
-            # run pounce_map_reduce_ssm.py
-            mmd_coreset, mmd_random = pounce_sm_main(directory=directory)
+            # Run pounce_map_reduce.py
+            mmd_coreset, mmd_random = pounce_map_reduce_main(directory=directory)
 
-            self.assert_is_file(directory / Path("coreset_sm/coreset_sm.gif"))
-            self.assert_is_file(directory / Path("coreset_sm/frames_sm.png"))
+            self.assert_is_file(directory / Path("coreset_map_reduce/coreset.gif"))
+            self.assert_is_file(directory / Path("coreset_map_reduce/frames.png"))
 
             self.assertLess(
                 mmd_coreset,
@@ -133,11 +141,55 @@ class TestExamples(unittest.TestCase):
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
 
-    def test_weighted_herding(self) -> None:
+    def test_pounce_map_reduce_ssm(self) -> None:
         """
-        Test herding_stein_weighted.py example.
+        Test pounce_map_reduce_ssm.py example.
 
-        An end-to-end test to check herding_stein_weighted.py runs without error, generates
+        An end-to-end test to check pounce_map_reduce_ssm.py runs without error,
+        generates output, and has coreset MMD better than MMD from random sampling.
+        """
+        directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
+
+        # Delete output files if already present
+        out_dir = directory / "coreset_map_reduce_sliced_score_matching"
+        if out_dir.exists():
+            for sub in out_dir.iterdir():
+                if sub.name in {
+                    "coreset_map_reduce_sliced_score_matching.gif",
+                    "frames_map_reduce_sliced_score_matching.png",
+                }:
+                    sub.unlink()
+
+        with patch("builtins.print"):
+            # Run pounce_map_reduce_ssm.py
+            mmd_coreset, mmd_random = pounce_map_reduce_ssm_main(directory=directory)
+
+            self.assert_is_file(
+                directory
+                / Path(
+                    "coreset_map_reduce_sliced_score_matching/"
+                    "coreset_map_reduce_sliced_score_matching.gif"
+                )
+            )
+            self.assert_is_file(
+                directory
+                / Path(
+                    "coreset_map_reduce_sliced_score_matching/"
+                    "frames_map_reduce_sliced_score_matching.png"
+                )
+            )
+
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+            )
+
+    def test_herding_basic(self) -> None:
+        """
+        Test herding_basic.py example.
+
+        An end-to-end test to check herding_basic.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
         """
         with (
@@ -145,93 +197,133 @@ class TestExamples(unittest.TestCase):
             patch("builtins.print"),
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            with self.subTest(msg="Weighted herding"):
-                # run weighted herding example
-                out_path = Path(tmp_dir) / "weighted_herding.png"
-                mmd_coreset, mmd_random = weighted_herding_main(
-                    out_path=out_path, weighted=True
-                )
+            # Run weighted herding example
+            out_path = Path(tmp_dir) / "herding_basic.png"
+            mmd_coreset, mmd_random = herding_basic_main(out_path=out_path)
 
-                mock_show.assert_has_calls([call(), call()])
+            mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(out_path)
+            self.assert_is_file(out_path)
 
-                self.assertLess(
-                    mmd_coreset,
-                    mmd_random,
-                    msg=(
-                        "MMD for random sampling was unexpectedly lower than coreset "
-                        "MMD"
-                    ),
-                )
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg=(
+                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
+                ),
+            )
 
-            with self.subTest(msg="Unweighted herding"):
-                # run weighted herding example
-                out_path = Path(tmp_dir) / "unweighted_herding.png"
-                mmd_coreset, mmd_random = weighted_herding_main(
-                    out_path=out_path, weighted=False
-                )
-
-                mock_show.assert_has_calls([call(), call()])
-
-                self.assert_is_file(out_path)
-
-                self.assertLess(
-                    mmd_coreset,
-                    mmd_random,
-                    msg=(
-                        "MMD for random sampling was unexpectedly lower than coreset "
-                        "MMD"
-                    ),
-                )
-
-    def test_weighted_herding_sm(self) -> None:
+    def test_herding_approximate_gram_matrix(self) -> None:
         """
-        Test weighted_herding_sm.py example.
+        Test herding_approximate_gram_matrix.py example.
 
-        An end-to-end test to check weighted_herding_sm.py runs without error, generates
+        An end-to-end test to check herding_approximate_gram_matrix.py runs without
+        error, generates output, and has coreset MMD better than MMD from random
+        sampling.
+        """
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print"),
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
+            # Run weighted herding example
+            out_path = Path(tmp_dir) / "herding_approximate_gram_matrix.png"
+            mmd_coreset, mmd_random = herding_approximate_gram_matrix_main(
+                out_path=out_path
+            )
+
+            mock_show.assert_has_calls([call(), call()])
+
+            self.assert_is_file(out_path)
+
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg=(
+                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
+                ),
+            )
+
+    def test_herding_refine(self) -> None:
+        """
+        Test herding_refine.py example.
+
+        An end-to-end test to check herding_refine.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
         """
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print"),
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
+            # Run weighted herding example
+            out_path = Path(tmp_dir) / "herding_refine.png"
+            mmd_coreset, mmd_random = herding_refine_main(out_path=out_path)
 
-        with tempfile.TemporaryDirectory() as tmp_dir, patch("builtins.print"), patch(
-            "matplotlib.pyplot.show"
-        ) as mock_show:
-            with self.subTest(msg="Weighted herding (score matching)"):
-                # run weighted herding example
-                out_path = Path(tmp_dir) / "weighted_herding_sm.png"
-                mmd_coreset, mmd_random = weighted_herding_sm_main(
-                    out_path=out_path, weighted=True
-                )
+            mock_show.assert_has_calls([call(), call()])
 
-                mock_show.assert_has_calls([call(), call()])
+            self.assert_is_file(out_path)
 
-                self.assert_is_file(out_path)
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg=(
+                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
+                ),
+            )
 
-                self.assertLess(
-                    mmd_coreset,
-                    mmd_random,
-                    msg=(
-                        "MMD for random sampling was unexpectedly lower than coreset "
-                        "MMD"
-                    ),
-                )
+    def test_herding_stein_weighted(self) -> None:
+        """
+        Test herding_stein_weighted.py example.
 
-            with self.subTest(msg="Unweighted herding (score matching)"):
-                # run weighted herding example
-                out_path = Path(tmp_dir) / "unweighted_herding_sm.png"
-                mmd_coreset, mmd_random = weighted_herding_sm_main(
-                    out_path=out_path, weighted=False
-                )
+        An end-to-end test to check herding_stein_weighted.py runs without error,
+        generates output, and has coreset MMD better than MMD from random sampling.
+        """
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print"),
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
+            # Run weighted herding example
+            out_path = Path(tmp_dir) / "herding_stein_weighted.png"
+            mmd_coreset, mmd_random = herding_stein_weighted_main(out_path=out_path)
 
-                mock_show.assert_has_calls([call(), call()])
+            mock_show.assert_has_calls([call(), call()])
 
-                self.assert_is_file(out_path)
+            self.assert_is_file(out_path)
 
-                self.assertLess(
-                    mmd_coreset,
-                    mmd_random,
-                    msg=(
-                        "MMD for random sampling was unexpectedly lower than coreset "
-                        "MMD"
-                    ),
-                )
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg=(
+                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
+                ),
+            )
+
+    def test_herding_stein_weighted_ssm(self) -> None:
+        """
+        Test herding_stein_weighted_ssm.py example.
+
+        An end-to-end test to check herding_stein_weighted_ssm.py runs without error,
+        generates output, and has coreset MMD better than MMD from random sampling.
+        """
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("builtins.print"),
+            patch("matplotlib.pyplot.show") as mock_show,
+        ):
+            # Run weighted herding example
+            out_path = Path(tmp_dir) / "herding_stein_weighted_ssm.png"
+            mmd_coreset, mmd_random = herding_stein_weighted_ssm_main(out_path=out_path)
+
+            mock_show.assert_has_calls([call(), call()])
+
+            self.assert_is_file(out_path)
+
+            self.assertLess(
+                mmd_coreset,
+                mmd_random,
+                msg=(
+                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
+                ),
+            )

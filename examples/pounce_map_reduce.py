@@ -65,7 +65,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Define path to directory containing video as sequence of images
     file_name = Path("pounce.gif")
-    coreset_dir = directory / Path("coreset_map_reduce_sliced_score_matching")
+    coreset_dir = directory / Path("coreset_map_reduce")
     coreset_dir.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
