@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
-from jax import Array
+from jax import Array, random
 
 import coreax.coresubset
 import coreax.data
@@ -212,6 +212,28 @@ class TestSizeReduce(unittest.TestCase):
         strategy.reduce(coreset)
         # Check shape of output
         self.assertEqual(coreset.coreset.format().shape, [10, 2])
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
+
+class TestMapReduce(unittest.TestCase):
+    """Test :class:`MapReduce`."""
+
+    def test_random_sample(self):
+        """Test map reduction with :class:`RandomSample`."""
+        n = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.column_stack(
+                (jnp.arange(start=0, stop=n), jnp.arange(start=0, stop=2 * n, step=2))
+            )
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=50)
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+        strategy.reduce(coreset)
+        # Check shape of output
+        self.assertEqual(coreset.format().shape, (10, 2))
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
