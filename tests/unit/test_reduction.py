@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
-from jax import Array, random
+from jax import Array
 
 import coreax.coresubset
 import coreax.data
