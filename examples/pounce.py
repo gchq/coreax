@@ -96,27 +96,11 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     )
     length_scale = median_heuristic(principle_components_data[idx])
 
-    # TODO: Why does this not work?
-    # # Learn a score function via kernel density estimation
-    # sliced_score_matcher = KernelDensityMatching(
-    #     length_scale=length_scale, kde_data=principle_components_data[idx, :]
-    # )
-    # score_function = sliced_score_matcher.match()
-
-    # TODO: Temp until KernelDensityMatching is fixed
-    from jax.random import rademacher
-
-    from coreax.score_matching import SlicedScoreMatching
-
-    sliced_score_matcher = SlicedScoreMatching(
-        random_generator=rademacher,
-        use_analytic=True,
-        num_epochs=100,
-        num_random_vectors=1,
-        sigma=1.0,
-        gamma=0.95,
+    # Learn a score function via kernel density estimation
+    kernel_density_score_matcher = KernelDensityMatching(
+        length_scale=length_scale, kde_data=principle_components_data[idx, :]
     )
-    score_function = sliced_score_matcher.match(principle_components_data)
+    score_function = kernel_density_score_matcher.match()
 
     # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
