@@ -479,7 +479,7 @@ class MapReduce(ReductionStrategy):
             return self._coreset_copy_fit(template, input_data, input_indices)
 
         # Partitions required
-        data_to_reduce = input_data.pre_coreset_array
+        data_to_reduce = input_data
 
         # Build a kdtree
         kdtree = KDTree(data_to_reduce, leaf_size=self.leaf_size)
@@ -504,7 +504,7 @@ class MapReduce(ReductionStrategy):
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
-        if partition_coresets[0].corset_indices is None:
+        if partition_coresets[0].coreset_indices is None:
             full_indices = None
         else:
             full_indices = jnp.concatenate(
