@@ -99,7 +99,8 @@ repos:
               .*.properties|
               requirements(-.*)?.txt|
               documentation/make.bat|
-              documentation/Makefile
+              documentation/Makefile|
+              .pylintrc
             )$
   - repo: local
     hooks:
@@ -113,15 +114,14 @@ repos:
           - text
         exclude:
           .pylintrc
-      # python statis analysis tool
+      # Python static analysis tool
       - id: pylint
         name: pylint
         entry: pylint
         language: system
-        types: [python]
+        types:
+          - python
         args:
-          [
-            "-rn", # Only display messages
-            "-sn", # Don't display the score
-            "--rcfile=.pylintrc" # pylint configuration file
-          ]
+          - "-rn" # Only display messages
+          - "-sn" # Don't display the score
+          - "--rcfile=.pylintrc" # pylint configuration file
