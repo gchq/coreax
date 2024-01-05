@@ -44,7 +44,7 @@ doc = [
 test = [
     "pytest-cov",
 ]
-# All tools for a developer
+# All tools for a developer and for running pylint
 dev = [
     "coreax[doc, test]",
     "imageio",
