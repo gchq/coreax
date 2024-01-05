@@ -331,12 +331,6 @@ class RefineRandom(Refine):
         random_key = cast_as_type(
             x=random_key, object_name="random_key", type_caster=int
         )
-        validate_in_range(
-            x=random_key,
-            object_name="random_key",
-            strict_inequalities=True,
-            lower_bound=0.0,
-        )
 
         # Assign attributes
         self.p = p
