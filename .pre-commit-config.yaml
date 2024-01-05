@@ -120,7 +120,18 @@ repos:
         entry: pylint
         language: python
         additional_dependencies:
+          - flax
+          - imageio
+          - jax
+          - jaxopt
+          - matplotlib
+          - numpy
+          - opencv-python
+          - optax
           - pylint
+          - scikit-learn
+          - sphinx
+          - tqdm
         types:
           - python
         args:
