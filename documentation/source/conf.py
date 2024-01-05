@@ -87,6 +87,7 @@ intersphinx_mapping = {
 # TODO: Once no longer supporting Python <3.10, drop try statement as quotes should
 # never be required
 try:
+    # pylint: disable=unsupported-binary-operation
     OptionalArrayLike = ArrayLike | None
 except TypeError:
     OptionalArrayLike = "ArrayLike | None"
