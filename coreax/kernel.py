@@ -69,10 +69,7 @@ from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.util
-
-# TODO: REMOVE
-# import coreax.approximation as ca
-# import coreax.util as cu
+import coreax.validation
 
 
 @jit
@@ -445,13 +442,10 @@ class Kernel(ABC):
         """
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
+    @staticmethod
     def approximate_kernel_matrix_row_sum_mean(
-        self,
         x: ArrayLike,
-        approximator: str | type[coreax.approximation.KernelMeanApproximator],
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
+        approximator: coreax.approximation.KernelMeanApproximator,
     ) -> Array:
         r"""
         Approximate the mean of the row sum of the kernel matrix.
@@ -462,52 +456,15 @@ class Kernel(ABC):
         approximation can be used in place of the true value.
 
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Name of the approximator to use, or an uninstantiated
-            class object
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
+        :param approximator: Instantiated
+            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
+            created using the same kernel one wishes to use
         :return: Approximation to the kernel matrix row sum
         """
-        # Create an approximator object
-        approximator = self.create_approximator(
-            approximator=approximator,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
+        coreax.validation.validate_is_instance(
+            approximator, "approximator", coreax.approximation.KernelMeanApproximator
         )
         return approximator.approximate(x)
-
-    def create_approximator(
-        self,
-        approximator: str | type[coreax.approximation.KernelMeanApproximator],
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
-    ) -> coreax.approximation.KernelMeanApproximator:
-        r"""
-        Create an approximator object for use with the kernel matrix row sum mean.
-
-        :param approximator: The name of an approximator class to use, or the
-            uninstantiated class directly as a dependency injection
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
-        :return: Approximator object
-        """
-        approximator_obj = coreax.approximation.approximator_factory.get(approximator)
-
-        # Initialise, accounting for different classes having different numbers of
-        # parameters
-        return coreax.util.call_with_excess_kwargs(
-            approximator_obj,
-            kernel=self,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
-        )
 
 
 class SquaredExponentialKernel(Kernel):
@@ -984,29 +941,5 @@ for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-
-# Set up class factory
-if __name__ == "__main__":
-    kernel_factory = coreax.util.ClassFactory(Kernel)
-    kernel_factory.register("squared_exponential", SquaredExponentialKernel)
-    kernel_factory.register("laplace", LaplacianKernel)
-    kernel_factory.register("pcimq", PCIMQKernel)
-    kernel_factory.register("stein", SteinKernel)
-
-
-def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
-    """
-    Instantiate a kernel by name.
-
-    :param name: Name of kernel in :data:`kernel_factory`, or class object to
-        instantiate
-    :param args: Positional arguments to pass to instantiated class
-    :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
-    :return: Instance of selected :class:`Kernel` class
-    """
-    class_obj = kernel_factory.get(name)
-    return coreax.util.call_with_excess_kwargs(class_obj, args, kwargs)
-
 
 # TODO: Do we want weights to be used to align with MMD?

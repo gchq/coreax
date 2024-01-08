@@ -171,9 +171,3 @@ class MMD(WeightsOptimiser):
         sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
-
-
-if __name__ == "__main__":
-    weights_factory = coreax.util.ClassFactory(WeightsOptimiser)
-    weights_factory.register("SBQ", SBQ)
-    weights_factory.register("MMD", MMD)

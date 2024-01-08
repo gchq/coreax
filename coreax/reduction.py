@@ -60,27 +60,19 @@ import coreax.util
 import coreax.validation
 import coreax.weights
 
-# TODO: REMOVE
-# from coreax.data import ArrayData, DataReader
-# from coreax.kernel import Kernel
-# from coreax.metrics import Metric
-# from coreax.refine import Refine
-# from coreax.util import NotCalculatedError
-# from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
-# from coreax.weights import WeightsOptimiser
-
 
 class Coreset(ABC):
     r"""
     Class for reducing data to a coreset.
 
-    :param weights_optimiser: Optimiser to determine weights for coreset points to
-        optimise some quality metric, or :data:`None` if unweighted
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
     :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
-    :param refine_method: Refinement method to use, or :data:`None` if not applicable;
-        only applicable to reduction methods that generate coresubsets
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
     """
 
     def __init__(
