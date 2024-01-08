@@ -456,6 +456,7 @@ class MapReduce(ReductionStrategy):
                 input_indices=jnp.array(range(input_data.shape[0])),
             )
         )
+        assert jnp.array_equal(coreset.coreset, input_data[coreset.coreset_indices])
 
     def _reduce_recursive(
         self,
@@ -504,12 +505,14 @@ class MapReduce(ReductionStrategy):
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
+        assert all(x in data_to_reduce.tolist() for x in full_coreset.tolist())
         if partition_coresets[0].coreset_indices is None:
             full_indices = None
         else:
             full_indices = jnp.concatenate(
-                [pc.coreset_indices for pc in partition_coresets]
+                [input_indices[pc.coreset_indices] for pc in partition_coresets]
             )
+        assert all(x in input_indices.tolist() for x in full_indices.tolist())
 
         # Recursively reduce large coreset
         # coreset_indices will be None if not applicable to the coreset method
