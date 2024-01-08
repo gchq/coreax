@@ -222,21 +222,54 @@ class TestMapReduce(unittest.TestCase):
 
     def test_random_sample(self):
         """Test map reduction with :class:`RandomSample`."""
-        n = 100
+        n = 100  # Number of data points
         orig_data = coreax.data.ArrayData.load(
-            jnp.column_stack(
-                (jnp.arange(start=0, stop=n), jnp.arange(start=0, stop=2 * n, step=2))
-            )
+            jnp.array([[i, 2 * i] for i in range(n)])
         )
-        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=50)
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=20)
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
-        strategy.reduce(coreset)
-        # Check shape of output
+
+        with patch.object(
+            coreax.reduction.MapReduce,
+            "_reduce_recursive",
+            wraps=strategy._reduce_recursive,
+        ) as mock:
+            # Perform the reduction
+            strategy.reduce(coreset)
+            num_calls_reduce_recursive = mock.call_count
+
+        # Check the shape of the output
         self.assertEqual(coreset.format().shape, (10, 2))
+        # Check _reduce_recursive is called at least twice
+        self.assertGreaterEqual(num_calls_reduce_recursive, 2)
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
+    def test_random_sample_big_leaves(self):
+        """Test map reduction with :class:`RandomSample` with large leaf_size."""
+        n = 100  # Number of data points
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(n)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=n)
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+
+        with patch.object(
+            coreax.reduction.MapReduce,
+            "_reduce_recursive",
+            wraps=strategy._reduce_recursive,
+        ) as mock:
+            # Perform the reduction
+            strategy.reduce(coreset)
+            num_calls_reduce_recursive = mock.call_count
+
+        # Check _reduce_recursive is called only once
+        self.assertEqual(num_calls_reduce_recursive, 1)
+        # TODO Check _coreset_copy_fit is called only once
+        # TODO rewrite with .assert_called_once() instead of .call_count
 
 
 if __name__ == "__main__":
