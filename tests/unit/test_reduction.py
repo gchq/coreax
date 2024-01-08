@@ -201,10 +201,10 @@ class TestCoreset(unittest.TestCase):
 
 
 class TestSizeReduce(unittest.TestCase):
-    """Test :class:`SizeReduce`."""
+    """Test :class:`~coreax.reduction.SizeReduce`."""
 
     def test_random_sample(self):
-        """Test reduction with :class:`RandomSample`."""
+        """Test reduction with :class:`~coreax.coresubset.RandomSample`."""
         orig_data = coreax.data.ArrayData.load(jnp.array([i, 2 * i] for i in range(20)))
         strategy = coreax.reduction.SizeReduce(10)
         coreset = coreax.coresubset.RandomSample()
