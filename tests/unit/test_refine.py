@@ -14,9 +14,11 @@
 
 import itertools
 import unittest
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 
+import coreax.approximation
 import coreax.data
 import coreax.kernel
 import coreax.reduction
@@ -185,7 +187,7 @@ class TestRefine(unittest.TestCase):
                     set(coreset_obj.coreset_indices.tolist()), best_indices
                 )
 
-    def test_kernel_mean_row_sum_approx(self):
+    def test_kernel_mean_row_sum_approx_invalid(self):
         """
         Test for error when approximate_kernel_row_sum = True and no approximator given.
         """
@@ -199,6 +201,29 @@ class TestRefine(unittest.TestCase):
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
-        refine_regular = coreax.refine.RefineRegular(approximate_kernel_row_sum=True)
+        refine_regular = coreax.refine.RefineRegular(approximator="not_an_approximator")
 
         self.assertRaises(TypeError, refine_regular.refine, coreset=coreset_obj)
+
+    def test_kernel_mean_row_sum_approx_valid(self):
+        """
+        Test for error when approximate_kernel_row_sum = True and an approximator given.
+        """
+        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
+        best_indices = {0, 1}
+        coreset_indices = jnp.array(list(best_indices))
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        approximator = coreax.approximation.RandomApproximator(
+            kernel=kernel, num_train_points=2, num_kernel_points=2
+        )
+        coreset_obj = CoresetMock(
+            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
+        )
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
+        coreset_obj.kernel = kernel
+        refine_regular = coreax.refine.RefineRegular(approximator=approximator)
+        # This step passing is a test that the approximator does not cause an issue with
+        # the code run
+        refine_regular.refine(coreset=coreset_obj)

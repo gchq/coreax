@@ -385,8 +385,3 @@ class MMD(Metric):
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 
         return weighted_pairwise_distance_sum
-
-
-if __name__ == "__main__":
-    metric_factory = coreax.util.ClassFactory(Metric)
-    metric_factory.register("MMD", MMD)
