@@ -156,7 +156,6 @@ class TestCoreset(unittest.TestCase):
         """Check that default behaviour of copy_fit points to other coreset array."""
         array = jnp.array([[1, 2], [3, 4]])
         indices = jnp.array([5, 6])
-        data = MagicMock(spec=coreax.data.DataReader)
         this_obj = CoresetMock()
         other = CoresetMock()
         other.original_data = MagicMock(spec=coreax.data.DataReader)
@@ -164,7 +163,7 @@ class TestCoreset(unittest.TestCase):
         other.coreset_indices = indices
         this_obj.copy_fit(other)
         # Check original_data not copied
-        self.assertIsNot(this_obj.original_data, data)
+        self.assertIsNone(this_obj.original_data)
         # Check copy
         self.assertIs(this_obj.coreset, array)
         self.assertIs(this_obj.coreset_indices, indices)
@@ -173,15 +172,14 @@ class TestCoreset(unittest.TestCase):
         """Check that copy_fit with deep=True creates copies of coreset arrays."""
         array = jnp.array([[1, 2], [3, 4]])
         indices = jnp.array([5, 6])
-        data = MagicMock(spec=coreax.data.DataReader)
         this_obj = CoresetMock()
         other = CoresetMock()
-        other.original_data = data
+        other.original_data = MagicMock(spec=coreax.data.DataReader)
         other.coreset = array
         other.coreset_indices = indices
         this_obj.copy_fit(other, True)
         # Check original_data not copied
-        self.assertIsNot(this_obj.original_data, data)
+        self.assertIsNone(this_obj.original_data)
         # Check copy
         self.assertIsNot(this_obj.coreset, array)
         np.testing.assert_array_equal(this_obj.coreset, array)
