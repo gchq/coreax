@@ -129,8 +129,8 @@ class KernelHerding(coreax.reduction.Coreset):
             object_name="approximator",
             expected_type=(str, coreax.approximation.KernelMeanApproximator, None),
         )
-        coreax.validation.validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=ArrayLike
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
         num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
@@ -403,7 +403,7 @@ class RandomSample(coreax.reduction.Coreset):
     :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
         without replacement
     :param refine_method: Refinement method to use, or :data:`None` if not required
-    :param random_key: Pseudo-random number generator key for sampling
+    :param random_seed: Pseudo-random number generator key for sampling
     """
 
     def __init__(
@@ -413,25 +413,19 @@ class RandomSample(coreax.reduction.Coreset):
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
-        random_key: ArrayLike = 0,
+        random_seed: ArrayLike = 0,
     ):
         """Initialise a random sampling object."""
         # Validate inputs
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=random_key,
-            object_name="random_key",
-            strict_inequalities=False,
-            lower_bound=0,
+        random_seed = coreax.validation.cast_as_type(
+            x=random_seed, object_name="random_seed", type_caster=int
         )
         unique = coreax.validation.cast_as_type(
-            x=unique, object_name="random_key", type_caster=bool
+            x=unique, object_name="unique", type_caster=bool
         )
 
         # Assign random sample specific attributes
-        self.random_key = random_key
+        self.random_seed = random_seed
         self.unique = unique
 
         # Initialise Coreset parent
@@ -467,7 +461,7 @@ class RandomSample(coreax.reduction.Coreset):
             "weights_optimiser": self.weights_optimiser,
             "refine_method": self.refine_method,
             "unique": self.unique,
-            "random_key": self.random_key,
+            "random_seed": self.random_seed,
         }
         return children, aux_data
 
@@ -492,7 +486,7 @@ class RandomSample(coreax.reduction.Coreset):
         )
 
         # Setup for sampling
-        key = random.PRNGKey(self.random_key)
+        key = random.key(self.random_seed)
         num_data_points = len(self.original_data.pre_coreset_array)
 
         # Randomly sample the desired number of points to form a coreset
