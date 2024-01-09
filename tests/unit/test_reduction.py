@@ -257,19 +257,24 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
-        with patch.object(
-            coreax.reduction.MapReduce,
-            "_reduce_recursive",
-            wraps=strategy._reduce_recursive,
-        ) as mock:
+        with (
+            patch.object(
+                coreax.reduction.MapReduce,
+                "_reduce_recursive",
+                wraps=strategy._reduce_recursive,
+            ) as mock_reduce_recursive,
+            patch.object(
+                coreax.reduction.MapReduce,
+                "_coreset_copy_fit",
+                wraps=strategy._coreset_copy_fit,
+            ) as mock_coreset_copy_fit,
+        ):
             # Perform the reduction
             strategy.reduce(coreset)
-            num_calls_reduce_recursive = mock.call_count
-
-        # Check _reduce_recursive is called only once
-        self.assertEqual(num_calls_reduce_recursive, 1)
-        # TODO Check _coreset_copy_fit is called only once
-        # TODO rewrite with .assert_called_once() instead of .call_count
+            # Check _reduce_recursive is called only once
+            mock_reduce_recursive.assert_called_once()
+            # Check _coreset_copy_fit is called only once
+            mock_coreset_copy_fit.assert_called_once()
 
 
 if __name__ == "__main__":
