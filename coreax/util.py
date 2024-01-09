@@ -35,7 +35,6 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-import coreax.coresubset
 import coreax.metrics
 import coreax.refine
 import coreax.weights
