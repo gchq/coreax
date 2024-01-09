@@ -55,11 +55,14 @@ OSQP
 params_ineq
 pinv
 pydocstyle
+pylint
+pylintrc
 pyproject
 pyqt
 pyroma
 pytest
 quickstart
+rcfile
 rightarrow
 rtol
 scikit
