@@ -502,6 +502,7 @@ class MapReduce(ReductionStrategy):
                 self._coreset_copy_fit(template, sd, sd_indices)
                 for sd, sd_indices in zip(split_data, new_indices)
             ]
+        assert (len(pc.coreset) == self.coreset_size for pc in partition_coresets)
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
