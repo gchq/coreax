@@ -107,6 +107,34 @@ class TestRefine(unittest.TestCase):
             set(data_reduction_obj.reduction_indices.tolist()), best_indices
         )
 
+    def test_refine_rand_negative_seed(self):
+        """
+        Test the random refine method with a toy example and a negative seed.
+
+        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
+        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
+        i.e. ``X_c =  [[0,0], [[2,2]]``.
+
+        Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
+        coreset indices to ``[0, 2]``.
+        """
+        x = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        best_indices = {0, 2}
+        test_indices = [2, 2]
+        coreset_indices = jnp.array(test_indices)
+
+        data_reduction_obj = DataReduction(
+            original_data=x, weight=None, kernel=SquaredExponentialKernel()
+        )
+        data_reduction_obj.reduction_indices = coreset_indices
+
+        refine_rand = coreax.refine.RefineRandom(random_key=-10, p=1.0)
+        refine_rand.refine(data_reduction=data_reduction_obj)
+
+        self.assertSetEqual(
+            set(data_reduction_obj.reduction_indices.tolist()), best_indices
+        )
+
     def test_refine_reverse(self):
         """
         Test the reverse refine method with a toy example.
