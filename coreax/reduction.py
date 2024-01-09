@@ -45,12 +45,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import copy
 from multiprocessing.pool import ThreadPool
-from typing import Self, TypeVar
+from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
+from typing_extensions import (
+    Self,  # TODO: Switch to typing once no longer supporting Python < 3.11
+)
 
 import coreax.data
 import coreax.kernel
