@@ -90,21 +90,23 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check pounce.py runs without error, generates  output, and
         has coreset MMD better than MMD from random sampling.
         """
-        directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
+        in_path = Path(os.path.dirname(__file__)) / Path(
+            "../../examples/data/pounce/pounce.gif"
+        )
 
         # Delete output files if already present
-        out_dir = directory / "coreset"
-        if out_dir.exists():
-            for sub in out_dir.iterdir():
-                if sub.name in {"coreset.gif", "frames.png"}:
+        out_path = in_path / "coreset"
+        if out_path.exists():
+            for sub in out_path.iterdir():
+                if sub.name in {"pounce_coreset.gif", "pounce_frames.png"}:
                     sub.unlink()
 
         with patch("builtins.print"):
             # Run pounce_map_reduce.py
-            mmd_coreset, mmd_random = pounce_main(directory=directory)
+            mmd_coreset, mmd_random = pounce_main(in_path=in_path, out_path=out_path)
 
-            self.assert_is_file(directory / Path("coreset/coreset.gif"))
-            self.assert_is_file(directory / Path("coreset/frames.png"))
+            self.assert_is_file(out_path / Path("coreset/pounce_coreset.gif"))
+            self.assert_is_file(out_path / Path("coreset/pounce_frames.png"))
 
             self.assertLess(
                 mmd_coreset,
@@ -119,21 +121,30 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check pounce_map_reduce.py runs without error, generates
         output, and has coreset MMD better than MMD from random sampling.
         """
-        directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
+        in_path = Path(os.path.dirname(__file__)) / Path(
+            "../../examples/data/pounce/pounce.gif"
+        )
 
         # Delete output files if already present
-        out_dir = directory / "coreset_map_reduce"
-        if out_dir.exists():
-            for sub in out_dir.iterdir():
-                if sub.name in {"coreset_map_reduce.gif", "frames_map_reduce.png"}:
+        out_path = in_path / "coreset"
+        if out_path.exists():
+            for sub in out_path.iterdir():
+                if sub.name in {
+                    "pounce_map_reduce_coreset.gif",
+                    "pounce_map_reduce_frames.png",
+                }:
                     sub.unlink()
 
         with patch("builtins.print"):
             # Run pounce_map_reduce.py
-            mmd_coreset, mmd_random = pounce_map_reduce_main(directory=directory)
+            mmd_coreset, mmd_random = pounce_map_reduce_main(
+                in_path=in_path, out_path=out_path
+            )
 
-            self.assert_is_file(directory / Path("coreset_map_reduce/coreset.gif"))
-            self.assert_is_file(directory / Path("coreset_map_reduce/frames.png"))
+            self.assert_is_file(
+                out_path / Path("coreset/pounce_map_reduce_coreset.gif")
+            )
+            self.assert_is_file(out_path / Path("coreset/pounce_map_reduce_frames.png"))
 
             self.assertLess(
                 mmd_coreset,
@@ -148,35 +159,33 @@ class TestExamples(unittest.TestCase):
         An end-to-end test to check pounce_map_reduce_ssm.py runs without error,
         generates output, and has coreset MMD better than MMD from random sampling.
         """
-        directory = Path(os.path.dirname(__file__)) / Path("../../examples/data/pounce")
+        in_path = Path(os.path.dirname(__file__)) / Path(
+            "../../examples/data/pounce/pounce.gif"
+        )
 
         # Delete output files if already present
-        out_dir = directory / "coreset_map_reduce_sliced_score_matching"
-        if out_dir.exists():
-            for sub in out_dir.iterdir():
+        out_path = in_path / "coreset"
+        if out_path.exists():
+            for sub in out_path.iterdir():
                 if sub.name in {
-                    "coreset_map_reduce_sliced_score_matching.gif",
-                    "frames_map_reduce_sliced_score_matching.png",
+                    "pounce_map_reduce_sliced_score_matching_coreset.gif",
+                    "pounce_map_reduce_sliced_score_matching_frames.png",
                 }:
                     sub.unlink()
 
         with patch("builtins.print"):
             # Run pounce_map_reduce_ssm.py
-            mmd_coreset, mmd_random = pounce_map_reduce_ssm_main(directory=directory)
+            mmd_coreset, mmd_random = pounce_map_reduce_ssm_main(
+                in_path=in_path, out_path=out_path
+            )
 
             self.assert_is_file(
-                directory
-                / Path(
-                    "coreset_map_reduce_sliced_score_matching/"
-                    "coreset_map_reduce_sliced_score_matching.gif"
-                )
+                out_path
+                / Path("coreset/pounce_map_reduce_sliced_score_matching_coreset.gif")
             )
             self.assert_is_file(
-                directory
-                / Path(
-                    "coreset_map_reduce_sliced_score_matching/"
-                    "frames_map_reduce_sliced_score_matching.png"
-                )
+                out_path
+                / Path("coreset/pounce_map_reduce_sliced_score_matching_frames.png")
             )
 
             self.assertLess(

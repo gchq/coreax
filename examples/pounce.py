@@ -46,7 +46,10 @@ from coreax.reduction import SizeReduce
 from coreax.score_matching import KernelDensityMatching
 
 
-def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, float]:
+def main(
+    in_path: Path = Path("../examples/data/pounce/pounce.gif"),
+    out_path: Path | None = None,
+) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with Stein kernel herding.
 
@@ -55,21 +58,23 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
 
-    :param directory: Path to directory containing input video, assumed relative to this
+    :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
-    # Convert directory to absolute path
-    if not directory.is_absolute():
-        directory = Path(__file__).parent / directory
+    # Convert input and absolute paths to absolute paths
+    if not in_path.is_absolute():
+        in_path = Path(__file__).parent / in_path
+    if out_path is not None and not out_path.is_absolute():
+        out_path = Path(__file__).parent / out_path
 
-    # Define path to directory containing video as sequence of images
-    file_name = Path("pounce.gif")
-    coreset_dir = directory / Path("coreset")
-    coreset_dir.mkdir(exist_ok=True)
+    # Create output directory
+    out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
-    raw_data = np.array(imageio.v2.mimread(directory / file_name)[1:])
+    raw_data = np.array(imageio.v2.mimread(in_path)[1:])
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
@@ -96,27 +101,11 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     )
     length_scale = median_heuristic(principle_components_data[idx])
 
-    # TODO: Why does this not work?
-    # # Learn a score function via kernel density estimation
-    # sliced_score_matcher = KernelDensityMatching(
-    #     length_scale=length_scale, kde_data=principle_components_data[idx, :]
-    # )
-    # score_function = sliced_score_matcher.match()
-
-    # TODO: Temp until KernelDensityMatching is fixed
-    from jax.random import rademacher
-
-    from coreax.score_matching import SlicedScoreMatching
-
-    sliced_score_matcher = SlicedScoreMatching(
-        random_generator=rademacher,
-        use_analytic=True,
-        num_epochs=100,
-        num_random_vectors=1,
-        sigma=1.0,
-        gamma=0.95,
+    # Learn a score function via kernel density estimation
+    kernel_density_score_matcher = KernelDensityMatching(
+        length_scale=length_scale, kde_data=principle_components_data[idx, :]
     )
-    score_function = sliced_score_matcher.match(principle_components_data)
+    score_function = kernel_density_score_matcher.match()
 
     # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
@@ -162,7 +151,8 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
-    imageio.mimsave(coreset_dir / Path("coreset.gif"), coreset_images)
+    if out_path is not None:
+        imageio.mimsave(out_path / Path("pounce_coreset.gif"), coreset_images)
 
     # Plot to visualise which frames were chosen from the sequence action frames are
     # where the "pounce" occurs
@@ -178,7 +168,8 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
-    plt.savefig(directory / "coreset" / "frames.png")
+    if out_path is not None:
+        plt.savefig(out_path / "pounce_frames.png")
     plt.close()
 
     return (
