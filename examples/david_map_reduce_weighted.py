@@ -48,7 +48,7 @@ from coreax.kernel import (
     median_heuristic,
 )
 from coreax.metrics import MMD
-from coreax.reduction import MapReduce
+from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching
 from coreax.weights import MMD as MMDWeightsOptimiser
 
@@ -134,7 +134,7 @@ def main(
     random_sample_object = RandomSample(unique=True)
     random_sample_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=10000),
+        strategy=SizeReduce(coreset_size=coreset_size),
     )
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
