@@ -49,7 +49,6 @@ from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.kernel
-import coreax.util
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -74,19 +73,16 @@ class Refine(ABC):
     load, the kernel mean row sum can be approximated by setting the variable
     ``approximate_kernel_row_sum`` = :data:`True` when initializing the Refine object.
 
-    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-        sum is calculated. If :data:`True`, the sum is approximate.
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        for the kernel mean approximation method
+        for the kernel mean approximation method or :data:`None` (default) if
+        calculations should be exact
     """
 
     def __init__(
         self,
-        approximate_kernel_row_sum: bool = False,
-        approximator: type[coreax.approximation.KernelMeanApproximator] | None = None,
+        approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a refinement object."""
-        self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
 
     @abstractmethod
@@ -162,10 +158,9 @@ class RefineRegular(Refine):
     :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
-    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-        sum is calculated. If :data:`True`, the sum is approximate.
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        for the kernel mean approximation method
+        for the kernel mean approximation method or :data:`None` (default) if
+        calculations should be exact
     """
 
     def refine(
@@ -194,7 +189,7 @@ class RefineRegular(Refine):
         # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
         kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
         if kernel_matrix_row_sum_mean is None:
-            if self.approximate_kernel_row_sum:
+            if self.approximator is not None:
                 kernel_matrix_row_sum_mean = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
                         original_array, self.approximator
@@ -303,10 +298,9 @@ class RefineRandom(Refine):
     of candidate points. The candidate points are a random sample of :math:`n \times p`
     points from among the original data.
 
-    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-        sum is calculated. If ``True``, the sum is approximate.
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        for the kernel mean approximation method
+        for the kernel mean approximation method or :data:`None` (default) if
+        calculations should be exact
     :param p: Proportion of original dataset to randomly sample for candidate points
         to replace those in the coreset
     :param random_key: Pseudo-random number generator key
@@ -314,7 +308,6 @@ class RefineRandom(Refine):
 
     def __init__(
         self,
-        approximate_kernel_row_sum: bool = False,
         approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
         random_key: int = 0,
@@ -323,7 +316,6 @@ class RefineRandom(Refine):
         self.random_key = random_key
         self.p = p
         super().__init__(
-            approximate_kernel_row_sum=approximate_kernel_row_sum,
             approximator=approximator,
         )
 
@@ -355,7 +347,7 @@ class RefineRandom(Refine):
         # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
         kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
         if kernel_matrix_row_sum_mean is None:
-            if self.approximate_kernel_row_sum:
+            if self.approximator is not None:
                 kernel_matrix_row_sum_mean = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
                         original_array, self.approximator
@@ -533,10 +525,9 @@ class RefineReverse(Refine):
     This performs the same style of refinement as :class:`~coreax.refine.RefineRegular`
     but reverses the order.
 
-    :param approximate_kernel_row_sum: Boolean determining how the kernel mean row
-        sum is calculated. If :data:`True`, the sum is approximate.
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        for the kernel mean approximation method
+        for the kernel mean approximation method or :data:`None` (default) if
+        calculations should be exact
     """
 
     def refine(
@@ -566,7 +557,7 @@ class RefineReverse(Refine):
         # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
         kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
         if kernel_matrix_row_sum_mean is None:
-            if self.approximate_kernel_row_sum:
+            if self.approximator is not None:
                 kernel_matrix_row_sum_mean = (
                     coreset.kernel.approximate_kernel_matrix_row_sum_mean(
                         original_array, self.approximator
@@ -715,10 +706,3 @@ for current_class in refine_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-# Set up class factory
-if __name__ == "__main__":
-    refine_factory = coreax.util.ClassFactory(Refine)
-    refine_factory.register("regular", RefineRegular)
-    refine_factory.register("random", RefineRandom)
-    refine_factory.register("reverse", RefineReverse)

@@ -191,9 +191,3 @@ class ArrayData(DataReader):
         :return: Array of coreset in format matching original data
         """
         return coreset.coreset
-
-
-# Register all instances with factory
-if __name__ == "__main__":
-    data_reader_factory = coreax.util.ClassFactory(DataReader)
-    data_reader_factory.register("array", ArrayData)
