@@ -189,7 +189,7 @@ class TestRefine(unittest.TestCase):
 
     def test_kernel_mean_row_sum_approx_invalid(self):
         """
-        Test for error when approximate_kernel_row_sum = True and no approximator given.
+        Test for error when an invalid approximator is given.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
@@ -207,7 +207,7 @@ class TestRefine(unittest.TestCase):
 
     def test_kernel_mean_row_sum_approx_valid(self):
         """
-        Test for error when approximate_kernel_row_sum = True and an approximator given.
+        Test for no-error when a valid approximator is given.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
