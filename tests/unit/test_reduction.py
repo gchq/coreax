@@ -222,9 +222,9 @@ class TestMapReduce(unittest.TestCase):
 
     def test_random_sample(self):
         """Test map reduction with :class:`RandomSample`."""
-        n = 100  # Number of data points
+        num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
-            jnp.array([[i, 2 * i] for i in range(n)])
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
         )
         strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=20)
         coreset = coreax.coresubset.RandomSample()
@@ -241,19 +241,21 @@ class TestMapReduce(unittest.TestCase):
 
         # Check the shape of the output
         self.assertEqual(coreset.format().shape, (10, 2))
-        # Check _reduce_recursive is called at least twice
-        self.assertGreaterEqual(num_calls_reduce_recursive, 2)
+        # Check _reduce_recursive is called exactly three times
+        self.assertEqual(num_calls_reduce_recursive, 3)
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
     def test_random_sample_big_leaves(self):
         """Test map reduction with :class:`RandomSample` with large leaf_size."""
-        n = 100  # Number of data points
+        num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
-            jnp.array([[i, 2 * i] for i in range(n)])
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
         )
-        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=n)
+        strategy = coreax.reduction.MapReduce(
+            coreset_size=10, leaf_size=num_data_points
+        )
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
