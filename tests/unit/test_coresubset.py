@@ -76,7 +76,7 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
-            random_key=0, unique=True
+            random_seed=0, unique=True
         )
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
@@ -320,7 +320,7 @@ class TestRandomSample(unittest.TestCase):
         self.dimension = 10
         self.random_data_generation_key = 0
         self.coreset_size = 10
-        self.random_sampling_key = 42
+        self.random_sampling_seed = 42
 
         # Define example dataset
         x = random.uniform(
@@ -334,7 +334,7 @@ class TestRandomSample(unittest.TestCase):
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""
         random_sample = coreax.coresubset.RandomSample(
-            random_key=self.random_sampling_key, unique=True
+            random_seed=self.random_sampling_seed, unique=True
         )
         random_sample.fit(
             original_data=self.data_obj,
@@ -363,7 +363,7 @@ class TestRandomSample(unittest.TestCase):
         self.random_sampling_key = 42 ensure a repeated coreset point when unique=False.
         """
         random_sample = coreax.coresubset.RandomSample(
-            random_key=self.random_sampling_key, unique=False
+            random_seed=self.random_sampling_seed, unique=False
         )
         random_sample.fit(
             original_data=self.data_obj,

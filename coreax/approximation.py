@@ -403,11 +403,3 @@ def _anchor_body(
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
 
     return features
-
-
-# Set up class factory
-if __name__ == "__main__":
-    approximator_factory = coreax.util.ClassFactory(KernelMeanApproximator)
-    approximator_factory.register("random", RandomApproximator)
-    approximator_factory.register("annchor", ANNchorApproximator)
-    approximator_factory.register("nystrom", NystromApproximator)
