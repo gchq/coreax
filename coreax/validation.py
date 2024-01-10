@@ -24,7 +24,6 @@ passed to classes, functions and methods throughout the coreax codebase.
 from __future__ import annotations
 
 from collections.abc import Callable
-from types import UnionType
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -77,19 +76,26 @@ def validate_in_range(
 def validate_is_instance(
     x: object,
     object_name: str,
-    expected_type: type | UnionType | tuple[type | UnionType | None, ...] | None,
+    expected_type: type | tuple[type | None, ...] | None,
 ) -> None:
     """
     Verify that a given object is of a given type.
 
     Unlike built-in :func:`isinstance`, :data:`None` may be passed to `expected_type`.
 
+    Where the object may be one of several types, a tuple of types may be passed to
+    ``expected_type``.
+
+    .. note:: This code should work if a :class:`~types.UnionType` is passed to
+        ``expected_type`` but this is untested while this library continues to support
+        Python < 3.10.
+
     :func:`cast_as_type` should generally be used where possible with this function
     reserved for classes or other object types that do not have a reliable caster.
 
     :param x: Object we wish to validate
     :param object_name: Name of ``x`` to display if it is not of type ``expected_type``
-    :param expected_type: Expected type of ``x``, can be a tuple or union to specify a
+    :param expected_type: Expected type of ``x``, can be a tuple to specify a
         choice of valid types
     :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """

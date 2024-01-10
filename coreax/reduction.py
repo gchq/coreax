@@ -45,12 +45,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import copy
 from multiprocessing.pool import ThreadPool
-from typing import Self, TypeVar
+from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
+from typing_extensions import (
+    Self,  # TODO: Switch to typing once no longer supporting Python < 3.11
+)
 
 import coreax.data
 import coreax.kernel
@@ -60,27 +63,19 @@ import coreax.util
 import coreax.validation
 import coreax.weights
 
-# TODO: REMOVE
-# from coreax.data import ArrayData, DataReader
-# from coreax.kernel import Kernel
-# from coreax.metrics import Metric
-# from coreax.refine import Refine
-# from coreax.util import NotCalculatedError
-# from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
-# from coreax.weights import WeightsOptimiser
-
 
 class Coreset(ABC):
     r"""
     Class for reducing data to a coreset.
 
-    :param weights_optimiser: Optimiser to determine weights for coreset points to
-        optimise some quality metric, or :data:`None` if unweighted
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
     :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable
-    :param refine_method: Refinement method to use, or :data:`None` if not applicable;
-        only applicable to reduction methods that generate coresubsets
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
     """
 
     def __init__(
@@ -223,6 +218,7 @@ class Coreset(ABC):
         :return: Metric computed as a zero-dimensional array
         """
         coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
+        self.validate_fitted("compute_metric")
         # block_size will be validated by metric.compute()
         return metric.compute(
             self.original_data.pre_coreset_array, self.coreset, block_size=block_size
@@ -266,14 +262,16 @@ class Coreset(ABC):
         """
         Copy fitted coreset from other instance to this instance.
 
-        The other coreset must be of the same type as this instance.
+        The other coreset must be of the same type as this instance and
+        :attr:`original_data` must also be populated on ``other``. The user must ensure
+        :attr:`original_data` is correctly populated on this instance.
 
         :param other: :class:`Coreset` from which to copy calculated coreset
         :param deep: If :data:`True`, make a shallow copy of :attr:`coreset` and
             :attr:`coreset_indices`; otherwise, reference same objects
         :return: Nothing
         """
-        coreax.validation.validate_is_instance(other, "other", type[self])
+        coreax.validation.validate_is_instance(other, "other", type(self))
         other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
@@ -472,20 +470,19 @@ class MapReduce(ReductionStrategy):
         :return: Copy of ``template`` containing fitted coreset
         """
         # Check if no partitions are required
-        if input_data.pre_coreset_array.shape[0] <= self.leaf_size:
+        if input_data.shape[0] <= self.leaf_size:
             # Length of input_data < coreset_size is only possible if input_data is the
             # original data, so it is safe to request a coreset of size larger than the
             # original data (if of limited use)
             return self._coreset_copy_fit(template, input_data, input_indices)
 
         # Partitions required
-        data_to_reduce = input_data.pre_coreset_array
 
         # Build a kdtree
-        kdtree = KDTree(data_to_reduce, leaf_size=self.leaf_size)
+        kdtree = KDTree(input_data, leaf_size=self.leaf_size)
         _, node_indices, nodes, _ = kdtree.get_arrays()
         new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
-        split_data = [data_to_reduce[n] for n in new_indices]
+        split_data = [input_data[n] for n in new_indices]
 
         # Generate a coreset on each partition
         if self.parallel:
@@ -504,11 +501,11 @@ class MapReduce(ReductionStrategy):
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
-        if partition_coresets[0].corset_indices is None:
+        if partition_coresets[0].coreset_indices is None:
             full_indices = None
         else:
             full_indices = jnp.concatenate(
-                [pc.coreset_indices for pc in partition_coresets]
+                [input_indices[pc.coreset_indices] for pc in partition_coresets]
             )
 
         # Recursively reduce large coreset
