@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -209,10 +209,10 @@ class TestCoreset(unittest.TestCase):
 
 
 class TestSizeReduce(unittest.TestCase):
-    """Test :class:`SizeReduce`."""
+    """Test :class:`~coreax.reduction.SizeReduce`."""
 
     def test_random_sample(self):
-        """Test reduction with :class:`RandomSample`."""
+        """Test reduction with :class:`~coreax.coresubset.RandomSample`."""
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(20)])
         )
@@ -225,6 +225,72 @@ class TestSizeReduce(unittest.TestCase):
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_array_equal(row, np.array([idx, 2 * idx]))
+
+
+class TestMapReduce(unittest.TestCase):
+    """Test :class:`MapReduce`."""
+
+    def test_random_sample(self):
+        """Test map reduction with :class:`~coreax.coresubset.RandomSample`."""
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=20)
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+
+        with patch.object(
+            coreax.reduction.MapReduce,
+            "_reduce_recursive",
+            wraps=strategy._reduce_recursive,
+        ) as mock:
+            # Perform the reduction
+            strategy.reduce(coreset)
+            num_calls_reduce_recursive = mock.call_count
+
+        # Check the shape of the output
+        self.assertEqual(coreset.format().shape, (10, 2))
+        # Check _reduce_recursive is called exactly three times
+        self.assertEqual(num_calls_reduce_recursive, 3)
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
+    def test_random_sample_big_leaves(self):
+        """
+        Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.
+
+        This test sets leaf_size = num_data_points and checks the recursive function
+        is called only once."""
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(
+            coreset_size=10, leaf_size=num_data_points
+        )
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+
+        with (
+            patch.object(
+                coreax.reduction.MapReduce,
+                "_reduce_recursive",
+                wraps=strategy._reduce_recursive,
+            ) as mock_reduce_recursive,
+            patch.object(
+                coreax.reduction.MapReduce,
+                "_coreset_copy_fit",
+                wraps=strategy._coreset_copy_fit,
+            ) as mock_coreset_copy_fit,
+        ):
+            # Perform the reduction
+            strategy.reduce(coreset)
+            # Check _reduce_recursive is called only once
+            mock_reduce_recursive.assert_called_once()
+            # Check _coreset_copy_fit is called only once
+            mock_coreset_copy_fit.assert_called_once()
 
 
 if __name__ == "__main__":
