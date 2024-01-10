@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -258,7 +258,11 @@ class TestMapReduce(unittest.TestCase):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
     def test_random_sample_big_leaves(self):
-        """Test map reduction with :class:`~coreax.coresubset.RandomSample` with large leaf_size."""
+        """
+        Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.
+
+        This test sets leaf_size = num_data_points and checks the recursive function
+        is called only once."""
         num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
