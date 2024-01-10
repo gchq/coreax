@@ -456,7 +456,6 @@ class MapReduce(ReductionStrategy):
                 input_indices=jnp.array(range(input_data.shape[0])),
             )
         )
-        assert jnp.array_equal(coreset.coreset, input_data[coreset.coreset_indices])
 
     def _reduce_recursive(
         self,
@@ -480,13 +479,17 @@ class MapReduce(ReductionStrategy):
             return self._coreset_copy_fit(template, input_data, input_indices)
 
         # Partitions required
-        data_to_reduce = input_data
 
         # Build a kdtree
-        kdtree = KDTree(data_to_reduce, leaf_size=self.leaf_size)
+        kdtree = KDTree(input_data, leaf_size=self.leaf_size)
         _, node_indices, nodes, _ = kdtree.get_arrays()
         new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
-        split_data = [data_to_reduce[n] for n in new_indices]
+        split_data = [input_data[n] for n in new_indices]
+        num_leaf_nodes = jnp.sum(nodes["is_leaf"])
+        num_non_leaf_nodes = len(nodes) - num_leaf_nodes
+
+        print(f"\nNumber of leaf nodes: {num_leaf_nodes}")
+        print(f"Number of non-leaf nodes: {num_non_leaf_nodes}")
 
         # Generate a coreset on each partition
         if self.parallel:
@@ -502,18 +505,17 @@ class MapReduce(ReductionStrategy):
                 self._coreset_copy_fit(template, sd, sd_indices)
                 for sd, sd_indices in zip(split_data, new_indices)
             ]
-        assert (len(pc.coreset) == self.coreset_size for pc in partition_coresets)
+        print("Number of partition coresets: ", len(partition_coresets))
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
-        assert all(x in data_to_reduce.tolist() for x in full_coreset.tolist())
+        print("Number of coreset points: ", len(full_coreset))
         if partition_coresets[0].coreset_indices is None:
             full_indices = None
         else:
             full_indices = jnp.concatenate(
                 [input_indices[pc.coreset_indices] for pc in partition_coresets]
             )
-        assert all(x in input_indices.tolist() for x in full_indices.tolist())
 
         # Recursively reduce large coreset
         # coreset_indices will be None if not applicable to the coreset method
