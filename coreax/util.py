@@ -202,4 +202,4 @@ def assert_is_file(path: Path | str) -> None:
     :param path: Path to file
     :raises: Exception if file does not exist at given path
     """
-    assert (Path(path).resolve().is_file() is True, f"File does not exist: {path}")
+    assert Path(path).resolve().is_file() is True, f"File does not exist: {path}"

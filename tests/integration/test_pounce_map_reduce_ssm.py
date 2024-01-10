@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -43,28 +44,17 @@ class TestPounceMapReduce(unittest.TestCase):
         in_path = Path(os.path.dirname(__file__)) / Path(
             "../../examples/data/pounce/pounce.gif"
         )
-
-        # Delete output files if already present
-        out_path = Path("../../examples/pounce_map_reduce_ssm/")
-        if out_path.exists():
-            for sub in out_path.iterdir():
-                if sub.name in {
-                    "pounce_map_reduce_sliced_score_matching_coreset.gif",
-                    "pounce_map_reduce_sliced_score_matching_frames.png",
-                }:
-                    sub.unlink()
-
-        with patch("builtins.print"):
+        with patch("builtins.print"), tempfile.TemporaryDirectory() as tmp_dir:
             # Run pounce_map_reduce_ssm.py
             mmd_coreset, mmd_random = pounce_map_reduce_ssm_main(
-                in_path=in_path, out_path=out_path
+                in_path=in_path, out_path=Path(tmp_dir)
             )
 
             coreax.util.assert_is_file(
-                out_path / Path("pounce_map_reduce_sliced_score_matching_coreset.gif")
+                tmp_dir / Path("pounce_map_reduce_sliced_score_matching_coreset.gif")
             )
             coreax.util.assert_is_file(
-                out_path / Path("pounce_map_reduce_sliced_score_matching_frames.png")
+                tmp_dir / Path("pounce_map_reduce_sliced_score_matching_frames.png")
             )
 
             self.assertLess(

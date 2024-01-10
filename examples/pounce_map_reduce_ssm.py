@@ -181,7 +181,7 @@ def main(
     plt.ylabel("Chosen")
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(out_path / "frames_map_reduce_sliced_score_matching_frames.png")
+        plt.savefig(out_path / "pounce_map_reduce_sliced_score_matching_frames.png")
     plt.close()
 
     return (
