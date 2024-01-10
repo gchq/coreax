@@ -485,11 +485,6 @@ class MapReduce(ReductionStrategy):
         _, node_indices, nodes, _ = kdtree.get_arrays()
         new_indices = [jnp.array(node_indices[nd[0] : nd[1]]) for nd in nodes if nd[2]]
         split_data = [input_data[n] for n in new_indices]
-        num_leaf_nodes = jnp.sum(nodes["is_leaf"])
-        num_non_leaf_nodes = len(nodes) - num_leaf_nodes
-
-        print(f"\nNumber of leaf nodes: {num_leaf_nodes}")
-        print(f"Number of non-leaf nodes: {num_non_leaf_nodes}")
 
         # Generate a coreset on each partition
         if self.parallel:
@@ -505,11 +500,9 @@ class MapReduce(ReductionStrategy):
                 self._coreset_copy_fit(template, sd, sd_indices)
                 for sd, sd_indices in zip(split_data, new_indices)
             ]
-        print("Number of partition coresets: ", len(partition_coresets))
 
         # Concatenate coresets
         full_coreset = jnp.concatenate([pc.coreset for pc in partition_coresets])
-        print("Number of coreset points: ", len(full_coreset))
         if partition_coresets[0].coreset_indices is None:
             full_indices = None
         else:
