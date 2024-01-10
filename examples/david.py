@@ -32,7 +32,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import cv2

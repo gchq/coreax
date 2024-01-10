@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import scipy.stats
@@ -27,41 +28,52 @@ class TestKernelABC(unittest.TestCase):
     Tests related to the Kernel abstract base class in kernel.py
     """
 
-    def test_create_approximator(self) -> None:
+    def test_approximator_valid(self) -> None:
         """
-        Test creation of approximation object within the Kernel class.
+        Test usage of approximation object within the Kernel class.
         """
         # Patch the abstract methods of the Kernel ABC, so it can be created
         p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
         p.start()
 
-        # Define known approximator names
-        known_approximators = {
-            "random": coreax.approximation.RandomApproximator,
-            "nystrom": coreax.approximation.NystromApproximator,
-            "annchor": coreax.approximation.ANNchorApproximator,
-        }
-
-        # Create the kernel
+        # Create the kernel and some example data
         kernel = coreax.kernel.Kernel()
+        x = jnp.zeros(3)
 
-        # Call the approximation method with an invalid approximator string
-        self.assertRaises(KeyError, kernel.create_approximator, approximator="example")
+        # Define a mocked approximator
+        approximator = MagicMock(spec=coreax.approximation.RandomApproximator)
+        approximator_approximate_method = MagicMock()
+        approximator.approximate = approximator_approximate_method
 
-        # Call the approximation method with each known approximator name
-        for name, approx_type in known_approximators.items():
-            self.assertTrue(
-                isinstance(kernel.create_approximator(approximator=name), approx_type)
-            )
+        # Call the approximation method and check that approximation object is called as
+        # expected
+        kernel.approximate_kernel_matrix_row_sum_mean(x=x, approximator=approximator)
+        approximator_approximate_method.assert_called_once_with(x)
 
-        # Pre-create a KernelMeanApproximator and check that it is returned when passed
-        self.assertTrue(
-            isinstance(
-                kernel.create_approximator(
-                    approximator=coreax.approximation.RandomApproximator
-                ),
-                coreax.approximation.RandomApproximator,
-            )
+    def test_approximator_invalid(self) -> None:
+        """
+        Test invalid approximation objects are rejected within the Kernel class.
+        """
+        # Patch the abstract methods of the Kernel ABC, so it can be created
+        p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
+        p.start()
+
+        # Create the kernel and some example data
+        kernel = coreax.kernel.Kernel()
+        x = jnp.zeros(3)
+
+        # Define a mocked approximator
+        approximator = MagicMock()
+        approximator_approximate_method = MagicMock()
+        approximator.approximate = approximator_approximate_method
+
+        # Call the approximation method and check that approximation object is called as
+        # expected
+        self.assertRaises(
+            TypeError,
+            kernel.approximate_kernel_matrix_row_sum_mean,
+            x=x,
+            approximator=approximator,
         )
 
 
