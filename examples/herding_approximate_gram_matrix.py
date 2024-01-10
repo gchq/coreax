@@ -87,7 +87,10 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Computing coreset...")
     # Compute a coreset using kernel herding with a Squared exponential kernel.
     herding_object = KernelHerding(
-        kernel=herding_kernel, approximator=ANNchorApproximator(kernel=herding_kernel)
+        kernel=herding_kernel,
+        approximator=ANNchorApproximator(
+            kernel=herding_kernel, num_kernel_points=500, num_train_points=500
+        ),
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)

@@ -71,7 +71,8 @@ def main(
         out_path = Path(__file__).parent / out_path
 
     # Create output directory
-    out_path.mkdir(exist_ok=True)
+    if out_path is not None:
+        out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
     raw_data = np.array(imageio.v2.mimread(in_path)[1:])

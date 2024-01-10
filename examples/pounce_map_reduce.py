@@ -42,7 +42,7 @@ from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.metrics import MMD
-from coreax.reduction import MapReduce
+from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching
 
 
@@ -71,7 +71,8 @@ def main(
         out_path = Path(__file__).parent / out_path
 
     # Create output directory
-    out_path.mkdir(exist_ok=True)
+    if out_path is not None:
+        out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
     raw_data = np.array(imageio.v2.mimread(in_path)[1:])
@@ -139,7 +140,7 @@ def main(
     random_sample_object = RandomSample(unique=True)
     random_sample_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
+        strategy=SizeReduce(coreset_size=coreset_size),
     )
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
