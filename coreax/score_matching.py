@@ -529,6 +529,7 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
+            original_number_of_dimensions = x_.ndim
             x_ = jnp.atleast_2d(x_)
 
             # Get the gram matrix row means
@@ -537,7 +538,15 @@ class KernelDensityMatching(ScoreMatching):
             # Compute gradients with respect to x
             gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
 
-            return gradients / gram_matrix_row_means[:, None]
+            # Compute final evaluation of the score function
+            score_result = gradients / gram_matrix_row_means[:, None]
+
+            # Ensure output format accounts for 1-dimensional inputs as-well as
+            # multi-dimensional ones
+            if original_number_of_dimensions == 1:
+                score_result = score_result[0, :]
+
+            return score_result
 
         return score_function
 
