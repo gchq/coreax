@@ -134,6 +134,8 @@ class TestCoreset(unittest.TestCase):
             coreset.original_data.pre_coreset_array,
             coreset.coreset,
             block_size=block_size,
+            weights_x=None,
+            weights_y=None,
         )
 
     def test_refine(self):

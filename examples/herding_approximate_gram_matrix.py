@@ -58,7 +58,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     # Create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
-    num_data_points = 10000
+    num_data_points = 10_000
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1989
@@ -73,11 +73,12 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     coreset_size = 100
 
     # Setup the original data object
-    data = ArrayData(original_data=x, pre_coreset_array=x)
+    data = ArrayData.load(x)
 
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
-    num_samples_length_scale = min(num_data_points, 1000)
+    np.random.seed(random_seed)
+    num_samples_length_scale = min(num_data_points, 1_000)
     idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
@@ -112,15 +113,11 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset
-    )
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
@@ -129,8 +126,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        x[herding_object.coreset_indices, 0],
-        x[herding_object.coreset_indices, 1],
+        herding_object.coreset[:, 0],
+        herding_object.coreset[:, 1],
         s=10,
         color="red",
     )
@@ -143,8 +140,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        x[random_sample_object.coreset_indices, 0],
-        x[random_sample_object.coreset_indices, 1],
+        random_sample_object.coreset[:, 0],
+        random_sample_object.coreset[:, 1],
         s=10,
         color="red",
     )

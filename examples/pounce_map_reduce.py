@@ -28,6 +28,9 @@ The coreset attained from Stein kernel herding is compared to a coreset generate
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
 (MMD).
 """
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -78,6 +81,9 @@ def main(
     raw_data = np.array(imageio.v2.mimread(in_path)[1:])
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
+    # Fix random behaviour
+    np.random.seed(1989)
+
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
     # the statistical properties, i.e. variance.
     num_principle_components = 25
@@ -85,16 +91,13 @@ def main(
     principle_components_data = pca.fit_transform(raw_data_reshaped)
 
     # Setup the original data object
-    data = coreax.data.ArrayData(
-        original_data=principle_components_data,
-        pre_coreset_array=principle_components_data,
-    )
+    data = ArrayData.load(principle_components_data)
 
     # Request a 10 frame summary of the video
     coreset_size = 10
 
     # Set the length_scale parameter of the underlying RBF kernel
-    num_points_length_scale_selection = min(principle_components_data.shape[0], 1000)
+    num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
@@ -117,7 +120,7 @@ def main(
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1_000),
     )
 
     # Get and sort the coreset indices ready for producing the output video
@@ -132,9 +135,7 @@ def main(
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset
-    )
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
     # Generate a coreset via uniform random sampling for comparison
     random_sample_object = RandomSample(unique=True)
@@ -144,9 +145,7 @@ def main(
     )
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
