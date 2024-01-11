@@ -91,7 +91,7 @@ repos:
   - repo: https://github.com/streetsidesoftware/cspell-cli
     rev: v8.3.0
     hooks:
-      # run a spellcheck (words pulled from cspell.config.yaml)
+      # Run a spellcheck (words pulled from cspell.config.yaml)
         - id: cspell
           exclude: |
             (?x)^(
@@ -118,20 +118,7 @@ repos:
       - id: pylint
         name: pylint
         entry: pylint
-        language: python
-        additional_dependencies:
-          - flax
-          - imageio
-          - jax
-          - jaxopt
-          - matplotlib
-          - numpy
-          - opencv-python
-          - optax
-          - pylint
-          - scikit-learn
-          - sphinx
-          - tqdm
+        language: system
         types:
           - python
         args:

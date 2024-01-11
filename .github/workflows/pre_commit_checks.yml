@@ -10,10 +10,16 @@ jobs:
   pre_commit:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
         with:
           python-version: 3.11
-      - run: python -m pip install --upgrade pip
-      - run: pip install pre-commit
-      - run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure
+          cache: "pip"
+          cache-dependency-path: "requirements-dev-3.11.txt"
+      - name: Upgrade Pip
+        run: python -m pip install --upgrade pip
+      - name: Install dependencies
+        run: pip install --no-dependencies -r requirements-dev-3.11.txt
+      - name: Run Pre-commit checks
+        run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure
