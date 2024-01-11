@@ -82,28 +82,31 @@ def main(
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
 
     print(f"Image dimensions: {image_data.shape}")
-    array_data = np.column_stack(np.where(image_data < 255))
+    pre_coreset_data = np.column_stack(np.where(image_data < 255))
     pixel_values = image_data[image_data < 255]
-    array_data = np.column_stack((array_data, pixel_values)).astype(np.float32)
-    num_data_points = array_data.shape[0]
+    pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
+        np.float32
+    )
+    num_data_points = pre_coreset_data.shape[0]
 
     # Request 8000 coreset points
-    coreset_size = 8000
+    coreset_size = 8_000
 
     # Setup the original data object
-    data = ArrayData(original_data=array_data, pre_coreset_array=array_data)
+    data = ArrayData.load(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
-    num_samples_length_scale = min(num_data_points, 1000)
+    np.random.seed(1989)
+    num_samples_length_scale = min(num_data_points, 1_000)
     idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(array_data[idx].astype(float))
+    length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
     if length_scale == 0.0:
         length_scale = 100.0
 
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
     kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=array_data[idx, :]
+        length_scale=length_scale, kde_data=pre_coreset_data[idx, :]
     )
     score_function = kernel_density_score_matcher.match()
 
@@ -125,7 +128,7 @@ def main(
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=10000),
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=10_000),
     )
     herding_weights = herding_object.solve_weights()
 
@@ -146,15 +149,11 @@ def main(
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset
-    )
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
@@ -172,9 +171,9 @@ def main(
     # weights
     plt.subplot(1, 3, 2)
     plt.scatter(
-        array_data[herding_object.coreset_indices, 1],
-        -array_data[herding_object.coreset_indices, 0],
-        c=array_data[herding_object.coreset_indices, 2],
+        herding_object.coreset[:, 1],
+        -herding_object.coreset[:, 0],
+        c=herding_object.coreset[:, 2],
         cmap="gray",
         s=np.exp(2.0 * coreset_size * herding_weights).reshape(1, -1),
         marker="h",
@@ -187,9 +186,9 @@ def main(
     # Plot the image of randomly sampled points
     plt.subplot(1, 3, 3)
     plt.scatter(
-        array_data[random_sample_object.coreset_indices, 1],
-        -array_data[random_sample_object.coreset_indices, 0],
-        c=array_data[random_sample_object.coreset_indices, 2],
+        random_sample_object.coreset[:, 1],
+        -random_sample_object.coreset[:, 0],
+        c=random_sample_object.coreset[:, 2],
         s=1.0,
         cmap="gray",
         marker="h",

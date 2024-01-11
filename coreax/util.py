@@ -25,20 +25,13 @@ class factories and checks for numerical precision.
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-import inspect
 import time
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any, TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
-
-import coreax.metrics
-import coreax.refine
-import coreax.weights
 
 #: Kernel evaluation function.
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
@@ -193,13 +186,3 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     end_time = time.time()
     post_delta = end_time - start_time
     return pre_delta, post_delta
-
-
-def assert_is_file(path: Path | str) -> None:
-    """
-    Assert a file exists at a given path.
-
-    :param path: Path to file
-    :raises: Exception if file does not exist at given path
-    """
-    assert Path(path).resolve().is_file() is True, f"File does not exist: {path}"

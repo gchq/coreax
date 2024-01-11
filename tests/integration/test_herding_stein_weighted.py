@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
-from __future__ import annotations
-
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-import coreax.util
 from examples.herding_stein_weighted import main as herding_stein_weighted_main
 
 
@@ -50,12 +45,10 @@ class TestHerdingSteinWeighted(unittest.TestCase):
 
             mock_show.assert_has_calls([call(), call()])
 
-            coreax.util.assert_is_file(out_path)
+            self.assertTrue(Path(out_path).resolve().is_file())
 
             self.assertLess(
                 mmd_coreset,
                 mmd_random,
-                msg=(
-                    "MMD for random sampling was unexpectedly lower than coreset " "MMD"
-                ),
+                msg=("MMD for random sampling was unexpectedly lower than coreset MMD"),
             )

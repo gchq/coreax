@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
-from __future__ import annotations
-
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import coreax.util
 from examples.pounce_map_reduce_ssm import main as pounce_map_reduce_ssm_main
 
 
@@ -50,11 +45,20 @@ class TestPounceMapReduce(unittest.TestCase):
                 in_path=in_path, out_path=Path(tmp_dir)
             )
 
-            coreax.util.assert_is_file(
-                tmp_dir / Path("pounce_map_reduce_sliced_score_matching_coreset.gif")
+            self.assertTrue(
+                Path(
+                    tmp_dir
+                    / Path("pounce_map_reduce_sliced_score_matching_coreset.gif")
+                )
+                .resolve()
+                .is_file()
             )
-            coreax.util.assert_is_file(
-                tmp_dir / Path("pounce_map_reduce_sliced_score_matching_frames.png")
+            self.assertTrue(
+                Path(
+                    tmp_dir / Path("pounce_map_reduce_sliced_score_matching_frames.png")
+                )
+                .resolve()
+                .is_file()
             )
 
             self.assertLess(
