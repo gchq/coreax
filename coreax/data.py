@@ -22,7 +22,7 @@ two-dimensional :class:`~jax.Array`. Data reductions are performed along the fir
 dimension.
 
 The user should read in their data files using their preferred library that returns a
-:class:`jax.Array` or :class:`numpy.Array`. This array is passed to a
+:class:`jax.Array` or :func:`numpy.array`. This array is passed to a
 :meth:`DataReader.load` method. The user should not normally call
 :meth:`DataReader.__init__` directly. The user should select an appropriate subclass
 of :class:`DataReader` to match the structure of the input array. The :meth:`load`
@@ -82,7 +82,7 @@ class DataReader(ABC):
         Construct :class:`DataReader` from an array of original data.
 
         This class method restructures the original data into the layout required for
-        :class:`~coreax.Coreset`.
+        :class:`~coreax.reduction.Coreset`.
 
         The user should not normally initialise this class directly; instead use this
         constructor.
@@ -150,9 +150,9 @@ class ArrayData(DataReader):
     """
     Class to apply pre- and post-processing to two-dimensional array data.
 
-    Data should already be in a format accepted by :class:`~coreax.Coreset`. Thus, if no
-    dimensionality reduction is performed, this class is an identity wrapper and
-    :attr:`pre_coreset_array` is equal to :attr:`original_data`.
+    Data should already be in a format accepted by :class:`~coreax.reduction.Coreset`.
+    Thus, if no dimensionality reduction is performed, this class is an identity
+    wrapper and :attr:`pre_coreset_array` is equal to :attr:`original_data`.
 
     :param original_data: Array of data to be reduced to a coreset
     :param pre_coreset_array: Two-dimensional array already rearranged to be ready for
@@ -182,10 +182,11 @@ class ArrayData(DataReader):
         Format coreset to match the shape of the original data.
 
         As the original data was already in the required format for
-        :class:`~coreax.Coreset`, no reformatting takes place.
+        :class:`~coreax.reduction.Coreset`, no reformatting takes place.
 
-        If the number of columns was reduced by :meth:`reduce_dimension`, it will be
-        reverted by this method via a call to :meth:`restore_dimension`.
+        If the number of columns was reduced by
+        :meth:`~coreax.data.DataReader.reduce_dimension`, it will be reverted by this
+        method via a call to :meth:`~coreax.data.DataReader.restore_dimension`.
 
         :param coreset: Coreset to format
         :return: Array of coreset in format matching original data
