@@ -85,6 +85,14 @@ autodoc_default_options = {
     "private-members": True,
     "undoc-members": True,
     "show_inheritance": True,
+    "exclude-members": "_abc_impl,"
+                       "hidden_dim,"
+                       "output_dim,"
+                       "_parent_ref,"
+                       "_state,"
+                       "name,"
+                       "parent,"
+                       "scope",
 }
 
 # set Inter-sphinx mapping to link to external documentation
