@@ -66,7 +66,11 @@ class Refine(ABC):
 
     The refinement process happens iteratively. Coreset elements are replaced by
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
-    :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
+
+    .. math::
+        \text{MMD}^2(X,X_c) =
+        \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))
+
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
     The default calculates the kernel mean row sum in full. To reduce computational
@@ -108,6 +112,7 @@ class Refine(ABC):
         """
         Validate that refinement can be performed on this coreset.
 
+        :param coreset: :class:`~coreax.reduction.Coreset` object to validate
         :raises TypeError: When called on a class that does not generate coresubsets
         :return: Nothing
         """
@@ -155,7 +160,11 @@ class RefineRegular(Refine):
     The refinement process happens iteratively. The iteration is carried out over
     points in ``X``. Coreset elements are replaced by points most reducing the maximum
     mean discrepancy (MMD). The MMD is defined by:
-    :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
+
+    .. math::
+        \text{MMD}^2(X,X_c) =
+        \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))
+
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
@@ -230,6 +239,8 @@ class RefineRegular(Refine):
         :param i: Loop counter
         :param coreset_indices: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal, a :math:`1 \times n`
@@ -268,8 +279,11 @@ class RefineRegular(Refine):
         The change calculated is from replacing point ``i`` in ``coreset_indices`` with
         any point in ``x``.
 
+        :param i: Loop counter
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -396,6 +410,8 @@ class RefineRandom(Refine):
         :param val: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
         :param n_cand: Number of candidates for comparison
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -450,6 +466,8 @@ class RefineRandom(Refine):
             the original data
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -481,7 +499,7 @@ class RefineRandom(Refine):
         comparisons: ArrayLike,
     ) -> Array:
         r"""
-        Replace the ``i``th point in ``coreset_indices``.
+        Replace the ``i``\th point in ``coreset_indices``.
 
         The point is replaced with the candidate in ``candidate_indices`` with maximum
         value in ``comparisons``. ``coreset_indices`` -> ``x``.
@@ -490,7 +508,7 @@ class RefineRandom(Refine):
         :param coreset_indices: Indices in the original dataset for replacement
         :param candidate_indices: A set of candidates for replacement
         :param comparisons: Comparison values for each candidate
-        :return: Updated ``coreset_indices``, with ``i``th point replaced
+        :return: Updated ``coreset_indices``, with ``i``\th point replaced
         """
         coreset_indices = jnp.asarray(coreset_indices)
         candidate_indices = jnp.asarray(candidate_indices)
@@ -597,6 +615,8 @@ class RefineReverse(Refine):
         :param i: Loop counter
         :param coreset_indices: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -641,6 +661,8 @@ class RefineReverse(Refine):
         :param i: Index for original data
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
