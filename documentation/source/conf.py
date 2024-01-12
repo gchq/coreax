@@ -102,6 +102,9 @@ intersphinx_mapping = {
     "jaxopt": ("https://jaxopt.github.io/stable/", None),
     "flax": ("https://flax.readthedocs.io/en/latest/", None),
     "optax": ("https://optax.readthedocs.io/en/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
 # Specify custom types for autodoc_type_hints
@@ -115,7 +118,6 @@ except TypeError:
 
 autodoc_custom_types: dict[Any, str] = {
     cu.KernelFunction: ":obj:`~coreax.util.KernelFunction`",
-    cu.KernelFunctionWithGrads: ":obj:`~coreax.util.KernelFunctionWithGrads`",
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }
