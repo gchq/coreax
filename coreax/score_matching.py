@@ -249,7 +249,7 @@ class SlicedScoreMatching(ScoreMatching):
         when using score matching, but has higher variance than :meth:`analytic_obj` if
         these assumptions hold.
 
-        :param random_direction_vector: `:math:`d`-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
@@ -283,7 +283,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
-        the data vector (``x``), random vectors (``v``) and using the score neural
+        the data vector ``x``, random vectors ``v`` and using the score neural
         network.
 
         :param score_network: Function that calls the neural network on ``x``
@@ -394,7 +394,7 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
-        We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
+        We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
         considered.
 
