@@ -15,20 +15,21 @@ coreax.approximation module
 
 .. automodule:: coreax.approximation
 
+coreax.coresubset module
+------------------------
+
+.. automodule:: coreax.coresubset
+
+coreax.data module
+------------------
+
+.. automodule:: coreax.data
+
 coreax.kernel module
 --------------------
 
 .. automodule:: coreax.kernel
 
-coreax.kernel\_herding module
------------------------------
-
-.. automodule:: coreax.kernel_herding
-
-coreax.kernel\_herding\_refine module
--------------------------------------
-
-.. automodule:: coreax.kernel_herding_refine
 
 coreax.metrics module
 ---------------------
@@ -39,6 +40,11 @@ coreax.networks module
 ----------------------
 
 .. automodule:: coreax.networks
+
+coreax.reduction module
+-----------------------
+
+.. automodule:: coreax.reduction
 
 coreax.refine module
 --------------------
@@ -54,6 +60,11 @@ coreax.util module
 ------------------
 
 .. automodule:: coreax.util
+
+coreax.validation module
+------------------------
+
+.. automodule:: coreax.validation
 
 coreax.weights module
 ---------------------
