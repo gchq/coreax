@@ -31,10 +31,10 @@ kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined
 
 .. math::
 
-    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2).
+    k(x,y) = \text{output_scale} * \exp (-||x-y||^2/2 * \text{length_scale}^2).
 
 One can see that, if ``output_scale`` takes the value
-:math:`\frac{1}{\sqrt{2\pi}\text{length_scale}}`, then the
+:math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, then the
 :class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
 
 There are only two mandatory methods to implement when defining a new kernel. The first
@@ -239,7 +239,7 @@ class Kernel(ABC):
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
         The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
-        Autodiff.
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
         provides a vectorised version of this method for arrays.
@@ -259,7 +259,8 @@ class Kernel(ABC):
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
-        The gradient (Jacobian) of the kernel function is computed using Autodiff.
+        The gradient (Jacobian) of the kernel function is computed using
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
         provides a vectorised version of this method for arrays.
@@ -309,7 +310,8 @@ class Kernel(ABC):
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
-        The evaluation is done via Autodiff.
+        The evaluation is done via
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
@@ -343,10 +345,6 @@ class Kernel(ABC):
         The kernel matrix block ``i``:``i`` + ``max_size`` :math:`\times`
         ``j``:``j`` + ``max_size`` is used to update the row sum. Symmetry of the kernel
         matrix is exploited to reduced repeated calculation.
-
-        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
-        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
-        :math:`k(x,y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
         :param kernel_row_sum: Full data structure for Gram matrix row sum,
@@ -389,10 +387,6 @@ class Kernel(ABC):
         The row sum of the kernel matrix is the sum of distances between a given point
         and all possible pairs of points that contain this given point. The row sum is
         calculated block-wise to limit memory overhead.
-
-        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
-        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
-        :math:`k(x, y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
@@ -829,7 +823,7 @@ class SteinKernel(Kernel):
     w.r.t. probability measure :math:`\mathbb{P}` to the base kernel
     :math:`k(\mathbf{x}, \mathbf{y})`. Here, differentiable vector-valued
     :math:`g: \mathbb{R}^d \to \mathbb{R}^d`, and
-    :math: `\nabla_\mathbf{x} \log f_X(\mathbf{x})` is the *score function* of measure
+    :math:`\nabla_\mathbf{x} \log f_X(\mathbf{x})` is the *score function* of measure
     :math:`\mathbb{P}`.
 
     :math:`\mathbb{P}` is assumed to admit a density function :math:`f_X` w.r.t.
