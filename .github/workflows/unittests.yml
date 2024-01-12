@@ -33,9 +33,9 @@ jobs:
       run: pip install --no-dependencies -r requirements-test-${{ matrix.python-version }}.txt
     - name: Test with pytest and assess code coverage
       # Versions and OS on which to check code coverage
-      if: ${{ matrix.python-version == "3.11" }}
+      if: ${{ matrix.python-version == '3.11' }}
       run: pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing
     - name: Test with pytest
       # Else statement to step above
-      if: ${{ matrix.python-version != "3.11" }}
+      if: ${{ matrix.python-version != '3.11' }}
       run: pytest --ignore=tests/integration
