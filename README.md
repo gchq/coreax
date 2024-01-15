@@ -225,7 +225,7 @@ herding_object = KernelHerding(
 )
 herding_object.fit(
     original_data=data,
-    strategy=MapReduce(coreset_size=coreset_size, leaf_size=10_000)
+    strategy=MapReduce(coreset_size=coreset_size, leaf_size=20)
 )
 ```
 For large $d$, it is usually worth reducing dimensionality using PCA.

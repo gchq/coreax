@@ -46,11 +46,13 @@ from coreax.reduction import SizeReduce
 
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the 'weighted_herding' example for weighted and unweighted herding.
+    Run the tabular data herding example with an approximate kernel matrix row sum mean.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    weighted and unweighted herding. Compare results to coresets generated via uniform
-    random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
+    kernel herding, where computation time is reduced by approximating the kernel matrix
+    row sum mean, rather than computing it exactly with all data-points. Compare results
+    to coresets generated via uniform random sampling. Coreset quality is measured using
+    maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given

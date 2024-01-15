@@ -20,7 +20,7 @@ points sampled from ``k`` clusters in space.
 
 A coreset is generated using Stein kernel herding, with a PCIMQ base kernel.
 
- The initial coreset generated from this procedure is then weighted, with weights
+The initial coreset generated from this procedure is then weighted, with weights
 determined such that the weighted coreset achieves a better maximum mean discrepancy
 when compared to the original dataset than the unweighted coreset.
 
@@ -56,11 +56,11 @@ from coreax.weights import MMD as MMDWeightsOptimiser
 
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the 'weighted_herding' example for weighted and unweighted herding.
+    Run the tabular herding example using weighted herding.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    weighted and unweighted herding. Compare results to coresets generated via uniform
-    random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
+    weighted herding. Compare results to coresets generated via uniform random sampling.
+    Coreset quality is measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
@@ -92,7 +92,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
-    # Find a coreset using -- in this case -- kernel herding with a stein kernel.
+    # Find a coreset using kernel herding with a stein kernel.
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
     kernel_density_score_matcher = KernelDensityMatching(
@@ -110,9 +110,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     weights_optimiser = MMDWeightsOptimiser(kernel=herding_kernel)
 
     print("Computing coreset...")
-    # Compute a coreset using kernel herding with a Stein kernel. To reduce memory
-    # usage, we apply MapReduce, which partitions the input into blocks for independent
-    # coreset solving.
+    # Compute a coreset using kernel herding with a Stein kernel
     herding_object = KernelHerding(
         kernel=herding_kernel, weights_optimiser=weights_optimiser
     )

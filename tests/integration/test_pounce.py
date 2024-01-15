@@ -37,7 +37,7 @@ class TestPounce(unittest.TestCase):
             "../../examples/data/pounce/pounce.gif"
         )
         with patch("builtins.print"), tempfile.TemporaryDirectory() as tmp_dir:
-            # Run pounce_map_reduce.py
+            # Run pounce.py
             mmd_coreset, mmd_random = pounce_main(
                 in_path=in_path, out_path=Path(tmp_dir)
             )

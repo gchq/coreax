@@ -40,7 +40,6 @@ import numpy as np
 from jax.random import rademacher
 from sklearn.decomposition import PCA
 
-import coreax.refine
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
@@ -58,9 +57,9 @@ def main(
 
     Take a video of a pouncing cat, apply PCA and then generate a coreset using
     score matching, in which we train a neural network to approximate the score function
-    of the underlying distribution. Compare the result from this to a coreset generated
-    via uniform random sampling. Coreset quality is measured using maximum mean
-    discrepancy (MMD).
+    of the underlying distribution (sliced score matching). Compare the result from this
+    to a coreset generated via uniform random sampling. Coreset quality is measured
+    using maximum mean discrepancy (MMD).
 
     :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
@@ -97,7 +96,7 @@ def main(
     # Request a 10 frame summary of the video
     coreset_size = 10
 
-    # Set the length_scale parameter of the underlying RBF kernel
+    # Set the length_scale parameter of the underlying squared exponential kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
@@ -117,7 +116,7 @@ def main(
     )
     score_function = sliced_score_matcher.match(principle_components_data)
 
-    # Run kernel herding with a Stein kernel in block mode to avoid GPU memory issues
+    # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
@@ -126,7 +125,7 @@ def main(
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1_000),
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
     )
 
     # Get and sort the coreset indices ready for producing the output video
