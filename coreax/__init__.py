@@ -19,6 +19,29 @@ The coreax library contains code to address the following generic problem. Given
 :math:`n \times d` dataset, generate a :math:`m \times d` dataset, with :math:`m << n`
 such that the generated dataset contains as much of the information from the original
 dataset as possible. The generated dataset is often called a coreset.
+
+To improve speed of computational, various parts of the codebase utilise JAX's
+implementation of JIT compilation. One example of this can be seen in
+:meth:`coreax.kernel.Kernel.compute`. Whilst this significantly increases performance of
+the code, care needs to be taken when using JIT decorators on class methods. Whenever
+such an instance occurs, one must also define the methods :meth:`_tree_unflatten` and
+:meth:`_tree_flatten`, or the JIT functionality on the class will not function. These
+methods handle flattening and constructing the pytree objects that JAX depends on for
+computations.
+
+Inside :meth:`_tree_unflatten`, one must define arrays & dynamic values (children)
+and auxiliary data (static values) of the class. Inside :meth:`_tree_flatten`, one
+can pass these children and auxiliary data to the class. See
+:class:`coreax.kernel.Kernel` and children of this object for example implementations of
+this.
+
+Further details on pytrees in JAX can be found at
+https://jax.readthedocs.io/en/latest/pytrees.html and
+https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods.
+
+Performance tests are implemented in tests/performance/ that verify the code is in-fact
+faster when using JIT compilation, and should be updated as new JIT functionality is
+included in the codebase.
 """
 
 __version__ = "0.1.0"
