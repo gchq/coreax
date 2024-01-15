@@ -138,11 +138,11 @@ def main(
     weights_optimiser = MMDWeightsOptimiser(kernel=herding_kernel)
 
     print("Computing coreset...")
-    # Compute a coreset using kernel herding with a Stein kernel. To reduce memory
-    # usage, we apply MapReduce, which partitions the input into blocks for independent
-    # coreset solving.
+    # Compute a coreset using kernel herding with a Stein kernel. To reduce compute
+    # time, we apply MapReduce, which partitions the input into blocks for independent
+    # coreset solving. We also reduce memory requirements by specifying block size
     herding_object = KernelHerding(
-        kernel=herding_kernel, weights_optimiser=weights_optimiser
+        kernel=herding_kernel, weights_optimiser=weights_optimiser, block_size=1_000
     )
     herding_object.fit(
         original_data=data,
@@ -160,6 +160,7 @@ def main(
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
         output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
@@ -167,11 +168,15 @@ def main(
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(
+        metric_object, block_size=1_000
+    )
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(
+        metric_object, block_size=1_000
+    )
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
