@@ -131,8 +131,16 @@ def main(
     # Get and sort the coreset indices ready for producing the output video
     coreset_indices_herding = jnp.sort(herding_object.coreset_indices)
 
+    # Generate a coreset via uniform random sampling for comparison
+    random_sample_object = RandomSample(unique=True)
+    random_sample_object.fit(
+        original_data=data,
+        strategy=SizeReduce(coreset_size=coreset_size),
+    )
+
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
         output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
@@ -142,12 +150,6 @@ def main(
     metric_object = MMD(kernel=mmd_kernel)
     maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
-    # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
-    random_sample_object.fit(
-        original_data=data,
-        strategy=SizeReduce(coreset_size=coreset_size),
-    )
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
     maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)

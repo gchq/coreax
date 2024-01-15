@@ -128,6 +128,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
         output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
