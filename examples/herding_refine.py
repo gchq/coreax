@@ -47,7 +47,7 @@ from coreax.refine import RefineRegular
 
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the 'weighted_herding' example for weighted and unweighted herding.
+    Run the kernel herding on tabular data with a refine post-processing step.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
     kernel herding. After generation, the coreset is improved by refining it (a greedy
