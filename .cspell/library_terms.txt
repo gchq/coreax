@@ -34,6 +34,7 @@ intercal
 intersphinx
 isort
 jacrev
+JAX's
 jaxopt
 jumanjihouse
 linalg
@@ -62,6 +63,8 @@ pyproject
 pyqt
 pyroma
 pytest
+pytree
+pytrees
 quickstart
 rightarrow
 rtol
