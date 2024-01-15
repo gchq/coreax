@@ -381,7 +381,7 @@ class RefineRandom(Refine):
 
     def _refine_rand_body(
         self,
-        i: int,
+        i_: int,
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
@@ -392,7 +392,7 @@ class RefineRandom(Refine):
         r"""
         Execute main loop of the random refine method.
 
-        :param i: Loop counter
+        :param i_: Loop counter
         :param val: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
         :param n_cand: Number of candidates for comparison
@@ -405,11 +405,13 @@ class RefineRandom(Refine):
         key, coreset_indices = val
         coreset_indices = jnp.asarray(coreset_indices)
         key, subkey = random.split(key)
-        i = random.randint(subkey, (1,), 0, len(coreset_indices))[0]
+        random_index_to_compare = random.randint(subkey, (1,), 0, len(coreset_indices))[
+            0
+        ]
         key, subkey = random.split(key)
         candidate_indices = random.randint(subkey, (n_cand,), 0, len(x))
         comparisons = self._comparison_cand(
-            coreset_indices[i],
+            coreset_indices[random_index_to_compare],
             candidate_indices,
             coreset_indices,
             x=x,
@@ -421,7 +423,7 @@ class RefineRandom(Refine):
             jnp.any(comparisons > 0),
             self._change,
             self._no_change,
-            i,
+            random_index_to_compare,
             coreset_indices,
             candidate_indices,
             comparisons,
