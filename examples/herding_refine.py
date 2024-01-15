@@ -50,8 +50,10 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     Run the 'weighted_herding' example for weighted and unweighted herding.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    weighted and unweighted herding. Compare results to coresets generated via uniform
-    random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
+    kernel herding. After generation, the coreset is improved by refining it (a greedy
+    approach to replace points in the coreset for those that improve some measure of
+    coreset quality). Compare results to coresets generated via uniform random sampling.
+    Coreset quality is measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given

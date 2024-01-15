@@ -40,7 +40,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 
-import coreax.refine
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic

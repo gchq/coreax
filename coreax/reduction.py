@@ -212,8 +212,8 @@ class Coreset(ABC):
         r"""
         Compute metric comparing the coreset with the original data.
 
-        The metric is computed unweighted. A weighted version may be implemented in
-        future. For now, more options are available by calling the chosen
+        The metric is computed unweighted unless ``weights_x`` and/or ``weights_y`` is
+        supplied as an array. Further options are available by calling the chosen
         :class:`~coreax.Metric` class directly.
 
         :param metric: Instance of :class:`~coreax.Metric` to use
