@@ -20,20 +20,26 @@ The coreax library contains code to address the following generic problem. Given
 such that the generated dataset contains as much of the information from the original
 dataset as possible. The generated dataset is often called a coreset.
 
-To improve speed of computational, various parts of the codebase utilise JAX's
+To improve the speed of computations, various parts of the codebase utilise JAX's
 implementation of JIT compilation. One example of this can be seen in
-:meth:`coreax.kernel.Kernel.compute`. Whilst this significantly increases performance of
-the code, care needs to be taken when using JIT decorators on class methods. Whenever
+:meth:`~coreax.kernel.Kernel.compute`. Whilst this significantly increases performance
+of the code, care needs to be taken when using JIT decorators on class methods. Whenever
 such an instance occurs, one must also define the methods :meth:`_tree_unflatten` and
-:meth:`_tree_flatten`, or the JIT functionality on the class will not function. These
+:meth:`_tree_flatten`, or the JIT functionality on the class will not operate. These
 methods handle flattening and constructing the pytree objects that JAX depends on for
 computations.
+
+Pytrees are tree-like structures built out of container-like Python objects. The
+'leaves' of a pytree correspond to data we wish to perform operations on. Many JAX
+functions operate on pytrees, that is take in and output pytrees internally. Further
+detail of pytrees and their usage in JAX can be found here:
+https://jax.readthedocs.io/en/latest/pytrees.html.
 
 Inside :meth:`_tree_unflatten`, one must define arrays & dynamic values (children)
 and auxiliary data (static values) of the class. Inside :meth:`_tree_flatten`, one
 can pass these children and auxiliary data to the class. See
-:class:`coreax.kernel.Kernel` and children of this object for example implementations of
-this.
+:class:`@coreax.kernel.Kernel` and children of this object for example implementations
+of this.
 
 Further details on pytrees in JAX can be found at
 https://jax.readthedocs.io/en/latest/pytrees.html and
