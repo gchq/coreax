@@ -62,3 +62,7 @@ class TestDavid(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+if __name__ == "__main__":
+    unittest.main()

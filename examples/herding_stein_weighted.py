@@ -71,7 +71,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     num_data_points = 10_000
     num_features = 2
     num_cluster_centers = 6
-    random_seed = 1989
+    random_seed = 1_989
     x, _ = make_blobs(
         num_data_points,
         n_features=num_features,
@@ -177,7 +177,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     plt.axis("off")
 
     if out_path is not None:
-        if out_path is not None and not out_path.is_absolute():
+        if not out_path.is_absolute():
             out_path = Path(__file__).parent / out_path
         plt.savefig(out_path)
 

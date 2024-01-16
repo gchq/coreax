@@ -114,7 +114,7 @@ def main(
     data = ArrayData.load(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
-    np.random.seed(1989)
+    np.random.seed(1_989)
     num_samples_length_scale = min(num_data_points, 1_000)
     idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
