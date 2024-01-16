@@ -89,7 +89,7 @@ def main(
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
     # Fix random behaviour
-    np.random.seed(1989)
+    np.random.seed(1_989)
 
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
     # the statistical properties, i.e. variance.
