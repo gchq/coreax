@@ -246,7 +246,7 @@ class KernelHerding(coreax.reduction.Coreset):
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelFunction,
+        kernel_vectorised: coreax.util.KernelComputeType,
         kernel_matrix_row_sum_mean: ArrayLike,
         unique: bool,
     ) -> tuple[Array, Array]:
