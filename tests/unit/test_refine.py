@@ -14,7 +14,6 @@
 
 import itertools
 import unittest
-from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 
