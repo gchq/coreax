@@ -46,7 +46,7 @@ import coreax.weights
 # import coreax.weights as cw
 
 #: Kernel evaluation function.
-KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
+KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
 
 
 class NotCalculatedError(Exception):
