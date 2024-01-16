@@ -106,8 +106,7 @@ except TypeError:
     OptionalArrayLike = "ArrayLike | None"
 
 autodoc_custom_types: dict[Any, str] = {
-    cu.KernelFunction: ":obj:`~coreax.util.KernelFunction`",
-    cu.KernelFunctionWithGrads: ":obj:`~coreax.util.KernelFunctionWithGrads`",
+    cu.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }
