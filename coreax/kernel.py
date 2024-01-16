@@ -331,7 +331,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: coreax.util.KernelFunction,
+        kernel_pairwise: coreax.util.KernelComputeType,
         max_size: int = 10_000,
     ) -> Array:
         r"""
