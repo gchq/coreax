@@ -64,7 +64,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, random, tree_util, vmap
+from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation

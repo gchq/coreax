@@ -17,16 +17,19 @@ This example showcases how a coreset can be generated from video data. In this c
 a coreset is a set of frames that best capture the information in the original video.
 
 Firstly, principal component analysis (PCA) is applied to the video data to reduce
-dimensionality. Then, a coreset is generated using Stein kernel herding, with a PCIMQ
-base kernel. The score function (gradient of the log-density function) for the Stein
-kernel is estimated by applying sliced score matching from :cite:p:`ssm`. This trains a
-neural network to approximate the score function, and then passes the trained neural
-network to the Stein kernel.
+dimensionality. Then, a coreset is generated using Stein kernel herding, with a
+SquaredExponentialKernel base kernel. The score function (gradient of the log-density
+function) for the Stein kernel is estimated by applying sliced score matching from
+:cite:p:`ssm`. This trains a neural network to approximate the score function, and then
+passes the trained neural network to the Stein kernel.
 
 The coreset attained from Stein kernel herding is compared to a coreset generated via
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
 (MMD).
 """
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -37,41 +40,49 @@ import numpy as np
 from jax.random import rademacher
 from sklearn.decomposition import PCA
 
-import coreax.refine
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.metrics import MMD
-from coreax.reduction import MapReduce
+from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import SlicedScoreMatching
 
 
-def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, float]:
+def main(
+    in_path: Path = Path("../examples/data/pounce/pounce.gif"),
+    out_path: Path | None = None,
+) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with score matching.
 
     Take a video of a pouncing cat, apply PCA and then generate a coreset using
     score matching, in which we train a neural network to approximate the score function
-    of the underlying distribution. Compare the result from this to a coreset generated
-    via uniform random sampling. Coreset quality is measured using maximum mean
-    discrepancy (MMD).
+    of the underlying distribution (sliced score matching). Compare the result from this
+    to a coreset generated via uniform random sampling. Coreset quality is measured
+    using maximum mean discrepancy (MMD).
 
-    :param directory: Path to directory containing input video, assumed relative to this
+    :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
+    :param out_path: Path to save output to, if not :data:`None`, assumed relative to
+        this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
-    # Convert directory to absolute path
-    if not directory.is_absolute():
-        directory = Path(__file__).parent / directory
+    # Convert input and absolute paths to absolute paths
+    if not in_path.is_absolute():
+        in_path = Path(__file__).parent / in_path
+    if out_path is not None and not out_path.is_absolute():
+        out_path = Path(__file__).parent / out_path
 
-    # Define path to directory containing video as sequence of images
-    file_name = Path("pounce.gif")
-    coreset_dir = directory / Path("coreset_map_reduce_sliced_score_matching")
-    coreset_dir.mkdir(exist_ok=True)
+    # Create output directory
+    if out_path is not None:
+        out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
-    raw_data = np.array(imageio.v2.mimread(directory / file_name)[1:])
+    raw_data = np.array(imageio.v2.mimread(in_path)[1:])
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
+
+    # Fix random behaviour
+    np.random.seed(1_989)
 
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
     # the statistical properties, i.e. variance.
@@ -80,16 +91,13 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     principle_components_data = pca.fit_transform(raw_data_reshaped)
 
     # Setup the original data object
-    data = coreax.data.ArrayData(
-        original_data=principle_components_data,
-        pre_coreset_array=principle_components_data,
-    )
+    data = ArrayData.load(principle_components_data)
 
     # Request a 10 frame summary of the video
     coreset_size = 10
 
-    # Set the length_scale parameter of the underlying RBF kernel
-    num_points_length_scale_selection = min(principle_components_data.shape[0], 1000)
+    # Set the length_scale parameter of the underlying squared exponential kernel
+    num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
@@ -108,7 +116,7 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     )
     score_function = sliced_score_matcher.match(principle_components_data)
 
-    # Run kernel herding with a Stein kernel in block mode to avoid GPU memory issues
+    # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
@@ -117,14 +125,22 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
     )
 
     # Get and sort the coreset indices ready for producing the output video
     coreset_indices_herding = jnp.sort(herding_object.coreset_indices)
 
+    # Generate a coreset via uniform random sampling for comparison
+    random_sample_object = RandomSample(unique=True)
+    random_sample_object.fit(
+        original_data=data,
+        strategy=SizeReduce(coreset_size=coreset_size),
+    )
+
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
         output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
@@ -132,21 +148,11 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset
-    )
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
-    # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
-    random_sample_object.fit(
-        original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
-    )
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
@@ -154,10 +160,11 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
-    imageio.mimsave(
-        coreset_dir / Path("coreset_map_reduce_sliced_score_matching.gif"),
-        coreset_images,
-    )
+    if out_path is not None:
+        imageio.mimsave(
+            out_path / Path("pounce_map_reduce_sliced_score_matching_coreset.gif"),
+            coreset_images,
+        )
 
     # Plot to visualise which frames were chosen from the sequence action frames are
     # where the "pounce" occurs
@@ -173,11 +180,8 @@ def main(directory: Path = Path("../examples/data/pounce")) -> tuple[float, floa
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
-    plt.savefig(
-        directory
-        / "coreset_map_reduce_sliced_score_matching"
-        / "frames_map_reduce_sliced_score_matching.png"
-    )
+    if out_path is not None:
+        plt.savefig(out_path / "pounce_map_reduce_sliced_score_matching_frames.png")
     plt.close()
 
     return (

@@ -25,25 +25,13 @@ class factories and checks for numerical precision.
 # TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
-import inspect
 import time
 from collections.abc import Callable
-from typing import Any, TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
-
-import coreax.metrics
-import coreax.refine
-import coreax.weights
-
-# TODO: REMOVE
-# import coreax.coresubset as cc
-# import coreax.metrics as cm
-# import coreax.refine as cr
-# import coreax.weights as cw
 
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]

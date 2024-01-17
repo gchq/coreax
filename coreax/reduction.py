@@ -203,25 +203,37 @@ class Coreset(ABC):
         )
 
     def compute_metric(
-        self, metric: coreax.metrics.Metric, block_size: int | None = None
+        self,
+        metric: coreax.metrics.Metric,
+        block_size: int | None = None,
+        weights_x: ArrayLike | None = None,
+        weights_y: ArrayLike | None = None,
     ) -> Array:
-        """
+        r"""
         Compute metric comparing the coreset with the original data.
 
-        The metric is computed unweighted. A weighted version may be implemented in
-        future. For now, more options are available by calling the chosen
+        The metric is computed unweighted unless ``weights_x`` and/or ``weights_y`` is
+        supplied as an array. Further options are available by calling the chosen
         :class:`~coreax.Metric` class directly.
 
         :param metric: Instance of :class:`~coreax.Metric` to use
         :param block_size: Size of matrix block to process, or :data:`None` to not split
             into blocks
+        :param weights_x: An :math:`1 \times n` array of weights for associated points
+            in ``x``, or :data:`None` if not required
+        :param weights_y: An :math:`1 \times m` array of weights for associated points
+            in ``y``, or :data:`None` if not required
         :return: Metric computed as a zero-dimensional array
         """
         coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
         self.validate_fitted("compute_metric")
         # block_size will be validated by metric.compute()
         return metric.compute(
-            self.original_data.pre_coreset_array, self.coreset, block_size=block_size
+            self.original_data.pre_coreset_array,
+            self.coreset,
+            block_size=block_size,
+            weights_x=weights_x,
+            weights_y=weights_y,
         )
 
     def refine(self) -> None:
