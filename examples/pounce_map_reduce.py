@@ -24,6 +24,10 @@ SquaredExponentialKernel base kernel. The score function (gradient of the log-de
 function) for the Stein kernel is estimated by applying kernel density estimation (KDE)
 to the data, and then taking gradients.
 
+To reduce computational requirements, a map reduce approach is used, splitting the
+original dataset into distinct segments, with each segment handled on a different
+process.
+
 The coreset attained from Stein kernel herding is compared to a coreset generated via
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
 (MMD).
@@ -44,7 +48,7 @@ from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.metrics import MMD
-from coreax.reduction import SizeReduce
+from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching
 
 
@@ -59,6 +63,10 @@ def main(
     Stein kernel herding. Compare the result from this to a coreset generated
     via uniform random sampling. Coreset quality is measured using maximum mean
     discrepancy (MMD).
+
+    To reduce computational requirements, a map reduce approach is used, splitting the
+    original dataset into distinct segments, with each segment handled on a different
+    process.
 
     :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
@@ -95,7 +103,7 @@ def main(
     # Request a 10 frame summary of the video
     coreset_size = 10
 
-    # Set the length_scale parameter of the underlying RBF kernel
+    # Set the length_scale parameter of the underlying squared exponential kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
@@ -118,7 +126,8 @@ def main(
         )
     )
     herding_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
     )
 
     # Get and sort the coreset indices ready for producing the output video
@@ -127,7 +136,8 @@ def main(
     # Generate a coreset via uniform random sampling for comparison
     random_sample_object = RandomSample(unique=True)
     random_sample_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=SizeReduce(coreset_size=coreset_size),
     )
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
@@ -152,9 +162,10 @@ def main(
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
-
     if out_path is not None:
-        imageio.mimsave(out_path / Path("pounce_coreset.gif"), coreset_images)
+        imageio.mimsave(
+            out_path / Path("pounce_map_reduce_coreset.gif"), coreset_images
+        )
 
     # Plot to visualise which frames were chosen from the sequence action frames are
     # where the "pounce" occurs
@@ -171,7 +182,7 @@ def main(
     plt.ylabel("Chosen")
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(out_path / "pounce_frames.png")
+        plt.savefig(out_path / "pounce_map_reduce_frames.png")
     plt.close()
 
     return (

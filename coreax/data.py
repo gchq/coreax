@@ -46,11 +46,10 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-from coreax.util import ClassFactory
-from coreax.validation import cast_as_type
+import coreax.validation
 
 if TYPE_CHECKING:
-    from coreax.reduction import Coreset
+    import coreax.reduction
 
 
 class DataReader(ABC):
@@ -68,10 +67,10 @@ class DataReader(ABC):
 
         Should not normally be called by the user: use :meth:`load` instead.
         """
-        self.original_data: Array = cast_as_type(
+        self.original_data: Array = coreax.validation.cast_as_type(
             original_data, "original_data", jnp.asarray
         )
-        self.pre_coreset_array: Array = cast_as_type(
+        self.pre_coreset_array: Array = coreax.validation.cast_as_type(
             pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
         )
 
@@ -92,7 +91,7 @@ class DataReader(ABC):
         """
 
     @abstractmethod
-    def format(self, coreset: Coreset) -> Array:
+    def format(self, coreset: coreax.reduction.Coreset) -> Array:
         """
         Format coreset to match the shape of the original data.
 
@@ -103,7 +102,7 @@ class DataReader(ABC):
         :return: Array of coreset in format matching original data
         """
 
-    def render(self, coreset: Coreset | None) -> None:
+    def render(self, coreset: coreax.reduction.Coreset | None) -> None:
         """
         Plot coreset or original data interactively using :mod:`~matplotlib.pyplot`.
 
@@ -128,7 +127,7 @@ class DataReader(ABC):
         """
         raise NotImplementedError
 
-    def restore_dimension(self, coreset: Coreset | None) -> Array:
+    def restore_dimension(self, coreset: coreax.reduction.Coreset | None) -> Array:
         """
         Expand principal components into original number of columns in two dimensions.
 
@@ -172,10 +171,12 @@ class ArrayData(DataReader):
         :param original_data: Array of data to be reduced to a coreset
         :return: Populated instance of :class:`ArrayData`
         """
-        original_data = cast_as_type(original_data, "original_data", jnp.atleast_2d)
+        original_data = coreax.validation.cast_as_type(
+            original_data, "original_data", jnp.atleast_2d
+        )
         return cls(original_data, original_data)
 
-    def format(self, coreset: Coreset) -> Array:
+    def format(self, coreset: coreax.reduction.Coreset) -> Array:
         """
         Format coreset to match the shape of the original data.
 
@@ -189,8 +190,3 @@ class ArrayData(DataReader):
         :return: Array of coreset in format matching original data
         """
         return coreset.coreset
-
-
-# Register all instances with factory
-data_reader_factory = ClassFactory(DataReader)
-data_reader_factory.register("array", ArrayData)

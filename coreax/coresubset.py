@@ -39,16 +39,16 @@ import jax.numpy as jnp
 from jax import Array, jit, random
 from jax.typing import ArrayLike
 
-from coreax.approximation import KernelMeanApproximator, approximator_factory
-from coreax.kernel import Kernel
-from coreax.reduction import Coreset
-from coreax.refine import Refine
-from coreax.util import KernelFunction, create_instance_from_factory
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
-from coreax.weights import WeightsOptimiser
+import coreax.approximation
+import coreax.kernel
+import coreax.reduction
+import coreax.refine
+import coreax.util
+import coreax.validation
+import coreax.weights
 
 
-class KernelHerding(Coreset):
+class KernelHerding(coreax.reduction.Coreset):
     r"""
     Apply kernel herding to a dataset.
 
@@ -73,78 +73,59 @@ class KernelHerding(Coreset):
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param weights_optimiser: Optimiser to determine weights for coreset points to
-        optimise some quality metric, or :data:`None` if unweighted
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
     :param block_size: Size of matrix blocks to process when computing the kernel
         matrix row sum mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
-    :param refine_method: Refinement method to use, or :data:`None` if not required
-    :param approximator: The name of an approximator class to use, or the
-        uninstantiated class directly as a dependency injection. If None (default)
-        then calculation is exact, but can be computationally intensive.
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
+    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
+        that has been created using the same kernel one wishes to use for herding. If
+        :data:`None` (default) then calculation is exact, but can be computationally
+        intensive.
     :param random_key: Key for random number generation
-    :param num_kernel_points: Number of kernel evaluation points for approximation
-        of the kernel matrix row sum mean. Only used if ``approximator`` is not
-        :data:`None`.
-    :param num_train_points: Number of training points for ``approximator``. Only
-        used if approximation method specified trains a model to approximate the
-        kernel matrix row sum mean.
     """
 
     def __init__(
         self,
         *,
-        kernel: Kernel,
-        weights_optimiser: WeightsOptimiser | None = None,
+        kernel: coreax.kernel.Kernel,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
         block_size: int = 10_000,
         unique: bool = True,
-        refine_method: Refine | None = None,
-        approximator: str | KernelMeanApproximator | None = None,
+        refine_method: coreax.refine.Refine | None = None,
+        approximator: coreax.approximation.KernelMeanApproximator | None = None,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
     ):
         """Initialise a KernelHerding class."""
         # Validate inputs. Note that inputs passed to the parent are validated within
         # that class, however a valid kernel object must be passed for kernel
         # herding, so this is verified here.
-        validate_is_instance(x=kernel, object_name="kernel", expected_type=Kernel)
-        block_size = cast_as_type(
+        coreax.validation.validate_is_instance(
+            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
+        )
+        block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=block_size,
             object_name="block_size",
             strict_inequalities=True,
             lower_bound=0,
         )
-        unique = cast_as_type(x=unique, object_name="unique", type_caster=bool)
-        validate_is_instance(
+        unique = coreax.validation.cast_as_type(
+            x=unique, object_name="unique", type_caster=bool
+        )
+        coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=(str, KernelMeanApproximator, None),
+            expected_type=(coreax.approximation.KernelMeanApproximator, None),
         )
-        validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=ArrayLike
-        )
-        num_kernel_points = cast_as_type(
-            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
-        )
-        validate_in_range(
-            x=num_kernel_points,
-            object_name="num_kernel_points",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        num_train_points = cast_as_type(
-            x=num_train_points, object_name="num_train_points", type_caster=int
-        )
-        validate_in_range(
-            x=num_train_points,
-            object_name="num_train_points",
-            strict_inequalities=True,
-            lower_bound=0,
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
 
         # Assign herding-specific attributes
@@ -152,8 +133,6 @@ class KernelHerding(Coreset):
         self.unique = unique
         self.approximator = approximator
         self.random_key = random_key
-        self.num_kernel_points = num_kernel_points
-        self.num_train_points = num_train_points
 
         # Initialise parent
         super().__init__(
@@ -190,8 +169,6 @@ class KernelHerding(Coreset):
             "weights_optimiser": self.weights_optimiser,
             "approximator": self.approximator,
             "random_key": self.random_key,
-            "num_kernel_points": self.num_kernel_points,
-            "num_train_points": self.num_train_points,
         }
         return children, aux_data
 
@@ -208,10 +185,10 @@ class KernelHerding(Coreset):
         :return: Nothing
         """
         # Validate inputs
-        coreset_size = cast_as_type(
+        coreset_size = coreax.validation.cast_as_type(
             x=coreset_size, object_name="coreset_size", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=coreset_size,
             object_name="coreset_size",
             strict_inequalities=True,
@@ -221,30 +198,14 @@ class KernelHerding(Coreset):
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
-        # If needed, set up an approximator. This can be used for both kernel matrix row
-        # sum mean computation inside of this method, as-well as optional refinement
-        # later in the method
-        if self.approximator is not None:
-            approximator_instance = create_instance_from_factory(
-                approximator_factory,
-                self.approximator,
-                random_key=self.random_key,
-                num_kernel_points=self.num_kernel_points,
-            )
-        else:
-            approximator_instance = None
-
         # If needed, compute the kernel matrix row sum mean - with or without an
         # approximator as specified by the inputs to this method
         if self.kernel_matrix_row_sum_mean is None:
-            if approximator_instance is not None:
+            if self.approximator is not None:
                 self.kernel_matrix_row_sum_mean = (
                     self.kernel.approximate_kernel_matrix_row_sum_mean(
                         x=self.original_data.pre_coreset_array,
-                        approximator=approximator_instance,
-                        random_key=self.random_key,
-                        num_kernel_points=self.num_kernel_points,
-                        num_train_points=self.num_train_points,
+                        approximator=self.approximator,
                     )
                 )
             else:
@@ -285,7 +246,7 @@ class KernelHerding(Coreset):
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         x: ArrayLike,
-        kernel_vectorised: KernelFunction,
+        kernel_vectorised: coreax.util.KernelComputeType,
         kernel_matrix_row_sum_mean: ArrayLike,
         unique: bool,
     ) -> tuple[Array, Array]:
@@ -329,26 +290,30 @@ class KernelHerding(Coreset):
 
         # Format inputs - note that the calls in jax for loops already validate the
         # ``i`` variable before calling.
-        current_coreset_indices = cast_as_type(
+        current_coreset_indices = coreax.validation.cast_as_type(
             x=current_coreset_indices,
             object_name="current_coreset_indices",
             type_caster=jnp.asarray,
         )
-        current_kernel_similarity_penalty = cast_as_type(
+        current_kernel_similarity_penalty = coreax.validation.cast_as_type(
             x=current_kernel_similarity_penalty,
             object_name="current_kernel_similarity_penalty",
             type_caster=jnp.asarray,
         )
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        validate_is_instance(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        coreax.validation.validate_is_instance(
             x=kernel_vectorised, object_name="kernel_vectorised", expected_type=Callable
         )
-        kernel_matrix_row_sum_mean = cast_as_type(
+        kernel_matrix_row_sum_mean = coreax.validation.cast_as_type(
             x=kernel_matrix_row_sum_mean,
             object_name="kernel_matrix_row_sum_mean",
             type_caster=jnp.asarray,
         )
-        unique = cast_as_type(x=unique, object_name="unique", type_caster=bool)
+        unique = coreax.validation.cast_as_type(
+            x=unique, object_name="unique", type_caster=bool
+        )
 
         # Evaluate the kernel herding formula at this iteration - that is, select which
         # point in the data-set, when added to the coreset, will minimise maximum mean
@@ -382,7 +347,7 @@ class KernelHerding(Coreset):
         return current_coreset_indices, current_kernel_similarity_penalty
 
 
-class RandomSample(Coreset):
+class RandomSample(coreax.reduction.Coreset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
@@ -390,38 +355,36 @@ class RandomSample(Coreset):
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
        :data:`None` if not applicable. Note that if this is supplied, it is only used
        for refinement, not during creation of the initial coreset.
-    :param weights_optimiser: Optimiser to determine weights for coreset points to
-        optimise some quality metric, or :data:`None` if unweighted
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
     :param unique: If :data:`True`, this flag enforces unique elements, i.e. sampling
         without replacement
-    :param refine_method: Refinement method to use, or :data:`None` if not required
-    :param random_key: Pseudo-random number generator key for sampling
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
+    :param random_seed: Pseudo-random number generator key for sampling
     """
 
     def __init__(
         self,
         *,
-        kernel: Kernel | None = None,
-        weights_optimiser: WeightsOptimiser | None = None,
+        kernel: coreax.kernel.Kernel | None = None,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
         unique: bool = True,
-        refine_method: Refine | None = None,
-        random_key: ArrayLike = 0,
+        refine_method: coreax.refine.Refine | None = None,
+        random_seed: ArrayLike = 0,
     ):
         """Initialise a random sampling object."""
         # Validate inputs
-        random_key = cast_as_type(
-            x=random_key, object_name="random_key", type_caster=int
+        random_seed = coreax.validation.cast_as_type(
+            x=random_seed, object_name="random_seed", type_caster=int
         )
-        validate_in_range(
-            x=random_key,
-            object_name="random_key",
-            strict_inequalities=True,
-            lower_bound=0,
+        unique = coreax.validation.cast_as_type(
+            x=unique, object_name="unique", type_caster=bool
         )
-        unique = cast_as_type(x=unique, object_name="random_key", type_caster=bool)
 
         # Assign random sample specific attributes
-        self.random_key = random_key
+        self.random_seed = random_seed
         self.unique = unique
 
         # Initialise Coreset parent
@@ -457,7 +420,7 @@ class RandomSample(Coreset):
             "weights_optimiser": self.weights_optimiser,
             "refine_method": self.refine_method,
             "unique": self.unique,
-            "random_key": self.random_key,
+            "random_seed": self.random_seed,
         }
         return children, aux_data
 
@@ -471,10 +434,10 @@ class RandomSample(Coreset):
         :param coreset_size: The size of the of coreset to generate
         """
         # Validate inputs
-        coreset_size = cast_as_type(
+        coreset_size = coreax.validation.cast_as_type(
             x=coreset_size, object_name="coreset_size", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=coreset_size,
             object_name="coreset_size",
             strict_inequalities=True,
@@ -482,7 +445,7 @@ class RandomSample(Coreset):
         )
 
         # Setup for sampling
-        key = random.PRNGKey(self.random_key)
+        key = random.key(self.random_seed)
         num_data_points = len(self.original_data.pre_coreset_array)
 
         # Randomly sample the desired number of points to form a coreset

@@ -64,11 +64,12 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, random, tree_util, vmap
+from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.approximation as ca
-import coreax.util as cu
+import coreax.approximation
+import coreax.util
+import coreax.validation
 
 
 @jit
@@ -84,7 +85,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         zero-dimensional array
     """
     # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(cu.squared_distance_pairwise(x, x), k=1)
+    square_distances = jnp.triu(coreax.util.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
     median_square_distance = jnp.median(
         square_distances[jnp.triu_indices_from(square_distances, k=1)]
@@ -330,7 +331,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: cu.KernelFunction | cu.KernelFunctionWithGrads,
+        kernel_pairwise: coreax.util.KernelComputeType,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -441,13 +442,10 @@ class Kernel(ABC):
         """
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
+    @staticmethod
     def approximate_kernel_matrix_row_sum_mean(
-        self,
         x: ArrayLike,
-        approximator: str | type[ca.KernelMeanApproximator],
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
+        approximator: coreax.approximation.KernelMeanApproximator,
     ) -> Array:
         r"""
         Approximate the mean of the row sum of the kernel matrix.
@@ -458,52 +456,15 @@ class Kernel(ABC):
         approximation can be used in place of the true value.
 
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Name of the approximator to use, or an uninstantiated
-            class object
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
+        :param approximator: Instantiated
+            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
+            created using the same kernel one wishes to use
         :return: Approximation to the kernel matrix row sum
         """
-        # Create an approximator object
-        approximator = self.create_approximator(
-            approximator=approximator,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
+        coreax.validation.validate_is_instance(
+            approximator, "approximator", coreax.approximation.KernelMeanApproximator
         )
         return approximator.approximate(x)
-
-    def create_approximator(
-        self,
-        approximator: str | type[ca.KernelMeanApproximator],
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
-    ) -> ca.KernelMeanApproximator:
-        r"""
-        Create an approximator object for use with the kernel matrix row sum mean.
-
-        :param approximator: The name of an approximator class to use, or the
-            uninstantiated class directly as a dependency injection
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
-        :return: Approximator object
-        """
-        approximator_obj = ca.approximator_factory.get(approximator)
-
-        # Initialise, accounting for different classes having different numbers of
-        # parameters
-        return cu.call_with_excess_kwargs(
-            approximator_obj,
-            kernel=self,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
-        )
 
 
 class SquaredExponentialKernel(Kernel):
@@ -550,7 +511,7 @@ class SquaredExponentialKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         return self.output_scale * jnp.exp(
-            -cu.squared_distance(x, y) / (2 * self.length_scale**2)
+            -coreax.util.squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     def _grad_x_elementwise(
@@ -618,7 +579,7 @@ class SquaredExponentialKernel(Kernel):
         k = self._compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
-        return scale * k * (d - scale * cu.squared_distance(x, y))
+        return scale * k * (d - scale * coreax.util.squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
@@ -783,7 +744,7 @@ class PCIMQKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         scaling = 2 * self.length_scale**2
-        mq_array = cu.squared_distance(x, y) / scaling
+        mq_array = coreax.util.squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     def _grad_x_elementwise(
@@ -852,7 +813,7 @@ class PCIMQKernel(Kernel):
         return (
             self.output_scale
             / scale
-            * (d * k**3 - 3 * k**5 * cu.squared_distance(x, y) / scale)
+            * (d * k**3 - 3 * k**5 * coreax.util.squared_distance(x, y) / scale)
         )
 
 
@@ -980,28 +941,5 @@ for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-
-# Set up class factory
-kernel_factory = cu.ClassFactory(Kernel)
-kernel_factory.register("squared_exponential", SquaredExponentialKernel)
-kernel_factory.register("laplace", LaplacianKernel)
-kernel_factory.register("pcimq", PCIMQKernel)
-kernel_factory.register("stein", SteinKernel)
-
-
-def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
-    """
-    Instantiate a kernel by name.
-
-    :param name: Name of kernel in :data:`kernel_factory`, or class object to
-        instantiate
-    :param args: Positional arguments to pass to instantiated class
-    :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
-    :return: Instance of selected :class:`Kernel` class
-    """
-    class_obj = kernel_factory.get(name)
-    return cu.call_with_excess_kwargs(class_obj, args, kwargs)
-
 
 # TODO: Do we want weights to be used to align with MMD?

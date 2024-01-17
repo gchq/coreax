@@ -1,19 +1,17 @@
 # © Crown Copyright GCHQ
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+# file except in compliance with the License. You may obtain a copy of the License at
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific language
+# governing permissions and limitations under the License.
 
 """
-Example coreset generation using a video of a pouncing cat.
+Example coreset generation using a video of a pouncing cat and sliced score matching.
 
 This example showcases how a coreset can be generated from video data. In this context,
 a coreset is a set of frames that best capture the information in the original video.
@@ -21,8 +19,9 @@ a coreset is a set of frames that best capture the information in the original v
 Firstly, principal component analysis (PCA) is applied to the video data to reduce
 dimensionality. Then, a coreset is generated using Stein kernel herding, with a
 SquaredExponentialKernel base kernel. The score function (gradient of the log-density
-function) for the Stein kernel is estimated by applying kernel density estimation (KDE)
-to the data, and then taking gradients.
+function) for the Stein kernel is estimated by applying sliced score matching from
+:cite:p:`ssm`. This trains a neural network to approximate the score function, and then
+passes the trained neural network to the Stein kernel.
 
 The coreset attained from Stein kernel herding is compared to a coreset generated via
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
@@ -38,14 +37,15 @@ import imageio
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from jax.random import rademacher
 from sklearn.decomposition import PCA
 
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.metrics import MMD
-from coreax.reduction import SizeReduce
-from coreax.score_matching import KernelDensityMatching
+from coreax.reduction import MapReduce, SizeReduce
+from coreax.score_matching import SlicedScoreMatching
 
 
 def main(
@@ -53,12 +53,13 @@ def main(
     out_path: Path | None = None,
 ) -> tuple[float, float]:
     """
-    Run the 'pounce' example for video sampling with Stein kernel herding.
+    Run the 'pounce' example for video sampling with score matching.
 
     Take a video of a pouncing cat, apply PCA and then generate a coreset using
-    Stein kernel herding. Compare the result from this to a coreset generated
-    via uniform random sampling. Coreset quality is measured using maximum mean
-    discrepancy (MMD).
+    score matching, in which we train a neural network to approximate the score function
+    of the underlying distribution (sliced score matching). Compare the result from this
+    to a coreset generated via uniform random sampling. Coreset quality is measured
+    using maximum mean discrepancy (MMD).
 
     :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
@@ -95,7 +96,7 @@ def main(
     # Request a 10 frame summary of the video
     coreset_size = 10
 
-    # Set the length_scale parameter of the underlying RBF kernel
+    # Set the length_scale parameter of the underlying squared exponential kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
@@ -104,11 +105,16 @@ def main(
     )
     length_scale = median_heuristic(principle_components_data[idx])
 
-    # Learn a score function via kernel density estimation
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=principle_components_data[idx, :]
+    # Learn a score function
+    sliced_score_matcher = SlicedScoreMatching(
+        random_generator=rademacher,
+        use_analytic=True,
+        num_epochs=100,
+        num_random_vectors=1,
+        sigma=1.0,
+        gamma=0.95,
     )
-    score_function = kernel_density_score_matcher.match()
+    score_function = sliced_score_matcher.match(principle_components_data)
 
     # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
@@ -118,7 +124,8 @@ def main(
         )
     )
     herding_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
     )
 
     # Get and sort the coreset indices ready for producing the output video
@@ -127,7 +134,8 @@ def main(
     # Generate a coreset via uniform random sampling for comparison
     random_sample_object = RandomSample(unique=True)
     random_sample_object.fit(
-        original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
+        original_data=data,
+        strategy=SizeReduce(coreset_size=coreset_size),
     )
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
@@ -152,9 +160,11 @@ def main(
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
-
     if out_path is not None:
-        imageio.mimsave(out_path / Path("pounce_coreset.gif"), coreset_images)
+        imageio.mimsave(
+            out_path / Path("pounce_map_reduce_sliced_score_matching_coreset.gif"),
+            coreset_images,
+        )
 
     # Plot to visualise which frames were chosen from the sequence action frames are
     # where the "pounce" occurs
@@ -171,7 +181,7 @@ def main(
     plt.ylabel("Chosen")
     plt.tight_layout()
     if out_path is not None:
-        plt.savefig(out_path / "pounce_frames.png")
+        plt.savefig(out_path / "pounce_map_reduce_sliced_score_matching_frames.png")
     plt.close()
 
     return (
