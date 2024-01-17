@@ -99,7 +99,8 @@ repos:
               .*.properties|
               requirements(-.*)?.txt|
               documentation/make.bat|
-              documentation/Makefile
+              documentation/Makefile|
+              .pylintrc
             )$
   - repo: local
     hooks:
@@ -111,3 +112,29 @@ repos:
         language: python
         types:
           - text
+        exclude:
+          .pylintrc
+      # Python static analysis tool
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: python
+        additional_dependencies:
+          - flax
+          - imageio
+          - jax
+          - jaxopt
+          - matplotlib
+          - numpy
+          - opencv-python
+          - optax
+          - pylint
+          - scikit-learn
+          - sphinx
+          - tqdm
+        types:
+          - python
+        args:
+          - "-rn" # Only display messages
+          - "-sn" # Don't display the score
+          - "--rcfile=.pylintrc" # pylint configuration file
