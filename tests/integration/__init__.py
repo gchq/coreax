@@ -17,7 +17,8 @@ Integration tests to verify functionality of the coreax library.
 
 Tests for end-to-end runs in typical applications of the coreax library. These should be
 called individually or serially, e.g. via a bash script, to avoid errors arising from
-Jax tracers being reused by the parent process.
+Jax tracers being reused by the parent process. The current default is to call
+`run_integration_tests.sh` from the `./tests/` directory.
 
 To elaborate: where multiple unit tests are run from a parent process, Jax is likely to
 re-use compiled tracers if present. This can result in errors where data types within
