@@ -15,5 +15,13 @@
 """
 Integration tests to verify functionality of the coreax library.
 
-Tests for end-to-end runs in typical applications of the coreax library.
+Tests for end-to-end runs in typical applications of the coreax library. These should be
+called individually or serially, e.g. via a bash script, to avoid errors arising from
+Jax tracers being reused by the parent process.
+
+To elaborate: where multiple unit tests are run from a parent process, Jax is likely to
+re-use compiled tracers if present. This can result in errors where data types within
+the tracers differ (as they are likely to do in integration tests). Unfortunately, this
+doesn't seem to be rectified by multiprocessing, so a simple method to run a batch of
+tests from separate parent processes is to run or loop over them individually.
 """
