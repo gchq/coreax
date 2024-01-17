@@ -48,8 +48,8 @@ from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
 
-import coreax.kernel as ck
-from coreax.networks import ScoreNetwork, create_train_state
+import coreax.kernel
+import coreax.networks
 
 
 class ScoreMatching(ABC):
@@ -403,7 +403,7 @@ class SlicedScoreMatching(ScoreMatching):
         """
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = ScoreNetwork(self.hidden_dim, data_dimension)
+        score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
         # noise perturbations
@@ -424,7 +424,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         # Define a training state
-        state = create_train_state(
+        state = coreax.networks.create_train_state(
             score_network,
             self.learning_rate,
             data_dimension,
@@ -477,7 +477,7 @@ class KernelDensityMatching(ScoreMatching):
         """Define the kernel density matching class."""
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
-        self.kernel = ck.SquaredExponentialKernel(
+        self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
@@ -529,6 +529,7 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
+            original_number_of_dimensions = x_.ndim
             x_ = jnp.atleast_2d(x_)
 
             # Get the gram matrix row means
@@ -537,7 +538,15 @@ class KernelDensityMatching(ScoreMatching):
             # Compute gradients with respect to x
             gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
 
-            return gradients / gram_matrix_row_means[:, None]
+            # Compute final evaluation of the score function
+            score_result = gradients / gram_matrix_row_means[:, None]
+
+            # Ensure output format accounts for 1-dimensional inputs as-well as
+            # multi-dimensional ones
+            if original_number_of_dimensions == 1:
+                score_result = score_result[0, :]
+
+            return score_result
 
         return score_function
 

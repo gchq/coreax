@@ -20,11 +20,12 @@ import numpy as np
 from jax import random
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-from coreax.coresubset import KernelHerding, RandomSample
-from coreax.data import ArrayData
-from coreax.metrics import MMD
-from coreax.reduction import SizeReduce
+import coreax.coresubset
+import coreax.data
+import coreax.kernel
+import coreax.metrics
+import coreax.reduction
+import coreax.refine
 
 
 class TestKernelHerding(unittest.TestCase):
@@ -51,7 +52,7 @@ class TestKernelHerding(unittest.TestCase):
         refined, the quality improves yet again.
         """
         # Define specific test instance setup
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         num_data_points = 100
 
         # Define some data - sufficiently large that we would not expect a random sample
@@ -60,26 +61,30 @@ class TestKernelHerding(unittest.TestCase):
             random.PRNGKey(self.random_data_generation_key),
             shape=(num_data_points, self.dimension),
         )
-        data = ArrayData.load(x)
+        data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = coreax.coresubset.KernelHerding(
+            kernel=kernel, refine_method=coreax.refine.RefineRegular()
+        )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
         coresubset_object_herding.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         herding_coreset = coresubset_object_herding.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
-        coresubset_object_random = RandomSample(random_key=0, unique=True)
+        coresubset_object_random = coreax.coresubset.RandomSample(
+            random_seed=0, unique=True
+        )
         coresubset_object_random.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         random_coreset = coresubset_object_random.coreset
 
         # Define a metric and compare quality of produced coresets
-        metric = MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
         herding_metric = metric.compute(x, herding_coreset)
         random_metric = metric.compute(x, random_coreset)
         self.assertLess(float(herding_metric), float(random_metric))
@@ -101,7 +106,7 @@ class TestKernelHerding(unittest.TestCase):
         passed, the same answer is produced by the herding algorithm.
         """
         # Define specific test instance setup
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         num_data_points = 100
 
         # Define some data
@@ -109,14 +114,14 @@ class TestKernelHerding(unittest.TestCase):
             random.PRNGKey(self.random_data_generation_key),
             shape=(num_data_points, self.dimension),
         )
-        data = ArrayData.load(x)
+        data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = coreax.coresubset.KernelHerding(kernel=kernel)
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
         coresubset_object_herding.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         herding_coreset = coresubset_object_herding.coreset
 
@@ -124,7 +129,7 @@ class TestKernelHerding(unittest.TestCase):
         kernel_matrix_row_sum = kernel.calculate_kernel_matrix_row_sum_mean(x=x)
         coresubset_object_herding.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
         coresubset_object_herding.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         herding_coreset_pre_computed_mean = coresubset_object_herding.coreset
 
@@ -141,7 +146,7 @@ class TestKernelHerding(unittest.TestCase):
             0.5 * kernel_matrix_row_sum
         )
         coresubset_object_herding.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         herding_coreset_invalid_mean = coresubset_object_herding.coreset
         coreset_difference = abs(herding_coreset - herding_coreset_invalid_mean)
@@ -175,27 +180,31 @@ class TestKernelHerding(unittest.TestCase):
             return -(x_ - mu) / std_dev**2
 
         # Create kernel and data objects
-        kernel = ck.SteinKernel(base_kernel=ck.PCIMQKernel(), score_function=true_score)
-        data = ArrayData.load(x)
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(), score_function=true_score
+        )
+        data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = KernelHerding(kernel=kernel)
+        coresubset_object_herding = coreax.coresubset.KernelHerding(kernel=kernel)
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
         coresubset_object_herding.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         herding_coreset = coresubset_object_herding.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
-        coresubset_object_random = RandomSample(weights_optimiser=None, kernel=kernel)
+        coresubset_object_random = coreax.coresubset.RandomSample(
+            weights_optimiser=None, kernel=kernel
+        )
         coresubset_object_random.fit(
-            original_data=data, coreset_size=SizeReduce(self.coreset_size)
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
         random_coreset = coresubset_object_random.coreset
 
         # Define a metric and compare quality of produced coresets
-        metric = MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
         herding_metric = metric.compute(x, herding_coreset)
         random_metric = metric.compute(x, random_coreset)
         self.assertLess(float(herding_metric), float(random_metric))
@@ -210,6 +219,7 @@ class TestKernelHerding(unittest.TestCase):
         with (
             patch("coreax.kernel.Kernel") as mock_kernel,
             patch("coreax.data.DataReader") as mock_reader,
+            patch("coreax.validation.validate_is_instance") as _,
         ):
             # Mock some data
             mock_reader.pre_coreset_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
@@ -231,7 +241,10 @@ class TestKernelHerding(unittest.TestCase):
                 return jnp.asarray([[0.5, 1, 1], [0.5, 1, 1], [0.5, 1, 1]])
 
             # Define class
-            test_class = KernelHerding(kernel=mock_kernel)
+
+            # Assign mock kernel after the input validation has happened, which
+            # simplifies the test enormously
+            test_class = coreax.coresubset.KernelHerding(kernel=mock_kernel)
 
             # Predefine the variables that are updated in the loop
             coreset_indices_0 = jnp.zeros(2, dtype=jnp.int32)
@@ -307,22 +320,25 @@ class TestRandomSample(unittest.TestCase):
         self.dimension = 10
         self.random_data_generation_key = 0
         self.coreset_size = 10
-        self.random_sampling_key = 42
+        self.random_sampling_seed = 42
 
         # Define example dataset
         x = random.uniform(
             random.PRNGKey(self.random_data_generation_key),
             shape=(self.num_points_in_data, self.dimension),
         )
-        data_obj = ArrayData.load(x)
+        data_obj = coreax.data.ArrayData.load(x)
 
         self.data_obj = data_obj
 
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""
-        random_sample = RandomSample(random_key=self.random_sampling_key, unique=True)
+        random_sample = coreax.coresubset.RandomSample(
+            random_seed=self.random_sampling_seed, unique=True
+        )
         random_sample.fit(
-            original_data=self.data_obj, coreset_size=SizeReduce(self.coreset_size)
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
         )
 
         # Assert the number of indices in the reduced data is as expected
@@ -346,9 +362,12 @@ class TestRandomSample(unittest.TestCase):
          seeds in setUp(). The parameters self.num_points_in_coreset = 10 and
         self.random_sampling_key = 42 ensure a repeated coreset point when unique=False.
         """
-        random_sample = RandomSample(random_key=self.random_sampling_key, unique=False)
+        random_sample = coreax.coresubset.RandomSample(
+            random_seed=self.random_sampling_seed, unique=False
+        )
         random_sample.fit(
-            original_data=self.data_obj, coreset_size=SizeReduce(self.coreset_size)
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
         )
 
         unique_reduction_indices = jnp.unique(random_sample.coreset_indices)

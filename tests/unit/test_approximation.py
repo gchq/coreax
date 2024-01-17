@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 from unittest.mock import patch
 
@@ -18,8 +19,8 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-import coreax.approximation as ca
-import coreax.kernel as ck
+import coreax.approximation
+import coreax.kernel
 
 
 class TestApproximations(unittest.TestCase):
@@ -70,7 +71,7 @@ class TestApproximations(unittest.TestCase):
         self.num_train_points = 3
 
         # Define a kernel object
-        self.kernel = ck.SquaredExponentialKernel(
+        self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=1.0 / np.sqrt(2), output_scale=1.0
         )
 
@@ -91,11 +92,13 @@ class TestApproximations(unittest.TestCase):
         """
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created
-        p = patch.multiple(ca.KernelMeanApproximator, __abstractmethods__=set())
+        p = patch.multiple(
+            coreax.approximation.KernelMeanApproximator, __abstractmethods__=set()
+        )
         p.start()
 
         # Define the approximator
-        approximator = ca.KernelMeanApproximator(
+        approximator = coreax.approximation.KernelMeanApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -113,13 +116,15 @@ class TestApproximations(unittest.TestCase):
         """
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created
-        p = patch.multiple(ca.KernelMeanApproximator, __abstractmethods__=set())
+        p = patch.multiple(
+            coreax.approximation.KernelMeanApproximator, __abstractmethods__=set()
+        )
         p.start()
 
         # Define the approximator with an incorrect kernel type
         self.assertRaises(
             TypeError,
-            ca.KernelMeanApproximator,
+            coreax.approximation.KernelMeanApproximator,
             kernel="not_a_kernel",
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -127,7 +132,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect random_key type, but that can be
         # converted into an array
-        approximator = ca.KernelMeanApproximator(
+        approximator = coreax.approximation.KernelMeanApproximator(
             kernel=self.kernel,
             random_key=123,
             num_kernel_points=self.num_kernel_points,
@@ -138,7 +143,7 @@ class TestApproximations(unittest.TestCase):
         # cast as an array
         self.assertRaises(
             TypeError,
-            ca.KernelMeanApproximator,
+            coreax.approximation.KernelMeanApproximator,
             kernel=self.kernel,
             random_key=int,
             num_kernel_points=self.num_kernel_points,
@@ -146,7 +151,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_kernel_points type (float) but
         # that can be cast into an int
-        approximator = ca.KernelMeanApproximator(
+        approximator = coreax.approximation.KernelMeanApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=1.0 * self.num_kernel_points,
@@ -157,7 +162,7 @@ class TestApproximations(unittest.TestCase):
         # cannot be cast into an int
         self.assertRaises(
             TypeError,
-            ca.KernelMeanApproximator,
+            coreax.approximation.KernelMeanApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=[1],
@@ -166,7 +171,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_kernel_points
         self.assertRaises(
             ValueError,
-            ca.KernelMeanApproximator,
+            coreax.approximation.KernelMeanApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
@@ -182,7 +187,7 @@ class TestApproximations(unittest.TestCase):
         to the true value, but less so than when using a larger training set.
         """
         # Define the approximator - full dataset used to fit the approximation
-        approximator_full = ca.RandomApproximator(
+        approximator_full = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
@@ -190,7 +195,7 @@ class TestApproximations(unittest.TestCase):
         )
 
         # Define the approximator - full dataset used to fit the approximation
-        approximator_partial = ca.RandomApproximator(
+        approximator_partial = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -227,7 +232,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with an incorrect kernel type
         self.assertRaises(
             TypeError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel="not_a_kernel",
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -236,7 +241,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect random_key type, but that can be
         # converted into an array.
-        approximator = ca.RandomApproximator(
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=123,
             num_kernel_points=self.num_kernel_points,
@@ -248,7 +253,7 @@ class TestApproximations(unittest.TestCase):
         # cast as an array
         self.assertRaises(
             TypeError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel=self.kernel,
             random_key=int,
             num_kernel_points=self.num_kernel_points,
@@ -257,7 +262,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_kernel_points type (float) but
         # that can be cast into an int
-        approximator = ca.RandomApproximator(
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=1.0 * self.num_kernel_points,
@@ -269,7 +274,7 @@ class TestApproximations(unittest.TestCase):
         # cannot be cast into an int
         self.assertRaises(
             TypeError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=[1.0],
@@ -279,7 +284,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_kernel_points
         self.assertRaises(
             ValueError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
@@ -288,7 +293,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_train_points type (float) but
         # that can be cast to an int
-        approximator = ca.RandomApproximator(
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -300,7 +305,7 @@ class TestApproximations(unittest.TestCase):
         # that cannot be cast to an int
         self.assertRaises(
             TypeError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -310,7 +315,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_train_points
         self.assertRaises(
             ValueError,
-            ca.RandomApproximator,
+            coreax.approximation.RandomApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
@@ -318,7 +323,7 @@ class TestApproximations(unittest.TestCase):
         )
 
         # Define a valid approximator, but call approximate with an invalid input
-        approximator = ca.RandomApproximator(
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
@@ -336,7 +341,7 @@ class TestApproximations(unittest.TestCase):
         to the true value, but less so than when using a larger training set.
         """
         # Define the approximator - full dataset used to fit the approximation
-        approximator_full = ca.ANNchorApproximator(
+        approximator_full = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
@@ -344,7 +349,7 @@ class TestApproximations(unittest.TestCase):
         )
 
         # Define the approximator - full dataset used to fit the approximation
-        approximator_partial = ca.ANNchorApproximator(
+        approximator_partial = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -381,7 +386,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with an incorrect kernel type
         self.assertRaises(
             TypeError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel="not_a_kernel",
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -390,7 +395,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect random_key type, but that can be
         # converted into an array.
-        approximator = ca.ANNchorApproximator(
+        approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=123,
             num_kernel_points=self.num_kernel_points,
@@ -402,7 +407,7 @@ class TestApproximations(unittest.TestCase):
         # cast as an array
         self.assertRaises(
             TypeError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel=self.kernel,
             random_key=int,
             num_kernel_points=self.num_kernel_points,
@@ -411,7 +416,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_kernel_points type (float) but
         # that can be cast into an int
-        approximator = ca.ANNchorApproximator(
+        approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=1.0 * self.num_kernel_points,
@@ -423,7 +428,7 @@ class TestApproximations(unittest.TestCase):
         # cannot be cast into an int
         self.assertRaises(
             TypeError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=[1.0],
@@ -433,7 +438,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_kernel_points
         self.assertRaises(
             ValueError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
@@ -442,7 +447,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_train_points type (float) but
         # that can be cast to an int
-        approximator = ca.ANNchorApproximator(
+        approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -454,7 +459,7 @@ class TestApproximations(unittest.TestCase):
         # that cannot be cast to an int
         self.assertRaises(
             TypeError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -464,7 +469,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_train_points
         self.assertRaises(
             ValueError,
-            ca.ANNchorApproximator,
+            coreax.approximation.ANNchorApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
@@ -472,7 +477,7 @@ class TestApproximations(unittest.TestCase):
         )
 
         # Define a valid approximator, but call approximate with an invalid input
-        approximator = ca.ANNchorApproximator(
+        approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
@@ -490,14 +495,14 @@ class TestApproximations(unittest.TestCase):
         degrades compared to using a larger training set.
         """
         # Define the approximator - full dataset used to fit the approximation
-        approximator_full = ca.NystromApproximator(
+        approximator_full = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
         )
 
         # Define the approximator - full dataset used to fit the approximation
-        approximator_partial = ca.NystromApproximator(
+        approximator_partial = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -534,7 +539,7 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with an incorrect kernel type
         self.assertRaises(
             TypeError,
-            ca.NystromApproximator,
+            coreax.approximation.NystromApproximator,
             kernel="not_a_kernel",
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
@@ -542,7 +547,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect random_key type, but that can be
         # converted into an array
-        approximator = ca.NystromApproximator(
+        approximator = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=123,
             num_kernel_points=self.num_kernel_points,
@@ -553,7 +558,7 @@ class TestApproximations(unittest.TestCase):
         # cast as an array
         self.assertRaises(
             TypeError,
-            ca.NystromApproximator,
+            coreax.approximation.NystromApproximator,
             kernel=self.kernel,
             random_key=int,
             num_kernel_points=self.num_kernel_points,
@@ -561,7 +566,7 @@ class TestApproximations(unittest.TestCase):
 
         # Define the approximator with an incorrect num_kernel_points type (float) but
         # that can be cast into an int
-        approximator = ca.NystromApproximator(
+        approximator = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=1.0 * self.num_kernel_points,
@@ -572,7 +577,7 @@ class TestApproximations(unittest.TestCase):
         # cannot be cast into an int
         self.assertRaises(
             TypeError,
-            ca.NystromApproximator,
+            coreax.approximation.NystromApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=[1],
@@ -581,14 +586,14 @@ class TestApproximations(unittest.TestCase):
         # Define the approximator with a negative value of num_kernel_points
         self.assertRaises(
             ValueError,
-            ca.NystromApproximator,
+            coreax.approximation.NystromApproximator,
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
         )
 
         # Define a valid approximator, but call approximate with an invalid input
-        approximator = ca.NystromApproximator(
+        approximator = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],

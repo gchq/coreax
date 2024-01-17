@@ -18,9 +18,9 @@ from unittest.mock import MagicMock, patch
 import jax.numpy as jnp
 from jax import random
 
-import coreax.kernel as ck
-import coreax.metrics as cm
-import coreax.util as cu
+import coreax.kernel
+import coreax.metrics
+import coreax.util
 
 
 class TestMetrics(unittest.TestCase):
@@ -33,11 +33,11 @@ class TestMetrics(unittest.TestCase):
         Test the class Metric initialises correctly.
         """
         # Patch the abstract methods of the Metric ABC, so it can be created
-        p = patch.multiple(cm.Metric, __abstractmethods__=set())
+        p = patch.multiple(coreax.metrics.Metric, __abstractmethods__=set())
         p.start()
 
         # Create a metric object
-        metric = cm.Metric()
+        metric = coreax.metrics.Metric()
 
         # Check the compute method exists
         self.assertTrue(hasattr(metric, "compute"))
@@ -88,15 +88,19 @@ class TestMMD(unittest.TestCase):
         Test the MMD of a dataset with itself is zero, for several different kernels.
         """
         # Define a metric object using the SquaredExponentialKernel
-        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=1.0))
+        metric = coreax.metrics.MMD(
+            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0)
+        )
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
         # Define a metric object using the LaplacianKernel
-        metric = cm.MMD(kernel=ck.LaplacianKernel(length_scale=1.0))
+        metric = coreax.metrics.MMD(
+            kernel=coreax.kernel.LaplacianKernel(length_scale=1.0)
+        )
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
         # Define a metric object using the PCIMQKernel
-        metric = cm.MMD(kernel=ck.PCIMQKernel(length_scale=1.0))
+        metric = coreax.metrics.MMD(kernel=coreax.kernel.PCIMQKernel(length_scale=1.0))
         self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
 
     def test_mmd_ones(self):
@@ -146,7 +150,9 @@ class TestMMD(unittest.TestCase):
         expected_output = 0.0
 
         # Define a metric object using an RBF kernel
-        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
+        metric = coreax.metrics.MMD(
+            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        )
 
         # Compute MMD using the metric object
         output = metric.compute(x=x, y=y)
@@ -203,7 +209,9 @@ class TestMMD(unittest.TestCase):
         expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
 
         # Define a metric object using an RBF kernel
-        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
+        metric = coreax.metrics.MMD(
+            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        )
 
         # Compute MMD using the metric object
         output = metric.compute(x=x, y=y)
@@ -217,7 +225,7 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute each term in the MMD formula
         kernel_nn = kernel.compute(self.x, self.x)
@@ -230,7 +238,7 @@ class TestMMD(unittest.TestCase):
         ) ** 0.5
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute MMD using the metric object
         output = metric.compute(x=self.x, y=self.y)
@@ -279,7 +287,9 @@ class TestMMD(unittest.TestCase):
         )
 
         # Define a metric object
-        metric = cm.MMD(kernel=ck.SquaredExponentialKernel(length_scale=length_scale))
+        metric = coreax.metrics.MMD(
+            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        )
 
         # Compute weighted mmd using the metric object
         output = metric.compute(x=x, y=y, weights_y=weights_y)
@@ -293,7 +303,7 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute each term in the MMD formula
         kernel_nn = kernel.compute(self.x, self.x)
@@ -308,7 +318,7 @@ class TestMMD(unittest.TestCase):
         ).item() ** 0.5
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute weighted MMD using the metric object
         output = metric.compute(x=self.x, y=self.y, weights_y=self.weights_y)
@@ -322,10 +332,10 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute weighted MMD with all weights being uniform
         uniform_wmmd = metric.compute(
@@ -370,10 +380,10 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = cu.squared_distance_pairwise
+        kernel.compute = coreax.util.squared_distance_pairwise
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute the sum of pairwise distances using the metric object
         output = metric.sum_pairwise_distances(x=x, y=y, block_size=2)
@@ -397,10 +407,10 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute MMD block-wise
         mmd_block_test = metric.compute(x=x, y=y, block_size=2)
@@ -414,7 +424,7 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Compute MMD term with x and itself
         kernel_nn = 0.0
@@ -451,7 +461,7 @@ class TestMMD(unittest.TestCase):
         ) ** 0.5
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute MMD
         output = metric.compute(self.x, self.y, block_size=self.block_size)
@@ -465,10 +475,10 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Check outputs are the same
         self.assertAlmostEqual(
@@ -517,10 +527,10 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = cu.squared_distance_pairwise
+        kernel.compute = coreax.util.squared_distance_pairwise
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute sum of weighted pairwise distances
         output = metric.sum_weighted_pairwise_distances(
@@ -571,10 +581,10 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute weighted MMD block-wise
         output = metric.compute(
@@ -591,10 +601,10 @@ class TestMMD(unittest.TestCase):
         """
         # Define a kernel object
         length_scale = 1.0
-        kernel = ck.SquaredExponentialKernel(length_scale=length_scale)
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define a metric object
-        metric = cm.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=kernel)
 
         # Compute weighted MMD with uniform weights
         output = metric.compute(

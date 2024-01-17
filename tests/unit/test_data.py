@@ -16,21 +16,22 @@ import unittest
 from unittest.mock import MagicMock
 
 import jax.numpy as jnp
+import numpy as np
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.data as cd
-import coreax.reduction as cr
+import coreax.data
+import coreax.reduction
 
 
-class DataReaderConcrete(cd.DataReader):
+class DataReaderConcrete(coreax.data.DataReader):
     """Concrete implementation of DataReader class to allow testing."""
 
     @classmethod
-    def load(cls, original_data: ArrayLike) -> cd.DataReader:
+    def load(cls, original_data: ArrayLike) -> coreax.data.DataReader:
         raise NotImplementedError
 
-    def format(self, coreset: cr.Coreset) -> Array:
+    def format(self, coreset: coreax.reduction.Coreset) -> Array:
         raise NotImplementedError
 
 
@@ -50,9 +51,9 @@ class TestArrayData(unittest.TestCase):
     def test_load(self):
         """Check that no preprocessing is done during load."""
         original_data = jnp.array([[1, 2]])
-        actual = cd.ArrayData.load(original_data)
-        self.assertEqual(actual.original_data, original_data)
-        self.assertEqual(actual.pre_coreset_array, original_data)
+        actual = coreax.data.ArrayData.load(original_data)
+        np.testing.assert_array_equal(actual.original_data, original_data)
+        np.testing.assert_array_equal(actual.pre_coreset_array, original_data)
 
     def test_format(self):
         """Check that coreset is returned without further formatting."""
@@ -60,8 +61,8 @@ class TestArrayData(unittest.TestCase):
         coreset_array = jnp.array([[2, 3], [4, 5]])
         coreset_obj = MagicMock()
         coreset_obj.coreset = coreset_array
-        data_reader = cd.ArrayData(original_data, original_data)
-        self.assertEqual(data_reader.format(coreset_obj), coreset_array)
+        data_reader = coreax.data.ArrayData(original_data, original_data)
+        np.testing.assert_array_equal(data_reader.format(coreset_obj), coreset_array)
 
 
 if __name__ == "__main__":

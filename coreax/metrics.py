@@ -32,8 +32,8 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-import coreax.util as cu
+import coreax.kernel
+import coreax.util
 
 
 class Metric(ABC):
@@ -86,7 +86,7 @@ class MMD(Metric):
     :param precision_threshold: Positive threshold we compare against for precision
     """
 
-    def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
+    def __init__(self, kernel: coreax.kernel.Kernel, precision_threshold: float = 1e-8):
         """Calculate maximum mean discrepancy between two datasets."""
         self.kernel = kernel
         self.precision_threshold = precision_threshold
@@ -169,7 +169,7 @@ class MMD(Metric):
 
         # Compute MMD
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean(),
                 self.precision_threshold,
             )
@@ -202,7 +202,7 @@ class MMD(Metric):
         # Compute weighted MMD, correcting for any numerical precision issues, where we
         # would otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 jnp.dot(weights_y.T, jnp.dot(kernel_mm, weights_y))
                 + kernel_nn.sum() / num_points_x**2
                 - 2 * jnp.dot(weights_y.T, kernel_nm.mean(axis=0)),
@@ -240,7 +240,7 @@ class MMD(Metric):
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn / num_points_x**2
                 + kernel_mm / num_points_y**2
                 - 2 * kernel_nm / (num_points_x * num_points_y),
@@ -291,7 +291,7 @@ class MMD(Metric):
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn / num_points_x**2
                 + kernel_mm / num_points_y**2
                 - 2 * kernel_nm / (num_points_x * num_points_y),
@@ -385,7 +385,3 @@ class MMD(Metric):
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 
         return weighted_pairwise_distance_sum
-
-
-metric_factory = cu.ClassFactory(Metric)
-metric_factory.register("MMD", MMD)
