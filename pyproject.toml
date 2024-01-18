@@ -30,6 +30,7 @@ dependencies = [
     "optax",
     "scikit-learn",
     "tqdm",
+    "typing-extensions",
 ]
 
 [project.optional-dependencies]

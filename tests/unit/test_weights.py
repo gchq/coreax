@@ -17,8 +17,8 @@ import unittest
 
 import jax.numpy as jnp
 
-import coreax.kernel as ck
-import coreax.weights as cw
+import coreax.kernel
+import coreax.weights
 
 
 class TestWeights(unittest.TestCase):
@@ -44,9 +44,9 @@ class TestWeights(unittest.TestCase):
         kernel matrix :math:`k(X_c, X)`, i.e., the mean in the :math:`X` direction. The
         matrix :math:`K = k(X_c, X_c)`.
 
-        Choosing the RBF kernel,
-        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
-        :math:`\text{length_scale} = 1` (the default value), we have:
+        Choosing the SquaredExponentialKernel kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`,
+        setting ``length_scale`` to 1.0, we have:
 
         .. math::
 
@@ -66,17 +66,23 @@ class TestWeights(unittest.TestCase):
 
             w = [1 - 2e^{-2} + e^{-4}, 1 + e^{-1} - e^{-2} - e^{-5}]/3(1 - e^{-2}).
         """
-        calculate_bq_weights_test = cw.calculate_BQ_weights(
-            x=jnp.array([[0, 0], [1, 1], [2, 2]]),
-            x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        expected_output = jnp.asarray(
+            [
+                (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2))),
+                (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2))),
+            ]
         )
 
-        w1 = (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2)))
-        w2 = (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2)))
-        expected_output = jnp.asarray([w1, w2])
+        optimiser = coreax.weights.SBQ(kernel=coreax.kernel.SquaredExponentialKernel())
 
-        self.assertTrue(jnp.allclose(calculate_bq_weights_test, expected_output))
+        # Solve for the weights
+        output = optimiser.solve(x, y)
+
+        self.assertTrue(jnp.allclose(output, expected_output))
 
     def test_simplex_weights(self) -> None:
         r"""
@@ -111,9 +117,9 @@ class TestWeights(unittest.TestCase):
 
             X_c = [[0,0], [1,1]]
 
-        and choosing  the RBF kernel,
-        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`, for
-        :math:`\text{length_scale} = 1` (the default value), we have:
+        and with the SquaredExponentialKernel kernel,
+        :math:`k(x,y) = \exp (-||x-y||^2/2\text{length_scale}^2)`,
+        setting ``length_scale`` to 1.0, we have:
 
         .. math::
 
@@ -129,14 +135,10 @@ class TestWeights(unittest.TestCase):
             /(6(e^4 - e^3))
 
             w_1 = 1 - w_2
-
         """
-
-        simplex_weights_test = cw.simplex_weights(
-            x=jnp.array([[0, 0], [1, 1], [2, 2]]),
-            x_c=jnp.array([[0, 0], [1, 1]]),
-            kernel=ck.rbf_kernel,
-        )
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
 
         w2 = (
             -1
@@ -153,6 +155,15 @@ class TestWeights(unittest.TestCase):
         ) / (6 * (jnp.exp(4) - jnp.exp(3)))
         w2 = jnp.real(w2)
         w1 = 1 - w2
-
         expected_output = jnp.asarray([w1, w2])
-        self.assertTrue(jnp.allclose(simplex_weights_test, expected_output, rtol=1e-04))
+
+        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
+
+        # Solve for the weights
+        output = optimiser.solve(x, y)
+
+        self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
+
+
+if __name__ == "__main__":
+    unittest.main()
