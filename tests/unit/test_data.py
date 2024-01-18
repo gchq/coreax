@@ -44,6 +44,17 @@ class TestDataReader(unittest.TestCase):
         self.assertEqual(actual.original_data, jnp.array(1))
         self.assertEqual(actual.pre_coreset_array, jnp.array([[2]]))
 
+    def test_non_abstract_methods_raise(self):
+        """
+        Test calls to the non-abstract methods of DataReader raise the expected errors.
+        """
+        reader_object = DataReaderConcrete(original_data=1, pre_coreset_array=2)
+        self.assertRaises(NotImplementedError, reader_object.render, MagicMock())
+        self.assertRaises(NotImplementedError, reader_object.reduce_dimension, 2)
+        self.assertRaises(
+            NotImplementedError, reader_object.restore_dimension, MagicMock()
+        )
+
 
 class TestArrayData(unittest.TestCase):
     """Test ArrayData class."""
