@@ -126,7 +126,7 @@ class Refine(ABC):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -148,7 +148,7 @@ class Refine(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -721,7 +721,7 @@ class RefineReverse(Refine):
         return jnp.asarray(coreset_indices)
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for current_class in refine_classes:
