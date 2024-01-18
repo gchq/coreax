@@ -222,7 +222,8 @@ class SlicedScoreMatching(ScoreMatching):
         Compute reduced variance score matching loss function.
 
         This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then :meth:`general_obj` should be used instead.
+        this assumption is not true, then
+        :meth:`SlicedScoreMatching._general_objective` should be used instead.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
@@ -246,8 +247,8 @@ class SlicedScoreMatching(ScoreMatching):
         Compute general score matching loss function.
 
         This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than :meth:`analytic_obj` if
-        these assumptions hold.
+        when using score matching, but has higher variance than
+        :meth:`SlicedScoreMatching._analytic_objective` if these assumptions hold.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
