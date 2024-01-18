@@ -114,7 +114,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-        # Alter the length_scale, and check the jit decorator catches the update
+        # Alter the length_scale, and check the JIT decorator catches the update
         kernel.length_scale = np.sqrt(np.float32(np.pi))
 
         # Set expected output with this new length_scale
@@ -627,7 +627,7 @@ class TestLaplacianKernel(unittest.TestCase):
         # Check the output matches the expected distance
         self.assertAlmostEqual(output[0, 0], expected_distance, places=5)
 
-        # Alter the length_scale, and check the jit decorator catches the update
+        # Alter the length_scale, and check the JIT decorator catches the update
         kernel.length_scale = np.sqrt(np.float32(np.pi))
 
         # Set expected output with this new length_scale

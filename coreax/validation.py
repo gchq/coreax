@@ -81,7 +81,7 @@ def validate_is_instance(
     """
     Verify that a given object is of a given type.
 
-    Unlike built-in :func:`isinstance`, :data:`None` may be passed to `expected_type`.
+    Unlike built-in :func:`isinstance`, :data:`None` may be passed to ``expected_type``.
 
     Where the object may be one of several types, a tuple of types may be passed to
     ``expected_type``.
