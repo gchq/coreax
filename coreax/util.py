@@ -26,7 +26,8 @@ class factories and checks for numerical precision.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
+from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
@@ -186,3 +187,39 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     end_time = time.time()
     post_delta = end_time - start_time
     return pre_delta, post_delta
+
+
+T = TypeVar("T")
+
+
+class SilentTQDM:
+    """
+    Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
+
+    It can substitute :class:`~tqdm.tqdm` to silence all output.
+
+    Based on `code by Pro Q <https://stackoverflow.com/a/77450937>`_.
+
+    :param iterable: Iterable of tasks to (not) indicate progress for
+    """
+
+    def __init__(self, iterable: Iterable[T], *_args, **_kwargs):
+        """Store iterable."""
+        self.iterable = iterable
+
+    def __iter__(self) -> Iterator[T]:
+        """
+        Iterate.
+
+        :return: Next item
+        """
+        for item in self.iterable:
+            yield item
+
+    def write(self, *args, **kwargs) -> None:
+        """
+        Do nothing instead of writing to output.
+
+        :return: Nothing
+        """
+        pass

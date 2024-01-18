@@ -132,5 +132,20 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(func_out_2, 0.000001)
 
 
+class TestSilentTQDM(unittest.TestCase):
+    """Test silent substitute for TQDM."""
+
+    def test_iterator(self):
+        """Test that iterator works."""
+        iterator_length = 10
+        expect = list(range(iterator_length))
+        actual = list(coreax.util.SilentTQDM(range(iterator_length)))
+        self.assertEqual(actual, expect)
+
+    def test_write(self):
+        """Test that silenced version of TQDM write command does not crash."""
+        self.assertIsNone(coreax.util.SilentTQDM.write("something"))
+
+
 if __name__ == "__main__":
     unittest.main()
