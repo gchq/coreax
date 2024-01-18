@@ -441,7 +441,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output, places=3)
 
         # Call the loss element with a different objective function, and check that the
-        # jit compilation recognises this change
+        # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
         output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function

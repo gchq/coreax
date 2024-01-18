@@ -146,7 +146,7 @@ class KernelHerding(coreax.reduction.Coreset):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -400,7 +400,7 @@ class RandomSample(coreax.reduction.Coreset):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays

@@ -106,7 +106,7 @@ class Kernel(ABC):
         """Define a kernel."""
         # TODO: generalise length_scale to multiple dimensions.
         # Check that length_scale is above zero (the isinstance check here is to ensure
-        # that we don't check a trace of an array when jit decorators interact with
+        # that we don't check a trace of an array when JIT decorators interact with
         # code)
         if isinstance(length_scale, float) and length_scale <= 0.0:
             raise ValueError(
@@ -125,7 +125,7 @@ class Kernel(ABC):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -142,7 +142,7 @@ class Kernel(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -474,7 +474,7 @@ class SquaredExponentialKernel(Kernel):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -589,7 +589,7 @@ class LaplacianKernel(Kernel):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -707,7 +707,7 @@ class PCIMQKernel(Kernel):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -882,7 +882,7 @@ class SteinKernel(Kernel):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -928,7 +928,7 @@ class SteinKernel(Kernel):
         )
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
 for current_class in kernel_classes:

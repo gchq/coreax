@@ -69,7 +69,7 @@ class ScoreMatching(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -160,7 +160,7 @@ class SlicedScoreMatching(ScoreMatching):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = ()
@@ -494,7 +494,7 @@ class KernelDensityMatching(ScoreMatching):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = (self.kde_data,)
@@ -551,7 +551,7 @@ class KernelDensityMatching(ScoreMatching):
         return score_function
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:
