@@ -40,4 +40,4 @@ jobs:
     - name: Test with pytest
       # Else statement to step above
       if: ${{ matrix.python-version != '3.11' }}
-      run: pytest --ignore=tests/integration
+      run: pytest --ignore=tests/integration --ignore=examples
