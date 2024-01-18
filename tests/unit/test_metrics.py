@@ -391,6 +391,34 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
+    def test_sum_pairwise_distances_large_block_size(self) -> None:
+        r"""
+        Test sum_pairwise_distances() with a block size larger than the input data.
+
+        This test uses the same data as `test_sum_pairwise_distances` above, and so
+        expects to get exactly the same output. The difference between the tests is,
+        here ``block_size`` is large enough to not need block-wise computation.
+        """
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Set expected output
+        expected_output = 14
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute the sum of pairwise distances using the metric object
+        output = metric.sum_pairwise_distances(x=x, y=y, block_size=2000)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=5)
+
     def test_mmd_block_ints(self) -> None:
         r"""
         Test mmd_block calculation of MMD while limiting memory requirements.
@@ -535,6 +563,38 @@ class TestMMD(unittest.TestCase):
         # Compute sum of weighted pairwise distances
         output = metric.sum_weighted_pairwise_distances(
             x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2
+        )
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=5)
+
+    def test_sum_weight_K_big_block_size(self) -> None:
+        r"""
+        Test sum_weight_K() with a block size larger than the input data.
+
+        This test uses the same data as `test_sum_weight_K` above, and so expects to get
+        exactly the same output. The difference between the tests is, here
+        ``block_size`` is large enough to not need block-wise computation.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define expected output
+        expected_output = 1.0
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of weighted pairwise distances
+        output = metric.sum_weighted_pairwise_distances(
+            x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2000
         )
 
         # Check output matches expected

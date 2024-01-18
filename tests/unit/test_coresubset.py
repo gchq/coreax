@@ -42,6 +42,47 @@ class TestKernelHerding(unittest.TestCase):
         self.random_data_generation_key = 0
         self.coreset_size = 20
 
+    def test_tree_flatten(self) -> None:
+        """
+        Test that the pytree is flattened as expected.
+        """
+        # Create a kernel herding object
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        coresubset_object_herding = coreax.coresubset.KernelHerding(
+            kernel=kernel, refine_method=coreax.refine.RefineRegular()
+        )
+
+        # Set attributes on the object to ensure actual values are returned
+        coresubset_object_herding.kernel_matrix_row_sum_mean = None
+        coresubset_object_herding.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
+        coresubset_object_herding.coreset = jnp.zeros([2, 3])
+        coresubset_object_herding.block_size = 5
+        coresubset_object_herding.unique = False
+        coresubset_object_herding.refine_method = "ABC"
+        coresubset_object_herding.weights_optimiser = "DEF"
+        coresubset_object_herding.approximator = "XYZ"
+        coresubset_object_herding.random_key = 1989
+
+        # Call the method and check each output are as expected
+        output_children, output_aux_data = coresubset_object_herding._tree_flatten()
+
+        self.assertEqual(len(output_children), 4)
+        self.assertEqual(output_children[0], kernel)
+        self.assertIsNone(output_children[1])
+        np.testing.assert_array_equal(output_children[2], jnp.zeros(1, dtype=jnp.int32))
+        np.testing.assert_array_equal(output_children[3], jnp.zeros([2, 3]))
+        self.assertDictEqual(
+            output_aux_data,
+            {
+                "block_size": 5,
+                "unique": False,
+                "refine_method": "ABC",
+                "weights_optimiser": "DEF",
+                "approximator": "XYZ",
+                "random_key": 1989,
+            },
+        )
+
     def test_fit_comparison_to_random_and_refined(self) -> None:
         """
         Test the fit method of the KernelHerding class with a simple example.
@@ -330,6 +371,45 @@ class TestRandomSample(unittest.TestCase):
         data_obj = coreax.data.ArrayData.load(x)
 
         self.data_obj = data_obj
+
+    def test_tree_flatten(self) -> None:
+        """
+        Test that the pytree is flattened as expected.
+        """
+        # Create a kernel herding object
+        coresubset_object_random_sample = coreax.coresubset.RandomSample(
+            random_seed=self.random_sampling_seed, unique=True
+        )
+
+        # Set attributes on the object to ensure actual values are returned
+        coresubset_object_random_sample.kernel_matrix_row_sum_mean = None
+        coresubset_object_random_sample.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
+        coresubset_object_random_sample.coreset = jnp.zeros([2, 3])
+        coresubset_object_random_sample.unique = False
+        coresubset_object_random_sample.refine_method = "ABC"
+        coresubset_object_random_sample.weights_optimiser = "DEF"
+        coresubset_object_random_sample.random_seed = 1989
+
+        # Call the method and check each output are as expected
+        (
+            output_children,
+            output_aux_data,
+        ) = coresubset_object_random_sample._tree_flatten()
+
+        self.assertEqual(len(output_children), 4)
+        self.assertEqual(output_children[0], None)
+        self.assertIsNone(output_children[1])
+        np.testing.assert_array_equal(output_children[2], jnp.zeros(1, dtype=jnp.int32))
+        np.testing.assert_array_equal(output_children[3], jnp.zeros([2, 3]))
+        self.assertDictEqual(
+            output_aux_data,
+            {
+                "unique": False,
+                "refine_method": "ABC",
+                "weights_optimiser": "DEF",
+                "random_seed": 1989,
+            },
+        )
 
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""

@@ -259,6 +259,37 @@ class TestMapReduce(unittest.TestCase):
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
+    def test_random_sample_not_parallel(self):
+        """
+        Test map reduction with :class:`~coreax.coresubset.RandomSample` in series.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(
+            coreset_size=10, leaf_size=20, parallel=False
+        )
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+
+        with patch.object(
+            coreax.reduction.MapReduce,
+            "_reduce_recursive",
+            wraps=strategy._reduce_recursive,
+        ) as mock:
+            # Perform the reduction
+            strategy.reduce(coreset)
+            num_calls_reduce_recursive = mock.call_count
+
+        # Check the shape of the output
+        self.assertEqual(coreset.format().shape, (10, 2))
+        # Check _reduce_recursive is called exactly three times
+        self.assertEqual(num_calls_reduce_recursive, 3)
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
     def test_random_sample_big_leaves(self):
         """
         Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.

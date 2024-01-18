@@ -13,6 +13,7 @@
 import unittest
 from collections.abc import Callable
 
+import jax.numpy as jnp
 import jax.random
 import numpy as np
 from flax import linen as nn
@@ -45,6 +46,33 @@ class TestKernelDensityMatching(unittest.TestCase):
     Tests related to the class in score_matching.py
     """
 
+    def test_tree_flatten(self) -> None:
+        """
+        Test the pytree flattens as expected.
+        """
+        # Setup a matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=0.25, kde_data=jnp.ones([2, 3])
+        )
+
+        # Flatten the pytree
+        output_children, output_aux_data = kernel_density_matcher._tree_flatten()
+
+        # Verify outputs are as expected
+        self.assertTrue(len(output_children) == 1)
+        np.testing.assert_array_equal(output_children[0], jnp.ones([2, 3]))
+
+        # We expect the kernel to be a SquaredExponentialKernel with output scale
+        # defined such that it's a normalised (Gaussian) kernel
+        self.assertListEqual(list(output_aux_data.keys()), ["kernel"])
+        self.assertIsInstance(
+            output_aux_data["kernel"], coreax.kernel.SquaredExponentialKernel
+        )
+        self.assertEqual(output_aux_data["kernel"].length_scale, 0.25)
+        self.assertEqual(
+            output_aux_data["kernel"].output_scale, 1.0 / (np.sqrt(2 * np.pi) * 0.25)
+        )
+
     def test_univariate_gaussian_score(self) -> None:
         """
         Test a simple univariate Gaussian with a known score function.
@@ -72,6 +100,38 @@ class TestKernelDensityMatching(unittest.TestCase):
         # defined within the object)
         learned_score = kernel_density_matcher.match()
         score_result = learned_score(x)
+
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    def test_univariate_gaussian_score_1d_input(self) -> None:
+        """
+        Test a simple univariate Gaussian with a known score function, 1D input.
+        """
+        # Setup univariate Gaussian
+        mu = 0.0
+        std_dev = 1.0
+        num_points = 500
+        np.random.seed(0)
+        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+
+        def true_score(x_: ArrayLike) -> ArrayLike:
+            return -(x_ - mu) / std_dev**2
+
+        # Define data and select a specific single point to test
+        test_index = 20
+        x = np.linspace(-2, 2).reshape(-1, 1)
+        true_score_result = true_score(x[test_index, 0])
+
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        )
+
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x[test_index, 0])
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
