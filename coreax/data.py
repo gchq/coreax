@@ -36,7 +36,6 @@ be passed to the chosen IO library to write a file.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

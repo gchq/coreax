@@ -18,7 +18,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 import pathlib
@@ -97,9 +96,6 @@ intersphinx_mapping = {
 }
 
 # Specify custom types for autodoc_type_hints
-
-# TODO: Once no longer supporting Python <3.10, drop try statement as quotes should
-# never be required
 try:
     # pylint: disable=unsupported-binary-operation
     OptionalArrayLike = ArrayLike | None

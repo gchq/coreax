@@ -22,7 +22,6 @@ class factories and checks for numerical precision.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 import time
