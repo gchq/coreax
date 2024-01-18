@@ -538,7 +538,7 @@ class RefineRandom(Refine):
 
 class RefineReverse(Refine):
     """
-    Define the RefineRev (refine reverse) object.
+    Define the RefineReverse (refine reverse) object.
 
     This performs the same style of refinement as :class:`~coreax.refine.RefineRegular`
     but reverses the order.
@@ -709,7 +709,8 @@ class RefineReverse(Refine):
         self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
     ) -> Array:
         r"""
-        Leave coreset indices unchanged (compare with ``refine.change_rev``).
+        Leave coreset indices unchanged (compare with
+        :meth:`RefineReverse._change_rev`).
 
         ``x`` -> ``coreset_indices``.
 

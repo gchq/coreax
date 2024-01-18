@@ -315,7 +315,7 @@ class Kernel(ABC):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`Kernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -561,7 +561,7 @@ class SquaredExponentialKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`SquaredExponentialKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -680,7 +680,7 @@ class LaplacianKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`LaplacianKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -792,7 +792,7 @@ class PCIMQKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`PCIMQKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
