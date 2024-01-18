@@ -516,7 +516,7 @@ class RefineRandom(Refine):
 
         :param _i: Index in coreset_indices to replace. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param _candidate_indices: A set of candidates for replacement.
+        :param _candidate_indices: A set of candidates for replacement. Not used.
         :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
