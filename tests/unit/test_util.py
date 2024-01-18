@@ -72,6 +72,65 @@ class TestUtil(unittest.TestCase):
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )
 
+    def test_apply_negative_precision_threshold_invalid(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with an invalid threshold.
+
+        A negative precision threshold is given, which should be rejected by the
+        function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.apply_negative_precision_threshold,
+            x=0.1,
+            precision_threshold=-1e-8,
+        )
+
+    def test_apply_negative_precision_threshold_valid_no_change(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with no change needed.
+
+        This test questions if the value -0.01 is sufficiently close to 0 to set it to
+        0, however the precision threshold is sufficiently small to consider this a
+        distinct value and not apply a cap.
+        """
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, -0.01)
+
+    def test_apply_negative_precision_threshold_valid_with_change(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with a change needed.
+
+        This test questions if the value -0.0001 is sufficiently close to 0 to set it to
+        0. In this instance, the precision threshold is sufficiently large to consider
+        -0.0001 close enough to 0 to apply a cap.
+        """
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.0001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, 0.0)
+
+    def test_apply_negative_precision_threshold_valid_positive_input(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with no change needed.
+
+        This test questions if the value 0.01 is sufficiently close to 0 to set it to
+        0. Since the function should only cap negative numbers to 0 if they are
+        sufficiently close, it should have no impact on this positive input, regardless
+        of the threshold supplied.
+        """
+        func_out_1 = coreax.util.apply_negative_precision_threshold(
+            x=0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_1, 0.01)
+
+        func_out_2 = coreax.util.apply_negative_precision_threshold(
+            x=0.000001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_2, 0.000001)
+
 
 if __name__ == "__main__":
     unittest.main()
