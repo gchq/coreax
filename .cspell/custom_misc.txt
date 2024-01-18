@@ -1,9 +1,12 @@
 ANNchor
 approximator
+approximators
 cand
 coreax
 coreset
 coresets
+coresubset
+coresubsets
 diag
 docstrings
 elementwise
@@ -17,5 +20,6 @@ PCIMQ
 PMLR
 PRNG
 refs
+RKHS
 sigmas
 WMMd

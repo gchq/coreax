@@ -16,53 +16,120 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
 
-from coreax.util import pairwise_diff, sq_dist, sq_dist_pairwise
+import coreax.util
 
 
-class Test(unittest.TestCase):
-    def test_sq_dist(self) -> None:
+class TestUtil(unittest.TestCase):
+    """
+    Tests for general utility functions.
+    """
+
+    def test_squared_distance_dist(self) -> None:
         """
         Test square distance under float32.
         """
         x, y = ortho_group.rvs(dim=2)
-        d = jnp.linalg.norm(x - y) ** 2
-        td = sq_dist(x, y)
-        self.assertAlmostEqual(td, d, places=3)
-        td = sq_dist(x, x)
-        self.assertAlmostEqual(td, 0.0, places=3)
-        td = sq_dist(y, y)
-        self.assertAlmostEqual(td, 0.0, places=3)
+        expected_distance = jnp.linalg.norm(x - y) ** 2
+        output_distance = coreax.util.squared_distance(x, y)
+        self.assertAlmostEqual(output_distance, expected_distance, places=3)
+        output_distance = coreax.util.squared_distance(x, x)
+        self.assertAlmostEqual(output_distance, 0.0, places=3)
+        output_distance = coreax.util.squared_distance(y, y)
+        self.assertAlmostEqual(output_distance, 0.0, places=3)
 
-    def test_sq_dist_pairwise(self) -> None:
+    def test_squared_distance_dist_pairwise(self) -> None:
         """
         Test vmap version of sq distance.
         """
         # create an orthonormal matrix
-        d = 3
-        m = ortho_group.rvs(dim=d)
-        dist = sq_dist_pairwise(m, m)
+        dimension = 3
+        orthonormal_matrix = ortho_group.rvs(dim=dimension)
+        inner_distance = coreax.util.squared_distance_pairwise(
+            orthonormal_matrix, orthonormal_matrix
+        )
         # Use original numpy because Jax arrays are immutable
-        ans = np.ones((d, d)) * 2.0
-        np.fill_diagonal(ans, 0.0)
+        expected_output = np.ones((dimension, dimension)) * 2.0
+        np.fill_diagonal(expected_output, 0.0)
         # Frobenius norm
-        td = jnp.linalg.norm(dist - ans)
-        self.assertEqual(td.ndim, 0)
-        self.assertAlmostEqual(float(td), 0.0, places=3)
+        difference_in_distances = jnp.linalg.norm(inner_distance - expected_output)
+        self.assertEqual(difference_in_distances.ndim, 0)
+        self.assertAlmostEqual(float(difference_in_distances), 0.0, places=3)
 
-    def test_pairwise_diff(self) -> None:
+    def test_pairwise_difference(self) -> None:
         """
-        Test the function pairwise_diff.
+        Test the function pairwise_difference.
 
         This test ensures efficient computation of pairwise differences.
         """
-        m = 10
-        n = 10
-        d = 3
-        x_array = np.random.random((n, d))
-        y_array = np.random.random((m, d))
-        z_array = np.array([[x - y for y in y_array] for x in x_array])
-        tst = pairwise_diff(x_array, y_array)
-        self.assertAlmostEqual(float(jnp.linalg.norm(tst - z_array)), 0.0, places=3)
+        num_points_x = 10
+        num_points_y = 10
+        dimension = 3
+        x_array = np.random.random((num_points_x, dimension))
+        y_array = np.random.random((num_points_y, dimension))
+        expected_output = np.array([[x - y for y in y_array] for x in x_array])
+        output = coreax.util.pairwise_difference(x_array, y_array)
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
+        )
+
+    def test_apply_negative_precision_threshold_invalid(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with an invalid threshold.
+
+        A negative precision threshold is given, which should be rejected by the
+        function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.apply_negative_precision_threshold,
+            x=0.1,
+            precision_threshold=-1e-8,
+        )
+
+    def test_apply_negative_precision_threshold_valid_no_change(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with no change needed.
+
+        This test questions if the value -0.01 is sufficiently close to 0 to set it to
+        0, however the precision threshold is sufficiently small to consider this a
+        distinct value and not apply a cap.
+        """
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, -0.01)
+
+    def test_apply_negative_precision_threshold_valid_with_change(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with a change needed.
+
+        This test questions if the value -0.0001 is sufficiently close to 0 to set it to
+        0. In this instance, the precision threshold is sufficiently large to consider
+        -0.0001 close enough to 0 to apply a cap.
+        """
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.0001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, 0.0)
+
+    def test_apply_negative_precision_threshold_valid_positive_input(self) -> None:
+        """
+        Test the function apply_negative_precision_threshold with no change needed.
+
+        This test questions if the value 0.01 is sufficiently close to 0 to set it to
+        0. Since the function should only cap negative numbers to 0 if they are
+        sufficiently close, it should have no impact on this positive input, regardless
+        of the threshold supplied.
+        """
+        func_out_1 = coreax.util.apply_negative_precision_threshold(
+            x=0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_1, 0.01)
+
+        func_out_2 = coreax.util.apply_negative_precision_threshold(
+            x=0.000001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_2, 0.000001)
 
 
 if __name__ == "__main__":

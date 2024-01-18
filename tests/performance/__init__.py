@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-Integration tests to verify functionality of the coreax library.
+Tests to verify performance of the coreax library.
 
-Tests for end-to-end runs in typical applications of the coreax library.
+Tests for specific functions, methods and classes in the coreax library, to ensure
+performance is as expected.
 """
