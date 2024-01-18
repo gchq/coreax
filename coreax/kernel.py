@@ -62,14 +62,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.approximation
 import coreax.util
 import coreax.validation
+
+if TYPE_CHECKING:
+    import coreax.approximation
 
 
 @jit
@@ -461,9 +464,6 @@ class Kernel(ABC):
             created using the same kernel one wishes to use
         :return: Approximation to the kernel matrix row sum
         """
-        coreax.validation.validate_is_instance(
-            approximator, "approximator", coreax.approximation.KernelMeanApproximator
-        )
         return approximator.approximate(x)
 
 
