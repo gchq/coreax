@@ -78,6 +78,7 @@ command_line = "-m pytest --ignore=tests/integration --cov=. --cov-branch --cov-
 omit = [
     "*/__init__.py",
     "tests/*",
+    "examples/*"
 ]
 relative_files = true
 source = ["coreax"]
