@@ -510,13 +510,14 @@ class RefineRandom(Refine):
 
         ``coreset_indices`` -> ``x``.
 
-        :param _i: Index in coreset_indices to replace. Not used, as this function does
-            no replacing.
+        .. note:: The signature of this method must match :meth:`_change` for use with
+            :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Index in coreset_indices to replace. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param _candidate_indices: A set of candidates for replacement. Not used, as
-            this function does no replacing.
-        :param _comparisons: Comparison values for each candidate. Not used, as this
-            function does no replacing.
+        :param _candidate_indices: A set of candidates for replacement.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
@@ -695,11 +696,13 @@ class RefineReverse(Refine):
 
         ``x`` -> ``coreset_indices``.
 
-        :param _i: Value to replace into ``coreset_indices``. Not used, as this function
-            does no replacing.
+        .. note:: The signature of this method must match :meth:`_change_rev` for use
+            with :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Value to replace into ``coreset_indices``. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param _comparisons: Comparison values for each candidate. Not used, as this
-            function does no replacing.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
