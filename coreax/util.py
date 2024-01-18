@@ -142,7 +142,7 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param kernel_matrix_row_sum_mean: :math`m \times 1` array of Gram matrix means
+    :param kernel_matrix_row_sum_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP

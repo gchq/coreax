@@ -10,27 +10,47 @@ Module contents
 Submodules
 ----------
 
-examples.david module
----------------------
+examples.david_map_reduce_weighted module
+-----------------------------------------
 
-.. automodule:: examples.david
+.. automodule:: examples.david_map_reduce_weighted
+
+examples.herding_approximate_gram_matrix module
+-----------------------------------------------
+
+.. automodule:: examples.herding_approximate_gram_matrix
+
+examples.herding_basic module
+-----------------------------
+
+.. automodule:: examples.herding_basic
+
+examples.herding_refine module
+------------------------------
+
+.. automodule:: examples.herding_refine
+
+examples.herding_stein_weighted module
+--------------------------------------
+
+.. automodule:: examples.herding_stein_weighted
+
+examples.herding_stein_weighted_ssm module
+------------------------------------------
+
+.. automodule:: examples.herding_stein_weighted_ssm
 
 examples.pounce module
 ----------------------
 
 .. automodule:: examples.pounce
 
-examples.pounce_sm module
--------------------------
+examples.pounce_map_reduce
+--------------------------
 
-.. automodule:: examples.pounce_sm
+.. automodule:: examples.pounce_map_reduce
 
-examples.weighted_herding module
---------------------------------
+examples.pounce_map_reduce_sm module
+------------------------------------
 
-.. automodule:: examples.weighted_herding
-
-examples.weighted_herding_sm module
------------------------------------
-
-.. automodule:: examples.weighted_herding_sm
+.. automodule:: examples.pounce_map_reduce_ssm

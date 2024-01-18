@@ -69,7 +69,7 @@ class ScoreMatching(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -160,7 +160,7 @@ class SlicedScoreMatching(ScoreMatching):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = ()
@@ -222,7 +222,8 @@ class SlicedScoreMatching(ScoreMatching):
         Compute reduced variance score matching loss function.
 
         This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then :meth:`general_obj` should be used instead.
+        this assumption is not true, then
+        :meth:`SlicedScoreMatching._general_objective` should be used instead.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
@@ -246,10 +247,10 @@ class SlicedScoreMatching(ScoreMatching):
         Compute general score matching loss function.
 
         This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than :meth:`analytic_obj` if
-        these assumptions hold.
+        when using score matching, but has higher variance than
+        :meth:`SlicedScoreMatching._analytic_objective` if these assumptions hold.
 
-        :param random_direction_vector: `:math:`d`-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
@@ -283,7 +284,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
-        the data vector (``x``), random vectors (``v``) and using the score neural
+        the data vector ``x``, random vectors ``v`` and using the score neural
         network.
 
         :param score_network: Function that calls the neural network on ``x``
@@ -394,7 +395,7 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
-        We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
+        We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
         considered.
 
@@ -494,7 +495,7 @@ class KernelDensityMatching(ScoreMatching):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = (self.kde_data,)
@@ -551,7 +552,7 @@ class KernelDensityMatching(ScoreMatching):
         return score_function
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:

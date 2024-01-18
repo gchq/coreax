@@ -63,7 +63,7 @@ class WeightsOptimiser(ABC):
         Calculate the weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
 
@@ -72,7 +72,7 @@ class WeightsOptimiser(ABC):
         Calculate approximate weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Approximately optimal weighting of points in ``y`` to represent ``x``
         """
         warnings.warn(
@@ -105,7 +105,7 @@ class SBQ(WeightsOptimiser):
         negative.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Format data
@@ -148,7 +148,7 @@ class MMD(WeightsOptimiser):
         Compute optimal weights given the simplex constraint.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
             numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``

@@ -32,7 +32,7 @@ class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
 
-    See :class:'~coreax.score_matching.SlicedScoreMatching' for an example usage of this
+    See :class:`~coreax.score_matching.SlicedScoreMatching` for an example usage of this
     class.
     """
 
