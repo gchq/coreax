@@ -364,7 +364,6 @@ class Kernel(ABC):
         # Ensure data format is as required
         x = jnp.asarray(x)
         kernel_row_sum = jnp.asarray(kernel_row_sum)
-        num_data_points = x.shape[0]
 
         # Compute the kernel row sum for this particular chunk of data
         kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
