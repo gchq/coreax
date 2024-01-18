@@ -46,7 +46,6 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.util
 import coreax.validation
 
 if TYPE_CHECKING:

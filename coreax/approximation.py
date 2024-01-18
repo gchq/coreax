@@ -347,11 +347,12 @@ class NystromApproximator(KernelMeanApproximator):
         data: ArrayLike,
     ) -> Array:
         r"""
-        Compute approximate kernel row mean by regression on ANNchor selected points.
+        Compute approximate kernel row sum mean using a Nystrom approximation.
 
         We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
         subset of this to approximate the kernel matrix row sum mean. The ``m`` points
-        are selected using the ANNchor method.
+        are selected uniformly at random, and the Nystrom estimator, as defined in
+        :cite:p:`chatalic2022nystrom` is computed using this subset.
 
         :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of

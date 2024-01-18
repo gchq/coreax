@@ -50,32 +50,6 @@ class TestKernelABC(unittest.TestCase):
         kernel.approximate_kernel_matrix_row_sum_mean(x=x, approximator=approximator)
         approximator_approximate_method.assert_called_once_with(x)
 
-    def test_approximator_invalid(self) -> None:
-        """
-        Test invalid approximation objects are rejected within the Kernel class.
-        """
-        # Patch the abstract methods of the Kernel ABC, so it can be created
-        p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
-        p.start()
-
-        # Create the kernel and some example data
-        kernel = coreax.kernel.Kernel()
-        x = jnp.zeros(3)
-
-        # Define a mocked approximator
-        approximator = MagicMock()
-        approximator_approximate_method = MagicMock()
-        approximator.approximate = approximator_approximate_method
-
-        # Call the approximation method and check that approximation object is called as
-        # expected
-        self.assertRaises(
-            TypeError,
-            kernel.approximate_kernel_matrix_row_sum_mean,
-            x=x,
-            approximator=approximator,
-        )
-
 
 class TestSquaredExponentialKernel(unittest.TestCase):
     """

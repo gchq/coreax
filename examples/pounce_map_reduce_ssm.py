@@ -27,6 +27,9 @@ The coreset attained from Stein kernel herding is compared to a coreset generate
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
 (MMD).
 """
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -37,7 +40,6 @@ import numpy as np
 from jax.random import rademacher
 from sklearn.decomposition import PCA
 
-import coreax.refine
 from coreax.coresubset import KernelHerding, RandomSample
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
@@ -55,9 +57,9 @@ def main(
 
     Take a video of a pouncing cat, apply PCA and then generate a coreset using
     score matching, in which we train a neural network to approximate the score function
-    of the underlying distribution. Compare the result from this to a coreset generated
-    via uniform random sampling. Coreset quality is measured using maximum mean
-    discrepancy (MMD).
+    of the underlying distribution (sliced score matching). Compare the result from this
+    to a coreset generated via uniform random sampling. Coreset quality is measured
+    using maximum mean discrepancy (MMD).
 
     :param in_path: Path to directory containing input video, assumed relative to this
         module file unless an absolute path is given
@@ -79,6 +81,9 @@ def main(
     raw_data = np.array(imageio.v2.mimread(in_path)[1:])
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
+    # Fix random behaviour
+    np.random.seed(1_989)
+
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
     # the statistical properties, i.e. variance.
     num_principle_components = 25
@@ -86,16 +91,13 @@ def main(
     principle_components_data = pca.fit_transform(raw_data_reshaped)
 
     # Setup the original data object
-    data = coreax.data.ArrayData(
-        original_data=principle_components_data,
-        pre_coreset_array=principle_components_data,
-    )
+    data = ArrayData.load(principle_components_data)
 
     # Request a 10 frame summary of the video
     coreset_size = 10
 
-    # Set the length_scale parameter of the underlying RBF kernel
-    num_points_length_scale_selection = min(principle_components_data.shape[0], 1000)
+    # Set the length_scale parameter of the underlying squared exponential kernel
+    num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
     idx = np.random.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
@@ -114,7 +116,7 @@ def main(
     )
     score_function = sliced_score_matcher.match(principle_components_data)
 
-    # Run kernel herding with a Stein kernel in block mode to avoid GPU memory issues
+    # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
@@ -123,24 +125,11 @@ def main(
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=1000),
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
     )
 
     # Get and sort the coreset indices ready for producing the output video
     coreset_indices_herding = jnp.sort(herding_object.coreset_indices)
-
-    # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
-    # SquaredExponentialKernel (which is also a Gaussian kernel)
-    mmd_kernel = SquaredExponentialKernel(
-        length_scale=length_scale,
-        output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
-    )
-
-    # Compute the MMD between the original data and the coreset generated via herding
-    metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset
-    )
 
     # Generate a coreset via uniform random sampling for comparison
     random_sample_object = RandomSample(unique=True)
@@ -148,11 +137,22 @@ def main(
         original_data=data,
         strategy=SizeReduce(coreset_size=coreset_size),
     )
+
+    # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
+    # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
+    mmd_kernel = SquaredExponentialKernel(
+        length_scale=length_scale,
+        output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
+    )
+
+    # Compute the MMD between the original data and the coreset generated via herding
+    metric_object = MMD(kernel=mmd_kernel)
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
+
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")

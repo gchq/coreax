@@ -395,7 +395,7 @@ class RefineRandom(Refine):
 
     def _refine_rand_body(
         self,
-        i: int,
+        _i: int,
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
@@ -406,7 +406,8 @@ class RefineRandom(Refine):
         r"""
         Execute main loop of the random refine method.
 
-        :param i: Loop counter
+        :param _i: Loop counter. This parameter is unused. It is only required by
+            :func:`~jax.lax.fori_loop` for executing the refinement ``n_iter`` times.
         :param val: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
         :param n_cand: Number of candidates for comparison
@@ -421,11 +422,11 @@ class RefineRandom(Refine):
         key, coreset_indices = val
         coreset_indices = jnp.asarray(coreset_indices)
         key, subkey = random.split(key)
-        i = random.randint(subkey, (1,), 0, len(coreset_indices))[0]
+        index_to_compare = random.randint(subkey, (1,), 0, len(coreset_indices))[0]
         key, subkey = random.split(key)
         candidate_indices = random.randint(subkey, (n_cand,), 0, len(x))
         comparisons = self._comparison_cand(
-            coreset_indices[i],
+            coreset_indices[index_to_compare],
             candidate_indices,
             coreset_indices,
             x=x,
@@ -437,7 +438,7 @@ class RefineRandom(Refine):
             jnp.any(comparisons > 0),
             self._change,
             self._no_change,
-            i,
+            index_to_compare,
             coreset_indices,
             candidate_indices,
             comparisons,
@@ -517,20 +518,24 @@ class RefineRandom(Refine):
     @jit
     def _no_change(
         self,
-        i: int,
+        _i: int,
         coreset_indices: ArrayLike,
-        candidate_indices: ArrayLike,
-        comparisons: ArrayLike,
+        _candidate_indices: ArrayLike,
+        _comparisons: ArrayLike,
     ) -> Array:
         r"""
         Leave coreset indices unchanged (compare with :meth:`_change`).
 
         ``coreset_indices`` -> ``x``.
 
-        :param i: Index in coreset_indices to replace. Not used.
+        .. note:: The signature of this method must match :meth:`_change` for use with
+            :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Index in coreset_indices to replace. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param candidate_indices: A set of candidates for replacement. Not used.
-        :param comparisons: Comparison values for each candidate. Not used.
+        :param _candidate_indices: A set of candidates for replacement. Not used.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
@@ -706,7 +711,7 @@ class RefineReverse(Refine):
 
     @jit
     def _no_change_rev(
-        self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
+        self, _i: int, coreset_indices: ArrayLike, _comparisons: ArrayLike
     ) -> Array:
         r"""
         Leave coreset indices unchanged (compare with
@@ -714,9 +719,13 @@ class RefineReverse(Refine):
 
         ``x`` -> ``coreset_indices``.
 
-        :param i: Value to replace into ``coreset_indices``. Not used.
+        .. note:: The signature of this method must match :meth:`_change_rev` for use
+            with :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Value to replace into ``coreset_indices``. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param comparisons: Comparison values for each candidate. Not used.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)

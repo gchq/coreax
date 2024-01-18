@@ -67,7 +67,7 @@ repos:
       # Place isort options in pyproject.toml
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.12.0
+    rev: 23.12.1
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
@@ -89,9 +89,9 @@ repos:
             documentation/source/conf.py
           )
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.1.1
+    rev: v8.3.0
     hooks:
-      # run a spellcheck (words pulled from cspell.config.yaml)
+      # Run a spellcheck (words pulled from cspell.config.yaml)
         - id: cspell
           exclude: |
             (?x)^(
@@ -99,7 +99,8 @@ repos:
               .*.properties|
               requirements(-.*)?.txt|
               documentation/make.bat|
-              documentation/Makefile
+              documentation/Makefile|
+              .pylintrc
             )$
   - repo: local
     hooks:
@@ -111,3 +112,16 @@ repos:
         language: python
         types:
           - text
+        exclude:
+          .pylintrc
+      # Python static analysis tool
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types:
+          - python
+        args:
+          - "-rn" # Only display messages
+          - "-sn" # Don't display the score
+          - "--rcfile=.pylintrc" # pylint configuration file

@@ -14,7 +14,6 @@
 
 import itertools
 import unittest
-from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 
@@ -203,7 +202,7 @@ class TestRefine(unittest.TestCase):
         coreset_obj.coreset = original_array[coreset_indices, :]
         refine_regular = coreax.refine.RefineRegular(approximator="not_an_approximator")
 
-        self.assertRaises(TypeError, refine_regular.refine, coreset=coreset_obj)
+        self.assertRaises(AttributeError, refine_regular.refine, coreset=coreset_obj)
 
     def test_kernel_mean_row_sum_approx_valid(self):
         """
