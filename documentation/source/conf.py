@@ -112,12 +112,13 @@ intersphinx_mapping = {
 # TODO: Once no longer supporting Python <3.10, drop try statement as quotes should
 # never be required
 try:
+    # pylint: disable=unsupported-binary-operation
     OptionalArrayLike = ArrayLike | None
 except TypeError:
     OptionalArrayLike = "ArrayLike | None"
 
 autodoc_custom_types: dict[Any, str] = {
-    cu.KernelFunction: ":obj:`~coreax.util.KernelFunction`",
+    cu.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }

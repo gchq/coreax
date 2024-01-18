@@ -26,7 +26,7 @@ import coreax.networks
 import coreax.score_matching
 
 
-class TestNetwork(nn.Module):
+class SimpleNetwork(nn.Module):
     """
     A simple neural network for use in testing of sliced score matching.
     """
@@ -527,7 +527,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         Test the basic training step.
         """
         # Define a simple linear model that we can compute the gradients for by hand
-        score_network = TestNetwork(2, 2)
+        score_network = SimpleNetwork(2, 2)
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(

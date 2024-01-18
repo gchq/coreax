@@ -59,11 +59,12 @@ from coreax.weights import MMD as MMDWeightsOptimiser
 
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the 'weighted_herding' example for weighted and unweighted herding.
+    Run the tabular herding example using weighted herding and sliced score matching.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    weighted and unweighted herding. Compare results to coresets generated via uniform
-    random sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
+    weighted herding. The score function passed to the Stein kernel is determined via
+    sliced score matching. Compare results to coresets generated via uniform random
+    sampling. Coreset quality is measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
@@ -71,10 +72,10 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     # Create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
-    num_data_points = 10000
+    num_data_points = 10_000
     num_features = 2
     num_cluster_centers = 6
-    random_seed = 1989
+    random_seed = 1_989
     x, _ = make_blobs(
         num_data_points,
         n_features=num_features,
@@ -86,16 +87,16 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     coreset_size = 100
 
     # Setup the original data object
-    data = ArrayData(original_data=x, pre_coreset_array=x)
+    data = ArrayData.load(x)
 
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
-    num_samples_length_scale = min(num_data_points, 1000)
+    np.random.seed(random_seed)
+    num_samples_length_scale = min(num_data_points, 1_000)
     idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
-    # Find a coreset using -- in this case -- kernel herding with a stein kernel.
-    # Learn a score function via kernel density estimation (this is required for
+    # Learn a score function via sliced score matching (this is required for
     # evaluation of the Stein kernel)
     sliced_score_matcher = SlicedScoreMatching(
         random_generator=rademacher,
@@ -117,9 +118,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     weights_optimiser = MMDWeightsOptimiser(kernel=herding_kernel)
 
     print("Computing coreset...")
-    # Compute a coreset using kernel herding with a Stein kernel. To reduce memory
-    # usage, we apply MapReduce, which partitions the input into blocks for independent
-    # coreset solving.
+    # Compute a coreset using kernel herding with a Stein kernel
     herding_object = KernelHerding(
         kernel=herding_kernel, weights_optimiser=weights_optimiser
     )
@@ -137,6 +136,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
+    print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
         output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
@@ -144,15 +144,13 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = metric_object.compute(
-        data.original_data, herding_object.coreset, weights_y=herding_weights
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(
+        metric_object, weights_y=herding_weights
     )
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = metric_object.compute(
-        data.original_data, random_sample_object.coreset
-    )
+    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
@@ -161,9 +159,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        x[herding_object.coreset_indices, 0],
-        x[herding_object.coreset_indices, 1],
-        s=herding_weights * 1000,
+        herding_object.coreset[:, 0],
+        herding_object.coreset[:, 1],
+        s=herding_weights * 1_000,
         color="red",
     )
     plt.axis("off")
@@ -175,8 +173,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        x[random_sample_object.coreset_indices, 0],
-        x[random_sample_object.coreset_indices, 1],
+        random_sample_object.coreset[:, 0],
+        random_sample_object.coreset[:, 1],
         s=10,
         color="red",
     )
@@ -187,7 +185,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     plt.axis("off")
 
     if out_path is not None:
-        if out_path is not None and not out_path.is_absolute():
+        if not out_path.is_absolute():
             out_path = Path(__file__).parent / out_path
         plt.savefig(out_path)
 

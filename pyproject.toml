@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Typing :: Typed",
 ]
 license = {file = "LICENSE"}
 authors = [
@@ -41,20 +42,22 @@ doc = [
     "sphinx-autodoc-typehints",
     "sphinxcontrib-bibtex",
 ]
-# Run unit tests
+# Run unit tests with coverage assessment
 test = [
-    "pytest-cov",
-]
-# All tools for a developer
-dev = [
-    "coreax[doc, test]",
     "imageio",
     "matplotlib",
     "numpy",
     "opencv-python",
-    "pre-commit",
     "pyqt5",
+    "pytest-cov",
     "scipy",
+]
+# All tools for a developer and for running pylint
+# Should not need to specify test dependencies if also installing coverage but no harm
+dev = [
+    "coreax[doc, test]",
+    "pre-commit",
+    "pylint",
 ]
 
 [project.urls]
@@ -71,11 +74,17 @@ packages = ["coreax"]
 version = {attr = "coreax.__version__"}
 
 [tool.coverage.run]
-omit = ["*/__init__.py", "*/__main__.py", "tests/*"]
+command_line = "-m pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing"
+omit = [
+    "*/__init__.py",
+    "tests/*",
+]
+relative_files = true
+source = ["coreax"]
 
 [tool.coverage.report]
 sort = "Cover"
 exclude_lines = [
     "pass",
-    "raise RuntimeError"
+    "raise RuntimeError",
 ]
