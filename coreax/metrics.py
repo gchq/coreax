@@ -28,9 +28,9 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-import coreax.util as cu
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.kernel
+import coreax.util
+import coreax.validation
 
 
 class Metric(ABC):
@@ -87,15 +87,17 @@ class MMD(Metric):
     :param precision_threshold: Positive threshold we compare against for precision
     """
 
-    def __init__(self, kernel: ck.Kernel, precision_threshold: float = 1e-8):
+    def __init__(self, kernel: coreax.kernel.Kernel, precision_threshold: float = 1e-8):
         r"""
         Calculate maximum mean discrepancy between two datasets in d dimensions.
         """
         # Validate inputs
-        precision_threshold = cast_as_type(
+        precision_threshold = coreax.validation.cast_as_type(
             x=precision_threshold, object_name="precision_threshold", type_caster=float
         )
-        validate_is_instance(x=kernel, object_name="kernel", expected_type=ck.Kernel)
+        coreax.validation.validate_is_instance(
+            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
+        )
 
         self.kernel = kernel
         self.precision_threshold = precision_threshold
@@ -127,16 +129,22 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        weights_x = cast_as_type(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        weights_x = coreax.validation.cast_as_type(
             x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
         )
-        weights_y = cast_as_type(
+        weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size,
             object_name="max_size",
             strict_inequalities=True,
@@ -181,8 +189,12 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         # Compute each term in the MMD formula
         kernel_nn = self.kernel.compute(x, x)
@@ -191,7 +203,7 @@ class MMD(Metric):
 
         # Compute MMD
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean(),
                 self.precision_threshold,
             )
@@ -213,9 +225,13 @@ class MMD(Metric):
         :return: Weighted maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        weights_y = cast_as_type(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
         num_points_x = float(len(x))
@@ -228,7 +244,7 @@ class MMD(Metric):
         # Compute weighted MMD, correcting for any numerical precision issues, where we
         # would otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 jnp.dot(weights_y.T, jnp.dot(kernel_mm, weights_y))
                 + kernel_nn.sum() / num_points_x**2
                 - 2 * jnp.dot(weights_y.T, kernel_nm.mean(axis=0)),
@@ -253,10 +269,16 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size,
             object_name="max_size",
             strict_inequalities=True,
@@ -274,7 +296,7 @@ class MMD(Metric):
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn / num_points_x**2
                 + kernel_mm / num_points_y**2
                 - 2 * kernel_nm / (num_points_x * num_points_y),
@@ -305,16 +327,22 @@ class MMD(Metric):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        weights_x = cast_as_type(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        weights_x = coreax.validation.cast_as_type(
             x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
         )
-        weights_y = cast_as_type(
+        weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size,
             object_name="max_size",
             strict_inequalities=True,
@@ -339,7 +367,7 @@ class MMD(Metric):
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
-            cu.apply_negative_precision_threshold(
+            coreax.util.apply_negative_precision_threshold(
                 kernel_nn / num_points_x**2
                 + kernel_mm / num_points_y**2
                 - 2 * kernel_nm / (num_points_x * num_points_y),
@@ -365,10 +393,16 @@ class MMD(Metric):
         :return: The sum of pairwise distances between points in ``x`` and ``y``
         """
         # Ensure data is in desired format
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size,
             object_name="max_size",
             strict_inequalities=True,
@@ -416,16 +450,22 @@ class MMD(Metric):
             with contributions weighted as defined by ``weights_x`` and ``weights_y``
         """
         # Ensure data is in desired format
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        weights_x = cast_as_type(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        weights_x = coreax.validation.cast_as_type(
             x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
         )
-        weights_y = cast_as_type(
+        weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size,
             object_name="max_size",
             strict_inequalities=True,
