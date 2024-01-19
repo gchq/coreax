@@ -28,8 +28,12 @@ For a concrete example of the (true) kernel matrix row sum mean, consider the da
     x = [ [0.0, 0.0], [0.5, 0.5], [1.0, 0.0], [-1.0, 0.0] ]
 
 and a :class:`~coreax.kernel.SquaredExponentialKernel` which is defined as
-:math:`k(x,y) = \text{output_scale}\exp(-||x-y||^2/2 * \text{length_scale}^2)`.
-For simplicity, we set ``length_scale`` to :math:`1.0/np.sqrt(2)`
+
+.. math::
+
+    k(x,y) = \text{output_scale} * \exp(-||x-y||^2/2 * \text{length_scale}^2)
+
+For simplicity, we set ``length_scale`` to :math:`1.0/numpy.sqrt(2)`
 and ``output_scale`` to 1.0.
 
 For a single row (data point), the kernel matrix row sum mean is computed by
@@ -152,7 +156,7 @@ class RandomApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -230,7 +234,7 @@ class ANNchorApproximator(KernelMeanApproximator):
     approximated by various methods. :class:`ANNchorApproximator` is a class that does
     such an approximation using kernel regression on a subset of points selected via the
     ANNchor approach from the dataset. The ANNchor implementation used can be found
-    `here<https://github.com/gchq/annchor>`_.
+    `here <https://github.com/gchq/annchor>`_.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation

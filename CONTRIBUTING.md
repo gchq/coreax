@@ -187,7 +187,7 @@ The coreax documentation should reference papers and mathematical descriptions a
 
 You can generate Sphinx documentation with:
 ```sh
-sphinx-quickstart
+documentation/make html
 ```
 
 [github-issues]: https://github.com/gchq/coreax/issues
