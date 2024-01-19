@@ -85,6 +85,19 @@ autodoc_default_options = {
     "private-members": True,
     "undoc-members": True,
     "show_inheritance": True,
+    "exclude-members": ",".join(
+        (
+            # Use this join syntax to make positions of commas clear and consistent
+            "_abc_impl",
+            "_parent_ref",
+            "_state",
+            "hidden_dim",
+            "output_dim",
+            "name",
+            "parent",
+            "scope",
+        )
+    ),
 }
 
 # set Inter-sphinx mapping to link to external documentation
@@ -94,6 +107,9 @@ intersphinx_mapping = {
     "jaxopt": ("https://jaxopt.github.io/stable/", None),
     "flax": ("https://flax.readthedocs.io/en/latest/", None),
     "optax": ("https://optax.readthedocs.io/en/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
 # Specify custom types for autodoc_type_hints
