@@ -714,8 +714,7 @@ class RefineReverse(Refine):
         self, _i: int, coreset_indices: ArrayLike, _comparisons: ArrayLike
     ) -> Array:
         r"""
-        Leave coreset indices unchanged (compare with
-        :meth:`RefineReverse._change_rev`).
+        Leave coreset indices unchanged (compare with :meth:`_change_rev`).
 
         ``x`` -> ``coreset_indices``.
 
