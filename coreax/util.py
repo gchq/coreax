@@ -222,4 +222,3 @@ class SilentTQDM:
 
         :return: Nothing
         """
-        pass
