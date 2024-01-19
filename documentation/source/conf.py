@@ -85,14 +85,19 @@ autodoc_default_options = {
     "private-members": True,
     "undoc-members": True,
     "show_inheritance": True,
-    "exclude-members": "_abc_impl,"
-                       "hidden_dim,"
-                       "output_dim,"
-                       "_parent_ref,"
-                       "_state,"
-                       "name,"
-                       "parent,"
-                       "scope",
+    "exclude-members": ",".join(
+        (
+            # Use this join syntax to make positions of commas clear and consistent
+            "_abc_impl",
+            "_parent_ref",
+            "_state",
+            "hidden_dim",
+            "output_dim",
+            "name",
+            "parent",
+            "scope",
+        )
+    ),
 }
 
 # set Inter-sphinx mapping to link to external documentation
