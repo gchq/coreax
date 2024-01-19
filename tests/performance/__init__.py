@@ -29,5 +29,5 @@ forcing Jax to recompile it each time. Then call the function again for another 
 of times, allowing Jax to reuse the JIT tracers. Both of these sets of calls are timed,
 and the timings are supplied to a two-sample Kolmogorov-Smirnov test. If the timings are
 significantly different (where 'significant' is a configurable parameter in the test
-setUp), then the test passes; else it fails.
+setup), then the test passes; else it fails.
 """
