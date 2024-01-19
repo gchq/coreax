@@ -44,9 +44,9 @@ from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
 
-import coreax.kernel as ck
-from coreax.networks import ScoreNetwork, create_train_state
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.kernel
+import coreax.networks
+import coreax.validation
 
 
 class ScoreMatching(ABC):
@@ -164,81 +164,85 @@ class SlicedScoreMatching(ScoreMatching):
         Define a sliced score matching class.
         """
         # Validate all inputs
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=random_generator, object_name="random_generator", expected_type=Callable
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=random_key, object_name="random_key", expected_type=ArrayLike
         )
-        noise_conditioning = cast_as_type(
+        noise_conditioning = coreax.validation.cast_as_type(
             x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
         )
-        use_analytic = cast_as_type(
+        use_analytic = coreax.validation.cast_as_type(
             x=use_analytic, object_name="use_analytic", type_caster=bool
         )
-        num_random_vectors = cast_as_type(
+        num_random_vectors = coreax.validation.cast_as_type(
             x=num_random_vectors, object_name="num_random_vectors", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_random_vectors,
             object_name="num_random_vectors",
             strict_inequalities=True,
             lower_bound=0,
         )
-        learning_rate = cast_as_type(
+        learning_rate = coreax.validation.cast_as_type(
             x=learning_rate, object_name="learning_rate", type_caster=float
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=learning_rate,
             object_name="learning_rate",
             strict_inequalities=True,
             lower_bound=0,
         )
-        num_epochs = cast_as_type(
+        num_epochs = coreax.validation.cast_as_type(
             x=num_epochs, object_name="num_epochs", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_epochs,
             object_name="num_epochs",
             strict_inequalities=True,
             lower_bound=0,
         )
-        batch_size = cast_as_type(
+        batch_size = coreax.validation.cast_as_type(
             x=batch_size, object_name="batch_size", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=batch_size,
             object_name="batch_size",
             strict_inequalities=True,
             lower_bound=0,
         )
-        hidden_dim = cast_as_type(
+        hidden_dim = coreax.validation.cast_as_type(
             x=hidden_dim, object_name="hidden_dim", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=hidden_dim,
             object_name="hidden_dim",
             strict_inequalities=True,
             lower_bound=0,
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=optimiser, object_name="optimiser", expected_type=Callable
         )
-        num_noise_models = cast_as_type(
+        num_noise_models = coreax.validation.cast_as_type(
             x=num_noise_models, object_name="num_noise_models", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_noise_models,
             object_name="num_noise_models",
             strict_inequalities=True,
             lower_bound=0,
         )
-        sigma = cast_as_type(x=sigma, object_name="sigma", type_caster=float)
-        validate_in_range(
+        sigma = coreax.validation.cast_as_type(
+            x=sigma, object_name="sigma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
             x=sigma, object_name="sigma", strict_inequalities=True, lower_bound=0
         )
-        gamma = cast_as_type(x=gamma, object_name="gamma", type_caster=float)
-        validate_in_range(
+        gamma = coreax.validation.cast_as_type(
+            x=gamma, object_name="gamma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
             x=gamma, object_name="gamma", strict_inequalities=True, lower_bound=0
         )
 
@@ -480,11 +484,13 @@ class SlicedScoreMatching(ScoreMatching):
         :return: A function that applies the learned score function to input ``x``
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = ScoreNetwork(self.hidden_dim, data_dimension)
+        score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
         # noise perturbations
@@ -505,7 +511,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         # Define a training state
-        state = create_train_state(
+        state = coreax.networks.create_train_state(
             score_network,
             self.learning_rate,
             data_dimension,
@@ -559,22 +565,22 @@ class KernelDensityMatching(ScoreMatching):
         Define the kernel density matching class.
         """
         # Validate inputs
-        length_scale = cast_as_type(
+        length_scale = coreax.validation.cast_as_type(
             x=length_scale, object_name="length_scale", type_caster=float
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=length_scale,
             object_name="length_scale",
             strict_inequalities=True,
             lower_bound=0,
         )
-        kde_data = cast_as_type(
+        kde_data = coreax.validation.cast_as_type(
             x=kde_data, object_name="kde_data", type_caster=jnp.atleast_2d
         )
 
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
-        self.kernel = ck.SquaredExponentialKernel(
+        self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
@@ -614,7 +620,9 @@ class KernelDensityMatching(ScoreMatching):
         :return: A function that applies the learned score function to input ``x``
         """
         # Validate inputs
-        validate_is_instance(x=x, object_name="x", expected_type=(ArrayLike, None))
+        coreax.validation.validate_is_instance(
+            x=x, object_name="x", expected_type=(ArrayLike, None)
+        )
 
         def score_function(x_):
             r"""
@@ -628,7 +636,9 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
-            x_ = cast_as_type(x=x_, object_name="x_", type_caster=jnp.atleast_2d)
+            x_ = coreax.validation.cast_as_type(
+                x=x_, object_name="x_", type_caster=jnp.atleast_2d
+            )
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
