@@ -50,11 +50,7 @@ class WeightsOptimiser(ABC):
     """
 
     def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
-        """
-        Initialise a weights optimiser class.
-
-        # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
-        """
+        """Initialise a weights optimiser class."""
         self.kernel = kernel
 
     @abstractmethod

@@ -37,7 +37,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from pathlib import Path
