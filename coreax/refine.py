@@ -41,9 +41,8 @@ from abc import ABC, abstractmethod
 from functools import partial
 from typing import TYPE_CHECKING
 
-import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, random, tree_util, vmap
+from jax import Array, jit, lax, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation
