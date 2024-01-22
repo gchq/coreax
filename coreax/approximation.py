@@ -384,7 +384,7 @@ def _anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
-    kernel_function: coreax.util.KernelType,
+    kernel_function: coreax.util.KernelComputeType,
 ) -> Array:
     r"""
     Execute main loop of the ANNchor construction.
