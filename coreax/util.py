@@ -34,7 +34,7 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.validation
 
 KernelFunction = Callable[[ArrayLike, ArrayLike], Array]
 
@@ -50,11 +50,11 @@ def apply_negative_precision_threshold(
     :return: ``x``, rounded to 0.0 if it is between -`precision_threshold` and 0.0
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=float)
-    precision_threshold = cast_as_type(
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=float)
+    precision_threshold = coreax.validation.cast_as_type(
         x=precision_threshold, object_name="precision_threshold", type_caster=float
     )
-    validate_in_range(
+    coreax.validation.validate_in_range(
         x=precision_threshold,
         object_name="precision_threshold",
         strict_inequalities=False,
@@ -83,8 +83,8 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
         and ``y``
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
-    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return jnp.dot(x - y, x - y)
 
 
@@ -99,8 +99,8 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
         :math:`n \times m` array
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     fn = vmap(
         vmap(squared_distance, in_axes=(None, 0), out_axes=0),
@@ -120,8 +120,8 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Vector difference ``x - y``
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
-    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return x - y
 
 
@@ -136,8 +136,8 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
         :math:`n \times m \times d` array
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-    y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     fn = vmap(
         vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
     )
@@ -165,8 +165,10 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     :return: Optimised solution for the quadratic program
     """
     # Validate inputs
-    validate_is_instance(x=kernel_mm, object_name="kernel_mm", expected_type=ArrayLike)
-    validate_is_instance(
+    coreax.validation.validate_is_instance(
+        x=kernel_mm, object_name="kernel_mm", expected_type=ArrayLike
+    )
+    coreax.validation.validate_is_instance(
         x=kernel_matrix_row_sum_mean,
         object_name="kernel_matrix_row_sum_mean",
         expected_type=ArrayLike,

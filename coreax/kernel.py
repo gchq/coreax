@@ -69,12 +69,7 @@ from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.util
-from coreax.validation import (
-    cast_as_type,
-    validate_array_size,
-    validate_in_range,
-    validate_is_instance,
-)
+import coreax.validation
 
 
 @jit
@@ -90,7 +85,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         0-dimensional array
     """
     # Validate inputs
-    x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(coreax.util.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
@@ -119,19 +114,19 @@ class Kernel(ABC):
         # with code)
 
         # Validate inputs
-        length_scale = cast_as_type(
+        length_scale = coreax.validation.cast_as_type(
             x=length_scale, object_name="length_scale", type_caster=float
         )
-        output_scale = cast_as_type(
+        output_scale = coreax.validation.cast_as_type(
             x=output_scale, object_name="output_scale", type_caster=float
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=length_scale,
             object_name="length_scale",
             strict_inequalities=True,
             lower_bound=0,
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=output_scale,
             object_name="output_scale",
             strict_inequalities=True,
@@ -181,8 +176,12 @@ class Kernel(ABC):
             then this is the Gram matrix corresponding to the RKHS inner product.
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
         fn = vmap(
             vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -219,8 +218,12 @@ class Kernel(ABC):
         :return: An :math:`n \times m \times d` array of pairwise Jacobians
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         fn = vmap(
             vmap(self._grad_x_elementwise, in_axes=(0, None), out_axes=0),
@@ -245,8 +248,12 @@ class Kernel(ABC):
         :return: An :math:`m \times n \times d` array of pairwise Jacobians
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         fn = vmap(
             vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
@@ -316,8 +323,12 @@ class Kernel(ABC):
         :return: Array of Laplace-style operator traces :math:`n \times m` array
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         fn = vmap(
             vmap(
@@ -388,27 +399,29 @@ class Kernel(ABC):
             ``j``:``j`` + ``max_size`` populated
         """
         # Validate inputs
-        i = cast_as_type(x=i, object_name="i", type_caster=int)
-        j = cast_as_type(x=j, object_name="j", type_caster=int)
-        validate_in_range(
+        i = coreax.validation.cast_as_type(x=i, object_name="i", type_caster=int)
+        j = coreax.validation.cast_as_type(x=j, object_name="j", type_caster=int)
+        coreax.validation.validate_in_range(
             x=i, object_name="i", strict_inequalities=False, lower_bound=0
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=j, object_name="i", strict_inequalities=False, lower_bound=0
         )
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        kernel_row_sum = cast_as_type(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        kernel_row_sum = coreax.validation.cast_as_type(
             x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
         )
-        validate_array_size(
+        coreax.validation.validate_array_size(
             x=kernel_row_sum, object_name="kernel_row_sum", dimension=0, expected_size=1
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=kernel_pairwise,
             object_name="kernel_pairwise",
             expected_type=coreax.util.KernelFunction,
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
 
@@ -448,9 +461,13 @@ class Kernel(ABC):
         :return: Kernel matrix row sum
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
 
@@ -496,9 +513,13 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        max_size = cast_as_type(x=max_size, object_name="max_size", type_caster=int)
-        validate_in_range(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
 
@@ -530,28 +551,30 @@ class Kernel(ABC):
         :return: Approximation to the kernel matrix row sum
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        validate_is_instance(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
             expected_type=(str, type[coreax.approximation.KernelMeanApproximator]),
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
         )
-        num_kernel_points = cast_as_type(
+        num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_kernel_points,
             object_name="num_kernel_points",
             strict_inequalities=False,
             lower_bound=0,
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_train_points,
             object_name="num_train_points",
             strict_inequalities=False,
@@ -586,18 +609,18 @@ class Kernel(ABC):
         :return: Approximator object
         """
         # Validate inputs
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
             expected_type=(str, type[coreax.approximation.KernelMeanApproximator]),
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
         )
-        num_kernel_points = cast_as_type(
+        num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
@@ -999,16 +1022,16 @@ class SteinKernel(Kernel):
         Define the Stein kernel, i.e. the application of the Stein operator.
         """
         # Validate inputs
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=base_kernel, object_name="base_kernel", expected_type=Kernel
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=score_function, object_name="score_function", expected_type=Callable
         )
-        output_scale = cast_as_type(
+        output_scale = coreax.validation.cast_as_type(
             x=output_scale, object_name="output_scale", type_caster=float
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=output_scale,
             object_name="output_scale",
             strict_inequalities=True,
@@ -1095,7 +1118,9 @@ def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
     :return: Instance of selected :class:`Kernel` class
     """
     # Validate inputs
-    validate_is_instance(x=name, object_name="name", expected_type=(str, type[Kernel]))
+    coreax.validation.validate_is_instance(
+        x=name, object_name="name", expected_type=(str, type[Kernel])
+    )
 
     class_obj = kernel_factory.get(name)
     return coreax.util.call_with_excess_kwargs(class_obj, args, kwargs)
