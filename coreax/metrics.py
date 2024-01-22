@@ -23,7 +23,6 @@ module, all of which implement :class:`Metric`.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -276,8 +275,6 @@ class MMD(Metric):
         num_points_x = weights_x.sum()
         num_points_y = weights_y.sum()
 
-        # TODO: Needs changing to self.kernel.calculate_K_sum, when kernels support
-        #  weighted inputs
         kernel_nn = self.sum_weighted_pairwise_distances(
             x, x, weights_x, weights_x, block_size
         )

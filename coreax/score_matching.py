@@ -30,7 +30,6 @@ and then differentiating a kernel density estimate to the data.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -94,9 +93,6 @@ class SlicedScoreMatching(ScoreMatching):
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
     :cite:p:`ssm`.
-
-    TODO: Allow user to pass hidden_dim as a list and build network with
-        # layers = len(hidden_dim), with each layer size assigned as appropriate.
 
     :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
         :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
@@ -344,8 +340,8 @@ class SlicedScoreMatching(ScoreMatching):
         :param sigmas: The geometric progression of noise standard deviations
         :return: The updated objective, i.e. partial sum
         """
-        # TODO: This will generate the same set of random numbers on each function call.
-        #  We might want to replace this with random.PRNGKey(i) to get a unique set each
+        # This will generate the same set of random numbers on each function call. We
+        #  might want to replace this with random.PRNGKey(i) to get a unique set each
         #  time.
         # Perturb the inputs with Gaussian noise
         x_perturbed = x + sigmas[i] * random.normal(random.PRNGKey(0), x.shape)
@@ -407,7 +403,7 @@ class SlicedScoreMatching(ScoreMatching):
         score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
-        # noise perturbations
+        #  noise perturbations
         if self.noise_conditioning:
             gammas = self.gamma ** jnp.arange(self.num_noise_models)
             sigmas = self.sigma * gammas
@@ -437,9 +433,9 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Carry out main training loop to fit the neural network
         for i in tqdm(range(self.num_epochs)):
-            # TODO: In the existing code, idx gives the same output each time. We might
-            #  want to change this to split the random key and use the result from the
-            #  split each time.
+            # In the existing code, idx gives the same output each time. We might want
+            #  to change this to split the random key and use the result from the split
+            #  each time.
             # Sample some data-points to pass for this step
             idx = random.randint(batch_key, (self.batch_size,), 0, num_points)
 

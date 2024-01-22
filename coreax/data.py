@@ -36,7 +36,6 @@ copy of a coreset, call :meth:`format() <DataReader.format>` on a subclass to re
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

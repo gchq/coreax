@@ -57,7 +57,6 @@ corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -107,7 +106,6 @@ class Kernel(ABC):
 
     def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
         """Define a kernel."""
-        # TODO: generalise length_scale to multiple dimensions.
         # Check that length_scale is above zero (the isinstance check here is to ensure
         # that we don't check a trace of an array when JIT decorators interact with
         # code)
@@ -891,8 +889,8 @@ class SteinKernel(Kernel):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        # TODO: score function is assumed to not change here - but it might if the
-        #  kernel changes - but does not work when specified in children
+        # The score function is assumed to not change here - but it might if the kernel
+        # changes - but this does not work when kernel is specified in children
         children = (self.base_kernel,)
         aux_data = {
             "score_function": self.score_function,
@@ -935,5 +933,3 @@ for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-# TODO: Do we want weights to be used to align with MMD?
