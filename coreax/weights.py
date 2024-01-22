@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 Classes and associated functionality to optimise weighted representations of data.
 
 Several aspects of this codebase take a :math:`n \times d` dataset and generate an
@@ -50,9 +50,9 @@ class WeightsOptimiser(ABC):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
+    def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
         """
-        Initilise a weights optimiser class.
+        Initialise a weights optimiser class.
 
         # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
         """
@@ -67,16 +67,16 @@ class WeightsOptimiser(ABC):
         Calculate the weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
 
     def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
-        """
+        r"""
         Calculate approximate weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Approximately optimal weighting of points in ``y`` to represent ``x``
         """
         warnings.warn(
@@ -90,7 +90,7 @@ class SBQ(WeightsOptimiser):
     """
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
-    References for this technique can be found in :cite:p:`huszar2016optimallyweighted`.
+    References for this technique can be found in :cite:p:`huszar2016optimally`.
     Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
 
@@ -102,14 +102,14 @@ class SBQ(WeightsOptimiser):
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
         References for this technique can be found in
-        :cite:p:`huszar2016optimallyweighted`. These are equivalent to the unconstrained
+        :cite:p:`huszar2016optimally`. These are equivalent to the unconstrained
         weighted maximum mean discrepancy (MMD) optimum.
 
         Note that weights determined through SBQ do not need to sum to 1, and can be
         negative.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Validate inputs
@@ -156,7 +156,7 @@ class MMD(WeightsOptimiser):
         Compute optimal weights given the simplex constraint.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
             numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``
@@ -185,8 +185,3 @@ class MMD(WeightsOptimiser):
         sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
-
-
-weights_factory = coreax.util.ClassFactory(WeightsOptimiser)
-weights_factory.register("SBQ", SBQ)
-weights_factory.register("MMD", MMD)

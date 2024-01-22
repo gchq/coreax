@@ -29,6 +29,10 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
@@ -49,6 +53,7 @@ import coreax.networks
 import coreax.validation
 
 
+
 class ScoreMatching(ABC):
     """
     Base class for score matching algorithms.
@@ -66,7 +71,7 @@ class ScoreMatching(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -80,7 +85,7 @@ class ScoreMatching(ABC):
 
 
 class SlicedScoreMatching(ScoreMatching):
-    """
+    r"""
     Implementation of slice score matching, defined in :cite:p:`ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
@@ -107,7 +112,7 @@ class SlicedScoreMatching(ScoreMatching):
         Defaults to 1.
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
-    :param batch_size: Size of minibatch. Defaults to 64.
+    :param batch_size: Size of mini-batch. Defaults to 64.
     :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
     :param optimiser: The optax optimiser to use. Defaults to optax.adam.
     :param num_noise_models: Number of noise models to use in noise
@@ -160,9 +165,7 @@ class SlicedScoreMatching(ScoreMatching):
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
-        """
-        Define a sliced score matching class.
-        """
+        """Define a sliced score matching class."""
         # Validate all inputs
         coreax.validation.validate_is_instance(
             x=random_generator, object_name="random_generator", expected_type=Callable
@@ -264,6 +267,33 @@ class SlicedScoreMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+        """
+        children = ()
+        aux_data = {
+            "random_generator": self.random_generator,
+            "random_key": self.random_key,
+            "noise_conditioning": self.noise_conditioning,
+            "use_analytic": self.use_analytic,
+            "num_random_vectors": self.num_random_vectors,
+            "learning_rate": self.learning_rate,
+            "num_epochs": self.num_epochs,
+            "batch_size": self.batch_size,
+            "hidden_dim": self.hidden_dim,
+            "optimiser": self.optimiser,
+            "num_noise_models": self.num_noise_models,
+            "sigma": self.sigma,
+            "gamma": self.gamma,
+        }
+
+        return children, aux_data
+
     def _objective_function(
         self,
         random_direction_vector: ArrayLike,
@@ -304,7 +334,8 @@ class SlicedScoreMatching(ScoreMatching):
         Compute reduced variance score matching loss function.
 
         This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then :meth:`general_obj` should be used instead.
+        this assumption is not true, then
+        :meth:`SlicedScoreMatching._general_objective` should be used instead.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
@@ -328,10 +359,10 @@ class SlicedScoreMatching(ScoreMatching):
         Compute general score matching loss function.
 
         This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than :meth:`analytic_obj` if
-        these assumptions hold.
+        when using score matching, but has higher variance than
+        :meth:`SlicedScoreMatching._analytic_objective` if these assumptions hold.
 
-        :param random_direction_vector: `:math:`d`-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
@@ -365,7 +396,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
-        the data vector (``x``), random vectors (``v``) and using the score neural
+        the data vector ``x``, random vectors ``v`` and using the score neural
         network.
 
         :param score_network: Function that calls the neural network on ``x``
@@ -414,7 +445,7 @@ class SlicedScoreMatching(ScoreMatching):
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:p:`improvedsgm` for details.
+        matching. See :cite:p:`improved_sgm` for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -476,7 +507,7 @@ class SlicedScoreMatching(ScoreMatching):
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
-        We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
+        We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
         considered.
 
@@ -561,9 +592,7 @@ class KernelDensityMatching(ScoreMatching):
     """
 
     def __init__(self, length_scale: float, kde_data: ArrayLike):
-        r"""
-        Define the kernel density matching class.
-        """
+        """Define the kernel density matching class."""
         # Validate inputs
         length_scale = coreax.validation.cast_as_type(
             x=length_scale, object_name="length_scale", type_caster=float
@@ -597,7 +626,7 @@ class KernelDensityMatching(ScoreMatching):
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = (self.kde_data,)
@@ -639,6 +668,7 @@ class KernelDensityMatching(ScoreMatching):
             x_ = coreax.validation.cast_as_type(
                 x=x_, object_name="x_", type_caster=jnp.atleast_2d
             )
+            original_number_of_dimensions = x_.ndim
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
@@ -646,12 +676,20 @@ class KernelDensityMatching(ScoreMatching):
             # Compute gradients with respect to x
             gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
 
-            return gradients / gram_matrix_row_means[:, None]
+            # Compute final evaluation of the score function
+            score_result = gradients / gram_matrix_row_means[:, None]
+
+            # Ensure output format accounts for 1-dimensional inputs as-well as
+            # multi-dimensional ones
+            if original_number_of_dimensions == 1:
+                score_result = score_result[0, :]
+
+            return score_result
 
         return score_function
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:

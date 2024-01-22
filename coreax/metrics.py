@@ -22,6 +22,10 @@ representation using some appropriate metric. Such metrics are implemented withi
 module, all of which implement :class:`Metric`.
 """
 
+# Support annotations with | in Python < 3.10
+# TODO: Remove once no longer supporting old code
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
@@ -34,21 +38,16 @@ import coreax.validation
 
 
 class Metric(ABC):
-    """
-    Base class for calculating metrics.
-    """
-
-    def __init__(self) -> None:
-        pass
+    """Base class for calculating metrics."""
 
     @abstractmethod
     def compute(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        max_size: int = None,
-        weights_x: ArrayLike = None,
-        weights_y: ArrayLike = None,
+        block_size: int | None = None,
+        weights_x: ArrayLike | None = None,
+        weights_y: ArrayLike | None = None,
     ) -> Array:
         r"""
         Compute the metric.
@@ -58,12 +57,13 @@ class Metric(ABC):
         :param x: An :math:`n \times d` array defining the full dataset
         :param y: An :math:`m \times d` array defining a representation of ``x``, for
             example a coreset
-        :param max_size: Size of matrix block to process
+        :param block_size: Size of matrix block to process, or :data:`None` to not split
+            into blocks
         :param weights_x: An :math:`1 \times n` array of weights for associated points
-            in ``x``
+            in ``x``, or :data:`None` if not required
         :param weights_y: An :math:`1 \times m` array of weights for associated points
-            in ``y``
-        :return: Metric computed as a zero-dimensional array.
+            in ``y``, or :data:`None` if not required
+        :return: Metric computed as a zero-dimensional array
         """
 
 
@@ -88,9 +88,7 @@ class MMD(Metric):
     """
 
     def __init__(self, kernel: coreax.kernel.Kernel, precision_threshold: float = 1e-8):
-        r"""
-        Calculate maximum mean discrepancy between two datasets in d dimensions.
-        """
+        """Calculate maximum mean discrepancy between two datasets."""
         # Validate inputs
         precision_threshold = coreax.validation.cast_as_type(
             x=precision_threshold, object_name="precision_threshold", type_caster=float
@@ -102,30 +100,34 @@ class MMD(Metric):
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
-        # initialise parent
+        # Initialise parent
         super().__init__()
 
     def compute(
         self,
         x: ArrayLike,
         y: ArrayLike,
-        weights_x: ArrayLike = None,
-        weights_y: ArrayLike = None,
-        max_size: int = None,
+        block_size: int | None = None,
+        weights_x: ArrayLike | None = None,
+        weights_y: ArrayLike | None = None,
     ) -> Array:
         r"""
         Calculate maximum mean discrepancy.
 
-        If no weights (for the dataset ``y``) are given, standard MMD is calculated. If
+        If no weights are given for dataset ``y``, standard MMD is calculated. If
         weights are given, weighted MMD is calculated. For both cases, if the size of
-        matrix blocks to process is less than the size of both datasets, the calculation
+        matrix blocks to process is less than the size of both datasets and if
+        ``weights_x`` is given in the weighted case, the calculation
         is done block-wise to limit memory requirements.
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m \times d` dataset
-        :param max_size: (Optional) Size of matrix block to process, for memory limits
-        :param weights_x: (Optional)  :math:`n \times 1` weights for original data ``x``
-        :param weights_y: (Optional)  :math:`m \times 1` weights for dataset ``y``
+        :param block_size: Size of matrix block to process, or :data:`None` to not split
+            into blocks
+        :param weights_x: An :math:`1 \times n` array of weights for associated points
+            in ``x``, or :data:`None` if not required
+        :param weights_y: An :math:`1 \times m` array of weights for associated points
+            in ``y``, or :data:`None` if not required
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Validate inputs
@@ -155,17 +157,21 @@ class MMD(Metric):
         num_points_y = len(y)
 
         if weights_y is None:
-            if max_size is None or max_size > max(num_points_x, num_points_y):
+            if block_size is None or block_size > max(num_points_x, num_points_y):
                 return self.maximum_mean_discrepancy(x, y)
             else:
-                return self.maximum_mean_discrepancy_block(x, y, max_size)
+                return self.maximum_mean_discrepancy_block(x, y, block_size)
 
         else:
-            if max_size is None or max_size > max(num_points_x, num_points_y):
+            if (
+                block_size is None
+                or weights_x is None
+                or block_size > max(num_points_x, num_points_y)
+            ):
                 return self.weighted_maximum_mean_discrepancy(x, y, weights_y)
             else:
                 return self.weighted_maximum_mean_discrepancy_block(
-                    x, y, weights_x, weights_y, max_size
+                    x, y, weights_x, weights_y, block_size
                 )
 
     def maximum_mean_discrepancy(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -257,7 +263,7 @@ class MMD(Metric):
         self,
         x: ArrayLike,
         y: ArrayLike,
-        max_size: int = 10_000,
+        block_size: int = 10_000,
     ) -> Array:
         r"""
         Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
@@ -265,7 +271,7 @@ class MMD(Metric):
         :param x: The original :math:`n \times d` data
         :param y: An :math:`m \times d` array defining a representation of ``x``, for
             example a coreset
-        :param max_size: Size of matrix blocks to process
+        :param block_size: Size of matrix blocks to process
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
@@ -289,9 +295,9 @@ class MMD(Metric):
         num_points_y = float(len(y))
 
         # Compute each term in the weighted MMD formula
-        kernel_nn = self.sum_pairwise_distances(x, x, max_size)
-        kernel_mm = self.sum_pairwise_distances(y, y, max_size)
-        kernel_nm = self.sum_pairwise_distances(x, y, max_size)
+        kernel_nn = self.sum_pairwise_distances(x, x, block_size)
+        kernel_mm = self.sum_pairwise_distances(y, y, block_size)
+        kernel_nm = self.sum_pairwise_distances(x, y, block_size)
 
         # Compute MMD, correcting for any numerical precision issues, where we would
         # otherwise square-root a negative number very close to 0.0.
@@ -311,7 +317,7 @@ class MMD(Metric):
         y: ArrayLike,
         weights_x: ArrayLike,
         weights_y: ArrayLike,
-        max_size: int = 10_000,
+        block_size: int = 10_000,
     ) -> Array:
         r"""
         Calculate weighted maximum mean discrepancy (MMD).
@@ -323,7 +329,7 @@ class MMD(Metric):
             example a coreset
         :param weights_x: :math:`n` weights of original data
         :param weights_y: :math:`m` weights of points in ``y``
-        :param max_size: Size of matrix blocks to process
+        :param block_size: Size of matrix blocks to process
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Ensure data is in desired format
@@ -355,13 +361,13 @@ class MMD(Metric):
         # TODO: Needs changing to self.kernel.calculate_K_sum, when kernels support
         #  weighted inputs
         kernel_nn = self.sum_weighted_pairwise_distances(
-            x, x, weights_x, weights_x, max_size
+            x, x, weights_x, weights_x, block_size
         )
         kernel_mm = self.sum_weighted_pairwise_distances(
-            y, y, weights_y, weights_y, max_size
+            y, y, weights_y, weights_y, block_size
         )
         kernel_nm = self.sum_weighted_pairwise_distances(
-            x, y, weights_x, weights_y, max_size
+            x, y, weights_x, weights_y, block_size
         )
 
         # Compute MMD, correcting for any numerical precision issues, where we would
@@ -380,7 +386,7 @@ class MMD(Metric):
         self,
         x: ArrayLike,
         y: ArrayLike,
-        max_size: int = 10_000,
+        block_size: int = 10_000,
     ) -> float:
         r"""
         Sum the kernel distance between all pairs of points in ``x`` and ``y``.
@@ -389,7 +395,7 @@ class MMD(Metric):
 
         :param x: :math:`n \times 1` array
         :param y: :math:`m \times 1` array
-        :param max_size: Size of matrix blocks to process
+        :param block_size: Size of matrix blocks to process
         :return: The sum of pairwise distances between points in ``x`` and ``y``
         """
         # Ensure data is in desired format
@@ -414,15 +420,15 @@ class MMD(Metric):
 
         # If max_size is larger than both inputs, we don't need to consider block-wise
         # computation
-        if max_size > max(num_points_x, num_points_y):
+        if block_size > max(num_points_x, num_points_y):
             pairwise_distance_sum = self.kernel.compute(x, y).sum()
 
         else:
             pairwise_distance_sum = 0
-            for i in range(0, num_points_x, max_size):
-                for j in range(0, num_points_y, max_size):
+            for i in range(0, num_points_x, block_size):
+                for j in range(0, num_points_y, block_size):
                     pairwise_distances_part = self.kernel.compute(
-                        x[i : i + max_size], y[j : j + max_size]
+                        x[i : i + block_size], y[j : j + block_size]
                     )
                     pairwise_distance_sum += pairwise_distances_part.sum()
 
@@ -434,7 +440,7 @@ class MMD(Metric):
         y: ArrayLike,
         weights_x: ArrayLike,
         weights_y: ArrayLike,
-        max_size: int = 10_000,
+        block_size: int = 10_000,
     ) -> float:
         r"""
         Sum the weighted kernel distance between all pairs of points in ``x`` and ``y``.
@@ -445,7 +451,7 @@ class MMD(Metric):
         :param y: :math:`m \times 1` array
         :param weights_x: :math:`n \times 1` array of weights for ``x``
         :param weights_y: :math:`m \times 1` array of weights for ``y``
-        :param max_size: Size of matrix blocks to process
+        :param block_size: Size of matrix blocks to process
         :return: The sum of pairwise distances between points in ``x`` and ``y``,
             with contributions weighted as defined by ``weights_x`` and ``weights_y``
         """
@@ -477,18 +483,20 @@ class MMD(Metric):
 
         # If max_size is larger than both inputs, we don't need to consider block-wise
         # computation
-        if max_size > max(num_points_x, num_points_y):
+        if block_size > max(num_points_x, num_points_y):
             kernel_weights = self.kernel.compute(x, y) * weights_y
             weighted_pairwise_distance_sum = (weights_x * kernel_weights.T).sum()
 
         else:
             weighted_pairwise_distance_sum = 0
-            for i in range(0, num_points_x, max_size):
-                for j in range(0, num_points_y, max_size):
+            for i in range(0, num_points_x, block_size):
+                for j in range(0, num_points_y, block_size):
                     pairwise_distances_part = (
-                        weights_x[i : i + max_size, None]
-                        * self.kernel.compute(x[i : i + max_size], y[j : j + max_size])
-                        * weights_y[None, j : j + max_size]
+                        weights_x[i : i + block_size, None]
+                        * self.kernel.compute(
+                            x[i : i + block_size], y[j : j + block_size]
+                        )
+                        * weights_y[None, j : j + block_size]
                     )
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 

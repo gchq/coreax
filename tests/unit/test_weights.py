@@ -17,8 +17,8 @@ import unittest
 
 import jax.numpy as jnp
 
-import coreax.kernel as ck
-import coreax.weights as cw
+import coreax.kernel
+import coreax.weights
 
 
 class TestWeights(unittest.TestCase):
@@ -77,7 +77,7 @@ class TestWeights(unittest.TestCase):
             ]
         )
 
-        optimiser = cw.SBQ(kernel=ck.SquaredExponentialKernel())
+        optimiser = coreax.weights.SBQ(kernel=coreax.kernel.SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)
@@ -157,7 +157,7 @@ class TestWeights(unittest.TestCase):
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
 
-        optimiser = cw.MMD(kernel=ck.SquaredExponentialKernel())
+        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)

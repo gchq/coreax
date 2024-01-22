@@ -11,36 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
+
 import unittest
-from collections.abc import Callable
 
 import numpy as np
 from jax import jit
 from scipy.stats import ks_2samp
 
-import coreax.kernel as ck
-
-
-def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
-    """
-    Verify JIT performance by comparing timings of a before and after run of a function.
-
-    The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple
-
-    :param fn: function callable to test
-    :return: (first run time, second run time)
-    """
-    start_time = time.time()
-    fn(*args, **kwargs)
-    end_time = time.time()
-    pre_delta = end_time - start_time
-    start_time = time.time()
-    fn(*args, **kwargs)
-    end_time = time.time()
-    post_delta = end_time - start_time
-    return pre_delta, post_delta
+import coreax.kernel
+import coreax.util
 
 
 class TestKernel(unittest.TestCase):
@@ -69,7 +48,7 @@ class TestSquaredExponentialKernel(TestKernel):
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -85,24 +64,24 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -118,24 +97,24 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -151,24 +130,24 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
         Test the performance of the SquaredExponentialKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -184,11 +163,11 @@ class TestSquaredExponentialKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.SquaredExponentialKernel()
+        kernel = coreax.kernel.SquaredExponentialKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -197,8 +176,8 @@ class TestSquaredExponentialKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestLaplacianKernel(TestKernel):
@@ -211,7 +190,7 @@ class TestLaplacianKernel(TestKernel):
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -227,24 +206,24 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -260,24 +239,24 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -293,24 +272,24 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
         Test the performance of the LaplacianKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -326,11 +305,11 @@ class TestLaplacianKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.LaplacianKernel()
+        kernel = coreax.kernel.LaplacianKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -339,8 +318,8 @@ class TestLaplacianKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestPCIMQKernel(TestKernel):
@@ -353,7 +332,7 @@ class TestPCIMQKernel(TestKernel):
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -369,24 +348,24 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -402,24 +381,24 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -435,24 +414,24 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
         Test the performance of the PCIMQKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -468,11 +447,11 @@ class TestPCIMQKernel(TestKernel):
                 self.dimension,
             )
         )
-        kernel = ck.PCIMQKernel()
+        kernel = coreax.kernel.PCIMQKernel()
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -481,8 +460,8 @@ class TestPCIMQKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 class TestSteinKernel(TestKernel):
@@ -495,7 +474,7 @@ class TestSteinKernel(TestKernel):
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -515,27 +494,27 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_x(self):
         """
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -555,27 +534,27 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_grad_y(self):
         """
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -595,27 +574,27 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
     def test_div_x_grad_y(self):
         """
         Test the performance of the SteinKernel computation.
 
         Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
-        sequential function calls, in order to catch sub-optimal JIT tracing.
+        sequential function calls, in order to catch suboptimal JIT tracing.
         """
         x = np.random.random(
             (
@@ -635,14 +614,14 @@ class TestSteinKernel(TestKernel):
         def score_function(x_):
             return -x_
 
-        kernel = ck.SteinKernel(
-            base_kernel=ck.PCIMQKernel(),
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=coreax.kernel.PCIMQKernel(),
             score_function=score_function,
         )
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = jit_test(
+            deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
                 ),
@@ -651,8 +630,8 @@ class TestSteinKernel(TestKernel):
             )
             pre.append(deltas[0])
             post.append(deltas[1])
-        pval = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(pval, self.threshold)
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
 
 
 if __name__ == "__main__":
