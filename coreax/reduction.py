@@ -39,7 +39,6 @@ interface for which particular methods can be implemented.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -51,9 +50,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
-from typing_extensions import (
-    Self,  # TODO: Switch to typing once no longer supporting Python < 3.11
-)
+from typing_extensions import Self
 
 import coreax.data
 import coreax.kernel
