@@ -35,7 +35,6 @@ mutated and the corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -59,9 +58,6 @@ if TYPE_CHECKING:
 class Refine(ABC):
     r"""
     Base class for refinement functions.
-
-    # TODO: Integrate usage of metrics module to allow refinement via any choice of
-        metric
 
     The refinement process happens iteratively. Coreset elements are replaced by
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by

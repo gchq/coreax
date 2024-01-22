@@ -20,7 +20,6 @@ passed to classes, functions and methods throughout the coreax codebase.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from collections.abc import Callable

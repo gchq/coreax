@@ -30,7 +30,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[//]: # (TODO: When ready to go live, a release should be created on GitHub and the
-below updated.)
 [//]: # ([Unreleased]: https://github.com/gchq/coreax/compare/v0.1.0...HEAD)
 [//]: # ([0.1.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.1.0)

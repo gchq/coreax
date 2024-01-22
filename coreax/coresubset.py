@@ -28,7 +28,6 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -155,7 +154,6 @@ class KernelHerding(coreax.reduction.Coreset):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        # TODO: Check JIT performance & validity with this definition when OOP complete
         children = (
             self.kernel,
             self.kernel_matrix_row_sum_mean,
@@ -409,8 +407,6 @@ class RandomSample(coreax.reduction.Coreset):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        # TODO: Check JIT performance & validity with this definition when OOP complete.
-        # TODO: If kernel is None, does this work?
         children = (
             self.kernel,
             self.kernel_matrix_row_sum_mean,
