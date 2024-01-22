@@ -52,14 +52,14 @@ def validate_in_range(
     """
     try:
         if strict_inequalities:
-            if lower_bound is not None and not x > lower_bound:
+            if lower_bound is not None and x <= lower_bound:
                 raise ValueError(f"{object_name} must be strictly above {lower_bound}")
-            if upper_bound is not None and not x < upper_bound:
+            if upper_bound is not None and x >= upper_bound:
                 raise ValueError(f"{object_name} must be strictly below {upper_bound}")
         else:
-            if lower_bound is not None and not x >= lower_bound:
+            if lower_bound is not None and x < lower_bound:
                 raise ValueError(f"{object_name} must be {lower_bound} or above")
-            if upper_bound is not None and not x <= upper_bound:
+            if upper_bound is not None and x > upper_bound:
                 raise ValueError(f"{object_name} must be {upper_bound} or lower")
     except TypeError as e:
         if strict_inequalities:
