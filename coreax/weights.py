@@ -39,8 +39,8 @@ from jax import Array
 from jax.typing import ArrayLike
 
 import coreax.kernel
-from coreax.util import ClassFactory, solve_qp
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.util
+import coreax.validation
 
 
 class WeightsOptimiser(ABC):
@@ -56,7 +56,7 @@ class WeightsOptimiser(ABC):
 
         # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
         """
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
         )
         self.kernel = kernel
@@ -113,8 +113,12 @@ class SBQ(WeightsOptimiser):
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         # Compute the components of the kernel matrix. Note that to ensure the solver
         # can numerically compute the result, we add a small perturbation to the kernel
@@ -158,10 +162,16 @@ class MMD(WeightsOptimiser):
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         # Validate inputs
-        x = cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-        y = cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-        epsilon = cast_as_type(x=epsilon, object_name="epsilon", type_caster=float)
-        validate_in_range(
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        epsilon = coreax.validation.cast_as_type(
+            x=epsilon, object_name="epsilon", type_caster=float
+        )
+        coreax.validation.validate_in_range(
             x=epsilon, object_name="epsilon", strict_inequalities=False, lower_bound=0
         )
 
@@ -172,11 +182,11 @@ class MMD(WeightsOptimiser):
         kernel_mm = self.kernel.compute(y, y) + epsilon * jnp.identity(len(y))
 
         # Call the QP solver
-        sol = solve_qp(kernel_mm, kernel_nm)
+        sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
 
 
-weights_factory = ClassFactory(WeightsOptimiser)
+weights_factory = coreax.util.ClassFactory(WeightsOptimiser)
 weights_factory.register("SBQ", SBQ)
 weights_factory.register("MMD", MMD)

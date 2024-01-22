@@ -40,17 +40,20 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import TYPE_CHECKING
 
 import jax.lax as lax
 import jax.numpy as jnp
 from jax import Array, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-from coreax.approximation import KernelMeanApproximator
-from coreax.reduction import DataReduction
-from coreax.util import ClassFactory
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.approximation
+import coreax.kernel
+import coreax.util
+import coreax.validation
+
+if TYPE_CHECKING:
+    import coreax.reduction
 
 
 class Refine(ABC):
@@ -78,21 +81,21 @@ class Refine(ABC):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
-        approximator: type[KernelMeanApproximator] | None = None,
+        approximator: type[coreax.approximation.KernelMeanApproximator] | None = None,
     ):
         """
         Initialise a refinement object.
         """
         # Validate inputs
-        approximate_kernel_row_sum = cast_as_type(
+        approximate_kernel_row_sum = coreax.validation.cast_as_type(
             x=approximate_kernel_row_sum,
             object_name="approximate_kernel_row_sum",
             type_caster=bool,
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=(type[KernelMeanApproximator], None),
+            expected_type=(type[coreax.approximation.KernelMeanApproximator], None),
         )
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
@@ -100,7 +103,7 @@ class Refine(ABC):
     @abstractmethod
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: coreax.reduction.DataReduction,
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
@@ -159,7 +162,7 @@ class RefineRegular(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: coreax.reduction.DataReduction,
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
@@ -178,10 +181,12 @@ class RefineRegular(Refine):
         :return: Nothing
         """
         # Validate inputs
-        validate_is_instance(
-            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        coreax.validation.validate_is_instance(
+            x=data_reduction,
+            object_name="data_reduction",
+            expected_type=coreax.reduction.DataReduction,
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=kernel_mean_row_sum,
             object_name="kernel_mean_row_sum",
             expected_type=(None, ArrayLike),
@@ -225,7 +230,7 @@ class RefineRegular(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -261,7 +266,7 @@ class RefineRegular(Refine):
         i: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -315,20 +320,20 @@ class RefineRandom(Refine):
     def __init__(
         self,
         approximate_kernel_row_sum: bool = False,
-        approximator: KernelMeanApproximator = None,
+        approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
         random_key: int = 0,
     ):
         """Initialise a random refinement object."""
         # Perform input validation
-        p = cast_as_type(x=p, object_name="p", type_caster=float)
-        validate_in_range(
+        p = coreax.validation.cast_as_type(x=p, object_name="p", type_caster=float)
+        coreax.validation.validate_in_range(
             x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
         )
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
         )
-        random_key = cast_as_type(
+        random_key = coreax.validation.cast_as_type(
             x=random_key, object_name="random_key", type_caster=int
         )
 
@@ -342,7 +347,7 @@ class RefineRandom(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: coreax.reduction.DataReduction,
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
@@ -363,10 +368,12 @@ class RefineRandom(Refine):
         :return: Nothing
         """
         # Validate inputs
-        validate_is_instance(
-            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        coreax.validation.validate_is_instance(
+            x=data_reduction,
+            object_name="data_reduction",
+            expected_type=coreax.reduction.DataReduction,
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=kernel_mean_row_sum,
             object_name="kernel_mean_row_sum",
             expected_type=(None, ArrayLike),
@@ -418,7 +425,7 @@ class RefineRandom(Refine):
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> tuple[random.PRNGKeyArray, Array]:
@@ -469,7 +476,7 @@ class RefineRandom(Refine):
         candidate_indices: ArrayLike,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -560,7 +567,7 @@ class RefineReverse(Refine):
 
     def refine(
         self,
-        data_reduction: DataReduction,
+        data_reduction: coreax.reduction.DataReduction,
         kernel_mean_row_sum: ArrayLike | None = None,
     ) -> None:
         r"""
@@ -579,10 +586,12 @@ class RefineReverse(Refine):
         :return: Nothing
         """
         # Validate inputs
-        validate_is_instance(
-            x=data_reduction, object_name="data_reduction", expected_type=DataReduction
+        coreax.validation.validate_is_instance(
+            x=data_reduction,
+            object_name="data_reduction",
+            expected_type=coreax.reduction.DataReduction,
         )
-        validate_is_instance(
+        coreax.validation.validate_is_instance(
             x=kernel_mean_row_sum,
             object_name="kernel_mean_row_sum",
             expected_type=(None, ArrayLike),
@@ -625,7 +634,7 @@ class RefineReverse(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -666,7 +675,7 @@ class RefineReverse(Refine):
         i: int,
         coreset_indices: ArrayLike,
         x: ArrayLike,
-        kernel: ck.Kernel,
+        kernel: coreax.kernel.Kernel,
         kernel_mean_row_sum: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
@@ -746,7 +755,7 @@ for current_class in refine_classes:
     )
 
 # Set up class factory
-refine_factory = ClassFactory(Refine)
+refine_factory = coreax.util.ClassFactory(Refine)
 refine_factory.register("regular", RefineRegular)
 refine_factory.register("random", RefineRandom)
 refine_factory.register("reverse", RefineReverse)
