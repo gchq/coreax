@@ -53,7 +53,6 @@ import coreax.networks
 import coreax.validation
 
 
-
 class ScoreMatching(ABC):
     """
     Base class for score matching algorithms.

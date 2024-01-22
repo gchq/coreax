@@ -29,7 +29,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
-from jax import Array
+from jax import Array, random
 from jax.typing import ArrayLike
 
 import coreax.kernel
@@ -143,12 +143,12 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
+        block_size = coreax.validation.cast_as_type(
+            x=block_size, object_name="block_size", type_caster=int
         )
         coreax.validation.validate_in_range(
-            x=max_size,
-            object_name="max_size",
+            x=block_size,
+            object_name="block_size",
             strict_inequalities=True,
             lower_bound=0.0,
         )
@@ -281,12 +281,12 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
+        block_size = coreax.validation.cast_as_type(
+            x=block_size, object_name="block_size", type_caster=int
         )
         coreax.validation.validate_in_range(
-            x=max_size,
-            object_name="max_size",
+            x=block_size,
+            object_name="block_size",
             strict_inequalities=True,
             lower_bound=0.0,
         )
@@ -345,12 +345,12 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
+        block_size = coreax.validation.cast_as_type(
+            x=block_size, object_name="block_size", type_caster=int
         )
         coreax.validation.validate_in_range(
-            x=max_size,
-            object_name="max_size",
+            x=block_size,
+            object_name="block_size",
             strict_inequalities=True,
             lower_bound=0.0,
         )
@@ -405,12 +405,12 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
+        block_size = coreax.validation.cast_as_type(
+            x=block_size, object_name="block_size", type_caster=int
         )
         coreax.validation.validate_in_range(
-            x=max_size,
-            object_name="max_size",
+            x=block_size,
+            object_name="block_size",
             strict_inequalities=True,
             lower_bound=0.0,
         )
@@ -418,7 +418,7 @@ class MMD(Metric):
         num_points_x = len(x)
         num_points_y = len(y)
 
-        # If max_size is larger than both inputs, we don't need to consider block-wise
+        # If block_size is larger than both inputs, we don't need to consider block-wise
         # computation
         if block_size > max(num_points_x, num_points_y):
             pairwise_distance_sum = self.kernel.compute(x, y).sum()
@@ -468,12 +468,12 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
         )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
+        block_size = coreax.validation.cast_as_type(
+            x=block_size, object_name="block_size", type_caster=int
         )
         coreax.validation.validate_in_range(
-            x=max_size,
-            object_name="max_size",
+            x=block_size,
+            object_name="block_size",
             strict_inequalities=True,
             lower_bound=0.0,
         )
@@ -481,7 +481,7 @@ class MMD(Metric):
         num_points_x = len(x)
         num_points_y = len(y)
 
-        # If max_size is larger than both inputs, we don't need to consider block-wise
+        # If block_size is larger than both inputs, we don't need to consider block-wise
         # computation
         if block_size > max(num_points_x, num_points_y):
             kernel_weights = self.kernel.compute(x, y) * weights_y

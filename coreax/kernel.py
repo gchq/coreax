@@ -65,7 +65,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, tree_util, vmap
+from jax import Array, grad, jacrev, jit, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.util
@@ -483,9 +483,9 @@ class Kernel(ABC):
         )
 
         # Ensure data format is as required
-        num_datapoints = len(x)
-        kernel_row_sum = jnp.zeros(num_datapoints)
-        
+        num_data_points = len(x)
+        kernel_row_sum = jnp.zeros(num_data_points)
+
         # Iterate over upper triangular blocks
         for i in range(0, num_data_points, max_size):
             for j in range(i, num_data_points, max_size):
@@ -527,8 +527,8 @@ class Kernel(ABC):
 
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
-    @staticmethod
     def approximate_kernel_matrix_row_sum_mean(
+        self,
         x: ArrayLike,
         approximator: coreax.approximation.KernelMeanApproximator,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
@@ -542,11 +542,13 @@ class Kernel(ABC):
         between a given point and all possible pairs of points that contain this given
         point. This can involve a large number of pairwise computations, so an
         approximation can be used in place of the true value.
-
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Instantiated
-            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
-            created using the same kernel one wishes to use
+        :param approximator: Name of the approximator to use, or an uninstantiated
+            class object
+        :param random_key: Key for random number generation
+        :param num_kernel_points: Number of kernel evaluation points
+        :param num_train_points: Number of training points used to fit kernel
+            regression. This is ignored if not applicable to the approximator method.
         :return: Approximation to the kernel matrix row sum
         """
         # Validate inputs
@@ -591,7 +593,7 @@ class Kernel(ABC):
 
     def create_approximator(
         self,
-        approximator: str | type[coreax.approximation.KernelMeanApproximator],
+        approximator: str | coreax.approximation.KernelMeanApproximator,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,

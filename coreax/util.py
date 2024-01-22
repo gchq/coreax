@@ -33,7 +33,6 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-
 import coreax.validation
 
 #: Kernel evaluation function.
@@ -42,7 +41,6 @@ KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
-
 
 
 def apply_negative_precision_threshold(
