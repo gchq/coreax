@@ -49,7 +49,7 @@ class WeightsOptimiser(ABC):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
+    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
         """Initialise a weights optimiser class."""
         self.kernel = kernel
 

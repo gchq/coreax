@@ -98,7 +98,7 @@ class KernelMeanApproximator(ABC):
 
     def __init__(
         self,
-        kernel: "coreax.kernel.Kernel",
+        kernel: coreax.kernel.Kernel,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
@@ -156,7 +156,7 @@ class RandomApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "coreax.kernel.Kernel",
+        kernel: coreax.kernel.Kernel,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -244,7 +244,7 @@ class ANNchorApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "coreax.kernel.Kernel",
+        kernel: coreax.kernel.Kernel,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -330,7 +330,7 @@ class NystromApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "coreax.kernel.Kernel",
+        kernel: coreax.kernel.Kernel,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
@@ -384,7 +384,7 @@ def _anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
-    kernel_function: "coreax.util.KernelFunction",
+    kernel_function: coreax.util.KernelType,
 ) -> Array:
     r"""
     Execute main loop of the ANNchor construction.
