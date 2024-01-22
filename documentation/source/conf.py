@@ -96,6 +96,7 @@ intersphinx_mapping = {
 }
 
 # Specify custom types for autodoc_type_hints
+# Quotes are required with UnionType for Python < 3.10
 try:
     # pylint: disable=unsupported-binary-operation
     OptionalArrayLike = ArrayLike | None

@@ -431,7 +431,6 @@ disable=raw-checker-failed,
         use-symbolic-message-instead,
         use-implicit-booleaness-not-comparison-to-string,
         use-implicit-booleaness-not-comparison-to-zero,
-
         abstract-class-instantiated,
         consider-using-f-string,
         consider-using-from-import,
@@ -446,7 +445,6 @@ disable=raw-checker-failed,
         missing-function-docstring,
         no-else-return,
         too-many-statements,
-        fixme,
         invalid-name,
         missing-class-docstring,
         missing-module-docstring,
@@ -484,7 +482,8 @@ timeout-methods=requests.api.delete,requests.api.get,requests.api.head,requests.
 
 # List of note tags to take in consideration, separated by a comma.
 notes=FIXME,
-      XXX
+      XXX,
+      TODO
 
 # Regular expression of note tags to take in consideration.
 notes-rgx=

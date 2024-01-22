@@ -895,6 +895,8 @@ class SteinKernel(Kernel):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
+        # The score function is assumed to not change here - but it might if the kernel
+        # changes - but this does not work when kernel is specified in children
         children = (self.base_kernel,)
         aux_data = {
             "score_function": self.score_function,
