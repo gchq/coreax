@@ -66,10 +66,9 @@ def validate_in_range(
             raise TypeError(
                 f"{object_name} must have a valid comparison < and > implemented"
             )
-        else:
-            raise TypeError(
-                f"{object_name} must have a valid comparison <= and >= implemented"
-            )
+        raise TypeError(
+            f"{object_name} must have a valid comparison <= and >= implemented"
+        )
 
 
 def validate_is_instance(
