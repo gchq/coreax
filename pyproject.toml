@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "coreax"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Jax coreset algorithms."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,11 +17,11 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Typing :: Typed",
 ]
 license = {file = "LICENSE"}
 authors = [
-    # TODO: Populate author data when ready to publish
-    {name = "GCHQ", email = "todo@todo.com"},
+    {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
     "flax",
@@ -30,18 +30,34 @@ dependencies = [
     "optax",
     "scikit-learn",
     "tqdm",
+    "typing-extensions",
 ]
 
 [project.optional-dependencies]
-dev = [
+# Compile documentation
+doc = [
+    "furo",
+    "myst-parser",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinxcontrib-bibtex",
+]
+# Run unit tests with coverage assessment
+test = [
     "imageio",
     "matplotlib",
     "numpy",
     "opencv-python",
-    "pre-commit",
     "pyqt5",
-    "pytest",
+    "pytest-cov",
     "scipy",
+]
+# All tools for a developer and for running pylint
+# Should not need to specify test dependencies if also installing coverage but no harm
+dev = [
+    "coreax[doc, test]",
+    "pre-commit",
+    "pylint",
 ]
 
 [project.urls]
@@ -54,15 +70,21 @@ profile = "black"
 [tool.setuptools]
 packages = ["coreax"]
 
+[tool.setuptools.dynamic]
+version = {attr = "coreax.__version__"}
+
 [tool.coverage.run]
-branch = true
+command_line = "-m pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing"
+omit = [
+    "*/__init__.py",
+    "tests/*",
+]
+relative_files = true
 source = ["coreax"]
-command_line = "-m unittest discover -s tests/unit"
-omit = ["*/__init__.py", "*/__main__.py", "tests/integration/*"]
 
 [tool.coverage.report]
 sort = "Cover"
 exclude_lines = [
     "pass",
-    "raise RuntimeError"
+    "raise RuntimeError",
 ]

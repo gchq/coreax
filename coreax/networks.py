@@ -18,7 +18,7 @@ Classes and associated functionality to define neural networks.
 Neural networks are used throughout the codebase as functional approximators.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from flax import linen as nn
 from flax.linen import Module
@@ -34,7 +34,7 @@ class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
 
-    See :class:'~coreax.score_matching.SlicedScoreMatching' for an example usage of this
+    See :class:`~coreax.score_matching.SlicedScoreMatching` for an example usage of this
     class.
     """
 

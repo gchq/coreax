@@ -28,8 +28,12 @@ For a concrete example of the (true) kernel matrix row sum mean, consider the da
     x = [ [0.0, 0.0], [0.5, 0.5], [1.0, 0.0], [-1.0, 0.0] ]
 
 and a :class:`~coreax.kernel.SquaredExponentialKernel` which is defined as
-:math:`k(x,y) = \text{output_scale}\exp(-||x-y||^2/2 * \text{length_scale}^2)`.
-For simplicity, we set ``length_scale`` to :math:`1.0/np.sqrt(2)`
+
+.. math::
+
+    k(x,y) = \text{output_scale} * \exp(-||x-y||^2/2 * \text{length_scale}^2)
+
+For simplicity, we set ``length_scale`` to :math:`1.0/numpy.sqrt(2)`
 and ``output_scale`` to 1.0.
 
 For a single row (data point), the kernel matrix row sum mean is computed by
@@ -73,9 +77,9 @@ import jax.numpy as jnp
 from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
-import coreax.kernel as ck
-from coreax.util import ClassFactory, KernelFunction
-from coreax.validation import cast_as_type, validate_in_range, validate_is_instance
+import coreax.kernel
+import coreax.util
+import coreax.validation
 
 
 class KernelMeanApproximator(ABC):
@@ -94,26 +98,24 @@ class KernelMeanApproximator(ABC):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        """
-        Define an approximator to the mean of the row sum of a kernel distance matrix.
-        """
+        """Define approximator to the mean of the row sum of kernel distance matrix."""
         # Validate inputs of coreax defined classes
-        validate_is_instance(kernel, "kernel", ck.Kernel)
+        coreax.validation.validate_is_instance(kernel, "kernel", coreax.kernel.Kernel)
 
         # Validate inputs of non-coreax defined classes
-        random_key = cast_as_type(
+        random_key = coreax.validation.cast_as_type(
             x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
-        num_kernel_points = cast_as_type(
+        num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_kernel_points,
             object_name="num_kernel_points",
             strict_inequalities=True,
@@ -130,7 +132,7 @@ class KernelMeanApproximator(ABC):
         r"""
         Approximate kernel matrix row sum mean.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
@@ -154,21 +156,19 @@ class RandomApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        """
-        Approximate kernel row mean by regression on points selected randomly.
-        """
+        """Approximate kernel row mean by regression on points selected randomly."""
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_train_points,
             object_name="num_train_points",
             strict_inequalities=True,
@@ -192,12 +192,14 @@ class RandomApproximator(KernelMeanApproximator):
         r"""
         Compute approximate kernel row mean by regression on randomly selected points.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -224,7 +226,7 @@ class RandomApproximator(KernelMeanApproximator):
 
 
 class ANNchorApproximator(KernelMeanApproximator):
-    """
+    r"""
     Approximation method to kernel mean through regression on ANNchor selected points.
 
     When a dataset is very large, computing the mean distance between a given point
@@ -232,7 +234,7 @@ class ANNchorApproximator(KernelMeanApproximator):
     approximated by various methods. :class:`ANNchorApproximator` is a class that does
     such an approximation using kernel regression on a subset of points selected via the
     ANNchor approach from the dataset. The ANNchor implementation used can be found
-    `here<https://github.com/gchq/annchor>`_.
+    `here <https://github.com/gchq/annchor>`_.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
@@ -242,21 +244,19 @@ class ANNchorApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
-        """
-        Approximate kernel row mean by regression on ANNchor selected points.
-        """
+        """Approximate kernel row mean by regression on ANNchor selected points."""
         # Validate inputs of non-coreax defined classes
-        num_train_points = cast_as_type(
+        num_train_points = coreax.validation.cast_as_type(
             x=num_train_points, object_name="num_train_points", type_caster=int
         )
 
         # Validate inputs lie within accepted ranges
-        validate_in_range(
+        coreax.validation.validate_in_range(
             x=num_train_points,
             object_name="num_train_points",
             strict_inequalities=True,
@@ -280,12 +280,14 @@ class ANNchorApproximator(KernelMeanApproximator):
         r"""
         Compute approximate kernel row mean by regression on ANNchor selected points.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -319,7 +321,7 @@ class NystromApproximator(KernelMeanApproximator):
     approximated by various methods. NystromApproximator is a class that does such an
     approximation using a Nystrom approximation on a subset of points selected at
     random from the data. Further details for Nystrom kernel mean embeddings can be
-    found here :cite:p:`chatalic2022nystrom`.
+    found in :cite:p:`chatalic2022nystrom`.
 
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
@@ -328,13 +330,11 @@ class NystromApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        kernel: "ck.Kernel",
+        kernel: "coreax.kernel.Kernel",
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
     ):
-        r"""
-        Approximate kernel row mean by using Nystrom approximation.
-        """
+        """Approximate kernel row mean by using Nystrom approximation."""
         # Initialise parent
         super().__init__(
             kernel=kernel,
@@ -347,18 +347,21 @@ class NystromApproximator(KernelMeanApproximator):
         data: ArrayLike,
     ) -> Array:
         r"""
-        Compute approximate kernel row mean by regression on ANNchor selected points.
+        Compute approximate kernel row sum mean using a Nystrom approximation.
 
         We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
         subset of this to approximate the kernel matrix row sum mean. The ``m`` points
-        are selected using the ANNchor method.
+        are selected uniformly at random, and the Nystrom estimator, as defined in
+        :cite:p:`chatalic2022nystrom` is computed using this subset.
 
-        :param data: The original :math:`n \times d` data
+        :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
         # Validate inputs
-        data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+        data = coreax.validation.cast_as_type(
+            x=data, object_name="data", type_caster=jnp.atleast_2d
+        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -381,32 +384,27 @@ def _anchor_body(
     idx: int,
     features: ArrayLike,
     data: ArrayLike,
-    kernel_function: KernelFunction,
+    kernel_function: "coreax.util.KernelFunction",
 ) -> Array:
     r"""
     Execute main loop of the ANNchor construction.
 
     :param idx: Loop counter
-    :param features: Loop updateables
+    :param features: Loop variables to be updated
     :param data: Original :math:`n \times d` dataset
     :param kernel_function: Vectorised kernel function on pairs ``(X,x)``:
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :return: Updated loop variables `features`
+    :return: Updated loop variables ``features``
     """
     # Validate inputs
-    features = cast_as_type(
+    features = coreax.validation.cast_as_type(
         x=features, object_name="features", type_caster=jnp.atleast_2d
     )
-    data = cast_as_type(x=data, object_name="data", type_caster=jnp.atleast_2d)
+    data = coreax.validation.cast_as_type(
+        x=data, object_name="data", type_caster=jnp.atleast_2d
+    )
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
 
     return features
-
-
-# Set up class factory
-approximator_factory = ClassFactory(KernelMeanApproximator)
-approximator_factory.register("random", RandomApproximator)
-approximator_factory.register("annchor", ANNchorApproximator)
-approximator_factory.register("nystrom", NystromApproximator)

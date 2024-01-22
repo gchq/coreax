@@ -11,15 +11,9 @@
 # governing permissions and limitations under the License.
 
 import unittest
-
 import jax.numpy as jnp
 
-from coreax.validation import (
-    cast_as_type,
-    validate_array_size,
-    validate_in_range,
-    validate_is_instance,
-)
+import coreax.validation
 
 
 class TestInputValidationRange(unittest.TestCase):
@@ -35,7 +29,7 @@ class TestInputValidationRange(unittest.TestCase):
         """
         self.assertRaises(
             ValueError,
-            validate_in_range,
+            coreax.validation.validate_in_range,
             x=0.0,
             object_name="var",
             strict_inequalities=True,
@@ -50,7 +44,7 @@ class TestInputValidationRange(unittest.TestCase):
         The inequality is not strict here, so this should not be flagged as invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=0.0,
                 object_name="var",
                 strict_inequalities=False,
@@ -67,7 +61,7 @@ class TestInputValidationRange(unittest.TestCase):
         """
         self.assertRaises(
             ValueError,
-            validate_in_range,
+            coreax.validation.validate_in_range,
             x=-1.0,
             object_name="var",
             strict_inequalities=True,
@@ -83,7 +77,7 @@ class TestInputValidationRange(unittest.TestCase):
         """
         self.assertRaises(
             ValueError,
-            validate_in_range,
+            coreax.validation.validate_in_range,
             x=100.0,
             object_name="var",
             strict_inequalities=True,
@@ -98,7 +92,7 @@ class TestInputValidationRange(unittest.TestCase):
         The inequality is not strict here, so this should not be flagged as invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=100.0,
                 object_name="var",
                 strict_inequalities=False,
@@ -115,7 +109,7 @@ class TestInputValidationRange(unittest.TestCase):
         """
         self.assertRaises(
             ValueError,
-            validate_in_range,
+            coreax.validation.validate_in_range,
             x=120.0,
             object_name="var",
             strict_inequalities=True,
@@ -131,7 +125,7 @@ class TestInputValidationRange(unittest.TestCase):
         invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=50.0,
                 object_name="var",
                 strict_inequalities=True,
@@ -148,7 +142,7 @@ class TestInputValidationRange(unittest.TestCase):
         invalid. The lower bound and input are both negative here.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=-50.0,
                 object_name="var",
                 strict_inequalities=True,
@@ -165,7 +159,7 @@ class TestInputValidationRange(unittest.TestCase):
         """
         self.assertRaises(
             TypeError,
-            validate_in_range,
+            coreax.validation.validate_in_range,
             x="1.0",
             object_name="var",
             strict_inequalities=True,
@@ -180,7 +174,7 @@ class TestInputValidationRange(unittest.TestCase):
         The input is below the upper bound, so this should not be flagged as invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=50.0,
                 object_name="var",
                 strict_inequalities=True,
@@ -195,7 +189,7 @@ class TestInputValidationRange(unittest.TestCase):
         The input is above the lower bound, so this should not be flagged as invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=50.0,
                 object_name="var",
                 strict_inequalities=True,
@@ -210,7 +204,7 @@ class TestInputValidationRange(unittest.TestCase):
         The input is below the upper bound, so this should not be flagged as invalid.
         """
         self.assertIsNone(
-            validate_in_range(
+            coreax.validation.validate_in_range(
                 x=50.0,
                 object_name="var",
                 strict_inequalities=True,
@@ -230,7 +224,7 @@ class TestInputValidationInstance(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "^var must be of type",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
             expected_type=int,
@@ -243,7 +237,7 @@ class TestInputValidationInstance(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "^var must be of type",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=120,
             object_name="var",
             expected_type=float,
@@ -256,7 +250,7 @@ class TestInputValidationInstance(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "^var must be of type",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
             expected_type=str,
@@ -267,7 +261,9 @@ class TestInputValidationInstance(unittest.TestCase):
         Test the function validate_is_instance comparing a float to a float.
         """
         self.assertIsNone(
-            validate_is_instance(x=50.0, object_name="var", expected_type=float)
+            coreax.validation.validate_is_instance(
+                x=50.0, object_name="var", expected_type=float
+            )
         )
 
     def test_validate_is_instance_int_to_int(self) -> None:
@@ -275,7 +271,9 @@ class TestInputValidationInstance(unittest.TestCase):
         Test the function validate_is_instance comparing an int to an int.
         """
         self.assertIsNone(
-            validate_is_instance(x=-500, object_name="var", expected_type=int)
+            coreax.validation.validate_is_instance(
+                x=-500, object_name="var", expected_type=int
+            )
         )
 
     def test_validate_is_instance_str_to_str(self) -> None:
@@ -283,12 +281,16 @@ class TestInputValidationInstance(unittest.TestCase):
         Test the function validate_is_instance comparing a str to a str.
         """
         self.assertIsNone(
-            validate_is_instance(x="500", object_name="var", expected_type=str)
+            coreax.validation.validate_is_instance(
+                x="500", object_name="var", expected_type=str
+            )
         )
 
     def test_type_tuple(self) -> None:
         """Check that validation passes if a tuple of types is passed."""
-        validate_is_instance(x="500", object_name="var", expected_type=(int, str))
+        coreax.validation.validate_is_instance(
+            x="500", object_name="var", expected_type=(int, str)
+        )
 
     def test_invalid_expected_type(self) -> None:
         """
@@ -299,7 +301,7 @@ class TestInputValidationInstance(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "expected_type must be a type, tuple of types or a union",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=500,
             object_name="var",
             expected_type=[int, str],
@@ -307,14 +309,16 @@ class TestInputValidationInstance(unittest.TestCase):
 
     def test_none_valid(self):
         """Test that validates when object is :data:`None`."""
-        validate_is_instance(x=None, object_name="var", expected_type=None)
+        coreax.validation.validate_is_instance(
+            x=None, object_name="var", expected_type=None
+        )
 
     def test_none_invalid(self):
         """Test that raises when object is not :data:`None` but expected type is."""
         self.assertRaisesRegex(
             TypeError,
             "^var must be of type",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
             expected_type=None,
@@ -324,14 +328,16 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         Test that validates when object is :data:`None` and have a tuple of types.
         """
-        validate_is_instance(x=None, object_name="var", expected_type=(str, None))
+        coreax.validation.validate_is_instance(
+            x=None, object_name="var", expected_type=(str, None)
+        )
 
     def test_tuple_none_invalid(self):
         """Test that raises when :data:`None` is in tuple of expected types."""
         self.assertRaisesRegex(
             TypeError,
             "^var must be of type",
-            validate_is_instance,
+            coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
             expected_type=(str, None),
@@ -348,21 +354,25 @@ class TestInputValidationConversion(unittest.TestCase):
         Test the function cast_as_type converting an int to a float.
         """
         self.assertEqual(
-            cast_as_type(x=123, object_name="var", type_caster=float), 123.0
+            coreax.validation.cast_as_type(x=123, object_name="var", type_caster=float),
+            123.0,
         )
 
     def test_cast_as_type_float_to_int(self) -> None:
         """
         Test the function cast_as_type converting a float to an int.
         """
-        self.assertEqual(cast_as_type(x=123.4, object_name="var", type_caster=int), 123)
+        self.assertEqual(
+            coreax.validation.cast_as_type(x=123.4, object_name="var", type_caster=int),
+            123,
+        )
 
     def test_cast_as_type_float_to_str(self) -> None:
         """
         Test the function cast_as_type converting a float to a str.
         """
         self.assertEqual(
-            cast_as_type(x=123.4, object_name="var", type_caster=str),
+            coreax.validation.cast_as_type(x=123.4, object_name="var", type_caster=str),
             "123.4",
         )
 
@@ -372,7 +382,7 @@ class TestInputValidationConversion(unittest.TestCase):
         """
         self.assertRaises(
             TypeError,
-            cast_as_type,
+            coreax.validation.cast_as_type,
             x=[120.0],
             object_name="var",
             type_caster=int,
@@ -387,7 +397,7 @@ class TestInputValidationConversion(unittest.TestCase):
         """
         self.assertRaises(
             TypeError,
-            cast_as_type,
+            coreax.validation.cast_as_type,
             x="120.0ABC",
             object_name="var",
             type_caster=float,
@@ -395,7 +405,7 @@ class TestInputValidationConversion(unittest.TestCase):
 
     def test_validate_array_size_first_dimension_valid(self):
         self.assertIsNone(
-            validate_array_size(
+            coreax.validation.validate_array_size(
                 x=jnp.array([[1, 2, 3], [4, 5, 6]]),
                 object_name="arr",
                 dimension=0,
@@ -405,7 +415,7 @@ class TestInputValidationConversion(unittest.TestCase):
 
     def test_validate_array_size_second_dimension_valid(self):
         self.assertIsNone(
-            validate_array_size(
+            coreax.validation.validate_array_size(
                 x=jnp.array([[1, 2, 3], [4, 5, 6]]),
                 object_name="arr",
                 dimension=1,
@@ -416,7 +426,7 @@ class TestInputValidationConversion(unittest.TestCase):
     def test_validate_array_size_first_dimension_invalid(self):
         self.assertRaises(
             ValueError,
-            validate_array_size,
+            coreax.validation.validate_array_size,
             x=jnp.array([[1, 2, 3], [4, 5, 6]]),
             object_name="arr",
             dimension=0,
@@ -426,7 +436,7 @@ class TestInputValidationConversion(unittest.TestCase):
     def test_validate_array_size_second_dimension_invalid(self):
         self.assertRaises(
             ValueError,
-            validate_array_size,
+            coreax.validation.validate_array_size,
             x=jnp.array([[1, 2, 3], [4, 5, 6]]),
             object_name="arr",
             dimension=1,
@@ -435,7 +445,7 @@ class TestInputValidationConversion(unittest.TestCase):
 
     def test_validate_array_size_empty_array(self):
         self.assertIsNone(
-            validate_array_size(
+            coreax.validation.validate_array_size(
                 x=jnp.array([]), object_name="arr", dimension=0, expected_size=0
             )
         )

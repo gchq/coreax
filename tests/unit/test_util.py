@@ -16,16 +16,10 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
 
-from coreax.util import (
-    ClassFactory,
-    call_with_excess_kwargs,
-    pairwise_difference,
-    squared_distance,
-    squared_distance_pairwise,
-)
+import coreax.util
 
 
-class Test(unittest.TestCase):
+class TestUtil(unittest.TestCase):
     """
     Tests for general utility functions.
     """
@@ -36,11 +30,11 @@ class Test(unittest.TestCase):
         """
         x, y = ortho_group.rvs(dim=2)
         expected_distance = jnp.linalg.norm(x - y) ** 2
-        output_distance = squared_distance(x, y)
+        output_distance = coreax.util.squared_distance(x, y)
         self.assertAlmostEqual(output_distance, expected_distance, places=3)
-        output_distance = squared_distance(x, x)
+        output_distance = coreax.util.squared_distance(x, x)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
-        output_distance = squared_distance(y, y)
+        output_distance = coreax.util.squared_distance(y, y)
         self.assertAlmostEqual(output_distance, 0.0, places=3)
 
     def test_squared_distance_dist_pairwise(self) -> None:
@@ -50,7 +44,7 @@ class Test(unittest.TestCase):
         # create an orthonormal matrix
         dimension = 3
         orthonormal_matrix = ortho_group.rvs(dim=dimension)
-        inner_distance = squared_distance_pairwise(
+        inner_distance = coreax.util.squared_distance_pairwise(
             orthonormal_matrix, orthonormal_matrix
         )
         # Use original numpy because Jax arrays are immutable
@@ -73,108 +67,69 @@ class Test(unittest.TestCase):
         x_array = np.random.random((num_points_x, dimension))
         y_array = np.random.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
-        output = pairwise_difference(x_array, y_array)
+        output = coreax.util.pairwise_difference(x_array, y_array)
         self.assertAlmostEqual(
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )
 
-
-class TestCallWithExcessKwargs(unittest.TestCase):
-    # Define a test function
-    @staticmethod
-    def trial_function(a: int = 1, b: int = 2, c: int = 3):
-        return a, b, c
-
-    class TrialClass:
-        def __init__(self, a: int = 1, b: int = 2, c: int = 3):
-            self.a = a
-            self.b = b
-            self.c = c
-
-    def test_function_empty(self):
-        """Test that no arguments are passed to trial function."""
-        self.assertEqual(call_with_excess_kwargs(self.trial_function), (1, 2, 3))
-
-    def test_function_mixed(self):
+    def test_apply_negative_precision_threshold_invalid(self) -> None:
         """
-        Test that positional and keyword arguments are passed with excess ignored.
+        Test the function apply_negative_precision_threshold with an invalid threshold.
 
-        For trial function.
+        A negative precision threshold is given, which should be rejected by the
+        function.
         """
-        self.assertEqual(
-            call_with_excess_kwargs(self.trial_function, 4, c=5, d=6), (4, 2, 5)
+        self.assertRaises(
+            ValueError,
+            coreax.util.apply_negative_precision_threshold,
+            x=0.1,
+            precision_threshold=-1e-8,
         )
 
-    def test_class_mixed(self):
+    def test_apply_negative_precision_threshold_valid_no_change(self) -> None:
         """
-        Test that positional and keyword arguments are passed with excess ignored.
+        Test the function apply_negative_precision_threshold with no change needed.
 
-        For trial class.
+        This test questions if the value -0.01 is sufficiently close to 0 to set it to
+        0, however the precision threshold is sufficiently small to consider this a
+        distinct value and not apply a cap.
         """
-        actual = call_with_excess_kwargs(self.TrialClass, 4, c=5, d=6)
-        self.assertEqual(actual.a, 4)
-        self.assertEqual(actual.b, 2)
-        self.assertEqual(actual.c, 5)
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, -0.01)
 
-    def test_too_many_positional(self):
+    def test_apply_negative_precision_threshold_valid_with_change(self) -> None:
         """
-        Test that all positional arguments are passed to function if too many are given.
+        Test the function apply_negative_precision_threshold with a change needed.
 
-        A :exc:`TypeError` will be raised if too many positional arguments.
+        This test questions if the value -0.0001 is sufficiently close to 0 to set it to
+        0. In this instance, the precision threshold is sufficiently large to consider
+        -0.0001 close enough to 0 to apply a cap.
         """
-        self.assertRaises(TypeError, self.trial_function, 4, 5, 6, 7)
+        func_out = coreax.util.apply_negative_precision_threshold(
+            x=-0.0001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out, 0.0)
 
-
-class TestClassFactory(unittest.TestCase):
-    """Test ClassFactory."""
-
-    # Define some output classes for the factory
-    class BaseClass:
-        pass
-
-    class AClass(BaseClass):
-        pass
-
-    class BClass(BaseClass):
-        pass
-
-    class CClass:
-        """Class of another type."""
-
-        pass
-
-    def test_factory(self):
+    def test_apply_negative_precision_threshold_valid_positive_input(self) -> None:
         """
-        Test factory by trying all operations.
+        Test the function apply_negative_precision_threshold with no change needed.
+
+        This test questions if the value 0.01 is sufficiently close to 0 to set it to
+        0. Since the function should only cap negative numbers to 0 if they are
+        sufficiently close, it should have no impact on this positive input, regardless
+        of the threshold supplied.
         """
-        factory = ClassFactory(self.BaseClass)
+        func_out_1 = coreax.util.apply_negative_precision_threshold(
+            x=0.01, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_1, 0.01)
 
-        # Register some objects
-        factory.register("a", self.AClass)
-        # Test name clash
-        self.assertRaises(ValueError, factory.register, "a", self.BClass)
-        factory.register("b", self.BClass)
-        # Check for instantiated class
-        self.assertRaises(TypeError, factory.register, "c", self.BClass())
-        # Check for wrong base class
-        self.assertRaises(TypeError, factory.register, "d", self.CClass)
-        # Check something strange
-        self.assertRaises(TypeError, factory.register, "e", 2)
-
-        # Test retrieval
-        # Dependency injection
-        self.assertEqual(factory.get(self.AClass), self.AClass)
-        # Wrong type
-        self.assertRaises(TypeError, factory.get, self.CClass)
-        # Already instantiated
-        self.assertRaises(TypeError, factory.get, self.AClass())
-        # By name
-        self.assertEqual(factory.get("a"), self.AClass)
-        self.assertEqual(factory.get("b"), self.BClass)
-        # Invalid name
-        self.assertRaises(KeyError, factory.get, "f")
-        # Check something strange
-        self.assertRaises(TypeError, factory.get, 2)
+        func_out_2 = coreax.util.apply_negative_precision_threshold(
+            x=0.000001, precision_threshold=0.001
+        )
+        self.assertEqual(func_out_2, 0.000001)
 
 
 if __name__ == "__main__":

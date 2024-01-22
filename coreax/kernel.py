@@ -31,10 +31,10 @@ kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined
 
 .. math::
 
-    k(x,y) = \text{output_scale} \exp (-||x-y||^2/2 * \text{length_scale}^2).
+    k(x,y) = \text{output_scale} * \exp (-||x-y||^2/2 * \text{length_scale}^2).
 
 One can see that, if ``output_scale`` takes the value
-:math:`\frac{1}{\sqrt{2\pi}\text{length_scale}}`, then the
+:math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, then the
 :class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
 
 There are only two mandatory methods to implement when defining a new kernel. The first
@@ -62,27 +62,30 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, random, tree_util, vmap
+from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
-import coreax.approximation
 import coreax.util
 import coreax.validation
+
+if TYPE_CHECKING:
+    import coreax.approximation
 
 
 @jit
 def median_heuristic(x: ArrayLike) -> Array:
-    r"""
+    """
     Compute the median heuristic for setting kernel bandwidth.
 
     Analysis of the performance of the median heuristic can be found in
-    :cite:p:`garreau2018medianheuristic`.
+    :cite:p:`garreau2018median`.
 
     :param x: Input array of vectors
     :return: Bandwidth parameter, computed from the median heuristic, as a
-        0-dimensional array
+        zero-dimensional array
     """
     # Validate inputs
     x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
@@ -105,9 +108,7 @@ class Kernel(ABC):
     """
 
     def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
-        """
-        Define a kernel.
-        """
+        """Define a kernel."""
         # TODO: generalise length_scale to multiple dimensions.
         # Check that length_scale is above zero (the cast_as_type check here is to
         # ensure that we don't check a trace of an array when jit decorators interact
@@ -137,13 +138,19 @@ class Kernel(ABC):
         self.output_scale = output_scale
 
     @abstractmethod
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
 
     @classmethod
@@ -153,7 +160,7 @@ class Kernel(ABC):
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -271,7 +278,7 @@ class Kernel(ABC):
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
         The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
-        Autodiff.
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
         provides a vectorised version of this method for arrays.
@@ -291,7 +298,8 @@ class Kernel(ABC):
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
-        The gradient (Jacobian) of the kernel function is computed using Autodiff.
+        The gradient (Jacobian) of the kernel function is computed using
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
         provides a vectorised version of this method for arrays.
@@ -349,11 +357,12 @@ class Kernel(ABC):
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
-        The evaluation is done via Autodiff.
+        The evaluation is done via
+        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`Kernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -371,7 +380,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: coreax.util.KernelFunction,
+        kernel_pairwise: coreax.util.KernelComputeType,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -383,10 +392,6 @@ class Kernel(ABC):
         The kernel matrix block ``i``:``i`` + ``max_size`` :math:`\times`
         ``j``:``j`` + ``max_size`` is used to update the row sum. Symmetry of the kernel
         matrix is exploited to reduced repeated calculation.
-
-        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
-        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
-        :math:`k(x,y, grads, grads, n, length_scale)`.
 
         :param x: Data matrix, :math:`n \times d`
         :param kernel_row_sum: Full data structure for Gram matrix row sum,
@@ -452,10 +457,6 @@ class Kernel(ABC):
         and all possible pairs of points that contain this given point. The row sum is
         calculated block-wise to limit memory overhead.
 
-        Note that ``k_pairwise`` should be of the form :math:`k(x,y)` if ``grads`` and
-        ``length_scale`` are :data:`None`. Else, ``k_pairwise`` should be of the form
-        :math:`k(x, y, grads, grads, n, length_scale)`.
-
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
         :return: Kernel matrix row sum
@@ -484,9 +485,10 @@ class Kernel(ABC):
         # Ensure data format is as required
         num_datapoints = len(x)
         kernel_row_sum = jnp.zeros(num_datapoints)
+        
         # Iterate over upper triangular blocks
-        for i in range(0, num_datapoints, max_size):
-            for j in range(i, num_datapoints, max_size):
+        for i in range(0, num_data_points, max_size):
+            for j in range(i, num_data_points, max_size):
                 kernel_row_sum = self.update_kernel_matrix_row_sum(
                     x,
                     kernel_row_sum,
@@ -525,10 +527,10 @@ class Kernel(ABC):
 
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
+    @staticmethod
     def approximate_kernel_matrix_row_sum_mean(
-        self,
         x: ArrayLike,
-        approximator: str | type[coreax.approximation.KernelMeanApproximator],
+        approximator: coreax.approximation.KernelMeanApproximator,
         random_key: random.PRNGKeyArray = random.PRNGKey(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -542,12 +544,9 @@ class Kernel(ABC):
         approximation can be used in place of the true value.
 
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Name of the approximator to use, or an uninstatiated
-            class object
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
+        :param approximator: Instantiated
+            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
+            created using the same kernel one wishes to use
         :return: Approximation to the kernel matrix row sum
         """
         # Validate inputs
@@ -640,15 +639,24 @@ class Kernel(ABC):
 class SquaredExponentialKernel(Kernel):
     """
     Define a squared exponential kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -728,7 +736,7 @@ class SquaredExponentialKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`SquaredExponentialKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -746,15 +754,24 @@ class SquaredExponentialKernel(Kernel):
 class LaplacianKernel(Kernel):
     """
     Define a Laplacian kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -838,7 +855,7 @@ class LaplacianKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`LaplacianKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -855,15 +872,24 @@ class LaplacianKernel(Kernel):
 class PCIMQKernel(Kernel):
     """
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
+
+    :param length_scale: Kernel ``length_scale`` to use
+    :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
         children = ()
         aux_data = {
@@ -941,7 +967,7 @@ class PCIMQKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`compute_divergence_x_grad_y`.
+        computed in :meth:`PCIMQKernel.compute_divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -972,7 +998,7 @@ class SteinKernel(Kernel):
     w.r.t. probability measure :math:`\mathbb{P}` to the base kernel
     :math:`k(\mathbf{x}, \mathbf{y})`. Here, differentiable vector-valued
     :math:`g: \mathbb{R}^d \to \mathbb{R}^d`, and
-    :math: `\nabla_\mathbf{x} \log f_X(\mathbf{x})` is the *score function* of measure
+    :math:`\nabla_\mathbf{x} \log f_X(\mathbf{x})` is the *score function* of measure
     :math:`\mathbb{P}`.
 
     :math:`\mathbb{P}` is assumed to admit a density function :math:`f_X` w.r.t.
@@ -1018,9 +1044,7 @@ class SteinKernel(Kernel):
         score_function: Callable[[ArrayLike], Array],
         output_scale: float = 1.0,
     ):
-        """
-        Define the Stein kernel, i.e. the application of the Stein operator.
-        """
+        """Define the Stein kernel, i.e. the application of the Stein operator."""
         # Validate inputs
         coreax.validation.validate_is_instance(
             x=base_kernel, object_name="base_kernel", expected_type=Kernel
@@ -1045,16 +1069,22 @@ class SteinKernel(Kernel):
         # Initialise parent
         super().__init__(output_scale=output_scale)
 
-    def _tree_flatten(self):
+    def _tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
         """
-        # TODO: score functon is assumed to not change here - but it might if the kernel
-        #  changes - but does not work when specified in children
+        # TODO: score function is assumed to not change here - but it might if the
+        #  kernel changes - but does not work when specified in children
         children = (self.base_kernel,)
         aux_data = {
             "score_function": self.score_function,
@@ -1090,40 +1120,13 @@ class SteinKernel(Kernel):
         )
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
 for current_class in kernel_classes:
     tree_util.register_pytree_node(
         current_class, current_class._tree_flatten, current_class._tree_unflatten
     )
-
-
-# Set up class factory
-kernel_factory = coreax.util.ClassFactory(Kernel)
-kernel_factory.register("squared_exponential", SquaredExponentialKernel)
-kernel_factory.register("laplace", LaplacianKernel)
-kernel_factory.register("pcimq", PCIMQKernel)
-kernel_factory.register("stein", SteinKernel)
-
-
-def construct_kernel(name: str | type[Kernel], *args, **kwargs) -> Kernel:
-    """
-    Instantiate a kernel by name.
-
-    :param name: Name of kernel in :data:`kernel_factory`, or class object to
-        instantiate
-    :param args: Positional arguments to pass to instantiated class
-    :param kwargs: Keyword arguments to pass to instantiated class; extras are ignored
-    :return: Instance of selected :class:`Kernel` class
-    """
-    # Validate inputs
-    coreax.validation.validate_is_instance(
-        x=name, object_name="name", expected_type=(str, type[Kernel])
-    )
-
-    class_obj = kernel_factory.get(name)
-    return coreax.util.call_with_excess_kwargs(class_obj, args, kwargs)
 
 
 # TODO: Do we want weights to be used to align with MMD?

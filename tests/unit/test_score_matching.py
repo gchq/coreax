@@ -11,20 +11,22 @@
 # governing permissions and limitations under the License.
 
 import unittest
+from collections.abc import Callable
 
 import jax.random
 import numpy as np
 from flax import linen as nn
 from jax.random import rademacher
 from jax.scipy.stats import multivariate_normal, norm
+from jax.typing import ArrayLike
 from optax import sgd
 
-import coreax.kernel as ck
-import coreax.networks as cn
-import coreax.score_matching as csm
+import coreax.kernel
+import coreax.networks
+import coreax.score_matching
 
 
-class TestNetwork(nn.Module):
+class SimpleNetwork(nn.Module):
     """
     A simple neural network for use in testing of sliced score matching.
     """
@@ -33,7 +35,7 @@ class TestNetwork(nn.Module):
     num_output_dim: int
 
     @nn.compact
-    def __call__(self, x: csm.ArrayLike) -> csm.ArrayLike:
+    def __call__(self, x: ArrayLike) -> ArrayLike:
         x = nn.Dense(self.num_hidden_dim)(x)
         return x
 
@@ -54,7 +56,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(num_points, 1))
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
 
         # Define data
@@ -62,8 +64,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -87,7 +89,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
@@ -96,8 +98,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -122,7 +124,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         comp = np.random.binomial(1, p, size=num_points)
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -130,17 +132,17 @@ class TestKernelDensityMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(log_pdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -173,7 +175,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -181,14 +183,14 @@ class TestKernelDensityMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
-                lpdf = 0.0
+        def true_score(x_: ArrayLike) -> ArrayLike:
+            def log_pdf(y: ArrayLike) -> ArrayLike:
+                l_pdf = 0.0
                 for k_ in range(k):
-                    lpdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
-                return jax.numpy.log(lpdf)
+                    l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
+                return jax.numpy.log(l_pdf)
 
-            return egrad(logpdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
@@ -196,8 +198,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = csm.KernelDensityMatching(
-            length_scale=ck.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -243,7 +245,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 1.0
 
         # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -293,7 +295,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output_general = 7456.0
 
         # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -344,7 +346,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 0.5
 
         # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -385,7 +387,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = 7456.0
 
         # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -402,7 +404,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         We use the analytic loss function in this example.
         """
 
-        def score_function(y: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(y: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -422,7 +424,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
 
@@ -439,7 +441,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output, places=3)
 
         # Call the loss element with a different objective function, and check that the
-        # jit compilation recognises this change
+        # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
         output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function
@@ -453,7 +455,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         We use the non-analytic loss function in this example.
         """
 
-        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -473,7 +475,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         random_vector = np.ones(2, dtype=float)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=False
         )
 
@@ -490,10 +492,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_sliced_score_matching_loss(self) -> None:
         """
-        Test the vmapped loss function.
+        Test the loss function with vmap.
         """
 
-        def score_function(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def score_function(x_: ArrayLike) -> ArrayLike:
             """
             Basic score function, implicitly multivariate vector valued.
 
@@ -512,7 +514,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         expected_output = np.ones((10, 1), dtype=float) * 1226.5
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
         output = sliced_score_matcher._loss(score_function)(x, random_vectors)
@@ -525,10 +527,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         Test the basic training step.
         """
         # Define a simple linear model that we can compute the gradients for by hand
-        score_network = TestNetwork(2, 2)
+        score_network = SimpleNetwork(2, 2)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher,
             use_analytic=True,
             random_key=jax.random.PRNGKey(0),
@@ -536,7 +538,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
-        state = cn.create_train_state(
+        state = coreax.networks.create_train_state(
             score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
         )
 
@@ -583,7 +585,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.normal(mu, std_dev, size=(num_points, 1))
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
 
         # Define data
@@ -591,7 +593,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -627,7 +629,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         np.random.seed(0)
         samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
@@ -636,7 +638,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -672,7 +674,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         comp = np.random.binomial(1, p, size=num_points)
         samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -680,16 +682,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
+        def true_score(x_: ArrayLike) -> ArrayLike:
             log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
-            return egrad(log_pdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
@@ -736,7 +738,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
-        def egrad(g: csm.Callable) -> csm.Callable:
+        def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
                 y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
@@ -744,17 +746,17 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
             return wrapped
 
-        def true_score(x_: csm.ArrayLike) -> csm.ArrayLike:
-            def logpdf(y: csm.ArrayLike) -> csm.ArrayLike:
-                lpdf = 0.0
+        def true_score(x_: ArrayLike) -> ArrayLike:
+            def log_pdf(y: ArrayLike) -> ArrayLike:
+                l_pdf = 0.0
                 for component in range(num_components):
-                    lpdf += (
+                    l_pdf += (
                         multivariate_normal.pdf(y, mus[component], sigmas[component])
                         * mix[component]
                     )
-                return jax.numpy.log(lpdf)
+                return jax.numpy.log(l_pdf)
 
-            return egrad(logpdf)(x_)
+            return e_grad(log_pdf)(x_)
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
@@ -762,7 +764,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a sliced score matching object
-        sliced_score_matcher = csm.SlicedScoreMatching(
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=jax.random.normal,
             use_analytic=True,
             hidden_dim=32,
