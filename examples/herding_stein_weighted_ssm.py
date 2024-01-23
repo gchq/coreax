@@ -75,11 +75,12 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _ = make_blobs(
+    x, _, __ = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
         random_state=random_seed,
+        return_centers=True,
     )
 
     # Request 100 coreset points
