@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for refinement implementations.
+
+Refinement approaches greedily select points to improve coreset quality. The tests
+within this file verify that refinement approaches used produce the expected results on
+simple examples.
+"""
+
 import itertools
 import unittest
 

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for pounce (video) example.
+"""
+
 import os
 import tempfile
 import unittest

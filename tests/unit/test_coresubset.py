@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for coresubset construction approaches.
+
+Coresubsets are coresets in which elements in the coreset must also be elements in the
+original dataset. The tests within this file verify that approaches to constructing
+coresubsets produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import patch
 

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Performance tests for JIT compilation in kernel implementations.
+"""
+
 import unittest
 
 import numpy as np

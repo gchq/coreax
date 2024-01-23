@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for weighted herding with a Stein kernel example.
+
+This test determines the score function for the Stein kernel using sliced score
+matching.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path

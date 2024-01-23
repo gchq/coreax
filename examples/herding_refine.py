@@ -138,8 +138,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     plt.axis("off")
     plt.title(
-        "Stein kernel herding, m=%d, MMD=%.6f"
-        % (coreset_size, float(maximum_mean_discrepancy_herding))
+        f"Stein kernel herding, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_herding), 6)}"
     )
     plt.show()
 
@@ -151,8 +151,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         color="red",
     )
     plt.title(
-        "Random, m=%d, MMD=%.6f"
-        % (coreset_size, float(maximum_mean_discrepancy_random))
+        f"Random, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_random), 6)}"
     )
     plt.axis("off")
 

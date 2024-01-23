@@ -17,6 +17,10 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+"""
+Configuration details for Sphinx documentation.
+"""
+
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 

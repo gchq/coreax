@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for david (image) example.
+"""
+
+
 import os
 import tempfile
 import unittest

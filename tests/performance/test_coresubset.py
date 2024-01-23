@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Performance tests for JIT compilation in coresubset implementations.
+"""
+
 import unittest
 
 import jax.numpy as jnp
