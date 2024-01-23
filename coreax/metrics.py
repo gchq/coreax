@@ -28,7 +28,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import jax.numpy as jnp
-from jax import Array, random
+from jax import Array
 from jax.typing import ArrayLike
 
 import coreax.kernel
@@ -136,21 +136,24 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
-        weights_x = coreax.validation.cast_as_type(
-            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
-        )
-        weights_y = coreax.validation.cast_as_type(
-            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
-        )
-        block_size = coreax.validation.cast_as_type(
-            x=block_size, object_name="block_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=block_size,
-            object_name="block_size",
-            strict_inequalities=True,
-            lower_bound=0.0,
-        )
+        if weights_x is not None:
+            weights_x = coreax.validation.cast_as_type(
+                x=weights_x, object_name="weights_x", type_caster=jnp.atleast_1d
+            )
+        if weights_y is not None:
+            weights_y = coreax.validation.cast_as_type(
+                x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
+            )
+        if block_size is not None:
+            block_size = coreax.validation.cast_as_type(
+                x=block_size, object_name="block_size", type_caster=int
+            )
+            coreax.validation.validate_in_range(
+                x=block_size,
+                object_name="block_size",
+                strict_inequalities=True,
+                lower_bound=0,
+            )
 
         num_points_x = len(x)
         num_points_y = len(y)
@@ -237,7 +240,7 @@ class MMD(Metric):
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
         weights_y = coreax.validation.cast_as_type(
-            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
         num_points_x = float(len(x))
 
@@ -287,7 +290,7 @@ class MMD(Metric):
             x=block_size,
             object_name="block_size",
             strict_inequalities=True,
-            lower_bound=0.0,
+            lower_bound=0,
         )
 
         num_points_x = float(len(x))
@@ -339,10 +342,10 @@ class MMD(Metric):
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
         weights_x = coreax.validation.cast_as_type(
-            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
+            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_1d
         )
         weights_y = coreax.validation.cast_as_type(
-            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
@@ -351,7 +354,7 @@ class MMD(Metric):
             x=block_size,
             object_name="block_size",
             strict_inequalities=True,
-            lower_bound=0.0,
+            lower_bound=0,
         )
 
         num_points_x = weights_x.sum()
@@ -409,7 +412,7 @@ class MMD(Metric):
             x=block_size,
             object_name="block_size",
             strict_inequalities=True,
-            lower_bound=0.0,
+            lower_bound=0,
         )
 
         num_points_x = len(x)
@@ -460,10 +463,10 @@ class MMD(Metric):
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
         weights_x = coreax.validation.cast_as_type(
-            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_2d
+            x=weights_x, object_name="weights_x", type_caster=jnp.atleast_1d
         )
         weights_y = coreax.validation.cast_as_type(
-            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_2d
+            x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
@@ -472,7 +475,7 @@ class MMD(Metric):
             x=block_size,
             object_name="block_size",
             strict_inequalities=True,
-            lower_bound=0.0,
+            lower_bound=0,
         )
 
         num_points_x = len(x)

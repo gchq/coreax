@@ -415,15 +415,12 @@ class Kernel(ABC):
             x=x, object_name="x", type_caster=jnp.atleast_2d
         )
         kernel_row_sum = coreax.validation.cast_as_type(
-            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_2d
-        )
-        coreax.validation.validate_array_size(
-            x=kernel_row_sum, object_name="kernel_row_sum", dimension=0, expected_size=1
+            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_1d
         )
         coreax.validation.validate_is_instance(
             x=kernel_pairwise,
             object_name="kernel_pairwise",
-            expected_type=coreax.util.KernelFunction,
+            expected_type=coreax.util.KernelComputeType,
         )
         coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
@@ -557,10 +554,10 @@ class Kernel(ABC):
         coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=(str, type[coreax.approximation.KernelMeanApproximator]),
+            expected_type=(str, coreax.approximation.KernelMeanApproximator),
         )
-        coreax.validation.validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
         num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
@@ -612,10 +609,10 @@ class Kernel(ABC):
         coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=(str, type[coreax.approximation.KernelMeanApproximator]),
+            expected_type=(str, coreax.approximation.KernelMeanApproximator),
         )
-        coreax.validation.validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=random.PRNGKeyArray
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=jnp.asarray
         )
         num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int

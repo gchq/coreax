@@ -97,11 +97,11 @@ def create_train_state(
         x=data_dimension,
         object_name="data_dimension",
         strict_inequalities=False,
-        lower_bound=0.0,
+        lower_bound=0,
     )
     validate_is_instance(x=optimiser, object_name="optimiser", expected_type=Callable)
-    validate_is_instance(
-        x=random_key, object_name="random_key", expected_type=random.PRNGKey
+    random_key = cast_as_type(
+        x=random_key, object_name="random_key", type_caster=jnp.asarray
     )
 
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
