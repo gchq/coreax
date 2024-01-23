@@ -133,7 +133,9 @@ class TestKernelDensityMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            def log_pdf(y_: ArrayLike) -> ArrayLike:
+                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+
             return e_grad(log_pdf)(x_)
 
         # Define data
@@ -543,8 +545,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
+        # pylint: disable=unsubscriptable-object
         weights = state.params["Dense_0"]["kernel"].T
         bias = state.params["Dense_0"]["bias"]
+        # pylint: enable=unsubscriptable-object
 
         # Define input data
         x = np.array([2.0, 7.0])
@@ -683,7 +687,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            def log_pdf(y_: ArrayLike) -> ArrayLike:
+                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+
             return e_grad(log_pdf)(x_)
 
         # Define data

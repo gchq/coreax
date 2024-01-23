@@ -44,10 +44,11 @@ class TestMetrics(unittest.TestCase):
 
 
 class TestMMD(unittest.TestCase):
-    r"""
+    """
     Tests related to the maximum mean discrepancy (MMD) class in metrics.py.
     """
 
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         r"""
         Generate data for shared use across unit tests.
