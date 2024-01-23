@@ -74,16 +74,13 @@ packages = ["coreax"]
 version = {attr = "coreax.__version__"}
 
 [tool.coverage.run]
-command_line = "-m pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing"
-omit = [
-    "*/__init__.py",
-    "tests/*",
-    "examples/*"
-]
+command_line = "-m pytest tests/unit --cov"
+branch = true
 relative_files = true
 source = ["coreax"]
 
 [tool.coverage.report]
+show_missing = true
 sort = "Cover"
 exclude_lines = [
     "pass",
