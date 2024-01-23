@@ -592,29 +592,18 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x = np.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_without_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_without_noise_conditioning).mean(),
-            1.0,
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
     def test_multivariate_gaussian_score(self) -> None:
         """
@@ -637,28 +626,18 @@ class TestSlicedScoreMatching(unittest.TestCase):
         data_stacked = np.vstack([x.ravel(), y.ravel()]).T
         true_score_result = true_score(data_stacked)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(data_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(data_stacked)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(data_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
     def test_univariate_gmm_score(self):
         """
@@ -690,28 +669,18 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x = np.linspace(-10, 10).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
     def test_multivariate_gmm_score(self):
         """
@@ -721,19 +690,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # higher than dimension=2)
         np.random.seed(0)
         dimension = 2
-        num_components = 10
+        k = 10
         mus = np.random.multivariate_normal(
-            np.zeros(dimension), np.eye(dimension), size=num_components
+            np.zeros(dimension), np.eye(dimension), size=k
         )
         sigmas = np.array(
-            [
-                np.random.gamma(2.0, 1.0) * np.eye(dimension)
-                for _ in range(num_components)
-            ]
+            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
-        mix = np.random.dirichlet(np.ones(num_components))
+        mix = np.random.dirichlet(np.ones(k))
         num_points = 500
-        comp = np.random.choice(num_components, size=num_points, p=mix)
+        comp = np.random.choice(k, size=num_points, p=mix)
         samples = np.array(
             [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
@@ -749,11 +715,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         def true_score(x_: ArrayLike) -> ArrayLike:
             def log_pdf(y: ArrayLike) -> ArrayLike:
                 l_pdf = 0.0
-                for component in range(num_components):
-                    l_pdf += (
-                        multivariate_normal.pdf(y, mus[component], sigmas[component])
-                        * mix[component]
-                    )
+                for k_ in range(k):
+                    l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
                 return jax.numpy.log(l_pdf)
 
             return e_grad(log_pdf)(x_)
@@ -763,28 +726,18 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x_stacked = np.vstack([c.ravel() for c in coords]).T
         true_score_result = true_score(x_stacked)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x_stacked)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
 
 if __name__ == "__main__":
