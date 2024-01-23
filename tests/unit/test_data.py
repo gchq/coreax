@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for data classes and functionality.
+
+The tests within this file verify that approaches to handling and processing data
+produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock
 

@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for kernel implementations.
+
+The tests within this file verify that the implementations of kernels used throughout
+the codebase produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +39,7 @@ class TestKernelABC(unittest.TestCase):
         """
         Test usage of approximation object within the Kernel class.
         """
+        # pylint: disable=abstract-class-instantiated
         # Patch the abstract methods of the Kernel ABC, so it can be created
         p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
         p.start()
@@ -44,6 +52,7 @@ class TestKernelABC(unittest.TestCase):
         approximator = MagicMock(spec=coreax.approximation.RandomApproximator)
         approximator_approximate_method = MagicMock()
         approximator.approximate = approximator_approximate_method
+        # pylint: enable=abstract-class-instantiated
 
         # Call the approximation method and check that approximation object is called as
         # expected

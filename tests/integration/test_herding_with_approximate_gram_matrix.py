@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for basic herding example.
+
+This test uses an approximation to the kernel matrix row sum mean rather than an exact
+computation.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path

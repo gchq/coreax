@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for basic herding with refine step example.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path

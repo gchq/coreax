@@ -10,6 +10,14 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+Tests for score matching implementations.
+
+Score matching fits models to data by ensuring the score function of the model matches
+the score function of the data. The tests within this file verify that score matching
+approaches used produce the expected results on simple examples.
+"""
+
 import unittest
 from collections.abc import Callable
 

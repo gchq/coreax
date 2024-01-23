@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for pounce (video) example using map reduce.
+
+This test determines the score function for the Stein kernel using sliced score
+matching.
+"""
+
 import os
 import tempfile
 import unittest

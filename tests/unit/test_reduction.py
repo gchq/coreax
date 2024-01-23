@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for reduction implementations.
+
+The tests within this file verify that the reduction classes and functionality used to
+construct coresets throughout the codebase produce the expected results on simple
+examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -30,8 +38,15 @@ import coreax.weights
 
 
 class MockCreatedInstance:
+    """
+    Mock implementation of a reduction instance for testing purposes.
+    """
+
     @staticmethod
     def solve(*args):
+        """
+        Solve a reduction problem defined by input args.
+        """
         return tuple(*args)
 
 

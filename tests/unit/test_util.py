@@ -10,6 +10,13 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+Tests for utility functions.
+
+The tests within this file verify that various utility functions written produce the
+expected results on simple examples.
+"""
+
 import unittest
 
 import jax.numpy as jnp
