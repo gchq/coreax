@@ -113,7 +113,7 @@ class Refine(ABC):
         if coreset.coreset_indices is None:
             raise TypeError("Cannot refine when not finding a coresubset")
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -134,7 +134,7 @@ class Refine(ABC):
         return children, aux_data
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstructs a pytree from the tree definition and the leaves.
 
@@ -727,5 +727,5 @@ class RefineReverse(Refine):
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for current_class in refine_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )
