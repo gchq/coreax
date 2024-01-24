@@ -126,20 +126,17 @@ class MMD(Metric):
         if weights_y is None:
             if block_size is None or block_size > max(num_points_x, num_points_y):
                 return self.maximum_mean_discrepancy(x, y)
-            else:
-                return self.maximum_mean_discrepancy_block(x, y, block_size)
+            return self.maximum_mean_discrepancy_block(x, y, block_size)
 
-        else:
-            if (
-                block_size is None
-                or weights_x is None
-                or block_size > max(num_points_x, num_points_y)
-            ):
-                return self.weighted_maximum_mean_discrepancy(x, y, weights_y)
-            else:
-                return self.weighted_maximum_mean_discrepancy_block(
-                    x, y, weights_x, weights_y, block_size
-                )
+        if (
+            block_size is None
+            or weights_x is None
+            or block_size > max(num_points_x, num_points_y)
+        ):
+            return self.weighted_maximum_mean_discrepancy(x, y, weights_y)
+        return self.weighted_maximum_mean_discrepancy_block(
+            x, y, weights_x, weights_y, block_size
+        )
 
     def maximum_mean_discrepancy(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
