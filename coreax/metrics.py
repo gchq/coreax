@@ -92,9 +92,6 @@ class MMD(Metric):
         precision_threshold = coreax.validation.cast_as_type(
             x=precision_threshold, object_name="precision_threshold", type_caster=float
         )
-        coreax.validation.validate_is_instance(
-            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
-        )
 
         self.kernel = kernel
         self.precision_threshold = precision_threshold

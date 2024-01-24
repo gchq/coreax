@@ -417,11 +417,6 @@ class Kernel(ABC):
         kernel_row_sum = coreax.validation.cast_as_type(
             x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_1d
         )
-        coreax.validation.validate_is_instance(
-            x=kernel_pairwise,
-            object_name="kernel_pairwise",
-            expected_type=coreax.util.KernelComputeType,
-        )
         coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
         )
@@ -523,13 +518,10 @@ class Kernel(ABC):
 
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
+    @staticmethod
     def approximate_kernel_matrix_row_sum_mean(
-        self,
         x: ArrayLike,
         approximator: coreax.approximation.KernelMeanApproximator,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
     ) -> Array:
         r"""
         Approximate the mean of the row sum of the kernel matrix.
@@ -538,100 +530,14 @@ class Kernel(ABC):
         between a given point and all possible pairs of points that contain this given
         point. This can involve a large number of pairwise computations, so an
         approximation can be used in place of the true value.
+
         :param x: Data matrix, :math:`n \times d`
-        :param approximator: Name of the approximator to use, or an uninstantiated
-            class object
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
+        :param approximator: Instantiated
+            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
+            created using the same kernel one wishes to use
         :return: Approximation to the kernel matrix row sum
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        coreax.validation.validate_is_instance(
-            x=approximator,
-            object_name="approximator",
-            expected_type=(str, coreax.approximation.KernelMeanApproximator),
-        )
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=jnp.asarray
-        )
-        num_kernel_points = coreax.validation.cast_as_type(
-            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
-        )
-        num_train_points = coreax.validation.cast_as_type(
-            x=num_train_points, object_name="num_train_points", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=num_kernel_points,
-            object_name="num_kernel_points",
-            strict_inequalities=False,
-            lower_bound=0,
-        )
-        coreax.validation.validate_in_range(
-            x=num_train_points,
-            object_name="num_train_points",
-            strict_inequalities=False,
-            lower_bound=0,
-        )
-
-        # Create an approximator object
-        approximator = self.create_approximator(
-            approximator=approximator,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
-        )
         return approximator.approximate(x)
-
-    def create_approximator(
-        self,
-        approximator: str | coreax.approximation.KernelMeanApproximator,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
-    ) -> coreax.approximation.KernelMeanApproximator:
-        r"""
-        Create an approximator object for use with the kernel matrix row sum mean.
-
-        :param approximator: The name of an approximator class to use, or the
-            uninstantiated class directly as a dependency injection
-        :param random_key: Key for random number generation
-        :param num_kernel_points: Number of kernel evaluation points
-        :param num_train_points: Number of training points used to fit kernel
-            regression. This is ignored if not applicable to the approximator method.
-        :return: Approximator object
-        """
-        # Validate inputs
-        coreax.validation.validate_is_instance(
-            x=approximator,
-            object_name="approximator",
-            expected_type=(str, coreax.approximation.KernelMeanApproximator),
-        )
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=jnp.asarray
-        )
-        num_kernel_points = coreax.validation.cast_as_type(
-            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
-        )
-        num_train_points = coreax.validation.cast_as_type(
-            x=num_train_points, object_name="num_train_points", type_caster=int
-        )
-
-        approximator_obj = coreax.approximation.approximator_factory.get(approximator)
-
-        # Initialise, accounting for different classes having different numbers of
-        # parameters
-        return coreax.util.call_with_excess_kwargs(
-            approximator_obj,
-            kernel=self,
-            random_key=random_key,
-            num_kernel_points=num_kernel_points,
-            num_train_points=num_train_points,
-        )
 
 
 class SquaredExponentialKernel(Kernel):
