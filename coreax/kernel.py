@@ -108,7 +108,6 @@ class Kernel(ABC):
 
     def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
         """Define a kernel."""
-        # TODO: generalise length_scale to multiple dimensions.
         # Check that length_scale is above zero (the cast_as_type check here is to
         # ensure that we don't check a trace of an array when jit decorators interact
         # with code)
