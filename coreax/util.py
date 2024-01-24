@@ -169,12 +169,12 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     """
     # Validate inputs
     coreax.validation.validate_is_instance(
-        x=kernel_mm, object_name="kernel_mm", expected_type=ArrayLike
+        x=kernel_mm, object_name="kernel_mm", expected_type=Array
     )
     coreax.validation.validate_is_instance(
         x=kernel_matrix_row_sum_mean,
         object_name="kernel_matrix_row_sum_mean",
-        expected_type=ArrayLike,
+        expected_type=Array,
     )
 
     # Setup optimisation problem - all variable names are consistent with the OSQP
