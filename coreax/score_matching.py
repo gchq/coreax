@@ -40,7 +40,7 @@ import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import jit, jvp
+from jax import Array, jit, jvp
 from jax import numpy as jnp
 from jax import random, tree_util, vmap
 from jax.lax import cond, fori_loop
@@ -166,7 +166,7 @@ class SlicedScoreMatching(ScoreMatching):
             x=random_generator, object_name="random_generator", expected_type=Callable
         )
         coreax.validation.validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=ArrayLike
+            x=random_key, object_name="random_key", expected_type=Array
         )
         noise_conditioning = coreax.validation.cast_as_type(
             x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
@@ -645,7 +645,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         # Validate inputs
         coreax.validation.validate_is_instance(
-            x=x, object_name="x", expected_type=(ArrayLike, None)
+            x=x, object_name="x", expected_type=(Array, None)
         )
 
         def score_function(x_):
