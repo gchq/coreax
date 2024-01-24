@@ -660,10 +660,10 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
+            original_number_of_dimensions = x_.ndim
             x_ = coreax.validation.cast_as_type(
                 x=x_, object_name="x_", type_caster=jnp.atleast_2d
             )
-            original_number_of_dimensions = x_.ndim
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)

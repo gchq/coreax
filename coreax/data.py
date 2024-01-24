@@ -67,7 +67,7 @@ class DataReader(ABC):
         Should not normally be called by the user: use :meth:`load` instead.
         """
         self.original_data: Array = coreax.validation.cast_as_type(
-            original_data, "original_data", jnp.asarray
+            original_data, "original_data", jnp.atleast_2d
         )
         self.pre_coreset_array: Array = coreax.validation.cast_as_type(
             pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
