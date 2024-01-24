@@ -67,10 +67,6 @@ class Refine(ABC):
 
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
-    The default calculates the kernel mean row sum in full. To reduce computational
-    load, the kernel mean row sum can be approximated by setting the variable
-    ``approximate_kernel_row_sum`` = :data:`True` when initializing the Refine object.
-
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
         for the kernel mean approximation method or :data:`None` (default) if
         calculations should be exact
@@ -78,17 +74,10 @@ class Refine(ABC):
 
     def __init__(
         self,
-        approximate_kernel_row_sum: bool = False,
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a refinement object."""
         # Validate inputs
-        approximate_kernel_row_sum = coreax.validation.cast_as_type(
-            x=approximate_kernel_row_sum,
-            object_name="approximate_kernel_row_sum",
-            type_caster=bool,
-        )
-        self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
 
     @abstractmethod
