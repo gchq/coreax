@@ -52,9 +52,6 @@ class WeightsOptimiser(ABC):
 
     def __init__(self, kernel: coreax.kernel.Kernel) -> None:
         """Initialise a weights optimiser class."""
-        coreax.validation.validate_is_instance(
-            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
-        )
         self.kernel = kernel
 
     @abstractmethod
