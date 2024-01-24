@@ -33,9 +33,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import partial
 
-import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, random
+from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
 import coreax.approximation
@@ -140,7 +139,7 @@ class KernelHerding(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -393,7 +392,7 @@ class RandomSample(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 

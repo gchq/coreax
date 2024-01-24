@@ -136,7 +136,7 @@ class Kernel(ABC):
         self.output_scale = output_scale
 
     @abstractmethod
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -152,7 +152,7 @@ class Kernel(ABC):
         """
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstruct a pytree from the tree definition and the leaves.
 
@@ -188,14 +188,14 @@ class Kernel(ABC):
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
         fn = vmap(
-            vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+            vmap(self.compute_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
         )
         return fn(x, y)
 
     @abstractmethod
-    def _compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
 
@@ -231,7 +231,7 @@ class Kernel(ABC):
         )
 
         fn = vmap(
-            vmap(self._grad_x_elementwise, in_axes=(0, None), out_axes=0),
+            vmap(self.grad_x_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
         )
@@ -261,13 +261,13 @@ class Kernel(ABC):
         )
 
         fn = vmap(
-            vmap(self._grad_y_elementwise, in_axes=(0, None), out_axes=0),
+            vmap(self.grad_y_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
         )
         return fn(x, y)
 
-    def _grad_x_elementwise(
+    def grad_x_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -286,9 +286,9 @@ class Kernel(ABC):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return grad(self._compute_elementwise, 0)(x, y)
+        return grad(self.compute_elementwise, 0)(x, y)
 
-    def _grad_y_elementwise(
+    def grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -307,7 +307,7 @@ class Kernel(ABC):
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return grad(self._compute_elementwise, 1)(x, y)
+        return grad(self.compute_elementwise, 1)(x, y)
 
     @jit
     def divergence_x_grad_y(
@@ -338,7 +338,7 @@ class Kernel(ABC):
 
         fn = vmap(
             vmap(
-                self._divergence_x_grad_y_elementwise,
+                self.divergence_x_grad_y_elementwise,
                 in_axes=(0, None),
                 out_axes=0,
             ),
@@ -347,7 +347,7 @@ class Kernel(ABC):
         )
         return fn(x, y)
 
-    def _divergence_x_grad_y_elementwise(
+    def divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -369,7 +369,7 @@ class Kernel(ABC):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        pseudo_hessian = jacrev(self._grad_y_elementwise, 0)(x, y)
+        pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
         return pseudo_hessian.trace()
 
     @staticmethod
@@ -469,7 +469,7 @@ class Kernel(ABC):
         # points
         kernel_pairwise = jit(
             vmap(
-                vmap(self._compute_elementwise, in_axes=(0, None), out_axes=0),
+                vmap(self.compute_elementwise, in_axes=(0, None), out_axes=0),
                 in_axes=(None, 0),
                 out_axes=1,
             )
@@ -550,7 +550,7 @@ class SquaredExponentialKernel(Kernel):
     :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -571,7 +571,7 @@ class SquaredExponentialKernel(Kernel):
         }
         return children, aux_data
 
-    def _compute_elementwise(
+    def compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -589,7 +589,7 @@ class SquaredExponentialKernel(Kernel):
             -coreax.util.squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
-    def _grad_x_elementwise(
+    def grad_x_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -607,9 +607,9 @@ class SquaredExponentialKernel(Kernel):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return -self._grad_y_elementwise(x, y)
+        return -self.grad_y_elementwise(x, y)
 
-    def _grad_y_elementwise(
+    def grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -627,9 +627,9 @@ class SquaredExponentialKernel(Kernel):
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return (x - y) / self.length_scale**2 * self._compute_elementwise(x, y)
+        return (x - y) / self.length_scale**2 * self.compute_elementwise(x, y)
 
-    def _divergence_x_grad_y_elementwise(
+    def divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -651,7 +651,7 @@ class SquaredExponentialKernel(Kernel):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        k = self._compute_elementwise(x, y)
+        k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
         return scale * k * (d - scale * coreax.util.squared_distance(x, y))
@@ -665,7 +665,7 @@ class LaplacianKernel(Kernel):
     :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -686,7 +686,7 @@ class LaplacianKernel(Kernel):
         }
         return children, aux_data
 
-    def _compute_elementwise(
+    def compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -704,7 +704,7 @@ class LaplacianKernel(Kernel):
             -jnp.linalg.norm(x - y, ord=1) / (2 * self.length_scale**2)
         )
 
-    def _grad_x_elementwise(
+    def grad_x_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -722,9 +722,9 @@ class LaplacianKernel(Kernel):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return -self._grad_y_elementwise(x, y)
+        return -self.grad_y_elementwise(x, y)
 
-    def _grad_y_elementwise(
+    def grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -745,10 +745,10 @@ class LaplacianKernel(Kernel):
         return (
             jnp.sign(x - y)
             / (2 * self.length_scale**2)
-            * self._compute_elementwise(x, y)
+            * self.compute_elementwise(x, y)
         )
 
-    def _divergence_x_grad_y_elementwise(
+    def divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -770,7 +770,7 @@ class LaplacianKernel(Kernel):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        k = self._compute_elementwise(x, y)
+        k = self.compute_elementwise(x, y)
         d = len(x)
         return -d * k / (4 * self.length_scale**4)
 
@@ -783,7 +783,7 @@ class PCIMQKernel(Kernel):
     :param output_scale: Output scale to use
     """
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -804,7 +804,7 @@ class PCIMQKernel(Kernel):
         }
         return children, aux_data
 
-    def _compute_elementwise(
+    def compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -822,7 +822,7 @@ class PCIMQKernel(Kernel):
         mq_array = coreax.util.squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
-    def _grad_x_elementwise(
+    def grad_x_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -838,9 +838,9 @@ class PCIMQKernel(Kernel):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return -self._grad_y_elementwise(x, y)
+        return -self.grad_y_elementwise(x, y)
 
-    def _grad_y_elementwise(
+    def grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -860,10 +860,10 @@ class PCIMQKernel(Kernel):
             self.output_scale
             * (x - y)
             / (2 * self.length_scale**2)
-            * (self._compute_elementwise(x, y) / self.output_scale) ** 3
+            * (self.compute_elementwise(x, y) / self.output_scale) ** 3
         )
 
-    def _divergence_x_grad_y_elementwise(
+    def divergence_x_grad_y_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -882,7 +882,7 @@ class PCIMQKernel(Kernel):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        k = self._compute_elementwise(x, y) / self.output_scale
+        k = self.compute_elementwise(x, y) / self.output_scale
         scale = 2 * self.length_scale**2
         d = len(x)
         return (
@@ -975,7 +975,7 @@ class SteinKernel(Kernel):
         # Initialise parent
         super().__init__(output_scale=output_scale)
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -998,7 +998,7 @@ class SteinKernel(Kernel):
         }
         return children, aux_data
 
-    def _compute_elementwise(
+    def compute_elementwise(
         self,
         x: ArrayLike,
         y: ArrayLike,
@@ -1012,10 +1012,10 @@ class SteinKernel(Kernel):
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Kernel evaluated at (``x``, ``y``)
         """
-        k = self.base_kernel._compute_elementwise(x, y)
-        div = self.base_kernel._divergence_x_grad_y_elementwise(x, y)
-        gkx = self.base_kernel._grad_x_elementwise(x, y)
-        gky = self.base_kernel._grad_y_elementwise(x, y)
+        k = self.base_kernel.compute_elementwise(x, y)
+        div = self.base_kernel.divergence_x_grad_y_elementwise(x, y)
+        gkx = self.base_kernel.grad_x_elementwise(x, y)
+        gky = self.base_kernel.grad_y_elementwise(x, y)
         score_x = self.score_function(x)
         score_y = self.score_function(y)
         return (
@@ -1031,5 +1031,5 @@ class SteinKernel(Kernel):
 kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
 for current_class in kernel_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )

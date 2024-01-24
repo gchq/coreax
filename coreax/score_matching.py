@@ -63,7 +63,7 @@ class ScoreMatching(ABC):
     """
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstruct a pytree from the tree definition and the leaves.
 
@@ -262,7 +262,7 @@ class SlicedScoreMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
@@ -616,7 +616,7 @@ class KernelDensityMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
@@ -689,5 +689,5 @@ class KernelDensityMatching(ScoreMatching):
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )

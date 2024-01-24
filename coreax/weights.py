@@ -50,7 +50,7 @@ class WeightsOptimiser(ABC):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
+    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
         """Initialise a weights optimiser class."""
         coreax.validation.validate_is_instance(
             x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
