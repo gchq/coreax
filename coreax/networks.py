@@ -27,6 +27,8 @@ from jax import numpy as jnp
 from jax import random
 from jax.typing import ArrayLike
 
+import coreax.validation
+
 
 class ScoreNetwork(nn.Module):
     """
@@ -74,6 +76,35 @@ def create_train_state(
     :param random_key: Key for random number generation
     :return: :class:`~flax.training.train_state.TrainState` object
     """
+    # Validate inputs
+    coreax.validation.validate_is_instance(
+        x=module, object_name="module", expected_type=Module
+    )
+    learning_rate = coreax.validation.cast_as_type(
+        x=learning_rate, object_name="learning_rate", type_caster=float
+    )
+    data_dimension = coreax.validation.cast_as_type(
+        x=data_dimension, object_name="data_dimension", type_caster=int
+    )
+    coreax.validation.validate_in_range(
+        x=learning_rate,
+        object_name="learning_rate",
+        strict_inequalities=False,
+        lower_bound=0.0,
+    )
+    coreax.validation.validate_in_range(
+        x=data_dimension,
+        object_name="data_dimension",
+        strict_inequalities=False,
+        lower_bound=0,
+    )
+    coreax.validation.validate_is_instance(
+        x=optimiser, object_name="optimiser", expected_type=Callable
+    )
+    random_key = coreax.validation.cast_as_type(
+        x=random_key, object_name="random_key", type_caster=jnp.asarray
+    )
+
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
     return TrainState.create(apply_fn=module.apply, params=params, tx=tx)

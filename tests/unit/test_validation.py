@@ -12,6 +12,8 @@
 
 import unittest
 
+import jax.numpy as jnp
+
 import coreax.validation
 
 
@@ -400,6 +402,53 @@ class TestInputValidationConversion(unittest.TestCase):
             x="120.0ABC",
             object_name="var",
             type_caster=float,
+        )
+
+    def test_validate_array_size_first_dimension_valid(self):
+        self.assertIsNone(
+            coreax.validation.validate_array_size(
+                x=jnp.array([[1, 2, 3], [4, 5, 6]]),
+                object_name="arr",
+                dimension=0,
+                expected_size=2,
+            )
+        )
+
+    def test_validate_array_size_second_dimension_valid(self):
+        self.assertIsNone(
+            coreax.validation.validate_array_size(
+                x=jnp.array([[1, 2, 3], [4, 5, 6]]),
+                object_name="arr",
+                dimension=1,
+                expected_size=3,
+            )
+        )
+
+    def test_validate_array_size_first_dimension_invalid(self):
+        self.assertRaises(
+            ValueError,
+            coreax.validation.validate_array_size,
+            x=jnp.array([[1, 2, 3], [4, 5, 6]]),
+            object_name="arr",
+            dimension=0,
+            expected_size=4,
+        )
+
+    def test_validate_array_size_second_dimension_invalid(self):
+        self.assertRaises(
+            ValueError,
+            coreax.validation.validate_array_size,
+            x=jnp.array([[1, 2, 3], [4, 5, 6]]),
+            object_name="arr",
+            dimension=1,
+            expected_size=1,
+        )
+
+    def test_validate_array_size_empty_array(self):
+        self.assertIsNone(
+            coreax.validation.validate_array_size(
+                x=jnp.array([]), object_name="arr", dimension=0, expected_size=0
+            )
         )
 
 

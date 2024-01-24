@@ -47,6 +47,8 @@ from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.kernel
+import coreax.util
+import coreax.validation
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -65,10 +67,6 @@ class Refine(ABC):
 
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
-    The default calculates the kernel mean row sum in full. To reduce computational
-    load, the kernel mean row sum can be approximated by setting the variable
-    ``approximate_kernel_row_sum`` = :data:`True` when initializing the Refine object.
-
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
         for the kernel mean approximation method or :data:`None` (default) if
         calculations should be exact
@@ -79,6 +77,7 @@ class Refine(ABC):
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a refinement object."""
+        # Validate inputs
         self.approximator = approximator
 
     @abstractmethod
@@ -319,8 +318,21 @@ class RefineRandom(Refine):
         random_key: int = 0,
     ):
         """Initialise a random refinement object."""
-        self.random_key = random_key
+        # Perform input validation
+        p = coreax.validation.cast_as_type(x=p, object_name="p", type_caster=float)
+        coreax.validation.validate_in_range(
+            x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
+        )
+        coreax.validation.validate_in_range(
+            x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
+        )
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=int
+        )
+
+        # Assign attributes
         self.p = p
+        self.random_key = random_key
         super().__init__(
             approximator=approximator,
         )
