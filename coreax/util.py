@@ -200,6 +200,9 @@ class SilentTQDM:
 
     Based on `code by Pro Q <https://stackoverflow.com/a/77450937>`_.
 
+    Additional parameters are accepted and ignored to match interface of
+    :class:`~tqdm.tqdm`.
+
     :param iterable: Iterable of tasks to (not) indicate progress for
     """
 
@@ -213,10 +216,9 @@ class SilentTQDM:
 
         :return: Next item
         """
-        for item in self.iterable:
-            yield item
+        return iter(self.iterable)
 
-    def write(self, *args, **kwargs) -> None:
+    def write(self, *_args, **_kwargs) -> None:
         """
         Do nothing instead of writing to output.
 
