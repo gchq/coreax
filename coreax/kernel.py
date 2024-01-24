@@ -64,7 +64,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, random, tree_util, vmap
+from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.util
@@ -414,7 +414,10 @@ class Kernel(ABC):
             x=x, object_name="x", type_caster=jnp.atleast_2d
         )
         kernel_row_sum = coreax.validation.cast_as_type(
-            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.atleast_1d
+            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.asarray
+        )
+        max_size = coreax.validation.cast_as_type(
+            x=max_size, object_name="max_size", type_caster=int
         )
         coreax.validation.validate_in_range(
             x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
