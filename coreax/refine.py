@@ -89,11 +89,6 @@ class Refine(ABC):
             object_name="approximate_kernel_row_sum",
             type_caster=bool,
         )
-        coreax.validation.validate_is_instance(
-            x=approximator,
-            object_name="approximator",
-            expected_type=(coreax.approximation.KernelMeanApproximator, None),
-        )
         self.approximate_kernel_row_sum = approximate_kernel_row_sum
         self.approximator = approximator
 
