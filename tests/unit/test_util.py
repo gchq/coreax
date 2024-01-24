@@ -140,11 +140,11 @@ class TestSilentTQDM(unittest.TestCase):
         iterator_length = 10
         expect = list(range(iterator_length))
         actual = list(coreax.util.SilentTQDM(range(iterator_length)))
-        self.assertEqual(actual, expect)
+        self.assertListEqual(actual, expect)
 
     def test_write(self):
         """Test that silenced version of TQDM write command does not crash."""
-        self.assertIsNone(coreax.util.SilentTQDM.write("something"))
+        self.assertIsNone(coreax.util.SilentTQDM(range(1)).write("something"))
 
 
 if __name__ == "__main__":
