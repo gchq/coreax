@@ -49,11 +49,6 @@ class ScoreNetwork(nn.Module):
         :param x: Batch input data :math:`b \times m \times n`
         :return: Network output on batch :math:`b \times` ``self.output_dim``
         """
-        # Validate input
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-
         x = nn.Dense(self.hidden_dim)(x)
         x = nn.softplus(x)
         x = nn.Dense(self.hidden_dim)(x)
