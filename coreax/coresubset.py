@@ -139,7 +139,7 @@ class KernelHerding(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
@@ -392,7 +392,7 @@ class RandomSample(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
