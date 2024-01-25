@@ -40,7 +40,7 @@ import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import jit, jvp
+from jax import Array, jit, jvp
 from jax import numpy as jnp
 from jax import random, tree_util, vmap
 from jax.lax import cond, fori_loop
@@ -49,6 +49,7 @@ from tqdm import tqdm
 
 import coreax.kernel
 import coreax.networks
+import coreax.validation
 
 
 class ScoreMatching(ABC):
@@ -62,7 +63,7 @@ class ScoreMatching(ABC):
     """
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstruct a pytree from the tree definition and the leaves.
 
@@ -116,10 +117,37 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = ()
+        aux_data = {
+            "random_generator": self.random_generator,
+            "random_key": self.random_key,
+            "noise_conditioning": self.noise_conditioning,
+            "use_analytic": self.use_analytic,
+            "num_random_vectors": self.num_random_vectors,
+            "learning_rate": self.learning_rate,
+            "num_epochs": self.num_epochs,
+            "batch_size": self.batch_size,
+            "hidden_dim": self.hidden_dim,
+            "optimiser": self.optimiser,
+            "num_noise_models": self.num_noise_models,
+            "sigma": self.sigma,
+            "gamma": self.gamma,
+        }
+
+        return children, aux_data
+
     def __init__(
         self,
         random_generator: Callable,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: random.PRNGKeyArray | ArrayLike = random.PRNGKey(0),
         noise_conditioning: bool = True,
         use_analytic: bool = False,
         num_random_vectors: int = 1,
@@ -133,6 +161,89 @@ class SlicedScoreMatching(ScoreMatching):
         gamma: float = 0.95,
     ):
         """Define a sliced score matching class."""
+        # Validate all inputs
+        coreax.validation.validate_is_instance(
+            x=random_generator, object_name="random_generator", expected_type=Callable
+        )
+        coreax.validation.validate_is_instance(
+            x=random_key, object_name="random_key", expected_type=Array
+        )
+        noise_conditioning = coreax.validation.cast_as_type(
+            x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
+        )
+        use_analytic = coreax.validation.cast_as_type(
+            x=use_analytic, object_name="use_analytic", type_caster=bool
+        )
+        num_random_vectors = coreax.validation.cast_as_type(
+            x=num_random_vectors, object_name="num_random_vectors", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_random_vectors,
+            object_name="num_random_vectors",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        learning_rate = coreax.validation.cast_as_type(
+            x=learning_rate, object_name="learning_rate", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=learning_rate,
+            object_name="learning_rate",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        num_epochs = coreax.validation.cast_as_type(
+            x=num_epochs, object_name="num_epochs", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_epochs,
+            object_name="num_epochs",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        batch_size = coreax.validation.cast_as_type(
+            x=batch_size, object_name="batch_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=batch_size,
+            object_name="batch_size",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        hidden_dim = coreax.validation.cast_as_type(
+            x=hidden_dim, object_name="hidden_dim", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=hidden_dim,
+            object_name="hidden_dim",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        coreax.validation.validate_is_instance(
+            x=optimiser, object_name="optimiser", expected_type=Callable
+        )
+        num_noise_models = coreax.validation.cast_as_type(
+            x=num_noise_models, object_name="num_noise_models", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_noise_models,
+            object_name="num_noise_models",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        sigma = coreax.validation.cast_as_type(
+            x=sigma, object_name="sigma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=sigma, object_name="sigma", strict_inequalities=True, lower_bound=0
+        )
+        gamma = coreax.validation.cast_as_type(
+            x=gamma, object_name="gamma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=gamma, object_name="gamma", strict_inequalities=True, lower_bound=0
+        )
+
         # Assign all inputs
         self.random_generator = random_generator
         self.random_key = random_key
@@ -151,7 +262,7 @@ class SlicedScoreMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
@@ -398,6 +509,11 @@ class SlicedScoreMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
         score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
@@ -472,6 +588,20 @@ class KernelDensityMatching(ScoreMatching):
 
     def __init__(self, length_scale: float, kde_data: ArrayLike):
         """Define the kernel density matching class."""
+        # Validate inputs
+        length_scale = coreax.validation.cast_as_type(
+            x=length_scale, object_name="length_scale", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=length_scale,
+            object_name="length_scale",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        kde_data = coreax.validation.cast_as_type(
+            x=kde_data, object_name="kde_data", type_caster=jnp.atleast_2d
+        )
+
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = coreax.kernel.SquaredExponentialKernel(
@@ -486,7 +616,7 @@ class KernelDensityMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
@@ -513,6 +643,10 @@ class KernelDensityMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors. Unused in this implementation.
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        coreax.validation.validate_is_instance(
+            x=x, object_name="x", expected_type=(Array, None)
+        )
 
         def score_function(x_):
             r"""
@@ -527,7 +661,9 @@ class KernelDensityMatching(ScoreMatching):
             """
             # Check format
             original_number_of_dimensions = x_.ndim
-            x_ = jnp.atleast_2d(x_)
+            x_ = coreax.validation.cast_as_type(
+                x=x_, object_name="x_", type_caster=jnp.atleast_2d
+            )
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
@@ -553,5 +689,5 @@ class KernelDensityMatching(ScoreMatching):
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )
