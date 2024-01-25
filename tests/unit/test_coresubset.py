@@ -65,7 +65,7 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_herding.random_key = 1989
 
         # Call the method and check each output are as expected
-        output_children, output_aux_data = coresubset_object_herding._tree_flatten()
+        output_children, output_aux_data = coresubset_object_herding.tree_flatten()
 
         self.assertEqual(len(output_children), 4)
         self.assertEqual(output_children[0], kernel)
@@ -456,10 +456,10 @@ class TestRandomSample(unittest.TestCase):
         (
             output_children,
             output_aux_data,
-        ) = coresubset_object_random_sample._tree_flatten()
+        ) = coresubset_object_random_sample.tree_flatten()
 
         self.assertEqual(len(output_children), 4)
-        self.assertEqual(output_children[0], None)
+        self.assertIsNone(output_children[0])
         self.assertIsNone(output_children[1])
         np.testing.assert_array_equal(output_children[2], jnp.zeros(1, dtype=jnp.int32))
         np.testing.assert_array_equal(output_children[3], jnp.zeros([2, 3]))
