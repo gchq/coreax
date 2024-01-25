@@ -18,7 +18,6 @@ bmatrix
 booktitle
 bysource
 cmap
-coveragerc
 dollarmath
 dtype
 eprint
