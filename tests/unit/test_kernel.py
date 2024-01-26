@@ -298,7 +298,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         for x_idx, x_ in enumerate(x):
             for y_idx, y_ in enumerate(y):
                 true_gradients[x_idx, y_idx] = (
-                    -output_scale
+                    -1.0
+                    * output_scale
                     * (x_ - y_)
                     / length_scale**2
                     * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
@@ -822,7 +823,8 @@ class TestLaplacianKernel(unittest.TestCase):
         for x_idx, x_ in enumerate(x):
             for y_idx, y_ in enumerate(y):
                 true_gradients[x_idx, y_idx] = (
-                    -output_scale
+                    -1.0
+                    * output_scale
                     * np.sign(x_ - y_)
                     / (2 * length_scale**2)
                     * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
@@ -925,7 +927,8 @@ class TestLaplacianKernel(unittest.TestCase):
         for x_idx, x_ in enumerate(x):
             for y_idx, y_ in enumerate(y):
                 expected_output[x_idx, y_idx] = (
-                    -output_scale
+                    -1.0
+                    * output_scale
                     * dimension
                     / (4 * length_scale**4)
                     * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
