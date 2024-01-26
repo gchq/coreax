@@ -44,6 +44,7 @@ from coreax.reduction import SizeReduce
 from coreax.refine import RefineRegular
 
 
+# pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the kernel herding on tabular data with a refine post-processing step.
@@ -167,6 +168,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

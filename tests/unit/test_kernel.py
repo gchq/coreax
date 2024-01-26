@@ -548,6 +548,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    # pylint: disable=too-many-locals
     def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -581,6 +582,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    # pylint: enable=too-many-locals
 
 
 class TestLaplacianKernel(unittest.TestCase):
@@ -1093,6 +1096,7 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    # pylint: disable=too-many-locals
     def test_scaled_pcimq_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -1133,6 +1137,8 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    # pylint: enable=too-many-locals
+
 
 class TestSteinKernel(unittest.TestCase):
     """
@@ -1172,6 +1178,7 @@ class TestSteinKernel(unittest.TestCase):
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
 
+    # pylint: disable=too-many-locals
     def test_stein_kernel_element_computation(self) -> None:
         r"""
         Test computation of a single element of the SteinKernel.
@@ -1249,13 +1256,15 @@ class TestSteinKernel(unittest.TestCase):
         # Compute the output step-by-step with the element method
         expected_output = np.zeros([x.shape[0], y.shape[0]])
         output = kernel.compute(x, y)
-        for x_idx, x__ in enumerate(x):
-            for y_idx, y__ in enumerate(y):
+        for x_idx, x_temp in enumerate(x):
+            for y_idx, y_temp in enumerate(y):
                 # Compute via our hand-coded kernel evaluation
-                expected_output[x_idx, y_idx] = k_x_y(x__, y__)
+                expected_output[x_idx, y_idx] = k_x_y(x_temp, y_temp)
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
+
+    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

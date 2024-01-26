@@ -498,6 +498,7 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
+    # pylint: disable=too-many-locals
     def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
@@ -564,6 +565,8 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Return the learned score function, which is a callable
         return lambda x_: state.apply_fn({"params": state.params}, x_)
+
+    # pylint: enable=too-many-locals
 
 
 class KernelDensityMatching(ScoreMatching):

@@ -51,6 +51,7 @@ from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching
 
 
+# pylint: disable=too-many-locals
 def main(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
     out_path: Path | None = None,
@@ -188,6 +189,9 @@ def main(
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

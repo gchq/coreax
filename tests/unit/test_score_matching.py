@@ -163,6 +163,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
@@ -219,6 +220,8 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    # pylint: enable=too-many-locals
 
 
 class TestSlicedScoreMatching(unittest.TestCase):
@@ -716,6 +719,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
@@ -772,6 +776,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":
