@@ -67,7 +67,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_squared_exponential_kernel_init(self) -> None:
         r"""
-        Test the initialisation of SquaredExponentialKernel with a negative length_scale.
+        Test SquaredExponentialKernel initialisation with a negative length_scale.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -239,8 +239,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
-        ..math:
-            - \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            - \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
@@ -278,8 +280,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = s\exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
-        ..math:
-            - s\frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            - s\frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.pi
@@ -321,8 +325,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``y`` is:
 
-        ..math:
-            \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
@@ -787,6 +793,7 @@ class TestLaplacianKernel(unittest.TestCase):
         )
 
     def test_scaled_laplacian_kernel_gradients_wrt_x(self) -> None:
+        # pylint: disable=line-too-long
         r"""
         Test the class LaplacianKernel gradient computations; with scaling.
 
@@ -798,6 +805,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
             - \text{output_scale}\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y\rVert_1}{2 \text{length_scale}^2}}
         """
+        # pylint: enable=line-too-long
         # Define some data
         length_scale = 1 / np.pi
         output_scale = np.e
@@ -943,12 +951,14 @@ class TestPCIMQKernel(unittest.TestCase):
         self.assertRaises(ValueError, coreax.kernel.PCIMQKernel, length_scale=-1.0)
 
     def test_pcimq_kernel_compute(self) -> None:
+        # pylint: disable=line-too-long
         r"""
         Test the class PCIMQKernel distance computations.
 
         The PCIMQ kernel is defined as
         :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / \text{length_scale}) ** 2 / 2.0)}`.
         """
+        # pylint: enable=line-too-long
         # Define input data
         length_scale = np.e
         num_points = 10

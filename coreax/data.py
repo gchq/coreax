@@ -26,8 +26,8 @@ The user should read in their data files using their preferred library that retu
 :meth:`load() <DataReader.load>` method. The user should not normally call
 :meth:`DataReader.__init__` directly. The user should select an appropriate subclass
 of :class:`DataReader` to match the structure of the input array. The
-:meth:`load() <DataReader.load>` method on the subclass will rearrange the original data into
-the required two-dimensional format.
+:meth:`load() <DataReader.load>` method on the subclass will rearrange the original data
+into the required two-dimensional format.
 
 Various post-processing methods may be implemented if applicable to visualise or
 restore a calculated coreset to match the format of the original data. To save a
