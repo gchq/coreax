@@ -25,6 +25,8 @@ from scipy.stats import ks_2samp
 import coreax.kernel
 import coreax.util
 
+# pylint: disable=unnecessary-lambda
+
 
 class TestKernel(unittest.TestCase):
     """
@@ -636,6 +638,9 @@ class TestSteinKernel(TestKernel):
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
         self.assertLessEqual(p_value, self.threshold)
+
+
+# pylint: enable=unnecessary-lambda
 
 
 if __name__ == "__main__":

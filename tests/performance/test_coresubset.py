@@ -27,6 +27,8 @@ import coreax.coresubset
 import coreax.kernel
 import coreax.util
 
+# pylint: disable=unnecessary-lambda
+
 
 class TestCoreSubset(unittest.TestCase):
     """
@@ -96,6 +98,9 @@ class TestCoreSubset(unittest.TestCase):
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
         self.assertLessEqual(p_value, self.threshold)
+
+
+# pylint: enable=unnecessary-lambda
 
 
 if __name__ == "__main__":
