@@ -46,6 +46,7 @@ Currently, we are using a [GitHub Flow][github-flow] development approach.
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
 - Pull in changes from upstream often to minimise merge conflicts.
 - Make any required changes.
+- Resolve any conflicts with the target branch.
 - [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert back to Draft at any time.
 
 Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
