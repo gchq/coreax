@@ -341,6 +341,20 @@ class TestMapReduce(unittest.TestCase):
             # Check _coreset_copy_fit is called only once
             mock_coreset_copy_fit.assert_called_once()
 
+    def test_reduce_recursive_unset_coreset_indices(self):
+        """Test MapReduce with a Coreset that does not have coreset_indices"""
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=100)
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+        # Check AssertionError raises when method is called with no input_indices
+        with self.assertRaises(AssertionError):
+            input_data = coreset.original_data.pre_coreset_array
+            strategy._reduce_recursive(template=coreset, input_data=input_data)
+
 
 if __name__ == "__main__":
     unittest.main()
