@@ -43,6 +43,7 @@ from coreax.metrics import MMD
 from coreax.reduction import SizeReduce
 
 
+# pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the tabular data herding example with an approximate kernel matrix row sum mean.
@@ -165,6 +166,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

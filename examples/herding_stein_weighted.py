@@ -53,6 +53,7 @@ from coreax.score_matching import KernelDensityMatching
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 
+# pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the tabular herding example using weighted herding.
@@ -187,6 +188,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":
