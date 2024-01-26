@@ -23,6 +23,8 @@ from unittest.mock import call, patch
 
 from examples.herding_basic import main as herding_basic_main
 
+# pylint: disable=duplicate-code
+
 
 class TestHerdingBasic(unittest.TestCase):
     """
@@ -54,6 +56,9 @@ class TestHerdingBasic(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

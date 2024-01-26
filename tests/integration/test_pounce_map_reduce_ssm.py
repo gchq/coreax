@@ -27,6 +27,8 @@ from unittest.mock import patch
 
 from examples.pounce_map_reduce_ssm import main as pounce_map_reduce_ssm_main
 
+# pylint: disable=duplicate-code
+
 
 class TestPounceMapReduce(unittest.TestCase):
     """
@@ -73,6 +75,9 @@ class TestPounceMapReduce(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

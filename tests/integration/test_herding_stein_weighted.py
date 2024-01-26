@@ -26,6 +26,8 @@ from unittest.mock import call, patch
 
 from examples.herding_stein_weighted import main as herding_stein_weighted_main
 
+# pylint: disable=duplicate-code
+
 
 class TestHerdingSteinWeighted(unittest.TestCase):
     """
@@ -59,6 +61,9 @@ class TestHerdingSteinWeighted(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":
