@@ -48,10 +48,12 @@ sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 # pylint: disable=invalid-name
+# pylint: disable=redefined-builtin
 project = "Coreax"
 copyright = "UK Crown"
 author = "GCHQ"
 version = "v" + coreax.__version__
+# pylint: enable=redefined-builtin
 # pylint: enable=invalid-name
 
 # -- General configuration ---------------------------------------------------
