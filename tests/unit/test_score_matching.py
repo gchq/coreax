@@ -260,7 +260,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -310,14 +312,18 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_analytic, places=3)
 
         # Mutate the objective, and check that the result changes
         sliced_score_matcher.use_analytic = False
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_general, places=3)
@@ -361,7 +367,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -402,7 +410,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -440,12 +450,14 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Determine the expected output - using the analytic objective function tested
         # elsewhere
+        # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector[None, :], hessian @ random_vector, s
         )
 
         # Evaluate the loss element
         output = sliced_score_matcher._loss_element(x, random_vector, score_function)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -453,9 +465,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Call the loss element with a different objective function, and check that the
         # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
+        # pylint: disable=protected-access
         output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function
         )
+        # pylint: enable=protected-access
         self.assertNotAlmostEqual(output, output_changed_objective)
 
     def test_sliced_score_matching_loss_element_general(self) -> None:
@@ -490,12 +504,14 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Determine the expected output
+        # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector, hessian @ random_vector, s
         )
 
         # Evaluate the loss element
         output = sliced_score_matcher._loss_element(x, random_vector, score_function)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -527,7 +543,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
+        # pylint: disable=protected-access
         output = sliced_score_matcher._loss(score_function)(x, random_vectors)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
@@ -574,9 +592,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         weights_ = weights - 1e-3 * grad_weights
         bias_ = bias - 1e-3 * grad_bias
 
+        # pylint: disable=protected-access
         state, _ = sliced_score_matcher._train_step(
             state, x_to_vector_map, v_to_vector_map
         )
+        # pylint: enable=protected-access
 
         # Jax is row based, so transpose W_
         np.testing.assert_array_almost_equal(
