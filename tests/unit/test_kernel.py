@@ -272,6 +272,31 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_squared_exponential_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test SquaredExponentialKernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (
+            -(x - y)
+            / length_scale**2
+            * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        output = kernel._grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_scaled_squared_exponential_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class SquaredExponentialKernel gradient computations; with scaling.
@@ -353,6 +378,31 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         self.assertAlmostEqual(
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
+
+    def test_squared_exponential_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test SquaredExponentialKernel element-wise gradient computations w.r.t. ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (
+            (x - y)
+            / length_scale**2
+            * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        output = kernel._grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
 
     def test_pairwise_kernel_evaluation(self) -> None:
         r"""
@@ -807,6 +857,31 @@ class TestLaplacianKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_laplacian_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test LaplacianKernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (
+            -np.sign(x - y)
+            / (2 * length_scale**2)
+            * np.exp(-np.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel._grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_scaled_laplacian_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class LaplacianKernel gradient computations; with scaling.
@@ -890,6 +965,31 @@ class TestLaplacianKernel(unittest.TestCase):
         self.assertAlmostEqual(
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
+
+    def test_laplacian_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test LaplacianKernel element-wise gradient computations w.r.t. ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (
+            np.sign(x - y)
+            / (2 * length_scale**2)
+            * np.exp(-np.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel._grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
 
     def test_laplacian_div_x_grad_y(self) -> None:
         """
@@ -1041,6 +1141,27 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_pcimq_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test the PCIMQ kernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = -(x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
+        output = kernel._grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
         Test the class PCIMQ gradient computations with respect to ``y``.
@@ -1066,6 +1187,27 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_pcimq_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test the class PCIMQ element-wise gradient computations with respect to ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
+        output = kernel._grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
 
     def test_scaled_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
