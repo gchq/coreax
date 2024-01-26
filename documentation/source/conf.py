@@ -47,10 +47,12 @@ sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+# pylint: disable=invalid-name
 project = "Coreax"
 copyright = "UK Crown"
 author = "GCHQ"
 version = "v" + coreax.__version__
+# pylint: enable=invalid-name
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -79,7 +81,9 @@ bibtex_bibfiles = ["references.bib"]
 templates_path = ["_templates"]
 
 # Display type annotations only in compiled description.
+# pylint: disable=invalid-name
 autodoc_typehints = "description"
+# pylint: enable=invalid-name
 
 autodoc_default_options = {
     "members": True,
@@ -119,6 +123,7 @@ intersphinx_mapping = {
 # Quotes are required with UnionType for Python < 3.10
 try:
     # pylint: disable=unsupported-binary-operation
+    # pylint: disable=invalid-name
     OptionalArrayLike = ArrayLike | None
 except TypeError:
     OptionalArrayLike = "ArrayLike | None"
@@ -139,7 +144,9 @@ def typehints_formatter(annotation: Any, _: sphinx.config.Config) -> str | None:
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+# pylint: disable=invalid-name
 html_theme = "furo"
+# pylint: enable=invalid-name
 html_static_path = ["_static"]
 
 
