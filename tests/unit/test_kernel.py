@@ -543,6 +543,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
     def test_squared_exponential_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
         # Setup data
         length_scale = 1 / np.sqrt(2)
         num_points = 1
@@ -914,6 +917,30 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_laplacian_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        num_points = 1
+        dimension = 1
+        x = np.random.random((num_points, dimension))
+        y = np.random.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = (
+            -dimension
+            / (4 * length_scale**4)
+            * np.exp(-jnp.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel._divergence_x_grad_y_elementwise(x, y)
+
+        self.assertEqual(output, expected_output)
 
     def test_scaled_laplacian_div_x_grad_y(self) -> None:
         """
