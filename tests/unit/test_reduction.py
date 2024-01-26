@@ -257,6 +257,7 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # pylint: disable=protected-access
         with patch.object(
             coreax.reduction.MapReduce,
             "_reduce_recursive",
@@ -265,6 +266,7 @@ class TestMapReduce(unittest.TestCase):
             # Perform the reduction
             strategy.reduce(coreset)
             num_calls_reduce_recursive = mock.call_count
+        # pylint: enable=protected-access
 
         # Check the shape of the output
         self.assertEqual(coreset.format().shape, (10, 2))
@@ -290,6 +292,7 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # pylint: disable=protected-access
         with (
             patch.object(
                 coreax.reduction.MapReduce,
@@ -308,6 +311,7 @@ class TestMapReduce(unittest.TestCase):
             mock_reduce_recursive.assert_called_once()
             # Check _coreset_copy_fit is called only once
             mock_coreset_copy_fit.assert_called_once()
+        # pylint: enable=protected-access
 
 
 if __name__ == "__main__":

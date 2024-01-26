@@ -74,6 +74,7 @@ class TestCoreSubset(unittest.TestCase):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
+            # pylint: disable=protected-access
             deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: herding_object._greedy_body(
@@ -90,6 +91,7 @@ class TestCoreSubset(unittest.TestCase):
                 ),
                 unique=True,
             )
+            # pylint: enable=protected-access
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue

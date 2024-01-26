@@ -51,24 +51,30 @@ class TestRefine(unittest.TestCase):
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
+        # pylint: disable=protected-access
         coreax.refine.Refine._validate_coreset(coreset)
+        # pylint: enable=protected-access
 
     def test_validate_coreset_no_fit(self) -> None:
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
+        # pylint: disable=protected-access
         self.assertRaises(
             coreax.util.NotCalculatedError,
             coreax.refine.Refine._validate_coreset,
             coreset,
         )
+        # pylint: enable=protected-access
 
     def test_validate_coreset_not_coresubset(self) -> None:
         """Check validation raises TypeError when not a coresubset."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
+        # pylint: disable=protected-access
         self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
+        # pylint: enable=protected-access
 
     def test_refine_ones(self) -> None:
         """

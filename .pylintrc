@@ -423,7 +423,6 @@ confidence=HIGH,
 # --disable=W".
 disable=raw-checker-failed,
         duplicate-code,
-        protected-access,
         invalid-unary-operand-type,
         too-many-lines,
         unnecessary-lambda,

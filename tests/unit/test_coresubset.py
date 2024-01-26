@@ -259,6 +259,7 @@ class TestKernelHerding(unittest.TestCase):
             kernel_similarity_penalty_0 = jnp.zeros(3)
 
             # Call the greedy body to get the first point in the coreset
+            # pylint: disable=protected-access
             (coreset_indices_1, kernel_similarity_penalty_1) = test_class._greedy_body(
                 i=0,
                 val=(coreset_indices_0, kernel_similarity_penalty_0),
@@ -267,6 +268,7 @@ class TestKernelHerding(unittest.TestCase):
                 kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
                 unique=True,
             )
+            # pylint: enable=protected-access
 
             # Index 1 has the highest value of kernel_matrix_row_sum_mean, verify this
             # was the point selected in the coreset
@@ -289,7 +291,8 @@ class TestKernelHerding(unittest.TestCase):
                 2.0 * 0.59
             )
 
-            # Call the greedy body a second time.
+            # Call the greedy body a second time
+            # pylint: disable=protected-access
             (coreset_indices_2, kernel_similarity_penalty_2) = test_class._greedy_body(
                 i=1,
                 val=(coreset_indices_1, kernel_similarity_penalty_1),
@@ -298,6 +301,7 @@ class TestKernelHerding(unittest.TestCase):
                 kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
                 unique=False,
             )
+            # pylint: enable=protected-access
 
             # Index 2 should now have been added to the coreset
             np.testing.assert_array_equal(coreset_indices_2, np.asarray([1, 2]))
