@@ -62,6 +62,7 @@ from coreax.weights import MMD as MMDWeightsOptimiser
 
 # pylint: disable=no-member
 # pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
     out_path: Path | None = None,
@@ -235,7 +236,7 @@ def main(
 
 # pylint: enable=no-member
 # pylint: enable=too-many-locals
-
+# pylint: enable=too-many-statements
 
 if __name__ == "__main__":
     main()
