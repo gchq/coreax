@@ -278,16 +278,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random()
+        y = np.random.random()
 
         # Define expected output
         expected_output = (
             -(x - y)
             / length_scale**2
-            * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -385,16 +383,14 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random()
+        y = np.random.random()
 
         # Define expected output
         expected_output = (
             (x - y)
             / length_scale**2
-            * np.exp(-np.linalg.norm(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -598,20 +594,17 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
-        dot_product = np.dot(x - y, x - y)
-        expected_output = 2 * np.exp(-dot_product) * (dimension - 2 * dot_product)
+        expected_output = 2 * np.exp(-((x - y) ** 2)) * (1 - 2 * (x - y) ** 2)
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
         output = kernel._divergence_x_grad_y_elementwise(x, y)
 
-        self.assertEqual(output, expected_output)
+        self.assertAlmostEqual(output, expected_output, places=6)
 
     def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
@@ -863,16 +856,14 @@ class TestLaplacianKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
         expected_output = (
             -np.sign(x - y)
             / (2 * length_scale**2)
-            * np.exp(-np.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -972,16 +963,14 @@ class TestLaplacianKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
         expected_output = (
             np.sign(x - y)
             / (2 * length_scale**2)
-            * np.exp(-np.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -1024,16 +1013,14 @@ class TestLaplacianKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
         expected_output = (
-            -dimension
+            -1
             / (4 * length_scale**4)
-            * np.exp(-jnp.linalg.norm(x - y, ord=1) / (2 * length_scale**2))
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -1147,13 +1134,11 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
-        expected_output = -(x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
+        expected_output = -(x - y) / (1 + np.abs(x - y) ** 2) ** (3 / 2)
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
@@ -1194,13 +1179,11 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
-        expected_output = (x - y) / (1 + np.linalg.norm(x - y) ** 2) ** (3 / 2)
+        expected_output = (x - y) / (1 + np.abs(x - y) ** 2) ** (3 / 2)
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
@@ -1276,17 +1259,12 @@ class TestPCIMQKernel(unittest.TestCase):
         """
         # Setup data
         length_scale = 1 / np.sqrt(2)
-        num_points = 1
-        dimension = 1
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        x = np.random.random((1, 1))
+        y = np.random.random((1, 1))
 
         # Define expected output
-        dot_product = np.dot(x - y, x - y)
-        denominator = (1 + dot_product) ** (3 / 2)
-        expected_output = dimension / denominator - 3 * dot_product / denominator ** (
-            5 / 3
-        )
+        denominator = (1 + (x - y) ** 2) ** (3 / 2)
+        expected_output = 1 / denominator - 3 * (x - y) ** 2 / denominator ** (5 / 3)
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
