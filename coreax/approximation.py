@@ -82,6 +82,7 @@ import coreax.util
 import coreax.validation
 
 
+# pylint: disable=too-few-public-methods
 class KernelMeanApproximator(ABC):
     """
     Base class for approximation methods to kernel row sum means.
@@ -408,3 +409,6 @@ def _anchor_body(
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
 
     return features
+
+
+# pylint: enable=too-few-public-methods

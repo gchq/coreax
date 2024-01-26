@@ -430,7 +430,6 @@ disable=raw-checker-failed,
         invalid-name,
         no-member,
         redefined-builtin,
-        too-few-public-methods,
         too-many-arguments,
         too-many-instance-attributes,
 

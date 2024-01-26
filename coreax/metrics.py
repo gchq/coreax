@@ -36,6 +36,7 @@ import coreax.util
 import coreax.validation
 
 
+# pylint: disable=too-few-public-methods
 class Metric(ABC):
     """Base class for calculating metrics."""
 
@@ -64,6 +65,9 @@ class Metric(ABC):
             in ``y``, or :data:`None` if not required
         :return: Metric computed as a zero-dimensional array
         """
+
+
+# pylint: enable=too-few-public-methods
 
 
 class MMD(Metric):
