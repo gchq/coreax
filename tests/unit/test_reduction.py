@@ -154,6 +154,22 @@ class TestCoreset(unittest.TestCase):
         coreset.refine()
         refine_method.refine.assert_called_once_with(coreset)
 
+    def test_render(self):
+        """Check that render is called correctly."""
+        coreset = CoresetMock()
+        original_data = MagicMock(spec=coreax.data.DataReader)
+        coreset.original_data = original_data
+
+        # Test when coreset.coreset is unpopulated
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            coreset.render()
+
+        # Test with coreset.coreset existing
+        coreset.coreset = MagicMock(spec=Array)
+        coreset.render()
+        # Check the render method in the DataReader class is called exactly once
+        original_data.render.assert_called_once()
+
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
         array = jnp.array([[1, 2], [3, 4]])
