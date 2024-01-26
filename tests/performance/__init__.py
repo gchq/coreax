@@ -30,4 +30,9 @@ of times, allowing Jax to reuse the JIT tracers. Both of these sets of calls are
 and the timings are supplied to a two-sample Kolmogorov-Smirnov test. If the timings are
 significantly different (where 'significant' is a configurable parameter in the test
 setup), then the test passes; else it fails.
+
+Note that calls to the function of interest often utilise a lambda wrapper around a
+function or method call, to ensure that the function or method is recompiled when called
+multiple times, to truly test the JIT performance. In some cases, not doing this will
+cause reuse of previously cashed information.
 """
