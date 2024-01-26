@@ -413,8 +413,11 @@ class MapReduce(ReductionStrategy):
 
     .. math::
 
-        \frac{\log{\texttt{coreset_size}} - \log{\left( \text{original data size} \right)}}
-        {\log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}} .
+        \frac{
+            \log{\texttt{coreset_size}} - \log{\left(\text{original data size}\right)}
+        }{
+            \log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}
+        } .
 
     :param coreset_size: Number of points to include in coreset
     :param leaf_size: Approximate number of points to include in each partition;

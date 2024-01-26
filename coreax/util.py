@@ -155,7 +155,8 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
 
     .. math::
 
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
+        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
+        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
 
     subject to
 
