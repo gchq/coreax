@@ -24,6 +24,8 @@ from unittest.mock import patch
 
 from examples.pounce import main as pounce_main
 
+# pylint: disable=duplicate-code
+
 
 class TestPounce(unittest.TestCase):
     """
@@ -58,6 +60,9 @@ class TestPounce(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

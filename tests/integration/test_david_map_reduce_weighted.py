@@ -25,6 +25,8 @@ from unittest.mock import call, patch
 
 from examples.david_map_reduce_weighted import main as david_map_reduce_weighted_main
 
+# pylint: disable=duplicate-code
+
 
 class TestDavid(unittest.TestCase):
     """
@@ -67,6 +69,9 @@ class TestDavid(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

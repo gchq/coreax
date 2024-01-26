@@ -28,6 +28,8 @@ from examples.herding_approximate_gram_matrix import (
     main as herding_approximate_gram_matrix_main,
 )
 
+# pylint: disable=duplicate-code
+
 
 class TestHerdingApproximate(unittest.TestCase):
     """
@@ -62,6 +64,9 @@ class TestHerdingApproximate(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

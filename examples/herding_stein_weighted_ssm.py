@@ -57,6 +57,7 @@ from coreax.weights import MMD as MMDWeightsOptimiser
 
 
 # pylint: disable=too-many-locals
+# pylint: disable=duplicate-code
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the tabular herding example using weighted herding and sliced score matching.
@@ -199,6 +200,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
 
 # pylint: enable=too-many-locals
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

@@ -422,7 +422,6 @@ confidence=HIGH,
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=raw-checker-failed,
-        duplicate-code,
         invalid-unary-operand-type,
         too-many-lines,
         too-many-arguments,
