@@ -312,6 +312,7 @@ class Coreset(ABC):
 C = TypeVar("C", bound=Coreset)
 
 
+# pylint: disable=too-few-public-methods
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -553,3 +554,6 @@ class MapReduce(ReductionStrategy):
             assert input_indices is not None
             coreset.coreset_indices = input_indices[coreset.coreset_indices]
         return coreset
+
+
+# pylint: enable=too-few-public-methods
