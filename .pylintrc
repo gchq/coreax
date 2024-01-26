@@ -426,7 +426,6 @@ disable=raw-checker-failed,
         invalid-unary-operand-type,
         too-many-lines,
         unnecessary-lambda,
-        too-many-statements,
         too-many-arguments,
         too-many-instance-attributes,
 
