@@ -11,6 +11,7 @@
 # governing permissions and limitations under the License.
 
 import unittest
+from unittest.mock import MagicMock
 
 import jax.numpy as jnp
 import numpy as np
@@ -130,6 +131,17 @@ class TestUtil(unittest.TestCase):
             x=0.000001, precision_threshold=0.001
         )
         self.assertEqual(func_out_2, 0.000001)
+
+    def test_jit_test(self):
+        """
+        Test jit_test calls the function in question twice when checking performance.
+
+        jit_test calls the functions twice to time it for each run.
+        """
+        mock_function = MagicMock()
+        coreax.util.jit_test(mock_function)
+        num_calls = mock_function.call_count
+        self.assertEqual(num_calls, 2)
 
 
 if __name__ == "__main__":
