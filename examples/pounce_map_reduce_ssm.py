@@ -48,6 +48,7 @@ from coreax.score_matching import SlicedScoreMatching
 
 
 # pylint: disable=too-many-locals
+# pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
     out_path: Path | None = None,
@@ -191,6 +192,7 @@ def main(
 
 
 # pylint: enable=too-many-locals
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":
