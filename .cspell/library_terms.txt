@@ -51,6 +51,7 @@ modindex
 myst
 nabla
 ndim
+nonzero
 numpy
 opencv
 operatorname

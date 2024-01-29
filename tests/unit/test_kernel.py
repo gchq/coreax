@@ -252,8 +252,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -297,8 +298,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -345,8 +347,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -542,8 +545,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -571,8 +575,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -784,8 +789,9 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -830,8 +836,9 @@ class TestLaplacianKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -877,8 +884,9 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
@@ -912,8 +920,9 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -943,8 +952,9 @@ class TestLaplacianKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -1021,8 +1031,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
@@ -1047,8 +1058,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
@@ -1074,8 +1086,9 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
@@ -1110,8 +1123,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -1141,8 +1155,9 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
@@ -1203,8 +1218,9 @@ class TestSteinKernel(unittest.TestCase):
             return -x_
 
         # Setup data
-        x = np.random.random((num_points_x, dimension))
-        y = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points_x, dimension))
+        y = generator.random((num_points_y, dimension))
 
         # Set expected output sizes
         expected_size = (10, 5)
@@ -1219,6 +1235,7 @@ class TestSteinKernel(unittest.TestCase):
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
 
+    # pylint: disable=too-many-locals
     def test_stein_kernel_element_computation(self) -> None:
         r"""
         Test computation of a single element of the SteinKernel.
@@ -1290,8 +1307,9 @@ class TestSteinKernel(unittest.TestCase):
             return l + m + r
 
         # Setup data
-        x = np.random.random((num_points_x, dimension))
-        y = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points_x, dimension))
+        y = generator.random((num_points_y, dimension))
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SteinKernel(
@@ -1309,6 +1327,8 @@ class TestSteinKernel(unittest.TestCase):
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
+
+    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

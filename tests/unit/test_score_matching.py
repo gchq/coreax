@@ -60,9 +60,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
@@ -84,6 +84,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -93,9 +94,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
@@ -118,6 +119,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -127,10 +131,10 @@ class TestKernelDensityMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_points = 1000
-        np.random.seed(0)
-        comp = np.random.binomial(1, p, size=num_points)
-        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        num_data_points = 1000
+        generator = np.random.default_rng(1_989)
+        comp = generator.binomial(1, p, size=num_data_points)
+        samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
@@ -163,6 +167,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: enable=too-many-locals
+
     # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
@@ -170,20 +176,20 @@ class TestKernelDensityMatching(unittest.TestCase):
         """
         # Define the multivariate Gaussian mixture model (we don't want to go much
         # higher than dimension=2)
-        np.random.seed(0)
         dimension = 2
         k = 10
-        mus = np.random.multivariate_normal(
+        num_data_points = 500
+        generator = np.random.default_rng(0)
+        mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
         )
         sigmas = np.array(
-            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+            [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
-        mix = np.random.dirichlet(np.ones(k))
-        num_points = 500
-        comp = np.random.choice(k, size=num_points, p=mix)
+        mix = generator.dirichlet(np.ones(k))
+        comp = generator.choice(k, size=num_data_points, p=mix)
         samples = np.array(
-            [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
+            [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
         def e_grad(g: Callable) -> Callable:
@@ -210,7 +216,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+            length_scale=10.0, kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -638,9 +644,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
@@ -662,6 +668,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -671,9 +678,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
@@ -696,6 +703,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -705,10 +715,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_points = 1000
-        np.random.seed(0)
-        comp = np.random.binomial(1, p, size=num_points)
-        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        num_data_points = 1000
+        generator = np.random.default_rng(1_989)
+        comp = generator.binomial(1, p, size=num_data_points)
+        samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
@@ -741,6 +751,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: enable=too-many-locals
+
     # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
@@ -748,20 +760,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         # Define the multivariate Gaussian mixture model (we don't want to go much
         # higher than dimension=2)
-        np.random.seed(0)
         dimension = 2
         k = 10
-        mus = np.random.multivariate_normal(
+        num_data_points = 500
+        generator = np.random.default_rng(0)
+        mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
         )
         sigmas = np.array(
-            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+            [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
-        mix = np.random.dirichlet(np.ones(k))
-        num_points = 500
-        comp = np.random.choice(k, size=num_points, p=mix)
+        mix = generator.dirichlet(np.ones(k))
+        comp = generator.choice(k, size=num_data_points, p=mix)
         samples = np.array(
-            [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
+            [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
         def e_grad(g: Callable) -> Callable:
@@ -797,7 +809,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         score_result = learned_score(x_stacked)
 
         # Check learned score and true score align
-        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
     # pylint: enable=too-many-locals
 

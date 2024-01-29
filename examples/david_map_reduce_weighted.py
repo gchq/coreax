@@ -105,7 +105,7 @@ def main(
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
 
     print(f"Image dimensions: {image_data.shape}")
-    pre_coreset_data = np.column_stack(np.where(image_data < 255))
+    pre_coreset_data = np.column_stack(np.nonzero(image_data < 255))
     pixel_values = image_data[image_data < 255]
     pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
         np.float32
@@ -119,11 +119,11 @@ def main(
     data = ArrayData.load(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
-    np.random.seed(1_989)
     num_samples_length_scale = min(num_data_points, 1_000)
-    idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
+    generator = np.random.default_rng(1_989)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
-    if length_scale == 0.0:
+    if length_scale < 1e-6:
         length_scale = 100.0
 
     # Learn a score function via kernel density estimation (this is required for
