@@ -26,6 +26,7 @@ import coreax.kernel
 import coreax.util
 
 # pylint: disable=unnecessary-lambda
+# pylint: disable=duplicate-code
 
 
 class TestKernel(unittest.TestCase):
@@ -641,6 +642,7 @@ class TestSteinKernel(TestKernel):
 
 
 # pylint: enable=unnecessary-lambda
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

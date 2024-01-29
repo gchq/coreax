@@ -92,17 +92,6 @@ class MMD(Metric):
 
     def __init__(self, kernel: coreax.kernel.Kernel, precision_threshold: float = 1e-8):
         """Calculate maximum mean discrepancy between two datasets."""
-        # Validate inputs
-        precision_threshold = coreax.validation.cast_as_type(
-            x=precision_threshold, object_name="precision_threshold", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=precision_threshold,
-            object_name="precision_threshold",
-            lower_bound=0.0,
-            strict_inequalities=False,
-        )
-
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
@@ -151,6 +140,10 @@ class MMD(Metric):
             weights_y = coreax.validation.cast_as_type(
                 x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
             )
+
+        # block_size is checked in both coresubset.py and metrics.py, however each of
+        # these can be used independently, so ignore pylint warning for duplicated code
+        # pylint: disable=duplicate-code
         if block_size is not None:
             block_size = coreax.validation.cast_as_type(
                 x=block_size, object_name="block_size", type_caster=int
@@ -161,6 +154,7 @@ class MMD(Metric):
                 strict_inequalities=True,
                 lower_bound=0,
             )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)

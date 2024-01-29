@@ -28,6 +28,7 @@ import coreax.kernel
 import coreax.util
 
 # pylint: disable=unnecessary-lambda
+# pylint: disable=duplicate-code
 
 
 class TestCoreSubset(unittest.TestCase):
@@ -101,6 +102,7 @@ class TestCoreSubset(unittest.TestCase):
 
 
 # pylint: enable=unnecessary-lambda
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":
