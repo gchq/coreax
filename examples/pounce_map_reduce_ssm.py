@@ -49,6 +49,7 @@ from coreax.score_matching import SlicedScoreMatching
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
 # pylint warnings raised that go against this approach
+# pylint: disable=too-many-statements
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
 def main(
@@ -101,7 +102,8 @@ def main(
 
     # Set the length_scale parameter of the underlying squared exponential kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
-    idx = np.random.choice(
+    generator = np.random.default_rng(1_989)
+    idx = generator.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
         replace=False,
@@ -193,6 +195,7 @@ def main(
     )
 
 
+# pylint: enable=too-many-statements
 # pylint: enable=too-many-locals
 # pylint: enable=duplicate-code
 

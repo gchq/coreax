@@ -160,6 +160,7 @@ class TestKernelHerding(unittest.TestCase):
         coreset_difference = abs(herding_coreset - herding_coreset_invalid_mean)
         self.assertGreater(coreset_difference.sum(), 0)
 
+    # pylint: disable=too-many-locals
     def test_fit_comparison_to_random_stein(self) -> None:
         """
         Test the fit method of the KernelHerding class with a Stein kernel.
@@ -175,8 +176,8 @@ class TestKernelHerding(unittest.TestCase):
         mu = 0.0
         std_dev = 1.0
         num_data_points = 500
-        np.random.seed(self.random_data_generation_key)
-        x = np.random.normal(mu, std_dev, size=(num_data_points, 1))
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             """
@@ -189,7 +190,8 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create kernel and data objects
         kernel = coreax.kernel.SteinKernel(
-            base_kernel=coreax.kernel.PCIMQKernel(), score_function=true_score
+            base_kernel=coreax.kernel.PCIMQKernel(length_scale=0.5),
+            score_function=true_score,
         )
         data = coreax.data.ArrayData.load(x)
 
@@ -216,6 +218,8 @@ class TestKernelHerding(unittest.TestCase):
         herding_metric = metric.compute(x, herding_coreset)
         random_metric = metric.compute(x, random_coreset)
         self.assertLess(float(herding_metric), float(random_metric))
+
+    # pylint: enable=too-many-locals
 
     def test_greedy_body(self) -> None:
         """

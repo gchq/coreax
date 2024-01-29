@@ -225,13 +225,19 @@ class TestInputValidationInstance(unittest.TestCase):
     Tests relating to validation of inputs provided by the user are a given type.
     """
 
+    def setUp(self) -> None:
+        """
+        Setup of variables shared across tests
+        """
+        self.var_must_be_of_type_message = "^var must be of type"
+
     def test_validate_is_instance_float_to_int(self) -> None:
         """
         Test the function validate_is_instance comparing a float to an int.
         """
         self.assertRaisesRegex(
             TypeError,
-            "^var must be of type",
+            self.var_must_be_of_type_message,
             coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
@@ -244,7 +250,7 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         self.assertRaisesRegex(
             TypeError,
-            "^var must be of type",
+            self.var_must_be_of_type_message,
             coreax.validation.validate_is_instance,
             x=120,
             object_name="var",
@@ -257,7 +263,7 @@ class TestInputValidationInstance(unittest.TestCase):
         """
         self.assertRaisesRegex(
             TypeError,
-            "^var must be of type",
+            self.var_must_be_of_type_message,
             coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
@@ -325,7 +331,7 @@ class TestInputValidationInstance(unittest.TestCase):
         """Test that raises when object is not :data:`None` but expected type is."""
         self.assertRaisesRegex(
             TypeError,
-            "^var must be of type",
+            self.var_must_be_of_type_message,
             coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
@@ -344,7 +350,7 @@ class TestInputValidationInstance(unittest.TestCase):
         """Test that raises when :data:`None` is in tuple of expected types."""
         self.assertRaisesRegex(
             TypeError,
-            "^var must be of type",
+            self.var_must_be_of_type_message,
             coreax.validation.validate_is_instance,
             x=120.0,
             object_name="var",
