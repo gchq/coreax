@@ -45,6 +45,7 @@ from coreax.refine import RefineRegular
 
 
 # pylint: disable=too-many-locals
+# pylint: disable=duplicate-code
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the kernel herding on tabular data with a refine post-processing step.
@@ -171,6 +172,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
 
 # pylint: enable=too-many-locals
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

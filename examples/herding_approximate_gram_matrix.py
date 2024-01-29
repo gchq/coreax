@@ -43,6 +43,7 @@ from coreax.metrics import MMD
 from coreax.reduction import SizeReduce
 
 
+# pylint: disable=duplicate-code
 # pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
@@ -168,6 +169,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
 
 
+# pylint: enable=duplicate-code
 # pylint: enable=too-many-locals
 
 
