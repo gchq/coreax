@@ -59,7 +59,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         output_children, output_aux_data = kernel_density_matcher._tree_flatten()
 
         # Verify outputs are as expected
-        self.assertTrue(len(output_children) == 1)
+        self.assertEqual(len(output_children), 1)
         np.testing.assert_array_equal(output_children[0], jnp.ones([2, 3]))
 
         # We expect the kernel to be a SquaredExponentialKernel with output scale

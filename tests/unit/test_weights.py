@@ -113,7 +113,7 @@ class TestWeights(unittest.TestCase):
         self.assertTrue(jnp.allclose(output, expected_output))
 
         # Check the expected warning was raised
-        self.assertTrue(len(warning_result) == 1)
+        self.assertEqual(len(warning_result), 1)
         self.assertEqual(
             str(warning_result[0].message),
             "solve_approximate() not yet implemented. "
