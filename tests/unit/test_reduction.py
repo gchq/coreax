@@ -37,6 +37,8 @@ import coreax.util
 import coreax.weights
 
 
+# Disable pylint warning for too-few-public-methods as we use this class only for
+# testing purposes
 # pylint: disable=too-few-public-methods
 class MockCreatedInstance:
     """
@@ -261,6 +263,8 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         with patch.object(
             coreax.reduction.MapReduce,
@@ -296,6 +300,8 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         with (
             patch.object(

@@ -26,6 +26,9 @@ from unittest.mock import call, patch
 
 from examples.herding_stein_weighted_ssm import main as herding_stein_weighted_ssm_main
 
+# Integration tests are split across several files, to allow serial calls and avoid
+# sharing of JIT caches between tests. As a result, ignore the pylint warnings for
+# duplicated-code.
 # pylint: disable=duplicate-code
 
 

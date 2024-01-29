@@ -43,6 +43,8 @@ from coreax.metrics import MMD
 from coreax.reduction import SizeReduce
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
 # pylint: disable=duplicate-code
 # pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:

@@ -51,6 +51,8 @@ class TestRefine(unittest.TestCase):
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         coreax.refine.Refine._validate_coreset(coreset)
         # pylint: enable=protected-access
@@ -59,6 +61,8 @@ class TestRefine(unittest.TestCase):
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         self.assertRaises(
             coreax.util.NotCalculatedError,
@@ -72,6 +76,8 @@ class TestRefine(unittest.TestCase):
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
         # pylint: enable=protected-access

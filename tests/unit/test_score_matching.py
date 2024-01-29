@@ -263,6 +263,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
         # pylint: enable=protected-access
@@ -315,6 +317,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
         # pylint: enable=protected-access
@@ -324,6 +328,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Mutate the objective, and check that the result changes
         sliced_score_matcher.use_analytic = False
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
         # pylint: enable=protected-access
@@ -370,6 +376,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
         # pylint: enable=protected-access
@@ -413,6 +421,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
         # pylint: enable=protected-access
@@ -453,6 +463,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Determine the expected output - using the analytic objective function tested
         # elsewhere
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector[None, :], hessian @ random_vector, s
@@ -468,6 +480,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Call the loss element with a different objective function, and check that the
         # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function
@@ -507,6 +521,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Determine the expected output
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector, hessian @ random_vector, s
@@ -546,6 +562,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         output = sliced_score_matcher._loss(score_function)(x, random_vectors)
         # pylint: enable=protected-access
@@ -574,6 +592,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
+        # Disable pylint warning for unsubscriptable-object as we are able to
+        # subscript this and use this for testing purposes only
         # pylint: disable=unsubscriptable-object
         weights = state.params["Dense_0"]["kernel"].T
         bias = state.params["Dense_0"]["bias"]
@@ -595,6 +615,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         weights_ = weights - 1e-3 * grad_weights
         bias_ = bias - 1e-3 * grad_bias
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
         # pylint: disable=protected-access
         state, _ = sliced_score_matcher._train_step(
             state, x_to_vector_map, v_to_vector_map

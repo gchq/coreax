@@ -51,6 +51,8 @@ from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
 def main(

@@ -25,6 +25,9 @@ from unittest.mock import call, patch
 
 from examples.david_map_reduce_weighted import main as david_map_reduce_weighted_main
 
+# Integration tests are split across several files, to allow serial calls and avoid
+# sharing of JIT caches between tests. As a result, ignore the pylint warnings for
+# duplicated-code.
 # pylint: disable=duplicate-code
 
 
