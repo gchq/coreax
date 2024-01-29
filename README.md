@@ -54,6 +54,7 @@ Run `examples/pounce.py` to replicate.
 Be sure to install Jax, and to install the preferred version for your system.
 1. Install [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html), noting that there are (currently) different setup paths for CPU and GPU use.
 2. Install coreax from this directory `pip install .`
+3. To install the additional optional dependencies required to run the examples in `examples` use `pip install .[test]` instead.
 
 # A how-to guide
 Here are some of the most commonly used classes and methods in the library.
