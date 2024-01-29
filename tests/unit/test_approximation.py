@@ -98,6 +98,8 @@ class TestApproximations(unittest.TestCase):
         """
         Test the class KernelMeanApproximator initialises correctly.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are intentionally
+        # patching these whilst testing creation of the parent class
         # pylint: disable=abstract-class-instantiated
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created
@@ -124,6 +126,8 @@ class TestApproximations(unittest.TestCase):
         """
         Test the class KernelMeanApproximator rejects invalid input types.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are intentionally
+        # patching these whilst testing creation of the parent class
         # pylint: disable=abstract-class-instantiated
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created

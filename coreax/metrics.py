@@ -36,6 +36,8 @@ import coreax.util
 import coreax.validation
 
 
+# Classes are written with the capability to expand in the future, so we ignore the
+# pylint warning relating to too-few-public-methods at this time
 # pylint: disable=too-few-public-methods
 class Metric(ABC):
     """Base class for calculating metrics."""

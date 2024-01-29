@@ -39,6 +39,8 @@ class TestMetrics(unittest.TestCase):
         r"""
         Test the class Metric initialises correctly.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are patching
+        # these whilst testing creation of the parent class
         # pylint: disable=abstract-class-instantiated
         # Patch the abstract methods of the Metric ABC, so it can be created
         p = patch.multiple(coreax.metrics.Metric, __abstractmethods__=set())
@@ -57,6 +59,8 @@ class TestMMD(unittest.TestCase):
     Tests related to the maximum mean discrepancy (MMD) class in metrics.py.
     """
 
+    # Disable pylint warning for too-many-instance-attributes as we use each of these in
+    # subsequent tests, variable names ensure human readability and understanding
     # pylint: disable=too-many-instance-attributes
     def setUp(self):
         r"""

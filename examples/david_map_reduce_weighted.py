@@ -60,6 +60,8 @@ from coreax.score_matching import KernelDensityMatching
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
 # pylint: disable=no-member
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements

@@ -259,6 +259,8 @@ class TestKernelHerding(unittest.TestCase):
             kernel_similarity_penalty_0 = jnp.zeros(3)
 
             # Call the greedy body to get the first point in the coreset
+            # Disable pylint warning for protected-access as we are testing an
+            # analytically tractable part of the overall herding algorithm
             # pylint: disable=protected-access
             (coreset_indices_1, kernel_similarity_penalty_1) = test_class._greedy_body(
                 i=0,
@@ -292,6 +294,8 @@ class TestKernelHerding(unittest.TestCase):
             )
 
             # Call the greedy body a second time
+            # Disable pylint warning for protected-access as we are testing an
+            # analytically tractable part of the overall herding algorithm
             # pylint: disable=protected-access
             (coreset_indices_2, kernel_similarity_penalty_2) = test_class._greedy_body(
                 i=1,

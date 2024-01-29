@@ -41,6 +41,8 @@ class TestKernelABC(unittest.TestCase):
         """
         Test usage of approximation object within the Kernel class.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are patching
+        # these whilst testing creation of the parent class
         # pylint: disable=abstract-class-instantiated
         # Patch the abstract methods of the Kernel ABC, so it can be created
         p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())

@@ -24,6 +24,9 @@ from unittest.mock import patch
 
 from examples.pounce_map_reduce import main as pounce_map_reduce_main
 
+# Integration tests are split across several files, to allow serial calls and avoid
+# sharing of JIT caches between tests. As a result, ignore the pylint warnings for
+# duplicated-code.
 # pylint: disable=duplicate-code
 
 
