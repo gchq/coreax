@@ -16,7 +16,7 @@ Thus the $m$ points, referred to as the **coreset**, are also $d$-dimensional.
 Some algorithms return the $m$ points with weights, so that importance can be
 attributed to each point in the coreset. The weights, $w_i$ for $i=1,...,m$, are often
 chosen from the simplex. In this case, they are non-negative and sum to 1:
-$w_i >0$ $\forall i$ and $\sum_{i=1}^m w_i =1$.
+$w_i >0$ $\forall i$ and $\sum_{i} w_i =1$.
 
 ## Quick example
 Consider $n=10,000$ points drawn from six $2$-D multivariate Gaussian distributions. We
