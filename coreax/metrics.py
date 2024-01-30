@@ -416,6 +416,10 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -425,6 +429,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)
@@ -479,6 +484,10 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -488,6 +497,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)
