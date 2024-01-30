@@ -85,4 +85,5 @@ sort = "Cover"
 exclude_lines = [
     "pass",
     "raise RuntimeError",
+    "if TYPE_CHECKING:",
 ]
