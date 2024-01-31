@@ -290,7 +290,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-        output = kernel._grad_x_elementwise(x, y)
+        output = kernel.grad_x_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -395,7 +395,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-        output = kernel._grad_y_elementwise(x, y)
+        output = kernel.grad_y_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -602,7 +602,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-        output = kernel._divergence_x_grad_y_elementwise(x, y)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
@@ -868,7 +868,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
-        output = kernel._grad_x_elementwise(x, y)
+        output = kernel.grad_x_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -975,7 +975,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
-        output = kernel._grad_y_elementwise(x, y)
+        output = kernel.grad_y_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -1025,7 +1025,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
-        output = kernel._divergence_x_grad_y_elementwise(x, y)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
 
         self.assertEqual(output, expected_output)
 
@@ -1142,7 +1142,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
-        output = kernel._grad_x_elementwise(x, y)
+        output = kernel.grad_x_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -1187,7 +1187,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
-        output = kernel._grad_y_elementwise(x, y)
+        output = kernel.grad_y_elementwise(x, y)
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=6)
@@ -1268,7 +1268,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
-        output = kernel._divergence_x_grad_y_elementwise(x, y)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
