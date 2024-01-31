@@ -39,12 +39,18 @@ import numpy as np
 from jax.random import rademacher
 from sklearn.decomposition import PCA
 
-from coreax.coresubset import KernelHerding, RandomSample
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, SteinKernel, median_heuristic
-from coreax.metrics import MMD
-from coreax.reduction import MapReduce, SizeReduce
-from coreax.score_matching import SlicedScoreMatching
+from coreax import (
+    MMD,
+    ArrayData,
+    KernelHerding,
+    MapReduce,
+    RandomSample,
+    SizeReduce,
+    SlicedScoreMatching,
+    SquaredExponentialKernel,
+    SteinKernel,
+)
+from coreax.kernel import median_heuristic
 
 
 def main(
