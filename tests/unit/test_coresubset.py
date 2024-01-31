@@ -99,10 +99,8 @@ class TestKernelHerding(unittest.TestCase):
 
         # Define some data - sufficiently large that we would not expect a random sample
         # to typically compete with a kernel herding approach
-        x = random.uniform(
-            random.PRNGKey(self.random_data_generation_key),
-            shape=(num_data_points, self.dimension),
-        )
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((num_data_points, self.dimension))
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
@@ -152,10 +150,8 @@ class TestKernelHerding(unittest.TestCase):
         num_data_points = 100
 
         # Define some data
-        x = random.uniform(
-            random.PRNGKey(self.random_data_generation_key),
-            shape=(num_data_points, self.dimension),
-        )
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((num_data_points, self.dimension))
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
@@ -265,10 +261,8 @@ class TestKernelHerding(unittest.TestCase):
 
         # Define some data - sufficiently large that we would not expect a random sample
         # to typically compete with a kernel herding approach
-        x = random.uniform(
-            random.PRNGKey(self.random_data_generation_key),
-            shape=(num_data_points, self.dimension),
-        )
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((num_data_points, self.dimension))
         data = coreax.data.ArrayData.load(x)
 
         test_approximator = coreax.approximation.ANNchorApproximator(
@@ -426,10 +420,8 @@ class TestRandomSample(unittest.TestCase):
         self.random_sampling_seed = 42
 
         # Define example dataset
-        x = random.uniform(
-            random.PRNGKey(self.random_data_generation_key),
-            shape=(self.num_points_in_data, self.dimension),
-        )
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((self.num_points_in_data, self.dimension))
         data_obj = coreax.data.ArrayData.load(x)
 
         self.data_obj = data_obj
