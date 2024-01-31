@@ -487,6 +487,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Define parameters for data
         length_scale = 1 / np.sqrt(2)
         x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = x.reshape(-1, 1)
 
         # Define the kernel object
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
