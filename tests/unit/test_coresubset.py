@@ -205,8 +205,8 @@ class TestKernelHerding(unittest.TestCase):
         mu = 0.0
         std_dev = 1.0
         num_data_points = 500
-        np.random.seed(self.random_data_generation_key)
-        x = np.random.normal(mu, std_dev, size=(num_data_points, 1))
+        generator = np.random.default_rng(1_989)
+        x = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             """
