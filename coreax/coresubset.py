@@ -28,15 +28,13 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial
 
-import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, random
+from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
 import coreax.approximation
@@ -60,7 +58,7 @@ class KernelHerding(coreax.reduction.Coreset):
 
     .. math::
 
-        x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
+        x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] -
             \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
 
     where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
@@ -68,8 +66,8 @@ class KernelHerding(coreax.reduction.Coreset):
     be seen as a balance between using points at which the underlying density is high
     (the first term) and exploration of distinct regions of the space (the second term).
 
-    This class works with all children of `~coreax.kernel.Kernel`, including Stein
-    kernels.
+    This class works with all children of :class:`~coreax.kernel.Kernel`, including
+    Stein kernels.
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
@@ -141,12 +139,12 @@ class KernelHerding(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -155,7 +153,6 @@ class KernelHerding(coreax.reduction.Coreset):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        # TODO: Check JIT performance & validity with this definition when OOP complete
         children = (
             self.kernel,
             self.kernel_matrix_row_sum_mean,
@@ -258,7 +255,7 @@ class KernelHerding(coreax.reduction.Coreset):
 
         .. math::
 
-            x_{T+1} = \argmax_{x} \left( \mathbb{E}[k(x, x')] -
+            x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] -
                 \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
 
         where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken
@@ -277,6 +274,7 @@ class KernelHerding(coreax.reduction.Coreset):
             be the same length (however many coreset points are desired). The ``i``-th
             element of this gets updated to the index of the selected coreset point in
             iteration ``i``.
+        :param x: :math:`n \times d` data matrix
         :param kernel_vectorised: Vectorised kernel computation function. This should be
             the :meth:`compute` method of a :class:`~coreax.kernel.Kernel` object,
         :param kernel_matrix_row_sum_mean: A :math:`1 \times n` array holding the mean
@@ -353,8 +351,8 @@ class RandomSample(coreax.reduction.Coreset):
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
-       :data:`None` if not applicable. Note that if this is supplied, it is only used
-       for refinement, not during creation of the initial coreset.
+        :data:`None` if not applicable. Note that if this is supplied, it is only used
+        for refinement, not during creation of the initial coreset.
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
@@ -394,12 +392,12 @@ class RandomSample(coreax.reduction.Coreset):
             refine_method=refine_method,
         )
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -408,8 +406,6 @@ class RandomSample(coreax.reduction.Coreset):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        # TODO: Check JIT performance & validity with this definition when OOP complete.
-        # TODO: If kernel is None, does this work?
         children = (
             self.kernel,
             self.kernel_matrix_row_sum_mean,
