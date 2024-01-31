@@ -208,10 +208,10 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     The function is called with supplied arguments twice, and timed for each run. These
     timings are returned in a 2-tuple.
 
-    Note that `fn` often utilises a lambda wrapper around a function or method call (see
+    Note that `fn` often uses a lambda wrapper around a function or method call (see
     performance tests) to ensure that the function or method is recompiled when called
     multiple times, to truly test the JIT performance. In some cases, not doing this
-    will cause reuse of previously cashed information.
+    will result in the re-use of previously cached information.
 
     :param fn: Function callable to test
     :return: (First run time, Second run time)

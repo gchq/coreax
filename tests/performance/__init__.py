@@ -31,8 +31,8 @@ and the timings are supplied to a two-sample Kolmogorov-Smirnov test. If the tim
 significantly different (where 'significant' is a configurable parameter in the test
 setup), then the test passes; else it fails.
 
-Note that calls to the function of interest often utilise a lambda wrapper around a
+Note that calls to the function of interest often use a lambda wrapper around a
 function or method call, to ensure that the function or method is recompiled when called
 multiple times, to truly test the JIT performance. In some cases, not doing this will
-cause reuse of previously cashed information.
+result in the re-use of previously cached information.
 """
