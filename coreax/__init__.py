@@ -58,3 +58,10 @@ loop over them individually. We currently do this using
 """
 
 __version__ = "0.1.0"
+
+from coreax.coresubset import KernelHerding, RandomSample
+from coreax.data import ArrayData
+from coreax.kernel import SquaredExponentialKernel, SteinKernel
+from coreax.metrics import MMD
+from coreax.reduction import MapReduce, SizeReduce
+from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching

@@ -36,11 +36,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import make_blobs
 
-from coreax.coresubset import KernelHerding, RandomSample
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, median_heuristic
-from coreax.metrics import MMD
-from coreax.reduction import SizeReduce
+from coreax import (
+    MMD,
+    ArrayData,
+    KernelHerding,
+    RandomSample,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
+from coreax.kernel import median_heuristic
 from coreax.refine import RefineRegular
 
 
