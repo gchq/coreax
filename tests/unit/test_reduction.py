@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for reduction implementations.
+
+The tests within this file verify that the reduction classes and functionality used to
+construct coresets throughout the codebase produce the expected results on simple
+examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -29,10 +37,23 @@ import coreax.util
 import coreax.weights
 
 
+# Disable pylint warning for too-few-public-methods as we use this class only for
+# testing purposes
+# pylint: disable=too-few-public-methods
 class MockCreatedInstance:
+    """
+    Mock implementation of a reduction instance for testing purposes.
+    """
+
     @staticmethod
     def solve(*args):
+        """
+        Solve a reduction problem defined by input args.
+        """
         return tuple(*args)
+
+
+# pylint: enable=too-few-public-methods
 
 
 class CoresetMock(coreax.reduction.Coreset):
@@ -242,6 +263,9 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         with patch.object(
             coreax.reduction.MapReduce,
             "_reduce_recursive",
@@ -250,6 +274,7 @@ class TestMapReduce(unittest.TestCase):
             # Perform the reduction
             strategy.reduce(coreset)
             num_calls_reduce_recursive = mock.call_count
+        # pylint: enable=protected-access
 
         # Check the shape of the output
         self.assertEqual(coreset.format().shape, (10, 2))
@@ -275,6 +300,9 @@ class TestMapReduce(unittest.TestCase):
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         with (
             patch.object(
                 coreax.reduction.MapReduce,
@@ -293,6 +321,7 @@ class TestMapReduce(unittest.TestCase):
             mock_reduce_recursive.assert_called_once()
             # Check _coreset_copy_fit is called only once
             mock_coreset_copy_fit.assert_called_once()
+        # pylint: enable=protected-access
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Performance tests for JIT compilation in kernel implementations.
+"""
+
 import unittest
 
 import numpy as np
@@ -20,6 +24,13 @@ from scipy.stats import ks_2samp
 
 import coreax.kernel
 import coreax.util
+
+# Performance tests are split across several files for readability. As a result, ignore
+# the pylint warnings for duplicated-code. Additionally, we wrap the method/function of
+# interest in a lambda function to ensure no cached JIT code is re-used to make the test
+# fair. As a result, ignore the pylint warnings for unnecessary-lambda.
+# pylint: disable=unnecessary-lambda
+# pylint: disable=duplicate-code
 
 
 class TestKernel(unittest.TestCase):
@@ -632,6 +643,10 @@ class TestSteinKernel(TestKernel):
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
         self.assertLessEqual(p_value, self.threshold)
+
+
+# pylint: enable=unnecessary-lambda
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

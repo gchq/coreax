@@ -498,6 +498,7 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
+    # pylint: disable=too-many-locals
     def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
@@ -565,6 +566,8 @@ class SlicedScoreMatching(ScoreMatching):
         # Return the learned score function, which is a callable
         return lambda x_: state.apply_fn({"params": state.params}, x_)
 
+    # pylint: enable=too-many-locals
+
 
 class KernelDensityMatching(ScoreMatching):
     r"""
@@ -588,16 +591,8 @@ class KernelDensityMatching(ScoreMatching):
 
     def __init__(self, length_scale: float, kde_data: ArrayLike):
         """Define the kernel density matching class."""
-        # Validate inputs
-        length_scale = coreax.validation.cast_as_type(
-            x=length_scale, object_name="length_scale", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=length_scale,
-            object_name="length_scale",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
+        # Validate inputs (note that the kernel length_scale is validated upon kernel
+        # creation)
         kde_data = coreax.validation.cast_as_type(
             x=kde_data, object_name="kde_data", type_caster=jnp.atleast_2d
         )

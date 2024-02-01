@@ -293,7 +293,7 @@ max-attributes=7
 # Maximum number of boolean expressions in an if statement (see R0916).
 max-bool-expr=5
 
-# Maximum number of branch for function / method body.
+# Maximum number of branches for function / method body.
 max-branches=12
 
 # Maximum number of locals for function / method body.
@@ -337,7 +337,7 @@ indent-after-paren=4
 indent-string='    '
 
 # Maximum number of characters on a single line.
-max-line-length=100
+max-line-length=88
 
 # Maximum number of lines in a module.
 max-module-lines=1000
@@ -421,54 +421,17 @@ confidence=HIGH,
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
-disable=raw-checker-failed,
-        bad-inline-option,
-        locally-disabled,
-        file-ignored,
-        suppressed-message,
-        useless-suppression,
-        deprecated-pragma,
-        use-symbolic-message-instead,
-        use-implicit-booleaness-not-comparison-to-string,
-        use-implicit-booleaness-not-comparison-to-zero,
-        abstract-class-instantiated,
-        consider-using-f-string,
-        consider-using-from-import,
-        duplicate-code,
-        protected-access,
-        line-too-long,
-        invalid-unary-operand-type,
-        too-many-lines,
-        no-else-raise,
-        raise-missing-from,
-        unnecessary-lambda,
-        missing-function-docstring,
-        no-else-return,
-        too-many-statements,
-        invalid-name,
-        missing-class-docstring,
-        missing-module-docstring,
-        no-member,
-        redefined-builtin,
-        too-few-public-methods,
+disable=too-many-lines,
         too-many-arguments,
         too-many-instance-attributes,
-        too-many-locals,
-        unbalanced-tuple-unpacking,
-        unnecessary-lambda-assignment,
-        unnecessary-pass,
-        unsubscriptable-object,
-        unused-argument,
-        unused-import,
-        unused-variable,
-        unused-wildcard-import,
-        wildcard-import,
+
+
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once). See also the "--disable" option for examples.
-enable=
+enable=useless-suppression,
 
 
 [METHOD_ARGS]

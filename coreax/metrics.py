@@ -36,6 +36,9 @@ import coreax.util
 import coreax.validation
 
 
+# Classes are written with the capability to expand in the future, so we ignore the
+# pylint warning relating to too-few-public-methods at this time
+# pylint: disable=too-few-public-methods
 class Metric(ABC):
     """Base class for calculating metrics."""
 
@@ -66,6 +69,9 @@ class Metric(ABC):
         """
 
 
+# pylint: enable=too-few-public-methods
+
+
 class MMD(Metric):
     r"""
     Definition and calculation of the maximum mean discrepancy metric.
@@ -88,17 +94,6 @@ class MMD(Metric):
 
     def __init__(self, kernel: coreax.kernel.Kernel, precision_threshold: float = 1e-8):
         """Calculate maximum mean discrepancy between two datasets."""
-        # Validate inputs
-        precision_threshold = coreax.validation.cast_as_type(
-            x=precision_threshold, object_name="precision_threshold", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=precision_threshold,
-            object_name="precision_threshold",
-            lower_bound=0.0,
-            strict_inequalities=False,
-        )
-
         self.kernel = kernel
         self.precision_threshold = precision_threshold
 
@@ -147,6 +142,10 @@ class MMD(Metric):
             weights_y = coreax.validation.cast_as_type(
                 x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
             )
+
+        # block_size is checked in both coresubset.py and metrics.py, however each of
+        # these can be used independently, so ignore pylint warning for duplicated code
+        # pylint: disable=duplicate-code
         if block_size is not None:
             block_size = coreax.validation.cast_as_type(
                 x=block_size, object_name="block_size", type_caster=int
@@ -157,6 +156,7 @@ class MMD(Metric):
                 strict_inequalities=True,
                 lower_bound=0,
             )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)
@@ -172,6 +172,7 @@ class MMD(Metric):
             or block_size > max(num_points_x, num_points_y)
         ):
             return self.weighted_maximum_mean_discrepancy(x, y, weights_y)
+
         return self.weighted_maximum_mean_discrepancy_block(
             x, y, weights_x, weights_y, block_size
         )
@@ -283,6 +284,10 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -292,6 +297,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = float(len(x))
         num_points_y = float(len(y))
@@ -347,6 +353,10 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -356,6 +366,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = weights_x.sum()
         num_points_y = weights_y.sum()
@@ -405,6 +416,10 @@ class MMD(Metric):
         y = coreax.validation.cast_as_type(
             x=y, object_name="y", type_caster=jnp.atleast_2d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -414,6 +429,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)
@@ -468,6 +484,10 @@ class MMD(Metric):
         weights_y = coreax.validation.cast_as_type(
             x=weights_y, object_name="weights_y", type_caster=jnp.atleast_1d
         )
+        # block_size is validated here, but also validated when passed to coresubset
+        # objects. In both cases, it should be validated (one can use either part of the
+        # code independently). As a result, disable the duplicated-code pylint warnings.
+        # pylint: disable=duplicate-code
         block_size = coreax.validation.cast_as_type(
             x=block_size, object_name="block_size", type_caster=int
         )
@@ -477,6 +497,7 @@ class MMD(Metric):
             strict_inequalities=True,
             lower_bound=0,
         )
+        # pylint: enable=duplicate-code
 
         num_points_x = len(x)
         num_points_y = len(y)

@@ -52,6 +52,11 @@ from coreax import (
 from coreax.kernel import median_heuristic
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-locals
+# pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
     out_path: Path | None = None,
@@ -101,7 +106,8 @@ def main(
 
     # Set the length_scale parameter of the underlying RBF kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
-    idx = np.random.choice(
+    generator = np.random.default_rng(1_989)
+    idx = generator.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
         replace=False,
@@ -182,6 +188,11 @@ def main(
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-statements
+# pylint: enable=too-many-locals
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":
