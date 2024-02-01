@@ -82,10 +82,13 @@ out the coreset algorithm, restricting the maximum size of variables handled in 
 from sklearn.datasets import make_blobs
 import numpy as np
 
-from coreax.coresubset import KernelHerding
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, median_heuristic
-from coreax.reduction import SizeReduce
+from coreax import (
+    ArrayData,
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
+from coreax.kernel import median_heuristic
 
 # Generate some data
 num_data_points = 10_000
@@ -132,10 +135,11 @@ each point and to better approximate the underlying data distribution.
 Optimal weights can be determined by implementing a
 `coreax.weights.WeightsOptimiser`, such as the `MMDWeightsOptimiser`.
 ```python
-from coreax.coresubset import KernelHerding
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import SizeReduce
-from coreax.refine import RefineRegular
+from coreax import (
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 # Define a kernel
@@ -168,9 +172,11 @@ There are several different approaches to refining a coreset, which can be found
 classes and methods in `coreax.refine`. In the example below, we create a refiner object,
 pass it to the herding object, and then call the refine method.
 ```python
-from coreax.coresubset import KernelHerding
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import SizeReduce
+from coreax import (
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
 from coreax.refine import RefineRegular
 
 # Define a refinement object
@@ -233,8 +239,11 @@ a finite set of samples.
 In this example, we use a Stein kernel with a squared exponential base
 kernel, computing the score function explicitly.
 ```python
-from coreax.kernel import SteinKernel, SquaredExponentialKernel
-from coreax.score_matching import KernelDensityMatching
+from coreax import (
+    SquaredExponentialKernel,
+    SteinKernel,
+    KernelDensityMatching,
+)
 
 # Learn a score function from the a subset of the data, through a kernel density
 # estimation applied to a subset of the data.
@@ -269,8 +278,11 @@ implemented are found in `coreax.score_matching`.
 ```python
 from jax.random import rademacher
 
-from coreax.kernel import PCIMQKernel, SteinKernel
-from coreax.score_matching import SlicedScoreMatching
+from coreax import (
+    SteinKernel,
+    SlicedScoreMatching,
+)
+from coreax.kernel import PCIMQKernel
 
 # Learn a score function from a subset of the data, through approximation using a neural
 # network applied to a subset of the data

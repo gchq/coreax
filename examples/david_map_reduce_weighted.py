@@ -46,17 +46,18 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from coreax.coresubset import KernelHerding, RandomSample
-from coreax.data import ArrayData
-from coreax.kernel import (
-    PCIMQKernel,
+from coreax import (
+    MMD,
+    ArrayData,
+    KernelDensityMatching,
+    KernelHerding,
+    MapReduce,
+    RandomSample,
+    SizeReduce,
     SquaredExponentialKernel,
     SteinKernel,
-    median_heuristic,
 )
-from coreax.metrics import MMD
-from coreax.reduction import MapReduce, SizeReduce
-from coreax.score_matching import KernelDensityMatching
+from coreax.kernel import PCIMQKernel, median_heuristic
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 
