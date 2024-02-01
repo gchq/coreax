@@ -112,7 +112,7 @@ num_samples_length_scale = min(num_data_points, 1_000)
 idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
 length_scale = median_heuristic(x[idx])
 
-# Compute a coreset using kernel herding with a Squared exponential kernel.
+# Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
     kernel=SquaredExponentialKernel(length_scale=length_scale)
 )
@@ -144,7 +144,7 @@ kernel = SquaredExponentialKernel(length_scale=length_scale)
 # Define a weights optimiser to learn optimal weights for the coreset after creation
 weights_optimiser = MMDWeightsOptimiser(kernel=kernel)
 
-# Compute a coreset using kernel herding with a Squared exponential kernel.
+# Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
     kernel=kernel,
     weights_optimiser=weights_optimiser
@@ -176,7 +176,7 @@ from coreax.refine import RefineRegular
 # Define a refinement object
 refiner = RefineRegular()
 
-# Compute a coreset using kernel herding with a Squared exponential kernel.
+# Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
     kernel=SquaredExponentialKernel(length_scale=length_scale),
     refine_method=refiner
@@ -208,7 +208,7 @@ from coreax.coresubset import KernelHerding
 from coreax.kernel import SquaredExponentialKernel
 from coreax.reduction import MapReduce
 
-# Compute a coreset using kernel herding with a Squared exponential kernel.
+# Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
     kernel=SquaredExponentialKernel(length_scale=length_scale),
 )
@@ -230,7 +230,7 @@ To use Stein kernel herding, we have to define a
 continuous approximation to the discrete measure, e.g. using kernel density estimation (KDE),
 or an estimate the score function $\nabla \log f_X(\mathbf{x})$ of a continuous PDF from
 a finite set of samples.
-In this example, we use a Stein kernel with an inverse multi-quadric base
+In this example, we use a Stein kernel with a squared exponential base
 kernel, computing the score function explicitly.
 ```python
 from coreax.kernel import SteinKernel, SquaredExponentialKernel
@@ -261,10 +261,11 @@ The score function, $\nabla \log f_X(\mathbf{x})$, of a distribution is the deri
 of the log-density function. This function is required when evaluating Stein kernels.
 However, it can be difficult to specify analytically in practice.
 
-To resolve this, we have implemented <a href="https://arxiv.org/abs/1905.07088" target="_blank">Song et al. (2019)</a>
-which approximates the score function with a neural network. This approximate score
-function can then be passed directly to a Stein kernel, removing any requirement for
-analytical derivation. More details on score matching methods implemented are found in `coreax.score_matching`.
+To resolve this, we have implemented an approximation of the score function using a
+neural network as in <a href="https://arxiv.org/abs/1905.07088" target="_blank">Song et al. (2019)</a>.
+This approximate score function can then be passed directly to a Stein kernel, removing
+any requirement for analytical derivation. More details on score matching methods
+implemented are found in `coreax.score_matching`.
 ```python
 from jax.random import rademacher
 
