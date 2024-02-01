@@ -312,6 +312,7 @@ class Coreset(ABC):
 C = TypeVar("C", bound=Coreset)
 
 
+# pylint: disable=too-few-public-methods
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -413,8 +414,11 @@ class MapReduce(ReductionStrategy):
 
     .. math::
 
-        \frac{\log{\texttt{coreset_size}} - \log{\left( \text{original data size} \right)}}
-        {\log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}} .
+        \frac{
+            \log{\texttt{coreset_size}} - \log{\left(\text{original data size}\right)}
+        }{
+            \log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}
+        } .
 
     :param coreset_size: Number of points to include in coreset
     :param leaf_size: Approximate number of points to include in each partition;
@@ -550,3 +554,6 @@ class MapReduce(ReductionStrategy):
             assert input_indices is not None
             coreset.coreset_indices = input_indices[coreset.coreset_indices]
         return coreset
+
+
+# pylint: enable=too-few-public-methods

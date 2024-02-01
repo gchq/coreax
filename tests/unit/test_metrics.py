@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for computations of metrics for coresets.
+
+Metrics evaluate the quality of a coreset by some measure. The tests within this file
+verify that metric computations produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -32,22 +39,29 @@ class TestMetrics(unittest.TestCase):
         r"""
         Test the class Metric initialises correctly.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are patching
+        # these whilst testing creation of the parent class
+        # pylint: disable=abstract-class-instantiated
         # Patch the abstract methods of the Metric ABC, so it can be created
         p = patch.multiple(coreax.metrics.Metric, __abstractmethods__=set())
         p.start()
 
         # Create a metric object
         metric = coreax.metrics.Metric()
+        # pylint: enable=abstract-class-instantiated
 
         # Check the compute method exists
         self.assertTrue(hasattr(metric, "compute"))
 
 
 class TestMMD(unittest.TestCase):
-    r"""
+    """
     Tests related to the maximum mean discrepancy (MMD) class in metrics.py.
     """
 
+    # Disable pylint warning for too-many-instance-attributes as we use each of these in
+    # subsequent tests, variable names ensure human readability and understanding
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         r"""
         Generate data for shared use across unit tests.
@@ -487,9 +501,11 @@ class TestMMD(unittest.TestCase):
             places=5,
         )
 
-    def test_sum_weight_K(self) -> None:
+    def test_sum_weighted_pairwise_distances(self) -> None:
         r"""
-        Test sum_weight_K(), which calculates w^T*K*w matrices in blocks of max_size.
+        Test sum_weighted_pairwise_distances(), which calculates w^T*K*w matrices.
+
+        Computations are done in blocks of size max_size.
 
         For the dataset of 3 points in 2 dimensions :math:`x`, and second dataset
         :math:`y`:

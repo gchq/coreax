@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests to evaluate functionality, performance and end-to-end runs of the codebase.
+"""
+
 import tqdm
 
 import coreax.util

@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for kernel implementations.
+
+The tests within this file verify that the implementations of kernels used throughout
+the codebase produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import scipy.stats
+from jax import Array
 from jax import numpy as jnp
+from jax.typing import ArrayLike
+from scipy.stats import norm as scipy_norm
 
 import coreax.approximation
 import coreax.kernel
@@ -32,6 +41,9 @@ class TestKernelABC(unittest.TestCase):
         """
         Test usage of approximation object within the Kernel class.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are patching
+        # these whilst testing creation of the parent class
+        # pylint: disable=abstract-class-instantiated
         # Patch the abstract methods of the Kernel ABC, so it can be created
         p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
         p.start()
@@ -44,6 +56,7 @@ class TestKernelABC(unittest.TestCase):
         approximator = MagicMock(spec=coreax.approximation.RandomApproximator)
         approximator_approximate_method = MagicMock()
         approximator.approximate = approximator_approximate_method
+        # pylint: enable=abstract-class-instantiated
 
         # Call the approximation method and check that approximation object is called as
         # expected
@@ -58,7 +71,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
     def test_squared_exponential_kernel_init(self) -> None:
         r"""
-        Test the initialisation of SquaredExponentialKernel with a negative length_scale.
+        Test SquaredExponentialKernel initialisation with a negative length_scale.
         """
         # Create the kernel with a negative length_scale - we expect a value error to be
         # raised
@@ -230,24 +243,30 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
-        ..math:
-            - \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            - \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    -(x_ - y_)
+                    -(x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
-                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -269,26 +288,33 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = s\exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``x`` is:
 
-        ..math:
-            - s\frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            - s\frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.pi
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    -output_scale
-                    * (x_ - y_)
+                    -1.0
+                    * output_scale
+                    * (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
-                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -312,24 +338,30 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
         The gradient of this with respect to ``y`` is:
 
-        ..math:
-            \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{2 \text{length_scale}^2}}
+        .. math:
+            \frac{(x - y)}{\text{length_scale}^{3}\sqrt(2\pi)}e^{-\frac{|x-y|^2}{
+                2 \text{length_scale}^2}
+            }
         """
         # Define some data
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    (x_ - y_)
+                    (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
-                    * np.exp(-np.linalg.norm(x_ - y_) ** 2 / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -493,9 +525,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_output = np.zeros((num_points, num_points))
         for x_idx, x_ in enumerate(x):
             for y_idx, y_ in enumerate(y):
-                expected_output[x_idx, y_idx] = scipy.stats.norm(y_, length_scale).pdf(
-                    x_
-                )
+                expected_output[x_idx, y_idx] = scipy_norm(y_, length_scale).pdf(x_)
 
         # Compute the normalised PDF output using the kernel class
         kernel = coreax.kernel.SquaredExponentialKernel(
@@ -515,14 +545,17 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                dot_product = np.dot(x_ - y_, x_ - y_)
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dot_product = np.dot(
+                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                )
                 expected_output[x_idx, y_idx] = (
                     2 * np.exp(-dot_product) * (dimension - 2 * dot_product)
                 )
@@ -542,14 +575,17 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                dot_product = np.dot(x_ - y_, x_ - y_)
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dot_product = np.dot(
+                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                )
                 kernel_scaled = output_scale * np.exp(
                     -dot_product / (2.0 * length_scale**2)
                 )
@@ -753,17 +789,21 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    -np.sign(x_ - y_)
+                    -np.sign(x[x_idx, :] - y[y_idx, :])
                     / (2 * length_scale**2)
-                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -778,6 +818,7 @@ class TestLaplacianKernel(unittest.TestCase):
         )
 
     def test_scaled_laplacian_kernel_gradients_wrt_x(self) -> None:
+        # pylint: disable=line-too-long
         r"""
         Test the class LaplacianKernel gradient computations; with scaling.
 
@@ -789,23 +830,29 @@ class TestLaplacianKernel(unittest.TestCase):
 
             - \text{output_scale}\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y\rVert_1}{2 \text{length_scale}^2}}
         """
+        # pylint: enable=line-too-long
         # Define some data
         length_scale = 1 / np.pi
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to x
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    -output_scale
-                    * np.sign(x_ - y_)
+                    -1.0
+                    * output_scale
+                    * np.sign(x[x_idx, :] - y[y_idx, :])
                     / (2 * length_scale**2)
-                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -837,17 +884,21 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Compute the actual gradients of the kernel with respect to y
         true_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 true_gradients[x_idx, y_idx] = (
-                    np.sign(x_ - y_)
+                    np.sign(x[x_idx, :] - y[y_idx, :])
                     / (2 * length_scale**2)
-                    * np.exp(-np.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                    * np.exp(
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        / (2 * length_scale**2)
+                    )
                 )
 
         # Create the kernel
@@ -869,17 +920,21 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 expected_output[x_idx, y_idx] = (
                     -dimension
                     / (4 * length_scale**4)
-                    * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                    * np.exp(
+                        -jnp.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        / (2 * length_scale**2)
+                    )
                 )
         # Compute output using Kernel class
         kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
@@ -897,18 +952,23 @@ class TestLaplacianKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 expected_output[x_idx, y_idx] = (
-                    -output_scale
+                    -1.0
+                    * output_scale
                     * dimension
                     / (4 * length_scale**4)
-                    * np.exp(-jnp.linalg.norm(x_ - y_, ord=1) / (2 * length_scale**2))
+                    * np.exp(
+                        -jnp.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        / (2 * length_scale**2)
+                    )
                 )
         # Compute output using Kernel class
         kernel = coreax.kernel.LaplacianKernel(
@@ -934,12 +994,14 @@ class TestPCIMQKernel(unittest.TestCase):
         self.assertRaises(ValueError, coreax.kernel.PCIMQKernel, length_scale=-1.0)
 
     def test_pcimq_kernel_compute(self) -> None:
+        # pylint: disable=line-too-long
         r"""
         Test the class PCIMQKernel distance computations.
 
         The PCIMQ kernel is defined as
         :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / \text{length_scale}) ** 2 / 2.0)}`.
         """
+        # pylint: enable=line-too-long
         # Define input data
         length_scale = np.e
         num_points = 10
@@ -969,15 +1031,16 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                expected_output[x_idx, y_idx] = -(x_ - y_) / (
-                    1 + np.linalg.norm(x_ - y_) ** 2
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_output[x_idx, y_idx] = -(x[x_idx, :] - y[y_idx, :]) / (
+                    1 + np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
@@ -995,15 +1058,16 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                expected_output[x_idx, y_idx] = (x_ - y_) / (
-                    1 + np.linalg.norm(x_ - y_) ** 2
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_output[x_idx, y_idx] = (x[x_idx, :] - y[y_idx, :]) / (
+                    1 + np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
                 ) ** (3 / 2)
 
         # Compute output using Kernel class
@@ -1022,18 +1086,23 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points, dimension))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 expected_output[x_idx, y_idx] = (
                     output_scale
                     / (2 * length_scale**2)
-                    * (x_ - y_)
-                    / (1 + (np.linalg.norm(x_ - y_) ** 2) / (2 * length_scale**2))
+                    * (x[x_idx, :] - y[y_idx, :])
+                    / (
+                        1
+                        + (np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
+                        / (2 * length_scale**2)
+                    )
                     ** (3 / 2)
                 )
 
@@ -1054,14 +1123,17 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                dot_product = np.dot(x_ - y_, x_ - y_)
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dot_product = np.dot(
+                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                )
                 denominator = (1 + dot_product) ** (3 / 2)
                 expected_output[
                     x_idx, y_idx
@@ -1083,14 +1155,17 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        x = np.random.random((num_points, dimension))
-        y = np.random.random((num_points, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
 
         # Define expected output
         expected_output = np.zeros((num_points, num_points))
-        for x_idx, x_ in enumerate(x):
-            for y_idx, y_ in enumerate(y):
-                dot_product = np.dot(x_ - y_, x_ - y_)
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dot_product = np.dot(
+                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                )
                 kernel_scaled = output_scale / (
                     (1 + dot_product / (2 * length_scale**2)) ** (1 / 2)
                 )
@@ -1133,12 +1208,19 @@ class TestSteinKernel(unittest.TestCase):
         dimension = 2
         length_scale = 1 / np.sqrt(2)
 
-        def score_function(x_):
+        def score_function(x_: ArrayLike) -> Array:
+            """
+            Compute a simple, example score function for testing purposes.
+
+            :param x_: Point or points at which we wish to evaluate the score function
+            :return: Evaluation of the score function at ``x_``
+            """
             return -x_
 
         # Setup data
-        x = np.random.random((num_points_x, dimension))
-        y = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points_x, dimension))
+        y = generator.random((num_points_y, dimension))
 
         # Set expected output sizes
         expected_size = (10, 5)
@@ -1153,6 +1235,7 @@ class TestSteinKernel(unittest.TestCase):
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
 
+    # pylint: disable=too-many-locals
     def test_stein_kernel_element_computation(self) -> None:
         r"""
         Test computation of a single element of the SteinKernel.
@@ -1164,7 +1247,13 @@ class TestSteinKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         beta = 0.5
 
-        def score_function(x_):
+        def score_function(x_: ArrayLike) -> Array:
+            """
+            Compute a simple, example score function for testing purposes.
+
+            :param x_: Point or points at which we wish to evaluate the score function
+            :return: Evaluation of the score function at ``x_``
+            """
             return -x_
 
         def k_x_y(x_input, y_input):
@@ -1218,8 +1307,9 @@ class TestSteinKernel(unittest.TestCase):
             return l + m + r
 
         # Setup data
-        x = np.random.random((num_points_x, dimension))
-        y = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x = generator.random((num_points_x, dimension))
+        y = generator.random((num_points_y, dimension))
 
         # Compute output using Kernel class
         kernel = coreax.kernel.SteinKernel(
@@ -1230,13 +1320,15 @@ class TestSteinKernel(unittest.TestCase):
         # Compute the output step-by-step with the element method
         expected_output = np.zeros([x.shape[0], y.shape[0]])
         output = kernel.compute(x, y)
-        for x_idx, x__ in enumerate(x):
-            for y_idx, y__ in enumerate(y):
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
                 # Compute via our hand-coded kernel evaluation
-                expected_output[x_idx, y_idx] = k_x_y(x__, y__)
+                expected_output[x_idx, y_idx] = k_x_y(x[x_idx, :], y[y_idx, :])
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
+
+    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

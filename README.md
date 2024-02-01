@@ -110,9 +110,9 @@ data = ArrayData.load(x)
 
 # Set the bandwidth parameter of the kernel using a median heuristic derived from
 # at most 1000 random samples in the data.
-np.random.seed(random_seed)
 num_samples_length_scale = min(num_data_points, 1_000)
-idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
+generator = np.random.default_rng(1_989)
+idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
 length_scale = median_heuristic(x[idx])
 
 # Compute a coreset using kernel herding with a squared exponential kernel.

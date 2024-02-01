@@ -10,6 +10,13 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+Tests for utility functions.
+
+The tests within this file verify that various utility functions written produce the
+expected results on simple examples.
+"""
+
 import unittest
 
 import jax.numpy as jnp
@@ -64,8 +71,9 @@ class TestUtil(unittest.TestCase):
         num_points_x = 10
         num_points_y = 10
         dimension = 3
-        x_array = np.random.random((num_points_x, dimension))
-        y_array = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x_array = generator.random((num_points_x, dimension))
+        y_array = generator.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
         output = coreax.util.pairwise_difference(x_array, y_array)
         self.assertAlmostEqual(

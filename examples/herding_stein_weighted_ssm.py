@@ -56,6 +56,10 @@ from coreax.kernel import PCIMQKernel, median_heuristic
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
+# pylint: disable=too-many-locals
+# pylint: disable=duplicate-code
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the tabular herding example using weighted herding and sliced score matching.
@@ -75,11 +79,12 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _ = make_blobs(
+    x, _, _centers = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
         random_state=random_seed,
+        return_centers=True,
     )
 
     # Request 100 coreset points
@@ -88,11 +93,14 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Setup the original data object
     data = ArrayData.load(x)
 
+    # Fix random behaviour
+    np.random.seed(1_989)
+
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
-    np.random.seed(random_seed)
     num_samples_length_scale = min(num_data_points, 1_000)
-    idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
+    generator = np.random.default_rng(1_989)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
     # Learn a score function via sliced score matching (this is required for
@@ -165,8 +173,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     plt.axis("off")
     plt.title(
-        "Stein kernel herding, m=%d, MMD=%.6f"
-        % (coreset_size, float(maximum_mean_discrepancy_herding))
+        f"Stein kernel herding, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_herding), 6)}"
     )
     plt.show()
 
@@ -178,8 +186,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         color="red",
     )
     plt.title(
-        "Random, m=%d, MMD=%.6f"
-        % (coreset_size, float(maximum_mean_discrepancy_random))
+        f"Random, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_random), 6)}"
     )
     plt.axis("off")
 
@@ -194,6 +202,10 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_random),
     )
+
+
+# pylint: enable=too-many-locals
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

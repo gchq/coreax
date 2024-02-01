@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for refinement implementations.
+
+Refinement approaches greedily select points to improve coreset quality. The tests
+within this file verify that refinement approaches used produce the expected results on
+simple examples.
+"""
+
 import itertools
 import unittest
 
@@ -43,24 +51,36 @@ class TestRefine(unittest.TestCase):
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         coreax.refine.Refine._validate_coreset(coreset)
+        # pylint: enable=protected-access
 
     def test_validate_coreset_no_fit(self) -> None:
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         self.assertRaises(
             coreax.util.NotCalculatedError,
             coreax.refine.Refine._validate_coreset,
             coreset,
         )
+        # pylint: enable=protected-access
 
     def test_validate_coreset_not_coresubset(self) -> None:
         """Check validation raises TypeError when not a coresubset."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
+        # pylint: enable=protected-access
 
     def test_refine_ones(self) -> None:
         """
