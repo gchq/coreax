@@ -70,10 +70,13 @@ constraints.
 from sklearn.datasets import make_blobs
 import numpy as np
 
-from coreax.coresubset import KernelHerding
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, median_heuristic
-from coreax.reduction import SizeReduce
+from coreax import (
+    ArrayData,
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
+from coreax.kernel import median_heuristic
 
 # Generate some data
 num_data_points = 10_000
@@ -120,10 +123,11 @@ underlying data distribution.
 Optimal weights can be determined by using any implementation of
 `coreax.weights.WeightsOptimiser`.
 ```python
-from coreax.coresubset import KernelHerding
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import SizeReduce
-from coreax.refine import RefineRegular
+from coreax import (
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 # Define a kernel
@@ -152,9 +156,11 @@ dataset that directly improve the coreset's MMD. See the classes and methods in
 `coreax.refine`. In the above example, we can simply define a Refiner object, pass it to
 the herding object, and then call the refine method.
 ```python
-from coreax.coresubset import KernelHerding
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import SizeReduce
+from coreax import (
+    KernelHerding,
+    SizeReduce,
+    SquaredExponentialKernel,
+)
 from coreax.refine import RefineRegular
 
 # Define a refinement object
@@ -190,8 +196,11 @@ samples.
 In this example, we use a Stein kernel with an inverse multi-quadric base
 kernel; computing the score function explicitly.
 ```python
-from coreax.kernel import SteinKernel, SquaredExponentialKernel
-from coreax.score_matching import KernelDensityMatching
+from coreax import (
+    SquaredExponentialKernel,
+    SteinKernel,
+    KernelDensityMatching,
+)
 
 # Learn a score function from the a subset of the data, through a kernel density
 # estimation applied to a subset of the data.
@@ -216,9 +225,11 @@ computation.
 Map reduce can be used by simply replacing `coreax.reduction.SizeReduce` in the
 previous examples.
 ```python
-from coreax.coresubset import KernelHerding
-from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import MapReduce
+from coreax import (
+    KernelHerding,
+    SquaredExponentialKernel,
+    MapReduce,
+)
 
 # Compute a coreset using kernel herding with a Squared exponential kernel.
 herding_object = KernelHerding(
@@ -242,8 +253,11 @@ kernel, removing any requirement for the analytical derivation.
 ```python
 from jax.random import rademacher
 
-from coreax.kernel import PCIMQKernel, SteinKernel
-from coreax.score_matching import SlicedScoreMatching
+from coreax import (
+    SteinKernel,
+    SlicedScoreMatching,
+)
+from coreax.kernel import PCIMQKernel
 
 # Learn a score function from a subset of the data, through approximation using a neural
 # network applied to a subset of the data
