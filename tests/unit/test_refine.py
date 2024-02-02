@@ -22,6 +22,7 @@ simple examples.
 
 import itertools
 import unittest
+from unittest.mock import patch
 
 import jax.numpy as jnp
 
@@ -140,6 +141,48 @@ class TestRefine(unittest.TestCase):
                     set(coreset_obj.coreset_indices.tolist()), best_indices
                 )
 
+    def test_refine_regular_no_kernel_matrix_row_sum_mean(self):
+        """
+        Test RefineRegular with a toy example, with no kernel matrix row sum mean.
+
+        This test checks, when ``kernel_matrix_row_sum_mean`` is ``None`` and when no
+        approximator is given, that the method ``calculate_kernel_matrix_row_sum_mean``
+        in the class Kernel is called exactly once.
+
+        It also checks that the refined coreset indices returned are as expected, for
+        a toy example:
+
+        For ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that minimises the MMD is
+         specified by the indices ``coreset_indices = [0, 2]``, i.e.
+         ``X_c =  [[0,0], [[2,2]]``.
+
+        We test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
+        coreset indices to ``[0, 2]``.
+        """
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        best_indices = {0, 2}
+        test_indices = [2, 2]
+        coreset_indices = jnp.array(test_indices)
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
+        coreset_obj.kernel_matrix_row_sum_mean = None
+        refine_regular = coreax.refine.RefineRegular()
+
+        with patch.object(
+            coreax.kernel.Kernel,
+            "calculate_kernel_matrix_row_sum_mean",
+            wraps=kernel.calculate_kernel_matrix_row_sum_mean,
+        ) as mock_method:
+            refine_regular.refine(coreset=coreset_obj)
+
+        # Check the approximation method in the Kernel class is called exactly once
+        mock_method.assert_called_once()
+
+        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
+
     def test_refine_rand(self):
         """
         Test the random refine method with a toy example.
@@ -148,7 +191,7 @@ class TestRefine(unittest.TestCase):
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
+        Test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
         coreset indices to ``[0, 2]``.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
@@ -176,7 +219,7 @@ class TestRefine(unittest.TestCase):
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, when given ``coreset_indices=[2,2]``, that ``refine_rand()`` updates the
+        Test, when given ``coreset_indices=[2,2]``, that ``RefineRandom()`` updates the
         coreset indices to ``[0, 2]``.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
@@ -190,9 +233,50 @@ class TestRefine(unittest.TestCase):
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
-
         refine_rand = coreax.refine.RefineRandom(random_key=-10, p=1.0)
         refine_rand.refine(coreset=coreset_obj)
+
+        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
+
+    def test_refine_rand_no_kernel_matrix_row_sum_mean(self):
+        """
+        Test RefineRandom with a toy example, with no kernel matrix row sum mean.
+
+        This test checks, when ``kernel_matrix_row_sum_mean`` is ``None`` and when no
+        approximator is given, that the method ``calculate_kernel_matrix_row_sum_mean``
+        in the class Kernel is called exactly once.
+
+        It also checks that the refined coreset indices returned are as expected, for
+        a toy example:
+
+        For ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that minimises the MMD is
+         specified by the indices ``coreset_indices = [0, 2]``, i.e.
+         ``X_c =  [[0,0], [[2,2]]``.
+
+        We test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
+        coreset indices to ``[0, 2]``.
+        """
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        best_indices = {0, 2}
+        test_indices = [2, 2]
+        coreset_indices = jnp.array(test_indices)
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
+        coreset_obj.kernel_matrix_row_sum_mean = None
+        refine_rand = coreax.refine.RefineRandom(p=1.0)
+
+        with patch.object(
+            coreax.kernel.Kernel,
+            "calculate_kernel_matrix_row_sum_mean",
+            wraps=kernel.calculate_kernel_matrix_row_sum_mean,
+        ) as mock_method:
+            refine_rand.refine(coreset=coreset_obj)
+
+        # Check the approximation method in the Kernel class is called exactly once
+        mock_method.assert_called_once()
 
         self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
 
@@ -204,7 +288,7 @@ class TestRefine(unittest.TestCase):
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, for every 2-point coreset, that ``refine_rev()`` updates the coreset
+        Test, for every 2-point coreset, that ``refine()`` updates the coreset
         indices to ``[0, 2]``.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
@@ -227,6 +311,44 @@ class TestRefine(unittest.TestCase):
             coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
             coreset_obj.coreset = original_array[coreset_indices, :]
 
+            refine_rev.refine(coreset=coreset_obj)
+
+            with self.subTest(test_indices):
+                self.assertSetEqual(
+                    set(coreset_obj.coreset_indices.tolist()), best_indices
+                )
+
+    def test_refine_reverse_no_kernel_matrix_row_sum_mean(self):
+        """
+        Test the reverse refine method with a toy example, no kernel row sum mean.
+
+        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
+        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
+        i.e. ``X_c =  [[0,0], [[2,2]]``.
+
+        Test, for every 2-point coreset, that ``refine()`` updates the coreset
+        indices to ``[0, 2]``.
+        """
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        best_indices = {0, 2}
+        index_pairs = (
+            set(combo)
+            for combo in itertools.combinations(range(len(original_array)), 2)
+        )
+
+        refine_rev = coreax.refine.RefineReverse()
+
+        for test_indices in index_pairs:
+            coreset_indices = jnp.array(list(test_indices))
+
+            coreset_obj = CoresetMock(
+                weights_optimiser=None,
+                kernel=coreax.kernel.SquaredExponentialKernel(),
+            )
+            coreset_obj.coreset_indices = coreset_indices
+            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+            coreset_obj.coreset = original_array[coreset_indices, :]
+            coreset_obj.kernel_matrix_row_sum_mean = None
             refine_rev.refine(coreset=coreset_obj)
 
             with self.subTest(test_indices):

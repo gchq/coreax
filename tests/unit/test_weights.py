@@ -21,6 +21,7 @@ written produce the expected results on simple examples.
 
 import cmath
 import unittest
+import warnings
 
 import jax.numpy as jnp
 
@@ -90,6 +91,41 @@ class TestWeights(unittest.TestCase):
         output = optimiser.solve(x, y)
 
         self.assertTrue(jnp.allclose(output, expected_output))
+
+    def test_calculate_bayesian_quadrature_weights_approximate(self) -> None:
+        """
+        Test the approximate calculation of weights via sequential Bayesian quadrature.
+
+        Since the approximate solution method currently just calls the exact solution
+        method, this test should give exactly the same output (with a warning raised)
+        as the test `test_calculate_bayesian_quadrature_weights` above.
+        """
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        expected_output = jnp.asarray(
+            [
+                (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2))),
+                (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2))),
+            ]
+        )
+
+        optimiser = coreax.weights.SBQ(kernel=coreax.kernel.SquaredExponentialKernel())
+
+        # Solve for the weights
+        with warnings.catch_warnings(record=True) as warning_result:
+            output = optimiser.solve_approximate(x, y)
+
+        self.assertTrue(jnp.allclose(output, expected_output))
+
+        # Check the expected warning was raised
+        self.assertEqual(len(warning_result), 1)
+        self.assertEqual(
+            str(warning_result[0].message),
+            "solve_approximate() not yet implemented. "
+            "Calculating exact solution via solve()",
+        )
 
     def test_simplex_weights(self) -> None:
         r"""
@@ -170,6 +206,24 @@ class TestWeights(unittest.TestCase):
         output = optimiser.solve(x, y)
 
         self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
+
+    def test_simplex_weights_invalid_epsilon(self) -> None:
+        """
+        Test invalid epsilon value passed to simplex method for quadratic programming.
+
+        A small positive value is added to the kernel Gram matrix to ensure numerical
+        operations remain valid. This test ensures that a negative value cannot be
+        passed.
+        """
+        # Setup data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define weights object
+        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
+
+        # Solve for the weights (with an invalid epsilon)
+        self.assertRaises(ValueError, optimiser.solve, x, y, epsilon=-0.1)
 
 
 if __name__ == "__main__":
