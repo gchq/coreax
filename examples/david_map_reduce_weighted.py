@@ -37,7 +37,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from pathlib import Path
@@ -47,20 +46,27 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from coreax.coresubset import KernelHerding, RandomSample
-from coreax.data import ArrayData
-from coreax.kernel import (
-    PCIMQKernel,
+from coreax import (
+    MMD,
+    ArrayData,
+    KernelDensityMatching,
+    KernelHerding,
+    MapReduce,
+    RandomSample,
+    SizeReduce,
     SquaredExponentialKernel,
     SteinKernel,
-    median_heuristic,
 )
-from coreax.metrics import MMD
-from coreax.reduction import MapReduce, SizeReduce
-from coreax.score_matching import KernelDensityMatching
+from coreax.kernel import PCIMQKernel, median_heuristic
 from coreax.weights import MMD as MMDWeightsOptimiser
 
 
+# Examples are written to be easy to read, copy and paste by users, so we ignore the
+# pylint warnings raised that go against this approach
+# pylint: disable=no-member
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
+# pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
     out_path: Path | None = None,
@@ -100,7 +106,7 @@ def main(
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
 
     print(f"Image dimensions: {image_data.shape}")
-    pre_coreset_data = np.column_stack(np.where(image_data < 255))
+    pre_coreset_data = np.column_stack(np.nonzero(image_data < 255))
     pixel_values = image_data[image_data < 255]
     pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
         np.float32
@@ -114,11 +120,11 @@ def main(
     data = ArrayData.load(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
-    np.random.seed(1_989)
     num_samples_length_scale = min(num_data_points, 1_000)
-    idx = np.random.choice(num_data_points, num_samples_length_scale, replace=False)
+    generator = np.random.default_rng(1_989)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
-    if length_scale == 0.0:
+    if length_scale < 1e-6:
         length_scale = 100.0
 
     # Learn a score function via kernel density estimation (this is required for
@@ -231,6 +237,11 @@ def main(
         float(maximum_mean_discrepancy_random),
     )
 
+
+# pylint: enable=no-member
+# pylint: enable=too-many-locals
+# pylint: enable=too-many-statements
+# pylint: enable=duplicate-code
 
 if __name__ == "__main__":
     main()

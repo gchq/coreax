@@ -27,19 +27,18 @@ sample of :math:`m` points by using the :class:`SizeReduce` strategy and a
 :class:`~coreax.coresubset.RandomSample` coreset. This may be implemented for
 :class:`~coreax.data.ArrayData` by calling
 
-```python
-original_data = ArrayData.load(input_data)
-coreset = RandomSample()
-coreset.reduce(original_data, SizeReduce(m))
-print(coreset.format())
-```
+.. code-block:: python
+
+    original_data = ArrayData.load(input_data)
+    coreset = RandomSample()
+    coreset.reduce(original_data, SizeReduce(m))
+    print(coreset.format())
 
 :class:`ReductionStrategy` and :class:`Coreset` are abstract base classes defining the
 interface for which particular methods can be implemented.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -51,9 +50,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 from sklearn.neighbors import KDTree
-from typing_extensions import (
-    Self,  # TODO: Switch to typing once no longer supporting Python < 3.11
-)
+from typing_extensions import Self
 
 import coreax.data
 import coreax.kernel
@@ -101,8 +98,11 @@ class Coreset(ABC):
         )
         self.refine_method = refine_method
 
-        # Data attributes not set in init, original data is the data to be reduced
+        # Data attributes not set in init
         self.original_data: coreax.data.DataReader | None = None
+        """
+        Data to be reduced
+        """
         self.coreset: Array | None = None
         """
         Calculated coreset. The order of rows need not be monotonic with those in the
@@ -216,7 +216,7 @@ class Coreset(ABC):
         supplied as an array. Further options are available by calling the chosen
         :class:`~coreax.Metric` class directly.
 
-        :param metric: Instance of :class:`~coreax.Metric` to use
+        :param metric: Instance of :class:`~coreax.metrics.Metric` to use
         :param block_size: Size of matrix block to process, or :data:`None` to not split
             into blocks
         :param weights_x: An :math:`1 \times n` array of weights for associated points
@@ -312,6 +312,7 @@ class Coreset(ABC):
 C = TypeVar("C", bound=Coreset)
 
 
+# pylint: disable=too-few-public-methods
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -387,7 +388,7 @@ class MapReduce(ReductionStrategy):
     #.  Unweighted coresets are calculated on each patch of roughly
         :attr:`leaf_size` points and then concatenated. More specifically, each
         patch contains between :attr:`leaf_size` and
-        :math:`2 \times` :attr:`leaf_size` points, inclusive.
+        :math:`2 \,\,\times` :attr:`leaf_size` points, inclusive.
     #.  Recursively calculate ever smaller coresets until a global coreset with size
         :attr:`coreset_size` is obtained.
     #.  If the input data on the final iteration is smaller than :attr:`coreset_size`,
@@ -413,14 +414,17 @@ class MapReduce(ReductionStrategy):
 
     .. math::
 
-        \frac{\log{\texttt{coreset_size}} - \log{\left( \text{original data size} \right)}}
-        {\log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}} .
+        \frac{
+            \log{\texttt{coreset_size}} - \log{\left(\text{original data size}\right)}
+        }{
+            \log{\texttt{coreset_size}} - \log{\texttt{leaf_size}}
+        } .
 
     :param coreset_size: Number of points to include in coreset
     :param leaf_size: Approximate number of points to include in each partition;
         corresponds to ``leaf_size`` in :class:`~sklearn.neighbors.KDTree`;
         actual partition sizes vary non-strictly between :attr:`leaf_size` and
-        :math:`2 \times` :attr:`leaf_size`; must be greater than :attr:`coreset_size`
+        :math:`2 \,\times` :attr:`leaf_size`; must be greater than :attr:`coreset_size`
     :param parallel: If :data:`True`, calculate coresets on partitions in parallel
     """
 
@@ -550,3 +554,6 @@ class MapReduce(ReductionStrategy):
             assert input_indices is not None
             coreset.coreset_indices = input_indices[coreset.coreset_indices]
         return coreset
+
+
+# pylint: enable=too-few-public-methods

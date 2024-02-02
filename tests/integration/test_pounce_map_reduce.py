@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Integration test for pounce (video) example using map reduce.
+"""
+
 import os
 import tempfile
 import unittest
@@ -19,6 +23,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from examples.pounce_map_reduce import main as pounce_map_reduce_main
+
+# Integration tests are split across several files, to allow serial calls and avoid
+# sharing of JIT caches between tests. As a result, ignore the pylint warnings for
+# duplicated-code.
+# pylint: disable=duplicate-code
 
 
 class TestPounceMapReduce(unittest.TestCase):
@@ -58,6 +67,9 @@ class TestPounceMapReduce(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
+
+
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

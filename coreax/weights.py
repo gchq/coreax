@@ -40,6 +40,7 @@ from jax.typing import ArrayLike
 
 import coreax.kernel
 import coreax.util
+import coreax.validation
 
 
 class WeightsOptimiser(ABC):
@@ -49,12 +50,11 @@ class WeightsOptimiser(ABC):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: "coreax.kernel.Kernel") -> None:
-        """
-        Initialise a weights optimiser class.
-
-        # TODO: Does this need to take in a DataReduction object that has kernel attached to it?
-        """
+    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
+        """Initialise a weights optimiser class."""
+        coreax.validation.validate_is_instance(
+            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
+        )
         self.kernel = kernel
 
     @abstractmethod
@@ -63,7 +63,7 @@ class WeightsOptimiser(ABC):
         Calculate the weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
 
@@ -72,7 +72,7 @@ class WeightsOptimiser(ABC):
         Calculate approximate weights.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Approximately optimal weighting of points in ``y`` to represent ``x``
         """
         warnings.warn(
@@ -105,12 +105,16 @@ class SBQ(WeightsOptimiser):
         negative.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Format data
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
+        # Validate inputs
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
 
         # Compute the components of the kernel matrix. Note that to ensure the solver
         # can numerically compute the result, we add a small perturbation to the kernel
@@ -130,7 +134,8 @@ class MMD(WeightsOptimiser):
 
     .. math::
 
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
+        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
+        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
 
     subject to
 
@@ -148,18 +153,24 @@ class MMD(WeightsOptimiser):
         Compute optimal weights given the simplex constraint.
 
         :param x: The original :math:`n \times d` data
-        :param y: :math:`m times d` representation of ``x``, e.g. a coreset
+        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
             numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Validate input
-        if epsilon < 0:
-            raise ValueError(f"epsilon must be non-negative; given value {epsilon}.")
-
-        # Format data
-        x = jnp.asarray(x)
-        y = jnp.asarray(y)
+        # Validate inputs
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+        y = coreax.validation.cast_as_type(
+            x=y, object_name="y", type_caster=jnp.atleast_2d
+        )
+        epsilon = coreax.validation.cast_as_type(
+            x=epsilon, object_name="epsilon", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=epsilon, object_name="epsilon", strict_inequalities=False, lower_bound=0
+        )
 
         # Compute the components of the kernel matrix. Note that to ensure the solver
         # can numerically compute the result, we add a small perturbation to the kernel

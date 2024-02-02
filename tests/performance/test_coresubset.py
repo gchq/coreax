@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Performance tests for JIT compilation in coresubset implementations.
+"""
+
 import unittest
 
 import jax.numpy as jnp
@@ -22,6 +26,13 @@ from scipy.stats import ks_2samp
 import coreax.coresubset
 import coreax.kernel
 import coreax.util
+
+# Performance tests are split across several files for readability. As a result, ignore
+# the pylint warnings for duplicated-code. Additionally, we wrap the method/function of
+# interest in a lambda function to ensure no cached JIT code is re-used to make the test
+# fair. As a result, ignore the pylint warnings for unnecessary-lambda.
+# pylint: disable=unnecessary-lambda
+# pylint: disable=duplicate-code
 
 
 class TestCoreSubset(unittest.TestCase):
@@ -70,6 +81,7 @@ class TestCoreSubset(unittest.TestCase):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
+            # pylint: disable=protected-access
             deltas = coreax.util.jit_test(
                 jit(
                     lambda *args, **kwargs: herding_object._greedy_body(
@@ -86,10 +98,15 @@ class TestCoreSubset(unittest.TestCase):
                 ),
                 unique=True,
             )
+            # pylint: enable=protected-access
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
         self.assertLessEqual(p_value, self.threshold)
+
+
+# pylint: enable=unnecessary-lambda
+# pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":

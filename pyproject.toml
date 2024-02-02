@@ -12,7 +12,7 @@ keywords = [
     "coreset",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -52,12 +52,15 @@ test = [
     "pytest-cov",
     "scipy",
 ]
-# All tools for a developer and for running pylint
-# Should not need to specify test dependencies if also installing coverage but no harm
+# All tools for a developer including those for running pylint
 dev = [
     "coreax[doc, test]",
+    "black",
+    "isort",
     "pre-commit",
+    "pydocstyle",
     "pylint",
+    "pyroma",
 ]
 
 [project.urls]

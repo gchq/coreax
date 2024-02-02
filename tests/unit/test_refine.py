@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for refinement implementations.
+
+Refinement approaches greedily select points to improve coreset quality. The tests
+within this file verify that refinement approaches used produce the expected results on
+simple examples.
+"""
+
 import itertools
 import unittest
 from unittest.mock import patch
@@ -44,24 +52,36 @@ class TestRefine(unittest.TestCase):
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         coreax.refine.Refine._validate_coreset(coreset)
+        # pylint: enable=protected-access
 
     def test_validate_coreset_no_fit(self) -> None:
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         self.assertRaises(
             coreax.util.NotCalculatedError,
             coreax.refine.Refine._validate_coreset,
             coreset,
         )
+        # pylint: enable=protected-access
 
     def test_validate_coreset_not_coresubset(self) -> None:
         """Check validation raises TypeError when not a coresubset."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
+        # pylint: enable=protected-access
 
     def test_refine_ones(self) -> None:
         """
@@ -191,15 +211,15 @@ class TestRefine(unittest.TestCase):
 
         self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
 
-    def test_refine_rand_no_kernel_matrix_row_sum_mean(self):
+    def test_refine_rand_negative_seed(self):
         """
-        Test the random refine method with a toy example, no kernel matrix row sum mean.
+        Test the random refine method with a toy example and a negative seed.
 
         For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
         minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
         i.e. ``X_c =  [[0,0], [[2,2]]``.
 
-        Test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
+        Test, when given ``coreset_indices=[2,2]``, that ``RefineRandom()`` updates the
         coreset indices to ``[0, 2]``.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
@@ -213,9 +233,7 @@ class TestRefine(unittest.TestCase):
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
-
-        refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
+        refine_rand = coreax.refine.RefineRandom(random_key=-10, p=1.0)
         refine_rand.refine(coreset=coreset_obj)
 
         self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)

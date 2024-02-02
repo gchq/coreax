@@ -35,11 +35,10 @@ functions operate on pytrees, that is take in and output pytrees internally. Fur
 detail of pytrees and their usage in JAX can be found here:
 https://jax.readthedocs.io/en/latest/pytrees.html.
 
-Inside :meth:`_tree_unflatten`, one must define arrays & dynamic values (children)
-and auxiliary data (static values) of the class. Inside :meth:`_tree_flatten`, one
-can pass these children and auxiliary data to the class. See
-:class:`@coreax.kernel.Kernel` and children of this object for example implementations
-of this.
+Inside :meth:`_tree_unflatten`, one must define arrays & dynamic values (children) and
+auxiliary data (static values) of the class. Inside :meth:`_tree_flatten`, one can pass
+these children and auxiliary data to the class. See :class:`@coreax.kernel.Kernel` and
+children of this object for example implementations of this.
 
 Further details on pytrees in JAX can be found at
 https://jax.readthedocs.io/en/latest/pytrees.html and
@@ -48,6 +47,21 @@ https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods.
 Performance tests are implemented in tests/performance/ that verify the code is in-fact
 faster when using JIT compilation, and should be updated as new JIT functionality is
 included in the codebase.
+
+Warning about integration tests using Jax: where multiple unit tests are run from a
+parent process, Jax is likely to re-use compiled tracers if present. This can result in
+errors where data types within the tracers differ (as they are likely to do in
+integration tests). Unfortunately, this doesn't seem to be rectified by multiprocessing,
+so a simple method to run a batch of tests from separate parent processes is to run or
+loop over them individually. We currently do this using
+``tests/integration/test_run.sh``.
 """
 
 __version__ = "0.1.0"
+
+from coreax.coresubset import KernelHerding, RandomSample
+from coreax.data import ArrayData
+from coreax.kernel import SquaredExponentialKernel, SteinKernel
+from coreax.metrics import MMD
+from coreax.reduction import MapReduce, SizeReduce
+from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching

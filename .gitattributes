@@ -1,0 +1,4 @@
+# Force all files to be indexed with LF line endings except those listed below
+* text
+*.gif -text
+*.png -text
