@@ -238,6 +238,48 @@ class TestRefine(unittest.TestCase):
 
         self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
 
+    def test_refine_rand_no_kernel_matrix_row_sum_mean(self):
+        """
+        Test RefineRandom with a toy example, with no kernel matrix row sum mean.
+
+        This test checks, when ``kernel_matrix_row_sum_mean`` is ``None`` and when no
+        approximator is given, that the method ``calculate_kernel_matrix_row_sum_mean``
+        in the class Kernel is called exactly once.
+
+        It also checks that the refined coreset indices returned are as expected, for
+        a toy example:
+
+        For ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that minimises the MMD is
+         specified by the indices ``coreset_indices = [0, 2]``, i.e.
+         ``X_c =  [[0,0], [[2,2]]``.
+
+        We test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
+        coreset indices to ``[0, 2]``.
+        """
+        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
+        best_indices = {0, 2}
+        test_indices = [2, 2]
+        coreset_indices = jnp.array(test_indices)
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
+        coreset_obj.coreset_indices = coreset_indices
+        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
+        coreset_obj.coreset = original_array[coreset_indices, :]
+        coreset_obj.kernel_matrix_row_sum_mean = None
+        refine_rand = coreax.refine.RefineRandom(p=1.0)
+
+        with patch.object(
+            coreax.kernel.Kernel,
+            "calculate_kernel_matrix_row_sum_mean",
+            wraps=kernel.calculate_kernel_matrix_row_sum_mean,
+        ) as mock_method:
+            refine_rand.refine(coreset=coreset_obj)
+
+        # Check the approximation method in the Kernel class is called exactly once
+        mock_method.assert_called_once()
+
+        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
+
     def test_refine_reverse(self):
         """
         Test the reverse refine method with a toy example.
