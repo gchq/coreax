@@ -136,7 +136,12 @@ class TestUtil(unittest.TestCase):
         """
         Test jit_test calls the function in question twice when checking performance.
 
-        jit_test calls the functions twice to time it for each run.
+        The function jit_test is used to asses the performance of other functions and
+        methods in the codebase. It's inputs are a function (denoted fn) and inputs to
+        provide to fn. This unit test checks that fn is called twice. In a practical
+        usage of jit_test, the first call to fn performs the JIT compilation, and the
+        second call assesses if a performance improvement has occurred given the
+        JIT compilation.
         """
         mock_function = MagicMock()
         coreax.util.jit_test(mock_function)
