@@ -50,7 +50,7 @@ class TestKernelHerding(unittest.TestCase):
         # Create a kernel herding object
         kernel = coreax.kernel.SquaredExponentialKernel()
         coresubset_object_herding = coreax.coresubset.KernelHerding(
-            kernel=kernel, refine_method=coreax.refine.RefineRegular()
+            kernel=kernel,
         )
 
         # Set attributes on the object to ensure actual values are returned
@@ -272,7 +272,6 @@ class TestKernelHerding(unittest.TestCase):
         # Create a kernel herding object
         coresubset_object_herding = coreax.coresubset.KernelHerding(
             kernel=kernel,
-            refine_method=coreax.refine.RefineRegular(),
             approximator=test_approximator,
         )
 
