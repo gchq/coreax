@@ -37,6 +37,17 @@ class TestKernelABC(unittest.TestCase):
     Tests related to the Kernel abstract base class in kernel.py
     """
 
+    def test_invalid_init_inputs_valid(self) -> None:
+        """
+        Test setup of Kernel class with invalid inputs.
+        """
+        # Patch the abstract methods of the Kernel ABC, so it can be created
+        p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
+        p.start()
+
+        self.assertRaises(ValueError, coreax.kernel.Kernel, length_scale=-0.5)
+        self.assertRaises(ValueError, coreax.kernel.Kernel, output_scale=-0.5)
+
     def test_approximator_valid(self) -> None:
         """
         Test usage of approximation object within the Kernel class.
@@ -252,7 +263,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -280,6 +293,32 @@ class TestSquaredExponentialKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_squared_exponential_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test SquaredExponentialKernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (
+            -(x - y)
+            / length_scale**2
+            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        output = kernel.grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_scaled_squared_exponential_kernel_gradients_wrt_x(self) -> None:
         r"""
         Test the class SquaredExponentialKernel gradient computations; with scaling.
@@ -298,7 +337,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -347,7 +387,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -374,6 +415,32 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         self.assertAlmostEqual(
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
+
+    def test_squared_exponential_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test SquaredExponentialKernel element-wise gradient computations w.r.t. ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (
+            (x - y)
+            / length_scale**2
+            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        output = kernel.grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
 
     def test_pairwise_kernel_evaluation(self) -> None:
         r"""
@@ -545,7 +612,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -566,6 +634,28 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_squared_exponential_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = 2 * np.exp(-((x - y) ** 2)) * (1 - 2 * (x - y) ** 2)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
+
+        self.assertAlmostEqual(output, expected_output, places=6)
+
+    # pylint: disable=too-many-locals
     def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -575,7 +665,9 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -602,6 +694,8 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    # pylint: enable=too-many-locals
 
 
 class TestLaplacianKernel(unittest.TestCase):
@@ -789,7 +883,9 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -817,6 +913,32 @@ class TestLaplacianKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_laplacian_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test LaplacianKernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (
+            -np.sign(x - y)
+            / (2 * length_scale**2)
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel.grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_scaled_laplacian_kernel_gradients_wrt_x(self) -> None:
         # pylint: disable=line-too-long
         r"""
@@ -836,7 +958,9 @@ class TestLaplacianKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -884,7 +1008,8 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -912,6 +1037,32 @@ class TestLaplacianKernel(unittest.TestCase):
             float(jnp.linalg.norm(true_gradients - output)), 0.0, places=3
         )
 
+    def test_laplacian_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test LaplacianKernel element-wise gradient computations w.r.t. ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (
+            np.sign(x - y)
+            / (2 * length_scale**2)
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel.grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_laplacian_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``.
@@ -920,7 +1071,9 @@ class TestLaplacianKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -943,6 +1096,31 @@ class TestLaplacianKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_laplacian_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (
+            -1
+            / (4 * length_scale**4)
+            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
+        )
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LaplacianKernel(length_scale=length_scale)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
+
+        self.assertEqual(output, expected_output)
+
     def test_scaled_laplacian_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -952,7 +1130,9 @@ class TestLaplacianKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1031,7 +1211,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1050,6 +1232,28 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_pcimq_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test the PCIMQ kernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = -(x - y) / (1 + np.abs(x - y) ** 2) ** (3 / 2)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
+        output = kernel.grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
         Test the class PCIMQ gradient computations with respect to ``y``.
@@ -1058,7 +1262,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1077,6 +1283,28 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_pcimq_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test the class PCIMQ element-wise gradient computations with respect to ``y``.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = (x - y) / (1 + np.abs(x - y) ** 2) ** (3 / 2)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
+        output = kernel.grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
     def test_scaled_pcimq_kernel_gradients_wrt_y(self) -> None:
         """
         Test the class PCIMQ gradient computations with respect to ``y``; with scaling.
@@ -1086,7 +1314,9 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1123,7 +1353,9 @@ class TestPCIMQKernel(unittest.TestCase):
         length_scale = 1 / np.sqrt(2)
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1146,6 +1378,29 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    def test_pcimq_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
+        # Setup data
+        length_scale = 1 / np.sqrt(2)
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        denominator = (1 + (x - y) ** 2) ** (3 / 2)
+        expected_output = 1 / denominator - 3 * (x - y) ** 2 / denominator ** (5 / 3)
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
+
+        self.assertAlmostEqual(output, expected_output, places=6)
+
+    # pylint: disable=too-many-locals
     def test_scaled_pcimq_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -1155,7 +1410,9 @@ class TestPCIMQKernel(unittest.TestCase):
         output_scale = np.e
         num_points = 10
         dimension = 2
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points, dimension))
         y = generator.random((num_points, dimension))
 
@@ -1189,6 +1446,8 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    # pylint: enable=too-many-locals
+
 
 class TestSteinKernel(unittest.TestCase):
     """
@@ -1218,7 +1477,9 @@ class TestSteinKernel(unittest.TestCase):
             return -x_
 
         # Setup data
-        generator = np.random.default_rng(1_989)
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
         x = generator.random((num_points_x, dimension))
         y = generator.random((num_points_y, dimension))
 

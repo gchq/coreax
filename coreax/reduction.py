@@ -475,7 +475,7 @@ class MapReduce(ReductionStrategy):
         self,
         template: C,
         input_data: ArrayLike,
-        input_indices: ArrayLike | None,
+        input_indices: ArrayLike | None = None,
     ) -> C:
         r"""
         Recursively execute scalable reduction.

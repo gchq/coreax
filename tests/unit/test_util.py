@@ -18,6 +18,7 @@ expected results on simple examples.
 """
 
 import unittest
+from unittest.mock import MagicMock
 
 import jax.numpy as jnp
 import numpy as np
@@ -138,6 +139,22 @@ class TestUtil(unittest.TestCase):
             x=0.000001, precision_threshold=0.001
         )
         self.assertEqual(func_out_2, 0.000001)
+
+    def test_jit_test(self):
+        """
+        Test jit_test calls the function in question twice when checking performance.
+
+        The function jit_test is used to asses the performance of other functions and
+        methods in the codebase. It's inputs are a function (denoted fn) and inputs to
+        provide to fn. This unit test checks that fn is called twice. In a practical
+        usage of jit_test, the first call to fn performs the JIT compilation, and the
+        second call assesses if a performance improvement has occurred given the
+        JIT compilation.
+        """
+        mock_function = MagicMock()
+        coreax.util.jit_test(mock_function)
+        num_calls = mock_function.call_count
+        self.assertEqual(num_calls, 2)
 
 
 class TestSilentTQDM(unittest.TestCase):

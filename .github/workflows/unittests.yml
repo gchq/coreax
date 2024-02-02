@@ -1,4 +1,4 @@
-name: Unit Tests and Code Coverage Assessment
+name: Tests
 
 on:
   push:
@@ -9,8 +9,7 @@ on:
       - "**"
 
 jobs:
-  tests-coverage:
-    # Tests only; save one version for coverage assessment below
+  tests:
     strategy:
       fail-fast: false
       matrix:
@@ -33,11 +32,5 @@ jobs:
       run: python -m pip install --upgrade pip
     - name: Install test dependencies
       run: pip install --no-dependencies -r requirements-test-${{ matrix.python-version }}.txt
-    - name: Test with pytest and assess code coverage
-      # Versions and OS on which to check code coverage
-      if: ${{ matrix.python-version == '3.11' }}
-      run: pytest --ignore=tests/integration --cov=. --cov-branch --cov-report=term-missing
     - name: Test with pytest
-      # Else statement to step above
-      if: ${{ matrix.python-version != '3.11' }}
       run: pytest --ignore=tests/integration

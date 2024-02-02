@@ -175,6 +175,22 @@ class TestCoreset(unittest.TestCase):
         coreset.refine()
         refine_method.refine.assert_called_once_with(coreset)
 
+    def test_render(self):
+        """Check that render is called correctly."""
+        coreset = CoresetMock()
+        original_data = MagicMock(spec=coreax.data.DataReader)
+        coreset.original_data = original_data
+
+        # Test when coreset.coreset is unpopulated
+        with self.assertRaises(coreax.util.NotCalculatedError):
+            coreset.render()
+
+        # Test with coreset.coreset existing
+        coreset.coreset = MagicMock(spec=Array)
+        coreset.render()
+        # Check the render method in the DataReader class is called exactly once
+        original_data.render.assert_called_once()
+
     def test_copy_fit_shallow(self):
         """Check that default behaviour of copy_fit points to other coreset array."""
         array = jnp.array([[1, 2], [3, 4]])
@@ -284,6 +300,40 @@ class TestMapReduce(unittest.TestCase):
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_equal(row, np.array([idx, 2 * idx]))
 
+    def test_random_sample_not_parallel(self):
+        """
+        Test map reduction with :class:`~coreax.coresubset.RandomSample` in series.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(
+            coreset_size=10, leaf_size=20, parallel=False
+        )
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
+        with patch.object(
+            coreax.reduction.MapReduce,
+            "_reduce_recursive",
+            wraps=strategy._reduce_recursive,
+        ) as mock:
+            # Perform the reduction
+            strategy.reduce(coreset)
+            num_calls_reduce_recursive = mock.call_count
+        # pylint: enable=protected-access
+
+        # Check the shape of the output
+        self.assertEqual(coreset.format().shape, (10, 2))
+        # Check _reduce_recursive is called exactly three times
+        self.assertEqual(num_calls_reduce_recursive, 3)
+        # Check values are permitted in output
+        for idx, row in zip(coreset.coreset_indices, coreset.coreset):
+            np.testing.assert_equal(row, np.array([idx, 2 * idx]))
+
     def test_random_sample_big_leaves(self):
         """
         Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.
@@ -322,6 +372,24 @@ class TestMapReduce(unittest.TestCase):
             # Check _coreset_copy_fit is called only once
             mock_coreset_copy_fit.assert_called_once()
         # pylint: enable=protected-access
+
+    def test_reduce_recursive_unset_coreset_indices(self):
+        """Test MapReduce with a Coreset that does not have ``coreset_indices``"""
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=100)
+        coreset = coreax.coresubset.RandomSample()
+        coreset.original_data = orig_data
+        # Check AssertionError raises when method is called with no input_indices
+        with self.assertRaises(AssertionError):
+            input_data = coreset.original_data.pre_coreset_array
+            # Disable pylint warning for protected-access as we are testing a single
+            # part of the over-arching algorithm
+            # pylint: disable=protected-access
+            strategy._reduce_recursive(template=coreset, input_data=input_data)
+            # pylint: enable=protected-access
 
 
 if __name__ == "__main__":
