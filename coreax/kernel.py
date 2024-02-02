@@ -272,6 +272,7 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -286,6 +287,7 @@ class Kernel(ABC):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
+        # pylint: enable=line-too-long
         return grad(self.compute_elementwise, 0)(x, y)
 
     def grad_y_elementwise(
@@ -293,6 +295,7 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -307,6 +310,7 @@ class Kernel(ABC):
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
+        # pylint: enable=line-too-long
         return grad(self.compute_elementwise, 1)(x, y)
 
     @jit
@@ -352,6 +356,7 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
+        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -369,6 +374,7 @@ class Kernel(ABC):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
+        # pylint: enable=line-too-long
         pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
         return pseudo_hessian.trace()
 
