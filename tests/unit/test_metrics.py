@@ -584,13 +584,13 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
-    def test_sum_weight_K_big_block_size(self) -> None:
+    def test_sum_weighted_pairwise_distances_big_block_size(self) -> None:
         r"""
-        Test sum_weight_K() with a block size larger than the input data.
+        Test sum_weighted_pairwise_distances with block size larger than the input data.
 
-        This test uses the same data as `test_sum_weight_K` above, and so expects to get
-        exactly the same output. The difference between the tests is, here
-        ``block_size`` is large enough to not need block-wise computation.
+        This test uses the same data as `test_sum_weighted_pairwise_distances` above,
+        and so expects to get exactly the same output. The difference between the tests
+        is, here ``block_size`` is large enough to not need block-wise computation.
         """
         # Setup some data
         x = jnp.array([[0, 0], [1, 1], [2, 2]])
