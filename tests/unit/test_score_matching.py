@@ -64,7 +64,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         )
 
         # Flatten the pytree
-        output_children, output_aux_data = kernel_density_matcher._tree_flatten()
+        output_children, output_aux_data = kernel_density_matcher.tree_flatten()
 
         # Verify outputs are as expected
         self.assertEqual(len(output_children), 1)
