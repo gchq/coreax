@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for approximation approaches.
+
+Approximations are used to reduce computational demand when computing coresets. The
+tests within this file verify that these approximations produce the expected results on
+simple examples.
+"""
+
 import unittest
 from unittest.mock import patch
 
@@ -90,6 +98,9 @@ class TestApproximations(unittest.TestCase):
         """
         Test the class KernelMeanApproximator initialises correctly.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are intentionally
+        # patching these whilst testing creation of the parent class
+        # pylint: disable=abstract-class-instantiated
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created
         p = patch.multiple(
@@ -103,6 +114,7 @@ class TestApproximations(unittest.TestCase):
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
         )
+        # pylint: enable=abstract-class-instantiated
 
         # Check parameters have been set
         self.assertEqual(approximator.kernel, self.kernel)
@@ -114,6 +126,9 @@ class TestApproximations(unittest.TestCase):
         """
         Test the class KernelMeanApproximator rejects invalid input types.
         """
+        # Disable pylint warning for abstract-class-instantiated as we are intentionally
+        # patching these whilst testing creation of the parent class
+        # pylint: disable=abstract-class-instantiated
         # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
         # can be created
         p = patch.multiple(
@@ -176,6 +191,7 @@ class TestApproximations(unittest.TestCase):
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
         )
+        # pylint: enable=abstract-class-instantiated
 
     def test_random_approximator(self) -> None:
         """

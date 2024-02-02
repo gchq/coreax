@@ -30,7 +30,6 @@ and then differentiating a kernel density estimate to the data.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -41,7 +40,7 @@ import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import jit, jvp
+from jax import Array, jit, jvp
 from jax import numpy as jnp
 from jax import random, tree_util, vmap
 from jax.lax import cond, fori_loop
@@ -50,6 +49,7 @@ from tqdm import tqdm
 
 import coreax.kernel
 import coreax.networks
+import coreax.validation
 
 
 class ScoreMatching(ABC):
@@ -63,13 +63,13 @@ class ScoreMatching(ABC):
     """
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstruct a pytree from the tree definition and the leaves.
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -95,9 +95,6 @@ class SlicedScoreMatching(ScoreMatching):
     the score function of the data. The approach is outlined in detail in
     :cite:p:`ssm`.
 
-    TODO: Allow user to pass hidden_dim as a list and build network with
-        # layers = len(hidden_dim), with each layer size assigned as appropriate.
-
     :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
         :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
         :class:`~jax.random`
@@ -120,10 +117,37 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
+    def _tree_flatten(self):
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable jit decoration
+        of methods inside this class.
+        """
+        children = ()
+        aux_data = {
+            "random_generator": self.random_generator,
+            "random_key": self.random_key,
+            "noise_conditioning": self.noise_conditioning,
+            "use_analytic": self.use_analytic,
+            "num_random_vectors": self.num_random_vectors,
+            "learning_rate": self.learning_rate,
+            "num_epochs": self.num_epochs,
+            "batch_size": self.batch_size,
+            "hidden_dim": self.hidden_dim,
+            "optimiser": self.optimiser,
+            "num_noise_models": self.num_noise_models,
+            "sigma": self.sigma,
+            "gamma": self.gamma,
+        }
+
+        return children, aux_data
+
     def __init__(
         self,
         random_generator: Callable,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: random.PRNGKeyArray | ArrayLike = random.PRNGKey(0),
         noise_conditioning: bool = True,
         use_analytic: bool = False,
         num_random_vectors: int = 1,
@@ -137,6 +161,89 @@ class SlicedScoreMatching(ScoreMatching):
         gamma: float = 0.95,
     ):
         """Define a sliced score matching class."""
+        # Validate all inputs
+        coreax.validation.validate_is_instance(
+            x=random_generator, object_name="random_generator", expected_type=Callable
+        )
+        coreax.validation.validate_is_instance(
+            x=random_key, object_name="random_key", expected_type=Array
+        )
+        noise_conditioning = coreax.validation.cast_as_type(
+            x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
+        )
+        use_analytic = coreax.validation.cast_as_type(
+            x=use_analytic, object_name="use_analytic", type_caster=bool
+        )
+        num_random_vectors = coreax.validation.cast_as_type(
+            x=num_random_vectors, object_name="num_random_vectors", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_random_vectors,
+            object_name="num_random_vectors",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        learning_rate = coreax.validation.cast_as_type(
+            x=learning_rate, object_name="learning_rate", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=learning_rate,
+            object_name="learning_rate",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        num_epochs = coreax.validation.cast_as_type(
+            x=num_epochs, object_name="num_epochs", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_epochs,
+            object_name="num_epochs",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        batch_size = coreax.validation.cast_as_type(
+            x=batch_size, object_name="batch_size", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=batch_size,
+            object_name="batch_size",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        hidden_dim = coreax.validation.cast_as_type(
+            x=hidden_dim, object_name="hidden_dim", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=hidden_dim,
+            object_name="hidden_dim",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        coreax.validation.validate_is_instance(
+            x=optimiser, object_name="optimiser", expected_type=Callable
+        )
+        num_noise_models = coreax.validation.cast_as_type(
+            x=num_noise_models, object_name="num_noise_models", type_caster=int
+        )
+        coreax.validation.validate_in_range(
+            x=num_noise_models,
+            object_name="num_noise_models",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        sigma = coreax.validation.cast_as_type(
+            x=sigma, object_name="sigma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=sigma, object_name="sigma", strict_inequalities=True, lower_bound=0
+        )
+        gamma = coreax.validation.cast_as_type(
+            x=gamma, object_name="gamma", type_caster=float
+        )
+        coreax.validation.validate_in_range(
+            x=gamma, object_name="gamma", strict_inequalities=True, lower_bound=0
+        )
+
         # Assign all inputs
         self.random_generator = random_generator
         self.random_key = random_key
@@ -155,12 +262,12 @@ class SlicedScoreMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = ()
@@ -222,7 +329,8 @@ class SlicedScoreMatching(ScoreMatching):
         Compute reduced variance score matching loss function.
 
         This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then :meth:`general_obj` should be used instead.
+        this assumption is not true, then
+        :meth:`SlicedScoreMatching._general_objective` should be used instead.
 
         :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
@@ -246,10 +354,10 @@ class SlicedScoreMatching(ScoreMatching):
         Compute general score matching loss function.
 
         This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than :meth:`analytic_obj` if
-        these assumptions hold.
+        when using score matching, but has higher variance than
+        :meth:`SlicedScoreMatching._analytic_objective` if these assumptions hold.
 
-        :param random_direction_vector: `:math:`d`-dimensional random vector
+        :param random_direction_vector: :math:`d`-dimensional random vector
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
@@ -283,7 +391,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
 
         In the context of score matching, we expect to call the objective function on
-        the data vector (``x``), random vectors (``v``) and using the score neural
+        the data vector ``x``, random vectors ``v`` and using the score neural
         network.
 
         :param score_network: Function that calls the neural network on ``x``
@@ -343,8 +451,8 @@ class SlicedScoreMatching(ScoreMatching):
         :param sigmas: The geometric progression of noise standard deviations
         :return: The updated objective, i.e. partial sum
         """
-        # TODO: This will generate the same set of random numbers on each function call.
-        #  We might want to replace this with random.PRNGKey(i) to get a unique set each
+        # This will generate the same set of random numbers on each function call. We
+        #  might want to replace this with random.PRNGKey(i) to get a unique set each
         #  time.
         # Perturb the inputs with Gaussian noise
         x_perturbed = x + sigmas[i] * random.normal(random.PRNGKey(0), x.shape)
@@ -390,23 +498,29 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
+    # pylint: disable=too-many-locals
     def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
 
-        We currently use the :class:`coreax.networks.ScoreNetwork` neural network to
+        We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
         considered.
 
         :param x: The :math:`n \times d` data vectors
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        x = coreax.validation.cast_as_type(
+            x=x, object_name="x", type_caster=jnp.atleast_2d
+        )
+
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
         score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
-        # noise perturbations
+        #  noise perturbations
         if self.noise_conditioning:
             gammas = self.gamma ** jnp.arange(self.num_noise_models)
             sigmas = self.sigma * gammas
@@ -436,9 +550,9 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Carry out main training loop to fit the neural network
         for i in tqdm(range(self.num_epochs)):
-            # TODO: In the existing code, idx gives the same output each time. We might
-            #  want to change this to split the random key and use the result from the
-            #  split each time.
+            # In the existing code, idx gives the same output each time. We might want
+            #  to change this to split the random key and use the result from the split
+            #  each time.
             # Sample some data-points to pass for this step
             idx = random.randint(batch_key, (self.batch_size,), 0, num_points)
 
@@ -451,6 +565,8 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Return the learned score function, which is a callable
         return lambda x_: state.apply_fn({"params": state.params}, x_)
+
+    # pylint: enable=too-many-locals
 
 
 class KernelDensityMatching(ScoreMatching):
@@ -475,6 +591,12 @@ class KernelDensityMatching(ScoreMatching):
 
     def __init__(self, length_scale: float, kde_data: ArrayLike):
         """Define the kernel density matching class."""
+        # Validate inputs (note that the kernel length_scale is validated upon kernel
+        # creation)
+        kde_data = coreax.validation.cast_as_type(
+            x=kde_data, object_name="kde_data", type_caster=jnp.atleast_2d
+        )
+
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = coreax.kernel.SquaredExponentialKernel(
@@ -489,12 +611,12 @@ class KernelDensityMatching(ScoreMatching):
         # Initialise parent
         super().__init__()
 
-    def _tree_flatten(self):
+    def tree_flatten(self):
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
         children = (self.kde_data,)
@@ -516,6 +638,10 @@ class KernelDensityMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors. Unused in this implementation.
         :return: A function that applies the learned score function to input ``x``
         """
+        # Validate inputs
+        coreax.validation.validate_is_instance(
+            x=x, object_name="x", expected_type=(Array, None)
+        )
 
         def score_function(x_):
             r"""
@@ -530,7 +656,9 @@ class KernelDensityMatching(ScoreMatching):
             """
             # Check format
             original_number_of_dimensions = x_.ndim
-            x_ = jnp.atleast_2d(x_)
+            x_ = coreax.validation.cast_as_type(
+                x=x_, object_name="x_", type_caster=jnp.atleast_2d
+            )
 
             # Get the gram matrix row means
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
@@ -551,10 +679,10 @@ class KernelDensityMatching(ScoreMatching):
         return score_function
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
 for current_class in score_matching_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )

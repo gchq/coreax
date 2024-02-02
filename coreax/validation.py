@@ -20,7 +20,6 @@ passed to classes, functions and methods throughout the coreax codebase.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -53,24 +52,23 @@ def validate_in_range(
     """
     try:
         if strict_inequalities:
-            if lower_bound is not None and not x > lower_bound:
+            if lower_bound is not None and x <= lower_bound:
                 raise ValueError(f"{object_name} must be strictly above {lower_bound}")
-            if upper_bound is not None and not x < upper_bound:
+            if upper_bound is not None and x >= upper_bound:
                 raise ValueError(f"{object_name} must be strictly below {upper_bound}")
         else:
-            if lower_bound is not None and not x >= lower_bound:
+            if lower_bound is not None and x < lower_bound:
                 raise ValueError(f"{object_name} must be {lower_bound} or above")
-            if upper_bound is not None and not x <= upper_bound:
+            if upper_bound is not None and x > upper_bound:
                 raise ValueError(f"{object_name} must be {upper_bound} or lower")
-    except TypeError:
+    except TypeError as exc:
         if strict_inequalities:
             raise TypeError(
                 f"{object_name} must have a valid comparison < and > implemented"
-            )
-        else:
-            raise TypeError(
-                f"{object_name} must have a valid comparison <= and >= implemented"
-            )
+            ) from exc
+        raise TypeError(
+            f"{object_name} must have a valid comparison <= and >= implemented"
+        ) from exc
 
 
 def validate_is_instance(
@@ -81,7 +79,7 @@ def validate_is_instance(
     """
     Verify that a given object is of a given type.
 
-    Unlike built-in :func:`isinstance`, :data:`None` may be passed to `expected_type`.
+    Unlike built-in :func:`isinstance`, :data:`None` may be passed to ``expected_type``.
 
     Where the object may be one of several types, a tuple of types may be passed to
     ``expected_type``.
@@ -119,8 +117,10 @@ def validate_is_instance(
         # Try-except to guard against a still invalid expected_type in isinstance
         try:
             valid = isinstance(x, expected_type_without_none)
-        except TypeError:
-            raise TypeError("expected_type must be a type, tuple of types or a union")
+        except TypeError as exc:
+            raise TypeError(
+                "expected_type must be a type, tuple of types or a union"
+            ) from exc
 
     if not valid:
         raise TypeError(f"{object_name} must be of type {expected_type}")
@@ -138,10 +138,31 @@ def cast_as_type(x: U, object_name: str, type_caster: Callable[[U], T]) -> T:
     """
     try:
         return type_caster(x)
-    except (TypeError, ValueError) as e:
+    except (TypeError, ValueError) as exc:
         error_text = f"{object_name} cannot be cast using {type_caster}: \n"
-        if hasattr(e, "message"):
-            error_text += e.message
+        if hasattr(exc, "message"):
+            error_text += exc.message
         else:
-            error_text += str(e)
-        raise TypeError(error_text)
+            error_text += str(exc)
+        raise TypeError(error_text) from exc
+
+
+def validate_array_size(
+    x: T, object_name: str, dimension: int, expected_size: int
+) -> None:
+    """
+    Validate the size of an array dimension.
+
+    :param x: Variable with a dimension
+    :param object_name: Name of ``x`` to display if ``dimension`` is not size
+        ``expected_size``
+    :param dimension: The dimension to check meets ``expected_size``
+    :param expected_size: The expected size of ``dimension``
+    :raises ValueError: Raised if the ``dimension`` of ``x`` is not of size
+        ``expected_size``
+    """
+    if not x.shape[dimension] == expected_size:
+        raise ValueError(
+            f"Dimension {dimension} of {object_name} is not the expected size of "
+            f"{expected_size}"
+        )

@@ -35,20 +35,20 @@ mutated and the corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import TYPE_CHECKING
 
-import jax.lax as lax
 import jax.numpy as jnp
-from jax import Array, jit, random, tree_util, vmap
+from jax import Array, jit, lax, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.kernel
+import coreax.util
+import coreax.validation
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -58,20 +58,14 @@ class Refine(ABC):
     r"""
     Base class for refinement functions.
 
-    # TODO: Do we want to be able to refine by additional quality measures, e.g.
-        KL Divergence, ...?
-
-    # TODO: Related to the above, we could see if using the metrics objects offer an
-        easier way to incorporate a generic quality measure
-
     The refinement process happens iteratively. Coreset elements are replaced by
     points most reducing the maximum mean discrepancy (MMD). The MMD is defined by
-    :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
-    for a dataset ``X`` and corresponding coreset ``X_c``.
 
-    The default calculates the kernel mean row sum in full. To reduce computational
-    load, the kernel mean row sum can be approximated by setting the variable
-    ``approximate_kernel_row_sum`` = :data:`True` when initializing the Refine object.
+    .. math::
+        \text{MMD}^2(X,X_c) =
+        \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))
+
+    for a dataset ``X`` and corresponding coreset ``X_c``.
 
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
         for the kernel mean approximation method or :data:`None` (default) if
@@ -83,6 +77,7 @@ class Refine(ABC):
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a refinement object."""
+        # Validate inputs
         self.approximator = approximator
 
     @abstractmethod
@@ -108,6 +103,7 @@ class Refine(ABC):
         """
         Validate that refinement can be performed on this coreset.
 
+        :param coreset: :class:`~coreax.reduction.Coreset` object to validate
         :raises TypeError: When called on a class that does not generate coresubsets
         :return: Nothing
         """
@@ -116,12 +112,12 @@ class Refine(ABC):
         if coreset.coreset_indices is None:
             raise TypeError("Cannot refine when not finding a coresubset")
 
-    def _tree_flatten(self) -> tuple[tuple, dict]:
+    def tree_flatten(self) -> tuple[tuple, dict]:
         """
         Flatten a pytree.
 
         Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
+        A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
@@ -137,13 +133,13 @@ class Refine(ABC):
         return children, aux_data
 
     @classmethod
-    def _tree_unflatten(cls, aux_data, children):
+    def tree_unflatten(cls, aux_data, children):
         """
         Reconstructs a pytree from the tree definition and the leaves.
 
         Arrays & dynamic values (children) and auxiliary data (static values) are
         reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable jit decoration of methods inside this class.
+        enable JIT decoration of methods inside this class.
         """
         return cls(*children, **aux_data)
 
@@ -155,7 +151,11 @@ class RefineRegular(Refine):
     The refinement process happens iteratively. The iteration is carried out over
     points in ``X``. Coreset elements are replaced by points most reducing the maximum
     mean discrepancy (MMD). The MMD is defined by:
-    :math:`\text{MMD}^2(X,X_c) = \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))`
+
+    .. math::
+        \text{MMD}^2(X,X_c) =
+        \mathbb{E}(k(X,X)) + \mathbb{E}(k(X_c,X_c)) - 2\mathbb{E}(k(X,X_c))
+
     for a dataset ``X`` and corresponding coreset ``X_c``.
 
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
@@ -230,6 +230,8 @@ class RefineRegular(Refine):
         :param i: Loop counter
         :param coreset_indices: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal, a :math:`1 \times n`
@@ -268,8 +270,11 @@ class RefineRegular(Refine):
         The change calculated is from replacing point ``i`` in ``coreset_indices`` with
         any point in ``x``.
 
+        :param i: Loop counter
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -313,8 +318,21 @@ class RefineRandom(Refine):
         random_key: int = 0,
     ):
         """Initialise a random refinement object."""
-        self.random_key = random_key
+        # Perform input validation
+        p = coreax.validation.cast_as_type(x=p, object_name="p", type_caster=float)
+        coreax.validation.validate_in_range(
+            x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
+        )
+        coreax.validation.validate_in_range(
+            x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
+        )
+        random_key = coreax.validation.cast_as_type(
+            x=random_key, object_name="random_key", type_caster=int
+        )
+
+        # Assign attributes
         self.p = p
+        self.random_key = random_key
         super().__init__(
             approximator=approximator,
         )
@@ -381,7 +399,7 @@ class RefineRandom(Refine):
 
     def _refine_rand_body(
         self,
-        i: int,
+        _i: int,
         val: tuple[random.PRNGKeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
@@ -392,10 +410,13 @@ class RefineRandom(Refine):
         r"""
         Execute main loop of the random refine method.
 
-        :param i: Loop counter
+        :param _i: Loop counter. This parameter is unused. It is only required by
+            :func:`~jax.lax.fori_loop` for executing the refinement ``n_iter`` times.
         :param val: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
         :param n_cand: Number of candidates for comparison
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -405,11 +426,11 @@ class RefineRandom(Refine):
         key, coreset_indices = val
         coreset_indices = jnp.asarray(coreset_indices)
         key, subkey = random.split(key)
-        i = random.randint(subkey, (1,), 0, len(coreset_indices))[0]
+        index_to_compare = random.randint(subkey, (1,), 0, len(coreset_indices))[0]
         key, subkey = random.split(key)
         candidate_indices = random.randint(subkey, (n_cand,), 0, len(x))
         comparisons = self._comparison_cand(
-            coreset_indices[i],
+            coreset_indices[index_to_compare],
             candidate_indices,
             coreset_indices,
             x=x,
@@ -421,7 +442,7 @@ class RefineRandom(Refine):
             jnp.any(comparisons > 0),
             self._change,
             self._no_change,
-            i,
+            index_to_compare,
             coreset_indices,
             candidate_indices,
             comparisons,
@@ -450,6 +471,8 @@ class RefineRandom(Refine):
             the original data
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -481,7 +504,7 @@ class RefineRandom(Refine):
         comparisons: ArrayLike,
     ) -> Array:
         r"""
-        Replace the ``i``th point in ``coreset_indices``.
+        Replace the ``i``\th point in ``coreset_indices``.
 
         The point is replaced with the candidate in ``candidate_indices`` with maximum
         value in ``comparisons``. ``coreset_indices`` -> ``x``.
@@ -490,7 +513,7 @@ class RefineRandom(Refine):
         :param coreset_indices: Indices in the original dataset for replacement
         :param candidate_indices: A set of candidates for replacement
         :param comparisons: Comparison values for each candidate
-        :return: Updated ``coreset_indices``, with ``i``th point replaced
+        :return: Updated ``coreset_indices``, with ``i``\th point replaced
         """
         coreset_indices = jnp.asarray(coreset_indices)
         candidate_indices = jnp.asarray(candidate_indices)
@@ -499,20 +522,24 @@ class RefineRandom(Refine):
     @jit
     def _no_change(
         self,
-        i: int,
+        _i: int,
         coreset_indices: ArrayLike,
-        candidate_indices: ArrayLike,
-        comparisons: ArrayLike,
+        _candidate_indices: ArrayLike,
+        _comparisons: ArrayLike,
     ) -> Array:
         r"""
         Leave coreset indices unchanged (compare with :meth:`_change`).
 
         ``coreset_indices`` -> ``x``.
 
-        :param i: Index in coreset_indices to replace. Not used.
+        .. note:: The signature of this method must match :meth:`_change` for use with
+            :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Index in coreset_indices to replace. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param candidate_indices: A set of candidates for replacement. Not used.
-        :param comparisons: Comparison values for each candidate. Not used.
+        :param _candidate_indices: A set of candidates for replacement. Not used.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
@@ -520,7 +547,7 @@ class RefineRandom(Refine):
 
 class RefineReverse(Refine):
     """
-    Define the RefineRev (refine reverse) object.
+    Define the RefineReverse (refine reverse) object.
 
     This performs the same style of refinement as :class:`~coreax.refine.RefineRegular`
     but reverses the order.
@@ -597,6 +624,8 @@ class RefineReverse(Refine):
         :param i: Loop counter
         :param coreset_indices: Loop updatable-variables
         :param x: Original :math:`n \times d` dataset
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -641,6 +670,8 @@ class RefineReverse(Refine):
         :param i: Index for original data
         :param coreset_indices: Coreset point indices
         :param x: :math:`n \times d` original data
+        :param kernel: Kernel used for calculating the maximum
+            mean discrepancy, for comparing candidate coresets during refinement
         :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
@@ -684,25 +715,29 @@ class RefineReverse(Refine):
 
     @jit
     def _no_change_rev(
-        self, i: int, coreset_indices: ArrayLike, comparisons: ArrayLike
+        self, _i: int, coreset_indices: ArrayLike, _comparisons: ArrayLike
     ) -> Array:
         r"""
-        Leave coreset indices unchanged (compare with ``refine.change_rev``).
+        Leave coreset indices unchanged (compare with :meth:`_change_rev`).
 
         ``x`` -> ``coreset_indices``.
 
-        :param i: Value to replace into ``coreset_indices``. Not used.
+        .. note:: The signature of this method must match :meth:`_change_rev` for use
+            with :func:`jax.lax.cond`. Since no indices are swapped in this method, only
+            ``coreset_indices`` is used.
+
+        :param _i: Value to replace into ``coreset_indices``. Not used.
         :param coreset_indices: The dataset for replacement. Will remain unchanged.
-        :param comparisons: Comparison values for each candidate. Not used.
+        :param _comparisons: Comparison values for each candidate. Not used.
         :return: The original ``coreset_indices``, unchanged
         """
         return jnp.asarray(coreset_indices)
 
 
-# Define the pytree node for the added class to ensure methods with jit decorators
+# Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for current_class in refine_classes:
     tree_util.register_pytree_node(
-        current_class, current_class._tree_flatten, current_class._tree_unflatten
+        current_class, current_class.tree_flatten, current_class.tree_unflatten
     )

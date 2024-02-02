@@ -22,16 +22,18 @@ class factories and checks for numerical precision.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
+from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
+
+import coreax.validation
 
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
@@ -51,8 +53,17 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
-    # Cast to float. Will raise TypeError if array is not zero-dimensional.
-    x = float(x)
+    # Validate inputs
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=float)
+    precision_threshold = coreax.validation.cast_as_type(
+        x=precision_threshold, object_name="precision_threshold", type_caster=float
+    )
+    coreax.validation.validate_in_range(
+        x=precision_threshold,
+        object_name="precision_threshold",
+        strict_inequalities=False,
+        lower_bound=0,
+    )
 
     if precision_threshold < 0.0:
         raise ValueError(
@@ -75,6 +86,9 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Dot product of ``x - y`` and ``x - y``, the square distance between ``x``
         and ``y``
     """
+    # Validate inputs
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return jnp.dot(x - y, x - y)
 
 
@@ -88,6 +102,9 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
+    # Validate inputs
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     # Use vmap to turn distance between individual vectors into a pairwise distance.
     fn = vmap(
         vmap(squared_distance, in_axes=(None, 0), out_axes=0),
@@ -106,23 +123,29 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     :param y: Second vector
     :return: Vector difference ``x - y``
     """
+    # Validate inputs
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
     return x - y
 
 
 @jit
-def pairwise_difference(x_array: ArrayLike, y_array: ArrayLike) -> Array:
+def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
-    :param x_array: First set of vectors as a :math:`n \times d` array
-    :param y_array: Second set of vectors as a :math:`m \times d` array
+    :param x: First set of vectors as a :math:`n \times d` array
+    :param y: Second set of vectors as a :math:`m \times d` array
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
+    # Validate inputs
+    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
     fn = vmap(
         vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
     )
-    return fn(x_array, y_array)
+    return fn(x, y)
 
 
 def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
@@ -133,7 +156,8 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
 
     .. math::
 
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} + \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
+        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
+        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
 
     subject to
 
@@ -142,9 +166,19 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param kernel_matrix_row_sum_mean: :math`m \times 1` array of Gram matrix means
+    :param kernel_matrix_row_sum_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
+    # Validate inputs
+    coreax.validation.validate_is_instance(
+        x=kernel_mm, object_name="kernel_mm", expected_type=Array
+    )
+    coreax.validation.validate_is_instance(
+        x=kernel_matrix_row_sum_mean,
+        object_name="kernel_matrix_row_sum_mean",
+        expected_type=Array,
+    )
+
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters
     q_array = jnp.array(kernel_mm)
@@ -174,6 +208,11 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     The function is called with supplied arguments twice, and timed for each run. These
     timings are returned in a 2-tuple.
 
+    Note that `fn` often uses a lambda wrapper around a function or method call (see
+    performance tests) to ensure that the function or method is recompiled when called
+    multiple times, to truly test the JIT performance. In some cases, not doing this
+    will result in the re-use of previously cached information.
+
     :param fn: Function callable to test
     :return: (First run time, Second run time)
     """
@@ -186,3 +225,40 @@ def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
     end_time = time.time()
     post_delta = end_time - start_time
     return pre_delta, post_delta
+
+
+T = TypeVar("T")
+
+
+class SilentTQDM:
+    """
+    Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
+
+    It can substitute :class:`~tqdm.tqdm` to silence all output.
+
+    Based on `code by Pro Q <https://stackoverflow.com/a/77450937>`_.
+
+    Additional parameters are accepted and ignored to match interface of
+    :class:`~tqdm.tqdm`.
+
+    :param iterable: Iterable of tasks to (not) indicate progress for
+    """
+
+    def __init__(self, iterable: Iterable[T], *_args, **_kwargs):
+        """Store iterable."""
+        self.iterable = iterable
+
+    def __iter__(self) -> Iterator[T]:
+        """
+        Iterate.
+
+        :return: Next item
+        """
+        return iter(self.iterable)
+
+    def write(self, *_args, **_kwargs) -> None:
+        """
+        Do nothing instead of writing to output.
+
+        :return: Nothing
+        """

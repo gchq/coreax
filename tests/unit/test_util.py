@@ -10,6 +10,13 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+Tests for utility functions.
+
+The tests within this file verify that various utility functions written produce the
+expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import MagicMock
 
@@ -65,8 +72,9 @@ class TestUtil(unittest.TestCase):
         num_points_x = 10
         num_points_y = 10
         dimension = 3
-        x_array = np.random.random((num_points_x, dimension))
-        y_array = np.random.random((num_points_y, dimension))
+        generator = np.random.default_rng(1_989)
+        x_array = generator.random((num_points_x, dimension))
+        y_array = generator.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
         output = coreax.util.pairwise_difference(x_array, y_array)
         self.assertAlmostEqual(
@@ -147,6 +155,21 @@ class TestUtil(unittest.TestCase):
         coreax.util.jit_test(mock_function)
         num_calls = mock_function.call_count
         self.assertEqual(num_calls, 2)
+
+
+class TestSilentTQDM(unittest.TestCase):
+    """Test silent substitute for TQDM."""
+
+    def test_iterator(self):
+        """Test that iterator works."""
+        iterator_length = 10
+        expect = list(range(iterator_length))
+        actual = list(coreax.util.SilentTQDM(range(iterator_length)))
+        self.assertListEqual(actual, expect)
+
+    def test_write(self):
+        """Test that silenced version of TQDM write command does not crash."""
+        self.assertIsNone(coreax.util.SilentTQDM(range(1)).write("something"))
 
 
 if __name__ == "__main__":

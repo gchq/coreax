@@ -15,28 +15,27 @@
 """
 Classes for reading different structures of input data.
 
-In order to calculate a coreset, :meth:`~coreax.Coreset.fit` requires an instance of a
-subclass of :class:`DataReader`. It is necessary to use
+In order to calculate a coreset, :meth:`~coreax.reduction.Coreset.fit` requires an
+instance of a subclass of :class:`DataReader`. It is necessary to use
 :class:`DataReader` because :class:`~coreax.Coreset` requires a
 two-dimensional :class:`~jax.Array`. Data reductions are performed along the first
 dimension.
 
 The user should read in their data files using their preferred library that returns a
-:class:`jax.Array` or :class:`numpy.Array`. This array is passed to a
-:meth:`DataReader.load` method. The user should not normally call
+:class:`jax.Array` or :func:`numpy.array`. This array is passed to a
+:meth:`load() <DataReader.load>` method. The user should not normally call
 :meth:`DataReader.__init__` directly. The user should select an appropriate subclass
-of :class:`DataReader` to match the structure of the input array. The :meth:`load`
-method on the subclass will rearrange the original data into the required
-two-dimensional format.
+of :class:`DataReader` to match the structure of the input array. The
+:meth:`load() <DataReader.load>` method on the subclass will rearrange the original data
+into the required two-dimensional format.
 
 Various post-processing methods may be implemented if applicable to visualise or
 restore a calculated coreset to match the format of the original data. To save a
-copy of a coreset, call :meth:`format` to return an :class:`~jax.Array`, which can
-be passed to the chosen IO library to write a file.
+copy of a coreset, call :meth:`format() <DataReader.format>` on a subclass to return an
+:class:`~jax.Array`, which can be passed to the chosen IO library to write a file.
 """
 
 # Support annotations with | in Python < 3.10
-# TODO: Remove once no longer supporting old code
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -68,7 +67,7 @@ class DataReader(ABC):
         Should not normally be called by the user: use :meth:`load` instead.
         """
         self.original_data: Array = coreax.validation.cast_as_type(
-            original_data, "original_data", jnp.asarray
+            original_data, "original_data", jnp.atleast_2d
         )
         self.pre_coreset_array: Array = coreax.validation.cast_as_type(
             pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
@@ -81,7 +80,7 @@ class DataReader(ABC):
         Construct :class:`DataReader` from an array of original data.
 
         This class method restructures the original data into the layout required for
-        :class:`~coreax.Coreset`.
+        :class:`~coreax.reduction.Coreset`.
 
         The user should not normally initialise this class directly; instead use this
         constructor.
@@ -149,9 +148,9 @@ class ArrayData(DataReader):
     """
     Class to apply pre- and post-processing to two-dimensional array data.
 
-    Data should already be in a format accepted by :class:`~coreax.Coreset`. Thus, if no
-    dimensionality reduction is performed, this class is an identity wrapper and
-    :attr:`pre_coreset_array` is equal to :attr:`original_data`.
+    Data should already be in a format accepted by :class:`~coreax.reduction.Coreset`.
+    Thus, if no dimensionality reduction is performed, this class is an identity
+    wrapper and :attr:`pre_coreset_array` is equal to :attr:`original_data`.
 
     :param original_data: Array of data to be reduced to a coreset
     :param pre_coreset_array: Two-dimensional array already rearranged to be ready for
@@ -181,10 +180,11 @@ class ArrayData(DataReader):
         Format coreset to match the shape of the original data.
 
         As the original data was already in the required format for
-        :class:`~coreax.Coreset`, no reformatting takes place.
+        :class:`~coreax.reduction.Coreset`, no reformatting takes place.
 
-        If the number of columns was reduced by :meth:`reduce_dimension`, it will be
-        reverted by this method via a call to :meth:`restore_dimension`.
+        If the number of columns was reduced by
+        :meth:`~coreax.data.DataReader.reduce_dimension`, it will be reverted by this
+        method via a call to :meth:`~coreax.data.DataReader.restore_dimension`.
 
         :param coreset: Coreset to format
         :return: Array of coreset in format matching original data

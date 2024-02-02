@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for weighting approaches.
+
+The tests within this file verify that various weighting approaches and optimisers
+written produce the expected results on simple examples.
+"""
+
 import cmath
 import unittest
 import warnings
@@ -27,7 +34,7 @@ class TestWeights(unittest.TestCase):
     Tests related to weights.py.
     """
 
-    def test_calculate_BQ_weights(self) -> None:
+    def test_calculate_bayesian_quadrature_weights(self) -> None:
         r"""
         Test the calculation of weights via sequential Bayesian quadrature.
 

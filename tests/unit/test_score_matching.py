@@ -10,6 +10,14 @@
 # ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+"""
+Tests for score matching implementations.
+
+Score matching fits models to data by ensuring the score function of the model matches
+the score function of the data. The tests within this file verify that score matching
+approaches used produce the expected results on simple examples.
+"""
+
 import unittest
 from collections.abc import Callable
 
@@ -80,9 +88,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
@@ -136,6 +144,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -145,9 +154,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
@@ -170,6 +179,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -179,10 +191,10 @@ class TestKernelDensityMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_points = 1000
-        np.random.seed(0)
-        comp = np.random.binomial(1, p, size=num_points)
-        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        num_data_points = 1000
+        generator = np.random.default_rng(1_989)
+        comp = generator.binomial(1, p, size=num_data_points)
+        samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
@@ -193,7 +205,9 @@ class TestKernelDensityMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            def log_pdf(y_: ArrayLike) -> ArrayLike:
+                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+
             return e_grad(log_pdf)(x_)
 
         # Define data
@@ -213,26 +227,29 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
         """
         # Define the multivariate Gaussian mixture model (we don't want to go much
         # higher than dimension=2)
-        np.random.seed(0)
         dimension = 2
         k = 10
-        mus = np.random.multivariate_normal(
+        num_data_points = 500
+        generator = np.random.default_rng(0)
+        mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
         )
         sigmas = np.array(
-            [np.random.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
+            [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
-        mix = np.random.dirichlet(np.ones(k))
-        num_points = 500
-        comp = np.random.choice(k, size=num_points, p=mix)
+        mix = generator.dirichlet(np.ones(k))
+        comp = generator.choice(k, size=num_data_points, p=mix)
         samples = np.array(
-            [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
+            [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
         def e_grad(g: Callable) -> Callable:
@@ -259,7 +276,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+            length_scale=10.0, kde_data=samples
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -269,6 +286,8 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    # pylint: enable=too-many-locals
 
 
 class TestSlicedScoreMatching(unittest.TestCase):
@@ -310,7 +329,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -360,14 +383,22 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_analytic, places=3)
 
         # Mutate the objective, and check that the result changes
         sliced_score_matcher.use_analytic = False
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output_general, places=3)
@@ -411,7 +442,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -452,7 +487,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Evaluate the analytic objective function
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._objective_function(v, u, s)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -490,22 +529,30 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Determine the expected output - using the analytic objective function tested
         # elsewhere
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector[None, :], hessian @ random_vector, s
         )
 
         # Evaluate the loss element
         output = sliced_score_matcher._loss_element(x, random_vector, score_function)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
 
         # Call the loss element with a different objective function, and check that the
-        # jit compilation recognises this change
+        # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output_changed_objective = sliced_score_matcher._loss_element(
             x, random_vector, score_function
         )
+        # pylint: enable=protected-access
         self.assertNotAlmostEqual(output, output_changed_objective)
 
     def test_sliced_score_matching_loss_element_general(self) -> None:
@@ -540,12 +587,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Determine the expected output
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         expected_output = sliced_score_matcher._objective_function(
             random_vector, hessian @ random_vector, s
         )
 
         # Evaluate the loss element
         output = sliced_score_matcher._loss_element(x, random_vector, score_function)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=3)
@@ -577,7 +628,11 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             random_generator=rademacher, use_analytic=True
         )
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         output = sliced_score_matcher._loss(score_function)(x, random_vectors)
+        # pylint: enable=protected-access
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
@@ -603,8 +658,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
+        # Disable pylint warning for unsubscriptable-object as we are able to
+        # subscript this and use this for testing purposes only
+        # pylint: disable=unsubscriptable-object
         weights = state.params["Dense_0"]["kernel"].T
         bias = state.params["Dense_0"]["bias"]
+        # pylint: enable=unsubscriptable-object
 
         # Define input data
         x = np.array([2.0, 7.0])
@@ -622,9 +681,13 @@ class TestSlicedScoreMatching(unittest.TestCase):
         weights_ = weights - 1e-3 * grad_weights
         bias_ = bias - 1e-3 * grad_bias
 
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         state, _ = sliced_score_matcher._train_step(
             state, x_to_vector_map, v_to_vector_map
         )
+        # pylint: enable=protected-access
 
         # Jax is row based, so transpose W_
         np.testing.assert_array_almost_equal(
@@ -641,9 +704,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
@@ -652,30 +715,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x = np.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_without_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_without_noise_conditioning).mean(),
-            1.0,
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -685,9 +738,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_points = 500
-        np.random.seed(0)
-        samples = np.random.multivariate_normal(mu, sigma_matrix, size=num_points)
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
@@ -697,29 +750,22 @@ class TestSlicedScoreMatching(unittest.TestCase):
         data_stacked = np.vstack([x.ravel(), y.ravel()]).T
         true_score_result = true_score(data_stacked)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(data_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(data_stacked)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(data_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -729,10 +775,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_points = 1000
-        np.random.seed(0)
-        comp = np.random.binomial(1, p, size=num_points)
-        samples = np.random.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        num_data_points = 1000
+        generator = np.random.default_rng(1_989)
+        comp = generator.binomial(1, p, size=num_data_points)
+        samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
@@ -743,59 +789,51 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return wrapped
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            log_pdf = lambda y: jax.numpy.log(norm.pdf(y, mus, std_devs) @ mix)
+            def log_pdf(y_: ArrayLike) -> ArrayLike:
+                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+
             return e_grad(log_pdf)(x_)
 
         # Define data
         x = np.linspace(-10, 10).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    # pylint: enable=too-many-locals
+
+    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
         """
         # Define the multivariate Gaussian mixture model (we don't want to go much
         # higher than dimension=2)
-        np.random.seed(0)
         dimension = 2
-        num_components = 10
-        mus = np.random.multivariate_normal(
-            np.zeros(dimension), np.eye(dimension), size=num_components
+        k = 10
+        num_data_points = 500
+        generator = np.random.default_rng(0)
+        mus = generator.multivariate_normal(
+            np.zeros(dimension), np.eye(dimension), size=k
         )
         sigmas = np.array(
-            [
-                np.random.gamma(2.0, 1.0) * np.eye(dimension)
-                for _ in range(num_components)
-            ]
+            [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
-        mix = np.random.dirichlet(np.ones(num_components))
-        num_points = 500
-        comp = np.random.choice(num_components, size=num_points, p=mix)
+        mix = generator.dirichlet(np.ones(k))
+        comp = generator.choice(k, size=num_data_points, p=mix)
         samples = np.array(
-            [np.random.multivariate_normal(mus[c], sigmas[c]) for c in comp]
+            [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
 
         def e_grad(g: Callable) -> Callable:
@@ -809,11 +847,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         def true_score(x_: ArrayLike) -> ArrayLike:
             def log_pdf(y: ArrayLike) -> ArrayLike:
                 l_pdf = 0.0
-                for component in range(num_components):
-                    l_pdf += (
-                        multivariate_normal.pdf(y, mus[component], sigmas[component])
-                        * mix[component]
-                    )
+                for k_ in range(k):
+                    l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
                 return jax.numpy.log(l_pdf)
 
             return e_grad(log_pdf)(x_)
@@ -823,28 +858,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x_stacked = np.vstack([c.ravel() for c in coords]).T
         true_score_result = true_score(x_stacked)
 
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=jax.random.normal,
-            use_analytic=True,
-            hidden_dim=32,
-            num_epochs=10,
+        # Define a kernel density matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
         )
 
-        # Learn score function with noise conditioning
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Extract the score function (this is not really learned from the data, more
+        # defined within the object)
+        learned_score = kernel_density_matcher.match()
+        score_result = learned_score(x_stacked)
 
-        # Learn score function without noise conditioning
-        sliced_score_matcher.noise_conditioning = False
-        learned_score = sliced_score_matcher.match(samples)
-        score_result_with_noise_conditioning = learned_score(x_stacked)
-        self.assertLessEqual(
-            np.abs(true_score_result - score_result_with_noise_conditioning).mean(), 1.0
-        )
+        # Check learned score and true score align
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
+
+    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

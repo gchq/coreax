@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for coresubset construction approaches.
+
+Coresubsets are coresets in which elements in the coreset must also be elements in the
+original dataset. The tests within this file verify that approaches to constructing
+coresubsets produce the expected results on simple examples.
+"""
+
 import unittest
 from unittest.mock import patch
 
@@ -190,6 +198,7 @@ class TestKernelHerding(unittest.TestCase):
         coreset_difference = abs(herding_coreset - herding_coreset_invalid_mean)
         self.assertGreater(coreset_difference.sum(), 0)
 
+    # pylint: disable=too-many-locals
     def test_fit_comparison_to_random_stein(self) -> None:
         """
         Test the fit method of the KernelHerding class with a Stein kernel.
@@ -219,7 +228,8 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create kernel and data objects
         kernel = coreax.kernel.SteinKernel(
-            base_kernel=coreax.kernel.PCIMQKernel(), score_function=true_score
+            base_kernel=coreax.kernel.PCIMQKernel(length_scale=0.5),
+            score_function=true_score,
         )
         data = coreax.data.ArrayData.load(x)
 
@@ -305,6 +315,7 @@ class TestKernelHerding(unittest.TestCase):
         random_metric = metric.compute(x, random_coreset)
         self.assertLess(float(herding_metric), float(random_metric))
 
+    # pylint: enable=too-many-locals
     def test_greedy_body(self) -> None:
         """
         Test the _greedy_body method of the KernelHerding class.
@@ -347,6 +358,9 @@ class TestKernelHerding(unittest.TestCase):
             kernel_similarity_penalty_0 = jnp.zeros(3)
 
             # Call the greedy body to get the first point in the coreset
+            # Disable pylint warning for protected-access as we are testing an
+            # analytically tractable part of the overall herding algorithm
+            # pylint: disable=protected-access
             (coreset_indices_1, kernel_similarity_penalty_1) = test_class._greedy_body(
                 i=0,
                 val=(coreset_indices_0, kernel_similarity_penalty_0),
@@ -355,6 +369,7 @@ class TestKernelHerding(unittest.TestCase):
                 kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
                 unique=True,
             )
+            # pylint: enable=protected-access
 
             # Index 1 has the highest value of kernel_matrix_row_sum_mean, verify this
             # was the point selected in the coreset
@@ -377,7 +392,10 @@ class TestKernelHerding(unittest.TestCase):
                 2.0 * 0.59
             )
 
-            # Call the greedy body a second time.
+            # Call the greedy body a second time
+            # Disable pylint warning for protected-access as we are testing an
+            # analytically tractable part of the overall herding algorithm
+            # pylint: disable=protected-access
             (coreset_indices_2, kernel_similarity_penalty_2) = test_class._greedy_body(
                 i=1,
                 val=(coreset_indices_1, kernel_similarity_penalty_1),
@@ -386,6 +404,7 @@ class TestKernelHerding(unittest.TestCase):
                 kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
                 unique=False,
             )
+            # pylint: enable=protected-access
 
             # Index 2 should now have been added to the coreset
             np.testing.assert_array_equal(coreset_indices_2, np.asarray([1, 2]))

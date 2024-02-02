@@ -7,6 +7,7 @@ argmax
 argmin
 argnames
 astype
+atleast
 atleast_2d
 autodiff
 autodoc
@@ -50,6 +51,7 @@ modindex
 myst
 nabla
 ndim
+nonzero
 numpy
 opencv
 operatorname
