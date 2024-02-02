@@ -92,13 +92,13 @@ class TestWeights(unittest.TestCase):
 
         self.assertTrue(jnp.allclose(output, expected_output))
 
-    def test_calculate_BQ_weights_approximate(self) -> None:
+    def test_calculate_bayesian_quadrature_weights_approximate(self) -> None:
         """
         Test the approximate calculation of weights via sequential Bayesian quadrature.
 
         Since the approximate solution method currently just calls the exact solution
         method, this test should give exactly the same output (with a warning raised)
-        as the test `test_calculate_BQ_weights` above.
+        as the test `test_calculate_bayesian_quadrature_weights` above.
         """
         # Setup data
         x = jnp.array([[0, 0], [1, 1], [2, 2]])

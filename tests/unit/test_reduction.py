@@ -313,7 +313,9 @@ class TestMapReduce(unittest.TestCase):
         )
         coreset = coreax.coresubset.RandomSample()
         coreset.original_data = orig_data
-
+        # Disable pylint warning for protected-access as we are testing a single part of
+        # the over-arching algorithm
+        # pylint: disable=protected-access
         with patch.object(
             coreax.reduction.MapReduce,
             "_reduce_recursive",
@@ -322,6 +324,7 @@ class TestMapReduce(unittest.TestCase):
             # Perform the reduction
             strategy.reduce(coreset)
             num_calls_reduce_recursive = mock.call_count
+        # pylint: enable=protected-access
 
         # Check the shape of the output
         self.assertEqual(coreset.format().shape, (10, 2))
@@ -382,7 +385,11 @@ class TestMapReduce(unittest.TestCase):
         # Check AssertionError raises when method is called with no input_indices
         with self.assertRaises(AssertionError):
             input_data = coreset.original_data.pre_coreset_array
+            # Disable pylint warning for protected-access as we are testing a single
+            # part of the over-arching algorithm
+            # pylint: disable=protected-access
             strategy._reduce_recursive(template=coreset, input_data=input_data)
+            # pylint: enable=protected-access
 
 
 if __name__ == "__main__":
