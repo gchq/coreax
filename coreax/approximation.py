@@ -94,15 +94,15 @@ class KernelMeanApproximator(ABC):
     approximated by various methods. :class:`KernelMeanApproximator` is the base class
     for implementing these approximation methods.
 
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
+    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         kernel: coreax.kernel.Kernel,
-        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
     ):
         """Define approximator to the mean of the row sum of kernel distance matrix."""
@@ -150,16 +150,16 @@ class RandomApproximator(KernelMeanApproximator):
     such an approximation using kernel regression on a subset of randomly selected
     points from the dataset.
 
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
+    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         kernel: coreax.kernel.Kernel,
-        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
@@ -182,8 +182,8 @@ class RandomApproximator(KernelMeanApproximator):
 
         # Initialise parent
         super().__init__(
-            kernel=kernel,
             random_key=random_key,
+            kernel=kernel,
             num_kernel_points=num_kernel_points,
         )
 
@@ -238,16 +238,16 @@ class ANNchorApproximator(KernelMeanApproximator):
     ANNchor approach from the dataset. The ANNchor implementation used can be found
     `here <https://github.com/gchq/annchor>`_.
 
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
+    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         kernel: coreax.kernel.Kernel,
-        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
@@ -270,8 +270,8 @@ class ANNchorApproximator(KernelMeanApproximator):
 
         # Initialise parent
         super().__init__(
-            kernel=kernel,
             random_key=random_key,
+            kernel=kernel,
             num_kernel_points=num_kernel_points,
         )
 
@@ -325,22 +325,22 @@ class NystromApproximator(KernelMeanApproximator):
     random from the data. Further details for Nystrom kernel mean embeddings can be
     found in :cite:p:`chatalic2022nystrom`.
 
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param random_key: Key for random number generation
+    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         kernel: coreax.kernel.Kernel,
-        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
     ):
         """Approximate kernel row mean by using Nystrom approximation."""
         # Initialise parent
         super().__init__(
-            kernel=kernel,
             random_key=random_key,
+            kernel=kernel,
             num_kernel_points=num_kernel_points,
         )
 
