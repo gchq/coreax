@@ -74,15 +74,10 @@ def validate_in_range(
 def validate_is_instance(
     x: object,
     object_name: str,
-    expected_type: type | tuple[type | None, ...] | None,
+    expected_type: type | tuple[type],
 ) -> None:
     """
     Verify that a given object is of a given type.
-
-    Unlike built-in :func:`isinstance`, :data:`None` may be passed to ``expected_type``.
-
-    Where the object may be one of several types, a tuple of types may be passed to
-    ``expected_type``.
 
     .. note:: This code should work if a :class:`~types.UnionType` is passed to
         ``expected_type`` but this is untested while this library continues to support
@@ -97,32 +92,14 @@ def validate_is_instance(
         choice of valid types
     :raises TypeError: Raised if ``x`` is not of type ``expected_type``
     """
-    # None is not handled by isinstance so check separately, although is ok if inside a
-    # union
-    if expected_type is None:
-        valid = x is None
-    else:
-        # Check if a tuple of types containing None is given
-        if isinstance(expected_type, tuple) and None in expected_type:
-            if x is None:
-                # Valid: return here to avoid more intricate if-else statements
-                return
-            # Filter None from the tuple of expected types - may appear multiple times
-            expected_type_without_none = tuple(
-                t for t in expected_type if t is not None
-            )
-        else:
-            expected_type_without_none = expected_type
+    try:
+        is_valid_type = isinstance(x, expected_type)
+    except TypeError as exc:
+        raise TypeError(
+            "expected_type must be a type, tuple of types or a union"
+        ) from exc
 
-        # Try-except to guard against a still invalid expected_type in isinstance
-        try:
-            valid = isinstance(x, expected_type_without_none)
-        except TypeError as exc:
-            raise TypeError(
-                "expected_type must be a type, tuple of types or a union"
-            ) from exc
-
-    if not valid:
+    if not is_valid_type:
         raise TypeError(f"{object_name} must be of type {expected_type}")
 
 

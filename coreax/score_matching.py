@@ -147,7 +147,7 @@ class SlicedScoreMatching(ScoreMatching):
     def __init__(
         self,
         random_generator: Callable,
-        random_key: random.PRNGKeyArray | ArrayLike = random.PRNGKey(0),
+        random_key: random.PRNGKeyArray | ArrayLike = random.key(0),
         noise_conditioning: bool = True,
         use_analytic: bool = False,
         num_random_vectors: int = 1,
@@ -452,10 +452,10 @@ class SlicedScoreMatching(ScoreMatching):
         :return: The updated objective, i.e. partial sum
         """
         # This will generate the same set of random numbers on each function call. We
-        #  might want to replace this with random.PRNGKey(i) to get a unique set each
+        #  might want to replace this with random.key(i) to get a unique set each
         #  time.
         # Perturb the inputs with Gaussian noise
-        x_perturbed = x + sigmas[i] * random.normal(random.PRNGKey(0), x.shape)
+        x_perturbed = x + sigmas[i] * random.normal(random.key(0), x.shape)
         obj = (
             obj
             + sigmas[i] ** 2
@@ -546,7 +546,7 @@ class SlicedScoreMatching(ScoreMatching):
             random_key_2,
         )
         _, random_key_4 = random.split(random_key_2)
-        batch_key = random.PRNGKey(random_key_4[-1])
+        batch_key = random.key(random_key_4[-1])
 
         # Carry out main training loop to fit the neural network
         for i in tqdm(range(self.num_epochs)):
@@ -640,7 +640,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         # Validate inputs
         coreax.validation.validate_is_instance(
-            x=x, object_name="x", expected_type=(Array, None)
+            x=x, object_name="x", expected_type=(Array, type(None))
         )
 
         def score_function(x_):

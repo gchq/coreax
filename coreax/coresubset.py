@@ -120,7 +120,7 @@ class KernelHerding(coreax.reduction.Coreset):
         coreax.validation.validate_is_instance(
             x=approximator,
             object_name="approximator",
-            expected_type=(coreax.approximation.KernelMeanApproximator, None),
+            expected_type=(coreax.approximation.KernelMeanApproximator, type(None)),
         )
         random_key = coreax.validation.cast_as_type(
             x=random_key, object_name="random_key", type_caster=jnp.asarray
