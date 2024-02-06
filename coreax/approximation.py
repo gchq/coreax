@@ -102,7 +102,7 @@ class KernelMeanApproximator(ABC):
     def __init__(
         self,
         kernel: coreax.kernel.Kernel,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
     ):
         """Define approximator to the mean of the row sum of kernel distance matrix."""
@@ -110,9 +110,8 @@ class KernelMeanApproximator(ABC):
         coreax.validation.validate_is_instance(kernel, "kernel", coreax.kernel.Kernel)
 
         # Validate inputs of non-coreax defined classes
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=jnp.asarray
-        )
+        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
+
         num_kernel_points = coreax.validation.cast_as_type(
             x=num_kernel_points, object_name="num_kernel_points", type_caster=int
         )
@@ -160,7 +159,7 @@ class RandomApproximator(KernelMeanApproximator):
     def __init__(
         self,
         kernel: coreax.kernel.Kernel,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
@@ -248,7 +247,7 @@ class ANNchorApproximator(KernelMeanApproximator):
     def __init__(
         self,
         kernel: coreax.kernel.Kernel,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
     ):
@@ -334,7 +333,7 @@ class NystromApproximator(KernelMeanApproximator):
     def __init__(
         self,
         kernel: coreax.kernel.Kernel,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: coreax.validation.KeyArray = random.key(0),
         num_kernel_points: int = 10_000,
     ):
         """Approximate kernel row mean by using Nystrom approximation."""

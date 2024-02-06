@@ -96,7 +96,7 @@ class KernelHerding(coreax.reduction.Coreset):
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
-        random_key: random.PRNGKeyArray = random.PRNGKey(0),
+        random_key: coreax.validation.KeyArray = random.key(0),
     ):
         """Initialise a KernelHerding class."""
         # Validate inputs. Note that inputs passed to the parent are validated within
@@ -122,9 +122,7 @@ class KernelHerding(coreax.reduction.Coreset):
             object_name="approximator",
             expected_type=(coreax.approximation.KernelMeanApproximator, type(None)),
         )
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=jnp.asarray
-        )
+        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
 
         # Assign herding-specific attributes
         self.block_size = block_size

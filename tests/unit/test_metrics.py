@@ -85,15 +85,15 @@ class TestMMD(unittest.TestCase):
 
         # Define example datasets
         self.x = random.uniform(
-            random.PRNGKey(0), shape=(self.num_points_x, self.dimension)
+            random.key(0), shape=(self.num_points_x, self.dimension)
         )
-        self.y = random.choice(random.PRNGKey(0), self.x, shape=(self.num_points_y,))
+        self.y = random.choice(random.key(0), self.x, shape=(self.num_points_y,))
         self.weights_x = (
-            random.uniform(random.PRNGKey(0), shape=(self.num_points_x,))
+            random.uniform(random.key(0), shape=(self.num_points_x,))
             / self.num_points_x
         )
         self.weights_y = (
-            random.uniform(random.PRNGKey(0), shape=(self.num_points_y,))
+            random.uniform(random.key(0), shape=(self.num_points_y,))
             / self.num_points_y
         )
 

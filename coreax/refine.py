@@ -382,7 +382,7 @@ class RefineRandom(Refine):
         n_cand = int(num_points_in_x * self.p)
         n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
 
-        key = random.PRNGKey(self.random_key)
+        key = random.key(self.random_key)
 
         body = partial(
             self._refine_rand_body,
@@ -400,13 +400,13 @@ class RefineRandom(Refine):
     def _refine_rand_body(
         self,
         _i: int,
-        val: tuple[random.PRNGKeyArray, ArrayLike],
+        val: tuple[coreax.validation.KeyArray, ArrayLike],
         x: ArrayLike,
         n_cand: int,
         kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
-    ) -> tuple[random.PRNGKeyArray, Array]:
+    ) -> tuple[coreax.validation.KeyArray, Array]:
         r"""
         Execute main loop of the random refine method.
 
