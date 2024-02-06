@@ -86,15 +86,15 @@ class Coreset(ABC):
         coreax.validation.validate_is_instance(
             weights_optimiser,
             "weights_optimiser",
-            (coreax.weights.WeightsOptimiser, None),
+            (coreax.weights.WeightsOptimiser, type(None)),
         )
         self.weights_optimiser = weights_optimiser
         coreax.validation.validate_is_instance(
-            kernel, "kernel", (coreax.kernel.Kernel, None)
+            kernel, "kernel", (coreax.kernel.Kernel, type(None))
         )
         self.kernel = kernel
         coreax.validation.validate_is_instance(
-            refine_method, "refine_method", (coreax.refine.Refine, None)
+            refine_method, "refine_method", (coreax.refine.Refine, type(None))
         )
         self.refine_method = refine_method
 

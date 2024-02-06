@@ -321,42 +321,6 @@ class TestInputValidationInstance(unittest.TestCase):
             expected_type=[int, str],
         )
 
-    def test_none_valid(self):
-        """Test that validates when object is :data:`None`."""
-        coreax.validation.validate_is_instance(
-            x=None, object_name="var", expected_type=None
-        )
-
-    def test_none_invalid(self):
-        """Test that raises when object is not :data:`None` but expected type is."""
-        self.assertRaisesRegex(
-            TypeError,
-            self.var_must_be_of_type_message,
-            coreax.validation.validate_is_instance,
-            x=120.0,
-            object_name="var",
-            expected_type=None,
-        )
-
-    def test_tuple_none_valid(self):
-        """
-        Test that validates when object is :data:`None` and have a tuple of types.
-        """
-        coreax.validation.validate_is_instance(
-            x=None, object_name="var", expected_type=(str, None)
-        )
-
-    def test_tuple_none_invalid(self):
-        """Test that raises when :data:`None` is in tuple of expected types."""
-        self.assertRaisesRegex(
-            TypeError,
-            self.var_must_be_of_type_message,
-            coreax.validation.validate_is_instance,
-            x=120.0,
-            object_name="var",
-            expected_type=(str, None),
-        )
-
 
 class TestInputValidationConversion(unittest.TestCase):
     """
