@@ -25,7 +25,7 @@ from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 import numpy as np
-from jax import Array
+from jax import Array, random
 
 import coreax.coresubset
 import coreax.data
@@ -250,13 +250,16 @@ class TestCoreset(unittest.TestCase):
 class TestSizeReduce(unittest.TestCase):
     """Test :class:`~coreax.reduction.SizeReduce`."""
 
+    def setUp(self):
+        self.random_key = random.key(0)
+
     def test_random_sample(self):
         """Test reduction with :class:`~coreax.coresubset.RandomSample`."""
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(20)])
         )
         strategy = coreax.reduction.SizeReduce(10)
-        coreset = coreax.coresubset.RandomSample()
+        coreset = coreax.coresubset.RandomSample(self.random_key)
         coreset.original_data = orig_data
         strategy.reduce(coreset)
         # Check shape of output
@@ -269,6 +272,9 @@ class TestSizeReduce(unittest.TestCase):
 class TestMapReduce(unittest.TestCase):
     """Test :class:`MapReduce`."""
 
+    def setUp(self):
+        self.random_key = random.key(0)
+
     def test_random_sample(self):
         """Test map reduction with :class:`~coreax.coresubset.RandomSample`."""
         num_data_points = 100
@@ -276,7 +282,7 @@ class TestMapReduce(unittest.TestCase):
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
         )
         strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=20)
-        coreset = coreax.coresubset.RandomSample()
+        coreset = coreax.coresubset.RandomSample(self.random_key)
         coreset.original_data = orig_data
 
         # Disable pylint warning for protected-access as we are testing a single part of
@@ -311,7 +317,7 @@ class TestMapReduce(unittest.TestCase):
         strategy = coreax.reduction.MapReduce(
             coreset_size=10, leaf_size=20, parallel=False
         )
-        coreset = coreax.coresubset.RandomSample()
+        coreset = coreax.coresubset.RandomSample(self.random_key)
         coreset.original_data = orig_data
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
@@ -347,7 +353,7 @@ class TestMapReduce(unittest.TestCase):
         strategy = coreax.reduction.MapReduce(
             coreset_size=10, leaf_size=num_data_points
         )
-        coreset = coreax.coresubset.RandomSample()
+        coreset = coreax.coresubset.RandomSample(self.random_key)
         coreset.original_data = orig_data
 
         # Disable pylint warning for protected-access as we are testing a single part of
@@ -380,7 +386,7 @@ class TestMapReduce(unittest.TestCase):
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
         )
         strategy = coreax.reduction.MapReduce(coreset_size=10, leaf_size=100)
-        coreset = coreax.coresubset.RandomSample()
+        coreset = coreax.coresubset.RandomSample(self.random_key)
         coreset.original_data = orig_data
         # Check AssertionError raises when method is called with no input_indices
         with self.assertRaises(AssertionError):

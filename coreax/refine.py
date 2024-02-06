@@ -129,7 +129,7 @@ class Refine(ABC):
         # dynamic values:
         children = ()
         # static values:
-        aux_data = {}
+        aux_data = {"approximator": self.approximator}
         return children, aux_data
 
     @classmethod
@@ -303,19 +303,19 @@ class RefineRandom(Refine):
     of candidate points. The candidate points are a random sample of :math:`n \times p`
     points from among the original data.
 
+    :param random_key: Pseudo-random number generator key
     :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
         for the kernel mean approximation method or :data:`None` (default) if
         calculations should be exact
     :param p: Proportion of original dataset to randomly sample for candidate points
         to replace those in the coreset
-    :param random_key: Pseudo-random number generator key
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
-        random_key: int = 0,
     ):
         """Initialise a random refinement object."""
         # Perform input validation
@@ -326,9 +326,7 @@ class RefineRandom(Refine):
         coreax.validation.validate_in_range(
             x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
         )
-        random_key = coreax.validation.cast_as_type(
-            x=random_key, object_name="random_key", type_caster=int
-        )
+        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
 
         # Assign attributes
         self.p = p
@@ -336,6 +334,24 @@ class RefineRandom(Refine):
         super().__init__(
             approximator=approximator,
         )
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        children = (self.random_key,)
+        auxiliary_data = {"approximator": self.approximator, "p": self.p}
+        return children, auxiliary_data
 
     def refine(
         self,
@@ -382,8 +398,6 @@ class RefineRandom(Refine):
         n_cand = int(num_points_in_x * self.p)
         n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
 
-        key = random.key(self.random_key)
-
         body = partial(
             self._refine_rand_body,
             x=original_array,
@@ -392,7 +406,9 @@ class RefineRandom(Refine):
             kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
         )
-        key, coreset_indices = lax.fori_loop(0, n_iter, body, (key, coreset_indices))
+        _, coreset_indices = lax.fori_loop(
+            0, n_iter, body, (self.random_key, coreset_indices)
+        )
 
         coreset.coreset_indices = coreset_indices
         coreset.coreset = original_array[coreset_indices, :]

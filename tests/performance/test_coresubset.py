@@ -20,7 +20,7 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from jax import jit
+from jax import jit, random
 from scipy.stats import ks_2samp
 
 import coreax.coresubset
@@ -54,6 +54,7 @@ class TestCoreSubset(unittest.TestCase):
         self.dimension = 10
         # Size of the coreset to generate (if loop body called until completion)
         self.coreset_size = 1
+        self.random_key = random.key(0)
 
     def test_greedy_body(self) -> None:
         """
@@ -75,7 +76,7 @@ class TestCoreSubset(unittest.TestCase):
         kernel = coreax.kernel.SquaredExponentialKernel()
 
         # Create a kernel herding object
-        herding_object = coreax.coresubset.KernelHerding(kernel=kernel)
+        herding_object = coreax.coresubset.KernelHerding(self.random_key, kernel=kernel)
 
         # Test performance
         pre = []

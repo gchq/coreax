@@ -36,7 +36,7 @@ import imageio
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-from jax.random import rademacher
+from jax import random
 from sklearn.decomposition import PCA
 
 from coreax import (
@@ -92,7 +92,8 @@ def main(
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
     # Fix random behaviour
-    np.random.seed(1_989)
+    random_seed = 1_989
+    np.random.seed(random_seed)
 
     # Run PCA to reduce the dimension of the images whilst minimising effects on some of
     # the statistical properties, i.e. variance.
@@ -108,7 +109,7 @@ def main(
 
     # Set the length_scale parameter of the underlying squared exponential kernel
     num_points_length_scale_selection = min(principle_components_data.shape[0], 1_000)
-    generator = np.random.default_rng(1_989)
+    generator = np.random.default_rng(random_seed)
     idx = generator.choice(
         principle_components_data.shape[0],
         num_points_length_scale_selection,
@@ -117,8 +118,10 @@ def main(
     length_scale = median_heuristic(principle_components_data[idx])
 
     # Learn a score function
+    score_key, herding_key, sample_key = random.split(random.key(random_seed), 3)
     sliced_score_matcher = SlicedScoreMatching(
-        random_generator=rademacher,
+        score_key,
+        random_generator=random.rademacher,
         use_analytic=True,
         num_epochs=100,
         num_random_vectors=1,
@@ -129,10 +132,11 @@ def main(
 
     # Run kernel herding with a Stein kernel
     herding_object = KernelHerding(
+        herding_key,
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
             score_function=score_function,
-        )
+        ),
     )
     herding_object.fit(
         original_data=data,
@@ -143,7 +147,7 @@ def main(
     coreset_indices_herding = jnp.sort(herding_object.coreset_indices)
 
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
+    random_sample_object = RandomSample(sample_key, unique=True)
     random_sample_object.fit(
         original_data=data,
         strategy=SizeReduce(coreset_size=coreset_size),

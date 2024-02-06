@@ -69,6 +69,7 @@ class KernelHerding(coreax.reduction.Coreset):
     This class works with all children of :class:`~coreax.kernel.Kernel`, including
     Stein kernels.
 
+    :param random_key: Key for random number generation
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
@@ -84,11 +85,11 @@ class KernelHerding(coreax.reduction.Coreset):
         that has been created using the same kernel one wishes to use for herding. If
         :data:`None` (default) then calculation is exact, but can be computationally
         intensive.
-    :param random_key: Key for random number generation
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         *,
         kernel: coreax.kernel.Kernel,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
@@ -96,7 +97,6 @@ class KernelHerding(coreax.reduction.Coreset):
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
-        random_key: coreax.validation.KeyArray = random.key(0),
     ):
         """Initialise a KernelHerding class."""
         # Validate inputs. Note that inputs passed to the parent are validated within
@@ -152,6 +152,7 @@ class KernelHerding(coreax.reduction.Coreset):
             attributes.
         """
         children = (
+            self.random_key,
             self.kernel,
             self.kernel_matrix_row_sum_mean,
             self.coreset_indices,
@@ -163,7 +164,6 @@ class KernelHerding(coreax.reduction.Coreset):
             "refine_method": self.refine_method,
             "weights_optimiser": self.weights_optimiser,
             "approximator": self.approximator,
-            "random_key": self.random_key,
         }
         return children, aux_data
 
@@ -347,6 +347,7 @@ class RandomSample(coreax.reduction.Coreset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
+    :param random_key: Pseudo-random number generator key for sampling
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
         :data:`None` if not applicable. Note that if this is supplied, it is only used
@@ -358,29 +359,26 @@ class RandomSample(coreax.reduction.Coreset):
         without replacement
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
-    :param random_seed: Pseudo-random number generator key for sampling
     """
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArray,
         *,
         kernel: coreax.kernel.Kernel | None = None,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
-        random_seed: ArrayLike = 0,
     ):
         """Initialise a random sampling object."""
         # Validate inputs
-        random_seed = coreax.validation.cast_as_type(
-            x=random_seed, object_name="random_seed", type_caster=int
-        )
+        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
         unique = coreax.validation.cast_as_type(
             x=unique, object_name="unique", type_caster=bool
         )
 
         # Assign random sample specific attributes
-        self.random_seed = random_seed
+        self.random_key = random_key
         self.unique = unique
 
         # Initialise Coreset parent
@@ -405,6 +403,7 @@ class RandomSample(coreax.reduction.Coreset):
             attributes.
         """
         children = (
+            self.random_key,
             self.kernel,
             self.kernel_matrix_row_sum_mean,
             self.coreset_indices,
@@ -414,7 +413,6 @@ class RandomSample(coreax.reduction.Coreset):
             "weights_optimiser": self.weights_optimiser,
             "refine_method": self.refine_method,
             "unique": self.unique,
-            "random_seed": self.random_seed,
         }
         return children, aux_data
 
@@ -439,12 +437,11 @@ class RandomSample(coreax.reduction.Coreset):
         )
 
         # Setup for sampling
-        key = random.key(self.random_seed)
         num_data_points = len(self.original_data.pre_coreset_array)
 
         # Randomly sample the desired number of points to form a coreset
         random_indices = random.choice(
-            key,
+            self.random_key,
             a=jnp.arange(0, num_data_points),
             shape=(coreset_size,),
             replace=not self.unique,

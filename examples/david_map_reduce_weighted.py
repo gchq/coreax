@@ -45,6 +45,7 @@ import cv2
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from jax import random
 
 from coreax import (
     MMD,
@@ -121,7 +122,8 @@ def main(
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
     num_samples_length_scale = min(num_data_points, 1_000)
-    generator = np.random.default_rng(1_989)
+    random_seed = 1_989
+    generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
     if length_scale < 1e-6:
@@ -147,8 +149,12 @@ def main(
     # Compute a coreset using kernel herding with a Stein kernel. To reduce compute
     # time, we apply MapReduce, which partitions the input into blocks for independent
     # coreset solving. We also reduce memory requirements by specifying block size
+    herding_key, sample_key = random.split(random.key(random_seed))
     herding_object = KernelHerding(
-        kernel=herding_kernel, weights_optimiser=weights_optimiser, block_size=1_000
+        herding_key,
+        kernel=herding_kernel,
+        weights_optimiser=weights_optimiser,
+        block_size=1_000,
     )
     herding_object.fit(
         original_data=data,
@@ -158,7 +164,7 @@ def main(
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
+    random_sample_object = RandomSample(sample_key, unique=True)
     random_sample_object.fit(
         original_data=data,
         strategy=SizeReduce(coreset_size=coreset_size),

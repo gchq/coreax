@@ -39,7 +39,7 @@ from pathlib import Path
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-from jax.random import rademacher
+from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax import (
@@ -94,19 +94,21 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     data = ArrayData.load(x)
 
     # Fix random behaviour
-    np.random.seed(1_989)
+    np.random.seed(random_seed)
 
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
     num_samples_length_scale = min(num_data_points, 1_000)
-    generator = np.random.default_rng(1_989)
+    generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
+    score_key, herding_key, sample_key = random.split(random.key(random_seed), 3)
     # Learn a score function via sliced score matching (this is required for
     # evaluation of the Stein kernel)
     sliced_score_matcher = SlicedScoreMatching(
-        random_generator=rademacher,
+        score_key,
+        random_generator=random.rademacher,
         use_analytic=True,
         num_epochs=10,
         num_random_vectors=1,
@@ -127,7 +129,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Computing coreset...")
     # Compute a coreset using kernel herding with a Stein kernel
     herding_object = KernelHerding(
-        kernel=herding_kernel, weights_optimiser=weights_optimiser
+        herding_key, kernel=herding_kernel, weights_optimiser=weights_optimiser
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
@@ -136,7 +138,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
+    random_sample_object = RandomSample(sample_key, unique=True)
     random_sample_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
