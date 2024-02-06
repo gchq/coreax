@@ -71,7 +71,7 @@ class TestApproximations(unittest.TestCase):
         We can repeat the above but considering each data-point in ``x`` in turn and
         attain a set of true distances to use as the ground truth in the tests.
         """
-        self.random_key = random.PRNGKey(10)
+        self.random_key = random.key(10)
 
         # Setup a 'small' toy example that can be computed by hand
         self.data = jnp.array([[0.0, 0.0], [0.5, 0.5], [1.0, 0.0], [-1.0, 0.0]])
@@ -118,8 +118,7 @@ class TestApproximations(unittest.TestCase):
 
         # Check parameters have been set
         self.assertEqual(approximator.kernel, self.kernel)
-        self.assertEqual(approximator.random_key[0], self.random_key[0])
-        self.assertEqual(approximator.random_key[1], self.random_key[1])
+        np.testing.assert_array_equal(approximator.random_key, self.random_key)
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
 
     def test_kernel_mean_approximator_creation_invalid_types(self) -> None:

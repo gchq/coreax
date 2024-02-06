@@ -64,7 +64,7 @@ def create_train_state(
     learning_rate: float,
     data_dimension: int,
     optimiser: Callable,
-    random_key: random.PRNGKey = random.PRNGKey(0),
+    random_key: random.PRNGKey = random.key(0),
 ) -> TrainState:
     """
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
@@ -101,9 +101,7 @@ def create_train_state(
     coreax.validation.validate_is_instance(
         x=optimiser, object_name="optimiser", expected_type=Callable
     )
-    random_key = coreax.validation.cast_as_type(
-        x=random_key, object_name="random_key", type_caster=jnp.asarray
-    )
+    coreax.validation.validate_key_array(x=random_key, object_name="random_key")
 
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
