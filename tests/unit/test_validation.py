@@ -20,6 +20,7 @@ produce the expected results on simple examples.
 import unittest
 
 import jax.numpy as jnp
+from jax import random
 
 import coreax.validation
 
@@ -456,6 +457,44 @@ class TestInputValidationConversion(unittest.TestCase):
             coreax.validation.validate_array_size(
                 x=jnp.array([]), object_name="arr", dimension=0, expected_size=0
             )
+        )
+
+    def test_validate_key_array_valid(self):
+        """
+        Test the function validate_key_array on a valid key array.
+
+        Test that validate_key_Array does not raise an error when checking the
+        dtype of a valid key array.
+        """
+        self.assertIsNone(
+            coreax.validation.validate_key_array(x=random.key(0), object_name="key")
+        )
+
+    def test_validate_key_array_invalid(self):
+        """
+        Test the function validate_key_array on a invalid arrays.
+
+        Test that validate_key_Array does raise an error when checking the dtype
+        of an invalid 'old-style' PRNGKey array, an array of integers and a non
+        Array object.
+        """
+        self.assertRaises(
+            TypeError,
+            coreax.validation.validate_key_array,
+            x=random.PRNGKey(0),
+            object_name="key",
+        )
+        self.assertRaises(
+            TypeError,
+            coreax.validation.validate_key_array,
+            x=jnp.array([0, 1]),
+            object_name="key",
+        )
+        self.assertRaises(
+            TypeError,
+            coreax.validation.validate_key_array,
+            x=bool,
+            object_name="key",
         )
 
 
