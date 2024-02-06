@@ -21,6 +21,7 @@ bysource
 cmap
 dollarmath
 dtype
+dtypes
 eprint
 figsize
 fori_loop
@@ -34,6 +35,7 @@ inproceedings
 intercal
 intersphinx
 isort
+issubdtype
 jacrev
 JAX's
 jaxopt

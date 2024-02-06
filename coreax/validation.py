@@ -25,6 +25,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TypeVar
 
+from jax import Array, dtypes
+from typing_extensions import TypeAlias
+
+KeyArray: TypeAlias = Array
+
 T = TypeVar("T")
 U = TypeVar("U")
 
@@ -142,4 +147,19 @@ def validate_array_size(
         raise ValueError(
             f"Dimension {dimension} of {object_name} is not the expected size of "
             f"{expected_size}"
+        )
+
+
+def validate_key_array(x: KeyArray, object_name: str) -> None:
+    """
+    Validate that ``x`` is a sub-dtype of jax.dtypes.prng_key.
+
+    :param x: Variable to check
+    :param object_name: Semantic name of the object ``x``.
+    :raises TypeError: Raised if ``x`` is not a sub-dtype of ``jax.dtype.prng_key``
+    """
+    if not isinstance(x, KeyArray) or not dtypes.issubdtype(x.dtype, dtypes.prng_key):
+        raise TypeError(
+            f"{object_name} is not a typed JAX PRNG, for more detail see "
+            "https://jax.readthedocs.io/en/latest/jep/9263-typed-keys.html"
         )
