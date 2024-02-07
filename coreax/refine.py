@@ -313,7 +313,7 @@ class RefineRandom(Refine):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
     ):
@@ -416,7 +416,7 @@ class RefineRandom(Refine):
     def _refine_rand_body(
         self,
         _i: int,
-        val: tuple[coreax.validation.KeyArray, ArrayLike],
+        val: tuple[coreax.validation.KeyArrayLike, ArrayLike],
         x: ArrayLike,
         n_cand: int,
         kernel: coreax.kernel.Kernel,

@@ -59,7 +59,7 @@ class ScoreNetwork(nn.Module):
 
 
 def create_train_state(
-    random_key: coreax.validation.KeyArray,
+    random_key: coreax.validation.KeyArrayLike,
     module: Module,
     learning_rate: float,
     data_dimension: int,

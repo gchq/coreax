@@ -26,9 +26,11 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from jax import Array, dtypes
+from jax.typing import ArrayLike
 from typing_extensions import TypeAlias
 
 KeyArray: TypeAlias = Array
+KeyArrayLike: TypeAlias = ArrayLike
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -150,7 +152,8 @@ def validate_array_size(
         )
 
 
-def validate_key_array(x: KeyArray, object_name: str) -> None:
+# Deprecation Warning: This will be removed by #420
+def validate_key_array(x: KeyArrayLike, object_name: str) -> None:
     """
     Validate that ``x`` is a sub-dtype of jax.dtypes.prng_key.
 

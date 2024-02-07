@@ -101,7 +101,7 @@ class KernelMeanApproximator(ABC):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
     ):
@@ -158,7 +158,7 @@ class RandomApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -246,7 +246,7 @@ class ANNchorApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -332,7 +332,7 @@ class NystromApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
     ):

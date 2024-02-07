@@ -145,7 +145,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArray,
+        random_key: coreax.validation.KeyArrayLike,
         random_generator: Callable,
         noise_conditioning: bool = True,
         use_analytic: bool = False,
