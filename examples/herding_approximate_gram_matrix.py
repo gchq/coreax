@@ -33,6 +33,7 @@ from pathlib import Path
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax import (
@@ -88,7 +89,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
     num_samples_length_scale = min(num_data_points, 1_000)
-    generator = np.random.default_rng(1_989)
+    generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
@@ -97,10 +98,15 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     print("Computing coreset...")
     # Compute a coreset using kernel herding with a Squared exponential kernel.
+    herding_key, approximator_key, sample_key = random.split(random.key(random_seed), 3)
     herding_object = KernelHerding(
+        herding_key,
         kernel=herding_kernel,
         approximator=ANNchorApproximator(
-            kernel=herding_kernel, num_kernel_points=500, num_train_points=500
+            approximator_key,
+            kernel=herding_kernel,
+            num_kernel_points=500,
+            num_train_points=500,
         ),
     )
     herding_object.fit(
@@ -109,7 +115,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(unique=True)
+    random_sample_object = RandomSample(sample_key, unique=True)
     random_sample_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )

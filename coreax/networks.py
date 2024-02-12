@@ -24,7 +24,6 @@ from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
 from jax import numpy as jnp
-from jax import random
 from jax.typing import ArrayLike
 
 import coreax.validation
@@ -60,20 +59,20 @@ class ScoreNetwork(nn.Module):
 
 
 def create_train_state(
+    random_key: coreax.validation.KeyArrayLike,
     module: Module,
     learning_rate: float,
     data_dimension: int,
     optimiser: Callable,
-    random_key: random.PRNGKey = random.PRNGKey(0),
 ) -> TrainState:
     """
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
 
+    :param random_key: Key for random number generation
     :param module: Subclass of :class:`~flax.nn.Module`
     :param learning_rate: Optimiser learning rate
     :param data_dimension: Data dimension
     :param optimiser: optax optimiser, e.g. :class:`~optax.adam`
-    :param random_key: Key for random number generation
     :return: :class:`~flax.training.train_state.TrainState` object
     """
     # Validate inputs
@@ -101,9 +100,7 @@ def create_train_state(
     coreax.validation.validate_is_instance(
         x=optimiser, object_name="optimiser", expected_type=Callable
     )
-    random_key = coreax.validation.cast_as_type(
-        x=random_key, object_name="random_key", type_caster=jnp.asarray
-    )
+    coreax.validation.validate_key_array(x=random_key, object_name="random_key")
 
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)

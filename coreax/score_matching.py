@@ -95,10 +95,10 @@ class SlicedScoreMatching(ScoreMatching):
     the score function of the data. The approach is outlined in detail in
     :cite:p:`ssm`.
 
+    :param random_key: Key for random number generation
     :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
         :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
         :class:`~jax.random`
-    :param random_key: Key for random number generation
     :param noise_conditioning: Use the noise conditioning version of score matching.
         Defaults to :data:`True`.
     :param use_analytic: Use the analytic (reduced variance) objective or not.
@@ -125,10 +125,9 @@ class SlicedScoreMatching(ScoreMatching):
         A method to flatten the pytree needs to be specified to enable jit decoration
         of methods inside this class.
         """
-        children = ()
+        children = (self.random_key,)
         aux_data = {
             "random_generator": self.random_generator,
-            "random_key": self.random_key,
             "noise_conditioning": self.noise_conditioning,
             "use_analytic": self.use_analytic,
             "num_random_vectors": self.num_random_vectors,
@@ -146,8 +145,8 @@ class SlicedScoreMatching(ScoreMatching):
 
     def __init__(
         self,
+        random_key: coreax.validation.KeyArrayLike,
         random_generator: Callable,
-        random_key: random.PRNGKeyArray | ArrayLike = random.PRNGKey(0),
         noise_conditioning: bool = True,
         use_analytic: bool = False,
         num_random_vectors: int = 1,
@@ -165,9 +164,7 @@ class SlicedScoreMatching(ScoreMatching):
         coreax.validation.validate_is_instance(
             x=random_generator, object_name="random_generator", expected_type=Callable
         )
-        coreax.validation.validate_is_instance(
-            x=random_key, object_name="random_key", expected_type=Array
-        )
+        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
         noise_conditioning = coreax.validation.cast_as_type(
             x=noise_conditioning, object_name="noise_conditioning", type_caster=bool
         )
@@ -245,8 +242,8 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         # Assign all inputs
-        self.random_generator = random_generator
         self.random_key = random_key
+        self.random_generator = random_generator
         self.noise_conditioning = noise_conditioning
         self.use_analytic = use_analytic
         self.num_random_vectors = num_random_vectors
@@ -270,10 +267,9 @@ class SlicedScoreMatching(ScoreMatching):
         A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
-        children = ()
+        children = (self.random_key,)
         aux_data = {
             "random_generator": self.random_generator,
-            "random_key": self.random_key,
             "noise_conditioning": self.noise_conditioning,
             "use_analytic": self.use_analytic,
             "num_random_vectors": self.num_random_vectors,
@@ -452,10 +448,10 @@ class SlicedScoreMatching(ScoreMatching):
         :return: The updated objective, i.e. partial sum
         """
         # This will generate the same set of random numbers on each function call. We
-        #  might want to replace this with random.PRNGKey(i) to get a unique set each
+        #  might want to replace this with random.key(i) to get a unique set each
         #  time.
         # Perturb the inputs with Gaussian noise
-        x_perturbed = x + sigmas[i] * random.normal(random.PRNGKey(0), x.shape)
+        x_perturbed = x + sigmas[i] * random.normal(random.key(0), x.shape)
         obj = (
             obj
             + sigmas[i] ** 2
@@ -530,31 +526,24 @@ class SlicedScoreMatching(ScoreMatching):
             train_step = self._train_step
 
         # Define random projection vectors
-        random_key_1, random_key_2 = random.split(self.random_key)
+        generator_key, state_key, batch_key = random.split(self.random_key, 3)
         random_vectors = self.random_generator(
-            random_key_1,
+            generator_key,
             (num_points, self.num_random_vectors, data_dimension),
             dtype=float,
         )
 
         # Define a training state
         state = coreax.networks.create_train_state(
-            score_network,
-            self.learning_rate,
-            data_dimension,
-            self.optimiser,
-            random_key_2,
+            state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
-        _, random_key_4 = random.split(random_key_2)
-        batch_key = random.PRNGKey(random_key_4[-1])
+
+        loop_keys = random.split(batch_key, self.num_epochs)
 
         # Carry out main training loop to fit the neural network
         for i in tqdm(range(self.num_epochs)):
-            # In the existing code, idx gives the same output each time. We might want
-            #  to change this to split the random key and use the result from the split
-            #  each time.
             # Sample some data-points to pass for this step
-            idx = random.randint(batch_key, (self.batch_size,), 0, num_points)
+            idx = random.randint(loop_keys[i], (self.batch_size,), 0, num_points)
 
             # Apply training step
             state, val = train_step(state, x[idx, :], random_vectors[idx, :])
@@ -640,7 +629,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         # Validate inputs
         coreax.validation.validate_is_instance(
-            x=x, object_name="x", expected_type=(Array, None)
+            x=x, object_name="x", expected_type=(Array, type(None))
         )
 
         def score_function(x_):

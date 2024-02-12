@@ -25,6 +25,7 @@ import unittest
 from unittest.mock import patch
 
 import jax.numpy as jnp
+from jax import random
 
 import coreax.approximation
 import coreax.data
@@ -45,6 +46,9 @@ class TestRefine(unittest.TestCase):
     """
     Tests related to refine.py functions.
     """
+
+    def setUp(self):
+        self.random_key = random.key(0)
 
     def test_validate_coreset_ok(self) -> None:
         """Check validation passes with populated coresubset."""
@@ -206,34 +210,7 @@ class TestRefine(unittest.TestCase):
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
 
-        refine_rand = coreax.refine.RefineRandom(random_key=10, p=1.0)
-        refine_rand.refine(coreset=coreset_obj)
-
-        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
-
-    def test_refine_rand_negative_seed(self):
-        """
-        Test the random refine method with a toy example and a negative seed.
-
-        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
-        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
-        i.e. ``X_c =  [[0,0], [[2,2]]``.
-
-        Test, when given ``coreset_indices=[2,2]``, that ``RefineRandom()`` updates the
-        coreset indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-
-        coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        refine_rand = coreax.refine.RefineRandom(random_key=-10, p=1.0)
+        refine_rand = coreax.refine.RefineRandom(self.random_key, p=1.0)
         refine_rand.refine(coreset=coreset_obj)
 
         self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
@@ -266,7 +243,7 @@ class TestRefine(unittest.TestCase):
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
         coreset_obj.kernel_matrix_row_sum_mean = None
-        refine_rand = coreax.refine.RefineRandom(p=1.0)
+        refine_rand = coreax.refine.RefineRandom(self.random_key, p=1.0)
 
         with patch.object(
             coreax.kernel.Kernel,
@@ -383,7 +360,7 @@ class TestRefine(unittest.TestCase):
         coreset_indices = jnp.array(list(best_indices))
         kernel = coreax.kernel.SquaredExponentialKernel()
         approximator = coreax.approximation.RandomApproximator(
-            kernel=kernel, num_train_points=2, num_kernel_points=2
+            self.random_key, kernel=kernel, num_train_points=2, num_kernel_points=2
         )
         coreset_obj = CoresetMock(
             weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()

@@ -25,6 +25,7 @@ from unittest.mock import patch
 
 import jax.numpy as jnp
 import numpy as np
+from jax import random
 from jax.typing import ArrayLike
 
 import coreax.approximation
@@ -49,6 +50,7 @@ class TestKernelHerding(unittest.TestCase):
         self.dimension = 3
         self.random_data_generation_key = 0
         self.coreset_size = 20
+        self.random_key = random.key(0)
 
     def test_tree_flatten(self) -> None:
         """
@@ -57,6 +59,7 @@ class TestKernelHerding(unittest.TestCase):
         # Create a kernel herding object
         kernel = coreax.kernel.SquaredExponentialKernel()
         coresubset_object_herding = coreax.coresubset.KernelHerding(
+            self.random_key,
             kernel=kernel,
         )
 
@@ -69,16 +72,16 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_herding.refine_method = "ABC"
         coresubset_object_herding.weights_optimiser = "DEF"
         coresubset_object_herding.approximator = "XYZ"
-        coresubset_object_herding.random_key = 1989
 
         # Call the method and check each output are as expected
         output_children, output_aux_data = coresubset_object_herding.tree_flatten()
 
-        self.assertEqual(len(output_children), 4)
-        self.assertEqual(output_children[0], kernel)
-        self.assertIsNone(output_children[1])
-        np.testing.assert_array_equal(output_children[2], jnp.zeros(1, dtype=jnp.int32))
-        np.testing.assert_array_equal(output_children[3], jnp.zeros([2, 3]))
+        self.assertEqual(len(output_children), 5)
+        self.assertEqual(output_children[0], self.random_key)
+        self.assertEqual(output_children[1], kernel)
+        self.assertIsNone(output_children[2])
+        np.testing.assert_array_equal(output_children[3], jnp.zeros(1, dtype=jnp.int32))
+        np.testing.assert_array_equal(output_children[4], jnp.zeros([2, 3]))
         self.assertDictEqual(
             output_aux_data,
             {
@@ -87,7 +90,6 @@ class TestKernelHerding(unittest.TestCase):
                 "refine_method": "ABC",
                 "weights_optimiser": "DEF",
                 "approximator": "XYZ",
-                "random_key": 1989,
             },
         )
 
@@ -112,7 +114,7 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a kernel herding object
         coresubset_object_herding = coreax.coresubset.KernelHerding(
-            kernel=kernel, refine_method=coreax.refine.RefineRegular()
+            self.random_key, kernel=kernel, refine_method=coreax.refine.RefineRegular()
         )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
@@ -123,7 +125,7 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
-            random_seed=0, unique=True
+            random_key=self.random_key, unique=True
         )
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
@@ -162,7 +164,9 @@ class TestKernelHerding(unittest.TestCase):
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(kernel=kernel)
+        coresubset_object_herding = coreax.coresubset.KernelHerding(
+            self.random_key, kernel=kernel
+        )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
         coresubset_object_herding.fit(
@@ -233,7 +237,9 @@ class TestKernelHerding(unittest.TestCase):
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(kernel=kernel)
+        coresubset_object_herding = coreax.coresubset.KernelHerding(
+            self.random_key, kernel=kernel
+        )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
         coresubset_object_herding.fit(
@@ -243,7 +249,7 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
-            weights_optimiser=None, kernel=kernel
+            self.random_key, weights_optimiser=None, kernel=kernel
         )
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
@@ -274,14 +280,15 @@ class TestKernelHerding(unittest.TestCase):
         x = generator.random((num_data_points, self.dimension))
         data = coreax.data.ArrayData.load(x)
 
+        approximator_key, herding_key = random.split(self.random_key)
+
         test_approximator = coreax.approximation.ANNchorApproximator(
-            kernel=kernel, num_kernel_points=50, num_train_points=50
+            approximator_key, kernel=kernel, num_kernel_points=50, num_train_points=50
         )
 
         # Create a kernel herding object
         coresubset_object_herding = coreax.coresubset.KernelHerding(
-            kernel=kernel,
-            approximator=test_approximator,
+            herding_key, kernel=kernel, approximator=test_approximator
         )
 
         with patch.object(
@@ -301,7 +308,7 @@ class TestKernelHerding(unittest.TestCase):
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
-            random_seed=0, unique=True
+            random_key=self.random_key, unique=True
         )
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
@@ -350,7 +357,9 @@ class TestKernelHerding(unittest.TestCase):
 
             # Assign mock kernel after the input validation has happened, which
             # simplifies the test enormously
-            test_class = coreax.coresubset.KernelHerding(kernel=mock_kernel)
+            test_class = coreax.coresubset.KernelHerding(
+                self.random_key, kernel=mock_kernel
+            )
 
             # Predefine the variables that are updated in the loop
             coreset_indices_0 = jnp.zeros(2, dtype=jnp.int32)
@@ -434,7 +443,7 @@ class TestRandomSample(unittest.TestCase):
         self.dimension = 10
         self.random_data_generation_key = 0
         self.coreset_size = 10
-        self.random_sampling_seed = 42
+        self.random_key = random.key(42)
 
         # Define example dataset
         generator = np.random.default_rng(self.random_data_generation_key)
@@ -449,17 +458,15 @@ class TestRandomSample(unittest.TestCase):
         """
         # Create a kernel herding object
         coresubset_object_random_sample = coreax.coresubset.RandomSample(
-            random_seed=self.random_sampling_seed, unique=True
+            random_key=self.random_key, unique=True
         )
 
         # Set attributes on the object to ensure actual values are returned
         coresubset_object_random_sample.kernel_matrix_row_sum_mean = None
         coresubset_object_random_sample.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
         coresubset_object_random_sample.coreset = jnp.zeros([2, 3])
-        coresubset_object_random_sample.unique = False
         coresubset_object_random_sample.refine_method = "ABC"
         coresubset_object_random_sample.weights_optimiser = "DEF"
-        coresubset_object_random_sample.random_seed = 1989
 
         # Call the method and check each output are as expected
         (
@@ -467,25 +474,26 @@ class TestRandomSample(unittest.TestCase):
             output_aux_data,
         ) = coresubset_object_random_sample.tree_flatten()
 
-        self.assertEqual(len(output_children), 4)
-        self.assertIsNone(output_children[0])
+        self.assertEqual(len(output_children), 5)
+        self.assertEqual(output_children[0], self.random_key)
         self.assertIsNone(output_children[1])
-        np.testing.assert_array_equal(output_children[2], jnp.zeros(1, dtype=jnp.int32))
-        np.testing.assert_array_equal(output_children[3], jnp.zeros([2, 3]))
+        self.assertIsNone(output_children[2])
+        np.testing.assert_array_equal(output_children[3], jnp.zeros(1, dtype=jnp.int32))
+        np.testing.assert_array_equal(output_children[4], jnp.zeros([2, 3]))
+
         self.assertDictEqual(
             output_aux_data,
             {
-                "unique": False,
+                "unique": True,
                 "refine_method": "ABC",
                 "weights_optimiser": "DEF",
-                "random_seed": 1989,
             },
         )
 
     def test_random_sample(self) -> None:
         """Test data reduction by uniform-randomly sampling a fixed number of points."""
         random_sample = coreax.coresubset.RandomSample(
-            random_seed=self.random_sampling_seed, unique=True
+            random_key=self.random_key, unique=True
         )
         random_sample.fit(
             original_data=self.data_obj,
@@ -514,7 +522,7 @@ class TestRandomSample(unittest.TestCase):
         self.random_sampling_key = 42 ensure a repeated coreset point when unique=False.
         """
         random_sample = coreax.coresubset.RandomSample(
-            random_seed=self.random_sampling_seed, unique=False
+            random_key=self.random_key, unique=False
         )
         random_sample.fit(
             original_data=self.data_obj,

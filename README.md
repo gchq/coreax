@@ -81,6 +81,7 @@ out the coreset algorithm, restricting the maximum size of variables handled in 
 ```python
 from sklearn.datasets import make_blobs
 import numpy as np
+import jax.random
 
 from coreax import (
     ArrayData,
@@ -111,13 +112,14 @@ data = ArrayData.load(x)
 # Set the bandwidth parameter of the kernel using a median heuristic derived from
 # at most 1000 random samples in the data.
 num_samples_length_scale = min(num_data_points, 1_000)
-generator = np.random.default_rng(1_989)
+generator = np.random.default_rng(random_seed)
 idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
 length_scale = median_heuristic(x[idx])
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
+herding_key = jax.random.key(random_seed)
 herding_object = KernelHerding(
-    kernel=SquaredExponentialKernel(length_scale=length_scale)
+    herding_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
 )
 herding_object.fit(
     original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
@@ -150,6 +152,7 @@ weights_optimiser = MMDWeightsOptimiser(kernel=kernel)
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
+    herding_key,
     kernel=kernel,
     weights_optimiser=weights_optimiser
 )
@@ -184,6 +187,7 @@ refiner = RefineRegular()
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
+    herding_key,
     kernel=SquaredExponentialKernel(length_scale=length_scale),
     refine_method=refiner
 )
@@ -216,11 +220,11 @@ from coreax.reduction import MapReduce
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
 herding_object = KernelHerding(
-    kernel=SquaredExponentialKernel(length_scale=length_scale),
+    herding_key, kernel=SquaredExponentialKernel(length_scale=length_scale),
 )
 herding_object.fit(
     original_data=data,
-    strategy=MapReduce(coreset_size=coreset_size, leaf_size=20)
+    strategy=MapReduce(coreset_size=coreset_size, leaf_size=200)
 )
 ```
 
@@ -259,7 +263,7 @@ herding_kernel = SteinKernel(
 )
 
 # Compute a coreset using kernel herding with a Stein kernel
-herding_object = KernelHerding(kernel=herding_kernel)
+herding_object = KernelHerding(herding_key, kernel=herding_kernel)
 herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
@@ -276,8 +280,6 @@ This approximate score function can then be passed directly to a Stein kernel, r
 any requirement for analytical derivation. More details on score matching methods
 implemented are found in `coreax.score_matching`.
 ```python
-from jax.random import rademacher
-
 from coreax import (
     SteinKernel,
     SlicedScoreMatching,
@@ -286,8 +288,10 @@ from coreax.kernel import PCIMQKernel
 
 # Learn a score function from a subset of the data, through approximation using a neural
 # network applied to a subset of the data
+score_key = jax.random.key(random_seed)
 sliced_score_matcher = SlicedScoreMatching(
-    random_generator=rademacher,
+    score_key,
+    random_generator=jax.random.rademacher,
     use_analytic=True,
     num_epochs=10,
     num_random_vectors=1,

@@ -71,7 +71,7 @@ class TestApproximations(unittest.TestCase):
         We can repeat the above but considering each data-point in ``x`` in turn and
         attain a set of true distances to use as the ground truth in the tests.
         """
-        self.random_key = random.PRNGKey(10)
+        self.random_key = random.key(10)
 
         # Setup a 'small' toy example that can be computed by hand
         self.data = jnp.array([[0.0, 0.0], [0.5, 0.5], [1.0, 0.0], [-1.0, 0.0]])
@@ -118,8 +118,7 @@ class TestApproximations(unittest.TestCase):
 
         # Check parameters have been set
         self.assertEqual(approximator.kernel, self.kernel)
-        self.assertEqual(approximator.random_key[0], self.random_key[0])
-        self.assertEqual(approximator.random_key[1], self.random_key[1])
+        np.testing.assert_array_equal(approximator.random_key, self.random_key)
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
 
     def test_kernel_mean_approximator_creation_invalid_types(self) -> None:
@@ -145,17 +144,7 @@ class TestApproximations(unittest.TestCase):
             num_kernel_points=self.num_kernel_points,
         )
 
-        # Define the approximator with an incorrect random_key type, but that can be
-        # converted into an array
-        approximator = coreax.approximation.KernelMeanApproximator(
-            kernel=self.kernel,
-            random_key=123,
-            num_kernel_points=self.num_kernel_points,
-        )
-        np.testing.assert_array_equal(approximator.random_key, np.array([123]))
-
-        # Define the approximator with an incorrect random_key type, that cannot be
-        # cast as an array
+        # Define the approximator with an incorrect random_key type
         self.assertRaises(
             TypeError,
             coreax.approximation.KernelMeanApproximator,
@@ -255,18 +244,7 @@ class TestApproximations(unittest.TestCase):
             num_train_points=self.data.shape[0],
         )
 
-        # Define the approximator with an incorrect random_key type, but that can be
-        # converted into an array.
-        approximator = coreax.approximation.RandomApproximator(
-            kernel=self.kernel,
-            random_key=123,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-        np.testing.assert_array_equal(approximator.random_key, np.array([123]))
-
-        # Define the approximator with an incorrect random_key type, that cannot be
-        # cast as an array
+        # Define the approximator with an incorrect random_key type
         self.assertRaises(
             TypeError,
             coreax.approximation.RandomApproximator,
@@ -409,18 +387,7 @@ class TestApproximations(unittest.TestCase):
             num_train_points=self.data.shape[0],
         )
 
-        # Define the approximator with an incorrect random_key type, but that can be
-        # converted into an array.
-        approximator = coreax.approximation.ANNchorApproximator(
-            kernel=self.kernel,
-            random_key=123,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-        np.testing.assert_array_equal(approximator.random_key, np.array([123]))
-
-        # Define the approximator with an incorrect random_key type, that cannot be
-        # cast as an array
+        # Define the approximator with an incorrect random_key type
         self.assertRaises(
             TypeError,
             coreax.approximation.ANNchorApproximator,
@@ -561,17 +528,7 @@ class TestApproximations(unittest.TestCase):
             num_kernel_points=self.num_kernel_points,
         )
 
-        # Define the approximator with an incorrect random_key type, but that can be
-        # converted into an array
-        approximator = coreax.approximation.NystromApproximator(
-            kernel=self.kernel,
-            random_key=123,
-            num_kernel_points=self.num_kernel_points,
-        )
-        np.testing.assert_array_equal(approximator.random_key, np.array([123]))
-
-        # Define the approximator with an incorrect random_key type, that cannot be
-        # cast as an array
+        # Define the approximator with an incorrect random_key type
         self.assertRaises(
             TypeError,
             coreax.approximation.NystromApproximator,
