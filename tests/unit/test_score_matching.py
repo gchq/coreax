@@ -22,10 +22,9 @@ import unittest
 from collections.abc import Callable
 
 import jax.numpy as jnp
-import jax.random
 import numpy as np
 from flax import linen as nn
-from jax.random import rademacher
+from jax import random, vjp
 from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
@@ -198,7 +197,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -206,7 +205,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             def log_pdf(y_: ArrayLike) -> ArrayLike:
-                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+                return jnp.log(norm.pdf(y_, mus, std_devs) @ mix)
 
             return e_grad(log_pdf)(x_)
 
@@ -254,7 +253,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -265,7 +264,7 @@ class TestKernelDensityMatching(unittest.TestCase):
                 l_pdf = 0.0
                 for k_ in range(k):
                     l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
-                return jax.numpy.log(l_pdf)
+                return jnp.log(l_pdf)
 
             return e_grad(log_pdf)(x_)
 
@@ -294,6 +293,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
     """
     Tests related to the class SlicedScoreMatching in score_matching.py.
     """
+
+    def setUp(self):
+        self.random_key = random.key(0)
 
     def test_analytic_objective_orthogonal(self) -> None:
         r"""
@@ -325,7 +327,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=True
+            self.random_key, random_generator=random.rademacher, use_analytic=True
         )
 
         # Evaluate the analytic objective function
@@ -379,7 +381,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=True
+            self.random_key, random_generator=random.rademacher, use_analytic=True
         )
 
         # Evaluate the analytic objective function
@@ -438,7 +440,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the non-analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=False
+            self.random_key, random_generator=random.rademacher, use_analytic=False
         )
 
         # Evaluate the analytic objective function
@@ -483,7 +485,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the non-analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=False
+            self.random_key, random_generator=random.rademacher, use_analytic=False
         )
 
         # Evaluate the analytic objective function
@@ -524,7 +526,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=True
+            self.random_key, random_generator=random.rademacher, use_analytic=True
         )
 
         # Determine the expected output - using the analytic objective function tested
@@ -583,7 +585,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=False
+            self.random_key, random_generator=random.rademacher, use_analytic=False
         )
 
         # Determine the expected output
@@ -626,7 +628,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher, use_analytic=True
+            self.random_key, random_generator=random.rademacher, use_analytic=True
         )
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
@@ -637,24 +639,26 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
+    # pylint: disable=too-many-locals
     def test_train_step(self) -> None:
         """
         Test the basic training step.
         """
         # Define a simple linear model that we can compute the gradients for by hand
         score_network = SimpleNetwork(2, 2)
+        score_key, state_key = random.split(self.random_key)
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            random_generator=rademacher,
+            score_key,
+            random_generator=random.rademacher,
             use_analytic=True,
-            random_key=jax.random.PRNGKey(0),
         )
 
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = coreax.networks.create_train_state(
-            score_network, 1e-3, 2, sgd, jax.random.PRNGKey(0)
+            state_key, score_network, 1e-3, 2, sgd
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
@@ -675,7 +679,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         v_to_vector_map = np.ones((1, 1, 2), dtype=float)
 
         # Compute these gradients by hand
-        grad_weights = jax.numpy.outer(v, v) + jax.numpy.outer(s, x)
+        grad_weights = jnp.outer(v, v) + jnp.outer(s, x)
         grad_bias = s
 
         weights_ = weights - 1e-3 * grad_weights
@@ -696,6 +700,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             bias_, state.params["Dense_0"]["bias"], decimal=3
         )
+
+    # pylint: enable=too-many-locals
 
     def test_univariate_gaussian_score(self):
         """
@@ -782,7 +788,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = jax.vjp(lambda x__: g(x, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -790,7 +796,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             def log_pdf(y_: ArrayLike) -> ArrayLike:
-                return jax.numpy.log(norm.pdf(y_, mus, std_devs) @ mix)
+                return jnp.log(norm.pdf(y_, mus, std_devs) @ mix)
 
             return e_grad(log_pdf)(x_)
 
@@ -838,7 +844,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -849,7 +855,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
                 l_pdf = 0.0
                 for k_ in range(k):
                     l_pdf += multivariate_normal.pdf(y, mus[k_], sigmas[k_]) * mix[k_]
-                return jax.numpy.log(l_pdf)
+                return jnp.log(l_pdf)
 
             return e_grad(log_pdf)(x_)
 
