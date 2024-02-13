@@ -10,7 +10,7 @@ on:
 
 jobs:
   pre_commit:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.11
