@@ -10,7 +10,7 @@ cfgv==3.4.0; python_version >= '3.8'
 charset-normalizer==3.3.2; python_full_version >= '3.7.0'
 click==8.1.7; python_version >= '3.7'
 contourpy==1.2.0; python_version >= '3.9'
-coverage[toml]==7.4.0; python_version >= '3.8'
+coverage[toml]==7.4.1; python_version >= '3.8'
 cycler==0.12.1; python_version >= '3.8'
 dill==0.3.7; python_version >= '3.11'
 distlib==0.3.8
