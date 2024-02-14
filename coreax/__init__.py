@@ -57,7 +57,7 @@ loop over them individually. We currently do this using
 ``tests/integration/test_run.sh``.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.0-beta"
 
 # pylint: disable=unused-import
 from coreax.coresubset import KernelHerding, RandomSample
