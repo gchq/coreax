@@ -79,11 +79,16 @@ Code
 Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
 facilitate code review, code should meet these standards prior to creating a pull request.
 
+Some of the following points are checked by pre-commit hooks, although others require
+manual implementation by authors and reviewers. Conversely, further style points that
+are not documented here are enforced by pre-commit hooks; it is unlikely that authors
+need to be aware of them.
+
 ### Style
 
 A high level overview of the expected style is:
 - Follow [PEP 8][pep-8] style where possible.
-- Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k)
+- Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k).
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
   per line starting from the left margin and including any indentation.
@@ -191,10 +196,10 @@ You can generate Sphinx documentation with:
 documentation/make html
 ```
 
-[github-issues]: https://github.com/gchq/coreax/issues
+[github-issues]: https://github.com/gchq/coreax/issues?q=
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
 [gh-feature-request]: https://github.com/gchq/coreax/issues/new?assignees=&labels=enhancement%2Cnew&projects=&template=feature_request.yml&title=%5BFeature%5D%3A+
-[gh-prs]: https://github.com/gchq/coreax/pulls
+[gh-prs]: https://github.com/gchq/coreax/pulls?q=
 [run-tests]: https://github.com/gchq/coreax/actions/workflows/unittests.yml
 [conventional_commits]: https://www.conventionalcommits.org
 [git-feature-branch]: https://www.atlassian.com/git/tutorials/comparing-workflows
