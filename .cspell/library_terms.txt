@@ -19,10 +19,12 @@ bmatrix
 booktitle
 bysource
 cmap
+color
 dispname
 dollarmath
 dtype
 dtypes
+emibcn
 eprint
 figsize
 fori_loop
@@ -78,6 +80,7 @@ pytree
 pytrees
 quickstart
 rcfile
+rect
 rightarrow
 rtol
 samp
