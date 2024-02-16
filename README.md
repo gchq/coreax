@@ -1,3 +1,7 @@
+<div align="center">
+<img alt="Coreax logo" src="https://raw.githubusercontent.com/gchq/coreax/documentation/assets/Logo.svg">
+</div>
+
 # Coreax
 
 [![Unit Tests and Code Coverage Assessment](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Created with Vectornator (http://vectornator.io/) -->
+<svg height="100%" stroke-miterlimit="10" style="fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;" version="1.1" viewBox="0 0 212.625 212.625" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:vectornator="http://vectornator.io" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="179.036" id="Filter" width="134.063" x="40.0795" y="15">
+<feDropShadow dx="14.1421" dy="14.1421" flood-color="#f2b63c" flood-opacity="1" in="SourceGraphic" result="Shadow" stdDeviation="0"/>
+</filter>
+<linearGradient gradientTransform="matrix(-95.7463 92.5259 92.5259 95.7463 153.399 75.2798)" gradientUnits="userSpaceOnUse" id="LinearGradient" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0.417401" stop-color="#d1e235"/>
+<stop offset="0.58613" stop-color="#6a884e"/>
+<stop offset="0.784326" stop-color="#c0ce41"/>
+<stop offset="1" stop-color="#f1d244"/>
+</linearGradient>
+</defs>
+<g id="Layer-1" vectornator:layerName="Layer 1">
+<g filter="url(#Filter)" vectornator:layerName="Group 51" vectornator:shadowAngle="0.785398" vectornator:shadowColor="#f2b63c" vectornator:shadowOffset="20" vectornator:shadowOpacity="1" vectornator:shadowRadius="0">
+<path d="M160 59.9735L120.027 109.94L160 159.907L40.0795 159.907L80.053 109.94L40.0795 59.9735L160 59.9735Z" fill="url(#LinearGradient)" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 28"/>
+<path d="M100.04 39.9868L120.026 20" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 25"/>
+<path d="M40.0795 59.9735L100.04 79.9603L160 59.9735L140.013 39.9868L60.0663 39.9868L40.0795 59.9735Z" fill="#6a884e" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 26"/>
+<path d="M40.0795 159.907L60.0663 179.894L140.013 179.894L160 159.907L100.04 139.921L40.0795 159.907Z" fill="#6a884e" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 27"/>
+</g>
+</g>
+</svg>
