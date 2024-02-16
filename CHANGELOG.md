@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Badge to README to show code coverage percentage
+
 ### Fixed
 
 - Wording improvements in README
