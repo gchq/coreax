@@ -41,6 +41,7 @@ JAX's
 jaxopt
 jumanjihouse
 linalg
+linkcheck
 lstsq
 mathbb
 mathbf
