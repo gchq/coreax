@@ -2,3 +2,4 @@
 * text
 *.gif -text
 *.png -text
+*.svg -text

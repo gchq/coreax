@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Created with Vectornator (http://vectornator.io/) -->
+<svg height="100%" stroke-miterlimit="10" style="fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;" version="1.1" viewBox="0 0 850.5 221.13" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:vectornator="http://vectornator.io" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="184.142" id="Filter" width="828.606" x="15" y="15">
+<feDropShadow dx="14.1421" dy="14.1421" flood-color="#f2b63c" flood-opacity="1" in="SourceGraphic" result="Shadow" stdDeviation="0"/>
+</filter>
+<linearGradient gradientTransform="matrix(-95.7463 92.5259 92.5259 95.7463 822.863 75.2798)" gradientUnits="userSpaceOnUse" id="LinearGradient" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0.417401" stop-color="#d1e235"/>
+<stop offset="0.58613" stop-color="#6a884e"/>
+<stop offset="0.784326" stop-color="#c0ce41"/>
+<stop offset="1" stop-color="#f1d244"/>
+</linearGradient>
+</defs>
+<g id="Layer-1" vectornator:layerName="Layer 1">
+<g filter="url(#Filter)" vectornator:layerName="Group 71" vectornator:shadowAngle="0.785398" vectornator:shadowColor="#f2b63c" vectornator:shadowOffset="20" vectornator:shadowOpacity="1" vectornator:shadowRadius="0">
+<g opacity="1" vectornator:layerName="Group 41">
+<path d="M589.636 39.6966L569.636 59.6966L571.425 160L592.578 179.761L629.636 179.697L629.636 119.697L629.636 179.697L671.425 180L691.425 160L689.636 59.6966L669.636 39.6966L589.636 39.6966Z" fill="#cede34" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 15"/>
+<path d="M609.053 89.3852L649.053 89.3852" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 16"/>
+</g>
+<g opacity="1" vectornator:layerName="Group 42">
+<path d="M449.543 39.6966L429.543 59.6966L429.543 159.697L449.543 179.697L549.543 179.697L549.543 39.6966L449.543 39.6966Z" fill="#d1e235" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 17"/>
+<path d="M549.039 89.3852L489.039 89.3852" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 18"/>
+<path d="M549.039 129.359L489.039 129.359" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 19"/>
+</g>
+<path d="M40 39.4184L20 59.4184L20 159.418L40 179.418L129.927 179.538L129.927 139.538L79.8146 139.452L60 139.418L60 79.4184L129.927 79.5376L129.927 39.5376L40 39.4184Z" fill="#d1e235" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 43"/>
+<path d="M170.007 39.8012L150.007 59.8012L150.007 159.801L170.007 179.801L250.007 179.801L270.007 159.801L270.007 59.8012L250.007 39.8012L170.007 39.8012Z" fill="#cede34" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 42"/>
+<g opacity="1" vectornator:layerName="Group 51">
+<path d="M829.463 59.9735L789.49 109.94L829.463 159.907L709.543 159.907L749.516 109.94L709.543 59.9735L829.463 59.9735Z" fill="url(#LinearGradient)" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 28"/>
+<path d="M769.503 39.9867L789.49 20" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 25"/>
+<path d="M709.543 59.9735L769.503 79.9602L829.463 59.9735L809.477 39.9867L729.53 39.9867L709.543 59.9735Z" fill="#6a884e" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 26"/>
+<path d="M709.543 159.907L729.53 179.894L809.477 179.894L829.463 159.907L769.503 139.921L709.543 159.907Z" fill="#6a884e" fill-rule="nonzero" opacity="1" stroke="none" vectornator:layerName="Curve 27"/>
+</g>
+<g opacity="1" vectornator:layerName="Group 78">
+<path d="M309.821 39.9868L289.821 59.9868L289.821 159.987L309.821 179.987L369.821 179.987L349.821 119.987L369.821 179.987L409.821 179.987L389.821 99.9868L409.821 99.9868L409.821 59.9868L389.821 39.9868L309.821 39.9868Z" fill="#d1e235" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 13"/>
+<path d="M329.331 89.1997L369.331 89.1997" fill="none" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 14"/>
+</g>
+<path d="M209.874 89.9536L209.874 129.927" fill="#cede34" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 52"/>
+<path d="M229.861 109.94L189.887 109.94" fill="#cede34" fill-rule="nonzero" opacity="1" stroke="#6a884e" stroke-linecap="butt" stroke-linejoin="round" stroke-width="10" vectornator:layerName="Curve 53"/>
+</g>
+</g>
+</svg>
