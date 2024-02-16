@@ -6,12 +6,15 @@
 
 _© Crown Copyright GCHQ_
 
-Coreax is a library for **coreset algorithms**, written in <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html" target="_blank">Jax</a> for fast execution and GPU support.
+Coreax is a library for **coreset algorithms**, written in <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html" target="_blank">JAX</a> for fast execution and GPU support.
 
 For $n$ points in $d$ dimensions, a coreset algorithm takes an $n \times d$ data set and
 reduces it to $m \ll n$ points whilst attempting to preserve the statistical properties
 of the full data set. The algorithm maintains the dimension of the original data set.
 Thus the $m$ points, referred to as the **coreset**, are also $d$-dimensional.
+
+The $m$ points need not be in the original data set. We refer to the special case where
+all selected points are in the original data set as a **coresubset**.
 
 Some algorithms return the $m$ points with weights, so that importance can be
 attributed to each point in the coreset. The weights, $w_i$ for $i=1,...,m$, are often
@@ -35,8 +38,9 @@ A good coreset algorithm produces a coreset that has significantly smaller MMD
 than randomly sampling the same number of points from the original data, as is the case
 in the example below.
 
-![](examples/data/coreset_seq/coreset_seq.gif)
-![](examples/data/random_seq/random_seq.gif)
+|                                     Kernel herding                                      |                                     Random sample                                     |
+|:---------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------:|
+| ![](https://github.com/gchq/coreax/blob/main/examples/data/coreset_seq/coreset_seq.gif) | ![](https://github.com/gchq/coreax/blob/main/examples/data/random_seq/random_seq.gif) |
 
 
 # Example applications
@@ -48,21 +52,22 @@ function of weight.
 (Right) 8,000 points chosen randomly.
 Run `examples/david_map_reduce_weighted.py` to  replicate.
 
-![](examples/data/david_coreset.png)
+![](https://github.com/gchq/coreax/blob/main/examples/data/david_coreset.png)
 
 
 **Video event detection**: Here we identify representative frames such that most of the
 useful information in a video is preserved.
 Run `examples/pounce.py` to replicate.
 
-![](examples/pounce/pounce.gif)
-![](examples/pounce/pounce_coreset.gif)
+|                                 Original                                 |                                     Coreset                                      |
+|:------------------------------------------------------------------------:|:--------------------------------------------------------------------------------:|
+| ![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce.gif) | ![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce_coreset.gif) |
 
 
 # Setup
-Before installing coreax, make sure Jax is installed. Be sure to install the preferred
-version of Jax for your system.
-1. Install [Jax](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html), noting that there are (currently) different setup paths for CPU and GPU use.
+Before installing coreax, make sure JAX is installed. Be sure to install the preferred
+version of JAX for your system.
+1. Install [JAX](https://jax.readthedocs.io/en/latest/installation.html), noting that there are (currently) different setup paths for CPU and GPU use.
 2. Install coreax by cloning the repo and then running `pip install .` from your local coreax directory.
 3. To install additional optional dependencies required to run the examples in `examples` use `pip install .[test]` instead.
 
@@ -243,13 +248,20 @@ a finite set of samples.
 In this example, we use a Stein kernel with a squared exponential base
 kernel, computing the score function explicitly.
 ```python
+import numpy as np
+
 from coreax import (
     SquaredExponentialKernel,
     SteinKernel,
     KernelDensityMatching,
 )
 
-# Learn a score function from the a subset of the data, through a kernel density
+# Select indices to form a subset of data for learning score function
+generator = np.random.default_rng(random_seed)
+idx = generator.choice(len(data), subset_size, replace=False)
+data_subset = data[idx, :]
+
+# Learn a score function from the subset of the data, through a kernel density
 # estimation applied to a subset of the data.
 kernel_density_score_matcher = KernelDensityMatching(
     length_scale=length_scale, kde_data=data_subset
@@ -280,11 +292,18 @@ This approximate score function can then be passed directly to a Stein kernel, r
 any requirement for analytical derivation. More details on score matching methods
 implemented are found in `coreax.score_matching`.
 ```python
+import numpy as np
+
 from coreax import (
     SteinKernel,
     SlicedScoreMatching,
 )
 from coreax.kernel import PCIMQKernel
+
+# Select indices to form a subset of data for learning score function
+generator = np.random.default_rng(random_seed)
+idx = generator.choice(len(data), subset_size, replace=False)
+data_subset = data[idx, :]
 
 # Learn a score function from a subset of the data, through approximation using a neural
 # network applied to a subset of the data
