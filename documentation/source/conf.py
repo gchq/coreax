@@ -33,9 +33,6 @@ from typing import Any
 import sphinx.config
 from jax.typing import ArrayLike
 
-import coreax
-import coreax.util as cu
-
 CONF_FILE_PATH = pathlib.Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
 DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
@@ -43,6 +40,13 @@ REPO_FOLDER_PATH = DOCS_FOLDER_PATH.parent
 EXAMPLES = "examples"
 
 sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
+
+# Cannot import until after package has been added to path
+# pylint: disable=wrong-import-position
+import coreax
+import coreax.util as cu
+
+# pylint: enable=wrong-import-position
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
