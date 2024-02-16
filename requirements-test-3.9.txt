@@ -47,7 +47,7 @@ pillow==10.2.0; python_version >= '3.8'
 pluggy==1.4.0; python_version >= '3.8'
 pyparsing==3.1.1; python_full_version >= '3.6.8'
 pyqt5==5.15.10; python_version >= '3.7'
-pyqt5-qt5==5.15.2
+pyqt5-qt5==5.15.12
 pyqt5-sip==12.13.0; python_version >= '3.7'
 pytest==7.4.4; python_version >= '3.7'
 pytest-cov==4.1.0; python_version >= '3.7'
