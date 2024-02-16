@@ -38,8 +38,9 @@ A good coreset algorithm produces a coreset that has significantly smaller MMD
 than randomly sampling the same number of points from the original data, as is the case
 in the example below.
 
-![](https://github.com/gchq/coreax/blob/main/examples/data/coreset_seq/coreset_seq.gif)
-![](https://github.com/gchq/coreax/blob/main/examples/data/random_seq/random_seq.gif)
+|                                     Kernel herding                                      |                                     Random sample                                     |
+|:---------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------:|
+| ![](https://github.com/gchq/coreax/blob/main/examples/data/coreset_seq/coreset_seq.gif) | ![](https://github.com/gchq/coreax/blob/main/examples/data/random_seq/random_seq.gif) |
 
 
 # Example applications
@@ -58,8 +59,9 @@ Run `examples/david_map_reduce_weighted.py` to  replicate.
 useful information in a video is preserved.
 Run `examples/pounce.py` to replicate.
 
-![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce.gif)
-![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce_coreset.gif)
+|                                 Original                                 |                                     Coreset                                      |
+|:------------------------------------------------------------------------:|:--------------------------------------------------------------------------------:|
+| ![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce.gif) | ![](https://github.com/gchq/coreax/blob/main/examples/pounce/pounce_coreset.gif) |
 
 
 # Setup
