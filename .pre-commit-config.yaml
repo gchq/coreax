@@ -56,7 +56,7 @@ repos:
       - id: forbid-binary
         exclude: ^examples/.+/.+.(gif|png)$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.4
+    rev: v1.5.5
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
@@ -67,7 +67,7 @@ repos:
       # Place isort options in pyproject.toml
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.2.0
     hooks:
       # Change to black-jupyter if using Jupyter notebooks
       - id: black
