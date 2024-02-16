@@ -34,14 +34,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Compile documentation
-doc = [
-    "furo",
-    "myst-parser",
-    "sphinx",
-    "sphinx-autodoc-typehints",
-    "sphinxcontrib-bibtex",
-]
 # Run unit tests with coverage assessment
 test = [
     "imageio",
@@ -51,6 +43,15 @@ test = [
     "pyqt5",
     "pytest-cov",
     "scipy",
+]
+# Compile documentation
+doc = [
+    "coreax[test]",
+    "furo",
+    "myst-parser",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinxcontrib-bibtex",
 ]
 # All tools for a developer including those for running pylint
 dev = [
