@@ -82,7 +82,7 @@ class WeightsOptimiser(ABC):
         return self.solve(x, y)
 
 
-class SBQ(WeightsOptimiser):
+class SBQWeightsOptimiser(WeightsOptimiser):
     """
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
@@ -126,7 +126,7 @@ class SBQ(WeightsOptimiser):
         return jnp.linalg.solve(kernel_mm, kernel_nm)
 
 
-class MMD(WeightsOptimiser):
+class MMDWeightsOptimiser(WeightsOptimiser):
     r"""
     Define the MMD weights optimiser class.
 
