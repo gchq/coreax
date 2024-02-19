@@ -19,6 +19,7 @@ bmatrix
 booktitle
 bysource
 cmap
+dispname
 dollarmath
 dtype
 dtypes
@@ -37,11 +38,13 @@ intersphinx
 isort
 issubdtype
 jacrev
-JAX's
+jax
+jaxlib
 jaxopt
 jumanjihouse
 linalg
 linkcheck
+literalinclude
 lstsq
 mathbb
 mathbf
@@ -63,6 +66,7 @@ OSQP
 params_ineq
 pinv
 pvalue
+pybtex
 pydocstyle
 pylint
 pylintrc
@@ -84,6 +88,7 @@ setuptools
 sklearn
 softplus
 sphinxcontrib
+sphobjinv
 texttt
 toctree
 tomli
@@ -92,7 +97,9 @@ triu
 typehints
 undoc
 unflatten
+unsrt
 viewcode
 vmap
+writebytes
 xlabel
 ylabel

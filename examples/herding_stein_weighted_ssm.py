@@ -20,7 +20,7 @@ points sampled from ``k`` clusters in space.
 
 A coreset is generated using Stein kernel herding, with a PCIMQ base kernel. The score
 function (gradient of the log-density function) for the Stein kernel is estimated by
-applying sliced score matching from :cite:p:`ssm`. This trains a neural network to
+applying sliced score matching from :cite:`ssm`. This trains a neural network to
 approximate the score function, and then passes the trained neural network to the Stein
 kernel. The initial coreset generated from this procedure is then weighted, with weights
 determined such that the weighted coreset achieves a better maximum mean discrepancy

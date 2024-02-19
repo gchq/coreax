@@ -86,7 +86,7 @@ class SBQ(WeightsOptimiser):
     """
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
-    References for this technique can be found in :cite:p:`huszar2016optimally`.
+    References for this technique can be found in :cite:`huszar2016optimally`.
     Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
 
@@ -98,7 +98,7 @@ class SBQ(WeightsOptimiser):
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
         References for this technique can be found in
-        :cite:p:`huszar2016optimally`. These are equivalent to the unconstrained
+        :cite:`huszar2016optimally`. These are equivalent to the unconstrained
         weighted maximum mean discrepancy (MMD) optimum.
 
         Note that weights determined through SBQ do not need to sum to 1, and can be

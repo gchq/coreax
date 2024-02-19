@@ -35,25 +35,26 @@ kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined
 
 One can see that, if ``output_scale`` takes the value
 :math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, then the
-:class:`SquaredExponentialKernel` becomes the well known Gaussian kernel.
+:class:`~coreax.kernel.SquaredExponentialKernel` becomes the well known Gaussian kernel.
 
 There are only two mandatory methods to implement when defining a new kernel. The first
-is :meth:`~Kernel._compute_elementwise`, which returns the floating point value after
-evaluating the kernel on two floats, ``x`` and ``y``. Performance improvements can be
-gained when kernels are used in other areas of the codebase by also implementing
-:meth:`~Kernel._grad_x_elementwise` and :meth:`~Kernel._grad_y_elementwise` which are
+is :meth:`~coreax.kernel.Kernel.compute_elementwise`, which returns the floating point
+value after evaluating the kernel on two floats, ``x`` and ``y``. Performance
+improvements can be gained when kernels are used in other areas of the codebase by also
+implementing :meth:`~coreax.kernel.Kernel.grad_x_elementwise` and
+:meth:`~coreax.kernel.Kernel.grad_y_elementwise` which are
 simply the gradients of the kernel with respect to ``x`` and ``y`` respectively.
-Finally, :meth:`~Kernel._divergence_x_grad_y_elementwise`, the divergence with respect
-to ``x`` of the gradient of the kernel with respect to ``y`` can allow analytical
-computation of the :class:`SteinKernel`, which itself requires a base kernel. However,
-if this property is not known, one can turn to the approaches in
+Finally, :meth:`~coreax.kernel.Kernel.divergence_x_grad_y_elementwise`, the divergence
+with respect to ``x`` of the gradient of the kernel with respect to ``y`` can allow
+analytical computation of the :class:`~coreax.kernel.SteinKernel`, which itself requires
+a base kernel. However, if this property is not known, one can turn to the approaches in
 :class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
 
 The other mandatory method to implement when defining a new kernel is
-:meth:`~Kernel._tree_flatten`. To improve performance, kernel computation is JIT
-compiled. As a result, definitions of dynamic and static values inside
-:meth:`~Kernel._tree_flatten` ensure the kernel object can be mutated and the
-corresponding JIT compilation does not yield unexpected results.
+:meth:`~coreax.kernel.Kernel.tree_flatten`. To improve performance, kernel computation
+is JIT compiled. As a result, definitions of dynamic and static values inside
+:meth:`~coreax.kernel.Kernel.tree_flatten` ensure the kernel object can be mutated and
+the corresponding JIT compilation does not yield unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
@@ -80,7 +81,7 @@ def median_heuristic(x: ArrayLike) -> Array:
     Compute the median heuristic for setting kernel bandwidth.
 
     Analysis of the performance of the median heuristic can be found in
-    :cite:p:`garreau2018median`.
+    :cite:`garreau2018median`.
 
     :param x: Input array of vectors
     :return: Bandwidth parameter, computed from the median heuristic, as a
@@ -279,7 +280,7 @@ class Kernel(ABC):
         The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
         `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_x`
         provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
@@ -302,7 +303,7 @@ class Kernel(ABC):
         The gradient (Jacobian) of the kernel function is computed using
         `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_y`
         provides a vectorised version of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
@@ -365,7 +366,7 @@ class Kernel(ABC):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`Kernel.compute_divergence_x_grad_y`.
+        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -605,8 +606,9 @@ class SquaredExponentialKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -625,8 +627,9 @@ class SquaredExponentialKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -648,7 +651,7 @@ class SquaredExponentialKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`SquaredExponentialKernel.compute_divergence_x_grad_y`.
+        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -720,8 +723,9 @@ class LaplacianKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -740,8 +744,9 @@ class LaplacianKernel(Kernel):
 
         The gradient (Jacobian) is computed using the analytical form.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -767,7 +772,7 @@ class LaplacianKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`LaplacianKernel.compute_divergence_x_grad_y`.
+        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -836,8 +841,9 @@ class PCIMQKernel(Kernel):
         r"""
         Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``x``.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_x`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -854,8 +860,9 @@ class PCIMQKernel(Kernel):
         r"""
         Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``y``.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`grad_y`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
+        method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -879,7 +886,7 @@ class PCIMQKernel(Kernel):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`PCIMQKernel.compute_divergence_x_grad_y`.
+        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -943,8 +950,8 @@ class SteinKernel(Kernel):
     (:class:`~coreax.score_matching.ScoreMatching`), computed explicitly from a density
     function, or known analytically.
 
-    :param base_kernel: Initialised kernel object with which to evaluate the Stein
-        kernel, e.g. return from :func:`construct_kernel`
+    :param base_kernel: Initialised kernel object with which to evaluate
+        the Stein kernel
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
     :param output_scale: Output scale to use
@@ -1035,7 +1042,7 @@ class SteinKernel(Kernel):
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
-for current_class in kernel_classes:
+for _current_class in kernel_classes:
     tree_util.register_pytree_node(
-        current_class, current_class.tree_flatten, current_class.tree_unflatten
+        _current_class, _current_class.tree_flatten, _current_class.tree_unflatten
     )
