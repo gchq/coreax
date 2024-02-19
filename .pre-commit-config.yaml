@@ -86,7 +86,8 @@ repos:
         exclude: |
           (?x)^(
             tests|
-            documentation/source/conf.py
+            documentation/source/conf.py|
+            documentation/source/snippets
           )
   - repo: https://github.com/streetsidesoftware/cspell-cli
     rev: v8.3.0
@@ -127,3 +128,4 @@ repos:
           - "-rn" # Only display messages
           - "-sn" # Don't display the score
           - "--rcfile=.pylintrc" # pylint configuration file
+        exclude: "documentation/source/snippets"

@@ -1,7 +1,5 @@
-.. _faq:
-
 Frequently Asked Questions
 ==========================
 
-.. include:: ../../FAQ.md
-   :parser: myst_parser.sphinx_
+This space is created to address common or important questions pertaining to Coreax.
+This will be reviewed for updates with each release of Coreax.

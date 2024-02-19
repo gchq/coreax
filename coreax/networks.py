@@ -29,6 +29,7 @@ from jax.typing import ArrayLike
 import coreax.validation
 
 
+# pylint: disable=too-few-public-methods
 class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
@@ -58,6 +59,9 @@ class ScoreNetwork(nn.Module):
         return x
 
 
+# pylint: enable=too-few-public-methods
+
+
 def create_train_state(
     random_key: coreax.validation.KeyArrayLike,
     module: Module,
@@ -69,10 +73,10 @@ def create_train_state(
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
 
     :param random_key: Key for random number generation
-    :param module: Subclass of :class:`~flax.nn.Module`
+    :param module: Subclass of :class:`~flax.linen.Module`
     :param learning_rate: Optimiser learning rate
     :param data_dimension: Data dimension
-    :param optimiser: optax optimiser, e.g. :class:`~optax.adam`
+    :param optimiser: optax optimiser, e.g. :func:`~optax.adam`
     :return: :class:`~flax.training.train_state.TrainState` object
     """
     # Validate inputs

@@ -84,7 +84,7 @@ class ScoreMatching(ABC):
 
 class SlicedScoreMatching(ScoreMatching):
     r"""
-    Implementation of slice score matching, defined in :cite:p:`ssm`.
+    Implementation of slice score matching, defined in :cite:`ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
@@ -93,12 +93,12 @@ class SlicedScoreMatching(ScoreMatching):
 
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
-    :cite:p:`ssm`.
+    :cite:`ssm`.
 
     :param random_key: Key for random number generation
     :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
         :math:`\rightarrow` :class:`~jax.Array`, e.g. distributions in
-        :class:`~jax.random`
+        :mod:`~jax.random`
     :param noise_conditioning: Use the noise conditioning version of score matching.
         Defaults to :data:`True`.
     :param use_analytic: Use the analytic (reduced variance) objective or not.
@@ -294,7 +294,7 @@ class SlicedScoreMatching(ScoreMatching):
         """
         Compute the score matching loss function.
 
-        Two objectives are proposed in :cite:p:`ssm`, a general objective, and a
+        Two objectives are proposed in :cite:`ssm`, a general objective, and a
         simplification with reduced variance that holds for particular assumptions. The
         choice between the two is determined by the boolean ``use_analytic`` defined
         when the class is initiated.
@@ -304,7 +304,7 @@ class SlicedScoreMatching(ScoreMatching):
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equations 7 and 8 in
-            :cite:p:`ssm`
+            :cite:`ssm`
         """
         return cond(
             self.use_analytic,
@@ -332,7 +332,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in :cite:p:`ssm`
+        :return: Evaluation of score matching objective, see equation 8 in :cite:`ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -357,7 +357,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 7 in :cite:p:`ssm`
+        :return: Evaluation of score matching objective, see equation 7 in :cite:`ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -372,7 +372,7 @@ class SlicedScoreMatching(ScoreMatching):
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
-        score matching :cite:p:`ssm`.
+        score matching :cite:`ssm`.
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -436,7 +436,7 @@ class SlicedScoreMatching(ScoreMatching):
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:p:`improved_sgm` for details.
+        matching. See :cite:`improved_sgm` for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -497,7 +497,7 @@ class SlicedScoreMatching(ScoreMatching):
     # pylint: disable=too-many-locals
     def match(self, x: ArrayLike) -> Callable:
         r"""
-        Learn a sliced score matching function from Song et al.'s paper :cite:p:`ssm`.
+        Learn a sliced score matching function from Song et al.'s paper :cite:`ssm`.
 
         We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
@@ -671,7 +671,7 @@ class KernelDensityMatching(ScoreMatching):
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
-for current_class in score_matching_classes:
+for _current_class in score_matching_classes:
     tree_util.register_pytree_node(
-        current_class, current_class.tree_flatten, current_class.tree_unflatten
+        _current_class, _current_class.tree_flatten, _current_class.tree_unflatten
     )

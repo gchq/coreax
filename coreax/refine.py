@@ -24,14 +24,15 @@ Generally, refinement strategies loop through the elements of a corset and consi
 some metric assessing coreset quality can be improved by replacing this element with
 another from the original dataset.
 
-All refinement approaches implement :class:`Refine`, in-particular with a method
-:meth:`~Refine.refine` that manipulates a :class:`~coreax.reduction.Coreset`
-object.
+All refinement approaches implement :class:`~coreax.refine.Refine`, in-particular with a
+method :meth:`~coreax.refine.Refine.refine` that manipulates a
+:class:`~coreax.reduction.Coreset` object.
 
-The other mandatory method to implement is :meth:`~Refine._tree_flatten`. To improve
-performance, refine computation is JIT compiled. As a result, definitions of dynamic
-and static values inside :meth:`~Refine._tree_flatten` ensure the refine object can be
-mutated and the corresponding JIT compilation does not yield unexpected results.
+The other mandatory method to implement is :meth:`~coreax.refine.Refine.tree_flatten`.
+To improve performance, refine computation is JIT compiled. As a result, definitions of
+dynamic and static values inside :meth:`~coreax.refine.Refine.tree_flatten` ensure the
+refine object can be mutated and the corresponding JIT compilation does not yield
+unexpected results.
 """
 
 # Support annotations with | in Python < 3.10
@@ -95,7 +96,6 @@ class Refine(ABC):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :return: Nothing
         """
 
     @staticmethod
@@ -105,7 +105,6 @@ class Refine(ABC):
 
         :param coreset: :class:`~coreax.reduction.Coreset` object to validate
         :raises TypeError: When called on a class that does not generate coresubsets
-        :return: Nothing
         """
         # validate_fitted checks original_data
         coreset.validate_fitted("refine")
@@ -176,7 +175,6 @@ class RefineRegular(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :return: Nothing
         """
         self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
@@ -236,7 +234,7 @@ class RefineRegular(Refine):
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal, a :math:`1 \times n`
             array
-        :return: Updated loop variables `coreset_indices`
+        :return: Updated loop variables ``coreset_indices``
         """
         coreset_indices = jnp.asarray(coreset_indices)
         coreset_indices = coreset_indices.at[i].set(
@@ -368,7 +366,6 @@ class RefineRandom(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :return: Nothing
         """
         self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
@@ -587,7 +584,6 @@ class RefineReverse(Refine):
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original data, :math:`m` coreset point indices, coreset
             and kernel object
-        :return: Nothing
         """
         self._validate_coreset(coreset)
         original_array = coreset.original_data.pre_coreset_array
@@ -753,7 +749,7 @@ class RefineReverse(Refine):
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
-for current_class in refine_classes:
+for _current_class in refine_classes:
     tree_util.register_pytree_node(
-        current_class, current_class.tree_flatten, current_class.tree_unflatten
+        _current_class, _current_class.tree_flatten, _current_class.tree_unflatten
     )

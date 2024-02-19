@@ -46,12 +46,16 @@ test = [
 ]
 # Compile documentation
 doc = [
-    "coreax[test]",
+    "flax",
     "furo",
-    "myst-parser",
+    "jax",
+    "jaxlib",
+    "scikit-learn",
     "sphinx",
     "sphinx-autodoc-typehints",
+    "sphinx-toolbox",
     "sphinxcontrib-bibtex",
+    "sphobjinv",
 ]
 # All tools for a developer including those for running pylint
 dev = [

@@ -1,0 +1,4 @@
+Weights
+=======
+
+.. automodule:: coreax.weights
