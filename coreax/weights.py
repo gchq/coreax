@@ -79,7 +79,7 @@ class WeightsOptimiser(ABC):
         warnings.warn(
             "solve_approximate() not yet implemented. "
             "Calculating exact solution via solve()",
-            stacklevel=1
+            stacklevel=1,
         )
         return self.solve(x, y)
 
