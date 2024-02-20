@@ -21,6 +21,7 @@ Configuration details for Sphinx documentation.
 """
 from __future__ import annotations  # Support annotations with | in Python < 3.10
 
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -31,6 +32,10 @@ import sphinx.config
 import sphobjinv
 from jax.typing import ArrayLike
 from sphinx_autodoc_typehints import format_annotation as default_format_annotation
+
+# https://docs.github.com/en/actions/learn-github-actions/variables,
+# see the "Default environment variables" section
+RUNNING_IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 
 CONF_FILE_PATH = Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
@@ -124,6 +129,9 @@ autodoc_default_options = {
         )
     ),
 }
+
+if RUNNING_IN_GITHUB_ACTIONS:
+    linkcheck_ignore = ["https://stackoverflow.com"]
 
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {  # linking to external documentation
