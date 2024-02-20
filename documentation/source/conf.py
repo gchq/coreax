@@ -303,7 +303,6 @@ def create_custom_inv_file(
     sphobjinv.writebytes(SOURCE_FOLDER_PATH / file_name, compressed_inventory_bytes)
 
 
-TQDM_CUSTOM_PATH = SOURCE_FOLDER_PATH / "tqdm.inv"
 if not TQDM_CUSTOM_PATH.exists():
     print("Creating custom inventory file for tqdm")
     create_custom_inv_file(tqdm, tqdm_refs)
