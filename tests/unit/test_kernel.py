@@ -951,7 +951,7 @@ class TestLaplacianKernel(unittest.TestCase):
         .. math:
 
             - \text{output_scale}\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y\rVert_1}{2 \text{length_scale}^2}}
-        """
+        """  # noqa: E501
         # pylint: enable=line-too-long
         # Define some data
         length_scale = 1 / np.pi
@@ -1180,7 +1180,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
         The PCIMQ kernel is defined as
         :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / \text{length_scale}) ** 2 / 2.0)}`.
-        """
+        """  # noqa: E501
         # pylint: enable=line-too-long
         # Define input data
         length_scale = np.e
