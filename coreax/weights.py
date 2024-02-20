@@ -37,6 +37,7 @@ from abc import ABC, abstractmethod
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
+from typing_extensions import deprecated
 
 import coreax.kernel
 import coreax.util
@@ -182,3 +183,19 @@ class MMDWeightsOptimiser(WeightsOptimiser):
         sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
+
+
+@deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
+class SBQ(SBQWeightsOptimiser):
+    """Deprecated reference to :class:`~coreax.weights.SBQWeightsOptimiser`.
+
+    Will be removed in version 0.3.0
+    """
+
+
+@deprecated("Renamed to `MMDWeightsOptimiser`; will be removed in version 0.3.0")
+class MMD(MMDWeightsOptimiser):
+    """Deprecated reference to :class:`~coreax.weights.MMDWeightsOptimiser`.
+
+    Will be removed in version 0.3.0
+    """
