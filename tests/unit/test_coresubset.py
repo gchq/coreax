@@ -328,7 +328,6 @@ class TestKernelHerding(unittest.TestCase):
 
         Methods called by this method are mocked and assumed tested elsewhere.
         """
-
         with (
             patch("coreax.kernel.Kernel") as mock_kernel,
             patch("coreax.data.DataReader") as mock_reader,

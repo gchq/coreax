@@ -345,7 +345,8 @@ class TestMapReduce(unittest.TestCase):
         Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.
 
         This test sets leaf_size = num_data_points and checks the recursive function
-        is called only once."""
+        is called only once.
+        """
         num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
