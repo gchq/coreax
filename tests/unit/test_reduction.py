@@ -380,7 +380,7 @@ class TestMapReduce(unittest.TestCase):
         # pylint: enable=protected-access
 
     def test_reduce_recursive_unset_coreset_indices(self):
-        """Test MapReduce with a Coreset that does not have ``coreset_indices``"""
+        """Test MapReduce with a Coreset that does not have ``coreset_indices``."""
         num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
