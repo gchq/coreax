@@ -33,8 +33,8 @@ and a :class:`~coreax.kernel.SquaredExponentialKernel` which is defined as
 
     k(x,y) = \text{output_scale} * \exp(-||x-y||^2/2 * \text{length_scale}^2)
 
-For simplicity, we set ``length_scale`` to :math:`1.0/numpy.sqrt(2)`
-and ``output_scale`` to 1.0.
+For simplicity, we set ``length_scale`` to :math:`\frac{1}{\sqrt{2}}`
+and ``output_scale`` to 1.
 
 For a single row (data point), the kernel matrix row sum mean is computed by
 applying the kernel to this data record and all other data records. We then sum
@@ -323,7 +323,7 @@ class NystromApproximator(KernelMeanApproximator):
     approximated by various methods. NystromApproximator is a class that does such an
     approximation using a Nystrom approximation on a subset of points selected at
     random from the data. Further details for Nystrom kernel mean embeddings can be
-    found in :cite:p:`chatalic2022nystrom`.
+    found in :cite:`chatalic2022nystrom`.
 
     :param random_key: Key for random number generation
     :param kernel: A :class:`~coreax.kernel.Kernel` object
@@ -354,7 +354,7 @@ class NystromApproximator(KernelMeanApproximator):
         We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
         subset of this to approximate the kernel matrix row sum mean. The ``m`` points
         are selected uniformly at random, and the Nystrom estimator, as defined in
-        :cite:p:`chatalic2022nystrom` is computed using this subset.
+        :cite:`chatalic2022nystrom` is computed using this subset.
 
         :param data: Original :math:`n \times d` data
         :return: Approximation of the kernel matrix row sum divided by the number of

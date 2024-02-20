@@ -20,7 +20,7 @@ Firstly, principal component analysis (PCA) is applied to the video data to redu
 dimensionality. Then, a coreset is generated using Stein kernel herding, with a
 SquaredExponentialKernel base kernel. The score function (gradient of the log-density
 function) for the Stein kernel is estimated by applying sliced score matching from
-:cite:p:`ssm`. This trains a neural network to approximate the score function, and then
+:cite:`ssm`. This trains a neural network to approximate the score function, and then
 passes the trained neural network to the Stein kernel.
 
 The coreset attained from Stein kernel herding is compared to a coreset generated via

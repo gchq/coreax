@@ -1,0 +1,4 @@
+Data
+====
+
+.. automodule:: coreax.data

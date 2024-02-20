@@ -68,9 +68,9 @@ class Coreset(ABC):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param kernel: :class:`~coreax.Kernel` instance implementing a kernel function
-       :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
-       :data:`None` if not applicable
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
+        :data:`None` if not applicable
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
     """
@@ -89,6 +89,9 @@ class Coreset(ABC):
             (coreax.weights.WeightsOptimiser, type(None)),
         )
         self.weights_optimiser = weights_optimiser
+        """
+        Weights optimiser
+        """
         coreax.validation.validate_is_instance(
             kernel, "kernel", (coreax.kernel.Kernel, type(None))
         )
@@ -97,6 +100,9 @@ class Coreset(ABC):
             refine_method, "refine_method", (coreax.refine.Refine, type(None))
         )
         self.refine_method = refine_method
+        """
+        Refine method
+        """
 
         # Data attributes not set in init
         self.original_data: coreax.data.DataReader | None = None
@@ -152,7 +158,6 @@ class Coreset(ABC):
         :param original_data: Instance of :class:`~coreax.data.DataReader` containing
             the data we wish to reduce
         :param strategy: Reduction strategy to use
-        :return: Nothing
         """
         coreax.validation.validate_is_instance(
             original_data, "original_data", coreax.data.DataReader
@@ -187,7 +192,6 @@ class Coreset(ABC):
         :param coreset_size: Number of points to include in coreset
         :raises ValueError: When it is not possible to generate a coreset of size
             ``coreset_size``
-        :return: Nothing
         """
 
     def solve_weights(self) -> Array:
@@ -214,7 +218,7 @@ class Coreset(ABC):
 
         The metric is computed unweighted unless ``weights_x`` and/or ``weights_y`` is
         supplied as an array. Further options are available by calling the chosen
-        :class:`~coreax.Metric` class directly.
+        :class:`~coreax.metrics.Metric` class directly.
 
         :param metric: Instance of :class:`~coreax.metrics.Metric` to use
         :param block_size: Size of matrix block to process, or :data:`None` to not split
@@ -245,7 +249,6 @@ class Coreset(ABC):
         :attr:`coreset` is updated in place.
 
         :raises TypeError: When :attr:`refine_method` is :data:`None`
-        :return: Nothing
         """
         if self.refine_method is None:
             raise TypeError("Cannot refine without a refine_method")
@@ -262,15 +265,11 @@ class Coreset(ABC):
         return self.original_data.format(self)
 
     def render(self) -> None:
-        """
-        Plot coreset interactively using :mod:`~matplotlib.pyplot`.
-
-        :return: Nothing
-        """
+        """Plot coreset interactively using :mod:`matplotlib.pyplot`."""
         self.validate_fitted("render")
         return self.original_data.render(self)
 
-    def copy_fit(self, other: Self, deep: bool = False) -> None:
+    def copy_fit(self, other: Coreset, deep: bool = False) -> None:
         """
         Copy fitted coreset from other instance to this instance.
 
@@ -281,7 +280,7 @@ class Coreset(ABC):
         :param other: :class:`Coreset` from which to copy calculated coreset
         :param deep: If :data:`True`, make a shallow copy of :attr:`coreset` and
             :attr:`coreset_indices`; otherwise, reference same objects
-        :return: Nothing
+        :raises TypeError: If ``other`` does not have the **exact same type**.
         """
         coreax.validation.validate_is_instance(other, "other", type(self))
         other.validate_fitted("copy_fit from another Coreset")
@@ -299,7 +298,6 @@ class Coreset(ABC):
         :param caller_name: Name of calling method to display in error message
         :raises NotCalculatedError: If :attr:`original_data` or :attr:`coreset` is
             :data:`None`
-        :return: Nothing
         """
         if not isinstance(self.original_data, coreax.data.DataReader) or not isinstance(
             self.coreset, Array
@@ -332,7 +330,6 @@ class ReductionStrategy(ABC):
         ``coreset`` is updated in place.
 
         :param coreset: :class:`Coreset` instance to populate in place
-        :return: Nothing
         """
 
 
@@ -360,7 +357,6 @@ class SizeReduce(ReductionStrategy):
         ``coreset`` is updated in place.
 
         :param coreset: :class:`Coreset` instance to populate in place
-        :return: Nothing
         """
         coreset.fit_to_size(self.coreset_size)
 
@@ -442,12 +438,18 @@ class MapReduce(ReductionStrategy):
             coreset_size, "coreset_size", True, lower_bound=0
         )
         self.coreset_size = coreset_size
+        """
+        Coreset size
+        """
 
         leaf_size = coreax.validation.cast_as_type(leaf_size, "leaf_size", int)
         coreax.validation.validate_in_range(
             leaf_size, "leaf_size", True, lower_bound=coreset_size
         )
         self.leaf_size = leaf_size
+        """
+        Leaf size
+        """
 
         self.parallel = coreax.validation.cast_as_type(parallel, "parallel", bool)
 
@@ -458,7 +460,6 @@ class MapReduce(ReductionStrategy):
         It is performed using recursive calls to :meth:`_reduce_recursive`.
 
         :param coreset: :class:`Coreset` instance to populate in place
-        :return: Nothing
         """
         input_data = coreset.original_data.pre_coreset_array
         # _reduce_recursive returns a copy of coreset so need to transfer calculated
@@ -543,7 +544,7 @@ class MapReduce(ReductionStrategy):
         :param template: Instance of :class:`Coreset` to duplicate
         :param input_data: Data to fit
         :param input_indices: Indices of ``input_data``, if applicable to ``template``
-        :return: New instance :attr:`coreset_method` fitted to ``input_data``
+        :return: New instance of the coreset fitted to ``input_data``
         """
         coreset = template.clone_empty()
         coreset.original_data = coreax.data.ArrayData.load(input_data)

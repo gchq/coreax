@@ -1,0 +1,4 @@
+Approximations
+==============
+
+.. automodule:: coreax.approximation

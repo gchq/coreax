@@ -17,14 +17,14 @@ Classes for reading different structures of input data.
 
 In order to calculate a coreset, :meth:`~coreax.reduction.Coreset.fit` requires an
 instance of a subclass of :class:`DataReader`. It is necessary to use
-:class:`DataReader` because :class:`~coreax.Coreset` requires a
+:class:`DataReader` because :class:`~coreax.reduction.Coreset` requires a
 two-dimensional :class:`~jax.Array`. Data reductions are performed along the first
 dimension.
 
 The user should read in their data files using their preferred library that returns a
 :class:`jax.Array` or :func:`numpy.array`. This array is passed to a
-:meth:`load() <DataReader.load>` method. The user should not normally call
-:meth:`DataReader.__init__` directly. The user should select an appropriate subclass
+:meth:`load() <DataReader.load>` method. The user should not normally invoke
+:class:`DataReader` directly. The user should select an appropriate subclass
 of :class:`DataReader` to match the structure of the input array. The
 :meth:`load() <DataReader.load>` method on the subclass will rearrange the original data
 into the required two-dimensional format.
@@ -69,9 +69,15 @@ class DataReader(ABC):
         self.original_data: Array = coreax.validation.cast_as_type(
             original_data, "original_data", jnp.atleast_2d
         )
+        """
+        Original data
+        """
         self.pre_coreset_array: Array = coreax.validation.cast_as_type(
             pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
         )
+        """
+        Pre coreset array
+        """
 
     @classmethod
     @abstractmethod
@@ -108,21 +114,20 @@ class DataReader(ABC):
         This method is only implemented when applicable for the data type.
 
         :param coreset: Coreset to plot, or :data:`None` to plot original data
-        :return: Nothing
         """
         raise NotImplementedError
 
     def reduce_dimension(self, num_dimensions: int) -> None:
         """
-        Reduce dimensionality of :attr:`pre_coreset_array`.
+        Reduce dimensionality of :attr:`~coreax.data.DataReader.pre_coreset_array`.
 
         Performed using principal component analysis (PCA).
 
-        :attr:`pre_coreset_array` is updated in place. Metadata detailing the type of
-        reduction are saved to this class to enable reconstruction later.
+        :attr:`~coreax.data.DataReader.pre_coreset_array` is updated in place. Metadata
+        detailing the type of reduction are saved to this class to enable reconstruction
+        later.
 
         :param num_dimensions: Target number of dimensions
-        :return: Nothing
         """
         raise NotImplementedError
 
@@ -137,9 +142,9 @@ class DataReader(ABC):
         data format had more than two dimensions.
 
         :param coreset: Coreset to restore, or :data:`None` to restore original data
-        :return: Array with the same number of columns as :attr:`pre_coreset_data` had
-            prior to calling :meth:`reduce_dimension` and the same number of rows as the
-            coreset
+        :return: Array with the same number of columns as
+            :attr:`~coreax.data.DataReader.pre_coreset_array` had prior to calling
+            :meth:`reduce_dimension` and the same number of rows as the coreset
         """
         raise NotImplementedError
 
@@ -150,7 +155,8 @@ class ArrayData(DataReader):
 
     Data should already be in a format accepted by :class:`~coreax.reduction.Coreset`.
     Thus, if no dimensionality reduction is performed, this class is an identity
-    wrapper and :attr:`pre_coreset_array` is equal to :attr:`original_data`.
+    wrapper and :attr:`~coreax.data.DataReader.pre_coreset_array` is equal to
+    :attr:`~coreax.data.DataReader.original_data`.
 
     :param original_data: Array of data to be reduced to a coreset
     :param pre_coreset_array: Two-dimensional array already rearranged to be ready for
