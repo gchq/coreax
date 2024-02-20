@@ -61,12 +61,10 @@ doc = [
 # All tools for a developer including those for running pylint
 dev = [
     "coreax[doc, test]",
-    "black",
-    "isort",
     "pre-commit",
-    "pydocstyle",
     "pylint",
     "pyroma",
+    "ruff"
 ]
 
 [project.urls]
@@ -75,15 +73,49 @@ Repository = "https://github.com/gchq/coreax"
 Issues = "https://github.com/gchq/coreax/issues"
 Changelog = "https://github.com/gchq/coreax/blob/main/CHANGELOG.md"
 
-[tool.isort]
-known_first_party = ["coreax", "examples"]
-profile = "black"
-
 [tool.setuptools]
 packages = ["coreax"]
 
 [tool.setuptools.dynamic]
 version = {attr = "coreax.__version__"}
+
+[tool.ruff]
+src = [".", "examples"]
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "B",   # flake8-bugbear
+    "C90", # McCabe
+    "D",   # pydocstyle
+    "E",   # pycodestyle [error]
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "PL",  # pylint
+    "W"    # pycodestyle [warning]
+]
+ignore = [
+    "D203",
+    "D206",
+    "D212",
+    "D300",
+    "E111",
+    "E114",
+    "E117",
+    "W191",
+    "PLR6301"
+]
+ignore-init-module-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"coreax/__init__.py" = ["F401"]
+"examples/*" = ["PLR0914", "PLR0915"]
+"tests/*" = ["D102", "D200"]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-locals = 20
 
 [tool.coverage.run]
 command_line = "-m pytest tests/unit --cov"

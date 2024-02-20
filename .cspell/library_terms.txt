@@ -69,7 +69,9 @@ params_ineq
 pinv
 pvalue
 pybtex
+pycodestyle
 pydocstyle
+pyflakes
 pylint
 pylintrc
 pyproject
