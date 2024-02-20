@@ -64,13 +64,13 @@ For large :math:`d`, it is usually worth reducing dimensionality using PCA. See
 Stein kernel herding
 --------------------
 We have implemented a version of kernel herding that uses a **Stein kernel**, which
-targets `kernelised Stein discrepancy (KSD) <https://arxiv.org/abs/1602.03253>`_ rather
-than MMD. This can often give better integration error in practice, but it can be slower
-than using a simpler kernel targeting MMD. To use Stein kernel herding, we have to
-define a continuous approximation to the discrete measure, e.g. using kernel density
-estimation (KDE), or an estimate the score function :math:`\nabla \log f_X(\mathbf{x})`
-of a continuous PDF from a finite set of samples. In this example, we use a Stein kernel
-with a squared exponential base kernel, computing the score function explicitly.
+targets kernelised Stein discrepancy (KSD) :cite:`liu2016kernelized` rather than MMD.
+This can often give better integration error in practice, but it can be slower than
+using a simpler kernel targeting MMD. To use Stein kernel herding, we have to define a
+continuous approximation to the discrete measure, e.g. using kernel density estimation
+(KDE), or an estimate the score function :math:`\nabla \log f_X(\mathbf{x})` of a
+continuous PDF from a finite set of samples. In this example, we use a Stein kernel with
+a squared exponential base kernel, computing the score function explicitly.
 
 .. literalinclude:: snippets/stein_kernel_herding.py
 
@@ -82,9 +82,8 @@ derivative of the log-density function. This function is required when evaluatin
 kernels. However, it can be difficult to specify analytically in practice.
 
 To resolve this, we have implemented an approximation of the score function using a
-neural network as in `Song et al. (2019) <https://arxiv.org/abs/1905.07088>`_. This
-approximate score function can then be passed directly to a Stein kernel, removing any
-requirement for analytical derivation. More details on score matching methods
-implemented are found in :mod:`coreax.score_matching`.
+neural network :cite:`ssm`. This approximate score function can then be passed directly
+to a Stein kernel, removing any requirement for analytical derivation. More details on
+score matching methods implemented are found in :mod:`coreax.score_matching`.
 
 .. literalinclude:: snippets/score_matching.py

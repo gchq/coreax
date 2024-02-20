@@ -2,8 +2,7 @@ Coreax (|version|)
 ==================
 
 Coreax is a library for **coreset algorithms**, written in
-`JAX <https://jax.readthedocs.io/en/latest/notebooks/quickstart.html>`_ for fast
-execution and GPU support.
+:doc:`JAX <jax:notebooks/quickstart>` for fast execution and GPU support.
 
 
 Setup
@@ -12,8 +11,8 @@ Setup
 Before installing Coreax, make sure JAX is installed. Be sure to install the preferred
 version of JAX for your system.
 
-1. `Install JAX <https://jax.readthedocs.io/en/latest/installation.html>`_ noting that
-   there are (currently) different setup paths for CPU and GPU use.
+1. :doc:`Install JAX <jax:installation>` noting that there are (currently) different
+   setup paths for CPU and GPU use.
 2. Install Coreax:
 
 .. code:: shell
