@@ -1,4 +1,4 @@
-<div style="align: center;">
+<div align="center">
     <img alt="Coreax logo" src="https://raw.githubusercontent.com/gchq/coreax/main/documentation/assets/Logo.svg">
 </div>
 

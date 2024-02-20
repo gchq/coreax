@@ -274,7 +274,7 @@ class KernelHerding(coreax.reduction.Coreset):
         :param x: :math:`n \times d` data matrix
         :param kernel_vectorised: Vectorised kernel computation function. This should be
             the :meth:`~coreax.kernel.Kernel.compute` method of a
-            :class:`~coreax.kernel.Kernel` object,
+            :class:`~coreax.kernel.Kernel` object
         :param kernel_matrix_row_sum_mean: A :math:`1 \times n` array holding the mean
             over rows for the kernel Gram matrix
         :param unique: Flag for enforcing unique elements
