@@ -106,27 +106,12 @@ class KernelMeanApproximator(ABC):
         num_kernel_points: int = 10_000,
     ):
         """Define approximator to the mean of the row sum of kernel distance matrix."""
-        # Validate inputs of coreax defined classes
-        coreax.validation.validate_is_instance(kernel, "kernel", coreax.kernel.Kernel)
-
-        # Validate inputs of non-coreax defined classes
-        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-
-        num_kernel_points = coreax.validation.cast_as_type(
-            x=num_kernel_points, object_name="num_kernel_points", type_caster=int
-        )
-
-        # Validate inputs lie within accepted ranges
-        coreax.validation.validate_in_range(
-            x=num_kernel_points,
-            object_name="num_kernel_points",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
 
         # Assign inputs
         self.kernel = kernel
         self.random_key = random_key
+        if num_kernel_points < 0:
+            raise ValueError("num_kernel_points must be positive")
         self.num_kernel_points = num_kernel_points
 
     @abstractmethod
@@ -164,20 +149,10 @@ class RandomApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on points selected randomly."""
-        # Validate inputs of non-coreax defined classes
-        num_train_points = coreax.validation.cast_as_type(
-            x=num_train_points, object_name="num_train_points", type_caster=int
-        )
-
-        # Validate inputs lie within accepted ranges
-        coreax.validation.validate_in_range(
-            x=num_train_points,
-            object_name="num_train_points",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
 
         # Assign inputs
+        if num_train_points < 0:
+            raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -198,10 +173,6 @@ class RandomApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
-        # Validate inputs
-        data = coreax.validation.cast_as_type(
-            x=data, object_name="data", type_caster=jnp.atleast_2d
-        )
 
         # Record dataset size
         num_data_points = len(data)
@@ -252,20 +223,10 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on ANNchor selected points."""
-        # Validate inputs of non-coreax defined classes
-        num_train_points = coreax.validation.cast_as_type(
-            x=num_train_points, object_name="num_train_points", type_caster=int
-        )
-
-        # Validate inputs lie within accepted ranges
-        coreax.validation.validate_in_range(
-            x=num_train_points,
-            object_name="num_train_points",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
 
         # Assign inputs
+        if num_train_points < 0:
+            raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -286,10 +247,6 @@ class ANNchorApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
-        # Validate inputs
-        data = coreax.validation.cast_as_type(
-            x=data, object_name="data", type_caster=jnp.atleast_2d
-        )
 
         # Record dataset size
         num_data_points = len(data)
