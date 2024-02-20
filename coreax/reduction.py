@@ -57,7 +57,6 @@ import coreax.kernel
 import coreax.metrics
 import coreax.refine
 import coreax.util
-import coreax.validation
 import coreax.weights
 
 
@@ -83,22 +82,11 @@ class Coreset(ABC):
         refine_method: coreax.refine.Refine | None = None,
     ):
         """Initialise class and set internal attributes to defaults."""
-        coreax.validation.validate_is_instance(
-            weights_optimiser,
-            "weights_optimiser",
-            (coreax.weights.WeightsOptimiser, type(None)),
-        )
         self.weights_optimiser = weights_optimiser
         """
         Weights optimiser
         """
-        coreax.validation.validate_is_instance(
-            kernel, "kernel", (coreax.kernel.Kernel, type(None))
-        )
         self.kernel = kernel
-        coreax.validation.validate_is_instance(
-            refine_method, "refine_method", (coreax.refine.Refine, type(None))
-        )
         self.refine_method = refine_method
         """
         Refine method
@@ -159,10 +147,6 @@ class Coreset(ABC):
             the data we wish to reduce
         :param strategy: Reduction strategy to use
         """
-        coreax.validation.validate_is_instance(
-            original_data, "original_data", coreax.data.DataReader
-        )
-        coreax.validation.validate_is_instance(strategy, "strategy", ReductionStrategy)
         self.original_data = original_data
         strategy.reduce(self)
 
@@ -229,7 +213,6 @@ class Coreset(ABC):
             in ``y``, or :data:`None` if not required
         :return: Metric computed as a zero-dimensional array
         """
-        coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
         self.validate_fitted("compute_metric")
         # block_size will be validated by metric.compute()
         return metric.compute(
@@ -282,7 +265,6 @@ class Coreset(ABC):
             :attr:`coreset_indices`; otherwise, reference same objects
         :raises TypeError: If ``other`` does not have the **exact same type**.
         """
-        coreax.validation.validate_is_instance(other, "other", type(self))
         other.validate_fitted("copy_fit from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
@@ -343,11 +325,6 @@ class SizeReduce(ReductionStrategy):
     def __init__(self, coreset_size: int):
         """Initialise class."""
         super().__init__()
-
-        coreset_size = coreax.validation.cast_as_type(coreset_size, "coreset_size", int)
-        coreax.validation.validate_in_range(
-            coreset_size, "coreset_size", True, lower_bound=0
-        )
         self.coreset_size = coreset_size
 
     def reduce(self, coreset: Coreset) -> None:
@@ -432,26 +409,15 @@ class MapReduce(ReductionStrategy):
     ):
         """Initialise class."""
         super().__init__()
-
-        coreset_size = coreax.validation.cast_as_type(coreset_size, "coreset_size", int)
-        coreax.validation.validate_in_range(
-            coreset_size, "coreset_size", True, lower_bound=0
-        )
         self.coreset_size = coreset_size
         """
         Coreset size
         """
-
-        leaf_size = coreax.validation.cast_as_type(leaf_size, "leaf_size", int)
-        coreax.validation.validate_in_range(
-            leaf_size, "leaf_size", True, lower_bound=coreset_size
-        )
         self.leaf_size = leaf_size
         """
         Leaf size
         """
-
-        self.parallel = coreax.validation.cast_as_type(parallel, "parallel", bool)
+        self.parallel = parallel
 
     def reduce(self, coreset: Coreset) -> None:
         """
