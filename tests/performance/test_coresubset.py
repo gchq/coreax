@@ -20,7 +20,7 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from jax import jit, random
+from jax import random
 from scipy.stats import ks_2samp
 
 import coreax.coresubset
@@ -31,7 +31,6 @@ import coreax.util
 # the pylint warnings for duplicated-code. Additionally, we wrap the method/function of
 # interest in a lambda function to ensure no cached JIT code is re-used to make the test
 # fair. As a result, ignore the pylint warnings for unnecessary-lambda.
-# pylint: disable=unnecessary-lambda
 # pylint: disable=duplicate-code
 
 
@@ -83,22 +82,21 @@ class TestCoreSubset(unittest.TestCase):
         post = []
         for i in range(self.num_samples_to_generate):
             # pylint: disable=protected-access
+            # fmt: off
             deltas = coreax.util.jit_test(
-                jit(
-                    lambda *args, **kwargs: herding_object._greedy_body(
-                        *args, **kwargs
-                    ),
-                    static_argnames=["kernel_vectorised", "unique"],
-                ),
-                i=0,
-                val=(coreset_indices_0, kernel_similarity_penalty_0),
-                x=x[i],
-                kernel_vectorised=kernel.compute,
-                kernel_matrix_row_sum_mean=kernel.calculate_kernel_matrix_row_sum_mean(
-                    x[i]
-                ),
-                unique=True,
+                herding_object._greedy_body,
+                fn_kwargs={
+                    "i": 0,
+                    "val": (coreset_indices_0, kernel_similarity_penalty_0),
+                    "x": x[i],
+                    "kernel_vectorised": kernel.compute,
+                    "kernel_matrix_row_sum_mean":
+                        kernel.calculate_kernel_matrix_row_sum_mean(x[i]),
+                    "unique": True,
+                },
+                jit_kwargs={"static_argnames": ["kernel_vectorised", "unique"]},
             )
+            # fmt: on
             # pylint: enable=protected-access
             pre.append(deltas[0])
             post.append(deltas[1])

@@ -19,7 +19,6 @@ Performance tests for JIT compilation in kernel implementations.
 import unittest
 
 import numpy as np
-from jax import jit
 from scipy.stats import ks_2samp
 
 import coreax.kernel
@@ -29,7 +28,6 @@ import coreax.util
 # the pylint warnings for duplicated-code. Additionally, we wrap the method/function of
 # interest in a lambda function to ensure no cached JIT code is re-used to make the test
 # fair. As a result, ignore the pylint warnings for unnecessary-lambda.
-# pylint: disable=unnecessary-lambda
 # pylint: disable=duplicate-code
 
 
@@ -79,9 +77,7 @@ class TestSquaredExponentialKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.compute, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -112,9 +108,7 @@ class TestSquaredExponentialKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_x, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -145,9 +139,7 @@ class TestSquaredExponentialKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_y, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -179,11 +171,7 @@ class TestSquaredExponentialKernel(TestKernel):
         post = []
         for i in range(self.num_samples_to_generate):
             deltas = coreax.util.jit_test(
-                jit(
-                    lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
-                ),
-                x[i],
-                y[i],
+                kernel.divergence_x_grad_y, fn_args=(x[i], y[i])
             )
             pre.append(deltas[0])
             post.append(deltas[1])
@@ -221,9 +209,7 @@ class TestLaplacianKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.compute, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -254,9 +240,7 @@ class TestLaplacianKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_x, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -287,9 +271,7 @@ class TestLaplacianKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_y, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -321,11 +303,7 @@ class TestLaplacianKernel(TestKernel):
         post = []
         for i in range(self.num_samples_to_generate):
             deltas = coreax.util.jit_test(
-                jit(
-                    lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
-                ),
-                x[i],
-                y[i],
+                kernel.divergence_x_grad_y, fn_args=(x[i], y[i])
             )
             pre.append(deltas[0])
             post.append(deltas[1])
@@ -363,9 +341,7 @@ class TestPCIMQKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.compute, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -396,9 +372,7 @@ class TestPCIMQKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_x, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -429,9 +403,7 @@ class TestPCIMQKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_y, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -463,11 +435,7 @@ class TestPCIMQKernel(TestKernel):
         post = []
         for i in range(self.num_samples_to_generate):
             deltas = coreax.util.jit_test(
-                jit(
-                    lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
-                ),
-                x[i],
-                y[i],
+                kernel.divergence_x_grad_y, fn_args=(x[i], y[i])
             )
             pre.append(deltas[0])
             post.append(deltas[1])
@@ -512,9 +480,7 @@ class TestSteinKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.compute(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.compute, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -552,9 +518,7 @@ class TestSteinKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_x(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_x, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -592,9 +556,7 @@ class TestSteinKernel(TestKernel):
         pre = []
         post = []
         for i in range(self.num_samples_to_generate):
-            deltas = coreax.util.jit_test(
-                jit(lambda *args, **kwargs: kernel.grad_y(*args, **kwargs)), x[i], y[i]
-            )
+            deltas = coreax.util.jit_test(kernel.grad_y, fn_args=(x[i], y[i]))
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
@@ -633,11 +595,8 @@ class TestSteinKernel(TestKernel):
         post = []
         for i in range(self.num_samples_to_generate):
             deltas = coreax.util.jit_test(
-                jit(
-                    lambda *args, **kwargs: kernel.divergence_x_grad_y(*args, **kwargs)
-                ),
-                x[i],
-                y[i],
+                kernel.divergence_x_grad_y,
+                fn_args=(x[i], y[i]),
             )
             pre.append(deltas[0])
             post.append(deltas[1])
