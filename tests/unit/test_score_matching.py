@@ -507,7 +507,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(y: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param y: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``y``
@@ -566,7 +566,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(x_: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``x_``
@@ -610,7 +610,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(x_: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``x_``
