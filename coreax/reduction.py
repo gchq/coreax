@@ -13,7 +13,7 @@
 # limitations under the License.
 
 r"""
-This module reduces a large dataset down to a coreset.
+Module provides tools for reducing a large dataset down to a coreset.
 
 To prepare data for reduction, convert it into a :class:`~jax.Array` and pass to an
 appropriate instance of :class:`~coreax.data.DataReader`. The class will convert the
