@@ -40,9 +40,8 @@ import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import Array, jit, jvp
+from jax import Array, jit, jvp, random, tree_util, vmap
 from jax import numpy as jnp
-from jax import random, tree_util, vmap
 from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
