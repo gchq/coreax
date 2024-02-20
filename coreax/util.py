@@ -33,8 +33,6 @@ from jax import Array, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
-import coreax.validation
-
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
 
@@ -45,7 +43,7 @@ class NotCalculatedError(Exception):
 
 def apply_negative_precision_threshold(
     x: ArrayLike, precision_threshold: float = 1e-8
-) -> float:
+) -> ArrayLike:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -53,26 +51,8 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=float)
-    precision_threshold = coreax.validation.cast_as_type(
-        x=precision_threshold, object_name="precision_threshold", type_caster=float
-    )
-    coreax.validation.validate_in_range(
-        x=precision_threshold,
-        object_name="precision_threshold",
-        strict_inequalities=False,
-        lower_bound=0,
-    )
-
-    if precision_threshold < 0.0:
-        raise ValueError(
-            f"precision_threshold must be positive; value {precision_threshold} given."
-        )
-
-    if -precision_threshold < x < 0.0:
+    if -jnp.abs(precision_threshold) < x < jnp.asarray(0.0):
         return 0.0
-
     return x
 
 
@@ -86,9 +66,8 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Dot product of ``x - y`` and ``x - y``, the square distance between ``x``
         and ``y``
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
-    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
+    x = jnp.atleast_1d(x)
+    y = jnp.atleast_1d(y)
     return jnp.dot(x - y, x - y)
 
 
@@ -102,10 +81,8 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
-    # Use vmap to turn distance between individual vectors into a pairwise distance.
+    x = jnp.atleast_2d(x)
+    y = jnp.atleast_2d(y)
     fn = vmap(
         vmap(squared_distance, in_axes=(None, 0), out_axes=0),
         in_axes=(0, None),
@@ -123,9 +100,8 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     :param y: Second vector
     :return: Vector difference ``x - y``
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_1d)
-    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_1d)
+    x = jnp.atleast_1d(x)
+    y = jnp.atleast_1d(y)
     return x - y
 
 
@@ -139,9 +115,8 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
-    y = coreax.validation.cast_as_type(x=y, object_name="y", type_caster=jnp.atleast_2d)
+    x = jnp.atleast_2d(x)
+    y = jnp.atleast_2d(y)
     fn = vmap(
         vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
     )
@@ -169,16 +144,6 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     :param kernel_matrix_row_sum_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
-    # Validate inputs
-    coreax.validation.validate_is_instance(
-        x=kernel_mm, object_name="kernel_mm", expected_type=Array
-    )
-    coreax.validation.validate_is_instance(
-        x=kernel_matrix_row_sum_mean,
-        object_name="kernel_matrix_row_sum_mean",
-        expected_type=Array,
-    )
-
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters
     q_array = jnp.array(kernel_mm)

@@ -81,20 +81,6 @@ class TestUtil(unittest.TestCase):
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )
 
-    def test_apply_negative_precision_threshold_invalid(self) -> None:
-        """
-        Test the function apply_negative_precision_threshold with an invalid threshold.
-
-        A negative precision threshold is given, which should be rejected by the
-        function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.apply_negative_precision_threshold,
-            x=0.1,
-            precision_threshold=-1e-8,
-        )
-
     def test_apply_negative_precision_threshold_valid_no_change(self) -> None:
         """
         Test the function apply_negative_precision_threshold with no change needed.
