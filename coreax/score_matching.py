@@ -142,7 +142,7 @@ class SlicedScoreMatching(ScoreMatching):
 
         return children, aux_data
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         random_key: coreax.validation.KeyArrayLike,
         random_generator: Callable,
