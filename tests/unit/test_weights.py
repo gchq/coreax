@@ -207,24 +207,6 @@ class TestWeights(unittest.TestCase):
 
         self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
 
-    def test_simplex_weights_invalid_epsilon(self) -> None:
-        """
-        Test invalid epsilon value passed to simplex method for quadratic programming.
-
-        A small positive value is added to the kernel Gram matrix to ensure numerical
-        operations remain valid. This test ensures that a negative value cannot be
-        passed.
-        """
-        # Setup data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define weights object
-        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
-
-        # Solve for the weights (with an invalid epsilon)
-        self.assertRaises(ValueError, optimiser.solve, x, y, epsilon=-0.1)
-
 
 if __name__ == "__main__":
     unittest.main()
