@@ -107,8 +107,9 @@ def main(
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
 
     print(f"Image dimensions: {image_data.shape}")
-    pre_coreset_data = np.column_stack(np.nonzero(image_data < 255))
-    pixel_values = image_data[image_data < 255]
+    max_8bit = 255
+    pre_coreset_data = np.column_stack(np.nonzero(image_data < max_8bit))
+    pixel_values = image_data[image_data < max_8bit]
     pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
         np.float32
     )
@@ -126,7 +127,8 @@ def main(
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
-    if length_scale < 1e-6:
+    min_length_scale = 1e-6
+    if length_scale < min_length_scale:
         length_scale = 100.0
 
     # Learn a score function via kernel density estimation (this is required for
