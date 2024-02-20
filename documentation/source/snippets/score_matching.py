@@ -18,7 +18,7 @@ import numpy as np
 from coreax import SlicedScoreMatching, SteinKernel
 from coreax.kernel import PCIMQKernel
 
-# Select indices to form a subset of data for learning score function
+# Select a subset of data from which to learn score function
 generator = np.random.default_rng(random_seed)
 idx = generator.choice(len(data), subset_size, replace=False)
 data_subset = data[idx, :]
