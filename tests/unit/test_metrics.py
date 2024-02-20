@@ -674,7 +674,7 @@ class TestMMD(unittest.TestCase):
         r"""
         Test mmd_weight_block equals mmd when weights are uniform: :math:`w = 1/n`,
         :math:`w_y = 1/m`.
-        """
+        """  # noqa: D205
         # Define a kernel object
         length_scale = 1.0
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
