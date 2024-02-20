@@ -26,10 +26,11 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterable, Iterator
+from functools import partial
 from typing import TypeVar
 
 import jax.numpy as jnp
-from jax import Array, jit, vmap
+from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 
@@ -201,27 +202,39 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     return sol.primal
 
 
-def jit_test(fn: Callable, *args, **kwargs) -> tuple[float, float]:
+def jit_test(
+    fn: Callable,
+    fn_args: tuple = (),
+    fn_kwargs: dict | None = None,
+    jit_kwargs: dict | None = None,
+) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.
 
     The function is called with supplied arguments twice, and timed for each run. These
     timings are returned in a 2-tuple.
 
-    Note that `fn` often uses a lambda wrapper around a function or method call (see
-    performance tests) to ensure that the function or method is recompiled when called
-    multiple times, to truly test the JIT performance. In some cases, not doing this
-    will result in the re-use of previously cached information.
-
     :param fn: Function callable to test
     :return: (First run time, Second run time)
     """
+    # Avoid W0102
+    if fn_kwargs is None:
+        fn_kwargs = {}
+    if jit_kwargs is None:
+        jit_kwargs = {}
+
+    @partial(jit, **jit_kwargs)
+    def _fn(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
+
     start_time = time.time()
-    fn(*args, **kwargs)
+    block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.time()
     pre_delta = end_time - start_time
     start_time = time.time()
-    fn(*args, **kwargs)
+    block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.time()
     post_delta = end_time - start_time
     return pre_delta, post_delta
