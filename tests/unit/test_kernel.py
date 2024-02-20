@@ -1519,7 +1519,7 @@ class TestSteinKernel(unittest.TestCase):
 
         def k_x_y(x_input, y_input):
             r"""
-            The Stein kernel.
+            Compute Stein kernel.
 
             Throughout this docstring, x_input and y_input are simply referred to as x
             and y.

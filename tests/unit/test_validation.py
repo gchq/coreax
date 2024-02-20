@@ -228,7 +228,7 @@ class TestInputValidationInstance(unittest.TestCase):
 
     def setUp(self) -> None:
         """
-        Setup of variables shared across tests
+        Set variables shared across tests
         """
         self.var_must_be_of_type_message = "^var must be of type"
 
