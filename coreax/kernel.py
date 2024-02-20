@@ -278,10 +278,11 @@ class Kernel(ABC):
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
         The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
-        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
+        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`.
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_x`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this method
+        for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -301,7 +302,7 @@ class Kernel(ABC):
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
         The gradient (Jacobian) of the kernel function is computed using
-        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
+        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_y`
         provides a vectorised version of this method for arrays.
@@ -362,7 +363,7 @@ class Kernel(ABC):
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
         The evaluation is done via
-        `Autodiff <https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html>`_.
+        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
