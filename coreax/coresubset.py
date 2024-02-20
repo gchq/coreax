@@ -38,6 +38,7 @@ from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
 import coreax.approximation
+import coreax.custom_types
 import coreax.kernel
 import coreax.reduction
 import coreax.refine
@@ -89,7 +90,7 @@ class KernelHerding(coreax.reduction.Coreset):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         *,
         kernel: coreax.kernel.Kernel,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
@@ -363,7 +364,7 @@ class RandomSample(coreax.reduction.Coreset):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         *,
         kernel: coreax.kernel.Kernel | None = None,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,

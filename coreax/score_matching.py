@@ -47,6 +47,7 @@ from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
 
+import coreax.custom_types
 import coreax.kernel
 import coreax.networks
 
@@ -144,7 +145,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         random_generator: Callable,
         noise_conditioning: bool = True,
         use_analytic: bool = False,

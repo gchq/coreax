@@ -77,6 +77,7 @@ import jax.numpy as jnp
 from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
+import coreax.custom_types
 import coreax.kernel
 import coreax.util
 import coreax.validation
@@ -101,7 +102,7 @@ class KernelMeanApproximator(ABC):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
     ):
@@ -158,7 +159,7 @@ class RandomApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -246,7 +247,7 @@ class ANNchorApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
         num_train_points: int = 10_000,
@@ -332,7 +333,7 @@ class NystromApproximator(KernelMeanApproximator):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.custom_types.KeyArrayLike,
         kernel: coreax.kernel.Kernel,
         num_kernel_points: int = 10_000,
     ):

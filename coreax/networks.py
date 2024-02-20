@@ -26,6 +26,7 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 from jax.typing import ArrayLike
 
+import coreax.custom_types
 import coreax.validation
 
 
@@ -63,7 +64,7 @@ class ScoreNetwork(nn.Module):
 
 
 def create_train_state(
-    random_key: coreax.validation.KeyArrayLike,
+    random_key: coreax.custom_types.KeyArrayLike,
     module: Module,
     learning_rate: float,
     data_dimension: int,

@@ -47,9 +47,9 @@ from jax import Array, jit, lax, random, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation
+import coreax.custom_types
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -311,22 +311,11 @@ class RefineRandom(Refine):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
-        approximator: coreax.approximation.KernelMeanApproximator = None,
+        random_key: coreax.custom_types.KeyArrayLike,
+        approximator: coreax.approximation.KernelMeanApproximator | None = None,
         p: float = 0.1,
     ):
         """Initialise a random refinement object."""
-        # Perform input validation
-        p = coreax.validation.cast_as_type(x=p, object_name="p", type_caster=float)
-        coreax.validation.validate_in_range(
-            x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
-        )
-        coreax.validation.validate_in_range(
-            x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
-        )
-        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-
-        # Assign attributes
         self.p = p
         self.random_key = random_key
         super().__init__(
@@ -413,13 +402,13 @@ class RefineRandom(Refine):
     def _refine_rand_body(
         self,
         _i: int,
-        val: tuple[coreax.validation.KeyArrayLike, ArrayLike],
+        val: tuple[coreax.custom_types.KeyArrayLike, ArrayLike],
         x: ArrayLike,
         n_cand: int,
         kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
-    ) -> tuple[coreax.validation.KeyArray, Array]:
+    ) -> tuple[coreax.custom_types.KeyArray, Array]:
         r"""
         Execute main loop of the random refine method.
 
