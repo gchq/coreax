@@ -30,6 +30,7 @@ from unittest import mock
 
 import sphinx.config
 import sphobjinv
+import tqdm
 from jax.typing import ArrayLike
 from sphinx_autodoc_typehints import format_annotation as default_format_annotation
 
@@ -43,11 +44,13 @@ DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
 REPO_FOLDER_PATH = DOCS_FOLDER_PATH.parent
 EXAMPLES = "examples"
 
+TQDM_CUSTOM_PATH = SOURCE_FOLDER_PATH / "tqdm.inv"
+
 sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
 
 
 # pylint: disable=wrong-import-position
-for module_name in ("jaxopt", "tqdm"):
+for module_name in ("jaxopt",):
     # only needed to import coreax, not actually used on import
     sys.modules[module_name] = mock.Mock()
 from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
@@ -143,7 +146,7 @@ intersphinx_mapping = {  # linking to external documentation
     "numpy": ("https://numpy.org/doc/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
-    "tqdm": ("https://tqdm.github.io/docs/", str(SOURCE_FOLDER_PATH / "tqdm.inv")),
+    "tqdm": ("https://tqdm.github.io/docs/", str(TQDM_CUSTOM_PATH)),
 }
 
 nitpick_ignore = [
@@ -298,3 +301,9 @@ def create_custom_inv_file(
     if file_name is None:
         file_name = f"{module.__name__}.inv"
     sphobjinv.writebytes(SOURCE_FOLDER_PATH / file_name, compressed_inventory_bytes)
+
+
+TQDM_CUSTOM_PATH = SOURCE_FOLDER_PATH / "tqdm.inv"
+if not TQDM_CUSTOM_PATH.exists():
+    print("Creating custom inventory file for tqdm")
+    create_custom_inv_file(tqdm, tqdm_refs)
