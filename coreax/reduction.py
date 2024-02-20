@@ -319,9 +319,6 @@ class ReductionStrategy(ABC):
     memory management and other similar aspects that wrap around the type of coreset.
     """
 
-    def __init__(self):
-        """Initialise class."""
-
     @abstractmethod
     def reduce(self, coreset: Coreset) -> None:
         """
