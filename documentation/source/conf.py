@@ -16,24 +16,28 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
-
 """
 Configuration details for Sphinx documentation.
 """
+from __future__ import annotations  # Support annotations with | in Python < 3.10
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
-import pathlib
-import shutil
+import os
 import sys
-from collections.abc import Generator
-from typing import Any
+from pathlib import Path
+from types import ModuleType
+from typing import Any, TypeAlias, TypeVar
+from unittest import mock
 
 import sphinx.config
+import sphobjinv
 from jax.typing import ArrayLike
+from sphinx_autodoc_typehints import format_annotation as default_format_annotation
 
-CONF_FILE_PATH = pathlib.Path(__file__).absolute()
+# https://docs.github.com/en/actions/learn-github-actions/variables,
+# see the "Default environment variables" section
+RUNNING_IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+
+CONF_FILE_PATH = Path(__file__).absolute()
 SOURCE_FOLDER_PATH = CONF_FILE_PATH.parent
 DOCS_FOLDER_PATH = SOURCE_FOLDER_PATH.parent
 REPO_FOLDER_PATH = DOCS_FOLDER_PATH.parent
@@ -41,12 +45,19 @@ EXAMPLES = "examples"
 
 sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
 
-# Cannot import until after package has been added to path
+
 # pylint: disable=wrong-import-position
-import coreax
-import coreax.util as cu
+for module_name in ("jaxopt", "tqdm"):
+    # only needed to import coreax, not actually used on import
+    sys.modules[module_name] = mock.Mock()
+from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
+
+import coreax  # Cannot import until after package has been added to path
+import coreax.reduction
+import coreax.util
 
 # pylint: enable=wrong-import-position
+
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -60,35 +71,42 @@ version = "v" + coreax.__version__
 # pylint: enable=redefined-builtin
 # pylint: enable=invalid-name
 
+# mocked by Sphinx to reduce requirements for building docs
+autodoc_mock_imports = ["cv2", "imageio", "matplotlib"]
+
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 # sphinx extensions
 extensions = [
-    "sphinxcontrib.bibtex",
     "sphinx.ext.autodoc",
-    "sphinx_autodoc_typehints",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "myst_parser",
+    "sphinx_autodoc_typehints",
+    "sphinx_toolbox.wikipedia",
+    "sphinxcontrib.bibtex",
 ]
 
-# file sources
-source_suffix = [".rst", ".md"]
 
-# enable MyST extension to parse HTML image objects in .md files
-myst_enable_extensions = ["html_image", "dollarmath", "amsmath"]
-
-# BibTex references path
-bibtex_bibfiles = ["references.bib"]
-
-templates_path = ["_templates"]
-
-# Display type annotations only in compiled description.
 # pylint: disable=invalid-name
-autodoc_typehints = "description"
+toc_object_entries_show_parents = "hide"  # don't show prefix in secondary TOC
+# pylint: enable=invalid-name
+
+
+# pylint: disable=invalid-name
+bibtex_default_style = STYLE_NAME
+bibtex_references_path = SOURCE_FOLDER_PATH / "references.bib"
+bibtex_bibfiles = [str(bibtex_references_path)]
+# pylint: enable=invalid-name
+
+
+# pylint: disable=invalid-name
+autodoc_typehints = (
+    "description"  # Display type annotations only in compiled description.
+)
 # pylint: enable=invalid-name
 
 autodoc_default_options = {
@@ -99,8 +117,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "show_inheritance": True,
     "exclude-members": ",".join(
-        (
-            # Use this join syntax to make positions of commas clear and consistent
+        (  # Use this join syntax to make positions of commas clear and consistent
             "_abc_impl",
             "_parent_ref",
             "_state",
@@ -113,8 +130,11 @@ autodoc_default_options = {
     ),
 }
 
+if RUNNING_IN_GITHUB_ACTIONS:
+    linkcheck_ignore = ["https://stackoverflow.com"]
+
 # set Inter-sphinx mapping to link to external documentation
-intersphinx_mapping = {
+intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://jax.readthedocs.io/en/latest/", None),
     "jaxopt": ("https://jaxopt.github.io/stable/", None),
@@ -123,27 +143,63 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
+    "tqdm": ("https://tqdm.github.io/docs/", str(SOURCE_FOLDER_PATH / "tqdm.inv")),
 }
 
-# Specify custom types for autodoc_type_hints
+nitpick_ignore = [
+    ("py:class", "flax.core.scope.Scope"),
+    ("py:class", "flax.linen.module._Sentinel"),
+]
+
 # Quotes are required with UnionType for Python < 3.10
 try:
     # pylint: disable=unsupported-binary-operation
-    # pylint: disable=invalid-name
     OptionalArrayLike = ArrayLike | None
 except TypeError:
-    OptionalArrayLike = "ArrayLike | None"
+    OptionalArrayLike: TypeAlias = "ArrayLike | None"
 
-autodoc_custom_types: dict[Any, str] = {
-    cu.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",
+
+autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
+    coreax.util.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",  # no expand
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }
 
+# custom references for tqdm, which does not support intersphinx
+tqdm_refs: dict[str, dict[str, str]] = {
+    "py:class": {
+        "tqdm.tqdm": "tqdm/#tqdm-objects",
+    }
+}
 
-# Specify the typehints_formatter for custom types for autodoc_type_hints
-def typehints_formatter(annotation: Any, _: sphinx.config.Config) -> str | None:
-    """Properly replace custom type aliases."""
+
+def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> str | None:
+    """
+    Properly replace custom type aliases.
+
+    :param annotation: The type annotation to be processed.
+    :param config: The current configuration being used.
+    :returns: A string of reStructured text (e.g. :py:class:`something`) or None to fall
+        back to the default.
+
+    This function is called on each type annotation that Sphinx processes.
+    The following steps occur:
+
+    1. Check if the annotation is a TypeVar. If so, replace it with its "bound" type
+        for clarity in the docs. If not, then replace it with typing.Any.
+    2. Check whether a specific Sphinx string has been defined in autodoc_custom_types.
+        If so, return that.
+    3. If not, then return None, which uses thee default formatter.
+
+    See https://github.com/tox-dev/sphinx-autodoc-typehints?tab=readme-ov-file#options
+    for specification.
+    """
+    if isinstance(annotation, TypeVar):
+        if annotation.__bound__ is None:  # when a generic TypeVar has been used.
+            return default_format_annotation(Any, config)
+        return default_format_annotation(
+            annotation.__bound__, config
+        )  # get the annotation for the bound type
     return autodoc_custom_types.get(annotation)
 
 
@@ -152,51 +208,93 @@ def typehints_formatter(annotation: Any, _: sphinx.config.Config) -> str | None:
 
 # pylint: disable=invalid-name
 html_theme = "furo"
+html_logo = "../assets/Logo.svg"
+html_favicon = "../assets/LogoMark.svg"
 # pylint: enable=invalid-name
-html_static_path = ["_static"]
+
+html_css_files = [
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css",
+]
+
+html_theme_options = {
+    "sidebar_hide_name": True,
+    "source_repository": "https://github.com/gchq/coreax/",
+    "source_branch": "main",
+    "source_directory": "documentation/source/",
+    "footer_icons": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/gchq/coreax/",
+            "class": "fa-brands fa-github fa-2x",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/coreax/",
+            "class": "fa-brands fa-python fa-2x",
+        },
+        {
+            "name": "Changelog",
+            "url": "https://github.com/gchq/coreax/blob/main/CHANGELOG.md",
+            "class": "fa-solid fa-scroll fa-2x",
+        },
+    ],
+}
 
 
-# create local copies of example image files
-examples_source = REPO_FOLDER_PATH / EXAMPLES
-examples_dest = SOURCE_FOLDER_PATH / EXAMPLES
+def create_custom_inv_file(
+    module: ModuleType,
+    custom_refs: dict[str, dict[str, str]],
+    file_name: str | None = None,
+) -> None:
+    """
+    Create an objects.inv file containing custom routes.
 
-if examples_dest.exists():
-    # makes sure we don't keep files that should have been deleted
-    shutil.rmtree(examples_dest)
-examples_dest.mkdir()
+    :param module: The module to which this file will refer.
+    :param custom_refs: A nested mapping of references to be included. See the example
+        below.
+    :param file_name: The name of the created file (which is created in the same
+        directory as this file). If none, the name of the module is used (with the
+        suffix .inv).
 
+    For more info, see https://sphobjinv.readthedocs.io/en/latest/customfile.html
 
-def walk(source_folder: pathlib.Path) -> Generator:
-    """Generate the file names in a directory tree by walking the tree top-down."""
-    sub_directories = list(d for d in source_folder.iterdir() if d.is_dir())
-    files = list(f for f in source_folder.iterdir() if f.is_file())
-    yield source_folder, sub_directories, files
-    for s in sub_directories:
-        yield from walk(s)
+    :Example:
+        >>> import collections
+        >>> custom_refs = {
+        ...     "py:class:" : {
+        ...         "collections.Counter": "/path/to/collections.html#Counter",
+        ...     }
+        ... }
+        >>> create_custom_inv_file(collections, custom_refs)
 
+        This creates a file named "collections.inv" which contains a single reference
+        to :py:class:`collections.Counter` pointing at the **path**
+        "/path/to/collections.html#Counter".
+        Intersphinx will combine this path with the path passed to the standard mapping.
+    """
+    inventory = sphobjinv.Inventory()
+    inventory.project = module.__name__
+    inventory.version = getattr(module, "__version__", None)
 
-def copy_filtered_files(
-    source_folder: pathlib.Path,
-    destination_folder: pathlib.Path,
-    file_types: set[str] = frozenset(),
-):
-    r"""Copy the contents of a folder across if they have a particular type."""
-
-    for root, dirs, files in walk(source_folder):
-        for dr in dirs:
-            pathlib.Path(
-                str(root).replace(str(source_folder), str(destination_folder))
-            ).joinpath(dr.stem).mkdir()
-        for file in files:
-            if file.suffix in file_types:
-                source_filename = root.joinpath(file)
-                dest_filename = str(source_filename).replace(
-                    str(source_folder), str(destination_folder)
+    for domain_and_role, mapping in custom_refs.items():
+        domain, role = domain_and_role.split(":")
+        for name, uri in mapping.items():
+            inventory.objects.append(
+                sphobjinv.DataObjStr(
+                    name=name,
+                    domain=domain,
+                    role=role,
+                    priority=str(1),
+                    uri=uri,
+                    dispname="-",
                 )
-                print(source_filename)
-                print(dest_filename)
-                shutil.copyfile(str(source_filename), str(dest_filename))
+            )
 
+    raw_inventory_bytes = inventory.data_file(contract=True)
+    compressed_inventory_bytes = sphobjinv.compress(raw_inventory_bytes)
 
-# copy example files across
-copy_filtered_files(examples_source, examples_dest, file_types={".gif", ".png"})
+    if file_name is None:
+        file_name = f"{module.__name__}.inv"
+    sphobjinv.writebytes(SOURCE_FOLDER_PATH / file_name, compressed_inventory_bytes)

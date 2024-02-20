@@ -177,7 +177,6 @@ class KernelHerding(coreax.reduction.Coreset):
         from those already in the coreset.
 
         :param coreset_size: The size of the of coreset to generate
-        :return: Nothing
         """
         # Validate inputs
         coreset_size = coreax.validation.cast_as_type(
@@ -274,7 +273,8 @@ class KernelHerding(coreax.reduction.Coreset):
             iteration ``i``.
         :param x: :math:`n \times d` data matrix
         :param kernel_vectorised: Vectorised kernel computation function. This should be
-            the :meth:`compute` method of a :class:`~coreax.kernel.Kernel` object,
+            the :meth:`~coreax.kernel.Kernel.compute` method of a
+            :class:`~coreax.kernel.Kernel` object
         :param kernel_matrix_row_sum_mean: A :math:`1 \times n` array holding the mean
             over rows for the kernel Gram matrix
         :param unique: Flag for enforcing unique elements

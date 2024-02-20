@@ -150,7 +150,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
 
 def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
     r"""
-    Solve quadratic programs with :mod:`jaxopt`.
+    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
     Solves simplex weight problems of the form:
 
@@ -257,8 +257,4 @@ class SilentTQDM:
         return iter(self.iterable)
 
     def write(self, *_args, **_kwargs) -> None:
-        """
-        Do nothing instead of writing to output.
-
-        :return: Nothing
-        """
+        """Do nothing instead of writing to output."""
