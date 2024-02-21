@@ -530,8 +530,8 @@ class TestRandomSample(unittest.TestCase):
         )
 
         unique_reduction_indices = jnp.unique(random_sample.coreset_indices)
-        self.assertTrue(
-            len(unique_reduction_indices) < len(random_sample.coreset_indices)
+        self.assertLess(
+            len(unique_reduction_indices), len(random_sample.coreset_indices)
         )
 
 
