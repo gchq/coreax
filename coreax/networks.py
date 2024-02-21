@@ -27,10 +27,8 @@ from jax import numpy as jnp
 from jax.typing import ArrayLike
 
 import coreax.custom_types
-import coreax.validation
 
 
-# pylint: disable=too-few-public-methods
 class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
@@ -60,9 +58,6 @@ class ScoreNetwork(nn.Module):
         return x
 
 
-# pylint: enable=too-few-public-methods
-
-
 def create_train_state(
     random_key: coreax.custom_types.KeyArrayLike,
     module: Module,
@@ -80,33 +75,6 @@ def create_train_state(
     :param optimiser: optax optimiser, e.g. :func:`~optax.adam`
     :return: :class:`~flax.training.train_state.TrainState` object
     """
-    # Validate inputs
-    coreax.validation.validate_is_instance(
-        x=module, object_name="module", expected_type=Module
-    )
-    learning_rate = coreax.validation.cast_as_type(
-        x=learning_rate, object_name="learning_rate", type_caster=float
-    )
-    data_dimension = coreax.validation.cast_as_type(
-        x=data_dimension, object_name="data_dimension", type_caster=int
-    )
-    coreax.validation.validate_in_range(
-        x=learning_rate,
-        object_name="learning_rate",
-        strict_inequalities=False,
-        lower_bound=0.0,
-    )
-    coreax.validation.validate_in_range(
-        x=data_dimension,
-        object_name="data_dimension",
-        strict_inequalities=False,
-        lower_bound=0,
-    )
-    coreax.validation.validate_is_instance(
-        x=optimiser, object_name="optimiser", expected_type=Callable
-    )
-    coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
     return TrainState.create(apply_fn=module.apply, params=params, tx=tx)
