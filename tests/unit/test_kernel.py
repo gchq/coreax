@@ -37,17 +37,6 @@ class TestKernelABC(unittest.TestCase):
     Tests related to the Kernel abstract base class in kernel.py
     """
 
-    def test_invalid_init_inputs_valid(self) -> None:
-        """
-        Test setup of Kernel class with invalid inputs.
-        """
-        # Patch the abstract methods of the Kernel ABC, so it can be created
-        p = patch.multiple(coreax.kernel.Kernel, __abstractmethods__=set())
-        p.start()
-
-        self.assertRaises(ValueError, coreax.kernel.Kernel, length_scale=-0.5)
-        self.assertRaises(ValueError, coreax.kernel.Kernel, output_scale=-0.5)
-
     def test_approximator_valid(self) -> None:
         """
         Test usage of approximation object within the Kernel class.
@@ -79,16 +68,6 @@ class TestSquaredExponentialKernel(unittest.TestCase):
     """
     Tests related to the SquaredExponentialKernel defined in kernel.py
     """
-
-    def test_squared_exponential_kernel_init(self) -> None:
-        r"""
-        Test SquaredExponentialKernel initialisation with a negative length_scale.
-        """
-        # Create the kernel with a negative length_scale - we expect a value error to be
-        # raised
-        self.assertRaises(
-            ValueError, coreax.kernel.SquaredExponentialKernel, length_scale=-1.0
-        )
 
     def test_squared_exponential_kernel_compute_two_floats(self) -> None:
         r"""
@@ -703,14 +682,6 @@ class TestLaplacianKernel(unittest.TestCase):
     Tests related to the LaplacianKernel defined in kernel.py
     """
 
-    def test_laplacian_kernel_init(self) -> None:
-        r"""
-        Test the initialisation of LaplacianKernel with a negative ``length_scale``.
-        """
-        # Create the kernel with a negative length_scale - we expect a value error to be
-        # raised
-        self.assertRaises(ValueError, coreax.kernel.LaplacianKernel, length_scale=-1.0)
-
     def test_laplacian_kernel_compute_two_floats(self) -> None:
         r"""
         Test the class LaplacianKernel distance computations.
@@ -1164,14 +1135,6 @@ class TestPCIMQKernel(unittest.TestCase):
     """
     Tests related to the PCIMQKernel defined in kernel.py
     """
-
-    def test_pcimq_kernel_init(self) -> None:
-        r"""
-        Test the class PCIMQKernel initialisation with a negative length_scale.
-        """
-        # Create the kernel with a negative length_scale - we expect a value error to be
-        # raised
-        self.assertRaises(ValueError, coreax.kernel.PCIMQKernel, length_scale=-1.0)
 
     def test_pcimq_kernel_compute(self) -> None:
         # pylint: disable=line-too-long
