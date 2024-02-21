@@ -144,7 +144,7 @@ class TestUtil(unittest.TestCase):
         """
         Test jit_test calls the function in question twice when checking performance.
 
-        The function jit_test is used to asses the performance of other functions and
+        The function jit_test is used to assess the performance of other functions and
         methods in the codebase. It's inputs are a function (denoted fn) and inputs to
         provide to fn. This unit test checks that fn is called twice. In a practical
         usage of jit_test, the first call to fn performs the JIT compilation, and the
@@ -166,6 +166,29 @@ class TestUtil(unittest.TestCase):
         # Post compilation `time.sleep` will be ignored, with JAX compiling the
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_kwargs(x, a=2.0):
+            return _mock(x) + a
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_kwargs,
+            fn_args=(2,),
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_only_kwargs(a=2.0):
+            return _mock(a)
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_only_kwargs,
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
         self.assertLess(post_time, (pre_time - wait_time))
 
 

@@ -28,9 +28,7 @@ import coreax.kernel
 import coreax.util
 
 # Performance tests are split across several files for readability. As a result, ignore
-# the pylint warnings for duplicated-code. Additionally, we wrap the method/function of
-# interest in a lambda function to ensure no cached JIT code is re-used to make the test
-# fair. As a result, ignore the pylint warnings for unnecessary-lambda.
+# the pylint warnings for duplicated-code.
 # pylint: disable=duplicate-code
 
 
@@ -104,7 +102,6 @@ class TestCoreSubset(unittest.TestCase):
         self.assertLessEqual(p_value, self.threshold)
 
 
-# pylint: enable=unnecessary-lambda
 # pylint: enable=duplicate-code
 
 
