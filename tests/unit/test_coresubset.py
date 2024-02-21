@@ -332,7 +332,6 @@ class TestKernelHerding(unittest.TestCase):
         with (
             patch("coreax.kernel.Kernel") as mock_kernel,
             patch("coreax.data.DataReader") as mock_reader,
-            patch("coreax.validation.validate_is_instance") as _,
         ):
             # Mock some data
             mock_reader.pre_coreset_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])

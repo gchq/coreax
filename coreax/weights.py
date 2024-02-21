@@ -40,7 +40,6 @@ from jax.typing import ArrayLike
 
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 
 class WeightsOptimiser(ABC):
