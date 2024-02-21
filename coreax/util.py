@@ -215,9 +215,13 @@ def jit_test(
     timings are returned in a 2-tuple.
 
     :param fn: Function callable to test
+    :param fn_args: Arguments passed during the calls to the passed function
+    :param fn_kwargs: Keyword arguments passed during the calls to the passed function
+    :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function.
     :return: (First run time, Second run time)
     """
-    # Avoid W0102
+    # Avoid dangerous default values - Pylint W0102
     if fn_kwargs is None:
         fn_kwargs = {}
     if jit_kwargs is None:
