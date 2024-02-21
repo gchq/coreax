@@ -228,7 +228,7 @@ class TestApproximations(unittest.TestCase):
         approx_error_partial = np.sum(
             np.square(self.true_distances - approximate_kernel_mean_partial)
         )
-        self.assertTrue(approx_error_full <= approx_error_partial)
+        self.assertLessEqual(approx_error_full, approx_error_partial)
 
     def test_random_approximator_creation_invalid_types(self) -> None:
         """
@@ -371,7 +371,7 @@ class TestApproximations(unittest.TestCase):
         approx_error_partial = np.sum(
             np.square(self.true_distances - approximate_kernel_mean_partial)
         )
-        self.assertTrue(approx_error_full <= approx_error_partial)
+        self.assertLessEqual(approx_error_full, approx_error_partial)
 
     def test_annchor_approximator_creation_invalid_types(self) -> None:
         """
@@ -513,7 +513,7 @@ class TestApproximations(unittest.TestCase):
         approx_error_partial = np.sum(
             np.square(self.true_distances - approximate_kernel_mean_partial)
         )
-        self.assertTrue(approx_error_full <= approx_error_partial)
+        self.assertLessEqual(approx_error_full, approx_error_partial)
 
     def test_nystrom_approximator_creation_invalid_types(self) -> None:
         """

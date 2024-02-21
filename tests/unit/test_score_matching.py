@@ -695,10 +695,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Jax is row based, so transpose W_
         np.testing.assert_array_almost_equal(
-            weights_.T, state.params["Dense_0"]["kernel"], decimal=3
+            state.params["Dense_0"]["kernel"], weights_.T, decimal=3
         )
         np.testing.assert_array_almost_equal(
-            bias_, state.params["Dense_0"]["bias"], decimal=3
+            state.params["Dense_0"]["bias"], bias_, decimal=3
         )
 
     # pylint: enable=too-many-locals
