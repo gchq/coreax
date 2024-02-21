@@ -29,7 +29,6 @@ from jax.typing import ArrayLike
 import coreax.validation
 
 
-# pylint: disable=too-few-public-methods
 class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.
@@ -57,9 +56,6 @@ class ScoreNetwork(nn.Module):
         x = nn.softplus(x)
         x = nn.Dense(self.output_dim)(x)
         return x
-
-
-# pylint: enable=too-few-public-methods
 
 
 def create_train_state(
