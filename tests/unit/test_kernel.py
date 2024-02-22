@@ -277,7 +277,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     -(x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -309,7 +309,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_output = (
             -(x - y)
             / length_scale**2
-            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-(np.abs(x - y) ** 2) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -352,7 +352,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     * (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -400,7 +400,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -432,7 +432,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_output = (
             (x - y)
             / length_scale**2
-            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-(np.abs(x - y) ** 2) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -1110,9 +1110,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = (
-            -1
-            / (4 * length_scale**4)
-            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
+            -1 / (4 * length_scale**4) * np.exp(-np.abs(x - y) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -1367,9 +1365,9 @@ class TestPCIMQKernel(unittest.TestCase):
                     x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
                 )
                 denominator = (1 + dot_product) ** (3 / 2)
-                expected_output[
-                    x_idx, y_idx
-                ] = dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
+                expected_output[x_idx, y_idx] = (
+                    dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
+                )
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
