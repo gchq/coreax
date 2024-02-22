@@ -53,7 +53,7 @@ from coreax import (
     SteinKernel,
 )
 from coreax.kernel import PCIMQKernel, median_heuristic
-from coreax.weights import MMD as MMDWeightsOptimiser
+from coreax.weights import MMDWeightsOptimiser
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
