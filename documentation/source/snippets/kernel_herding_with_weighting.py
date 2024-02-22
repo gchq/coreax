@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from coreax import KernelHerding, SizeReduce, SquaredExponentialKernel
-from coreax.weights import MMD as MMDWeightsOptimiser
+from coreax.weights import MMDWeightsOptimiser
 
 # Define a kernel
 kernel = SquaredExponentialKernel(length_scale=length_scale)
