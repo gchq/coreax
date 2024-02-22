@@ -25,7 +25,7 @@ Kernel herding with weighting
 A coreset can be weighted, a so-called **weighted coreset**, to attribute importance to
 each point and to better approximate the underlying data distribution. Optimal weights
 can be determined by implementing a :class:`~coreax.weights.WeightsOptimiser`, such as
-the :class:`~coreax.weights.MMD` weights optimiser.
+the :class:`~coreax.weights.MMDWeightsOptimiser` weights optimiser.
 
 .. literalinclude:: snippets/kernel_herding_with_weighting.py
 
