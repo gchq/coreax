@@ -17,10 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Documentation has been rearranged
+- Renamed `coreax.weights.MMD` to `coreax.weights.MMDWeightsOptimiser` and added deprecation warning.
+- Renamed `coreax.weights.SBQ` to `coreax.weights.SBQWeightsOptimiser` and added deprecation warning.
 
 ### Removed
 
 ### Deprecated
+
+- All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
+- All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
 
 ## [0.1.0] - 2024-02-16
 
