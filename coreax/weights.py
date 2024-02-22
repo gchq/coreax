@@ -83,12 +83,30 @@ class WeightsOptimiser(ABC):
 
 
 class SBQ(WeightsOptimiser):
-    """
+    r"""
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
     References for this technique can be found in :cite:`huszar2016optimally`.
-    Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
+    Weights determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
+
+    The Bayesian quadrature estimate of the integral
+
+    .. math::
+
+        \int f(x) p(x) dx
+
+    can be viewed as a  weighted version of kernel herding. The Bayesian quadrature
+    weights, :math:`w_{BQ}`, are given by
+
+    .. math::
+
+        w_{BQ}^{(n)} = \sum_m z_m^T K_{mn}^{-1}
+
+    for a dataset :math:`x` with :math:`n` points, and coreset :math:`y` of :math:`m`
+    points. Here, for given kernel :math:`k`, we have :math:`z = \int k(x, y)p(x) dx`
+    and :math:`K = k(y, y)` in the above expression. See equation 20 in
+    :cite:`huszar2016optimally` for further detail.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
