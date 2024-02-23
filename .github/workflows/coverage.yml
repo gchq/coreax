@@ -1,6 +1,6 @@
 name: Code Coverage Assessment
 # Run in addition to unit tests without coverage assessment in case of weirdness around
-# parallelised code
+# parallelised code. Also regenerates coverage badge.
 
 on:
   push:
@@ -12,18 +12,79 @@ on:
 
 jobs:
   coverage:
+    env:
+      badge_path: .github/badges/coverage.json
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Set branch so that can commit to it later
+        ref: ${{ github.head_ref }}
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
         cache: pip
-        cache-dependency-path: requirements-test-3.11.txt
+        cache-dependency-path: requirements-dev-3.11.txt
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
     - name: Install test dependencies
-      run: pip install --no-dependencies -r requirements-test-3.11.txt
+      run: pip install --no-dependencies -r requirements-dev-3.11.txt
     - name: Assess coverage of unit tests
       run: pytest tests/unit --cov
+    - name: Extract total coverage percentage
+      id: cov
+      # Need to run this in own step to ensure coverage is evaluated and cast to string
+      run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+    - name: Choose badge colour
+      id: design
+      env:
+        percentage: ${{ steps.cov.outputs.percentage }}
+      run: |
+        echo "colour=${{
+          env.percentage >= 90 && 'green' ||
+          env.percentage >= 70 && 'yellow' ||
+          env.percentage >= 50 && 'orange' ||
+          'red'
+        }}" >> $GITHUB_OUTPUT
+    - name: Create badges directory if necessary
+      run: mkdir -p .github/badges
+    - name: Store hash of old badge config for comparison
+      id: old_file
+      run: |
+        if [ -f $badge_path ]; then
+          echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
+        else
+          echo "hash=" >> $GITHUB_OUTPUT
+        fi
+    - name: Generate badge config JSON
+      run: |
+        echo "coverage = ${{ steps.cov.outputs.percentage }}%"
+        echo "colour = ${{ steps.design.outputs.colour }}"
+        {
+          echo "{"
+          echo "  \"schemaVersion\": 1,"
+          echo "  \"label\": \"Coverage\","
+          echo "  \"message\": \"${{ steps.cov.outputs.percentage }}%\","
+          echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
+          echo "}"
+        } > $badge_path
+    - name: Store hash of new badge config for comparison
+      id: new_file
+      run: echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
+    - name: Commit badge config if changed
+      if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        destination_branch: ${{ github.head_ref }}
+      run: |
+        export message="chore: update coverage badge"
+        export sha=$( git rev-parse $destination_branch:$badge_path )
+        export content=$( base64 -i $badge_path )
+        gh api --method PUT /repos/:owner/:repo/contents/$badge_path \
+          --field message="$message" \
+          --field content="$content" \
+          --field branch="$destination_branch" \
+          --field sha="$sha"
