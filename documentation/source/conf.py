@@ -281,6 +281,7 @@ def create_custom_inv_file(
     for domain_and_role, mapping in custom_refs.items():
         domain, role = domain_and_role.split(":")
         for name, uri in mapping.items():
+            # pylint: disable=abstract-class-instantiated
             inventory.objects.append(
                 sphobjinv.DataObjStr(
                     name=name,
@@ -291,6 +292,7 @@ def create_custom_inv_file(
                     dispname="-",
                 )
             )
+            # pylint: enable=abstract-class-instantiated
 
     raw_inventory_bytes = inventory.data_file(contract=True)
     compressed_inventory_bytes = sphobjinv.compress(raw_inventory_bytes)
