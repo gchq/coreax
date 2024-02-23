@@ -1,43 +1,40 @@
 name: Feature Request
-description: Request a new feature in the codebase
-title: "[Feature]: "
-labels: ["enhancement", "new"]
+description: Suggest an idea for this project
+labels:
+  - new
+  - enhancement
+projects:
+  - gchq/16
 body:
   - type: markdown
     attributes:
-      value: |
-        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues). Below, * denotes a required field.
+      value: >
+        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues)
+        to see if an issue already exists for the feature you're requesting.
   - type: textarea
     attributes:
-      label: "Describe the feature that you would like.*"
-      description: "Provide a clear and concise description of what you want to happen."
-      placeholder: "I want..."
+      label: What's the new feature?
+      description: Describe the feature you're suggesting.
     validations:
       required: true
   - type: textarea
     attributes:
-      label: "Why is this feature valuable to you?*"
-      description: "Provide a description of the value this feature would provide."
-      placeholder: "So that I can..."
+      label: What value does this add?
+      description: Explain the benefits. Describe a specific use case if applicable.
     validations:
       required: true
   - type: textarea
     attributes:
-      label: "Describe alternatives you've considered"
-      description: "Let us know about other solutions you've tried or researched. Is there already software that has the behavior you're interested in? What is it, and how does it work?"
+      label: Is there an alternative you've considered?
+      description: >
+       Describe any alternatives if applicable. Is there existing software with the
+       feature you're suggesting? If yes, how does it work?
     validations:
       required: false
   - type: textarea
     attributes:
-      label: "Additional context"
-      description: "Is there anything else you can add about the proposal? You might want to link to related issues here, if you haven't already."
+      label: Additional context
+      description: >
+        Add further context here. Link any related issues here, if you haven't already.
     validations:
       required: false
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: "Code of Conduct*"
-      description: "By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/gchq/coreax/blob/main/CODE_OF_CONDUCT.md)"
-      options:
-        - label: "I agree to follow this project's Code of Conduct"
-          required: true
