@@ -82,9 +82,6 @@ import coreax.util
 import coreax.validation
 
 
-# Classes are written with the capability to expand in the future, so we ignore the
-# pylint warning relating to too-few-public-methods at this time
-# pylint: disable=too-few-public-methods
 class KernelMeanApproximator(ABC):
     """
     Base class for approximation methods to kernel row sum means.
@@ -410,6 +407,3 @@ def _anchor_body(
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
 
     return features
-
-
-# pylint: enable=too-few-public-methods

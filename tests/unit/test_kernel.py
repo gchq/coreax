@@ -655,7 +655,6 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
-    # pylint: disable=too-many-locals
     def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -694,8 +693,6 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
-
-    # pylint: enable=too-many-locals
 
 
 class TestLaplacianKernel(unittest.TestCase):
@@ -1398,7 +1395,6 @@ class TestPCIMQKernel(unittest.TestCase):
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
-    # pylint: disable=too-many-locals
     def test_scaled_pcimq_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -1443,8 +1439,6 @@ class TestPCIMQKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
-
-    # pylint: enable=too-many-locals
 
 
 class TestSteinKernel(unittest.TestCase):
@@ -1494,7 +1488,6 @@ class TestSteinKernel(unittest.TestCase):
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
 
-    # pylint: disable=too-many-locals
     def test_stein_kernel_element_computation(self) -> None:
         r"""
         Test computation of a single element of the SteinKernel.
@@ -1586,8 +1579,6 @@ class TestSteinKernel(unittest.TestCase):
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
-
-    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

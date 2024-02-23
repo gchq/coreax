@@ -37,9 +37,6 @@ import coreax.util
 import coreax.weights
 
 
-# Disable pylint warning for too-few-public-methods as we use this class only for
-# testing purposes
-# pylint: disable=too-few-public-methods
 class MockCreatedInstance:
     """
     Mock implementation of a reduction instance for testing purposes.
@@ -51,9 +48,6 @@ class MockCreatedInstance:
         Solve a reduction problem defined by input args.
         """
         return tuple(*args)
-
-
-# pylint: enable=too-few-public-methods
 
 
 class CoresetMock(coreax.reduction.Coreset):
