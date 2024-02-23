@@ -95,16 +95,19 @@ select = [
     "PL",  # pylint
     "W"    # pycodestyle [warning]
 ]
+
 ignore = [
-    "D203",
-    "D206",
-    "D212",
-    "D300",
-    "E111",
-    "E114",
-    "E117",
-    "W191",
-    "PLR6301"
+    # Incompatible with ruff format
+    "D206",   # indent-with-spaces
+    "E111",   # indentation-with-invalid-multiple
+    "E114",   # indentation-with-invalid-multiple-comment
+    "E117",   # over-indented
+    "W191",   # tab-indentation
+    # Incompatible with other pydocstyle rules.
+    "D203",   # one-blank-line-before-class
+    "D212",   # multi-line-summary-first-line
+    # Opinionated ignores
+    "PLR6301" # no-self-use (opinionated)
 ]
 ignore-init-module-imports = true
 
