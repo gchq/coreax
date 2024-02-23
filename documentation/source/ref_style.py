@@ -17,7 +17,6 @@ from pybtex.style.labels import BaseLabelStyle
 STYLE_NAME = "bib_key"
 
 
-# pylint: disable=too-few-public-methods
 class MyLabelStyle(BaseLabelStyle):
     """A label style which formats labels to use the original key in the .bib file."""
 
@@ -34,4 +33,3 @@ class _BibKeyStyle(UnsrtStyle):
 
 
 register_plugin("pybtex.style.formatting", STYLE_NAME, _BibKeyStyle)
-# pylint: enable=too-few-public-methods

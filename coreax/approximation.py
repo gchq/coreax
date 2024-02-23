@@ -106,11 +106,10 @@ class KernelMeanApproximator(ABC):
         num_kernel_points: int = 10_000,
     ):
         """Define approximator to the mean of the row sum of kernel distance matrix."""
-
         # Assign inputs
         self.kernel = kernel
         self.random_key = random_key
-        if num_kernel_points < 0:
+        if num_kernel_points <= 0:
             raise ValueError("num_kernel_points must be positive")
         self.num_kernel_points = num_kernel_points
 
@@ -149,9 +148,8 @@ class RandomApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on points selected randomly."""
-
         # Assign inputs
-        if num_train_points < 0:
+        if num_train_points <= 0:
             raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
@@ -173,6 +171,8 @@ class RandomApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
+        # Format input
+        data = jnp.atleast_2d(data)
 
         # Record dataset size
         num_data_points = len(data)
@@ -223,9 +223,8 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on ANNchor selected points."""
-
         # Assign inputs
-        if num_train_points < 0:
+        if num_train_points <= 0:
             raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
@@ -247,6 +246,8 @@ class ANNchorApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
+        # Format input
+        data = jnp.atleast_2d(data)
 
         # Record dataset size
         num_data_points = len(data)
@@ -317,10 +318,8 @@ class NystromApproximator(KernelMeanApproximator):
         :return: Approximation of the kernel matrix row sum divided by the number of
             data points in the dataset
         """
-        # Validate inputs
-        data = coreax.validation.cast_as_type(
-            x=data, object_name="data", type_caster=jnp.atleast_2d
-        )
+        # Format input
+        data = jnp.atleast_2d(data)
 
         # Record dataset size
         num_data_points = len(data)
