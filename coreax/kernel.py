@@ -295,7 +295,6 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -311,7 +310,6 @@ class Kernel(ABC):
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        # pylint: enable=line-too-long
         return grad(self.compute_elementwise, 1)(x, y)
 
     @jit

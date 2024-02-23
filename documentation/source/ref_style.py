@@ -33,4 +33,3 @@ class _BibKeyStyle(UnsrtStyle):
 
 
 register_plugin("pybtex.style.formatting", STYLE_NAME, _BibKeyStyle)
-# pylint: enable=too-few-public-methods
