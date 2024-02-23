@@ -51,19 +51,14 @@ jobs:
         }}" >> $GITHUB_OUTPUT
     - name: Create badges directory if necessary
       run: mkdir -p .github/badges
-    - name: Store copy of old badge config for comparison
+    - name: Store hash of old badge config for comparison
       id: old_file
       run: |
         if [ -f $badge_path ]; then
-          var=$( cat $badge_path )
+          echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
         else
-          var=""
+          echo "hash=" >> $GITHUB_OUTPUT
         fi
-        {
-          echo "file<<EOF"
-          echo $var
-          echo EOF
-        } >> $GITHUB_OUTPUT
     - name: Generate badge config JSON
       run: |
         echo "coverage = ${{ steps.cov.outputs.percentage }}%"
@@ -76,20 +71,14 @@ jobs:
           echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
           echo "}"
         } > $badge_path
-    - name: Store copy of new badge config for comparison
+    - name: Store hash of new badge config for comparison
       id: new_file
-      run: |
-        {
-          echo "file<<EOF"
-          echo $( cat $badge_path )
-          echo EOF
-        } >> $GITHUB_OUTPUT
+      run: echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
     - name: Commit badge config if changed
-      if: steps.old_file.outputs.file != steps.new_file.outputs.file
+      if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         destination_branch: ${{ github.head_ref }}
-        new_badge: ${{ steps.new_file.outputs.file }}
       run: |
         export message="chore: update coverage badge"
         export sha=$( git rev-parse $destination_branch:$badge_path )
