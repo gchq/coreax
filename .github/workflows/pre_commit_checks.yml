@@ -23,5 +23,7 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install dependencies
         run: pip install --no-dependencies -r requirements-dev-3.11.txt
+      - name: Remove fail_fast from Pre-commit config
+        run: sed -e "/fail_fast/d" .pre-commit-config.yaml > /tmp/.pre-commit-config-ci.yaml
       - name: Run Pre-commit checks
-        run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure
+        run: SKIP=no-commit-to-branch pre-commit run --all-files --show-diff-on-failure --config /tmp/.pre-commit-config-ci.yaml
