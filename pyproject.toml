@@ -103,7 +103,7 @@ ignore = [
     "E114",   # indentation-with-invalid-multiple-comment
     "E117",   # over-indented
     "W191",   # tab-indentation
-    # Incompatible with other pydocstyle rules.
+    # Incompatible with other pydocstyle rules
     "D203",   # one-blank-line-before-class
     "D212",   # multi-line-summary-first-line
     # Opinionated ignores

@@ -34,7 +34,7 @@ import coreax.kernel
 
 class TestKernelABC(unittest.TestCase):
     """
-    Tests related to the Kernel abstract base class in `kernel.py`.
+    Tests related to the Kernel abstract base class in ``kernel.py``.
     """
 
     def test_invalid_init_inputs_valid(self) -> None:
@@ -77,7 +77,7 @@ class TestKernelABC(unittest.TestCase):
 
 class TestSquaredExponentialKernel(unittest.TestCase):
     """
-    Tests related to the SquaredExponentialKernel defined in `kernel.py`.
+    Tests related to the SquaredExponentialKernel defined in ``kernel.py``.
     """
 
     def test_squared_exponential_kernel_init(self) -> None:
@@ -697,7 +697,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
 class TestLaplacianKernel(unittest.TestCase):
     """
-    Tests related to the LaplacianKernel defined in `kernel.py`.
+    Tests related to the LaplacianKernel defined in ``kernel.py``.
     """
 
     def test_laplacian_kernel_init(self) -> None:
@@ -1157,7 +1157,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
 class TestPCIMQKernel(unittest.TestCase):
     """
-    Tests related to the PCIMQKernel defined in `kernel.py`.
+    Tests related to the PCIMQKernel defined in ``kernel.py``.
     """
 
     def test_pcimq_kernel_init(self) -> None:
@@ -1443,7 +1443,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
 class TestSteinKernel(unittest.TestCase):
     """
-    Tests related to the SteinKernel defined in `kernel.py`.
+    Tests related to the SteinKernel defined in ``kernel.py``.
     """
 
     def test_stein_kernel_computation(self) -> None:
