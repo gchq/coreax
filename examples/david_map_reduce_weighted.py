@@ -61,6 +61,9 @@ from coreax import (
 from coreax.kernel import PCIMQKernel, median_heuristic
 from coreax.weights import MMDWeightsOptimiser
 
+MAX_8BIT = 255
+MIN_LENGTH_SCALE = 1e-6
+
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
 # pylint warnings raised that go against this approach
@@ -107,8 +110,8 @@ def main(
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
 
     print(f"Image dimensions: {image_data.shape}")
-    pre_coreset_data = np.column_stack(np.nonzero(image_data < 255))
-    pixel_values = image_data[image_data < 255]
+    pre_coreset_data = np.column_stack(np.nonzero(image_data < MAX_8BIT))
+    pixel_values = image_data[image_data < MAX_8BIT]
     pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
         np.float32
     )
@@ -126,7 +129,7 @@ def main(
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
-    if length_scale < 1e-6:
+    if length_scale < MIN_LENGTH_SCALE:
         length_scale = 100.0
 
     # Learn a score function via kernel density estimation (this is required for

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 r"""
-This module reduces a large dataset down to a coreset.
+Module provides tools for reducing a large dataset down to a coreset.
 
 To prepare data for reduction, convert it into a :class:`~jax.Array` and pass to an
 appropriate instance of :class:`~coreax.data.DataReader`. The class will convert the
@@ -310,7 +310,6 @@ class Coreset(ABC):
 C = TypeVar("C", bound=Coreset)
 
 
-# pylint: disable=too-few-public-methods
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -318,9 +317,6 @@ class ReductionStrategy(ABC):
     The strategy determines the size of the coreset, approximation strategies to aid
     memory management and other similar aspects that wrap around the type of coreset.
     """
-
-    def __init__(self):
-        """Initialise class."""
 
     @abstractmethod
     def reduce(self, coreset: Coreset) -> None:
@@ -555,6 +551,3 @@ class MapReduce(ReductionStrategy):
             assert input_indices is not None
             coreset.coreset_indices = input_indices[coreset.coreset_indices]
         return coreset
-
-
-# pylint: enable=too-few-public-methods

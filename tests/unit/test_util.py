@@ -151,7 +151,6 @@ class TestUtil(unittest.TestCase):
         second call assesses if a performance improvement has occurred given the
         JIT compilation.
         """
-
         wait_time = 2.0
 
         def _mock(x):

@@ -34,7 +34,7 @@ import coreax.kernel
 
 class TestKernelABC(unittest.TestCase):
     """
-    Tests related to the Kernel abstract base class in kernel.py
+    Tests related to the Kernel abstract base class in ``kernel.py``.
     """
 
     def test_invalid_init_inputs_valid(self) -> None:
@@ -77,7 +77,7 @@ class TestKernelABC(unittest.TestCase):
 
 class TestSquaredExponentialKernel(unittest.TestCase):
     """
-    Tests related to the SquaredExponentialKernel defined in kernel.py
+    Tests related to the SquaredExponentialKernel defined in ``kernel.py``.
     """
 
     def test_squared_exponential_kernel_init(self) -> None:
@@ -277,7 +277,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     -(x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -309,7 +309,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_output = (
             -(x - y)
             / length_scale**2
-            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-(np.abs(x - y) ** 2) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -352,7 +352,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     * (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -400,7 +400,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
                     (x[x_idx, :] - y[y_idx, :])
                     / length_scale**2
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2
+                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
                         / (2 * length_scale**2)
                     )
                 )
@@ -432,7 +432,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         expected_output = (
             (x - y)
             / length_scale**2
-            * np.exp(-np.abs(x - y) ** 2 / (2 * length_scale**2))
+            * np.exp(-(np.abs(x - y) ** 2) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -655,7 +655,6 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
-    # pylint: disable=too-many-locals
     def test_scaled_squared_exponential_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -695,12 +694,10 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    # pylint: enable=too-many-locals
-
 
 class TestLaplacianKernel(unittest.TestCase):
     """
-    Tests related to the LaplacianKernel defined in kernel.py
+    Tests related to the LaplacianKernel defined in ``kernel.py``.
     """
 
     def test_laplacian_kernel_init(self) -> None:
@@ -951,7 +948,7 @@ class TestLaplacianKernel(unittest.TestCase):
         .. math:
 
             - \text{output_scale}\operatorname{sgn}{(x - y)}{2length\_scale^{2}}e^{-\frac{\lVert x - y\rVert_1}{2 \text{length_scale}^2}}
-        """
+        """  # noqa: E501
         # pylint: enable=line-too-long
         # Define some data
         length_scale = 1 / np.pi
@@ -1110,9 +1107,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
         # Define expected output
         expected_output = (
-            -1
-            / (4 * length_scale**4)
-            * np.exp(-np.abs(x - y) / (2 * length_scale**2))
+            -1 / (4 * length_scale**4) * np.exp(-np.abs(x - y) / (2 * length_scale**2))
         )
 
         # Compute output using Kernel class
@@ -1162,7 +1157,7 @@ class TestLaplacianKernel(unittest.TestCase):
 
 class TestPCIMQKernel(unittest.TestCase):
     """
-    Tests related to the PCIMQKernel defined in kernel.py
+    Tests related to the PCIMQKernel defined in ``kernel.py``.
     """
 
     def test_pcimq_kernel_init(self) -> None:
@@ -1180,7 +1175,7 @@ class TestPCIMQKernel(unittest.TestCase):
 
         The PCIMQ kernel is defined as
         :math:`k(x,y) = \frac{1.0}{1.0 / \sqrt(1.0 + ((x - y) / \text{length_scale}) ** 2 / 2.0)}`.
-        """
+        """  # noqa: E501
         # pylint: enable=line-too-long
         # Define input data
         length_scale = np.e
@@ -1367,9 +1362,9 @@ class TestPCIMQKernel(unittest.TestCase):
                     x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
                 )
                 denominator = (1 + dot_product) ** (3 / 2)
-                expected_output[
-                    x_idx, y_idx
-                ] = dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
+                expected_output[x_idx, y_idx] = (
+                    dimension / denominator - 3 * dot_product / denominator ** (5 / 3)
+                )
 
         # Compute output using Kernel class
         kernel = coreax.kernel.PCIMQKernel(length_scale=length_scale)
@@ -1400,7 +1395,6 @@ class TestPCIMQKernel(unittest.TestCase):
 
         self.assertAlmostEqual(output, expected_output, places=6)
 
-    # pylint: disable=too-many-locals
     def test_scaled_pcimq_div_x_grad_y(self) -> None:
         """
         Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``; scaled.
@@ -1446,12 +1440,10 @@ class TestPCIMQKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    # pylint: enable=too-many-locals
-
 
 class TestSteinKernel(unittest.TestCase):
     """
-    Tests related to the SteinKernel defined in kernel.py
+    Tests related to the SteinKernel defined in ``kernel.py``.
     """
 
     def test_stein_kernel_computation(self) -> None:
@@ -1496,7 +1488,6 @@ class TestSteinKernel(unittest.TestCase):
         # Check output sizes match the expected
         self.assertEqual(output.shape, expected_size)
 
-    # pylint: disable=too-many-locals
     def test_stein_kernel_element_computation(self) -> None:
         r"""
         Test computation of a single element of the SteinKernel.
@@ -1519,7 +1510,7 @@ class TestSteinKernel(unittest.TestCase):
 
         def k_x_y(x_input, y_input):
             r"""
-            The Stein kernel.
+            Compute Stein kernel.
 
             Throughout this docstring, x_input and y_input are simply referred to as x
             and y.
@@ -1528,12 +1519,12 @@ class TestSteinKernel(unittest.TestCase):
             \rvert^2)^{-1/2}`. :math:`\mathbb{P}` is :math:`\mathcal{N}(0, \mathbf{I})`
             with :math:`\nabla \log f_X(\mathbf{x}) = -\mathbf{x}`.
 
-            In the code: l, m and r refer to shared denominators in the Stein kernel
+            In the code: n, m and r refer to shared denominators in the Stein kernel
             equation (rather than divergence, x_, y_ and z in the main code function).
 
-            :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = l + m + r`.
+            :math:`k_\mathbb{P}(\mathbf{x}, \mathbf{y}) = n + m + r`.
 
-            :math:`l := -\frac{3 \lvert \mathbf{x} - \mathbf{y} \rvert^2}{(1 + \lvert
+            :math:`n := -\frac{3 \lvert \mathbf{x} - \mathbf{y} \rvert^2}{(1 + \lvert
             \mathbf{x} - \mathbf{y} \rvert^2)^{5/2}}`.
 
             :math:`m := 2\beta\left[ \frac{d + [\mathbf{y} -
@@ -1548,7 +1539,7 @@ class TestSteinKernel(unittest.TestCase):
             :return: kernel evaluated at x, y
             """
             norm_sq = np.linalg.norm(x_input - y_input) ** 2
-            l = -3 * norm_sq / (1 + norm_sq) ** 2.5
+            n = -3 * norm_sq / (1 + norm_sq) ** 2.5
             m = (
                 2
                 * beta
@@ -1565,7 +1556,7 @@ class TestSteinKernel(unittest.TestCase):
                 np.dot(score_function(x_input), score_function(y_input))
                 / (1 + norm_sq) ** 0.5
             )
-            return l + m + r
+            return n + m + r
 
         # Setup data
         generator = np.random.default_rng(1_989)
@@ -1588,8 +1579,6 @@ class TestSteinKernel(unittest.TestCase):
 
         # Check output matches the expected
         np.testing.assert_array_almost_equal(output, expected_output)
-
-    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

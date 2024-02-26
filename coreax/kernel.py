@@ -295,22 +295,21 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
         The gradient (Jacobian) of the kernel function is computed using
         :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_y`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this method
+        for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`.
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        # pylint: enable=line-too-long
         return grad(self.compute_elementwise, 1)(x, y)
 
     @jit

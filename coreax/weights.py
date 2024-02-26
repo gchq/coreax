@@ -78,7 +78,8 @@ class WeightsOptimiser(ABC):
         """
         warnings.warn(
             "solve_approximate() not yet implemented. "
-            "Calculating exact solution via solve()"
+            "Calculating exact solution via solve()",
+            stacklevel=1,
         )
         return self.solve(x, y)
 
@@ -205,7 +206,8 @@ class MMDWeightsOptimiser(WeightsOptimiser):
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
 class SBQ(SBQWeightsOptimiser):
-    """Deprecated reference to :class:`~coreax.weights.SBQWeightsOptimiser`.
+    """
+    Deprecated reference to :class:`~coreax.weights.SBQWeightsOptimiser`.
 
     Will be removed in version 0.3.0
     """
@@ -213,7 +215,8 @@ class SBQ(SBQWeightsOptimiser):
 
 @deprecated("Renamed to `MMDWeightsOptimiser`; will be removed in version 0.3.0")
 class MMD(MMDWeightsOptimiser):
-    """Deprecated reference to :class:`~coreax.weights.MMDWeightsOptimiser`.
+    """
+    Deprecated reference to :class:`~coreax.weights.MMDWeightsOptimiser`.
 
     Will be removed in version 0.3.0
     """
