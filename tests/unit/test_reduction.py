@@ -37,9 +37,6 @@ import coreax.util
 import coreax.weights
 
 
-# Disable pylint warning for too-few-public-methods as we use this class only for
-# testing purposes
-# pylint: disable=too-few-public-methods
 class MockCreatedInstance:
     """
     Mock implementation of a reduction instance for testing purposes.
@@ -51,9 +48,6 @@ class MockCreatedInstance:
         Solve a reduction problem defined by input args.
         """
         return tuple(*args)
-
-
-# pylint: enable=too-few-public-methods
 
 
 class CoresetMock(coreax.reduction.Coreset):
@@ -345,7 +339,8 @@ class TestMapReduce(unittest.TestCase):
         Test map reduction with :class:`~coreax.coresubset.RandomSample` and big leaves.
 
         This test sets leaf_size = num_data_points and checks the recursive function
-        is called only once."""
+        is called only once.
+        """
         num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(num_data_points)])
@@ -380,7 +375,7 @@ class TestMapReduce(unittest.TestCase):
         # pylint: enable=protected-access
 
     def test_reduce_recursive_unset_coreset_indices(self):
-        """Test MapReduce with a Coreset that does not have ``coreset_indices``"""
+        """Test MapReduce with a Coreset that does not have ``coreset_indices``."""
         num_data_points = 100
         orig_data = coreax.data.ArrayData.load(
             jnp.array([[i, 2 * i] for i in range(num_data_points)])

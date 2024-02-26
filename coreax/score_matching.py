@@ -40,9 +40,8 @@ import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import Array, jit, jvp
+from jax import Array, jit, jvp, random, tree_util, vmap
 from jax import numpy as jnp
-from jax import random, tree_util, vmap
 from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
 from tqdm import tqdm
@@ -82,6 +81,7 @@ class ScoreMatching(ABC):
         """
 
 
+# pylint: disable=too-many-instance-attributes
 class SlicedScoreMatching(ScoreMatching):
     r"""
     Implementation of slice score matching, defined in :cite:`ssm`.
@@ -143,7 +143,8 @@ class SlicedScoreMatching(ScoreMatching):
 
         return children, aux_data
 
-    def __init__(
+    # pylint: disable=too-many-arguments
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         random_key: coreax.validation.KeyArrayLike,
         random_generator: Callable,
@@ -258,6 +259,8 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Initialise parent
         super().__init__()
+
+    # pylint: enable=too-many-arguments
 
     def tree_flatten(self):
         """
@@ -494,7 +497,6 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
-    # pylint: disable=too-many-locals
     def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a sliced score matching function from Song et al.'s paper :cite:`ssm`.
@@ -555,7 +557,8 @@ class SlicedScoreMatching(ScoreMatching):
         # Return the learned score function, which is a callable
         return lambda x_: state.apply_fn({"params": state.params}, x_)
 
-    # pylint: enable=too-many-locals
+
+# pylint: enable=too-many-instance-attributes
 
 
 class KernelDensityMatching(ScoreMatching):

@@ -50,7 +50,7 @@ class SimpleNetwork(nn.Module):
 
 class TestKernelDensityMatching(unittest.TestCase):
     """
-    Tests related to the class in score_matching.py
+    Tests related to the class in ``score_matching.py``.
     """
 
     def test_tree_flatten(self) -> None:
@@ -143,7 +143,6 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
-    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -178,9 +177,6 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
-    # pylint: enable=too-many-locals
-
-    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -226,9 +222,6 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
-    # pylint: enable=too-many-locals
-
-    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
@@ -285,8 +278,6 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
-
-    # pylint: enable=too-many-locals
 
 
 class TestSlicedScoreMatching(unittest.TestCase):
@@ -507,7 +498,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(y: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param y: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``y``
@@ -566,7 +557,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(x_: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``x_``
@@ -610,7 +601,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def score_function(x_: ArrayLike) -> ArrayLike:
             """
-            Basic score function, implicitly multivariate vector valued.
+            Score function, implicitly multivariate vector valued.
 
             :param x_: point at which to evaluate the score function
             :return: score function (gradient of log density) evaluated at ``x_``
@@ -639,7 +630,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    # pylint: disable=too-many-locals
     def test_train_step(self) -> None:
         """
         Test the basic training step.
@@ -701,8 +691,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
             state.params["Dense_0"]["bias"], bias_, decimal=3
         )
 
-    # pylint: enable=too-many-locals
-
     def test_univariate_gaussian_score(self):
         """
         Test a simple univariate Gaussian with a known score function.
@@ -734,7 +722,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
-    # pylint: disable=too-many-locals
     def test_multivariate_gaussian_score(self) -> None:
         """
         Test a simple multivariate Gaussian with a known score function.
@@ -769,9 +756,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
-    # pylint: enable=too-many-locals
-
-    # pylint: disable=too-many-locals
     def test_univariate_gmm_score(self):
         """
         Test a univariate Gaussian mixture model with a known score function.
@@ -817,9 +801,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
-    # pylint: enable=too-many-locals
-
-    # pylint: disable=too-many-locals
     def test_multivariate_gmm_score(self):
         """
         Test a multivariate Gaussian mixture model with a known score function.
@@ -876,8 +857,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
-
-    # pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

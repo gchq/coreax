@@ -47,7 +47,7 @@ class TestKernel(unittest.TestCase):
 
 class TestSquaredExponentialKernel(TestKernel):
     """
-    Tests related to the SquaredExponentialKernel defined in kernel.py
+    Tests related to the SquaredExponentialKernel defined in ``kernel.py``.
     """
 
     def test_compute(self) -> None:
@@ -179,7 +179,7 @@ class TestSquaredExponentialKernel(TestKernel):
 
 class TestLaplacianKernel(TestKernel):
     """
-    Tests related to the LaplacianKernel defined in kernel.py
+    Tests related to the LaplacianKernel defined in ``kernel.py``.
     """
 
     def test_compute(self) -> None:
@@ -311,7 +311,7 @@ class TestLaplacianKernel(TestKernel):
 
 class TestPCIMQKernel(TestKernel):
     """
-    Tests related to the PCIMQKernel defined in kernel.py
+    Tests related to the PCIMQKernel defined in ``kernel.py``.
     """
 
     def test_compute(self) -> None:
@@ -443,7 +443,7 @@ class TestPCIMQKernel(TestKernel):
 
 class TestSteinKernel(TestKernel):
     """
-    Tests related to the SteinKernel defined in kernel.py
+    Tests related to the SteinKernel defined in ``kernel.py``.
     """
 
     def test_compute(self) -> None:

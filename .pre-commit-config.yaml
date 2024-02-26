@@ -1,3 +1,4 @@
+fail_fast: true
 default_install_hook_types:
   - pre-commit
   - pre-merge-commit
@@ -61,34 +62,19 @@ repos:
       # No tabs, only spaces
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.2
     hooks:
-      # Place isort options in pyproject.toml
-      - id: isort
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      # Change to black-jupyter if using Jupyter notebooks
-      - id: black
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
   - repo: https://github.com/regebro/pyroma
     rev: "4.2"
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: "6.3.0"
-    hooks:
-      # Check PEP-257 and other docstring guidance
-      - id: pydocstyle
-        additional_dependencies:
-          - tomli
-        exclude: |
-          (?x)^(
-            tests|
-            documentation/source/conf.py|
-            documentation/source/snippets
-          )
   - repo: https://github.com/streetsidesoftware/cspell-cli
     rev: v8.3.0
     hooks:

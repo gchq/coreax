@@ -672,8 +672,9 @@ class TestMMD(unittest.TestCase):
 
     def test_mmd_weight_block_equals_mmd(self) -> None:
         r"""
-        Test mmd_weight_block equals mmd when weights are uniform: :math:`w = 1/n`,
-        :math:`w_y = 1/m`.
+        Test mmd_weight_block equals mmd when weights are uniform.
+
+        :math:`w = 1/n`, :math:`w_y = 1/m`.
         """
         # Define a kernel object
         length_scale = 1.0
