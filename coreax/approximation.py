@@ -77,9 +77,13 @@ import jax.numpy as jnp
 from jax import Array, jit, lax, random
 from jax.typing import ArrayLike
 
+# pylint: disable=fixme
+# TODO: Code breaks when this import is removed - resolve as part of #314
 import coreax.kernel
 import coreax.util
 import coreax.validation
+
+# pylint: enable=fixme
 
 
 # Classes are written with the capability to expand in the future, so we ignore the
@@ -93,6 +97,12 @@ class KernelMeanApproximator(ABC):
     and all other points can be time-consuming. Instead, this property can be
     approximated by various methods. :class:`KernelMeanApproximator` is the base class
     for implementing these approximation methods.
+
+    .. note::
+
+        The parameter `num_kernel_points` can take any non-negative value, however,
+        setting this to 0 will simply produce a kernel mean approximation of zero at all
+        points.
 
     :param random_key: Key for random number generation
     :param kernel: A :class:`~coreax.kernel.Kernel` object
@@ -109,8 +119,6 @@ class KernelMeanApproximator(ABC):
         # Assign inputs
         self.kernel = kernel
         self.random_key = random_key
-        if num_kernel_points <= 0:
-            raise ValueError("num_kernel_points must be positive")
         self.num_kernel_points = num_kernel_points
 
     @abstractmethod
@@ -148,9 +156,6 @@ class RandomApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on points selected randomly."""
-        # Assign inputs
-        if num_train_points <= 0:
-            raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -179,20 +184,48 @@ class RandomApproximator(KernelMeanApproximator):
 
         # Randomly select points for kernel regression
         key, subkey = random.split(self.random_key)
-        features_idx = random.choice(
-            subkey, num_data_points, (self.num_kernel_points,), replace=False
-        )
+        try:
+            features_idx = random.choice(
+                subkey, num_data_points, (self.num_kernel_points,), replace=False
+            )
+        except TypeError as exception:
+            if self.num_kernel_points < 0:
+                raise ValueError("num_kernel_points must be positive") from exception
+            raise exception
+        except ValueError as exception:
+            if self.num_kernel_points > num_data_points:
+                raise ValueError(
+                    "num_kernel_points must be no larger than the number of points in "
+                    "the provided data"
+                ) from exception
+            raise exception
+
+        # Compute feature matrix
         features = self.kernel.compute(data, data[features_idx])
 
-        # Select training points
-        train_idx = random.choice(
-            key, num_data_points, (self.num_train_points,), replace=False
-        )
+        # Randomly select training points
+        try:
+            train_idx = random.choice(
+                key, num_data_points, (self.num_train_points,), replace=False
+            )
+        except TypeError as exception:
+            if self.num_train_points < 0:
+                raise ValueError("num_train_points must be positive") from exception
+            raise exception
+        except ValueError as exception:
+            if self.num_train_points > num_data_points:
+                raise ValueError(
+                    "num_train_points must be no larger than the number of points in "
+                    "the provided data"
+                ) from exception
+            raise exception
+
+        # Isolate targets for regression problem
         target = (
             self.kernel.compute(data[train_idx], data).sum(axis=1) / num_data_points
         )
 
-        # Solve regression problem.
+        # Solve regression problem
         params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
 
         return features @ params
@@ -223,9 +256,6 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_train_points: int = 10_000,
     ):
         """Approximate kernel row mean by regression on ANNchor selected points."""
-        # Assign inputs
-        if num_train_points <= 0:
-            raise ValueError("num_train_points must be positive")
         self.num_train_points = num_train_points
 
         # Initialise parent
@@ -253,15 +283,46 @@ class ANNchorApproximator(KernelMeanApproximator):
         num_data_points = len(data)
 
         # Select point for kernel regression using ANNchor construction
-        features = jnp.zeros((num_data_points, self.num_kernel_points))
+        try:
+            features = jnp.zeros((num_data_points, self.num_kernel_points))
+        except TypeError as exception:
+            if self.num_kernel_points <= 0:
+                raise ValueError("num_kernel_points must be positive") from exception
+            raise exception
 
-        features = features.at[:, 0].set(self.kernel.compute(data, data[0])[:, 0])
-        body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
-        features = lax.fori_loop(1, self.num_kernel_points, body, features)
+        # Compute feature matrix
+        try:
+            features = features.at[:, 0].set(self.kernel.compute(data, data[0])[:, 0])
+            body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
+            features = lax.fori_loop(1, self.num_kernel_points, body, features)
+        except IndexError as exception:
+            if self.num_kernel_points <= 0:
+                raise ValueError(
+                    "num_kernel_points must be positive and non-zero"
+                ) from exception
+            raise exception
 
-        train_idx = random.choice(
-            self.random_key, num_data_points, (self.num_train_points,), replace=False
-        )
+        # Randomly select training points
+        try:
+            train_idx = random.choice(
+                self.random_key,
+                num_data_points,
+                (self.num_train_points,),
+                replace=False,
+            )
+        except TypeError as exception:
+            if self.num_train_points < 0:
+                raise ValueError("num_train_points must be positive") from exception
+            raise exception
+        except ValueError as exception:
+            if self.num_train_points > num_data_points:
+                raise ValueError(
+                    "num_train_points must be no larger than the number of points in "
+                    "the provided data"
+                ) from exception
+            raise exception
+
+        # Isolate targets for regression problem
         target = (
             self.kernel.compute(data[train_idx], data).sum(axis=1) / num_data_points
         )
@@ -325,9 +386,24 @@ class NystromApproximator(KernelMeanApproximator):
         num_data_points = len(data)
 
         # Randomly select points for kernel regression
-        sample_points = random.choice(
-            self.random_key, num_data_points, (self.num_kernel_points,)
-        )
+        try:
+            sample_points = random.choice(
+                self.random_key,
+                num_data_points,
+                (self.num_kernel_points,),
+                replace=False,
+            )
+        except TypeError as exception:
+            if self.num_kernel_points <= 0:
+                raise ValueError("num_kernel_points must be positive") from exception
+            raise exception
+        except ValueError as exception:
+            if self.num_kernel_points > num_data_points:
+                raise ValueError(
+                    "num_kernel_points must be no larger than the number of points in "
+                    "the provided data"
+                ) from exception
+            raise exception
 
         # Solve for kernel distances
         kernel_mn = self.kernel.compute(data[sample_points], data)
@@ -354,13 +430,9 @@ def _anchor_body(
         :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
     :return: Updated loop variables ``features``
     """
-    # Validate inputs
-    features = coreax.validation.cast_as_type(
-        x=features, object_name="features", type_caster=jnp.atleast_2d
-    )
-    data = coreax.validation.cast_as_type(
-        x=data, object_name="data", type_caster=jnp.atleast_2d
-    )
+    # Format inputs
+    features = jnp.atleast_2d(features)
+    data = jnp.atleast_2d(data)
 
     max_entry = features.max(axis=1).argmin()
     features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
