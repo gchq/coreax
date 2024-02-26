@@ -50,7 +50,7 @@ class SimpleNetwork(nn.Module):
 
 class TestKernelDensityMatching(unittest.TestCase):
     """
-    Tests related to the class in `score_matching.py`.
+    Tests related to the class in ``score_matching.py``.
     """
 
     def test_tree_flatten(self) -> None:
