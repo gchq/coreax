@@ -13,6 +13,7 @@ autodiff
 autodoc
 automodule
 autosectionlabel
+autoupdate
 bibfiles
 bibtex
 bmatrix
