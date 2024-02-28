@@ -22,7 +22,7 @@ jobs:
       - name: Upgrade Pip
         run: python -m pip install --upgrade pip
       - name: Install dependencies
-        run: pip install coreax[dev]
+        run: pip install -e .[dev]
       - name: Remove fail_fast from Pre-commit config
         run: sed -e "/fail_fast/d" .pre-commit-config.yaml > /tmp/.pre-commit-config-ci.yaml
       - name: Run Pre-commit checks
