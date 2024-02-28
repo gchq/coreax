@@ -80,6 +80,12 @@ Optionally, install additional dependencies required to run the examples:
 $ python3 -m pip install coreax[test]
 ```
 
+known vulnerabilities. To install Coreax:
+```shell
+$ python3 -m pip install --no-dependencies -r requirements.txt
+```
+
+To run the examples, use `requirements-test.txt` instead.
 
 # Release cycle
 We anticipate two release types: feature releases and security releases. Security
