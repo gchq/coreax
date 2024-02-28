@@ -18,11 +18,11 @@ jobs:
         with:
           python-version: 3.11
           cache: pip
-          cache-dependency-path: requirements-dev-3.11.txt
+          cache-dependency-path: pyproject.toml
       - name: Upgrade Pip
         run: python -m pip install --upgrade pip
       - name: Install dependencies
-        run: pip install --no-dependencies -r requirements-dev-3.11.txt
+        run: pip install coreax[dev]
       - name: Remove fail_fast from Pre-commit config
         run: sed -e "/fail_fast/d" .pre-commit-config.yaml > /tmp/.pre-commit-config-ci.yaml
       - name: Run Pre-commit checks
