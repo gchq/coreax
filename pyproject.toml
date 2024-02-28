@@ -47,17 +47,13 @@ test = [
 ]
 # Compile documentation
 doc = [
-    "flax",
     "furo",
-    "jax",
     "jaxlib",
-    "scikit-learn",
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-toolbox",
     "sphinxcontrib-bibtex",
     "sphobjinv",
-    "tqdm",
 ]
 # All tools for a developer including those for running pylint
 dev = [
@@ -65,7 +61,7 @@ dev = [
     "pre-commit",
     "pylint",
     "pyroma",
-    "ruff"
+    "ruff",
 ]
 
 [project.urls]
