@@ -48,7 +48,6 @@ test = [
 # Compile documentation
 doc = [
     "furo",
-    "jaxlib",
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-toolbox",
