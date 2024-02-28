@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# These match the suffices on the various requirements-*.txt files
 # Run unit tests with coverage assessment
 test = [
     "imageio",
@@ -93,7 +94,7 @@ select = [
     "I",   # isort
     "N",   # pep8-naming
     "PL",  # pylint
-    "W"    # pycodestyle [warning]
+    "W",   # pycodestyle [warning]
 ]
 
 ignore = [
@@ -107,7 +108,7 @@ ignore = [
     "D203",   # one-blank-line-before-class
     "D212",   # multi-line-summary-first-line
     # Opinionated ignores
-    "PLR6301" # no-self-use (opinionated)
+    "PLR6301", # no-self-use (opinionated)
 ]
 ignore-init-module-imports = true
 
