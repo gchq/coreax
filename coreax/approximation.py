@@ -191,19 +191,18 @@ class RandomApproximator(KernelMeanApproximator):
         except TypeError as exception:
             if self.num_kernel_points < 0:
                 raise ValueError("num_kernel_points must be positive") from exception
-            raise exception
+            raise
         except ValueError as exception:
             if self.num_kernel_points > num_data_points:
                 raise ValueError(
                     "num_kernel_points must be no larger than the number of points in "
                     "the provided data"
                 ) from exception
-            raise exception
+            raise
 
         # Compute feature matrix
         features = self.kernel.compute(data, data[features_idx])
 
-        # Randomly select training points
         try:
             train_idx = random.choice(
                 key, num_data_points, (self.num_train_points,), replace=False
@@ -211,14 +210,14 @@ class RandomApproximator(KernelMeanApproximator):
         except TypeError as exception:
             if self.num_train_points < 0:
                 raise ValueError("num_train_points must be positive") from exception
-            raise exception
+            raise
         except ValueError as exception:
             if self.num_train_points > num_data_points:
                 raise ValueError(
                     "num_train_points must be no larger than the number of points in "
                     "the provided data"
                 ) from exception
-            raise exception
+            raise
 
         # Isolate targets for regression problem
         target = (
@@ -288,19 +287,19 @@ class ANNchorApproximator(KernelMeanApproximator):
         except TypeError as exception:
             if self.num_kernel_points <= 0:
                 raise ValueError("num_kernel_points must be positive") from exception
-            raise exception
+            raise
 
         # Compute feature matrix
         try:
             features = features.at[:, 0].set(self.kernel.compute(data, data[0])[:, 0])
-            body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
-            features = lax.fori_loop(1, self.num_kernel_points, body, features)
         except IndexError as exception:
             if self.num_kernel_points <= 0:
                 raise ValueError(
                     "num_kernel_points must be positive and non-zero"
                 ) from exception
-            raise exception
+            raise
+        body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
+        features = lax.fori_loop(1, self.num_kernel_points, body, features)
 
         # Randomly select training points
         try:
@@ -313,14 +312,14 @@ class ANNchorApproximator(KernelMeanApproximator):
         except TypeError as exception:
             if self.num_train_points < 0:
                 raise ValueError("num_train_points must be positive") from exception
-            raise exception
+            raise
         except ValueError as exception:
             if self.num_train_points > num_data_points:
                 raise ValueError(
                     "num_train_points must be no larger than the number of points in "
                     "the provided data"
                 ) from exception
-            raise exception
+            raise
 
         # Isolate targets for regression problem
         target = (
@@ -396,14 +395,14 @@ class NystromApproximator(KernelMeanApproximator):
         except TypeError as exception:
             if self.num_kernel_points <= 0:
                 raise ValueError("num_kernel_points must be positive") from exception
-            raise exception
+            raise
         except ValueError as exception:
             if self.num_kernel_points > num_data_points:
                 raise ValueError(
                     "num_kernel_points must be no larger than the number of points in "
                     "the provided data"
                 ) from exception
-            raise exception
+            raise
 
         # Solve for kernel distances
         kernel_mn = self.kernel.compute(data[sample_points], data)

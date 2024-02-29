@@ -93,8 +93,9 @@ source = ["coreax"]
 [tool.coverage.report]
 show_missing = true
 sort = "Cover"
-exclude_lines = [
+exclude_also = [
     "pass",
     "raise RuntimeError",
     "if TYPE_CHECKING:",
+    "^raise$",
 ]
