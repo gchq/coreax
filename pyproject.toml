@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# These match the suffices on the various requirements-*.txt files
+# These match the suffixes on the various requirements-*.txt files
 # Run unit tests with coverage assessment
 test = [
     "imageio",
