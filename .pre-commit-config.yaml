@@ -49,18 +49,6 @@ repos:
           - text
         exclude:
           .pylintrc
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      # Prevent common mistakes of `assert mck.not_called()`,
-      # `assert mck.called_once_with(...)` and `mck.assert_called`
-      - id: python-check-mock-methods
-      # Check for the `eval()` built-in function - necessary for security
-      - id: python-no-eval
-      # Check for the deprecated `.warn()` method of Python loggers
-      - id: python-no-log-warn
-      # Enforce that type annotations are used instead of type comments
-      - id: python-use-type-annotations
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
     rev: 3.0.0
     hooks:
@@ -73,11 +61,41 @@ repos:
       # No tabs, only spaces
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v8.3.0
+    hooks:
+      # Run a spellcheck (words pulled from cspell.config.yaml)
+      - id: cspell
+        exclude: |
+          (?x)^(
+            .gitignore|
+            .*.properties|
+            requirements(-.*)?.txt|
+            documentation/make.bat|
+            documentation/Makefile|
+            documentation/assets/Logo.svg|
+            documentation/assets/LogoMark.svg|
+            .pylintrc
+          )$
+
+  # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
     rev: "4.2"
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      # Prevent common mistakes of `assert mck.not_called()`,
+      # `assert mck.called_once_with(...)` and `mck.assert_called`
+      - id: python-check-mock-methods
+      # Check for the `eval()` built-in function - necessary for security
+      - id: python-no-eval
+      # Check for the deprecated `.warn()` method of Python loggers
+      - id: python-no-log-warn
+      # Enforce that type annotations are used instead of type comments
+      - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.2.2
     hooks:
@@ -86,24 +104,12 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
-        # Don't run the slow cspell and pylint hooks unless everything else passes.
+        # Don't run the slow pylint hook unless all prior hooks have passed.
+        # Note: the behaviour of `fail_fast` diverges from that documented,
+        # https://pre-commit.com/#hooks-fail_fast. The documentation should
+        # instead read: "if true, pre-commit will stop running hooks if this
+        # *or any previous* hook fails".
         fail_fast: true
-  - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.3.0
-    hooks:
-      # Run a spellcheck (words pulled from cspell.config.yaml)
-        - id: cspell
-          exclude: |
-            (?x)^(
-              .gitignore|
-              .*.properties|
-              requirements(-.*)?.txt|
-              documentation/make.bat|
-              documentation/Makefile|
-              documentation/assets/Logo.svg|
-              documentation/assets/LogoMark.svg|
-              .pylintrc
-            )$
   - repo: local
     hooks:
       # Python static analysis tool
