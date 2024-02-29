@@ -88,17 +88,13 @@ repos:
             - pre-commit
             - pre-merge-commit
             - commit-msg
-          exclude: |
-            (?x)^(
-              .gitignore|
-              .*.properties|
-              requirements(-.*)?.txt|
-              documentation/make.bat|
-              documentation/Makefile|
-              documentation/assets/Logo.svg|
-              documentation/assets/LogoMark.svg|
-              .pylintrc
-            )$
+          exclude_types:
+            - batch
+            - gitignore
+            - makefile
+            - pylintrc
+            - svg
+          exclude: requirements(-.*)?.txt
   - repo: local
     hooks:
       # Check for non-ascii characters in files
