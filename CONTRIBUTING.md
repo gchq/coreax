@@ -41,6 +41,7 @@ Currently, we are using a [GitHub Flow][github-flow] development approach.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests].
+- Delete your branch once it has been merged.
 
 ### Pull request process
 - Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
