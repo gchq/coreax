@@ -1,6 +1,10 @@
 default_install_hook_types:
   - pre-commit
   - pre-merge-commit
+  - commit-msg
+default_stages:
+  - pre-commit
+  - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -66,17 +70,17 @@ repos:
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
-        exclude: |
-          (?x)^(
-            .gitignore|
-            .*.properties|
-            requirements(-.*)?.txt|
-            documentation/make.bat|
-            documentation/Makefile|
-            documentation/assets/Logo.svg|
-            documentation/assets/LogoMark.svg|
-            .pylintrc
-          )$
+        stages:
+          - pre-commit
+          - pre-merge-commit
+          - commit-msg
+        exclude_types:
+          - batch
+          - gitignore
+          - makefile
+          - pylintrc
+          - svg
+        exclude: requirements(-.*)?.txt
 
   # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
