@@ -31,6 +31,8 @@ from scipy.stats import norm as scipy_norm
 import coreax.approximation
 import coreax.kernel
 
+# pylint: disable=too-many-public-methods
+
 
 class TestKernelABC(unittest.TestCase):
     """
@@ -547,6 +549,50 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
 
+    def test_calculate_kernel_matrix_row_sum_zero_max_size(self) -> None:
+        """
+        Test kernel matrix row sum method when given a zero value of max_size.
+        """
+        # Define parameters for data
+        length_scale = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = x.reshape(-1, 1)
+
+        # Define the kernel object
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+
+        # Compute the kernel matrix row sum with a max size of 0, which would make
+        # computations impossible, so we expect an error to be raised
+        with self.assertRaises(ValueError) as error_raised:
+            kernel.calculate_kernel_matrix_row_sum(x=x, max_size=0)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
+
+    def test_calculate_kernel_matrix_row_sum_negative_max_size(self) -> None:
+        """
+        Test kernel matrix row sum method when given a negative value of max_size.
+        """
+        # Define parameters for data
+        length_scale = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = x.reshape(-1, 1)
+
+        # Define the kernel object
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+
+        # Compute the kernel matrix row sum with a negative max size. To avoid nonsense
+        # answers, this should raise an error
+        with self.assertRaises(ValueError) as error_raised:
+            kernel.calculate_kernel_matrix_row_sum(x=x, max_size=-2)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
+
     def test_calculate_kernel_matrix_row_sum_mean(self) -> None:
         """
         Test computation of the mean of the kernel matrix row sum.
@@ -574,6 +620,50 @@ class TestSquaredExponentialKernel(unittest.TestCase):
 
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
+
+    def test_calculate_kernel_matrix_row_sum_mean_zero_max_size(self) -> None:
+        """
+        Test kernel matrix row sum mean method when given a zero value of max_size.
+        """
+        # Define parameters for data
+        length_scale = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = x.reshape(-1, 1)
+
+        # Define the kernel object
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+
+        # Compute the kernel matrix row sum mean with a max size of 0, which would make
+        # computations impossible, so we expect an error to be raised
+        with self.assertRaises(ValueError) as error_raised:
+            kernel.calculate_kernel_matrix_row_sum_mean(x=x, max_size=0)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
+
+    def test_calculate_kernel_matrix_row_sum_mean_negative_max_size(self) -> None:
+        """
+        Test kernel matrix row sum mean method when given a negative value of max_size.
+        """
+        # Define parameters for data
+        length_scale = 1 / np.sqrt(2)
+        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        x = x.reshape(-1, 1)
+
+        # Define the kernel object
+        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+
+        # Compute the kernel matrix row sum mean with a negative max size. To avoid
+        # nonsense answers, this should raise an error
+        with self.assertRaises(ValueError) as error_raised:
+            kernel.calculate_kernel_matrix_row_sum_mean(x=x, max_size=-2)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
 
     def test_compute_normalised(self) -> None:
         """
@@ -1590,6 +1680,9 @@ class TestSteinKernel(unittest.TestCase):
         np.testing.assert_array_almost_equal(output, expected_output)
 
     # pylint: enable=too-many-locals
+
+
+# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":

@@ -458,16 +458,7 @@ class Kernel(ABC):
         :param max_size: Size of matrix block to process
         :return: Kernel matrix row sum
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
-        )
+        x = jnp.atleast_2d(x)
 
         # Define the function to call to evaluate the kernel for all pairwise sets of
         # points
@@ -482,6 +473,15 @@ class Kernel(ABC):
         # Ensure data format is as required
         num_data_points = len(x)
         kernel_row_sum = jnp.zeros(num_data_points)
+
+        # Validate sensible inputs have been given
+        max_size = max(0, max_size)
+        try:
+            range(0, num_data_points, max_size)
+        except ValueError as exception:
+            if max_size == 0:
+                raise ValueError("max_size must be a positive integer") from exception
+            raise
 
         # Iterate over upper triangular blocks
         for i in range(0, num_data_points, max_size):
@@ -511,17 +511,7 @@ class Kernel(ABC):
         :param x: Data matrix, :math:`n \times d`
         :param max_size: Size of matrix block to process
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
-        )
-
+        x = jnp.atleast_2d(x)
         return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
 
     @staticmethod
