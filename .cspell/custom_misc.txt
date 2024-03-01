@@ -2,6 +2,7 @@ ANNchor
 approximator
 approximators
 cand
+color
 coreax
 coreset
 coresets
