@@ -12,79 +12,144 @@ on:
 
 jobs:
   coverage:
+    runs-on: ubuntu-latest
+    outputs:
+      percentage: ${{ steps.cov.outputs.percentage }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install test dependencies
+        run: pip install -e .[test]
+      - name: Assess coverage of unit tests
+        run: pytest tests/unit --cov
+      - name: Extract total coverage percentage
+        id: cov
+        run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+  coverage-badge:
+    name: Update coverage badge
+    if: github.event_name == "push"
+    # Update coverage on merge to main via a new pull request to ensure that badge on
+    # main is always up to date. Otherwise, it is possible that the badge generated on a
+    # feature branch will cease to be valid once a merge takes place. A maintainer will
+    # need to manually approve and merge this new pull request.
+    needs:
+      - coverage
     env:
       badge_path: .github/badges/coverage.json
+      percentage: ${{ needs.coverage.outputs.percentage }}
+      update_branch: chore/coverage-badge-update
+      # Coverage badge PR should not affect codebase, hence checks should pass
+      # unless someone has interfered. Also, want PR to be ready for approval as
+      # quickly as possible, so use generic GITHUB_TOKEN, which will not trigger
+      # follow-on workflows.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
-    - uses: actions/checkout@v4
-      with:
-        # Set branch so that can commit to it later
-        ref: ${{ github.head_ref }}
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        cache: pip
-        cache-dependency-path: pyproject.toml
-    - name: Upgrade pip
-      run: python -m pip install --upgrade pip
-    - name: Install test dependencies
-      run: pip install -e .[test]
-    - name: Assess coverage of unit tests
-      run: pytest tests/unit --cov
-    - name: Extract total coverage percentage
-      id: cov
-      # Need to run this in own step to ensure coverage is evaluated and cast to string
-      run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
-    - name: Choose badge colour
-      id: design
-      env:
-        percentage: ${{ steps.cov.outputs.percentage }}
-      run: |
-        echo "colour=${{
-          env.percentage >= 90 && 'green' ||
-          env.percentage >= 70 && 'yellow' ||
-          env.percentage >= 50 && 'orange' ||
-          'red'
-        }}" >> $GITHUB_OUTPUT
-    - name: Create badges directory if necessary
-      run: mkdir -p .github/badges
-    - name: Store hash of old badge config for comparison
-      id: old_file
-      run: |
-        if [ -f $badge_path ]; then
-          echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
-        else
-          echo "hash=" >> $GITHUB_OUTPUT
-        fi
-    - name: Generate badge config JSON
-      run: |
-        echo "coverage = ${{ steps.cov.outputs.percentage }}%"
-        echo "colour = ${{ steps.design.outputs.colour }}"
-        {
-          echo "{"
-          echo "  \"schemaVersion\": 1,"
-          echo "  \"label\": \"Coverage\","
-          echo "  \"message\": \"${{ steps.cov.outputs.percentage }}%\","
-          echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
-          echo "}"
-        } > $badge_path
-    - name: Store hash of new badge config for comparison
-      id: new_file
-      run: echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
-    - name: Commit badge config if changed
-      if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        destination_branch: ${{ github.head_ref }}
-      run: |
-        export message="chore: update coverage badge"
-        export sha=$( git rev-parse $destination_branch:$badge_path )
-        export content=$( base64 -i $badge_path )
-        gh api --method PUT /repos/:owner/:repo/contents/$badge_path \
-          --field message="$message" \
-          --field content="$content" \
-          --field branch="$destination_branch" \
-          --field sha="$sha"
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Create or checkout update branch
+        id: create_branch
+        run: |
+          export pr_number=$( gh pr view ${{ env.update_branch }} --json number --jq '.number' )
+          export pr_state=$( gh pr view ${{ env.update_branch }} --json state --jq '.state' )
+          echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+          echo "pr_state=$pr_state" >> "$GITHUB_OUTPUT"
+
+          if git fetch origin ${{ env.update_branch }}; then
+            # If branch wasn't deleted after merge, do so here
+            if [ "$pr_state" = "MERGED" ]; then
+              git push -d origin ${{ env.update_branch }}
+              git checkout -b ${{ env.update_branch }}
+              git push origin ${{ env.update_branch }}
+            fi
+            git checkout ${{ env.update_branch }}
+          else
+            git checkout -b ${{ env.update_branch }}
+            git push origin ${{ env.update_branch }}
+          fi
+      - name: Store hash of baseline badge config for comparison
+        id: old_file
+        run: |
+          if [ -f $badge_path ]; then
+            echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
+          else
+            echo "hash=" >> $GITHUB_OUTPUT
+          fi
+      - name: Store hash of main badge config for comparison
+        id: main_file
+        run: |
+          git checkout main
+          if [ -f $badge_path ]; then
+            echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
+          else
+            echo "hash=" >> $GITHUB_OUTPUT
+          fi
+      - name: Choose badge colour
+        id: design
+        env:
+          percentage: ${{ steps.cov.outputs.percentage }}
+        run: |
+          echo "colour=${{
+            env.percentage >= 90 && 'green' ||
+            env.percentage >= 70 && 'yellow' ||
+            env.percentage >= 50 && 'orange' ||
+            'red'
+          }}" >> $GITHUB_OUTPUT
+      - name: Create badges directory if necessary
+        run: mkdir -p .github/badges
+      - name: Generate badge config JSON
+        run: |
+          echo "coverage = ${{ steps.cov.outputs.percentage }}%"
+          echo "colour = ${{ steps.design.outputs.colour }}"
+          {
+            echo "{"
+            echo "  \"schemaVersion\": 1,"
+            echo "  \"label\": \"Coverage\","
+            echo "  \"message\": \"${{ steps.cov.outputs.percentage }}%\","
+            echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
+            echo "}"
+          } > $badge_path
+      - name: Store hash of new badge config for comparison
+        id: new_file
+        run: echo "hash=$( sha256sum $badge_path )" >> $GITHUB_OUTPUT
+      # Commit authoring and pull-request creation/updating
+      - name: Commit badge config if changed
+        if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
+        run: |
+          git checkout -m ${{ env.update_branch }}
+          export message="chore: update coverage badge"
+          export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.badge_path }} )
+          export content=$( base64 -i ${{ env.badge_path }} )
+          gh api --method PUT /repos/:owner/:repo/contents/${{ env.badge_path }} \
+            --field message="$message" \
+            --field content="$content" \
+            --field branch=${{ env.update_branch }} \
+            --field sha="$sha"
+      - name: Create or update pull request
+        if: steps.commit.conclusion == 'success' || ( steps.main_file.outputs.hash != steps.new_file.outputs.hash )
+        run : |
+          export title="chore: update coverage badge"
+          export body="Change coverage in badge to ${{ steps.cov.outputs.percentage }}%"
+          export pr_number=${{ steps.create_branch.outputs.pr_number }}
+          export pr_state=${{ steps.create_branch.outputs.pr_state }}
+
+          # If the PR is closed, can it be reopened, or is the PR already open?
+          if ( [ "$pr_state" = "CLOSED" ] && gh pr reopen $pr_number ) || [ "$pr_state" = "OPEN" ]; then
+            gh api --method PATCH /repos/:owner/:repo/pulls/$pr_number \
+              --field title="$title" \
+              --field body="$body"
+          else
+            # If a PR doesn't already exist, and no previous PR can be reopened, create a new PR.
+            gh pr create -t "$title" -b "$body" -l dependencies -B main -H ${{ env.update_branch }}
+          fi
