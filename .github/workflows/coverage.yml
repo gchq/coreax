@@ -34,7 +34,7 @@ jobs:
         run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
   coverage-badge:
     name: Update coverage badge
-    if: github.event_name == "push"
+    if: github.event_name == 'push'
     # Update coverage on merge to main via a new pull request to ensure that badge on
     # main is always up to date. Otherwise, it is possible that the badge generated on a
     # feature branch will cease to be valid once a merge takes place. A maintainer will
