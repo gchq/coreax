@@ -45,7 +45,8 @@ Based on jumanjihouse/pre-commit-hooks require-ascii hook. Original copyright:
 import itertools
 import sys
 
-MAX_ASCII_CODE = 255  # https://theasciicode.com.ar/
+# https://theasciicode.com.ar/
+MAX_ASCII_CODE = 255
 
 
 def main() -> None:

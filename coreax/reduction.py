@@ -201,7 +201,7 @@ class Coreset(ABC):
         :return: Optimal weighting of points in :attr:`coreset` to represent the
             original data
         """
-        self.validate_fitted("solve_weights")
+        self.validate_fitted(Coreset.solve_weights.__name__)
         return self.weights_optimiser.solve(
             self.original_data.pre_coreset_array, self.coreset
         )
@@ -230,7 +230,7 @@ class Coreset(ABC):
         :return: Metric computed as a zero-dimensional array
         """
         coreax.validation.validate_is_instance(metric, "metric", coreax.metrics.Metric)
-        self.validate_fitted("compute_metric")
+        self.validate_fitted(Coreset.compute_metric.__name__)
         # block_size will be validated by metric.compute()
         return metric.compute(
             self.original_data.pre_coreset_array,
@@ -261,12 +261,12 @@ class Coreset(ABC):
 
         :return: Array of formatted data
         """
-        self.validate_fitted("format")
+        self.validate_fitted(Coreset.format.__name__)
         return self.original_data.format(self)
 
     def render(self) -> None:
         """Plot coreset interactively using :mod:`matplotlib.pyplot`."""
-        self.validate_fitted("render")
+        self.validate_fitted(Coreset.render.__name__)
         return self.original_data.render(self)
 
     def copy_fit(self, other: Coreset, deep: bool = False) -> None:
@@ -283,7 +283,7 @@ class Coreset(ABC):
         :raises TypeError: If ``other`` does not have the **exact same type**.
         """
         coreax.validation.validate_is_instance(other, "other", type(self))
-        other.validate_fitted("copy_fit from another Coreset")
+        other.validate_fitted(Coreset.copy_fit.__name__ + " from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
             self.coreset_indices = copy(other.coreset_indices)
@@ -303,7 +303,9 @@ class Coreset(ABC):
             self.coreset, Array
         ):
             raise coreax.util.NotCalculatedError(
-                f"Need to call fit before calling {caller_name}"
+                "Need to call "
+                + Coreset.fit.__name__
+                + f" before calling {caller_name}"
             )
 
 
