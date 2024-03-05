@@ -45,8 +45,6 @@ import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 
-import coreax.validation
-
 if TYPE_CHECKING:
     import coreax.reduction
 
@@ -66,15 +64,11 @@ class DataReader(ABC):
 
         Should not normally be called by the user: use :meth:`load` instead.
         """
-        self.original_data: Array = coreax.validation.cast_as_type(
-            original_data, "original_data", jnp.atleast_2d
-        )
+        self.original_data: Array = jnp.atleast_2d(original_data)
         """
         Original data
         """
-        self.pre_coreset_array: Array = coreax.validation.cast_as_type(
-            pre_coreset_array, "pre_coreset_array", jnp.atleast_2d
-        )
+        self.pre_coreset_array: Array = jnp.atleast_2d(pre_coreset_array)
         """
         Pre coreset array
         """
@@ -176,9 +170,7 @@ class ArrayData(DataReader):
         :param original_data: Array of data to be reduced to a coreset
         :return: Populated instance of :class:`ArrayData`
         """
-        original_data = coreax.validation.cast_as_type(
-            original_data, "original_data", jnp.atleast_2d
-        )
+        original_data = jnp.atleast_2d(original_data)
         return cls(original_data, original_data)
 
     def format(self, coreset: coreax.reduction.Coreset) -> Array:
