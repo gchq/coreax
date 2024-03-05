@@ -29,6 +29,8 @@ import coreax.kernel
 import coreax.metrics
 import coreax.util
 
+# pylint: disable=too-many-public-methods
+
 
 class TestMetrics(unittest.TestCase):
     r"""
@@ -119,7 +121,7 @@ class TestMMD(unittest.TestCase):
 
     def test_mmd_ones(self):
         r"""
-        Test mmd function with a small example dataset of ones and zeros.
+        Test MMD computation with a small example dataset of ones and zeros.
 
         For the dataset of 4 points in 2 dimensions, :math:`x`, and another dataset
         :math:`y`, given by:
@@ -176,7 +178,7 @@ class TestMMD(unittest.TestCase):
 
     def test_mmd_ints(self):
         r"""
-        Test MMD function with a small example dataset of integers.
+        Test MMD computation with a small example dataset of integers.
 
         For the dataset of 3 points in 2 dimensions, :math:`x`, and second dataset
         :math:`y`, given by:
@@ -235,7 +237,7 @@ class TestMMD(unittest.TestCase):
 
     def test_mmd_rand(self):
         r"""
-        Test that MMD computed from randomly generated test data agrees with mmd().
+        Test MMD computed from randomly generated test data agrees with method result.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -260,12 +262,13 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_mmd, places=5)
 
-    def test_wmmd_ints(self) -> None:
+    def test_weighted_mmd_ints(self) -> None:
         r"""
-        Test weighted MMD function wmmd() with a small example dataset of integers.
+        Test weighted MMD computation with a small example dataset of integers.
 
-        wmmd is calculated if and only if weights_y are provided. When weights_y =
-        None, the MMD class computes the standard, non-weighted mmd.
+        Weighted mmd is calculated if and only if weights_y are provided. When
+        `weights_y` = :data:`None`, the MMD class computes the standard, non-weighted
+        MMD.
 
         For the dataset of 3 points in 2 dimensions :math:`x`, second dataset :math:`y`,
         and weights for this second dataset :math:`w_y`, given by:
@@ -311,9 +314,9 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(float(output), float(expected_output), places=5)
 
-    def test_wmmd_rand(self) -> None:
+    def test_weighted_mmd_rand(self) -> None:
         r"""
-        Test that WMMD computed from randomly generated test data agrees with wmmd().
+        Test weighted MMD computations on randomly generated test data.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -340,9 +343,9 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
-    def test_wmmd_uniform_weights(self) -> None:
+    def test_weighted_mmd_uniform_weights(self) -> None:
         r"""
-        Test that wmmd = mmd if weights are uniform, :math:`w_y = 1/m`.
+        Test that weighted MMD equals MMD if weights are uniform, :math:`w_y = 1/m`.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -433,9 +436,84 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
-    def test_mmd_block_ints(self) -> None:
+    def test_sum_pairwise_distances_zero_block_size(self):
+        """
+        Test sum_pairwise_distances when a zero block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of pairwise distances with a zero block_size - the full text of
+        # the inbuilt error raised from the range function should provide all
+        # information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.sum_pairwise_distances(x=x, y=y, block_size=0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_sum_pairwise_distances_negative_block_size(self):
+        """
+        Test sum_pairwise_distances when a negative block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of pairwise distances with a negative block_size - this should be
+        # capped at 0, and then the full text of the inbuilt error raised from the range
+        # function should provide all information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.sum_pairwise_distances(x=x, y=y, block_size=-5)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_sum_pairwise_distances_float_block_size(self):
+        """
+        Test sum_pairwise_distances when a float block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of pairwise distances with a float block_size - the full text of
+        # the inbuilt error raised from the range function should provide all
+        # information needed for users to identify the issue
+        with self.assertRaises(TypeError) as error_raised:
+            metric.sum_pairwise_distances(x=x, y=y, block_size=2.0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
+    def test_maximum_mean_discrepancy_block_ints(self) -> None:
         r"""
-        Test mmd_block calculation of MMD while limiting memory requirements.
+        Test maximum_mean_discrepancy_block while limiting memory requirements.
 
         This test uses the same 2D, three-point dataset and second dataset as
         test_mmd_ints().
@@ -460,9 +538,9 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(float(mmd_block_test), float(expected_output), places=5)
 
-    def test_mmd_block_rand(self) -> None:
+    def test_maximum_mean_discrepancy_block_rand(self) -> None:
         r"""
-        Test that mmd block-computed for random test data equals mmd_block().
+        Test that mmd block-computed for random test data equals method output.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -511,9 +589,11 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
-    def test_mmd_equals_mmd_block(self) -> None:
+    def test_maximum_mean_discrepancy_equals_maximum_mean_discrepancy_block(
+        self,
+    ) -> None:
         r"""
-        Test that mmd() returns the same as mmd_block().
+        Test that MMD computations agree when done block-wise and all at once.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -529,9 +609,84 @@ class TestMMD(unittest.TestCase):
             places=5,
         )
 
+    def test_maximum_mean_discrepancy_block_zero_block_size(self) -> None:
+        """
+        Test maximum_mean_discrepancy_block when given a zero block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a zero block_size - the full text of the inbuilt error raised
+        # from the range function should provide all information needed for users to
+        # identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_maximum_mean_discrepancy_block_negative_block_size(self) -> None:
+        """
+        Test maximum_mean_discrepancy_block when given a negative block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a negative block_size - this should be capped at 0,
+        # and then the full text of the inbuilt error raised from the range function
+        # should provide all information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=-2)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_maximum_mean_discrepancy_block_float_block_size(self) -> None:
+        """
+        Test maximum_mean_discrepancy_block when given a float block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a float block_size - the full text of the inbuilt error
+        # raised from the range function should provide all information needed for
+        # users to identify the issue
+        with self.assertRaises(TypeError) as error_raised:
+            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=2.0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
     def test_sum_weighted_pairwise_distances(self) -> None:
         r"""
-        Test sum_weighted_pairwise_distances(), which calculates w^T*K*w matrices.
+        Test sum_weighted_pairwise_distances, which calculates w^T*K*w matrices.
 
         Computations are done in blocks of size max_size.
 
@@ -616,9 +771,97 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_output, places=5)
 
-    def test_mmd_weight_block_int(self) -> None:
+    def test_sum_weighted_pairwise_distances_zero_block_size(self):
+        """
+        Test sum_weighted_pairwise_distances when a zero block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of weighted pairwise distances with a zero block_size - the
+        # full text of the inbuilt error raised from the range function should provide
+        # all information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.sum_weighted_pairwise_distances(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=0
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_sum_weighted_pairwise_distances_negative_block_size(self):
+        """
+        Test sum_weighted_pairwise_distances when a negative block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of weighted pairwise distances with a negative block_size - this
+        # should be capped at 0, and then the full text of the inbuilt error raised from
+        # the range function should provide all information needed for users to identify
+        # the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.sum_weighted_pairwise_distances(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=-5
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_sum_weighted_pairwise_distances_float_block_size(self):
+        """
+        Test sum_weighted_pairwise_distances when a float block size is given.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute sum of weighted pairwise distances with a float block_size - the
+        # full text of the inbuilt error raised from the range function should provide
+        # all information needed for users to identify the issue
+        with self.assertRaises(TypeError) as error_raised:
+            metric.sum_weighted_pairwise_distances(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2.0
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
+    def test_weighted_maximum_mean_discrepancy_block_int(self) -> None:
         r"""
-        Test the mmd_weight_block function.
+        Test the weighted_maximum_mean_discrepancy_block computations.
 
         For
         .. math::
@@ -670,10 +913,13 @@ class TestMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(float(output), float(expected_output), places=5)
 
-    def test_mmd_weight_block_equals_mmd(self) -> None:
+    def test_weighted_maximum_mean_discrepancy_block_equals_mmd(self) -> None:
         r"""
-        Test mmd_weight_block equals mmd when weights are uniform: :math:`w = 1/n`,
-        :math:`w_y = 1/m`.
+        Test weighted MMD computations with uniform weights.
+
+        One expects that, when weights are uniform: :math:`w = 1/n` and
+        :math:`w_y = 1/m`, the output of weighted_maximum_mean_discrepancy_block should
+        be the same as an unweighted computation.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -695,6 +941,171 @@ class TestMMD(unittest.TestCase):
         self.assertAlmostEqual(
             float(output), float(metric.compute(self.x, self.y)), places=5
         )
+
+    def test_weighted_maximum_mean_discrepancy_block_zero_block_size(self) -> None:
+        """
+        Test weighted_maximum_mean_discrepancy_block when given a zero block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute weighted MMD with a zero block_size - the full text of the inbuilt
+        # error raised from the range function should provide all information needed for
+        # users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.weighted_maximum_mean_discrepancy_block(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=0
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_weighted_maximum_mean_discrepancy_block_negative_block_size(self) -> None:
+        """
+        Test weighted_maximum_mean_discrepancy_block when given a negative block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute weighted MMD with a negative block_size - this should be capped at 0,
+        # and then the full text of the inbuilt error raised from the range function
+        # should provide all information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.weighted_maximum_mean_discrepancy_block(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=-2
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_weighted_maximum_mean_discrepancy_block_float_block_size(self) -> None:
+        """
+        Test weighted_maximum_mean_discrepancy_block when given a float block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+        weights_x = jnp.array([0.5, 0.5, 0])
+        weights_y = jnp.array([1, 0])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute weighted MMD with a float block_size - the full text of the inbuilt
+        # error raised from the range function should provide all information needed
+        # for users to identify the issue
+        with self.assertRaises(TypeError) as error_raised:
+            metric.weighted_maximum_mean_discrepancy_block(
+                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2.0
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
+    def test_compute_zero_block_size(self) -> None:
+        """
+        Test compute when given a zero block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a zero block_size - the full text of the inbuilt error raised
+        # from the range function should provide all information needed for users to
+        # identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.compute(x=x, y=y, block_size=0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_compute_negative_block_size(self) -> None:
+        """
+        Test compute when given a negative block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a negative block_size - this should be capped at 0, and then
+        # the full text of the inbuilt error raised from the range function should
+        # provide all information needed for users to identify the issue
+        with self.assertRaises(ValueError) as error_raised:
+            metric.compute(x=x, y=y, block_size=-2)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "range() arg 3 must not be zero",
+        )
+
+    def test_compute_float_block_size(self) -> None:
+        """
+        Test compute when given a float block size.
+        """
+        # Setup some data
+        x = jnp.array([[0, 0], [1, 1], [2, 2]])
+        y = jnp.array([[0, 0], [1, 1]])
+
+        # Define a kernel object and set pairwise computations to be the square distance
+        kernel = MagicMock()
+        kernel.compute = coreax.util.squared_distance_pairwise
+
+        # Define a metric object
+        metric = coreax.metrics.MMD(kernel=kernel)
+
+        # Compute MMD with a float block_size - the full text of the inbuilt error
+        # raised from the range function should provide all information needed for users
+        # to identify the issue
+        with self.assertRaises(TypeError) as error_raised:
+            metric.compute(x=x, y=y, block_size=2.0)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
+
+# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":
