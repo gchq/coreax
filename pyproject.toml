@@ -97,5 +97,5 @@ exclude_also = [
     "pass",
     "raise RuntimeError",
     "if TYPE_CHECKING:",
-    "^raise$",
+    "raise$",
 ]
