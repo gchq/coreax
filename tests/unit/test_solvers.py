@@ -19,7 +19,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
-from typing import NamedTuple, Optional, Union, cast
+from typing import Literal, NamedTuple, Optional, Union, cast
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -36,6 +36,7 @@ from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
+    CaratheodoryRecombination,
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
@@ -46,6 +47,7 @@ from coreax.solvers import (
     RPCholeskyState,
     Solver,
     SteinThinning,
+    TreeRecombination,
 )
 from coreax.solvers.base import (
     ExplicitSizeSolver,
@@ -107,13 +109,14 @@ class SolverTest:
 
         1. Check 'coreset.pre_coreset_data' is equal to 'dataset'
         2. Check 'coreset' is equal to 'expected_coreset' (if expected is not 'None')
-        3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset'
-        4. If 'not hasattr(solver, random_key))', check that the
+        3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset';
+            note: 'coreset.weights' doesn't need to be a subset of dataset.weights
+        4. If 'isinstance(problem.solver, PaddingInvariantSolver)', check that the
             addition of zero weighted data-points to the leading axis of the input
             'dataset' does not modify the resulting coreset when the solver is a
             'PaddingInvariantSolver'.
         """
-        dataset, _, expected_coreset = problem
+        dataset, solver, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
             dataset = problem.initial_coresubset.pre_coreset_data
         assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
@@ -121,10 +124,10 @@ class SolverTest:
             assert isinstance(coreset, type(expected_coreset))
             assert eqx.tree_equal(coreset, expected_coreset)
         if isinstance(coreset, Coresubset):
-            membership = jtu.tree_map(jnp.isin, coreset.coreset, dataset)
+            membership = jtu.tree_map(jnp.isin, coreset.coreset.data, dataset.data)
             all_membership = jtu.tree_map(jnp.all, membership)
             assert jtu.tree_all(all_membership)
-        if isinstance(problem.solver, PaddingInvariantSolver):
+        if isinstance(solver, PaddingInvariantSolver):
             padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
             if isinstance(problem, _RefineProblem):
                 padded_initial_coreset = eqx.tree_at(
@@ -132,9 +135,9 @@ class SolverTest:
                     problem.initial_coresubset,
                     padded_dataset,
                 )
-                coreset_from_padded, _ = problem.solver.refine(padded_initial_coreset)
+                coreset_from_padded, _ = solver.refine(padded_initial_coreset)
             else:
-                coreset_from_padded, _ = problem.solver.reduce(padded_dataset)
+                coreset_from_padded, _ = solver.reduce(padded_dataset)
             assert eqx.tree_equal(coreset_from_padded.coreset, coreset.coreset)
 
     @pytest.mark.parametrize("use_cached_state", (False, True))
@@ -160,6 +163,163 @@ class SolverTest:
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
         self.check_solution_invariants(coreset, reduce_problem)
+
+
+class RecombinationSolverTest(SolverTest):
+    """Test cases for coresubset solvers that perform recombination."""
+
+    @override
+    @pytest.fixture(
+        params=["random", "partial-null", "null", "full_rank", "rank_deficient"],
+        scope="class",
+    )
+    def reduce_problem(
+        self, request: pytest.FixtureRequest, solver_factory: Union[Solver, jtu.Partial]
+    ) -> _ReduceProblem:
+        node_key, weight_key, rng_key = jr.split(self.random_key, num=3)
+        nodes = jr.uniform(node_key, self.shape)
+        weights = jr.uniform(weight_key, (self.shape[0],))
+        expected_coreset = None
+        if request.param == "random":
+            test_functions = None
+        elif request.param == "partial-null":
+            zero_weights = jr.choice(rng_key, self.shape[0], (self.shape[0] // 2,))
+            weights = weights.at[zero_weights].set(0)
+            test_functions = None
+        elif request.param == "null":
+
+            def test_functions(x):
+                return jnp.zeros(x.shape)
+        elif request.param == "full_rank":
+
+            def test_functions(x):
+                norm_x = jnp.linalg.norm(x)
+                return jnp.array([norm_x, norm_x**2, norm_x**3])
+        elif request.param == "rank_deficient":
+
+            def test_functions(x):
+                norm_x = jnp.linalg.norm(x)
+                return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        solver_factory.keywords["test_functions"] = test_functions
+        solver = solver_factory()
+        return _ReduceProblem(Data(nodes, weights), solver, expected_coreset)
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        r"""
+        Check that a coreset obeys certain expected invariant properties.
+
+        In addition to the standard checks in the parent class we also check:
+        1. Check 'sum(coreset.weights)' is one.
+        1. Check 'len(coreset)' is less than or equal to the upper bound `m`.
+        2. Check 'len(coreset[idx]) where idx = jnp.nonzero(coreset.weights)' is less
+            than or equal to the rank, `m^\prime`, of the pushed forward nodes.
+        3. Check the push-forward of the coreset preserves the "centre-of-mass" (CoM) of
+            the pushed-forward dataset (with implicit and explicit zero weight removal).
+        4. Check the default value of 'test_functions' is the identity map.
+        """
+        super().check_solution_invariants(coreset, problem)
+        dataset, solver, _ = problem
+        coreset_nodes, coreset_weights = coreset.coreset.data, coreset.coreset.weights
+        assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
+        if solver.test_functions is None:
+            solver = eqx.tree_at(
+                lambda x: x.test_functions,
+                solver,
+                lambda x: x,
+                is_leaf=lambda x: x is None,
+            )
+            expected_default_coreset, _ = solver.reduce(dataset)
+            assert eqx.tree_equal(coreset, expected_default_coreset)
+
+        vmap_test_functions = jax.vmap(solver.test_functions)
+        pushed_forward_nodes = vmap_test_functions(dataset.data)
+        augmented_pushed_forward_nodes = jnp.c_[
+            jnp.ones_like(dataset.weights), pushed_forward_nodes
+        ]
+        rank = jnp.linalg.matrix_rank(augmented_pushed_forward_nodes)
+        max_rank = augmented_pushed_forward_nodes.shape[-1]
+        assert rank <= max_rank
+        non_zero = jnp.flatnonzero(coreset_weights)
+        if solver.mode == "implicit-explicit":
+            assert len(coreset) <= max_rank
+            assert len(non_zero) <= len(coreset) - (max_rank - rank)
+        if solver.mode == "implicit":
+            assert len(coreset) == len(augmented_pushed_forward_nodes)
+            assert len(non_zero) <= len(coreset) - (max_rank - rank)
+        if solver.mode == "explicit":
+            assert len(non_zero) == len(coreset)
+            assert len(coreset) <= rank
+        pushed_forward_com = jnp.average(
+            pushed_forward_nodes, 0, weights=dataset.weights
+        )
+        pushed_forward_coreset_nodes = vmap_test_functions(
+            jnp.atleast_2d(coreset_nodes)
+        )
+        coreset_pushed_forward_com = jnp.average(
+            pushed_forward_coreset_nodes, 0, weights=coreset_weights
+        )
+        assert eqx.tree_equal(pushed_forward_com, coreset_pushed_forward_com, rtol=1e-5)
+        explicit_coreset_pushed_forward_com = jnp.average(
+            pushed_forward_coreset_nodes[non_zero], 0, weights=coreset_weights[non_zero]
+        )
+        assert eqx.tree_equal(
+            coreset_pushed_forward_com, explicit_coreset_pushed_forward_com, rtol=1e-5
+        )
+
+    @override
+    @pytest.mark.parametrize("use_cached_state", (False, True))
+    @pytest.mark.parametrize(
+        "recombination_mode, context",
+        (
+            ("implicit-explicit", does_not_raise()),
+            ("implicit", does_not_raise()),
+            (
+                "explicit",
+                pytest.raises(ValueError, match="'explicit' mode is incompatible"),
+            ),
+            (None, pytest.raises(ValueError, match="Invalid mode")),
+        ),
+    )
+    # We don't care too much that arguments differ as this is required to override the
+    # parametrization. Nevertheless, this should probably be revisited in the future.
+    def test_reduce(  # pylint: disable=arguments-differ
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        reduce_problem: _ReduceProblem,
+        use_cached_state: bool,
+        recombination_mode: Literal["implicit-explicit", "implicit", "explicit"],
+        context: AbstractContextManager,
+    ) -> None:
+        """
+        Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
+
+        Overrides the default implementation to provide handling of different modes of
+        recombination.
+
+        By resultant 'solver_state' invariant we mean the following procedure succeeds:
+        1. Call 'reduce' with the default 'solver_state' to get the resultant state
+        2. Call 'reduce' again, this time passing the 'solver_state' from the previous
+            run, and keeping all other arguments the same.
+        3. Check the two calls to 'refine' yield that same result.
+        """
+        dataset, base_solver, expected_coreset = reduce_problem
+        solver = eqx.tree_at(lambda x: x.mode, base_solver, recombination_mode)
+        updated_problem = _ReduceProblem(dataset, solver, expected_coreset)
+        # Explicit should only raise if jit_variant is eqx.filter_jit (or jax.jit).
+        if jit_variant is not eqx.filter_jit and recombination_mode == "explicit":
+            context = does_not_raise()
+        with context:
+            coreset, state = jit_variant(solver.reduce)(dataset)
+            if use_cached_state:
+                coreset_with_state, recycled_state = solver.reduce(dataset, state)
+                assert eqx.tree_equal(recycled_state, state)
+                assert eqx.tree_equal(coreset_with_state, coreset)
+            self.check_solution_invariants(coreset, updated_problem)
 
 
 class RefinementSolverTest(SolverTest):
@@ -687,3 +847,23 @@ class TestMapReduce(SolverTest):
             solver_factory.keywords["leaf_size"] = self.leaf_size
             solver_factory.keywords["base_solver"] = base_solver
             solver_factory()
+
+
+class TestCaratheodoryRecombination(RecombinationSolverTest):
+    """Tests for :class:`coreax.solvers.recombination.CaratheodoryRecombination`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+        return jtu.Partial(CaratheodoryRecombination, test_functions=None, rcond=None)
+
+
+class TestTreeRecombination(RecombinationSolverTest):
+    """Tests for :class:`coreax.solvers.recombination.TreeRecombination`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+        return jtu.Partial(
+            TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
+        )

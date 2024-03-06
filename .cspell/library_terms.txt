@@ -22,6 +22,7 @@ brightgreen
 bysource
 cmap
 color
+Concretization
 dispname
 dollarmath
 dtype
@@ -30,8 +31,10 @@ dunder
 eigh
 emibcn
 eprint
+errstate
 figsize
 finfo
+flatnonzero
 fori_loop
 fracv
 furo
@@ -112,6 +115,7 @@ sklearn
 softplus
 sphinxcontrib
 sphobjinv
+tensordot
 texttt
 toctree
 tomli
@@ -124,6 +128,7 @@ unsrt
 vars
 viewcode
 vmap
+vmaps
 writebytes
 xlabel
 ylabel
