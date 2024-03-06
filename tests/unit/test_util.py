@@ -140,7 +140,47 @@ class TestUtil(unittest.TestCase):
         )
         self.assertEqual(func_out_2, 0.000001)
 
-    def test_jit_test(self):
+    def test_solve_qp_invalid_kernel_mm(self) -> None:
+        """
+        Test how solve_qp handles invalid inputs of kernel_mm.
+
+        The output of solve_qp is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
+        """
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with self.assertRaises(TypeError) as error_raised:
+            coreax.util.solve_qp(
+                kernel_mm="invalid_kernel_mm",
+                kernel_matrix_row_sum_mean=np.array([1, 2, 3]),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "kernel_mm must be able to be converted to a JAX array",
+        )
+
+    def test_solve_qp_invalid_kernel_matrix_row_sum_mean(self) -> None:
+        """
+        Test how solve_qp handles invalid inputs of kernel_mm.
+
+        The output of solve_qp is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
+        """
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with self.assertRaises(TypeError) as error_raised:
+            coreax.util.solve_qp(
+                kernel_mm=np.array([1, 2, 3]),
+                kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "kernel_matrix_row_sum_mean must be able to be converted to a JAX array",
+        )
+
+    def test_jit_test(self) -> None:
         """
         Test jit_test calls the function in question twice when checking performance.
 
