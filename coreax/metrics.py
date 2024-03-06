@@ -543,6 +543,8 @@ class CMMD(Metric):
     :param response_kernel: Kernel object with compute method defined mapping
         :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
     :param precision_threshold: Positive threshold we compare against for precision
+    :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
+        the datasets :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
     """
     
     def __init__(
@@ -550,12 +552,42 @@ class CMMD(Metric):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         precision_threshold: float = 1e-4
+        lambdas: ArrayLike,
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
+        # Validate inputs
+        coreax.validation.validate_is_instance(
+            feature_kernel, "feature_kernel", (coreax.kernel.Kernel, type(None))
+        )
         self.feature_kernel = feature_kernel
+        
+        coreax.validation.validate_is_instance(
+            response_kernel, "response_kernel", (coreax.kernel.Kernel, type(None))
+        )
         self.response_kernel = response_kernel
-        self.precision_threshold = precision_threshold
 
+        precision_threshold = coreax.validation.cast_as_type(
+            x=precision_threshold, object_name="precision_threshold", type_caster=float
+        )
+        self.precision_threshold = precision_threshold
+        
+        lambdas = coreax.validation.cast_as_type(
+            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[0],
+            object_name="lambdas[0]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[1],
+            object_name="lambdas[1]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        self.lambdas = lambdas
+        
         # Initialise parent
         super().__init__()
 
@@ -563,7 +595,7 @@ class CMMD(Metric):
         self,
         D1: list[ArrayLike, ArrayLike],
         D2: list[ArrayLike, ArrayLike],
-        lambdas: ArrayLike,
+        block_size: int | None = None,
     ) -> Array:
         r"""
         Calculate conditional maximum mean discrepancy.
@@ -572,8 +604,8 @@ class CMMD(Metric):
             pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
         :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
             :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
-        :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
-            :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+        :param block_size: Size of matrix block to process, or :data:`None` to not split
+            into blocks
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
         # Validate inputs
@@ -595,33 +627,33 @@ class CMMD(Metric):
         D2[1] = coreax.validation.cast_as_type(
             x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
         )
-        
-        lambdas = coreax.validation.cast_as_type(
-            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[0],
-            object_name="lambdas[0]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[1],
-            object_name="lambdas[1]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
 
+        # block_size is checked in both coresubset.py and metrics.py, however each of
+        # these can be used independently, so ignore pylint warning for duplicated code
+        # pylint: disable=duplicate-code
+        if block_size is not None:
+            block_size = coreax.validation.cast_as_type(
+                x=block_size, object_name="block_size", type_caster=int
+            )
+            coreax.validation.validate_in_range(
+                x=block_size,
+                object_name="block_size",
+                strict_inequalities=True,
+                lower_bound=0,
+            )
+        # pylint: enable=duplicate-code
+        
         num_pairs_D1 = len(D1[0])
         num_pairs_D2 = len(D2[0])
-        
-        return self.conditional_maximum_mean_discrepancy(D1, D2, lambdas)
-        
+
+        if block_size is None or block_size > max(num_pairs_D1, num_pairs_D2):
+                return self.conditional_maximum_mean_discrepancy(D1, D2)
+            return self.conditional_maximum_mean_discrepancy_block(D1, D2, block_size)
+            
     def conditional_maximum_mean_discrepancy(
         self,
         D1: list[ArrayLike, ArrayLike],
-        D2: list[ArrayLike, ArrayLike],
-        lambdas: ArrayLike
+        D2: list[ArrayLike, ArrayLike]
     ) -> Array:
         r"""
         Calculate standard conditional maximum mean discrepancy metric.
@@ -646,8 +678,6 @@ class CMMD(Metric):
             pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
         :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
             :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
-        :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
-            :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
         """
         # Validate inputs
         D1 = coreax.validation.cast_as_type(
@@ -668,21 +698,6 @@ class CMMD(Metric):
         D2[1] = responses_m = coreax.validation.cast_as_type(
             x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
         )
-        lambdas = coreax.validation.cast_as_type(
-            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[0],
-            object_name="lambdas[0]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[1],
-            object_name="lambdas[1]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
         
         # Compute feature kernel matrices
         K1 = feature_kernel.compute(D1[0], D1[0])
@@ -695,8 +710,8 @@ class CMMD(Metric):
         L12 = response_kernel.compute(D1[1], D2[1])
 
         # Invert kernel matrices
-        W1 = jnp.linalg.lstsq(K1 + lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
-        W2 = jnp.linalg.lstsq(K2 + lambdas[1]*jnp.eye(K2.shape[0]), jnp.eye(K2.shape[0]))[0]
+        W1 = jnp.linalg.lstsq(K1 + self.lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
+        W2 = jnp.linalg.lstsq(K2 + self.lambdas[1]*jnp.eye(K2.shape[0]), jnp.eye(K2.shape[0]))[0]
 
         # Compute each term in the CMMD formula
         term_1 = W1.dot(L1).dot(W1).dot(K1)
@@ -711,3 +726,22 @@ class CMMD(Metric):
             )
         )
         return result
+
+    def conditional_maximum_mean_discrepancy_block(
+        self,
+        D1: list[ArrayLike, ArrayLike],
+        D2: list[ArrayLike, ArrayLike],
+        block_size: int = 10_000,
+    ) -> Array:
+        r"""
+        Calculate conditional maximum mean discrepancy (CMMD) whilst limiting memory requirements.
+
+        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
+            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param block_size: Size of matrix blocks to process
+        :return: Conditional maximum mean discrepancy as a 0-dimensional array
+        """
+        raise NotImplementedError
+
