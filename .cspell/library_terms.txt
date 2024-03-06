@@ -29,7 +29,9 @@ dtypes
 dunder
 emibcn
 eprint
+errstate
 figsize
+finfo
 fori_loop
 fracv
 furo
@@ -106,6 +108,7 @@ sklearn
 softplus
 sphinxcontrib
 sphobjinv
+tensordot
 texttt
 toctree
 tomli

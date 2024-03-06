@@ -25,6 +25,7 @@ PCIMQ
 PMLR
 primaryclass
 PRNG
+rcond
 refs
 regulariser
 RKHS
