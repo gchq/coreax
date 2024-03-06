@@ -516,3 +516,198 @@ class MMD(Metric):
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 
         return weighted_pairwise_distance_sum
+
+
+class CMMD(Metric):
+    r"""
+    Definition and calculation of the conditional maximum mean discrepancy metric.
+
+    For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
+    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset 
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n`` pairs with 
+    :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, 
+    the conditional maximum mean discrepancy is given by:
+
+    .. math::
+
+        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+
+    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings estimated 
+    with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
+    and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel functions
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
+    :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+
+    :param feature_kernel: Kernel object with compute method defined mapping
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param response_kernel: Kernel object with compute method defined mapping
+        :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
+    :param precision_threshold: Positive threshold we compare against for precision
+    """
+    
+    def __init__(
+        self, 
+        feature_kernel: coreax.kernel.Kernel,
+        response_kernel: coreax.kernel.Kernel,
+        precision_threshold: float = 1e-4
+    ):
+        """Calculate conditional maximum mean discrepancy between two datasets."""
+        self.feature_kernel = feature_kernel
+        self.response_kernel = response_kernel
+        self.precision_threshold = precision_threshold
+
+        # Initialise parent
+        super().__init__()
+
+    def compute(
+        self,
+        D1: list[ArrayLike, ArrayLike],
+        D2: list[ArrayLike, ArrayLike],
+        lambdas: ArrayLike,
+    ) -> Array:
+        r"""
+        Calculate conditional maximum mean discrepancy.
+
+        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
+            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
+            :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+        :return: Conditional maximum mean discrepancy as a 0-dimensional array
+        """
+        # Validate inputs
+        D1 = coreax.validation.cast_as_type(
+            x=D1, object_name="D1", type_caster=list
+        )
+        D2 = coreax.validation.cast_as_type(
+            x=D2, object_name="D2", type_caster=list
+        )
+        D1[0] = coreax.validation.cast_as_type(
+            x=D1[0], object_name="D1[0]", type_caster=jnp.atleast_2d
+        )
+        D1[1] = coreax.validation.cast_as_type(
+            x=D1[1], object_name="D1[1]", type_caster=jnp.atleast_2d
+        )
+        D2[0] = coreax.validation.cast_as_type(
+            x=D2[0], object_name="D2[0]", type_caster=jnp.atleast_2d
+        )
+        D2[1] = coreax.validation.cast_as_type(
+            x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
+        )
+        
+        lambdas = coreax.validation.cast_as_type(
+            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[0],
+            object_name="lambdas[0]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[1],
+            object_name="lambdas[1]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+
+        num_pairs_D1 = len(D1[0])
+        num_pairs_D2 = len(D2[0])
+        
+        return self.conditional_maximum_mean_discrepancy(D1, D2, lambdas)
+        
+    def conditional_maximum_mean_discrepancy(
+        self,
+        D1: list[ArrayLike, ArrayLike],
+        D2: list[ArrayLike, ArrayLike],
+        lambdas: ArrayLike
+    ) -> Array:
+        r"""
+        Calculate standard conditional maximum mean discrepancy metric.
+    
+        For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
+        :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset 
+        :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n`` pairs with 
+        :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, 
+        the conditional maximum mean discrepancy is given by:
+    
+        .. math::
+    
+            \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+    
+        where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings estimated 
+        with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
+        and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel functions
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
+        :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+    
+        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
+            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+        :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
+            :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+        """
+        # Validate inputs
+        D1 = coreax.validation.cast_as_type(
+            x=D1, object_name="D1", type_caster=list
+        )
+        D2 = coreax.validation.cast_as_type(
+            x=D2, object_name="D2", type_caster=list
+        )       
+        D1[0] = coreax.validation.cast_as_type(
+            x=D1[0], object_name="D1[0]", type_caster=jnp.atleast_2d
+        )
+        D1[1] = features_m = coreax.validation.cast_as_type(
+            x=D1[1], object_name="D1[1]", type_caster=jnp.atleast_2d
+        )
+        D2[0] = responses_n = coreax.validation.cast_as_type(
+            x=D2[0], object_name="D2[0]", type_caster=jnp.atleast_2d
+        )
+        D2[1] = responses_m = coreax.validation.cast_as_type(
+            x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
+        )
+        lambdas = coreax.validation.cast_as_type(
+            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[0],
+            object_name="lambdas[0]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        coreax.validation.validate_in_range(
+            x=lambdas[1],
+            object_name="lambdas[1]",
+            strict_inequalities=True,
+            lower_bound=0,
+        )
+        
+        # Compute feature kernel matrices
+        K1 = feature_kernel.compute(D1[0], D1[0])
+        K2 = feature_kernel.compute(D2[0], D2[0])
+        K21 = feature_kernel.compute(D2[0], D1[0])
+        
+        # Compute response kernel matrices
+        L1 = response_kernel.compute(D1[1], D1[1])
+        L2 = response_kernel.compute(D2[1], D2[1])
+        L12 = response_kernel.compute(D1[1], D2[1])
+
+        # Invert kernel matrices
+        W1 = jnp.linalg.lstsq(K1 + lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
+        W2 = jnp.linalg.lstsq(K2 + lambdas[1]*jnp.eye(K2.shape[0]), jnp.eye(K2.shape[0]))[0]
+
+        # Compute each term in the CMMD formula
+        term_1 = W1.dot(L1).dot(W1).dot(K1)
+        term_2 = W2.dot(L2).dot(W2).dot(K2)
+        term_3 = W1.dot(L12).dot(W2).dot(K21)
+
+        # Compute CMMD
+        result = jnp.sqrt(
+            coreax.util.apply_negative_precision_threshold(
+                jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3),
+                self.precision_threshold,
+            )
+        )
+        return result
