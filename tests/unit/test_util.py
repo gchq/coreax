@@ -162,7 +162,7 @@ class TestUtil(unittest.TestCase):
 
     def test_solve_qp_invalid_kernel_matrix_row_sum_mean(self) -> None:
         """
-        Test how solve_qp handles invalid inputs of kernel_mm.
+        Test how solve_qp handles invalid inputs of kernel_matrix_row_sum_mean.
 
         The output of solve_qp is indirectly tested when testing the various weight
         optimisers that are used in this codebase. This test just ensures sensible
