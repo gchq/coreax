@@ -215,7 +215,7 @@ class TestMMD(unittest.TestCase):
 
     def test_calculate_simplex_weights_approximate(self) -> None:
         """
-        Test the approximate calculation of weights via the simplex method for.
+        Test the approximate calculation of weights via the simplex method.
 
         Since the approximate solution method currently just calls the exact solution
         method, this test should give exactly the same output (with a warning raised)
