@@ -19,6 +19,7 @@ bmatrix
 booktitle
 bysource
 cmap
+color
 dispname
 dollarmath
 dtype
