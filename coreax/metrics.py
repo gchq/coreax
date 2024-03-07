@@ -351,8 +351,19 @@ class MMD(Metric):
             pairwise_distance_sum = self.kernel.compute(x, y).sum()
 
         else:
+            try:
+                row_index_range = range(0, num_points_x, block_size)
+            except ValueError as exception:
+                if block_size == 0:
+                    raise ValueError(
+                        "block_size must be a positive integer"
+                    ) from exception
+                raise
+            except TypeError as exception:
+                raise TypeError("block_size must be a positive integer") from exception
+
             pairwise_distance_sum = 0
-            for i in range(0, num_points_x, block_size):
+            for i in row_index_range:
                 for j in range(0, num_points_y, block_size):
                     pairwise_distances_part = self.kernel.compute(
                         x[i : i + block_size], y[j : j + block_size]
@@ -400,7 +411,19 @@ class MMD(Metric):
 
         else:
             weighted_pairwise_distance_sum = 0
-            for i in range(0, num_points_x, block_size):
+
+            try:
+                row_index_range = range(0, num_points_x, block_size)
+            except ValueError as exception:
+                if block_size == 0:
+                    raise ValueError(
+                        "block_size must be a positive integer"
+                    ) from exception
+                raise
+            except TypeError as exception:
+                raise TypeError("block_size must be a positive integer") from exception
+
+            for i in row_index_range:
                 for j in range(0, num_points_y, block_size):
                     pairwise_distances_part = (
                         weights_x[i : i + block_size, None]
