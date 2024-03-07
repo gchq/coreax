@@ -569,8 +569,9 @@ class TestKernelHerding(unittest.TestCase):
             block_size=-5,
         )
 
-        # The fit method should cap max_size at zero, then not allow uses of zero block
-        # size - since we can't iterate in blocks of size 0 - so we expect a value error
+        # The fit method should cap block_size at zero, then not allow uses of zero
+        # block size - since we can't iterate in blocks of size 0 - so we expect a value
+        # error
         with self.assertRaises(ValueError) as error_raised:
             herding_object.fit(
                 original_data=self.generic_data,
@@ -617,8 +618,9 @@ class TestKernelHerding(unittest.TestCase):
             block_size="ABC",
         )
 
-        # The fit method should cap max_size at zero, then not allow uses of zero block
-        # size - since we can't iterate in blocks of size 0 - so we expect a value error
+        # The fit method should reject a string value of block size - since we can't
+        # iterate in blocks of non-integer size (including a string) - so we expect a
+        # TypeError
         with self.assertRaises(TypeError) as error_raised:
             herding_object.fit(
                 original_data=self.generic_data,
@@ -1036,7 +1038,7 @@ class TestRandomSample(unittest.TestCase):
         )
 
         # Call the fit method with a float value for coreset size - this should error
-        # hen trying to define an integer number of samples
+        # when trying to define an integer number of samples
         with self.assertRaises(ValueError) as error_raised:
             random_sample.fit(
                 original_data=self.data_obj,
