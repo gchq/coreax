@@ -1036,7 +1036,7 @@ class TestRandomSample(unittest.TestCase):
         )
 
         # Call the fit method with a float value for coreset size - this should error
-        # hen trying to define an integer number of samples
+        # when trying to define an integer number of samples
         with self.assertRaises(ValueError) as error_raised:
             random_sample.fit(
                 original_data=self.data_obj,
