@@ -384,6 +384,8 @@ class RandomSample(coreax.reduction.Coreset):
 
         # Randomly sample the desired number of points to form a coreset
         try:
+            # Note that a TypeError is raised if the size input to random.choice is
+            # negative, and an AttributeError is raised if the shape is a float
             random_indices = random.choice(
                 self.random_key,
                 a=jnp.arange(0, num_data_points),

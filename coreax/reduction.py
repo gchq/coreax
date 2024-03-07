@@ -467,6 +467,8 @@ class MapReduce(ReductionStrategy):
 
         # Build a kdtree
         try:
+            # Note that a TypeError is raised if the leaf_size input to KDTree is
+            # negative
             kdtree = KDTree(input_data, leaf_size=self.leaf_size)
         except TypeError as exception:
             if isinstance(self.leaf_size, float):
