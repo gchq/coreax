@@ -538,21 +538,24 @@ class CMMD(Metric):
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
     :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
-    :param feature_kernel: Kernel object with compute method defined mapping
+    :param feature_kernel: Kernel object with compute method defined as mapping
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param response_kernel: Kernel object with compute method defined mapping
+    :param response_kernel: Kernel object with compute method defined as mapping
         :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
     :param precision_threshold: Positive threshold we compare against for precision
     :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
         the datasets :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+    :param num_feature_dimensions: An integer representing the dimensionality of the features 
+        :math:`x`
     """
     
     def __init__(
         self, 
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
-        precision_threshold: float = 1e-4
+        precision_threshold: float = 1e-4,
         lambdas: ArrayLike,
+        num_feature_dimensions: int
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
         # Validate inputs
@@ -587,45 +590,44 @@ class CMMD(Metric):
             lower_bound=0,
         )
         self.lambdas = lambdas
+
+        num_feature_dimensions = coreax.validation.cast_as_type(
+            x=num_feature_dimensions, object_name="num_feature_dimensions", type_caster=int
+        )
+        self.num_feature_dimensions = num_feature_dimensions
         
         # Initialise parent
         super().__init__()
 
     def compute(
         self,
-        D1: list[ArrayLike, ArrayLike],
-        D2: list[ArrayLike, ArrayLike],
+        D1: ArrayLike,
+        D2: ArrayLike,
         block_size: int | None = None,
+        weights_x: None = None,
+        weights_y: None = None,
     ) -> Array:
         r"""
         Calculate conditional maximum mean discrepancy.
 
         :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
-        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
-            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
+            concatenated after the features
+        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with 
+            :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
+            concatenated after the features
         :param block_size: Size of matrix block to process, or :data:`None` to not split
             into blocks
+        :param weights_x: :data:`None`, included for compatability reasons
+        :param weights_y: :data:`None`, included for compatability reasons
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
         # Validate inputs
         D1 = coreax.validation.cast_as_type(
-            x=D1, object_name="D1", type_caster=list
+            x=D1, object_name="D1", type_caster=jnp.atleast_2d
         )
         D2 = coreax.validation.cast_as_type(
-            x=D2, object_name="D2", type_caster=list
-        )
-        D1[0] = coreax.validation.cast_as_type(
-            x=D1[0], object_name="D1[0]", type_caster=jnp.atleast_2d
-        )
-        D1[1] = coreax.validation.cast_as_type(
-            x=D1[1], object_name="D1[1]", type_caster=jnp.atleast_2d
-        )
-        D2[0] = coreax.validation.cast_as_type(
-            x=D2[0], object_name="D2[0]", type_caster=jnp.atleast_2d
-        )
-        D2[1] = coreax.validation.cast_as_type(
-            x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
+            x=D2, object_name="D2", type_caster=jnp.atleast_2d
         )
 
         # block_size is checked in both coresubset.py and metrics.py, however each of
@@ -643,17 +645,17 @@ class CMMD(Metric):
             )
         # pylint: enable=duplicate-code
         
-        num_pairs_D1 = len(D1[0])
-        num_pairs_D2 = len(D2[0])
+        num_pairs_D1 = len(D1)
+        num_pairs_D2 = len(D2)
 
         if block_size is None or block_size > max(num_pairs_D1, num_pairs_D2):
-                return self.conditional_maximum_mean_discrepancy(D1, D2)
-            return self.conditional_maximum_mean_discrepancy_block(D1, D2, block_size)
+            return self.conditional_maximum_mean_discrepancy(D1, D2)
+        return self.conditional_maximum_mean_discrepancy_block(D1, D2, block_size)
             
     def conditional_maximum_mean_discrepancy(
         self,
-        D1: list[ArrayLike, ArrayLike],
-        D2: list[ArrayLike, ArrayLike]
+        D1: ArrayLike,
+        D2: ArrayLike
     ) -> Array:
         r"""
         Calculate standard conditional maximum mean discrepancy metric.
@@ -675,39 +677,29 @@ class CMMD(Metric):
         :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
     
         :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
-        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
-            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
+            concatenated after the features
+        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with 
+            :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
+            concatenated after the features
         """
         # Validate inputs
         D1 = coreax.validation.cast_as_type(
-            x=D1, object_name="D1", type_caster=list
+            x=D1, object_name="D1", type_caster=jnp.atleast_2d
         )
-        D2 = coreax.validation.cast_as_type(
-            x=D2, object_name="D2", type_caster=list
-        )       
-        D1[0] = coreax.validation.cast_as_type(
-            x=D1[0], object_name="D1[0]", type_caster=jnp.atleast_2d
-        )
-        D1[1] = features_m = coreax.validation.cast_as_type(
-            x=D1[1], object_name="D1[1]", type_caster=jnp.atleast_2d
-        )
-        D2[0] = responses_n = coreax.validation.cast_as_type(
-            x=D2[0], object_name="D2[0]", type_caster=jnp.atleast_2d
-        )
-        D2[1] = responses_m = coreax.validation.cast_as_type(
-            x=D2[1], object_name="D2[1]", type_caster=jnp.atleast_2d
+        D2 = responses_n = coreax.validation.cast_as_type(
+            x=D2, object_name="D2", type_caster=jnp.atleast_2d
         )
         
         # Compute feature kernel matrices
-        K1 = feature_kernel.compute(D1[0], D1[0])
-        K2 = feature_kernel.compute(D2[0], D2[0])
-        K21 = feature_kernel.compute(D2[0], D1[0])
+        K1 = feature_kernel.compute(D1[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
+        K2 = feature_kernel.compute(D2[:, :self.num_feature_dimensions], D2[:, :self.num_feature_dimensions])
+        K21 = feature_kernel.compute(D2[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
         
         # Compute response kernel matrices
-        L1 = response_kernel.compute(D1[1], D1[1])
-        L2 = response_kernel.compute(D2[1], D2[1])
-        L12 = response_kernel.compute(D1[1], D2[1])
+        L1 = response_kernel.compute(D1[:, self.num_feature_dimensions:], D1[:, self.num_feature_dimensions:])
+        L2 = response_kernel.compute(D2[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
+        L12 = response_kernel.compute(D1[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
 
         # Invert kernel matrices
         W1 = jnp.linalg.lstsq(K1 + self.lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
@@ -729,17 +721,19 @@ class CMMD(Metric):
 
     def conditional_maximum_mean_discrepancy_block(
         self,
-        D1: list[ArrayLike, ArrayLike],
-        D2: list[ArrayLike, ArrayLike],
+        D1: ArrayLike,
+        D2: ArrayLike,
         block_size: int = 10_000,
     ) -> Array:
         r"""
         Calculate conditional maximum mean discrepancy (CMMD) whilst limiting memory requirements.
 
         :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
+            concatenated after the features
         :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
-            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`
+            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
+            concatenated after the features
         :param block_size: Size of matrix blocks to process
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
