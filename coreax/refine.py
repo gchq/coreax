@@ -316,18 +316,10 @@ class RefineRandom(Refine):
         p: float = 0.1,
     ):
         """Initialise a random refinement object."""
-        # Perform input validation
-        p = coreax.validation.cast_as_type(x=p, object_name="p", type_caster=float)
-        coreax.validation.validate_in_range(
-            x=p, object_name="p", strict_inequalities=True, lower_bound=0.0
-        )
-        coreax.validation.validate_in_range(
-            x=p, object_name="p", strict_inequalities=False, upper_bound=1.0
-        )
-        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-
-        # Assign attributes
-        self.p = p
+        # Assign attributes - noting that p cannot be negative, and a p larger than 1.0
+        # would unnecessarily duplicate points in the candidate replacement set at
+        # random
+        self.p = min(max(0.0, p), 1.0)
         self.random_key = random_key
         super().__init__(
             approximator=approximator,
@@ -393,7 +385,14 @@ class RefineRandom(Refine):
         num_points_in_coreset = len(coreset_indices)
         num_points_in_x = len(original_array)
         n_cand = int(num_points_in_x * self.p)
-        n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
+        try:
+            n_iter = num_points_in_coreset * (num_points_in_x // n_cand)
+        except ZeroDivisionError as exception:
+            if n_cand == 0:
+                if self.p == 0:
+                    raise ValueError("input p must be greater than 0") from exception
+                raise ValueError("original_array must not be empty") from exception
+            raise
 
         body = partial(
             self._refine_rand_body,
