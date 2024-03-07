@@ -477,14 +477,14 @@ class Kernel(ABC):
         # Validate sensible inputs have been given
         max_size = max(0, max_size)
         try:
-            range(0, num_data_points, max_size)
+            row_index_range = range(0, num_data_points, max_size)
         except ValueError as exception:
             if max_size == 0:
                 raise ValueError("max_size must be a positive integer") from exception
             raise
 
         # Iterate over upper triangular blocks
-        for i in range(0, num_data_points, max_size):
+        for i in row_index_range:
             for j in range(i, num_data_points, max_size):
                 kernel_row_sum = self.update_kernel_matrix_row_sum(
                     x,

@@ -177,6 +177,7 @@ class KernelHerding(coreax.reduction.Coreset):
         # when the entire set is created
         kernel_similarity_penalty = jnp.zeros(num_data_points)
         try:
+            # Note that a TypeError is raised if the size input to jnp.zeros is negative
             coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
         except TypeError as exception:
             if coreset_size < 0:
@@ -389,7 +390,7 @@ class RandomSample(coreax.reduction.Coreset):
                 shape=(coreset_size,),
                 replace=not self.unique,
             )
-        except AssertionError as exception:
+        except AttributeError as exception:
             if not isinstance(coreset_size, int):
                 raise ValueError(
                     "coreset_size must be a positive integer"
