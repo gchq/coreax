@@ -218,7 +218,6 @@ class Coreset(ABC):
         :return: Metric computed as a zero-dimensional array
         """
         self.validate_fitted("compute_metric")
-        # block_size will be validated by metric.compute()
         return metric.compute(
             self.original_data.pre_coreset_array,
             self.coreset,
