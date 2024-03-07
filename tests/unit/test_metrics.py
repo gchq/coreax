@@ -440,75 +440,48 @@ class TestMMD(unittest.TestCase):
         """
         Test sum_pairwise_distances when a zero block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute sum of pairwise distances with a zero block_size - the full text of
-        # the inbuilt error raised from the range function should provide all
-        # information needed for users to identify the issue
+        # Compute sum of pairwise distances with a zero block_size - this should
+        # raise an error highlighting that block_size should be a positive integer
         with self.assertRaises(ValueError) as error_raised:
-            metric.sum_pairwise_distances(x=x, y=y, block_size=0)
+            metric.sum_pairwise_distances(x=self.x, y=self.y, block_size=0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_sum_pairwise_distances_negative_block_size(self):
         """
         Test sum_pairwise_distances when a negative block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute sum of pairwise distances with a negative block_size - this should be
-        # capped at 0, and then the full text of the inbuilt error raised from the range
-        # function should provide all information needed for users to identify the issue
+        # Compute sum of pairwise distances with a negative block_size - this should
+        # raise an error highlighting that block_size should be a positive integer
         with self.assertRaises(ValueError) as error_raised:
-            metric.sum_pairwise_distances(x=x, y=y, block_size=-5)
+            metric.sum_pairwise_distances(x=self.x, y=self.y, block_size=-5)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_sum_pairwise_distances_float_block_size(self):
         """
         Test sum_pairwise_distances when a float block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute sum of pairwise distances with a float block_size - the full text of
-        # the inbuilt error raised from the range function should provide all
-        # information needed for users to identify the issue
+        # Compute sum of pairwise distances with a float block_size - this should
+        # raise an error highlighting that block_size should be a positive integer
         with self.assertRaises(TypeError) as error_raised:
-            metric.sum_pairwise_distances(x=x, y=y, block_size=2.0)
+            metric.sum_pairwise_distances(x=self.x, y=self.y, block_size=2.0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
+            "block_size must be a positive integer",
         )
 
     def test_maximum_mean_discrepancy_block_ints(self) -> None:
@@ -613,75 +586,49 @@ class TestMMD(unittest.TestCase):
         """
         Test maximum_mean_discrepancy_block when given a zero block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
         # Compute MMD with a zero block_size - the full text of the inbuilt error raised
         # from the range function should provide all information needed for users to
         # identify the issue
         with self.assertRaises(ValueError) as error_raised:
-            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=0)
+            metric.maximum_mean_discrepancy_block(x=self.x, y=self.y, block_size=0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_maximum_mean_discrepancy_block_negative_block_size(self) -> None:
         """
         Test maximum_mean_discrepancy_block when given a negative block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute MMD with a negative block_size - this should be capped at 0,
-        # and then the full text of the inbuilt error raised from the range function
-        # should provide all information needed for users to identify the issue
+        # Compute MMD with a negative block_size - this should raise an error
+        # highlighting that block_size should be a positive integer
         with self.assertRaises(ValueError) as error_raised:
-            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=-2)
+            metric.maximum_mean_discrepancy_block(x=self.x, y=self.y, block_size=-2)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_maximum_mean_discrepancy_block_float_block_size(self) -> None:
         """
         Test maximum_mean_discrepancy_block when given a float block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute MMD with a float block_size - the full text of the inbuilt error
-        # raised from the range function should provide all information needed for
-        # users to identify the issue
+        # Compute MMD with a float block_size - an error should be raised highlighting
+        # this should be a positive integer
         with self.assertRaises(TypeError) as error_raised:
-            metric.maximum_mean_discrepancy_block(x=x, y=y, block_size=2.0)
+            metric.maximum_mean_discrepancy_block(x=self.x, y=self.y, block_size=1.0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
+            "block_size must be a positive integer",
         )
 
     def test_sum_weighted_pairwise_distances(self) -> None:
@@ -775,88 +722,68 @@ class TestMMD(unittest.TestCase):
         """
         Test sum_weighted_pairwise_distances when a zero block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute sum of weighted pairwise distances with a zero block_size - the
-        # full text of the inbuilt error raised from the range function should provide
-        # all information needed for users to identify the issue
+        # Compute sum of weighted pairwise distances with a zero block_size - this
+        # should error and state a positive integer is required
         with self.assertRaises(ValueError) as error_raised:
             metric.sum_weighted_pairwise_distances(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=0
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=0,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_sum_weighted_pairwise_distances_negative_block_size(self):
         """
         Test sum_weighted_pairwise_distances when a negative block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
         # Compute sum of weighted pairwise distances with a negative block_size - this
-        # should be capped at 0, and then the full text of the inbuilt error raised from
-        # the range function should provide all information needed for users to identify
-        # the issue
+        # should raise an error highlighting that block_size should be a positive
+        # integer
         with self.assertRaises(ValueError) as error_raised:
             metric.sum_weighted_pairwise_distances(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=-5
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=-5,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_sum_weighted_pairwise_distances_float_block_size(self):
         """
         Test sum_weighted_pairwise_distances when a float block size is given.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute sum of weighted pairwise distances with a float block_size - the
-        # full text of the inbuilt error raised from the range function should provide
-        # all information needed for users to identify the issue
+        # Compute sum of weighted pairwise distances with a float block_size - this
+        # should raise an error highlighting that block_size should be a positive
+        # integer
         with self.assertRaises(TypeError) as error_raised:
             metric.sum_weighted_pairwise_distances(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2.0
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=2.0,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
+            "block_size must be a positive integer",
         )
 
     def test_weighted_maximum_mean_discrepancy_block_int(self) -> None:
@@ -946,162 +873,115 @@ class TestMMD(unittest.TestCase):
         """
         Test weighted_maximum_mean_discrepancy_block when given a zero block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute weighted MMD with a zero block_size - the full text of the inbuilt
-        # error raised from the range function should provide all information needed for
-        # users to identify the issue
+        # Compute weighted MMD with a zero block_size - this should error as we require
+        # a positive integer
         with self.assertRaises(ValueError) as error_raised:
             metric.weighted_maximum_mean_discrepancy_block(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=0
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=0,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_weighted_maximum_mean_discrepancy_block_negative_block_size(self) -> None:
         """
         Test weighted_maximum_mean_discrepancy_block when given a negative block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute weighted MMD with a negative block_size - this should be capped at 0,
-        # and then the full text of the inbuilt error raised from the range function
-        # should provide all information needed for users to identify the issue
+        # Compute weighted MMD with a negative block_size - this should raise an error
+        # highlighting that block_size should be a positive integer
         with self.assertRaises(ValueError) as error_raised:
             metric.weighted_maximum_mean_discrepancy_block(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=-2
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=-2,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_weighted_maximum_mean_discrepancy_block_float_block_size(self) -> None:
         """
         Test weighted_maximum_mean_discrepancy_block when given a float block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        weights_x = jnp.array([0.5, 0.5, 0])
-        weights_y = jnp.array([1, 0])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute weighted MMD with a float block_size - the full text of the inbuilt
-        # error raised from the range function should provide all information needed
-        # for users to identify the issue
+        # Compute weighted MMD with a float block_size - this should raise an error
+        # explaining this parameter must be a positive integer
         with self.assertRaises(TypeError) as error_raised:
             metric.weighted_maximum_mean_discrepancy_block(
-                x=x, y=y, weights_x=weights_x, weights_y=weights_y, block_size=2.0
+                x=self.x,
+                y=self.y,
+                weights_x=self.weights_x,
+                weights_y=self.weights_y,
+                block_size=2.0,
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
+            "block_size must be a positive integer",
         )
 
     def test_compute_zero_block_size(self) -> None:
         """
         Test compute when given a zero block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute MMD with a zero block_size - the full text of the inbuilt error raised
-        # from the range function should provide all information needed for users to
-        # identify the issue
+        # Compute MMD with a zero block_size - this should raise an error explaining
+        # this parameter must be a positive integer
         with self.assertRaises(ValueError) as error_raised:
-            metric.compute(x=x, y=y, block_size=0)
+            metric.compute(x=self.x, y=self.y, block_size=0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_compute_negative_block_size(self) -> None:
         """
         Test compute when given a negative block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
-        # Compute MMD with a negative block_size - this should be capped at 0, and then
-        # the full text of the inbuilt error raised from the range function should
-        # provide all information needed for users to identify the issue
+        # Compute MMD with a negative block_size - this should raise an error to
+        # highlight this must be a positive integer
         with self.assertRaises(ValueError) as error_raised:
-            metric.compute(x=x, y=y, block_size=-2)
+            metric.compute(x=self.x, y=self.y, block_size=-2)
         self.assertEqual(
             error_raised.exception.args[0],
-            "range() arg 3 must not be zero",
+            "block_size must be a positive integer",
         )
 
     def test_compute_float_block_size(self) -> None:
         """
         Test compute when given a float block size.
         """
-        # Setup some data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        # Define a kernel object and set pairwise computations to be the square distance
-        kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
-
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.MMD(kernel=MagicMock())
 
         # Compute MMD with a float block_size - the full text of the inbuilt error
         # raised from the range function should provide all information needed for users
         # to identify the issue
         with self.assertRaises(TypeError) as error_raised:
-            metric.compute(x=x, y=y, block_size=2.0)
+            metric.compute(x=self.x, y=self.y, block_size=2.0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
+            "block_size must be a positive integer",
         )
 
 
