@@ -10,6 +10,8 @@ Huszar
 Jiaxin
 Jitkrittum
 Kanagawa
+Litterer
+Lyons
 Motonobu
 Nystr
 Nystrom
@@ -20,4 +22,5 @@ Rudi
 Sahaj
 Schreuder
 Smirnov
+Tchernychova
 Wittawat
