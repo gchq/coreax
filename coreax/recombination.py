@@ -92,7 +92,8 @@ def pre_process_weights_and_nodes(
     :return: a (potentially reduced) set of (probability) weights :math:`\hat{w}` and
         nodes :math:`y_i`, which implicitly define an atomic probability measure
         :math:`\eta = \sum_{i \in I} \hat{w_i} y_i`, where :math:`I \subset {1,\dots,n}`
-        with :math:`\text{card}(I) \le n` (with equality if no reduction is performed).
+        with :math:`\text{card}(I) = \hat{n} \le n` (with equality if no reduction is
+        performed).
     """
     non_negative_weights = jnp.abs(weights)
     weighted_nodes = non_negative_weights[..., None] * nodes
@@ -147,9 +148,9 @@ def caratheodory_measure_reduction(
     r"""
     Reduce the support of the implied atomic measure via Caratheodory measure reduction.
 
-    This implementation is a blend of algorithm 5 (Chapter 3.2) and algorithm 6
-    (Chapter 3.3) of :cite:`tchernychova2016recombination`, which are based on the
-    algorithms detailed in :cite:`litterer2012recombination`.
+    Based on the algorithm detailed in :cite:`litterer2012recombination`, without the
+    requirement of a centred measure (a measure with zero centre of mass). I.E Algorithm
+    4 Chapter 3.2 of :cite:`tchernychova2016recombination`.
 
     Where the weights :math:`w \in \mathbb{R}` and nodes :math:`y in \mathbb{R^d}`
     define an :math:`n` point atomic probability measure
@@ -161,11 +162,11 @@ def caratheodory_measure_reduction(
     Caratheodory measure reduction allows one to determine a reduced measure, with at
     least :math:`d+1` points (unique weights and nodes), that preserves the centre of
     mass of the original measure, where :math:`I \subset {1, \dots, n}` and
-    `\text{card}(I) = d + 1`,
+    `\text{card}(I) = \hat{n} = d + 1`,
 
     .. math:
 
-        \eta_n = \eta_{d+1} = \sum{i \in I} \hat{w_i} y_i.
+        \eta_{\hat{n}} = \sum{i \in I} \hat{w_i} y_i = \eta_n.
 
     Note that the weights :math:`\hat{w}` must be recomputed, while the remaining nodes
     are left unchanged. This ensures that feasibility constraints on the support of the
