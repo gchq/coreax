@@ -1,4 +1,6 @@
 """Test recombination algorithms."""
+from __future__ import annotations
+
 import warnings
 from typing import Literal
 
@@ -10,7 +12,7 @@ import pytest
 import scipy
 from jaxtyping import Array, ArrayLike, Inexact, Shaped
 
-from coreax.recombination import caratheodory_measure_reduction, reveal_kernel_rank
+from coreax.recombination import caratheodory_measure_reduction, reveal_null_space_rank
 
 jax.config.update("jax_enable_x64", True)
 InexactScalarLike = Inexact[ArrayLike, ""]
@@ -19,7 +21,8 @@ InexactScalarLike = Inexact[ArrayLike, ""]
 # pylint: disable=line-too-long
 # Credit: https://github.com/FraCose/Recombination_Random_Algos/blob/2ca4ff74279eb1604376723dcb00ee65ff7e519a/recombination.py#L914
 # pylint: enable=line-too-long
-# The below implementation provides additional support for a Rank-Revealing QR mode.
+# The below implementation provides additional support for a Rank-Revealing QR mode
+# along with other quality of life changes.
 def _reference_caratheodory_measure_reduction(
     weights: Shaped[np.ndarray, " n"],
     nodes: Shaped[np.ndarray, "n d"],
@@ -29,13 +32,11 @@ def _reference_caratheodory_measure_reduction(
     augmented_nodes = np.insert(nodes, 0, 1.0, axis=1)
     if mode == "svd":
         _, s, vt = np.linalg.svd(augmented_nodes.T)
-        kernel_rank, rcond = reveal_kernel_rank(augmented_nodes, s, rcond)
+        kernel_rank = reveal_null_space_rank(augmented_nodes, s, rcond)
         null_basis = vt[-kernel_rank:, :].T
     elif mode == "qr":
         q, r, _ = scipy.linalg.qr(augmented_nodes, mode="full", pivoting=True)
-        kernel_rank, rcond = reveal_kernel_rank(
-            augmented_nodes, np.abs(np.diag(r)), rcond
-        )
+        kernel_rank = reveal_null_space_rank(augmented_nodes, np.abs(np.diag(r)), rcond)
         null_basis = q[:, -kernel_rank:]
     else:
         msg = f"`mode` must be one of 'svd' or 'qr'; got {mode}"
@@ -55,9 +56,7 @@ def _reference_caratheodory_measure_reduction(
         # Ignore warnings from dividing zero by zero. These values are filtered out by
         # the ``np.where`` clause.
         with np.errstate(invalid="ignore"):
-            rescaling_factor = np.where(
-                null_vector > rcond, weights / null_vector, np.inf
-            )
+            rescaling_factor = np.where(null_vector > 0, weights / null_vector, np.inf)
         argmin_index = np.argmin(rescaling_factor)
         weights = weights - rescaling_factor[argmin_index] * null_vector
         weights[argmin_index] = 0.0
@@ -74,32 +73,34 @@ def _reference_caratheodory_measure_reduction(
     return w_star, nodes_star
 
 
-@pytest.fixture(params=[(100, 10), (10, 100), (50, 1), (1, 50)])
-def shaped_array(request) -> Array:
+@pytest.fixture(name="shaped_array", params=[(100, 10), (10, 100), (50, 1), (1, 50)])
+def fixture_shaped_array(request) -> Array:
     """Fixture generates random arrays of varying shape."""
     return jr.normal(jr.key(0), request.param)
 
 
-@pytest.fixture(params=[None, np.asarray(1e-12), jnp.asarray([1e-12]), 1e-12])
-def rcond(request):
+@pytest.fixture(
+    name="rcond", params=[None, np.asarray(1e-12), jnp.asarray([1e-12]), 1e-12]
+)
+def fixture_rcond(request):
     """Fixture generates relative condition numbers of varying type."""
     return request.param
 
 
-def test_reveal_kernel_rank(shaped_array, rcond):
-    """Test ``reveal_kernel_rank``."""
+def test_reveal_null_space_rank(shaped_array, rcond):
+    """Test ``reveal_null_space_rank``."""
     rank = np.linalg.matrix_rank(shaped_array, tol=rcond)
-    expected_kernel_rank = max(shaped_array.shape) - rank
+    expected_null_space_rank = max(shaped_array.shape) - rank
     _, s, _ = scipy.linalg.svd(shaped_array)
-    kernel_rank, _ = reveal_kernel_rank(shaped_array, s, rcond)
-    assert kernel_rank == expected_kernel_rank
+    null_space_rank = reveal_null_space_rank(shaped_array, s, rcond)
+    assert null_space_rank == expected_null_space_rank
 
 
 # Add "qr" to mode once support is available in JAX.
 # see https://github.com/google/jax/issues/12897
-@pytest.mark.parametrize("mode", ["svd"])
+@pytest.mark.parametrize("mode", ["svd", "qr"])
 def test_caratheodory_measure_reduction_invariants(
-    shaped_array, rcond, mode: Literal["svd"]
+    shaped_array, rcond, mode: Literal["svd", "qr"]
 ):
     """
     Test Caratheodory measure reduction preserves the centre-of-mass.
