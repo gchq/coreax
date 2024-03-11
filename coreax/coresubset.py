@@ -712,7 +712,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
     
         # Compute and store inverses for each coreset feature kernel matrix
         identity = jnp.eye(current_coreset_indices.shape[0] + 1)
-        reg = lambdas[1] * identity
+        reg = self.lambdas[1] * identity
         W2s = jnp.array([ jnp.linalg.lstsq( K2s[i, :] + reg, identity, rcond = None )[0] for i in range(candidate_indices.shape[0]) ])
     
         # Compute each term of CMMD for each possible new coreset index
