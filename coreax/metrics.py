@@ -691,14 +691,14 @@ class CMMD(Metric):
         )
         
         # Compute feature kernel matrices
-        K1 = feature_kernel.compute(D1[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
-        K2 = feature_kernel.compute(D2[:, :self.num_feature_dimensions], D2[:, :self.num_feature_dimensions])
-        K21 = feature_kernel.compute(D2[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
+        K1 = self.feature_kernel.compute(D1[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
+        K2 = self.feature_kernel.compute(D2[:, :self.num_feature_dimensions], D2[:, :self.num_feature_dimensions])
+        K21 = self.feature_kernel.compute(D2[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
         
         # Compute response kernel matrices
-        L1 = response_kernel.compute(D1[:, self.num_feature_dimensions:], D1[:, self.num_feature_dimensions:])
-        L2 = response_kernel.compute(D2[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
-        L12 = response_kernel.compute(D1[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
+        L1 = self.response_kernel.compute(D1[:, self.num_feature_dimensions:], D1[:, self.num_feature_dimensions:])
+        L2 = self.response_kernel.compute(D2[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
+        L12 = self.response_kernel.compute(D1[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
 
         # Invert kernel matrices
         W1 = jnp.linalg.lstsq(K1 + self.lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
