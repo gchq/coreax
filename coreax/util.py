@@ -69,7 +69,7 @@ def apply_negative_precision_threshold(
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
     if precision_threshold < 0.0:
-        raise ValueError("precision_threshold must be positive.")
+        raise ValueError("precision_threshold must not be negative.")
     if -precision_threshold < x < 0.0:
         return 0.0
 
@@ -168,14 +168,14 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters.
     try:
-        q_array = jnp.array(kernel_mm)
+        q_array = jnp.asarray(kernel_mm)
     except TypeError as exception:
         raise TypeError(
             "kernel_mm must be able to be converted to a JAX array"
         ) from exception
 
     try:
-        c = -jnp.array(kernel_matrix_row_sum_mean)
+        c = -jnp.asarray(kernel_matrix_row_sum_mean)
     except TypeError as exception:
         raise TypeError(
             "kernel_matrix_row_sum_mean must be able to be converted to a JAX array"
