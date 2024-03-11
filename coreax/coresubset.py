@@ -498,7 +498,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         *,
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
-        num_feature_dimensions: int,`
+        num_feature_dimensions: int,
         lambdas: ArrayLike = jnp.array([1e-6, 1e-6]),
         unique: bool = True,
         batch_size: int | None = None
