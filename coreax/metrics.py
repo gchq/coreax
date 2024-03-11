@@ -553,9 +553,9 @@ class CMMD(Metric):
         self, 
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
+        num_feature_dimensions: int,
         precision_threshold: float = 1e-4,
-        lambdas: ArrayLike,
-        num_feature_dimensions: int
+        lambdas: ArrayLike = jnp.array([1e-4, 1e-4])
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
         # Validate inputs
@@ -569,6 +569,11 @@ class CMMD(Metric):
         )
         self.response_kernel = response_kernel
 
+        num_feature_dimensions = coreax.validation.cast_as_type(
+            x=num_feature_dimensions, object_name="num_feature_dimensions", type_caster=int
+        )
+        self.num_feature_dimensions = num_feature_dimensions
+        
         precision_threshold = coreax.validation.cast_as_type(
             x=precision_threshold, object_name="precision_threshold", type_caster=float
         )
@@ -590,11 +595,6 @@ class CMMD(Metric):
             lower_bound=0,
         )
         self.lambdas = lambdas
-
-        num_feature_dimensions = coreax.validation.cast_as_type(
-            x=num_feature_dimensions, object_name="num_feature_dimensions", type_caster=int
-        )
-        self.num_feature_dimensions = num_feature_dimensions
         
         # Initialise parent
         super().__init__()
@@ -603,7 +603,7 @@ class CMMD(Metric):
         self,
         D1: ArrayLike,
         D2: ArrayLike,
-        block_size: int | None = None,
+        block_size: None = None,
         weights_x: None = None,
         weights_y: None = None,
     ) -> Array:
@@ -616,8 +616,7 @@ class CMMD(Metric):
         :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with 
             :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
             concatenated after the features
-        :param block_size: Size of matrix block to process, or :data:`None` to not split
-            into blocks
+        :param block_size: :data:`None`, included for compatability reasons
         :param weights_x: :data:`None`, included for compatability reasons
         :param weights_y: :data:`None`, included for compatability reasons
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
@@ -738,4 +737,3 @@ class CMMD(Metric):
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
         raise NotImplementedError
-
