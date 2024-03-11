@@ -554,8 +554,8 @@ class CMMD(Metric):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         num_feature_dimensions: int,
-        precision_threshold: float = 1e-4,
-        lambdas: ArrayLike = jnp.array([1e-4, 1e-4])
+        precision_threshold: float = 1e-6,
+        lambdas: ArrayLike = jnp.array([1e-6, 1e-6])
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
         # Validate inputs
