@@ -60,6 +60,7 @@ the corresponding JIT compilation does not yield unexpected results.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -373,6 +374,12 @@ class Kernel(ABC):
             if isinstance(j, float):
                 raise ValueError("index j must be an integer") from exception
             raise
+
+        if max_size <= 0:
+            warnings.warn(
+                "max_size is not positive - this may give unexpected results",
+                UserWarning,
+            )
 
         # Assign the kernel row sum to the relevant part of this full matrix
         kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
