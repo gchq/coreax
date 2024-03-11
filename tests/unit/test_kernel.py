@@ -25,12 +25,153 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 from jax import Array
 from jax import numpy as jnp
+from jax import tree_util
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
 
 import coreax.approximation
 import coreax.kernel
 import coreax.util
+
+
+class KernelNoDivergenceMethod:
+    """
+    Example kernel with no method to compute divergence of inputs.
+
+    This kernel is used to verify handling of invalid inputs to Stein kernels.
+    """
+
+    def __init__(self, a: float):
+        """Initialise the KernelNoDivergenceMethod class"""
+        self.a = a
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        children = ()
+        aux_data = {"a": self.a}
+        return children, aux_data
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        """
+        Reconstruct a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable JIT decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        r"""
+        Evaluate kernel on two inputs ``x`` and ``y``.
+
+        We assume ``x`` and ``y`` are two vectors of the same dimension.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Kernel evaluated at (``x``, ``y``)
+        """
+        return self.a * (x + y)
+
+
+# Register the example kernel
+tree_util.register_pytree_node(
+    KernelNoDivergenceMethod,
+    KernelNoDivergenceMethod.tree_flatten,
+    KernelNoDivergenceMethod.tree_unflatten,
+)
+
+
+class KernelNoTreeFlatten:
+    """
+    Example kernel with no method to flatten a pytree.
+
+    This kernel is used to verify handling of invalid inputs to Stein kernels.
+    """
+
+    def __init__(self, a: float):
+        """Initialise the KernelNoTreeFlatten class"""
+        self.a = a
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        """
+        Reconstruct a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable JIT decoration of methods inside this class.
+        """
+        return cls(*children, **aux_data)
+
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        r"""
+        Evaluate kernel on two inputs ``x`` and ``y``.
+
+        We assume ``x`` and ``y`` are two vectors of the same dimension.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Kernel evaluated at (``x``, ``y``)
+        """
+        return self.a * (x + y)
+
+
+class KernelNoTreeUnflatten:
+    """
+    Example kernel with no method to unflatten a pytree.
+
+    This kernel is used to verify handling of invalid inputs to Stein kernels.
+    """
+
+    def __init__(self, a: float):
+        """Initialise the KernelNoTreeUnflatten class"""
+        self.a = a
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        # The score function is assumed to not change here - but it might if the kernel
+        # changes - but this does not work when kernel is specified in children
+        children = ()
+        aux_data = {"a": self.a}
+        return children, aux_data
+
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        r"""
+        Evaluate kernel on two inputs ``x`` and ``y``.
+
+        We assume ``x`` and ``y`` are two vectors of the same dimension.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Kernel evaluated at (``x``, ``y``)
+        """
+        return self.a * (x + y)
 
 
 class TestKernelABC(unittest.TestCase):
@@ -2045,9 +2186,11 @@ class TestSteinKernel(unittest.TestCase):
 
     # pylint: enable=too-many-locals
 
-    def test_stein_kernel_invalid_base_kernel(self) -> None:
+    def test_stein_kernel_invalid_base_kernel_missing_divergence(self) -> None:
         r"""
-        Test how the SteinKernel handles an invalid kernel being passed.
+        Test how the SteinKernel handles an invalid base kernel being passed.
+
+        The base kernel here is missing a method to compute the divergence of the data.
         """
         # Setup some data
         num_points_x = 10
@@ -2069,21 +2212,57 @@ class TestSteinKernel(unittest.TestCase):
         y = generator.random((num_points_y, dimension))
 
         # Compute output using Kernel class - since the base kernel does not have a
-        # compute method, and it does not have a defined pytree, it should give an error
-        # from JAX internally, reference the specific class that has been passed and the
-        # compute line that fails, which is enough information for the user to debug
-        # with.
+        # divergence method, it should raise an attribute error.
         kernel = coreax.kernel.SteinKernel(
-            base_kernel=coreax.util.InvalidKernel(x=1.0),
+            base_kernel=KernelNoDivergenceMethod(a=1.0),
             score_function=score_function,
         )
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(
+            AttributeError, "object has no attribute 'divergence_x_grad_y_elementwise'"
+        ):
             kernel.compute(x, y)
+
+    def test_stein_kernel_invalid_base_kernel_no_pytree(self) -> None:
+        r"""
+        Test how the SteinKernel handles an invalid base kernel being passed.
+
+        The base kernel here is missing a method to flatten a pytree, and then a method
+        to unflatten a pytree.
+        """
+
+        def score_function(x_: ArrayLike) -> Array:
+            """
+            Compute a simple, example score function for testing purposes.
+
+            :param x_: Point or points at which we wish to evaluate the score function
+            :return: Evaluation of the score function at ``x_``
+            """
+            return -x_
+
+        # Create the Kernel class - since the base kernel does not have tree_flatten
+        # method, the code should raise an attribute error and inform the user.
+        with self.assertRaises(AttributeError) as error_raised:
+            coreax.kernel.SteinKernel(
+                base_kernel=KernelNoTreeFlatten(a=1.0),
+                score_function=score_function,
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
-            "Cannot interpret value of type <class 'coreax.util.InvalidKernel'> "
-            "as an abstract array; it does not have a dtype attribute",
+            "base_kernel must have the method tree_flatten implemented",
+        )
+
+        # Create the Kernel class - since the base kernel does not have tree_unflatten
+        # method, the code should raise an attribute error and inform the user.
+        with self.assertRaises(AttributeError) as error_raised:
+            coreax.kernel.SteinKernel(
+                base_kernel=KernelNoTreeUnflatten(a=1.0),
+                score_function=score_function,
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "base_kernel must have the method tree_unflatten implemented",
         )
 
 
