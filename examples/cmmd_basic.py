@@ -77,7 +77,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     D = jnp.hstack((x, y))
     
     # Request 50 coreset points
-    coreset_size = 10
+    coreset_size = 50
 
     # Setup the original data object
     data = ArrayData.load(D)
@@ -144,7 +144,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     plt.scatter(
         greedy_cmmd.coreset[:, 0],
         greedy_cmmd.coreset[:, 1],
-        s=10,
+        s=50,
         color="red",
     )
     plt.axis("off")
@@ -158,7 +158,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     plt.scatter(
         random_sample_object.coreset[:, 0],
         random_sample_object.coreset[:, 1],
-        s=10,
+        s=50,
         color="red",
     )
     plt.title(
