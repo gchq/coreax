@@ -32,6 +32,7 @@ The coreset attained from Stein kernel herding is compared to a coreset generate
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
 (MMD).
 """
+
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
