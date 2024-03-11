@@ -38,6 +38,19 @@ class TestKernelABC(unittest.TestCase):
     Tests related to the Kernel abstract base class in kernel.py
     """
 
+    def setUp(self):
+        """
+        Generate data for shared use across unit tests.
+        """
+        self.default_length_scale = 1 / np.sqrt(2)
+        self.default_x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
+        self.default_zero_kernel_row_sum = jnp.zeros(len(self.default_x))
+
+        # Define the simplest, real kernel object for testing purposes
+        self.default_kernel = coreax.kernel.SquaredExponentialKernel(
+            length_scale=self.default_length_scale
+        )
+
     def test_approximator_valid(self) -> None:
         """
         Test usage of approximation object within the Kernel class.
@@ -68,41 +81,29 @@ class TestKernelABC(unittest.TestCase):
         """
         Test how the method update_kernel_matrix_row_sum handles a zero max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
-
-        # Pre-specify an empty kernel matrix row sum to update as we go
-        kernel_row_sum = jnp.zeros(len(x))
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
-        # Compute the kernel matrix row sum with the class - a max size of 0 should
-        # mean nothing gets updated. This is expected behaviour, as max sizes of zero
-        # would get caught and addressed in the wrapper that calls this inside of the
-        # kernel class.
-        output = kernel.update_kernel_matrix_row_sum(
-            x, kernel_row_sum, 0, 0, kernel.compute, max_size=0
-        )
+        # Compute the kernel matrix row sum - a max size of 0 should mean nothing gets
+        # updated. This is expected behaviour, as max sizes of zero would get caught and
+        # addressed in the wrapper that calls this inside of the kernel class. However,
+        # this unusual choice should raise a warning to the user.
+        with self.assertWarnsRegex(UserWarning, "max_size is not positive"):
+            output = self.default_kernel.update_kernel_matrix_row_sum(
+                self.default_x,
+                self.default_zero_kernel_row_sum,
+                0,
+                0,
+                self.default_kernel.compute,
+                max_size=0,
+            )
 
         # Check output matches expected
-        np.testing.assert_array_almost_equal(output, kernel_row_sum)
+        np.testing.assert_array_almost_equal(output, self.default_zero_kernel_row_sum)
 
     def test_update_kernel_matrix_row_sum_negative_max_size(self) -> None:
         """
         Test how the method update_kernel_matrix_row_sum handles a negative max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
+        # Define parameters for test
         max_size = 3
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
-        # Pre-specify an empty kernel matrix row sum to update as we go
-        kernel_row_sum = jnp.zeros(len(x))
 
         # Define expected output for pairwise distances - in this case we are looking
         # from the start index (0) to start index + max_size in both axis (rows
@@ -112,18 +113,28 @@ class TestKernelABC(unittest.TestCase):
         # convention therefore states 'compute from start index up to abs(max_size)
         # elements from the end of the array'.
         expected_output = np.zeros([5, 5])
-        for x_1_idx, x_1 in enumerate(x[0 : (5 - max_size)]):
-            for x_2_idx, x_2 in enumerate(x[0 : (5 - max_size)]):
-                expected_output[x_1_idx, x_2_idx] = kernel.compute(x_1, x_2)[0, 0]
+        for x_1_idx, x_1 in enumerate(self.default_x[0 : (5 - max_size)]):
+            for x_2_idx, x_2 in enumerate(self.default_x[0 : (5 - max_size)]):
+                expected_output[x_1_idx, x_2_idx] = self.default_kernel.compute(
+                    x_1, x_2
+                )[0, 0]
         expected_output = expected_output.sum(axis=1)
 
-        # Compute the kernel matrix row sum with the class - a negative max size should
-        # fill up to max_size elements from the end of the array. This is expected
-        # behaviour, as max sizes of zero would get caught and addressed in the wrapper
-        # that calls this inside of the kernel class.
-        output = kernel.update_kernel_matrix_row_sum(
-            x, kernel_row_sum, 0, 0, kernel.compute, max_size=-max_size
-        )
+        # Compute the kernel matrix row sum - a negative max size should fill up to
+        # max_size elements from the end of the array. This is expected behaviour, as
+        # max sizes of zero would get caught and addressed in the wrapper that calls
+        # this inside of the kernel class. However, this unusual choice should raise a
+        # warning to the user.
+        with self.assertWarnsRegex(UserWarning, "max_size is not positive"):
+            output = self.default_kernel.update_kernel_matrix_row_sum(
+                self.default_x,
+                self.default_zero_kernel_row_sum,
+                0,
+                0,
+                self.default_kernel.compute,
+                max_size=-max_size,
+            )
+
         # Check output matches expected
         np.testing.assert_array_almost_equal(output, expected_output)
 
@@ -131,21 +142,15 @@ class TestKernelABC(unittest.TestCase):
         """
         Test how the method update_kernel_matrix_row_sum handles a float max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
-
-        # Pre-specify an empty kernel matrix row sum to update as we go
-        kernel_row_sum = jnp.zeros(len(x))
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
-        # Compute the kernel matrix row sum with the class - a float max size should
-        # raise an error
+        # Compute the kernel matrix row sum - a float max size should raise an error
         with self.assertRaises(ValueError) as error_raised:
-            kernel.update_kernel_matrix_row_sum(
-                x, kernel_row_sum, 0, 0, kernel.compute, max_size=1.0
+            self.default_kernel.update_kernel_matrix_row_sum(
+                self.default_x,
+                self.default_zero_kernel_row_sum,
+                0,
+                0,
+                self.default_kernel.compute,
+                max_size=1.0,
             )
 
         self.assertEqual(
@@ -157,21 +162,16 @@ class TestKernelABC(unittest.TestCase):
         """
         Test how the method update_kernel_matrix_row_sum handles a float array index.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
-
-        # Pre-specify an empty kernel matrix row sum to update as we go
-        kernel_row_sum = jnp.zeros(len(x))
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum with the class - a float index should raise
         # an error
         with self.assertRaises(ValueError) as error_raised:
-            kernel.update_kernel_matrix_row_sum(
-                x, kernel_row_sum, 0.0, 0, kernel.compute, max_size=2
+            self.default_kernel.update_kernel_matrix_row_sum(
+                self.default_x,
+                self.default_zero_kernel_row_sum,
+                0.0,
+                0,
+                self.default_kernel.compute,
+                max_size=2,
             )
         self.assertEqual(
             error_raised.exception.args[0],
@@ -179,8 +179,13 @@ class TestKernelABC(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError) as error_raised:
-            kernel.update_kernel_matrix_row_sum(
-                x, kernel_row_sum, 0, 0.0, kernel.compute, max_size=2
+            self.default_kernel.update_kernel_matrix_row_sum(
+                self.default_x,
+                self.default_zero_kernel_row_sum,
+                0,
+                0.0,
+                self.default_kernel.compute,
+                max_size=2,
             )
         self.assertEqual(
             error_raised.exception.args[0],
@@ -192,26 +197,18 @@ class TestKernelABC(unittest.TestCase):
         Test how the method update_kernel_matrix_row_sum when input indices differ.
         """
         # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = jnp.array([0.0, 1.0, 2.0, 3.0, 4.0]).reshape(-1, 1)
         max_size = 3
-
-        # Pre-specify an empty kernel matrix row sum to update as we go
-        kernel_row_sum = jnp.zeros(len(x))
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
         # Define expected output for pairwise distances - in this case we are looking
         # from the start index (0) to start index + max_size (0 + 3) in both axis (rows
         # and columns) and then adding the pairwise distances up to this point. Any
         # pairs of points beyond this subset of indices should not be computed
         kernel_evaluations = np.zeros([5, 5])
-        for x_1_idx, x_1 in enumerate(x[0:max_size]):
-            for x_2_idx, x_2 in enumerate(x[1 : 1 + max_size]):
-                kernel_evaluations[x_1_idx, 1 + x_2_idx] = kernel.compute(x_1, x_2)[
-                    0, 0
-                ]
+        for x_1_idx, x_1 in enumerate(self.default_x[0:max_size]):
+            for x_2_idx, x_2 in enumerate(self.default_x[1 : 1 + max_size]):
+                kernel_evaluations[x_1_idx, 1 + x_2_idx] = self.default_kernel.compute(
+                    x_1, x_2
+                )[0, 0]
 
         # The expected output should just be the sum of the sums over each axis, as
         # we've only filled in the relevant bits in the above loop (note x_2 starts at
@@ -221,8 +218,13 @@ class TestKernelABC(unittest.TestCase):
         )
 
         # Compute the kernel matrix row sum with the class
-        output = kernel.update_kernel_matrix_row_sum(
-            x, kernel_row_sum, 0, 1, kernel.compute, max_size=max_size
+        output = self.default_kernel.update_kernel_matrix_row_sum(
+            self.default_x,
+            self.default_zero_kernel_row_sum,
+            0,
+            1,
+            self.default_kernel.compute,
+            max_size=max_size,
         )
 
         # Check output matches expected
@@ -232,18 +234,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum method when given a zero value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum with a max size of 0, which would make
         # computations impossible, so we expect an error to be raised
         with self.assertRaises(ValueError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum(x=x, max_size=0)
+            self.default_kernel.calculate_kernel_matrix_row_sum(
+                x=self.default_x, max_size=0
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -254,18 +250,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum method when given a negative value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum with a negative max size. To avoid nonsense
         # answers, this should raise an error
         with self.assertRaises(ValueError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum(x=x, max_size=-2)
+            self.default_kernel.calculate_kernel_matrix_row_sum(
+                x=self.default_x, max_size=-2
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -276,18 +266,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum method when given a float value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum with a negative max size. To avoid nonsense
         # answers, this should raise an error
         with self.assertRaises(TypeError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum(x=x, max_size=2.0)
+            self.default_kernel.calculate_kernel_matrix_row_sum(
+                x=self.default_x, max_size=2.0
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -298,18 +282,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum mean method when given a zero value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum mean with a max size of 0, which would make
         # computations impossible, so we expect an error to be raised
         with self.assertRaises(ValueError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum_mean(x=x, max_size=0)
+            self.default_kernel.calculate_kernel_matrix_row_sum_mean(
+                x=self.default_x, max_size=0
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -320,18 +298,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum mean method when given a negative value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum mean with a float max size. To avoid
         # nonsense answers, this should raise an error
         with self.assertRaises(ValueError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum_mean(x=x, max_size=-2)
+            self.default_kernel.calculate_kernel_matrix_row_sum_mean(
+                x=self.default_x, max_size=-2
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -342,18 +314,12 @@ class TestKernelABC(unittest.TestCase):
         """
         Test kernel matrix row sum mean method when given a float value of max_size.
         """
-        # Define parameters for data
-        length_scale = 1 / np.sqrt(2)
-        x = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
-        x = x.reshape(-1, 1)
-
-        # Define the kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-
         # Compute the kernel matrix row sum mean with a float max size. To avoid
         # nonsense answers, this should raise an error
         with self.assertRaises(TypeError) as error_raised:
-            kernel.calculate_kernel_matrix_row_sum_mean(x=x, max_size=2.0)
+            self.default_kernel.calculate_kernel_matrix_row_sum_mean(
+                x=self.default_x, max_size=2.0
+            )
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -371,7 +337,7 @@ class TestSquaredExponentialKernel(unittest.TestCase):
         Test SquaredExponentialKernel computations with unexpected length_scale inputs.
 
         The SquaredExponential kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/2 * \text{length_scale}^2)`.
+        :math:`k(x,y) = \exp (-||x-y||^2/(2 * \text{length_scale}^2))`.
         Whilst a negative choice of length_scale would be unusual, the kernel can still
         be evaluated using it. Since the length_scale gets squared in the computation,
         the negative values should give the same results as the positive values. Very
@@ -1056,7 +1022,7 @@ class TestLaplacianKernel(unittest.TestCase):
         Test LaplacianKernel computations with unexpected length_scale inputs.
 
         The Laplacian kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||_1/2 * \text{length_scale}^2)`.
+        :math:`k(x,y) = \exp (-||x-y||_1/(2 * \text{length_scale}^2))`.
         Whilst a negative choice of length_scale would be unusual, the kernel can still
         be evaluated using it. Since the length_scale gets squared in the computation,
         the negative values should give the same results as the positive values. Very
@@ -1634,7 +1600,7 @@ class TestPCIMQKernel(unittest.TestCase):
         Test PCIMQKernel computations with unexpected output_scale inputs.
 
         This example uses the same length_scale demonstrated in
-        test_laplacian_kernel_unexpected_length_scale. Although a negative output_scale
+        test_pcimq_kernel_unexpected_length_scale. Although a negative output_scale
         would be unusual, there should be no issue evaluating the kernel with this.
         """
         # Define input data
