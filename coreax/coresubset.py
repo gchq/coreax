@@ -560,7 +560,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # kernel for both the features and the response.
         super().__init__(
             weights_optimiser=None,
-            kernel=SquaredExponentialKernel(),
+            kernel=coreax.kernel.SquaredExponentialKernel(),
             refine_method=None,
         )
 
