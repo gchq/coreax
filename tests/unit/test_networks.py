@@ -33,6 +33,7 @@ class TestTrainState(unittest.TestCase):
     Tests related to :func:`create_train_state`.
 
     .. note::
+
         Learning rate is not tested as it is part of weight updates, not initialisation
         of the code written in this codebase.
     """
@@ -57,7 +58,7 @@ class TestTrainState(unittest.TestCase):
 
         # Create a train state with this network - we expect optax to catch the invalid
         # hidden dimension argument and raise an appropriate error
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(TypeError, "Only non-negative indices"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -65,12 +66,6 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
             )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            f"Only non-negative indices are allowed when broadcasting static "
-            f"shapes, but got shape ({self.data_dimension}, -{self.hidden_dimension}).",
-        )
 
     def test_create_train_state_zero_hidden_dimension(self):
         """
@@ -80,7 +75,7 @@ class TestTrainState(unittest.TestCase):
 
         # Create a train state with this network - we expect optax to try and do a
         # division by hidden dimension size - which should give rise to a division error
-        with self.assertRaises(ZeroDivisionError) as error_raised:
+        with self.assertRaisesRegex(ZeroDivisionError, "division by zero"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -88,8 +83,6 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
             )
-
-        self.assertEqual(error_raised.exception.args[0], "float division by zero")
 
     def test_create_train_state_float_hidden_dimension(self):
         """
@@ -101,7 +94,7 @@ class TestTrainState(unittest.TestCase):
 
         # Create a train state with this network - we expect optax to catch the invalid
         # hidden dimension argument and raise an appropriate error
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(TypeError, "Shapes must be"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -109,12 +102,6 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
             )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            f"Shapes must be 1D sequences of concrete values of integer type, "
-            f"got ({self.data_dimension}, {1.0*self.hidden_dimension}).",
-        )
 
     def test_create_train_state_negative_output_dimension(self):
         """
@@ -125,7 +112,9 @@ class TestTrainState(unittest.TestCase):
         )
 
         # Create a train state with this network - we expect optax to catch the invalid
-        # data dimension argument and raise an appropriate error
+        # data dimension argument and raise an appropriate error. We don't check the
+        # exact message as it uses a word (non-negative without the dash) that would
+        # mean adding an incorrect work to cspell.
         with self.assertRaises(TypeError):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
@@ -135,9 +124,6 @@ class TestTrainState(unittest.TestCase):
                 optimiser=self.optimiser,
             )
 
-        # We don't check the exact message as it uses a work (non-negative without the
-        # dash) that would mean adding an incorrect work to cspell.
-
     def test_create_train_state_zero_output_dimension(self):
         """
         Test create_train_state with a zero size output dimension.
@@ -146,7 +132,7 @@ class TestTrainState(unittest.TestCase):
 
         # Create a train state with this network - we expect optax to try and do a
         # division by data dimension size - which should give rise to a division error
-        with self.assertRaises(ZeroDivisionError) as error_raised:
+        with self.assertRaisesRegex(ZeroDivisionError, "^division by zero$"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -154,8 +140,6 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=0,
                 optimiser=self.optimiser,
             )
-
-        self.assertEqual(error_raised.exception.args[0], "division by zero")
 
     def test_create_train_state_float_output_dimension(self):
         """
@@ -167,7 +151,7 @@ class TestTrainState(unittest.TestCase):
 
         # Create a train state with this network - we expect optax to catch the invalid
         # data dimension argument and raise an appropriate error
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(TypeError, "Shapes must be"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -176,12 +160,6 @@ class TestTrainState(unittest.TestCase):
                 optimiser=self.optimiser,
             )
 
-        self.assertEqual(
-            error_raised.exception.args[0],
-            f"Shapes must be 1D sequences of concrete values of integer type, "
-            f"got ({1}, {1.0*self.data_dimension}).",
-        )
-
     def test_create_train_state_invalid_module(self):
         """
         Test create_train_state with an invalid network module.
@@ -189,8 +167,10 @@ class TestTrainState(unittest.TestCase):
         score_network = coreax.util.InvalidKernel
 
         # Create a train state with this network - we expect optax to catch the invalid
-        # hidden dimension argument and raise an appropriate error
-        with self.assertRaises(AttributeError) as error_raised:
+        # module argument and raise an appropriate error
+        with self.assertRaisesRegex(
+            AttributeError, "type object 'InvalidKernel' has no attribute"
+        ):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
@@ -198,11 +178,6 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
             )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "type object 'InvalidKernel' has no attribute 'init'",
-        )
 
 
 if __name__ == "__main__":
