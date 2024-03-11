@@ -60,6 +60,7 @@ the corresponding JIT compilation does not yield unexpected results.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -87,8 +88,8 @@ def median_heuristic(x: ArrayLike) -> Array:
     :return: Bandwidth parameter, computed from the median heuristic, as a
         zero-dimensional array
     """
-    # Validate inputs
-    x = coreax.validation.cast_as_type(x=x, object_name="x", type_caster=jnp.atleast_2d)
+    # Format inputs
+    x = jnp.atleast_2d(x)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(coreax.util.squared_distance_pairwise(x, x), k=1)
     # Calculate the median of the square distances
@@ -109,30 +110,6 @@ class Kernel(ABC):
 
     def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
         """Define a kernel."""
-        # Check that length_scale is above zero (the cast_as_type check here is to
-        # ensure that we don't check a trace of an array when jit decorators interact
-        # with code)
-
-        # Validate inputs
-        length_scale = coreax.validation.cast_as_type(
-            x=length_scale, object_name="length_scale", type_caster=float
-        )
-        output_scale = coreax.validation.cast_as_type(
-            x=output_scale, object_name="output_scale", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=length_scale,
-            object_name="length_scale",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        coreax.validation.validate_in_range(
-            x=output_scale,
-            object_name="output_scale",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-
         self.length_scale = length_scale
         self.output_scale = output_scale
 
@@ -181,13 +158,8 @@ class Kernel(ABC):
         :return: Kernel evaluations between points in ``x`` and ``y``. If ``x`` = ``y``,
             then this is the Gram matrix corresponding to the RKHS inner product.
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
         fn = vmap(
             vmap(self.compute_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -223,14 +195,8 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`n \times m \times d` array of pairwise Jacobians
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
-
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
         fn = vmap(
             vmap(self.grad_x_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -253,14 +219,8 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`m \times n \times d` array of pairwise Jacobians
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
-
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
         fn = vmap(
             vmap(self.grad_y_elementwise, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -295,22 +255,21 @@ class Kernel(ABC):
         x: ArrayLike,
         y: ArrayLike,
     ) -> Array:
-        # pylint: disable=line-too-long
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
         The gradient (Jacobian) of the kernel function is computed using
         :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
 
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays. :meth:`coreax.kernel.Kernel.grad_y`
-        provides a vectorised version of this method for arrays.
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this method
+        for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`.
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        # pylint: enable=line-too-long
         return grad(self.compute_elementwise, 1)(x, y)
 
     @jit
@@ -332,14 +291,8 @@ class Kernel(ABC):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Array of Laplace-style operator traces :math:`n \times m` array
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
-
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
         fn = vmap(
             vmap(
                 self.divergence_x_grad_y_elementwise,
@@ -405,30 +358,28 @@ class Kernel(ABC):
         :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
             ``j``:``j`` + ``max_size`` populated
         """
-        # Validate inputs
-        i = coreax.validation.cast_as_type(x=i, object_name="i", type_caster=int)
-        j = coreax.validation.cast_as_type(x=j, object_name="j", type_caster=int)
-        coreax.validation.validate_in_range(
-            x=i, object_name="i", strict_inequalities=False, lower_bound=0
-        )
-        coreax.validation.validate_in_range(
-            x=j, object_name="i", strict_inequalities=False, lower_bound=0
-        )
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        kernel_row_sum = coreax.validation.cast_as_type(
-            x=kernel_row_sum, object_name="kernel_row_sum", type_caster=jnp.asarray
-        )
-        max_size = coreax.validation.cast_as_type(
-            x=max_size, object_name="max_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=max_size, object_name="max_size", strict_inequalities=True, lower_bound=0
-        )
+        x = jnp.atleast_2d(x)
+        kernel_row_sum = jnp.asarray(kernel_row_sum)
 
         # Compute the kernel row sum for this particular chunk of data
-        kernel_row_sum_part = kernel_pairwise(x[i : i + max_size], x[j : j + max_size])
+        try:
+            kernel_row_sum_part = kernel_pairwise(
+                x[i : i + max_size], x[j : j + max_size]
+            )
+        except AssertionError as exception:
+            if isinstance(max_size, float):
+                raise ValueError("max_size must be an integer") from exception
+            if isinstance(i, float):
+                raise ValueError("index i must be an integer") from exception
+            if isinstance(j, float):
+                raise ValueError("index j must be an integer") from exception
+            raise
+
+        if max_size <= 0:
+            warnings.warn(
+                "max_size is not positive - this may give unexpected results",
+                UserWarning,
+            )
 
         # Assign the kernel row sum to the relevant part of this full matrix
         kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
@@ -951,22 +902,17 @@ class SteinKernel(Kernel):
         output_scale: float = 1.0,
     ):
         """Define the Stein kernel, i.e. the application of the Stein operator."""
-        # Validate inputs
-        coreax.validation.validate_is_instance(
-            x=base_kernel, object_name="base_kernel", expected_type=Kernel
-        )
-        coreax.validation.validate_is_instance(
-            x=score_function, object_name="score_function", expected_type=Callable
-        )
-        output_scale = coreax.validation.cast_as_type(
-            x=output_scale, object_name="output_scale", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=output_scale,
-            object_name="output_scale",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
+        # Check that the base_kernel provided has the relevant JAX pytree methods to
+        # allow functionality within this kernel
+        if not hasattr(base_kernel, "tree_flatten"):
+            raise AttributeError(
+                "base_kernel must have the method tree_flatten implemented"
+            )
+
+        if not hasattr(base_kernel, "tree_unflatten"):
+            raise AttributeError(
+                "base_kernel must have the method tree_unflatten implemented"
+            )
 
         self.base_kernel = base_kernel
         self.score_function = score_function
