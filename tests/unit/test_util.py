@@ -150,15 +150,11 @@ class TestUtil(unittest.TestCase):
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(TypeError, "not a valid JAX array type"):
             coreax.util.solve_qp(
                 kernel_mm="invalid_kernel_mm",
                 kernel_matrix_row_sum_mean=np.array([1, 2, 3]),
             )
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "kernel_mm must be able to be converted to a JAX array",
-        )
 
     def test_solve_qp_invalid_kernel_matrix_row_sum_mean(self) -> None:
         """
@@ -170,21 +166,17 @@ class TestUtil(unittest.TestCase):
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
-        with self.assertRaises(TypeError) as error_raised:
+        with self.assertRaisesRegex(TypeError, "not a valid JAX array type"):
             coreax.util.solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "kernel_matrix_row_sum_mean must be able to be converted to a JAX array",
-        )
 
     def test_jit_test(self) -> None:
         """
         Test jit_test calls the function in question twice when checking performance.
 
-        The function jit_test is used to asses the performance of other functions and
+        The function jit_test is used to assess the performance of other functions and
         methods in the codebase. It's inputs are a function (denoted fn) and inputs to
         provide to fn. This unit test checks that fn is called twice. In a practical
         usage of jit_test, the first call to fn performs the JIT compilation, and the
