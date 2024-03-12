@@ -59,7 +59,7 @@ class InvalidKernel:
 
 
 def apply_negative_precision_threshold(
-    x: ArrayLike, precision_threshold: float = 1e-8
+    x: float, precision_threshold: float = 1e-8
 ) -> float:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
@@ -167,19 +167,8 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters.
-    try:
-        q_array = jnp.asarray(kernel_mm)
-    except TypeError as exception:
-        raise TypeError(
-            "kernel_mm must be able to be converted to a JAX array"
-        ) from exception
-
-    try:
-        c = -jnp.asarray(kernel_matrix_row_sum_mean)
-    except TypeError as exception:
-        raise TypeError(
-            "kernel_matrix_row_sum_mean must be able to be converted to a JAX array"
-        ) from exception
+    q_array = jnp.asarray(kernel_mm)
+    c = -jnp.asarray(kernel_matrix_row_sum_mean)
 
     # Define the equality constraint parameters
     num_points = q_array.shape[0]
