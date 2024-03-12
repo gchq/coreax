@@ -60,13 +60,13 @@ repos:
       - id: forbid-binary
         exclude: ^examples/.+/.+.(gif|png)$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.4
+    rev: v1.5.5
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.3.0
+    rev: v8.6.0
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -101,7 +101,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.2.2
+    rev: v0.3.1
     hooks:
       # Run the linter.
       - id: ruff

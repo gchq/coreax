@@ -5,6 +5,7 @@ See https://github.com/mcmtroffaes/sphinxcontrib-bibtex
 Version: 2.6.2
 Path: test/roots/test-bibliography_style_label_1/conf.py
 """
+
 from __future__ import annotations
 
 from typing import Generator, Iterable
