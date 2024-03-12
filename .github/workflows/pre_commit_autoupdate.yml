@@ -58,6 +58,10 @@ jobs:
         run: |
           git checkout main
           echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT
+      - name: Overwrite config on branch with version from main
+        run: |
+          git checkout ${{ env.update_branch }}
+          git checkout main ${{ env.config_path }}
       - name: Run Pre-commit autoupdate
         id: autoupdate
         run: |
@@ -71,7 +75,6 @@ jobs:
         id: commit
         if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
         run: |
-          git checkout -m ${{ env.update_branch }}
           export message="chore(deps): autoupdate pre-commit hooks"
           export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.config_path }} )
           export content=$( base64 -i ${{ env.config_path }} )
