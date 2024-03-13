@@ -26,4 +26,6 @@ rcond
 refs
 RKHS
 sigmas
+subseteq
+supp
 WMMd
