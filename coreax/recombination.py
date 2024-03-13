@@ -1,7 +1,9 @@
 """Recombination algorithms."""
 from __future__ import annotations
 
+import math
 import warnings
+from collections.abc import Callable
 from typing import Literal
 
 import jax
@@ -17,12 +19,22 @@ InexactScalarLike = Inexact[ArrayLike, ""]
 # pylint: disable=line-too-long
 # Credit: https://github.com/patrick-kidger/lineax/blob/9b923c8df6556551fedc7adeea7979b5c7b3ffb0/lineax/_misc.py#L34  # noqa: E501
 # pylint: enable=line-too-long
-def _resolve_rcond(
+def resolve_rcond(
     rcond: InexactScalarLike | None, shape: tuple[int, ...], dtype: DTypeLike
 ) -> InexactScalarLike:
+    """
+    Resolve the relative condition number.
+
+    :param rcond: the relative condition number of a given matrix; if ``None``,
+        ``rcond = dtype_floating_point_eps * max(shape)``; else if negative,
+        ``rcond = dtype_floating_point_eps``.
+    :param shape: the shape of the matrix  whose relative is to be resolved
+    :param dtype: the element dtype of the matrix whose rcond is to be resolved
+    :return: the resolved relative condition number (rcond).
+    """
     if rcond is None:
         return jnp.finfo(dtype).eps * max(shape)
-    return jnp.where(rcond < jnp.asarray(0), jnp.finfo(dtype).eps, rcond)
+    return jnp.where(rcond < jnp.asarray(0), jnp.finfo(dtype).eps, rcond)[0]
 
 
 # pylint: disable=line-too-long
@@ -56,7 +68,7 @@ def reveal_null_space_rank(
         :code:`rcond is None`, it defaults to `floating point eps * max(n, d)`.
     :return: the rank of the null space of the given matrix :math:`A`.
     """
-    rcond = _resolve_rcond(rcond, matrix.shape, singular_values.dtype)
+    rcond = resolve_rcond(rcond, matrix.shape, singular_values.dtype)
     if singular_values.size > 0:
         rcond = rcond * jnp.max(singular_values[0])
     mask = singular_values > rcond
@@ -65,12 +77,21 @@ def reveal_null_space_rank(
 
 
 def _explicit_delete(
-    x: Shaped[Array, "n ..."], removed_indices: Shaped[Array, " m"]
+    a: Shaped[Array, "n ..."], delete_indices: Shaped[Array, " m"]
 ) -> Shaped[Array, "n-m ..."]:
-    return jnp.delete(x, removed_indices, axis=0, assume_unique_indices=True)
+    """
+    Delete (assumed unique) leading entries from an array.
+
+    :param a: an array :math:`A` whose leading entries are to be deleted
+    :param delete_indices: an array of unique indices to delete from the leading axis of
+        the array :math:`A`
+    :return: the array :math:`A` with the specified leading entries deleted.
+    """
+    return jnp.delete(a, delete_indices, axis=0, assume_unique_indices=True)
 
 
 # Not currently JIT compatible.
+# Do we want to preserve the normalization factor if we have an un-normalised measure?
 def pre_process_weights_and_nodes(
     weights: Shaped[Array, " n"],
     nodes: Shaped[Array, "n d"],
@@ -105,7 +126,7 @@ def pre_process_weights_and_nodes(
     # the measure.
     redundant_indices = jnp.nonzero(weighted_nodes_abs_coordinate_sum <= tol)
 
-    _remove_redundant = jtu.Partial(_explicit_delete, removed_indices=redundant_indices)
+    _remove_redundant = jtu.Partial(_explicit_delete, delete_indices=redundant_indices)
     positive_weights = _remove_redundant(non_negative_weights)
     probability_weights = positive_weights / jnp.sum(positive_weights)
     non_zero_nodes = _remove_redundant(nodes)
@@ -117,7 +138,7 @@ def _svd_reduction(
 ) -> tuple[Shaped[Array, "n-d d"], int]:
     u, s, _ = jsp.linalg.svd(nodes, full_matrices=True)
     null_space_rank = reveal_null_space_rank(nodes, s, rcond)
-    left_null_space_basis = u[:, -null_space_rank:]
+    left_null_space_basis = u  # u[:, -null_space_rank:]
     return left_null_space_basis, null_space_rank
 
 
@@ -136,37 +157,44 @@ def _qr_reduction(
 SOLVERS = {"svd": _svd_reduction, "qr": _qr_reduction}
 
 
-# Not currently JIT compatible. Requires careful consideration of the handling of the
-# left null space basis, which is currently sliced by a dynamic value (preventing JIT)
+# Not currently JIT compatible.
 def caratheodory_measure_reduction(
     weights: Shaped[Array, " n"],
     nodes: Shaped[Array, "n d"],
     *,
     rcond: InexactScalarLike | None = None,
     mode: Literal["svd", "qr"] = "svd",
-) -> tuple[Shaped[Array, " rows=d+1"], Shaped[Array, "rows=d+1 d"]]:
+) -> tuple[Shaped[Array, " hat_n"], Shaped[Array, "hat_n d"]]:
     r"""
     Reduce the support of the implied atomic measure via Caratheodory measure reduction.
 
-    Based on the algorithm detailed in :cite:`litterer2012recombination`, without the
-    requirement of a centred measure (a measure with zero centre of mass). I.E Algorithm
-    4 Chapter 3.2 of :cite:`tchernychova2016recombination`.
+    Based on Algorithm 6 Chapter 3.3 of :cite:`tchernychova2016recombination`, which
+    is an order of magnitude more efficient (in the context of recombination) than
+    Algorithm 4 Chapter 3.2 of the same thesis (originally introduced in
+    :cite:`litterer2012recombination`).
 
-    Where the weights :math:`w \in \mathbb{R}` and nodes :math:`y in \mathbb{R^d}`
-    define an :math:`n` point atomic probability measure
+    Note: in this implementation, the node count :math:`n` need not be a fixed multiple
+    of the dimension of the augmented nodes :math:`d+1`. Hence, if math:`n = (d+1) + 1`,
+    we recover a variant of Litterer's 1-Tree approach; if :math:`n = 2(d + 1)`, we
+    recover a variant of Tchernychova's M-Tree approach, where :math:`M = d + 1`.
+
+    Where the weights :math:`w \in \mathbb{R}`, nodes :math:`y in \mathbb{R}^d` and
+    augmented nodes :math:`\underline{y}_i = [1 | y_i] \in \mathbb{R}^{d+1}` define an
+    :math:`n` point atomic measure :math:`\eta_n` on :math:`\mathbb{R}^{d+1}`
 
     .. math:
 
-        \eta_n = \sum_{i=1}^{n} w_i \delta_{y_i},
+        \eta_n = \sum_{i=1}^{n} w_i \delta_{\underline{y}_i},
 
     Caratheodory measure reduction allows one to determine a reduced measure, with at
     least :math:`d+1` points (unique weights and nodes), that preserves the centre of
-    mass of the original measure, where :math:`I \subset {1, \dots, n}` and
-    `\text{card}(I) = \hat{n} = d + 1`,
+    mass of the original measure,
 
     .. math:
 
-        \eta_{\hat{n}} = \sum{i \in I} \hat{w_i} y_i = \eta_n.
+        \eta_{\hat{n}} = \sum{i \in I} \hat{w_i} y_i = \eta_n,
+
+    where :math:`I \subset {1, \dots, n}` and `\text{card}(I) = \hat{n} = d + 1`.
 
     Note that the weights :math:`\hat{w}` must be recomputed, while the remaining nodes
     are left unchanged. This ensures that feasibility constraints on the support of the
@@ -176,9 +204,10 @@ def caratheodory_measure_reduction(
     new (infeasible) "latent"-categories.
 
     :param weights: an array of shape :math:`n`, where each row is a weight :math:`w_i`
-        for the atomic measure :math:`\eta_n = \sum_{i=1}^n w_i \delta_{y_i}`.
+        for the atomic measure :math:`\eta_n=\sum_{i=1}^n w_i \delta_{\underline{y}_i}`
     :param nodes: an array of shape :math`n \times d`, where each row is a node/d-vector
-        :math:`y_i` for the atomic measure :math:`\eta_n = \sum_{i=1}^n w_i\delta_{y_i}`
+        :math:`y_i`, that defines the augmented node :math:`\underline{y}_i = [1 | y_i]`
+        for the atomic measure :math:`\eta_n = \sum_{i=1}^n w_i\delta_{\underline{y}_i}`
     :param rcond: a relative condition number. Any singular value :math:`s` below the
         threshold :math:`\text{rcond} * \text{max}(s)` is treated as equal to zero. If
         :code:`rcond is None`, it defaults to `floating point eps * max(n, d)`.
@@ -190,15 +219,34 @@ def caratheodory_measure_reduction(
         :math:`\eta = \sum_{i \in I} \hat{w_i} y_i`, where :math:`I \subset {1,\dots,n}`
         with :math:`\text{card}(I) = d + 1`.
     """
+    # Augmenting the nodes elides the need to centre them (have a centred measure).
     augmented_nodes = jnp.c_[jnp.ones_like(weights), nodes]
+    output_weights, removed_indices = _implicit_caratheodory_measure_reduction(
+        weights, augmented_nodes, rcond=rcond, mode=mode
+    )
+    # Explicitly remove the redundant (zero) weights and their corresponding nodes.
+    _remove_redundant = jtu.Partial(_explicit_delete, delete_indices=removed_indices)
+    return _remove_redundant(output_weights), _remove_redundant(nodes)
+
+
+# Not currently JIT compatible. Requires careful consideration of the handling of the
+# left null space basis, which is currently sliced by a dynamic value (preventing JIT)
+def _implicit_caratheodory_measure_reduction(
+    probability_weights: Shaped[Array, " n"],
+    augmented_nodes: Shaped[Array, "n d"],
+    *,
+    rcond: InexactScalarLike | None = None,
+    mode: Literal["svd", "qr"] = "svd",
+):
     left_null_space_basis, null_space_rank = SOLVERS[mode](augmented_nodes, rcond)
 
-    if nodes.shape[0] <= null_space_rank:
+    if augmented_nodes.shape[0] <= null_space_rank:
         warnings.warn(
-            "Nothing to do; node count already below reduction threshold",
+            "Nothing to do; "
+            "node count is already less than or equal to the null space rank",
             stacklevel=2,
         )
-        return weights, nodes
+        return probability_weights, augmented_nodes
 
     def _reduction_step(
         state: tuple[Shaped[Array, " n"], Shaped[Array, "n-m d"]],
@@ -219,17 +267,103 @@ def caratheodory_measure_reduction(
         updated_weights = weights - rescaling_factor[argmin_index] * basis_vector
 
         rescaled_basis_vector = basis_vector / basis_vector[argmin_index]
+        # basis_vector is implicitly set to zero by the subtraction.
+        # we then roll this zeroed vector to the back so that we select a new vector on
+        # the next iteration.
         left_null_space_basis -= jnp.tensordot(
             rescaled_basis_vector, left_null_space_basis[argmin_index], axes=0
         )
         updated_left_null_space_basis = jnp.roll(left_null_space_basis, -1, axis=1)
         return (updated_weights, updated_left_null_space_basis), argmin_index
 
-    in_state = (weights, left_null_space_basis)
+    in_state = (probability_weights, left_null_space_basis)
     scan_vector = jnp.arange(0, null_space_rank)
     out_state, removed_indices = jax.lax.scan(_reduction_step, in_state, scan_vector)
     output_weights, _ = out_state
+    return output_weights, removed_indices
 
-    # Explicitly remove the redundant (zero) weights and their corresponding nodes.
-    _remove_redundant = jtu.Partial(_explicit_delete, removed_indices=removed_indices)
-    return _remove_redundant(output_weights), _remove_redundant(nodes)
+
+def _tree_recombination(
+    weights: Shaped[Array, " n"],
+    nodes: Shaped[Array, "n d"],
+    tree_count: int | None = None,
+) -> tuple[Shaped[Array, "L n/L"], Shaped[Array, "L n/L d"]]:
+    n, d = nodes.shape
+    if tree_count is None:
+        tree_count = 2 * d
+    padding = tree_count ** math.ceil(math.log(n, tree_count)) - n
+
+    padding_sequence = [(0, padding, 0)]
+    weights = jax.lax.pad(weights, 0.0, padding_sequence)
+    nodes = jax.lax.pad(nodes, 0.0, padding_sequence + [(0, 0, 0)])
+
+    def _tree_reduction_step(state, _):
+        weights, nodes = state
+        reshaped_weights = weights.reshape(tree_count, -1, order="F")
+        reshaped_nodes = nodes.reshape(tree_count, -1, d, order="F")
+        centroid_masses, centroid_nodes = _centroid(reshaped_weights, reshaped_nodes)
+        (
+            updated_centroid_masses,
+            redundant_centroids,
+        ) = _implicit_caratheodory_measure_reduction(centroid_masses, centroid_nodes)
+        updated_weights = weights * (updated_centroid_masses / centroid_masses)
+        out_state = updated_weights.reshape(-1), nodes.reshape(-1, d)
+        return out_state, redundant_centroids
+
+    assert jnp.count_nonzero(weights) == tree_count**tree_count
+
+    in_state = (weights, nodes)
+    scan_vector = jnp.arange(0, tree_count)
+    out_state, redundant_centroids = jax.lax.scan(
+        _tree_reduction_step, in_state, scan_vector
+    )
+
+    # Quite a lot of reshape acrobatics here; requires explanation.
+    root_weights, root_nodes = out_state
+    root_weights = root_weights.reshape(tree_count, -1)
+    root_nodes = root_nodes.reshape(tree_count, -1, d)
+
+    _prune_redundant = jtu.Partial(_explicit_delete, delete_indices=redundant_centroids)
+    pruned_root_weights = _prune_redundant(root_weights).reshape(-1)
+    pruned_root_nodes = _prune_redundant(root_nodes).reshape(-1, d)
+
+    leaf_weights, redundant_leaves = _implicit_caratheodory_measure_reduction(
+        pruned_root_weights, pruned_root_nodes
+    )
+    _remove_redundant = jtu.Partial(_explicit_delete, delete_indices=redundant_leaves)
+    return _remove_redundant(leaf_weights), _remove_redundant(pruned_root_nodes)
+
+
+@jax.vmap
+def _centroid(weights, nodes):
+    """Compute the centroid mass and node centre (centre of mass)."""
+    return jnp.sum(weights), jnp.average(nodes, -1, weights)
+
+
+def recombination(
+    weights: Shaped[Array, " n"],
+    nodes: Shaped[Array, "n d"],
+    push_forward_map: Callable[[Shaped[Array, " d"]], Shaped[Array, " M"]],
+):
+    r"""
+    TO BE COMPLETED.
+
+    :param weights: an array of shape :math:`n`, where each row is a weight :math:`w_i`
+        for the atomic measure :math:`\eta_n = \sum_{i=1}^n w_i \delta_{y_i}`.
+    :param nodes: an array of shape :math`n \times d`, where each row is a node/d-vector
+        :math:`y_i` for the atomic measure :math:`\eta_n = \sum_{i=1}^n w_i\delta_{y_i}`
+    :param push_forward_map: an :math:`\eta_n\text{-integrable}` map,
+        :math:`\Psi = {\psi_1, \dots, \psi_M} : K \to \mathbb{R}^M`, where
+        :math:`\text{supp}(\eta_n) \subseteq K`, which defines the push forward measure
+        :math:`(\Psi_{*}\eta_n) = \sum_{i=1}^n w_i \delta_{\Psi(y_i)} against which we
+        will generate our :math:`\Psi\text{-generalised}` cubature measure.
+    """
+    pushed_forward_nodes = jax.vmap(push_forward_map, in_axes=0)(nodes)
+    n_weights = weights.shape[-1]
+    n_pushed_forward_nodes = pushed_forward_nodes.shape[-2]
+    if n_weights != n_pushed_forward_nodes:
+        msg = (
+            f"Number of weights and nodes must be identical; got weights: {n_weights},"
+            + f"pushed_forward_nodes: {n_pushed_forward_nodes}"
+        )
+        raise ValueError(msg)
