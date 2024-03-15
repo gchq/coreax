@@ -366,7 +366,7 @@ class Kernel(ABC):
             kernel_row_sum_part = kernel_pairwise(
                 x[i : i + max_size], x[j : j + max_size]
             )
-        except AssertionError as exception:
+        except AttributeError as exception:
             if isinstance(max_size, float):
                 raise ValueError("max_size must be an integer") from exception
             if isinstance(i, float):
