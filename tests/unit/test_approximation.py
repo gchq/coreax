@@ -29,19 +29,7 @@ from jax import random
 
 import coreax.approximation
 import coreax.kernel
-
-
-# pylint: disable=too-few-public-methods
-class InvalidKernel:
-    """
-    Simple class that does not have a compute method on to test kernel.
-    """
-
-    def __init__(self, x: float):
-        self.x = x
-
-
-# pylint: enable=too-few-public-methods
+import coreax.util
 
 # pylint: disable=too-many-public-methods
 
@@ -303,7 +291,7 @@ class TestApproximations(unittest.TestCase):
         Test the class RandomApproximator rejects an invalid kernel.
         """
         approximator = coreax.approximation.RandomApproximator(
-            kernel=InvalidKernel,
+            kernel=coreax.util.InvalidKernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
             num_train_points=self.data.shape[0],
@@ -500,7 +488,7 @@ class TestApproximations(unittest.TestCase):
         Test the class ANNchorApproximator rejects an invalid kernel.
         """
         approximator = coreax.approximation.ANNchorApproximator(
-            kernel=InvalidKernel,
+            kernel=coreax.util.InvalidKernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
             num_train_points=self.data.shape[0],
@@ -620,7 +608,7 @@ class TestApproximations(unittest.TestCase):
         Test the class NystromApproximator rejects an invalid kernel.
         """
         approximator = coreax.approximation.NystromApproximator(
-            kernel=InvalidKernel,
+            kernel=coreax.util.InvalidKernel,
             random_key=self.random_key,
             num_kernel_points=self.num_kernel_points,
         )

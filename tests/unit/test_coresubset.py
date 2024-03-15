@@ -35,6 +35,9 @@ import coreax.kernel
 import coreax.metrics
 import coreax.reduction
 import coreax.refine
+import coreax.util
+
+# pylint: disable=too-many-public-methods
 
 
 class TestKernelHerding(unittest.TestCase):
@@ -51,6 +54,12 @@ class TestKernelHerding(unittest.TestCase):
         self.random_data_generation_key = 0
         self.coreset_size = 20
         self.random_key = random.key(0)
+
+        # Define some generic data for use in input validation
+        generator = np.random.default_rng(self.random_data_generation_key)
+        self.generic_data = coreax.data.ArrayData.load(
+            generator.random((3, self.dimension))
+        )
 
     def test_tree_flatten(self) -> None:
         """
@@ -421,6 +430,345 @@ class TestKernelHerding(unittest.TestCase):
             # have set the penalty for point index 2 to be infinite
             np.testing.assert_array_less(kernel_similarity_penalty_2[2], np.inf)
 
+    def test_kernel_herding_invalid_kernel(self):
+        """
+        Test the class KernelHerding when given an invalid kernel object.
+        """
+        # Define a kernel herding object with the invalid kernel
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should first try to compute the kernel matrix row sum mean,
+        # which will require a call to a method calculate_kernel_matrix_row_sum_mean,
+        # which does not exist, and hence we expect an error
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute "
+            "'calculate_kernel_matrix_row_sum_mean'",
+        )
+
+    def test_kernel_herding_invalid_weights_optimiser(self):
+        """
+        Test the class KernelHerding when given an invalid weights_optimiser object.
+        """
+        # Define a kernel herding object with the invalid weights_optimiser - note that
+        # InvalidKernel also does not have a solve method, so suits the purpose of
+        # this test
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            weights_optimiser=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should not use the weights optimiser at all, so is expected to
+        # run without issue
+        herding_object.fit(
+            original_data=self.generic_data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we weight the coreset generated during the call to fit, we will use
+        # the weights optimiser, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.solve_weights()
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'solve'",
+        )
+
+    def test_kernel_herding_invalid_unique(self):
+        """
+        Test the class KernelHerding when given an invalid value for unique.
+        """
+        # Define a random sample object with the invalid unique parameter
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            unique="ABC123",
+        )
+
+        # The fit method should just check if the value of unique passed is true - which
+        # means unless we pass False or similar, it will act as if True had been passed.
+        # We hence just check if the code runs and the coreset size is as expected when
+        # giving a non-boolean value of unique.
+        herding_object.fit(
+            original_data=self.generic_data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+        self.assertEqual(herding_object.coreset_indices.size, self.coreset_size)
+
+    def test_kernel_herding_invalid_refine_method(self):
+        """
+        Test the class KernelHerding when given an invalid refine_method object.
+        """
+        # Define a kernel herding object with the invalid refine_method - note that
+        # InvalidKernel also does not have a refine method, so suits the purpose of
+        # this test
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            refine_method=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should not use the refine method at all, so is expected to run
+        # without issue
+        herding_object.fit(
+            original_data=self.generic_data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we refine the coreset generated during the call to fit, we will use
+        # the refine method, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.refine()
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'refine'",
+        )
+
+    def test_kernel_herding_zero_block_size(self):
+        """
+        Test the class KernelHerding when given a block_size of zero.
+        """
+        # Define a kernel herding object with the zero valued block_size
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            block_size=0,
+        )
+
+        # The fit method should not allow uses of zero block size - since we can't
+        # iterate in blocks of size 0 - so we expect a value error
+        with self.assertRaises(ValueError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
+
+    def test_kernel_herding_negative_block_size(self):
+        """
+        Test the class KernelHerding when given a negative block_size.
+        """
+        # Define a kernel herding object with the negative valued block_size
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            block_size=-5,
+        )
+
+        # The fit method should cap block_size at zero, then not allow uses of zero
+        # block size - since we can't iterate in blocks of size 0 - so we expect a value
+        # error
+        with self.assertRaises(ValueError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "max_size must be a positive integer",
+        )
+
+    def test_kernel_herding_float_block_size(self):
+        """
+        Test the class KernelHerding when given a float block_size.
+        """
+        # Define a kernel herding object with the negative valued block_size
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            block_size=5.0,
+        )
+
+        # The fit method should reject trying to loop from 0 to a float value of
+        # block_size - raising a type error
+        with self.assertRaises(TypeError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'float' object cannot be interpreted as an integer",
+        )
+
+    def test_kernel_herding_string_block_size(self):
+        """
+        Test the class KernelHerding when given a string block_size.
+        """
+        # Define a kernel herding object with the negative valued block_size
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            block_size="ABC",
+        )
+
+        # The fit method should reject a string value of block size - since we can't
+        # iterate in blocks of non-integer size (including a string) - so we expect a
+        # TypeError
+        with self.assertRaises(TypeError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'>' not supported between instances of 'str' and 'int'",
+        )
+
+    def test_kernel_herding_invalid_approximator(self):
+        """
+        Test the class KernelHerding when given an invalid approximator object.
+        """
+        # Define a kernel herding object with the invalid approximator - note that
+        # InvalidKernel also does not have a approximate method, so suits the purpose of
+        # this test
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            approximator=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should try to approximate the kernel matrix row sum, which
+        # should lead to an attribute errors since an appropriate method is not defined
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(self.coreset_size),
+            )
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'approximate'",
+        )
+
+    def test_kernel_herding_fit_zero_coreset_size(self):
+        """
+        Test how kernel herding performs when given a zero value of coreset_size.
+        """
+        # Define a kernel herding object
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a coreset size of 0 - this should try to run a JAX
+        # loop with start and end points being the same, and index an empty array,
+        # so raise a value error
+        with self.assertRaises(ValueError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=0),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be non-zero",
+        )
+
+    def test_kernel_herding_fit_negative_coreset_size(self):
+        """
+        Test how kernel herding performs when given a negative value of coreset_size.
+        """
+        # Define a kernel herding object
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a negative coreset size - this should try to run a
+        # JAX loop with start and end points being the same, and index an empty array,
+        # so raise a value error
+        with self.assertRaises(ValueError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=-2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must not be negative",
+        )
+
+    def test_kernel_herding_fit_float_coreset_size(self):
+        """
+        Test how kernel herding performs when given a float value of coreset_size.
+        """
+        # Define a kernel herding object
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a float given for coreset size - which should error
+        # when we try to create a JAX array with a non-integer size
+        with self.assertRaises(ValueError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=2.0),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_kernel_herding_fit_invalid_size_reduce(self):
+        """
+        Test how kernel herding performs when given an invalid reduction strategy.
+        """
+        # Define a kernel herding object
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with an invalid reduction strategy, which should error as
+        # there is no reduce method
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.fit(
+                original_data=self.generic_data, strategy=coreax.util.InvalidKernel
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'reduce'",
+        )
+
+    def test_kernel_herding_fit_invalid_data(self):
+        """
+        Test how kernel herding performs when given an invalid data.
+        """
+        # Define a kernel herding object
+        herding_object = coreax.coresubset.KernelHerding(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a list rather than a data object. This should error
+        # as there is no attribute pre_coreset_array
+        with self.assertRaises(AttributeError) as error_raised:
+            herding_object.fit(
+                original_data=[1, 2, 3],
+                strategy=coreax.reduction.SizeReduce(coreset_size=2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'list' object has no attribute 'pre_coreset_array'",
+        )
+
 
 class TestRandomSample(unittest.TestCase):
     """
@@ -533,6 +881,213 @@ class TestRandomSample(unittest.TestCase):
         self.assertTrue(
             len(unique_reduction_indices) < len(random_sample.coreset_indices)
         )
+
+    def test_random_sample_invalid_kernel(self):
+        """
+        Test the class RandomSample when given an invalid kernel object.
+        """
+        # Define a random sample object with the invalid kernel
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+            kernel=coreax.util.InvalidKernel,
+            refine_method=coreax.refine.RefineRegular(),
+        )
+
+        # The fit method should just randomly select points - so we expect to be able to
+        # call fit without any errors being raised
+        random_sample.fit(
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we refine the coreset generated during the call to fit, we will use
+        # the kernel, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            random_sample.refine()
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'compute'",
+        )
+
+    def test_random_sample_invalid_weights_optimiser(self):
+        """
+        Test the class RandomSample when given an invalid weights_optimiser object.
+        """
+        # Define a random sample object with the invalid weights_optimiser - note that
+        # InvalidKernel also does not have a solve method, so suits the purpose of
+        # this test
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+            weights_optimiser=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should just randomly select points - so we expect to be able to
+        # call fit without any errors being raised
+        random_sample.fit(
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we weight the coreset generated during the call to fit, we will use
+        # the weights optimiser, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            random_sample.solve_weights()
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'solve'",
+        )
+
+    def test_random_sample_invalid_unique(self):
+        """
+        Test the class RandomSample when given an invalid value for unique.
+        """
+        # Define a random sample object with the invalid unique parameter
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+            unique="ABC123",
+        )
+
+        # The fit method should sample with replacement if unique is set to False,
+        # otherwise it will just sample without replacement, even if the input was not
+        # a bool. Hence, we are just checking that all the coreset indices are unique
+        random_sample.fit(
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+        self.assertEqual(
+            len(random_sample.coreset_indices.tolist()),
+            len(set(random_sample.coreset_indices.tolist())),
+        )
+
+    def test_random_sample_invalid_refine_method(self):
+        """
+        Test the class RandomSample when given an invalid refine_method object.
+        """
+        # Define a random sample object with the invalid refine_method - note that
+        # InvalidKernel also does not have a refine method, so suits the purpose of
+        # this test
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+            refine_method=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should just randomly select points - so we expect to be able to
+        # call fit without any errors being raised
+        random_sample.fit(
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we refine the coreset generated during the call to fit, we will use
+        # the refine method, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            random_sample.refine()
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'refine'",
+        )
+
+    def test_random_sample_fit_zero_coreset_size(self):
+        """
+        Test how random sample performs when given a zero value of coreset_size.
+        """
+        # Define a kernel herding object
+        random_sample = coreax.coresubset.RandomSample(random_key=self.random_key)
+
+        # Call the fit method with a coreset size of 0 - this should just sample zero
+        # points at random, so not raise any issues
+        random_sample.fit(
+            original_data=self.data_obj,
+            strategy=coreax.reduction.SizeReduce(coreset_size=0),
+        )
+        self.assertEqual(len(random_sample.coreset_indices), 0)
+        self.assertEqual(len(random_sample.coreset), 0)
+
+    def test_random_sample_fit_negative_coreset_size(self):
+        """
+        Test how random sample performs when given a negative value of coreset_size.
+        """
+        # Define a kernel herding object
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+        )
+
+        # Call the fit method with a negative coreset size - this should try to run a
+        # JAX loop with start and end points being the same, and index an empty array,
+        # so raise a value error
+        with self.assertRaises(ValueError) as error_raised:
+            random_sample.fit(
+                original_data=self.data_obj,
+                strategy=coreax.reduction.SizeReduce(coreset_size=-2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_random_sample_fit_float_coreset_size(self):
+        """
+        Test how random sample performs when given a float value of coreset_size.
+        """
+        # Define a kernel herding object
+        random_sample = coreax.coresubset.RandomSample(
+            random_key=self.random_key,
+        )
+
+        # Call the fit method with a float value for coreset size - this should error
+        # when trying to define an integer number of samples
+        with self.assertRaises(ValueError) as error_raised:
+            random_sample.fit(
+                original_data=self.data_obj,
+                strategy=coreax.reduction.SizeReduce(coreset_size=2.0),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_random_sample_fit_invalid_size_reduce(self):
+        """
+        Test how random sample performs when given an invalid reduction strategy.
+        """
+        # Define a kernel herding object
+        random_sample = coreax.coresubset.RandomSample(random_key=self.random_key)
+
+        # Call the fit method with an invalid size reduce object, which should cause an
+        # error as we have no reduce method to call
+        with self.assertRaises(AttributeError) as error_raised:
+            random_sample.fit(
+                original_data=self.data_obj, strategy=coreax.util.InvalidKernel
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'reduce'",
+        )
+
+    def test_random_sample_fit_invalid_data(self):
+        """
+        Test how kernel herding performs when given an invalid data.
+        """
+        # Define a kernel herding object
+        random_sample = coreax.coresubset.RandomSample(random_key=self.random_key)
+
+        # Call the fit method with a list rather than a data object - this should error
+        # as we don't have a pre_coreset_array attribute
+        with self.assertRaises(AttributeError) as error_raised:
+            random_sample.fit(
+                original_data=[1, 2, 3],
+                strategy=coreax.reduction.SizeReduce(coreset_size=2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'list' object has no attribute 'pre_coreset_array'",
+        )
+
+
+# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":
