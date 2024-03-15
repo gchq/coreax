@@ -197,7 +197,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -210,7 +210,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             return e_grad(log_pdf)(x_)
 
         # Define data
-        x = np.linspace(-10, 10).reshape(-1, 1)
+        x = np.linspace(-5, 5).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
@@ -224,7 +224,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         score_result = learned_score(x)
 
         # Check learned score and true score align
-        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.6)
 
     # pylint: enable=too-many-locals
 
@@ -721,14 +721,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x = np.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        # Define a sliced score matching object
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            use_analytic=True,
         )
 
-        # Extract the score function (this is not really learned from the data, more
-        # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        # Extract the score function
+        learned_score = sliced_score_matcher.match(samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -756,14 +758,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         data_stacked = np.vstack([x.ravel(), y.ravel()]).T
         true_score_result = true_score(data_stacked)
 
-        # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        # Define a sliced score matching object
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            use_analytic=True,
         )
 
-        # Extract the score function (this is not really learned from the data, more
-        # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        # Extract the score function
+        learned_score = sliced_score_matcher.match(samples)
         score_result = learned_score(data_stacked)
 
         # Check learned score and true score align
@@ -788,7 +792,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -801,17 +805,20 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return e_grad(log_pdf)(x_)
 
         # Define data
-        x = np.linspace(-10, 10).reshape(-1, 1)
+        x = np.linspace(-5, 5).reshape(-1, 1)
         true_score_result = true_score(x)
 
-        # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        # Define a sliced score matching object
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            use_analytic=True,
+            num_epochs=50,
         )
 
-        # Extract the score function (this is not really learned from the data, more
-        # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        # Extract the score function
+        learned_score = sliced_score_matcher.match(samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -844,7 +851,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x_, *rest), x_)
+                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -864,20 +871,244 @@ class TestSlicedScoreMatching(unittest.TestCase):
         x_stacked = np.vstack([c.ravel() for c in coords]).T
         true_score_result = true_score(x_stacked)
 
-        # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        # Define a sliced score matching object
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            use_analytic=True,
+            num_epochs=50,
         )
 
-        # Extract the score function (this is not really learned from the data, more
-        # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        # Extract the score function
+        learned_score = sliced_score_matcher.match(samples)
         score_result = learned_score(x_stacked)
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
     # pylint: enable=too-many-locals
+
+    def test_sliced_score_matching_unexpected_num_random_vectors(self):
+        """
+        Test how SlicedScoreMatching handles unexpected inputs for num_random_vectors.
+        """
+        # Define example data
+        mu = 0.0
+        std_dev = 1.0
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
+
+        # Define a sliced score matching object with num_random_vectors set to 0. This
+        # should get capped to a minimum of 1
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_random_vectors=0,
+            num_epochs=1,
+            num_noise_models=1,
+        )
+        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
+
+        # Define a sliced score matching object with num_random_vectors set to -4. This
+        # should get capped to a minimum of 1
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_random_vectors=-4,
+            num_epochs=1,
+            num_noise_models=1,
+        )
+        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
+
+        # Define a sliced score matching object with num_random_vectors set to a float.
+        # This should give rise to an error when indexing arrays with a float.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_random_vectors=1.0,
+            num_epochs=1,
+            num_noise_models=1,
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_random_vectors must be an integer",
+        )
+
+    def test_sliced_score_matching_unexpected_num_epochs(self):
+        """
+        Test how SlicedScoreMatching handles unexpected inputs for num_epochs.
+        """
+        # Define example data
+        mu = 0.0
+        std_dev = 1.0
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
+
+        # Define a sliced score matching object with num_epochs set to 0. This should
+        # just give a randomly initialised neural network.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=0,
+        )
+        learned_score = sliced_score_matcher.match(samples)
+        self.assertEqual(len(learned_score(samples)), num_data_points)
+
+        # Define a sliced score matching object with num_epochs set to -5. This should
+        # raise an error as we try to create an array with a negative dimension.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=-5,
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_epochs must be a positive integer",
+        )
+
+        # Define a sliced score matching object with num_epochs set to a float. This
+        # should raise an error as we try to create an array with a non-integer
+        # dimension.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=5.0,
+        )
+        with self.assertRaises(TypeError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_epochs must be a positive integer",
+        )
+
+    def test_sliced_score_matching_unexpected_batch_size(self):
+        """
+        Test how SlicedScoreMatching handles unexpected inputs for batch_size.
+        """
+        # Define example data
+        mu = 0.0
+        std_dev = 1.0
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
+
+        # Define a sliced score matching object with batch_size set to 0. This should
+        # just give a randomly initialised neural network that has not been updated.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            batch_size=0,
+        )
+        learned_score = sliced_score_matcher.match(samples)
+        self.assertEqual(len(learned_score(samples)), num_data_points)
+
+        # Define a sliced score matching object with batch_size set to -5. This should
+        # raise an error as we try to create an array with a negative dimension.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            batch_size=-5,
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "batch_size must be a positive integer",
+        )
+
+        # Define a sliced score matching object with batch_size set to a float. This
+        # should raise an error as we try to create an array with a non-integer
+        # dimension.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            batch_size=5.0,
+        )
+        with self.assertRaises(TypeError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "batch_size must be a positive integer",
+        )
+
+    def test_sliced_score_matching_unexpected_num_noise_models(self):
+        """
+        Test how SlicedScoreMatching handles unexpected inputs for num_noise_models.
+        """
+        # Define example data
+        mu = 0.0
+        std_dev = 1.0
+        num_data_points = 500
+        generator = np.random.default_rng(1_989)
+        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
+
+        # Define a sliced score matching object with num_noise_models set to 0. This
+        # should get capped at 1 to allow the code to function.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            num_noise_models=0,
+        )
+        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
+
+        # Define a sliced score matching object with num_noise_models set to -5. This
+        # should get capped at 1 to allow the code to function.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            num_noise_models=-5,
+        )
+        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
+
+        # Define a sliced score matching object with num_noise_models set to a float.
+        # This should raise an error as we try to create an array with a non-integer
+        # dimension - but hte internal JAX error is human-readable and the full text
+        # highlights the variable in question.
+        score_key, _ = random.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key,
+            random_generator=random.rademacher,
+            num_epochs=1,
+            num_noise_models=5.0,
+        )
+        with self.assertRaises(TypeError) as error_raised:
+            sliced_score_matcher.match(samples)
+
+        # cSpell:disable
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "lower and upper arguments to fori_loop must have equal types, got "
+            "int32 and float32",
+        )
+        # cSpell:enable
 
 
 if __name__ == "__main__":

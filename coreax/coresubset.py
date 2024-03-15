@@ -30,7 +30,6 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import partial
 
 import jax.numpy as jnp
@@ -99,31 +98,6 @@ class KernelHerding(coreax.reduction.Coreset):
         approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a KernelHerding class."""
-        # Validate inputs. Note that inputs passed to the parent are validated within
-        # that class, however a valid kernel object must be passed for kernel
-        # herding, so this is verified here.
-        coreax.validation.validate_is_instance(
-            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
-        )
-        block_size = coreax.validation.cast_as_type(
-            x=block_size, object_name="block_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=block_size,
-            object_name="block_size",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        unique = coreax.validation.cast_as_type(
-            x=unique, object_name="unique", type_caster=bool
-        )
-        coreax.validation.validate_is_instance(
-            x=approximator,
-            object_name="approximator",
-            expected_type=(coreax.approximation.KernelMeanApproximator, type(None)),
-        )
-        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-
         # Assign herding-specific attributes
         self.block_size = block_size
         self.unique = unique
@@ -178,17 +152,6 @@ class KernelHerding(coreax.reduction.Coreset):
 
         :param coreset_size: The size of the of coreset to generate
         """
-        # Validate inputs
-        coreset_size = coreax.validation.cast_as_type(
-            x=coreset_size, object_name="coreset_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=coreset_size,
-            object_name="coreset_size",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
@@ -213,7 +176,17 @@ class KernelHerding(coreax.reduction.Coreset):
         # initially local variables, with the coreset indices being assigned to self
         # when the entire set is created
         kernel_similarity_penalty = jnp.zeros(num_data_points)
-        coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
+        try:
+            # Note that a TypeError is raised if the size input to jnp.zeros is negative
+            coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
+        except TypeError as exception:
+            if coreset_size < 0:
+                raise ValueError("coreset_size must not be negative") from exception
+            if isinstance(coreset_size, float):
+                raise ValueError(
+                    "coreset_size must be a positive integer"
+                ) from exception
+            raise
 
         # Greedily select coreset points
         body = partial(
@@ -223,12 +196,17 @@ class KernelHerding(coreax.reduction.Coreset):
             kernel_matrix_row_sum_mean=self.kernel_matrix_row_sum_mean,
             unique=self.unique,
         )
-        coreset_indices, kernel_similarity_penalty = lax.fori_loop(
-            lower=0,
-            upper=coreset_size,
-            body_fun=body,
-            init_val=(coreset_indices, kernel_similarity_penalty),
-        )
+        try:
+            coreset_indices, kernel_similarity_penalty = lax.fori_loop(
+                lower=0,
+                upper=coreset_size,
+                body_fun=body,
+                init_val=(coreset_indices, kernel_similarity_penalty),
+            )
+        except IndexError as exception:
+            if coreset_size == 0:
+                raise ValueError("coreset_size must be non-zero") from exception
+            raise
 
         # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
@@ -283,32 +261,10 @@ class KernelHerding(coreax.reduction.Coreset):
         """
         # Unpack the components of the loop variables
         current_coreset_indices, current_kernel_similarity_penalty = val
-
-        # Format inputs - note that the calls in jax for loops already validate the
-        # ``i`` variable before calling.
-        current_coreset_indices = coreax.validation.cast_as_type(
-            x=current_coreset_indices,
-            object_name="current_coreset_indices",
-            type_caster=jnp.asarray,
-        )
-        current_kernel_similarity_penalty = coreax.validation.cast_as_type(
-            x=current_kernel_similarity_penalty,
-            object_name="current_kernel_similarity_penalty",
-            type_caster=jnp.asarray,
-        )
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        coreax.validation.validate_is_instance(
-            x=kernel_vectorised, object_name="kernel_vectorised", expected_type=Callable
-        )
-        kernel_matrix_row_sum_mean = coreax.validation.cast_as_type(
-            x=kernel_matrix_row_sum_mean,
-            object_name="kernel_matrix_row_sum_mean",
-            type_caster=jnp.asarray,
-        )
-        unique = coreax.validation.cast_as_type(
-            x=unique, object_name="unique", type_caster=bool
+        x = jnp.atleast_2d(x)
+        current_coreset_indices = jnp.asarray(current_coreset_indices)
+        current_kernel_similarity_penalty = jnp.asarray(
+            current_kernel_similarity_penalty
         )
 
         # Evaluate the kernel herding formula at this iteration - that is, select which
@@ -347,6 +303,10 @@ class RandomSample(coreax.reduction.Coreset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
+    .. note::
+        Any value other than :data:`True` will lead to random sampling with replacement
+        of points from the original data to construct the coreset.
+
     :param random_key: Pseudo-random number generator key for sampling
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
@@ -371,12 +331,6 @@ class RandomSample(coreax.reduction.Coreset):
         refine_method: coreax.refine.Refine | None = None,
     ):
         """Initialise a random sampling object."""
-        # Validate inputs
-        coreax.validation.validate_key_array(x=random_key, object_name="random_key")
-        unique = coreax.validation.cast_as_type(
-            x=unique, object_name="unique", type_caster=bool
-        )
-
         # Assign random sample specific attributes
         self.random_key = random_key
         self.unique = unique
@@ -425,27 +379,31 @@ class RandomSample(coreax.reduction.Coreset):
 
         :param coreset_size: The size of the of coreset to generate
         """
-        # Validate inputs
-        coreset_size = coreax.validation.cast_as_type(
-            x=coreset_size, object_name="coreset_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=coreset_size,
-            object_name="coreset_size",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-
         # Setup for sampling
         num_data_points = len(self.original_data.pre_coreset_array)
 
         # Randomly sample the desired number of points to form a coreset
-        random_indices = random.choice(
-            self.random_key,
-            a=jnp.arange(0, num_data_points),
-            shape=(coreset_size,),
-            replace=not self.unique,
-        )
+        try:
+            # Note that a TypeError is raised if the size input to random.choice is
+            # negative, and an AttributeError is raised if the shape is a float
+            random_indices = random.choice(
+                self.random_key,
+                a=jnp.arange(0, num_data_points),
+                shape=(coreset_size,),
+                replace=not self.unique,
+            )
+        except AttributeError as exception:
+            if not isinstance(coreset_size, int):
+                raise ValueError(
+                    "coreset_size must be a positive integer"
+                ) from exception
+            raise
+        except TypeError as exception:
+            if coreset_size < 0:
+                raise ValueError(
+                    "coreset_size must be a positive integer"
+                ) from exception
+            raise
 
         # Assign coreset indices and coreset to the object
         self.coreset_indices = random_indices
