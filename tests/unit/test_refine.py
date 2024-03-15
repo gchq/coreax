@@ -90,7 +90,7 @@ class TestRefine(unittest.TestCase):
 
 class TestRefineRegular(unittest.TestCase):
     """
-    Tests related to :meth:`~coreax.refine.RefineRegular`
+    Tests related to :meth:`~coreax.refine.RefineRegular`.
     """
 
     def setUp(self):
@@ -250,7 +250,7 @@ class TestRefineRegular(unittest.TestCase):
 
     def test_invalid_coreset(self):
         """
-        Test how RefineRegular handles an invalid coreset input
+        Test how RefineRegular handles an invalid coreset input.
         """
         # Define an object to pass that is not a coreset, and does not have the
         # associated attributes required to refine
@@ -292,7 +292,7 @@ class TestRefineRegular(unittest.TestCase):
 
 class TestRefineRandom(unittest.TestCase):
     """
-    Tests related to :meth:`~coreax.refine.RefineRandom`
+    Tests related to :meth:`~coreax.refine.RefineRandom`.
     """
 
     def setUp(self):
@@ -370,7 +370,7 @@ class TestRefineRandom(unittest.TestCase):
 
     def test_invalid_coreset(self):
         """
-        Test how RefineRandom handles an invalid coreset input
+        Test how RefineRandom handles an invalid coreset input.
         """
         # Define an object to pass that is not a coreset, and does not have the
         # associated attributes required to refine
@@ -509,7 +509,7 @@ class TestRefineRandom(unittest.TestCase):
 
 class TestRefineReverse(unittest.TestCase):
     """
-    Tests related to :meth:`~coreax.refine.RefineReverse`
+    Tests related to :meth:`~coreax.refine.RefineReverse`.
     """
 
     def setUp(self):
@@ -593,7 +593,7 @@ class TestRefineReverse(unittest.TestCase):
 
     def test_invalid_coreset(self):
         """
-        Test how RefineReverse handles an invalid coreset input
+        Test how RefineReverse handles an invalid coreset input.
         """
         # Define an object to pass that is not a coreset, and does not have the
         # associated attributes required to refine

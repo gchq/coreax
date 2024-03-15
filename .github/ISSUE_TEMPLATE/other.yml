@@ -1,0 +1,18 @@
+name: Other
+description: Submit an issue that's not covered by another template
+labels:
+  - new
+projects:
+  - gchq/16
+body:
+  - type: markdown
+    attributes:
+      value: >
+        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues)
+        to see if an issue already exists for your request.
+  - type: textarea
+    attributes:
+      label: What's the issue?
+      description: Describe the issue you're raising and why.
+    validations:
+      required: true

@@ -1,69 +1,83 @@
 name: Bug Report
-description: Report a problem to us
-title: "[Bug]: "
-labels: ["bug", "new"]
+description: Report a problem
+labels:
+  - new
+  - bug
+projects:
+  - gchq/16
 body:
   - type: markdown
     attributes:
-      value: |
-        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues). Below, * denotes a required field.
+      value: >
+        _Before reporting_: search [existing issues](https://github.com/gchq/coreax/issues)
+        to see if an issue already exists for the bug you encountered.
   - type: textarea
+    id: what-happened
     attributes:
-      label: "Problem*"
-      description: "Provide a clear description of what the bug is"
+      label: What's the problem?
+      description: >
+       What are you doing? What happens? How is this different from expected?
     validations:
       required: true
   - type: textarea
+    id: steps-to-reproduce
     attributes:
-      label: "Steps to reproduce*"
-      description: "List the steps needed to reproduce the issue"
+      label: How can we reproduce the issue?
+      description: >
+        List the steps to reproduce the behaviour. Include a [minimal, reproducible
+        example](https://stackoverflow.com/help/minimal-reproducible-example) if
+        possible. [Copy and paste code where possible rather than using screenshots
+        ](https://meta.stackoverflow.com/a/285557/13990016), and put any code blocks
+        inside triple backticks.
+      placeholder: |
+        1. Run '...'
+        2. See error...
     validations:
       required: true
-  - type: textarea
+  - type: dropdown
+    id: python-version
     attributes:
-      label: "Expected behaviour*"
-      description: "Describe the behaviour you expect"
+      label: Python version
+      description: Which version or versions of Python are you seeing the problem on?
+      multiple: true
+      options:
+        - "3.9"
+        - "3.10"
+        - "3.11"
     validations:
       required: true
   - type: input
+    id: coreax-version
     attributes:
-      label: "Python version*"
-      placeholder: "3.10"
+      label: Package version
+      description: What version of Coreax are you using?
+      placeholder: 0.1.0
     validations:
       required: true
   - type: input
+    id: operating-system
     attributes:
-      label: "Package version*"
-      description: "Detail the version of coreax you are using"
-      placeholder: "1.0.0"
+      label: Operating system
+      description: What OS are you using? (Windows, Linux or Mac, and version)
+      placeholder: Ubuntu 23.04.2
     validations:
       required: true
   - type: textarea
+    id: other-packages
     attributes:
-      label: "Operating system*"
-      description: "Detail the operating system you are using (Windows, Linux, Mac, as-well as version)"
-      placeholder: "Ubuntu 23.04.2"
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: "Other packages in use"
-      description: "List any other packages in use in your environment, that are not currently dependencies for coreax"
+      label: Other packages
+      description: >
+       Are there any other packages in your environment not listed in the Coreax
+       dependencies?
     validations:
       required: false
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: >
+       Copy and paste any relevant log output. This is automatically formatted as code,
+       so no backticks are required.
       render: shell
     validations:
       required: false
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: "Code of Conduct*"
-      description: "By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/gchq/coreax/blob/main/CODE_OF_CONDUCT.md)"
-      options:
-        - label: "I agree to follow this project's Code of Conduct"
-          required: true

@@ -4,7 +4,8 @@
 
 # Coreax
 
-[![Unit Tests and Code Coverage Assessment](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
+[![Unit Tests](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgchq%2Fcoreax%2Fmain%2F.github%2Fbadges%2Fcoverage.json)](https://github.com/gchq/coreax/actions/workflows/coverage.yml)
 [![Pre-commit Checks](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Python version](https://img.shields.io/pypi/pyversions/coreax.svg)](https://pypi.org/project/coreax)
@@ -79,6 +80,14 @@ Optionally, install additional dependencies required to run the examples:
 $ python3 -m pip install coreax[test]
 ```
 
+Should the installation fail, try again using stable pinned package versions. Note that
+these versions may be rather outdated, although we endeavour to avoid versions with
+known vulnerabilities. To install Coreax:
+```shell
+$ python3 -m pip install --no-dependencies -r requirements.txt
+```
+
+To run the examples, use `requirements-test.txt` instead.
 
 # Release cycle
 We anticipate two release types: feature releases and security releases. Security

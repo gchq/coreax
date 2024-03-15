@@ -17,8 +17,8 @@ The tests within this file verify that various utility functions written produce
 expected results on simple examples.
 """
 
+import time
 import unittest
-from unittest.mock import MagicMock
 
 import jax.numpy as jnp
 import numpy as np
@@ -183,10 +183,44 @@ class TestUtil(unittest.TestCase):
         second call assesses if a performance improvement has occurred given the
         JIT compilation.
         """
-        mock_function = MagicMock()
-        coreax.util.jit_test(mock_function)
-        num_calls = mock_function.call_count
-        self.assertEqual(num_calls, 2)
+        wait_time = 2.0
+
+        def _mock(x):
+            time.sleep(wait_time)
+            return x
+
+        pre_time, post_time = coreax.util.jit_test(_mock, fn_args=(2,))
+
+        # At trace time `time.sleep` will be called. Thus, we can be sure that,
+        # `pre_time` is lower bounded by `wait_time`.
+        self.assertGreater(pre_time, wait_time)
+        # Post compilation `time.sleep` will be ignored, with JAX compiling the
+        # function to the identity function. Thus, we can be almost sure that
+        # `post_time` is upper bounded by `pre_time - wait_time`.
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_kwargs(x, a=2.0):
+            return _mock(x) + a
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_kwargs,
+            fn_args=(2,),
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_only_kwargs(a=2.0):
+            return _mock(a)
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_only_kwargs,
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
+        self.assertLess(post_time, (pre_time - wait_time))
 
 
 class TestSilentTQDM(unittest.TestCase):

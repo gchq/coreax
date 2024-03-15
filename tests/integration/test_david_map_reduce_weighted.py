@@ -16,7 +16,6 @@
 Integration test for david (image) example.
 """
 
-
 import os
 import tempfile
 import unittest
