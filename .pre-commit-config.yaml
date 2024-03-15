@@ -1,6 +1,10 @@
 default_install_hook_types:
   - pre-commit
   - pre-merge-commit
+  - commit-msg
+default_stages:
+  - pre-commit
+  - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -37,74 +41,6 @@ repos:
         args:
           - --ignore-case
           - --unique
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      # Prevent common mistakes of `assert mck.not_called()`,
-      # `assert mck.called_once_with(...)` and `mck.assert_called`
-      - id: python-check-mock-methods
-      # Check for the `eval()` built-in function - necessary for security
-      - id: python-no-eval
-      # Check for the deprecated `.warn()` method of Python loggers
-      - id: python-no-log-warn
-      # Enforce that type annotations are used instead of type comments
-      - id: python-use-type-annotations
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
-    hooks:
-      # Check for binary files
-      - id: forbid-binary
-        exclude: ^examples/.+/.+.(gif|png)$
-  - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.4
-    hooks:
-      # No tabs, only spaces
-      - id: forbid-tabs
-        exclude: documentation/make.bat|documentation/Makefile
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      # Place isort options in pyproject.toml
-      - id: isort
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      # Change to black-jupyter if using Jupyter notebooks
-      - id: black
-  - repo: https://github.com/regebro/pyroma
-    rev: "4.2"
-    hooks:
-      # Ensure that necessary package information is provided
-      - id: pyroma
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: "6.3.0"
-    hooks:
-      # Check PEP-257 and other docstring guidance
-      - id: pydocstyle
-        additional_dependencies:
-          - tomli
-        exclude: |
-          (?x)^(
-            tests|
-            documentation/source/conf.py|
-            documentation/source/snippets
-          )
-  - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.3.0
-    hooks:
-      # Run a spellcheck (words pulled from cspell.config.yaml)
-        - id: cspell
-          exclude: |
-            (?x)^(
-              .gitignore|
-              .*.properties|
-              requirements(-.*)?.txt|
-              documentation/make.bat|
-              documentation/Makefile|
-              documentation/assets/Logo.svg|
-              documentation/assets/LogoMark.svg|
-              .pylintrc
-            )$
   - repo: local
     hooks:
       # Check for non-ascii characters in files
@@ -117,6 +53,69 @@ repos:
           - text
         exclude:
           .pylintrc
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      # Check for binary files
+      - id: forbid-binary
+        exclude: ^examples/.+/.+.(gif|png)$
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      # No tabs, only spaces
+      - id: forbid-tabs
+        exclude: documentation/make.bat|documentation/Makefile
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v8.6.0
+    hooks:
+      # Run a spellcheck (words pulled from cspell.config.yaml)
+      - id: cspell
+        stages:
+          - pre-commit
+          - pre-merge-commit
+          - commit-msg
+        exclude_types:
+          - batch
+          - gitignore
+          - makefile
+          - pylintrc
+          - svg
+        exclude: requirements(-.*)?.txt
+
+  # Python specific Hooks
+  - repo: https://github.com/regebro/pyroma
+    rev: "4.2"
+    hooks:
+      # Ensure that necessary package information is provided
+      - id: pyroma
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      # Prevent common mistakes of `assert mck.not_called()`,
+      # `assert mck.called_once_with(...)` and `mck.assert_called`
+      - id: python-check-mock-methods
+      # Check for the `eval()` built-in function - necessary for security
+      - id: python-no-eval
+      # Check for the deprecated `.warn()` method of Python loggers
+      - id: python-no-log-warn
+      # Enforce that type annotations are used instead of type comments
+      - id: python-use-type-annotations
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.1
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+        # Don't run the slow pylint hook unless all prior hooks have passed.
+        # Note: the behaviour of `fail_fast` diverges from that documented,
+        # https://pre-commit.com/#hooks-fail_fast. The documentation should
+        # instead read: "if true, pre-commit will stop running hooks if this
+        # *or any previous* hook fails".
+        fail_fast: true
+  - repo: local
+    hooks:
       # Python static analysis tool
       - id: pylint
         name: pylint

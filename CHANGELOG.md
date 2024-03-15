@@ -9,18 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Badge to README to show code coverage percentage.
+
 ### Fixed
 
-- Wording improvements in README
-- Documentation now builds without warnings
+- Wording improvements in README.
+- Documentation now builds without warnings.
 
 ### Changed
 
-- Documentation has been rearranged
+- Documentation has been rearranged.
+- Renamed `coreax.weights.MMD` to `coreax.weights.MMDWeightsOptimiser` and added deprecation warning.
+- Renamed `coreax.weights.SBQ` to `coreax.weights.SBQWeightsOptimiser` and added deprecation warning.
+- `requirements-*.txt` will no longer be updated frequently, thereby providing stable versions.
+- Single requirements files covering all supported Python versions.
 
 ### Removed
 
 ### Deprecated
+
+- All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
+- All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
 
 ## [0.1.0] - 2024-02-16
 

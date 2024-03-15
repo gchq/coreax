@@ -85,7 +85,9 @@ class TestBayesianQuadrature(unittest.TestCase):
             ]
         )
 
-        optimiser = coreax.weights.SBQ(kernel=coreax.kernel.SquaredExponentialKernel())
+        optimiser = coreax.weights.SBQWeightsOptimiser(
+            kernel=coreax.kernel.SquaredExponentialKernel()
+        )
 
         # Solve for the weights
         output = optimiser.solve(x, y)
@@ -111,7 +113,9 @@ class TestBayesianQuadrature(unittest.TestCase):
             ]
         )
 
-        optimiser = coreax.weights.SBQ(kernel=coreax.kernel.SquaredExponentialKernel())
+        optimiser = coreax.weights.SBQWeightsOptimiser(
+            kernel=coreax.kernel.SquaredExponentialKernel()
+        )
 
         # Solve for the weights
         with warnings.catch_warnings(record=True) as warning_result:
@@ -206,7 +210,9 @@ class TestMMD(unittest.TestCase):
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
 
-        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
+        optimiser = coreax.weights.MMDWeightsOptimiser(
+            kernel=coreax.kernel.SquaredExponentialKernel()
+        )
 
         # Solve for the weights
         output = optimiser.solve(x, y)
@@ -271,7 +277,9 @@ class TestMMD(unittest.TestCase):
         y = jnp.array([[0, 0], [1, 1]])
 
         # Define weights object
-        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
+        optimiser = coreax.weights.MMDWeightsOptimiser(
+            kernel=coreax.kernel.SquaredExponentialKernel()
+        )
 
         # Solve for the weights with a zero valued epsilon - this should still work, it
         # may just be that in some cases, matrix inversions are not possible

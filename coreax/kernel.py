@@ -379,6 +379,7 @@ class Kernel(ABC):
             warnings.warn(
                 "max_size is not positive - this may give unexpected results",
                 UserWarning,
+                stacklevel=1,
             )
 
         # Assign the kernel row sum to the relevant part of this full matrix

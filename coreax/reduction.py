@@ -13,7 +13,7 @@
 # limitations under the License.
 
 r"""
-This module reduces a large dataset down to a coreset.
+Module provides tools for reducing a large dataset down to a coreset.
 
 To prepare data for reduction, convert it into a :class:`~jax.Array` and pass to an
 appropriate instance of :class:`~coreax.data.DataReader`. The class will convert the
@@ -189,7 +189,7 @@ class Coreset(ABC):
         :return: Optimal weighting of points in :attr:`coreset` to represent the
             original data
         """
-        self.validate_fitted("solve_weights")
+        self.validate_fitted(Coreset.solve_weights.__name__)
         return self.weights_optimiser.solve(
             self.original_data.pre_coreset_array, self.coreset
         )
@@ -217,7 +217,7 @@ class Coreset(ABC):
             in ``y``, or :data:`None` if not required
         :return: Metric computed as a zero-dimensional array
         """
-        self.validate_fitted("compute_metric")
+        self.validate_fitted(Coreset.compute_metric.__name__)
         return metric.compute(
             self.original_data.pre_coreset_array,
             self.coreset,
@@ -247,12 +247,12 @@ class Coreset(ABC):
 
         :return: Array of formatted data
         """
-        self.validate_fitted("format")
+        self.validate_fitted(Coreset.format.__name__)
         return self.original_data.format(self)
 
     def render(self) -> None:
         """Plot coreset interactively using :mod:`matplotlib.pyplot`."""
-        self.validate_fitted("render")
+        self.validate_fitted(Coreset.render.__name__)
         return self.original_data.render(self)
 
     def copy_fit(self, other: Coreset, deep: bool = False) -> None:
@@ -268,7 +268,7 @@ class Coreset(ABC):
             :attr:`coreset_indices`; otherwise, reference same objects
         :raises TypeError: If ``other`` does not have the **exact same type**.
         """
-        other.validate_fitted("copy_fit from another Coreset")
+        other.validate_fitted(Coreset.copy_fit.__name__ + " from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
             self.coreset_indices = copy(other.coreset_indices)
@@ -288,14 +288,15 @@ class Coreset(ABC):
             self.coreset, Array
         ):
             raise coreax.util.NotCalculatedError(
-                f"Need to call fit before calling {caller_name}"
+                "Need to call "
+                + Coreset.fit.__name__
+                + f" before calling {caller_name}"
             )
 
 
 C = TypeVar("C", bound=Coreset)
 
 
-# pylint: disable=too-few-public-methods
 class ReductionStrategy(ABC):
     """
     Define a strategy for how to construct a coreset for a given type of coreset.
@@ -303,9 +304,6 @@ class ReductionStrategy(ABC):
     The strategy determines the size of the coreset, approximation strategies to aid
     memory management and other similar aspects that wrap around the type of coreset.
     """
-
-    def __init__(self):
-        """Initialise class."""
 
     @abstractmethod
     def reduce(self, coreset: Coreset) -> None:
@@ -531,6 +529,3 @@ class MapReduce(ReductionStrategy):
             assert input_indices is not None
             coreset.coreset_indices = input_indices[coreset.coreset_indices]
         return coreset
-
-
-# pylint: enable=too-few-public-methods

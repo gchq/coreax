@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# These match the suffixes on the various requirements-*.txt files
 # Run unit tests with coverage assessment
 test = [
     "imageio",
@@ -46,11 +47,7 @@ test = [
 ]
 # Compile documentation
 doc = [
-    "flax",
     "furo",
-    "jax",
-    "jaxlib",
-    "scikit-learn",
     "sphinx",
     "sphinx-autodoc-typehints",
     "sphinx-toolbox",
@@ -60,12 +57,10 @@ doc = [
 # All tools for a developer including those for running pylint
 dev = [
     "coreax[doc, test]",
-    "black",
-    "isort",
     "pre-commit",
-    "pydocstyle",
     "pylint",
     "pyroma",
+    "ruff",
 ]
 
 [project.urls]
@@ -74,15 +69,54 @@ Repository = "https://github.com/gchq/coreax"
 Issues = "https://github.com/gchq/coreax/issues"
 Changelog = "https://github.com/gchq/coreax/blob/main/CHANGELOG.md"
 
-[tool.isort]
-known_first_party = ["coreax", "examples"]
-profile = "black"
-
 [tool.setuptools]
 packages = ["coreax"]
 
 [tool.setuptools.dynamic]
 version = {attr = "coreax.__version__"}
+
+[tool.ruff]
+src = [".", "examples"]
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "B",   # flake8-bugbear
+    "C90", # McCabe
+    "D",   # pydocstyle
+    "E",   # pycodestyle [error]
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "PL",  # pylint
+    "W",   # pycodestyle [warning]
+]
+
+ignore = [
+    # Incompatible with ruff format
+    "D206",   # indent-with-spaces
+    "E111",   # indentation-with-invalid-multiple
+    "E114",   # indentation-with-invalid-multiple-comment
+    "E117",   # over-indented
+    "W191",   # tab-indentation
+    # Incompatible with other pydocstyle rules
+    "D203",   # one-blank-line-before-class
+    "D212",   # multi-line-summary-first-line
+    # Opinionated ignores
+    "PLR6301", # no-self-use (opinionated)
+]
+ignore-init-module-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"coreax/__init__.py" = ["F401"]
+"documentation/source/conf.py" = ["E402"]
+"documentation/source/snippets/*" = ["D100", "F821"]
+"examples/*" = ["PLR0914", "PLR0915"]
+"tests/*" = ["D102", "D200", "PLR0904"]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-locals = 20
 
 [tool.coverage.run]
 command_line = "-m pytest tests/unit --cov"

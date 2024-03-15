@@ -13,6 +13,7 @@ autodiff
 autodoc
 automodule
 autosectionlabel
+autoupdate
 bibfiles
 bibtex
 bmatrix
@@ -24,6 +25,7 @@ dispname
 dollarmath
 dtype
 dtypes
+emibcn
 eprint
 figsize
 fori_loop
@@ -68,7 +70,9 @@ params_ineq
 pinv
 pvalue
 pybtex
+pycodestyle
 pydocstyle
+pyflakes
 pylint
 pylintrc
 pyproject
@@ -79,6 +83,7 @@ pytree
 pytrees
 quickstart
 rcfile
+rect
 rightarrow
 rtol
 samp

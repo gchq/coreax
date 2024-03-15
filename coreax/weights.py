@@ -37,6 +37,7 @@ from abc import ABC, abstractmethod
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
+from typing_extensions import deprecated
 
 import coreax.kernel
 import coreax.util
@@ -74,18 +75,37 @@ class WeightsOptimiser(ABC):
         """
         warnings.warn(
             "solve_approximate() not yet implemented. "
-            "Calculating exact solution via solve()"
+            "Calculating exact solution via solve()",
+            stacklevel=1,
         )
         return self.solve(x, y)
 
 
-class SBQ(WeightsOptimiser):
-    """
+class SBQWeightsOptimiser(WeightsOptimiser):
+    r"""
     Define the Sequential Bayesian Quadrature (SBQ) optimiser class.
 
     References for this technique can be found in :cite:`huszar2016optimally`.
-    Weighted determined by SBQ are equivalent to the unconstrained weighted maximum mean
+    Weights determined by SBQ are equivalent to the unconstrained weighted maximum mean
     discrepancy (MMD) optimum.
+
+    The Bayesian quadrature estimate of the integral
+
+    .. math::
+
+        \int f(x) p(x) dx
+
+    can be viewed as a  weighted version of kernel herding. The Bayesian quadrature
+    weights, :math:`w_{BQ}`, are given by
+
+    .. math::
+
+        w_{BQ}^{(n)} = \sum_m z_m^T K_{mn}^{-1}
+
+    for a dataset :math:`x` with :math:`n` points, and coreset :math:`y` of :math:`m`
+    points. Here, for given kernel :math:`k`, we have :math:`z = \int k(x, y)p(x) dx`
+    and :math:`K = k(y, y)` in the above expression. See equation 20 in
+    :cite:`huszar2016optimally` for further detail.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
@@ -119,7 +139,7 @@ class SBQ(WeightsOptimiser):
         return jnp.linalg.solve(kernel_mm, kernel_nm)
 
 
-class MMD(WeightsOptimiser):
+class MMDWeightsOptimiser(WeightsOptimiser):
     r"""
     Define the MMD weights optimiser class.
 
@@ -165,3 +185,21 @@ class MMD(WeightsOptimiser):
         sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
 
         return sol
+
+
+@deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
+class SBQ(SBQWeightsOptimiser):
+    """
+    Deprecated reference to :class:`~coreax.weights.SBQWeightsOptimiser`.
+
+    Will be removed in version 0.3.0
+    """
+
+
+@deprecated("Renamed to `MMDWeightsOptimiser`; will be removed in version 0.3.0")
+class MMD(MMDWeightsOptimiser):
+    """
+    Deprecated reference to :class:`~coreax.weights.MMDWeightsOptimiser`.
+
+    Will be removed in version 0.3.0
+    """
