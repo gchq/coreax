@@ -33,7 +33,6 @@ from jax.typing import ArrayLike
 
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 
 class Metric(ABC):

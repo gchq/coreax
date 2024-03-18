@@ -41,7 +41,6 @@ import coreax.kernel
 import coreax.reduction
 import coreax.refine
 import coreax.util
-import coreax.validation
 import coreax.weights
 
 
@@ -88,7 +87,7 @@ class KernelHerding(coreax.reduction.Coreset):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.util.KeyArrayLike,
         *,
         kernel: coreax.kernel.Kernel,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
@@ -323,7 +322,7 @@ class RandomSample(coreax.reduction.Coreset):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.util.KeyArrayLike,
         *,
         kernel: coreax.kernel.Kernel | None = None,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,

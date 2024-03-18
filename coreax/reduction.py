@@ -57,7 +57,6 @@ import coreax.kernel
 import coreax.metrics
 import coreax.refine
 import coreax.util
-import coreax.validation
 import coreax.weights
 
 

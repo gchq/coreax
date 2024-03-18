@@ -49,7 +49,6 @@ from jax.typing import ArrayLike
 import coreax.approximation
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -311,7 +310,7 @@ class RefineRandom(Refine):
 
     def __init__(
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.util.KeyArrayLike,
         approximator: coreax.approximation.KernelMeanApproximator = None,
         p: float = 0.1,
     ):
@@ -412,13 +411,13 @@ class RefineRandom(Refine):
     def _refine_rand_body(
         self,
         _i: int,
-        val: tuple[coreax.validation.KeyArrayLike, ArrayLike],
+        val: tuple[coreax.util.KeyArrayLike, ArrayLike],
         x: ArrayLike,
         n_cand: int,
         kernel: coreax.kernel.Kernel,
         kernel_matrix_row_sum_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
-    ) -> tuple[coreax.validation.KeyArray, Array]:
+    ) -> tuple[coreax.util.KeyArray, Array]:
         r"""
         Execute main loop of the random refine method.
 

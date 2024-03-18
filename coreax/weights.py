@@ -41,7 +41,6 @@ from typing_extensions import deprecated
 
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 
 class WeightsOptimiser(ABC):
