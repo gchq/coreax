@@ -33,9 +33,14 @@ import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
+from typing_extensions import TypeAlias
 
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
+
+#: JAX random key type annotations.
+KeyArray: TypeAlias = Array
+KeyArrayLike: TypeAlias = ArrayLike
 
 
 class NotCalculatedError(Exception):

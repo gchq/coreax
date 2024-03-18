@@ -48,7 +48,6 @@ from tqdm import tqdm
 
 import coreax.kernel
 import coreax.networks
-import coreax.validation
 
 
 class ScoreMatching(ABC):
@@ -150,7 +149,7 @@ class SlicedScoreMatching(ScoreMatching):
     # pylint: disable=too-many-arguments
     def __init__(  # noqa: PLR0913, PLR0917
         self,
-        random_key: coreax.validation.KeyArrayLike,
+        random_key: coreax.util.KeyArrayLike,
         random_generator: Callable,
         noise_conditioning: bool = True,
         use_analytic: bool = False,

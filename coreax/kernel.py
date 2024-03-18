@@ -70,7 +70,6 @@ from jax import Array, grad, jacrev, jit, tree_util, vmap
 from jax.typing import ArrayLike
 
 import coreax.util
-import coreax.validation
 
 if TYPE_CHECKING:
     import coreax.approximation

@@ -248,7 +248,9 @@ class TestMMD(unittest.TestCase):
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
 
-        optimiser = coreax.weights.MMD(kernel=coreax.kernel.SquaredExponentialKernel())
+        optimiser = coreax.weights.MMDWeightsOptimiser(
+            kernel=coreax.kernel.SquaredExponentialKernel()
+        )
 
         # Solve for the weights
         with warnings.catch_warnings(record=True) as warning_result:
