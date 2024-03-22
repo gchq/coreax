@@ -240,6 +240,57 @@ class TestCoreset(unittest.TestCase):
         with self.assertRaises(coreax.util.NotCalculatedError):
             obj.validate_fitted("func")
 
+    def test_coreset_inputs(self):
+        """
+        Check how Coreset handles invalid inputs.
+
+        Note that the  fit, fit_to_size and solve_weights methods on the Coreset class
+        are tested when specific coreset construction methods are tested, for example in
+        test_coresubset.py.
+        """
+        # Define a coreset object, with all inputs as invalid
+        original = CoresetMock(
+            weights_optimiser=coreax.util.InvalidKernel,
+            kernel=coreax.util.InvalidKernel,
+            refine_method=coreax.util.InvalidKernel,
+        )
+
+        # When we call clone_empty, this should not depend on the inputs being invalid,
+        # so a call should execute without issue
+        original.clone_empty()
+
+        # If we try to call the method copy_fit with an object that does not have the
+        # coreset or coreset_indices attributes or the validate_fitted method, we expect
+        # an attribute error
+        with self.assertRaises(AttributeError) as error_raised:
+            original.copy_fit(other=coreax.util.InvalidKernel)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'validate_fitted'",
+        )
+
+        # Define a validate_fitted method and check that we still get an attribute error
+        # when we try to copy a coreset that does not exist
+        invalid_with_validate = coreax.util.InvalidKernel(x=1.0)
+        invalid_with_validate.validate_fitted = MagicMock()
+        with self.assertRaises(AttributeError) as error_raised:
+            original.copy_fit(other=invalid_with_validate)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'InvalidKernel' object has no attribute 'coreset'",
+        )
+
+        # Assess how an actual Coreset object handles a non-string value of caller_name
+        # when calling the method validate_fitted. We expect a NotCalculatedError to be
+        # raised, with this object inserted into the error string
+        with self.assertRaises(coreax.util.NotCalculatedError) as error_raised:
+            original.validate_fitted(coreax.util.InvalidKernel)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "Need to call fit before calling <class 'coreax.util.InvalidKernel'>",
+        )
+
 
 class TestSizeReduce(unittest.TestCase):
     """Test :class:`~coreax.reduction.SizeReduce`."""
@@ -261,6 +312,39 @@ class TestSizeReduce(unittest.TestCase):
         # Check values are permitted in output
         for idx, row in zip(coreset.coreset_indices, coreset.coreset):
             np.testing.assert_array_equal(row, np.array([idx, 2 * idx]))
+
+    def test_size_reduce_zero_size(self):
+        """
+        Test how SizeReduce handles invalid inputs.
+        """
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(20)])
+        )
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Consider a zero sized coreset
+        coreax.reduction.SizeReduce(coreset_size=0).reduce(coreset)
+        np.testing.assert_array_equal(coreset.coreset_indices, np.empty([]))
+        np.testing.assert_array_equal(coreset.coreset, np.empty([]))
+
+        # When trying to apply size reduce with a non-integer coreset size, we should
+        # have a value error raised
+        with self.assertRaises(ValueError) as error_raised:
+            coreax.reduction.SizeReduce(coreset_size=0.1).reduce(coreset)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+        # When trying to apply size reduce with a negative coreset size, we should have
+        # a value error raised
+        with self.assertRaises(ValueError) as error_raised:
+            coreax.reduction.SizeReduce(coreset_size=-2).reduce(coreset)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
 
 
 class TestMapReduce(unittest.TestCase):
@@ -391,6 +475,134 @@ class TestMapReduce(unittest.TestCase):
             # pylint: disable=protected-access
             strategy._reduce_recursive(template=coreset, input_data=input_data)
             # pylint: enable=protected-access
+
+    def test_map_reduce_zero_coreset_size(self):
+        """
+        Test how MapReduce handles a coreset_size of zero.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=0, leaf_size=100)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a coreset size of 0 - which should just assign empty coreset
+        # and coreset indices to the coreset object
+        strategy.reduce(coreset)
+        self.assertEqual(len(coreset.coreset), 0)
+        self.assertEqual(len(coreset.coreset_indices), 0)
+
+    def test_map_reduce_negative_coreset_size(self):
+        """
+        Test how MapReduce handles a negative coreset_size.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=-5, leaf_size=100)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a negative coreset size - which should cause a value error
+        # within the RandomSample usage
+        with self.assertRaises(ValueError) as error_raised:
+            strategy.reduce(coreset)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_map_reduce_float_coreset_size(self):
+        """
+        Test how MapReduce handles a float coreset_size.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=5.0, leaf_size=100)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a float coreset size - which should cause a value error
+        # within the RandomSample usage
+        with self.assertRaises(ValueError) as error_raised:
+            strategy.reduce(coreset)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_map_reduce_zero_leaf_size(self):
+        """
+        Test how MapReduce handles a leaf_size of zero.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=5, leaf_size=0)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a zero leaf size - which should cause a value error
+        # within the KDTree functionality used
+        with self.assertRaises(ValueError) as error_raised:
+            strategy.reduce(coreset)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "leaf_size must be greater than or equal to 1",
+        )
+
+    def test_map_reduce_negative_leaf_size(self):
+        """
+        Test how MapReduce handles a negative leaf_size.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=5, leaf_size=-50)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a zero leaf size - which should cause a value error
+        # within the KDTree functionality used
+        with self.assertRaises(ValueError) as error_raised:
+            strategy.reduce(coreset)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "leaf_size must be greater than or equal to 1",
+        )
+
+    def test_map_reduce_float_leaf_size(self):
+        """
+        Test how MapReduce handles a float leaf_size.
+        """
+        num_data_points = 100
+        orig_data = coreax.data.ArrayData.load(
+            jnp.array([[i, 2 * i] for i in range(num_data_points)])
+        )
+        strategy = coreax.reduction.MapReduce(coreset_size=5, leaf_size=50.0)
+        coreset = coreax.coresubset.RandomSample(self.random_key)
+        coreset.original_data = orig_data
+
+        # Call reduce with a float leaf size - which should cause a value error
+        # set for ease of use
+        with self.assertRaises(ValueError) as error_raised:
+            strategy.reduce(coreset)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "leaf_size must be a positive integer",
+        )
 
 
 if __name__ == "__main__":
