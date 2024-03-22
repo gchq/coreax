@@ -11,6 +11,7 @@ cubature
 diag
 docstrings
 elementwise
+forall
 GCHQ
 kbar
 kdtree
@@ -28,4 +29,5 @@ RKHS
 sigmas
 subseteq
 supp
+TLDR
 WMMd
