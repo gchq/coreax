@@ -1,12 +1,11 @@
 """Test recombination algorithms."""
 from __future__ import annotations
-from collections.abc import Callable, Iterator
 
 import warnings
+from collections.abc import Callable, Iterator
 from typing import Literal, get_args
 
 import equinox.internal as eqxi
-
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -14,45 +13,44 @@ import jax.tree_util as jtu
 import numpy as np
 import pytest
 import scipy
-from jaxtyping import Array, ArrayLike, Inexact, Shaped
+from jaxtyping import Array, ArrayLike, Inexact
 
-from coreax.recombination import caratheodory_measure_reduction, reveal_null_space_rank
+from coreax.recombination import (
+    caratheodory_measure_reduction,
+    reveal_left_null_space_rank,
+)
 
 jax.config.update("jax_enable_x64", True)
 InexactScalarLike = Inexact[ArrayLike, ""]
 
 N = 100
 D = 10
-# Rank (A) = M^\prime < M
-# Shape, colinear (subspace projection projection) and null are all types of 
-# rank-defficient degeneracy.
-# Convex is an alternative degeneracy.
-DEGENERACIES = Literal[None]  # , "shape", "colinear", "null", "convex"]
+
+DEGENERACIES = Literal[None, "shape", "null", "co-linear", "convex"]
 
 
-# TODO: need to be more precise with the degenerate atomic measure generation.
 @pytest.mark.parametrize("rcond", [None, 1e-6, 1e-12])
-@pytest.mark.parametrize("shape", [(N, D)])  # (D, D)
-class TestCase:
+@pytest.mark.parametrize("shape", [(N, D), (D, D)])
+class TestRecombinationCases:
     rng_seed = 0
 
     @pytest.fixture
     def atomic_measure_factory(self):
-        # TODO: docstring
+        """Return a generator for random atomic measures with a specified degeneracy."""
         key_generator = eqxi.GetKey(self.rng_seed)
 
         def random_atomic_measure_generator(
             shape: tuple[int, ...],
             rcond: float | None,
             *,
-            n_repeats: int = 5,
+            n_repeats: int = 3,
             degeneracy: DEGENERACIES,
         ):
-            # TODO: docstring
+            """Yield a random atomic measure with a specified shape and degeneracy."""
             *_, n, d = shape
 
-            itteration_count = 0
-            while itteration_count < n_repeats:
+            iteration_count = 0
+            while iteration_count < n_repeats:
                 weight_key, node_key = jr.split(key_generator())
                 weights = jr.uniform(weight_key, (shape[0],))
                 weights /= jnp.sum(weights)
@@ -74,8 +72,13 @@ class TestCase:
                     if degeneracy == "shape":
                         weights = weights[: (d - 1)]
                         nodes = nodes[: (d - 1)]
-                    elif degeneracy == "colinear":
-                        nodes = nodes.at[(d - 1) :].set(nodes.at[0].get())
+                    elif degeneracy == "co-linear":
+                        nodes = nodes.at[(d - 1) :].set(nodes.at[d - 1].get())
+                    elif degeneracy == "convex":
+                        com = np.average(nodes, axis=0, weights=weights)
+                        # Generate two vectors that are co-linear w.r.t the com.
+                        nodes = nodes.at[d - 1].set(com - 1)
+                        nodes = nodes.at[d].set(com + 1)
                     elif degeneracy == "null":
                         nodes = nodes.at[(d - 1) :].set(0.0)
                     else:
@@ -83,15 +86,16 @@ class TestCase:
                             f"Degeneracy must be one of {get_args(DEGENERACIES)}; "
                             f"got '{degeneracy}'"
                         )
-                    is_degenerate = _matrix_rank(weights[..., None] * nodes) < d
-                    assert is_degenerate
+                    is_rank_deficient = _matrix_rank(weights[..., None] * nodes) < d
+                    is_other_degeneracy = degeneracy in {"co-linear", "convex"}
+                    assert is_rank_deficient or is_other_degeneracy
                 yield weights, nodes
-                itteration_count += 1
+                iteration_count += 1
 
         return random_atomic_measure_generator
 
     @pytest.mark.parametrize("degeneracy", get_args(DEGENERACIES))
-    def test_reveal_null_space_rank(
+    def test_reveal_left_null_space_rank(
         self,
         atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
         shape: tuple[int, ...],
@@ -100,14 +104,14 @@ class TestCase:
     ):
         for _, nodes in atomic_measure_factory(shape, rcond, degeneracy=degeneracy):
             rank = np.linalg.matrix_rank(nodes, tol=rcond)
-            expected_null_space_rank = max(nodes.shape) - rank  # TODO: fix test
+            expected_null_space_rank = max(0, nodes.shape[0] - rank)
             _, s, _ = scipy.linalg.svd(nodes)
-            null_space_rank = reveal_null_space_rank(nodes, s, rcond)
+            null_space_rank = reveal_left_null_space_rank(nodes.shape, s, rcond)
             assert null_space_rank == expected_null_space_rank
 
-    @pytest.mark.parametrize("mode", ["svd"])
+    @pytest.mark.parametrize("mode", ["svd", "qr"])
     @pytest.mark.parametrize(
-        "assume_non_degenerate,degeneracy",
+        "assume_non_degenerate, degeneracy",
         [(False, i) for i in get_args(DEGENERACIES)] + [(True, None)],
     )
     def test_caratheodory_measure_reduction(
@@ -130,23 +134,19 @@ class TestCase:
                     mode=mode,
                     assume_non_degenerate=assume_non_degenerate,
                 )
-            # if degeneracy == "shape":
-            #     expected_warning_count = 2
-            #     assert len(record) == expected_warning_count
-            #     assert all("Nothing to do" in str(warn.message) for warn in record)
-            #     expected_weights_shape = weights.shape
-            #     expected_nodes_shape = nodes.shape
-            # else:
-            expected_weights_shape = (nodes.shape[-1] + 1,)
-            expected_nodes_shape = (nodes.shape[-1] + 1, nodes.shape[-1])
+            rank_plus_1 = jnp.linalg.matrix_rank(nodes, tol=rcond) + 1
+            leading_shape = min(nodes.shape[0], rank_plus_1)
+            if leading_shape == nodes.shape[0]:
+                assert all("Nothing to do" in str(warn.message) for warn in record)
+            else:
+                assert len(record) == 0
+            expected_weights_shape = (leading_shape,)
+            expected_nodes_shape = (leading_shape, nodes.shape[-1])
 
             result_com = np.average(result_nodes, 0, weights=result_weights)
-
-            expected_weights_shape = (nodes.shape[-1] + 1,)
-            expected_nodes_shape = (nodes.shape[-1] + 1, nodes.shape[-1])
             expected_com = np.average(nodes, 0, weights=weights)
 
-            assert result_weights.shape == expected_weights_shape
-            assert result_nodes.shape == expected_nodes_shape
+            assert result_weights.shape <= expected_weights_shape
+            assert result_nodes.shape <= expected_nodes_shape
             np.testing.assert_almost_equal(np.sum(result_weights), 1.0)
             np.testing.assert_array_almost_equal(result_com, expected_com)

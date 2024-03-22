@@ -45,7 +45,7 @@ def _resolve_rcond(
 # pylint: disable=line-too-long
 # Credit: https://github.com/patrick-kidger/lineax/blob/9b923c8df6556551fedc7adeea7979b5c7b3ffb0/lineax/_solver/svd.py#L67  # noqa: E501
 # pylint: enable=line-too-long
-def reveal_null_space_rank(
+def reveal_left_null_space_rank(
     matrix_shape: tuple[int, ...],
     singular_values: Shaped[Array, " n"],
     rcond: InexactScalarLike | None = None,
@@ -59,8 +59,8 @@ def reveal_null_space_rank(
     largest singular value, sets an effective rounding threshold below which a singular
     value is treated as zero.
 
-    The null space rank is the difference between either the number of columns, or the
-    number of rows in the matrix (whichever is larger), minus the matrix rank. I.E.
+    The null space rank is the difference between the number of rows in the matrix,
+    minus the matrix rank. I.E.
 
     .. math::
 
@@ -71,16 +71,15 @@ def reveal_null_space_rank(
     :param rcond: a relative condition number. Any singular value :math:`s` below the
         threshold :math:`\text{rcond} * \text{max}(s)` is treated as equal to zero. If
         :code:`rcond is None`, it defaults to `floating point eps * max(n, d)`
-    :return: the rank of the null space of a matrix :math:`A` with given shape and given
-        singular values.
+    :return: the rank of the left null space of a matrix :math:`A` with given shape and
+        given singular values.
     """
     rcond = _resolve_rcond(rcond, matrix_shape, singular_values.dtype)
     if singular_values.size > 0:
         rcond = rcond * jnp.max(singular_values[0])
     mask = singular_values > rcond
     matrix_rank = sum(mask)
-    maximum_feasible_matrix_rank = max(matrix_shape)
-    return maximum_feasible_matrix_rank - matrix_rank
+    return max(0, matrix_shape[0] - matrix_rank)
 
 
 class AbstractCoreSet(eqx.Module):
@@ -89,7 +88,7 @@ class AbstractCoreSet(eqx.Module):
 
     TLDR: a coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data
     points that, in some sense, best represent the "important" properties of a larger
-    set of :math:`n` (potentially weighted) data points.
+    set of :math:`n > \hat{n}` (potentially weighted) data points.
 
     Given a dataset :math:`X = \{x_i\}_{i=1}^n, x \in \Omega`, where each node is paired
     with a non-negative (probability) weight :math:`w_i \in \mathbb{R} \ge 0`, there
@@ -187,7 +186,7 @@ def _compute_null_space(
     *,
     mode: Literal["svd", "qr"],
     assume_full_rank: bool = False,
-) -> tuple[Shaped[Array, "n m"], IntScalar]:
+) -> Shaped[Array, "n m"]:
     """
     Compute a left null space basis for the given nodes.
 
@@ -205,15 +204,20 @@ def _compute_null_space(
         raise ValueError(f"Invalid mode specified; got {mode}, expected 'svd' or 'qr'")
 
     if assume_full_rank:
-        null_space_rank = max(nodes.shape) - min(nodes.shape)
+        left_null_space_rank = max(0, nodes.shape[0] - nodes.shape[1])
     else:
-        null_space_rank = reveal_null_space_rank(nodes.shape, s, rcond)
-    left_null_space_basis = q[:, -null_space_rank:]
-    return left_null_space_basis, null_space_rank
+        left_null_space_rank = reveal_left_null_space_rank(nodes.shape, s, rcond)
+
+    # Can't have a left null space basis of rank zero
+    if left_null_space_rank == 0:
+        return jnp.empty((0, 0))
+
+    left_null_space_basis = q[:, -left_null_space_rank:]
+    return left_null_space_basis
 
 
 def _explicit_delete(
-    a: Shaped[Array, "n ..."], delete_indices: Shaped[Array, " m"], axis: int = 0
+    a: Shaped[Array, "n ..."], delete_indices: Shaped[Array, " m"] | None, axis: int = 0
 ) -> Shaped[Array, "n-m ..."]:
     """
     Delete (assumed unique) leading entries from an array.
@@ -223,6 +227,8 @@ def _explicit_delete(
         the array :math:`A`
     :return: the array :math:`A` with the specified leading entries deleted.
     """
+    if delete_indices is None:
+        return a
     return jnp.delete(a, delete_indices, axis=axis, assume_unique_indices=True)
 
 
@@ -329,7 +335,7 @@ def implicit_caratheodory_measure_reduction(
     rcond: InexactScalarLike | None = None,
     mode: Literal["svd", "qr"] = "svd",
     assume_non_degenerate: bool = False,
-) -> tuple[Shaped[Array, " hat_n"], Shaped[Array, " hat_n"]]:
+) -> tuple[Shaped[Array, " hat_n"], Shaped[Array, " hat_n"] | None]:
     r"""
     Implicitly reduce the support of the implied atomic measure.
 
@@ -351,16 +357,17 @@ def implicit_caratheodory_measure_reduction(
         :mod:`coreax.recombination` for further information.
     :return:
     """
-    left_null_space_basis, null_space_rank = _compute_null_space(
+    left_null_space_basis = _compute_null_space(
         augmented_nodes, rcond, mode=mode, assume_full_rank=assume_non_degenerate
     )
-    if not assume_non_degenerate and augmented_nodes.shape[0] <= null_space_rank:
+    left_null_space_rank = left_null_space_basis.shape[-1]
+    if left_null_space_rank == 0:
         warnings.warn(
-            "Nothing to do; "
-            "node count is already less than or equal to the null space rank",
+            "Nothing to do, node count is already less than d+1 "
+            "(the left null space rank of the augmented node matrix is zero)",
             stacklevel=2,
         )
-        return probability_weights, augmented_nodes
+        return probability_weights, None
 
     def _reduction_step(
         state: tuple[Shaped[Array, " n"], Shaped[Array, "n-1 d+1"]],
@@ -382,11 +389,9 @@ def implicit_caratheodory_measure_reduction(
         return (updated_weights, updated_left_null_space_basis), argmin_index
 
     in_state = (probability_weights, left_null_space_basis)
-    null_space_rank = left_null_space_basis.shape[-1]
-    scan_vector = jnp.arange(null_space_rank)
+    scan_vector = jnp.arange(left_null_space_rank)
     out_state, removed_indices = jax.lax.scan(_reduction_step, in_state, scan_vector)
     output_weights, _ = out_state
-
     return output_weights, removed_indices
 
 
