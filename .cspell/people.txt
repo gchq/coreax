@@ -28,6 +28,7 @@ Smola
 Staber
 Tropp
 Veiga
+Tchakaloff
 Tchernychova
 Wittawat
 Yifan
