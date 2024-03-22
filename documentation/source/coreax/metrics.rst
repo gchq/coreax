@@ -1,4 +1,4 @@
 Metrics
-=======
+========
 
 .. automodule:: coreax.metrics
