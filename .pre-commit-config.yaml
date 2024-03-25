@@ -108,11 +108,8 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
-        # Don't run the slow pylint hook unless all prior hooks have passed.
-        # Note: the behaviour of `fail_fast` diverges from that documented,
-        # https://pre-commit.com/#hooks-fail_fast. The documentation should
-        # instead read: "if true, pre-commit will stop running hooks if this
-        # *or any previous* hook fails".
+        # Don't run the slow pylint hook if ruff has failed as there is some duplication
+        # of functionality
         fail_fast: true
   - repo: local
     hooks:
