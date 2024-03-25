@@ -57,7 +57,7 @@ doc = [
 # All tools for a developer including those for running pylint
 dev = [
     "coreax[doc, test]",
-    "pre-commit",
+    "pre-commit>=3.7",
     "pylint",
     "pyroma",
     "ruff",
