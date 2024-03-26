@@ -104,6 +104,7 @@ typehints
 undoc
 unflatten
 unsrt
+vars
 viewcode
 vmap
 writebytes
