@@ -18,6 +18,7 @@ bibfiles
 bibtex
 bmatrix
 booktitle
+brightgreen
 bysource
 cmap
 color
