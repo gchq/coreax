@@ -436,7 +436,7 @@ class CMMD(Metric):
 
     For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
     :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset 
-    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n`` pairs with 
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with 
     :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, 
     the conditional maximum mean discrepancy is given by:
 
@@ -450,15 +450,15 @@ class CMMD(Metric):
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
     :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
-    :param feature_kernel: Kernel object with compute method defined as mapping
-        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param response_kernel: Kernel object with compute method defined as mapping
-        :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
-    :param precision_threshold: Positive threshold we compare against for precision
-    :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
-        the datasets :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the response space
     :param num_feature_dimensions: An integer representing the dimensionality of the features 
         :math:`x`
+    :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
+        the original dataset :math:`\mathcal{D}^{(1)}` and the coreset :math:`\mathcal{D}^{(2)}`
+    :param precision_threshold: Positive threshold we compare against for precision
     """
     
     def __init__(
@@ -466,47 +466,15 @@ class CMMD(Metric):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         num_feature_dimensions: int,
-        precision_threshold: float = 1e-6,
-        lambdas: ArrayLike = jnp.array([1e-6, 1e-6])
+        lambdas: ArrayLike = jnp.array([1e-6, 1e-6]),
+        precision_threshold: float = 1e-6
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
-        # Validate inputs
-        coreax.validation.validate_is_instance(
-            feature_kernel, "feature_kernel", (coreax.kernel.Kernel, type(None))
-        )
         self.feature_kernel = feature_kernel
-        
-        coreax.validation.validate_is_instance(
-            response_kernel, "response_kernel", (coreax.kernel.Kernel, type(None))
-        )
         self.response_kernel = response_kernel
-
-        num_feature_dimensions = coreax.validation.cast_as_type(
-            x=num_feature_dimensions, object_name="num_feature_dimensions", type_caster=int
-        )
         self.num_feature_dimensions = num_feature_dimensions
-        
-        precision_threshold = coreax.validation.cast_as_type(
-            x=precision_threshold, object_name="precision_threshold", type_caster=float
-        )
-        self.precision_threshold = precision_threshold
-        
-        lambdas = coreax.validation.cast_as_type(
-            x=lambdas, object_name="lambdas", type_caster=jnp.atleast_1d
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[0],
-            object_name="lambdas[0]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
-        coreax.validation.validate_in_range(
-            x=lambdas[1],
-            object_name="lambdas[1]",
-            strict_inequalities=True,
-            lower_bound=0,
-        )
         self.lambdas = lambdas
+        self.precision_threshold = precision_threshold
         
         # Initialise parent
         super().__init__()
@@ -533,35 +501,11 @@ class CMMD(Metric):
         :param weights_y: :data:`None`, included for compatability reasons
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
-        # Validate inputs
-        D1 = coreax.validation.cast_as_type(
-            x=D1, object_name="D1", type_caster=jnp.atleast_2d
-        )
-        D2 = coreax.validation.cast_as_type(
-            x=D2, object_name="D2", type_caster=jnp.atleast_2d
-        )
-
-        # block_size is checked in both coresubset.py and metrics.py, however each of
-        # these can be used independently, so ignore pylint warning for duplicated code
-        # pylint: disable=duplicate-code
-        if block_size is not None:
-            block_size = coreax.validation.cast_as_type(
-                x=block_size, object_name="block_size", type_caster=int
-            )
-            coreax.validation.validate_in_range(
-                x=block_size,
-                object_name="block_size",
-                strict_inequalities=True,
-                lower_bound=0,
-            )
-        # pylint: enable=duplicate-code
+        # Make sure that compatability params are None
+        assert block_size is None, 'CMMD computation does not support blocking'
+        assert (weights_x or weights_y) is None, 'CMMD computation does not support weights'
         
-        num_pairs_D1 = len(D1)
-        num_pairs_D2 = len(D2)
-
-        if block_size is None or block_size > max(num_pairs_D1, num_pairs_D2):
-            return self.conditional_maximum_mean_discrepancy(D1, D2)
-        return self.conditional_maximum_mean_discrepancy_block(D1, D2, block_size)
+        return self.conditional_maximum_mean_discrepancy(D1, D2)
             
     def conditional_maximum_mean_discrepancy(
         self,
@@ -594,32 +538,39 @@ class CMMD(Metric):
             :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
             concatenated after the features
         """
-        # Validate inputs
-        D1 = coreax.validation.cast_as_type(
-            x=D1, object_name="D1", type_caster=jnp.atleast_2d
-        )
-        D2 = responses_n = coreax.validation.cast_as_type(
-            x=D2, object_name="D2", type_caster=jnp.atleast_2d
-        )
+        # Extract and format features and responses from D1 and D2
+        x1 = jnp.atleast_2d( D1[:, : self.num_feature_dimensions] )
+        y1 = jnp.atleast_2d( D1[:, self.num_feature_dimensions :] )
+        x2 = jnp.atleast_2d( D2[:, : self.num_feature_dimensions] )
+        y2 = jnp.atleast_2d( D2[:, self.num_feature_dimensions :] )
         
-        # Compute feature kernel matrices
-        K1 = self.feature_kernel.compute(D1[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
-        K2 = self.feature_kernel.compute(D2[:, :self.num_feature_dimensions], D2[:, :self.num_feature_dimensions])
-        K21 = self.feature_kernel.compute(D2[:, :self.num_feature_dimensions], D1[:, :self.num_feature_dimensions])
+        # Compute feature kernel gramians
+        feature_gramian_1 = self.feature_kernel.compute(x1, x1)
+        feature_gramian_2 = self.feature_kernel.compute(x2, x2)
+        cross_feature_gramian = self.feature_kernel.compute(x2, x1)
         
-        # Compute response kernel matrices
-        L1 = self.response_kernel.compute(D1[:, self.num_feature_dimensions:], D1[:, self.num_feature_dimensions:])
-        L2 = self.response_kernel.compute(D2[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
-        L12 = self.response_kernel.compute(D1[:, self.num_feature_dimensions:], D2[:, self.num_feature_dimensions:])
+        # Compute response kernel gramians
+        response_gramian_1 = self.response_kernel.compute(y1, y1)
+        response_gramian_2 = self.response_kernel.compute(y2, y2)
+        cross_response_gramian = self.response_kernel.compute(y1, y2)
 
-        # Invert kernel matrices
-        W1 = jnp.linalg.lstsq(K1 + self.lambdas[0]*jnp.eye(K1.shape[0]), jnp.eye(K1.shape[0]))[0]
-        W2 = jnp.linalg.lstsq(K2 + self.lambdas[1]*jnp.eye(K2.shape[0]), jnp.eye(K2.shape[0]))[0]
+        # Invert feature kernel gramians
+        identity_1 = jnp.eye(feature_gramian_1.shape[0])
+        inverse_feature_gramian_1 = jnp.linalg.lstsq(
+            feature_gramian_1 + self.lambdas[0]*identity_1,
+            identity_1
+        )[0]
+        
+        identity_2 = jnp.eye(feature_gramian_2.shape[0])
+        inverse_feature_gramian_2 = jnp.linalg.lstsq(
+            feature_gramian_2 + self.lambdas[1]*identity_2,
+            identity_2
+        )[0]
 
-        # Compute each term in the CMMD formula
-        term_1 = W1.dot(L1).dot(W1).dot(K1)
-        term_2 = W2.dot(L2).dot(W2).dot(K2)
-        term_3 = W1.dot(L12).dot(W2).dot(K21)
+        # Compute each term in the CMMD
+        term_1 = inverse_feature_gramian_1 @ response_gramian_1 @ inverse_feature_gramian_1 @ feature_gramian_1
+        term_2 = inverse_feature_gramian_2 @ response_gramian_2 @ inverse_feature_gramian_2 @ feature_gramian_2
+        term_3 = inverse_feature_gramian_1 @ cross_response_gramian @ inverse_feature_gramian_2 @ cross_feature_gramian
 
         # Compute CMMD
         result = jnp.sqrt(
@@ -629,23 +580,3 @@ class CMMD(Metric):
             )
         )
         return result
-
-    def conditional_maximum_mean_discrepancy_block(
-        self,
-        D1: ArrayLike,
-        D2: ArrayLike,
-        block_size: int = 10_000,
-    ) -> Array:
-        r"""
-        Calculate conditional maximum mean discrepancy (CMMD) whilst limiting memory requirements.
-
-        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
-            concatenated after the features
-        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^n` of ``m`` pairs with 
-            :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
-            concatenated after the features
-        :param block_size: Size of matrix blocks to process
-        :return: Conditional maximum mean discrepancy as a 0-dimensional array
-        """
-        raise NotImplementedError
