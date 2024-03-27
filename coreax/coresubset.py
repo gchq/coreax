@@ -408,10 +408,6 @@ class RandomSample(coreax.reduction.Coreset):
         self.coreset_indices = random_indices
         self.coreset = self.original_data.pre_coreset_array[random_indices]
 
-def invert_regularised_array(array, regularisation_constant):
-    identity = jnp.eye(array.shape[1])
-    return jnp.linalg.lstsq( array + regularisation_constant * identity, identity, rcond = None )[0]
-
 class GreedyCMMD(coreax.reduction.Coreset):
     r"""
     Apply GreedyCMMD to a supervised dataset.
@@ -584,7 +580,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # when the entire set is created.
         coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
 
-        # Define a helper function to allow us to invert an array of stacked square arrays       
+        # Define helper functions to allow us to invert an array of stacked square arrays    
+        def invert_regularised_array(array, regularisation_constant, identity):
+            return jnp.linalg.lstsq( array + regularisation_constant * identity, identity, rcond = None )[0]
+    
         def vmapped_invert(stacked_arrays, identity):
             n = stacked_arrays.shape[-1]
             return vmap(
