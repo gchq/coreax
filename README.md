@@ -5,7 +5,7 @@
 # Coreax
 
 [![Unit Tests](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Ftp832944%2F51dd332be75961a7dc903c67718028e1%2Fraw%2F413b109abaac5ba0551992791fe1c6539e38410a%2Fcoreax.json)](https://github.com/gchq/coreax/actions/workflows/coverage.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Ftp832944%2F51dd332be75961a7dc903c67718028e1%2Fraw%2Fcoreax.json)](https://github.com/gchq/coreax/actions/workflows/coverage.yml)
 [![Pre-commit Checks](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/pre_commit_checks.yml)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Python version](https://img.shields.io/pypi/pyversions/coreax.svg)](https://pypi.org/project/coreax)
