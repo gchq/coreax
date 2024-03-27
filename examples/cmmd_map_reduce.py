@@ -69,24 +69,24 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response 
     # with non-linear relationship to the features with normal erros.
-    num_data_points = 1_000
+    num_data_points = 2_000
     num_features = 1
-    feature_sd = 4
-    response_sd = 10
-    random_seed = 1_615
+    feature_sd = 20
+    response_sd = 0.5
+    random_seed = 2_000
     generator = np.random.default_rng(random_seed)
     
     x = generator.multivariate_normal(np.zeros(num_features), feature_sd * np.eye(num_features), num_data_points)
     epsilon = generator.multivariate_normal(np.zeros(1), response_sd * np.eye(1), num_data_points)
-    y = x**2 + + 1/5*x**3 + 15*np.sin(x) + 15*np.cos(x) + epsilon
-
+    y = 1/200*x**3 + np.sin(x) + epsilon
+    
     # Standardise the data and stack it into one array
     x = ( x - x.mean() ) / x.std()
     y = ( y - y.mean() ) / y.std()
     D = jnp.hstack((x, y))
     
     # Request 50 coreset points
-    coreset_size = 100
+    coreset_size = 50
 
     # Setup the original data object
     data = ArrayData.load(D)
@@ -159,7 +159,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     plt.axis("off")
     plt.title(
         f"GreedyCMMD, m={coreset_size}, "
-        f"CMMD={round(float(conditional_maximum_mean_discrepancy_greedy), 6)}"
+        f"CMMD={round(conditional_maximum_mean_discrepancy_greedy.item(), 6)}"
     )
     plt.show()
 
@@ -172,7 +172,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     plt.title(
         f"Random, m={coreset_size}, "
-        f"CMMD={round(float(conditional_maximum_mean_discrepancy_random), 6)}"
+        f"CMMD={round(conditional_maximum_mean_discrepancy_random.item(), 6)}"
     )
     plt.axis("off")
 
