@@ -578,7 +578,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # Initialise coreset index variable that will be updated throughout the loop. This is
         # initially a local variable with the coreset indices being assigned to self
         # when the entire set is created.
-        coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
+        coreset_indices = -1*jnp.ones(coreset_size, dtype=jnp.int32)
 
         # Define helper functions to allow us to invert an array of stacked square arrays    
         def invert_regularised_array(array, regularisation_constant, identity):
