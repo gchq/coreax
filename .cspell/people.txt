@@ -1,3 +1,4 @@
+Caratheodory
 Chatalic
 Duvenaud
 Ermon
@@ -9,6 +10,8 @@ Huszar
 Jiaxin
 Jitkrittum
 Kanagawa
+Litterer
+Lyons
 Motonobu
 Nystr
 Nystrom
@@ -19,4 +22,6 @@ Rudi
 Sahaj
 Schreuder
 Smirnov
+Tchakaloff
+Tchernychova
 Wittawat

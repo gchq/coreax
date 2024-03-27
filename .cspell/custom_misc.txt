@@ -7,9 +7,11 @@ coreset
 coresets
 coresubset
 coresubsets
+cubature
 diag
 docstrings
 elementwise
+forall
 GCHQ
 kbar
 kdtree
@@ -18,9 +20,14 @@ kernelized
 ml.p3.8xlarge
 parsable
 PCIMQ
+phdthesis
 PMLR
 PRNG
+rcond
 refs
 RKHS
 sigmas
+subseteq
+supp
+TLDR
 WMMd

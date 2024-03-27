@@ -28,7 +28,9 @@ dtype
 dtypes
 emibcn
 eprint
+errstate
 figsize
+finfo
 fori_loop
 fracv
 furo
@@ -45,6 +47,7 @@ jacrev
 jax
 jaxlib
 jaxopt
+jaxtyping
 jumanjihouse
 linalg
 linkcheck
@@ -60,6 +63,7 @@ mimsave
 modindex
 myst
 nabla
+ndarray
 ndim
 nonzero
 numpy
@@ -96,6 +100,7 @@ sklearn
 softplus
 sphinxcontrib
 sphobjinv
+tensordot
 texttt
 toctree
 tomli
