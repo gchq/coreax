@@ -421,7 +421,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` 
     pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and one has selected 
-    :math:`T` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^T`
+    :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^m`
     already for their compressed representation of the original dataset, GreedyCMMD selects 
     the next point to minimise the conditional maximum mean discrepancy (CMMD):
     
