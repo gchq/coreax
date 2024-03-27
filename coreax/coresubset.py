@@ -33,7 +33,7 @@ from __future__ import annotations
 from functools import partial
 
 import jax.numpy as jnp
-from jax import Array, jit, lax, random
+from jax import Array, jit, lax, random, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation
