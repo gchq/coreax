@@ -603,113 +603,157 @@ class GreedyCMMD(coreax.reduction.Coreset):
     def fit_to_size(self, coreset_size: int) -> None:
         r"""
         Execute greedy CMMD algorithm with Jax.
-
+    
         We first compute the kernel matrices, and inverse feature kernel matrix
         and then iteratively add those points to the coreset that minimise the CMMD.
-
+    
         :param coreset_size: The size of the of coreset to generate
         """
-        # Validate inputs
-        coreset_size = coreax.validation.cast_as_type(
-            x=coreset_size, object_name="coreset_size", type_caster=int
-        )
-        coreax.validation.validate_in_range(
-            x=coreset_size,
-            object_name="coreset_size",
-            strict_inequalities=True,
-            lower_bound=0
-        )
-
-        # Compute and store original feature and response kernel matrices, and invert feature kernel matrix
-        K1 = self.feature_kernel.compute(
-            self.original_data.pre_coreset_array[:, :self.num_feature_dimensions],
-            self.original_data.pre_coreset_array[:, :self.num_feature_dimensions]
-        )
-        L1 = self.response_kernel.compute(
-            self.original_data.pre_coreset_array[:, self.num_feature_dimensions:],
-            self.original_data.pre_coreset_array[:, self.num_feature_dimensions:]
-        )
-        identity = jnp.eye(self.K1.shape[0])
-        W1 = jnp.linalg.lstsq(self.K1 + self.lambdas[0]*identity, identity)[0]
+        # Compute and store original feature and response kernel matrices.
+        x = self.original_data.pre_coreset_array[:, : self.num_feature_dimensions]
+        y = self.original_data.pre_coreset_array[:, self.num_feature_dimensions :]
+        n, _d = jnp.shape(x)
+        n, _p = jnp.shape(y)
+        batch_size = self.batch_size
+    
+        K1 = self.feature_kernel.compute(x, x)
+        L1 = self.response_kernel.compute(y, y)
+        
+        identity = jnp.eye(K1.shape[0])
+        W1 = jnp.linalg.lstsq(K1 + self.lambdas[0]*identity, identity)[0]
         
         # Compute KWL matrix product
         KWL1 = K1.dot(W1).dot(L1)
 
-        # Record the size of the original dataset
-        num_data_points = len(self.original_data.pre_coreset_array)
+        # Pad the feature kernel array with zeros in an additional column and row
+        # to allow for static array sizes when dealing with upcoming inversions 
+        # and matrix operations.
+        K1 = jnp.pad(K1, [(0, 1)], mode='constant')
         
-        # Initialise variable that will be updated throughout the loop. This is
+        # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
+        # identity matrix as we iterate to the full coreset size. 
+        identity = jnp.zeros((coreset_size, coreset_size))
+        
+        # Initialise a rectangular array of size (n or batch_size) x coreset_size where each 
+        # entry consists of -1 apart from the first column which consists 
+        # of all the possible first coreset indices. This will allow us to extract 
+        # every possible "next" coreset kernel arrays ready for operations.
+        # If we are batching, sample the batch idcs for each iteration ahead of time, and
+        # ensure each column has entirely unique idcs.
+        if self.batch_size is not None:
+            def sample_batch_indices(key):
+                batch_key, _ = random.split(key)
+                return (batch_key, random.permutation(batch_key, n)[:self.batch_size])
+        
+            batch_indices = jnp.zeros((self.batch_size, coreset_size), dtype = jnp.int32)
+            batch_key = self.random_key
+            for i in range(coreset_size):
+                batch_key, idcs = sample_batch_indices(batch_key)
+                batch_indices = batch_indices.at[:, i].set(idcs)
+
+            all_possible_next_coreset_indices = jnp.tile( -1, (self.batch_size, coreset_size) )
+            all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, 0].set(batch_indices[:, 0])
+        else:
+            candidate_indices = jnp.arange(n)
+            all_possible_next_coreset_indices = jnp.tile(-1, (n, coreset_size))
+            all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, 0].set(candidate_indices)
+
+        # Initialise coreset index variable that will be updated throughout the loop. This is
         # initially a local variables with the coreset indices being assigned to self
         # when the entire set is created.
         coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
 
-        # Define helper invert function
-        def vmapped_invert(stacked_arrays):
-            return vmap(partial(invert_regularised_array, regularisation_constant=self.lambdas[1]))(stacked_arrays)
-
+        # Define a helper function to allow us to invert an array of square arrays       
+        def vmapped_invert(stacked_arrays, identity):
+            n = stacked_arrays.shape[-1]
+            return vmap(
+                partial(
+                    invert_regularised_array,
+                    regularisation_constant=self.lambdas[1],
+                    identity=identity
+                )
+            )(stacked_arrays)
+    
         # Define main loop of GreedyCMMD
+        @partial(jit, static_argnames=["unique", "batch_size"])
         def _greedy_body(
-            self,
             i: int,
-            val: ArrayLike,
+            val: tuple[ArrayLike, ArrayLike, ArrayLike],
             unique: bool,
-            batch_size: int | None
-        ) -> Array:
+            batch_size: int | None = None
+        ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
             r"""
             Execute main loop of GreedyCMMD.
             """
             # Unpack the components of the loop variables
-            current_coreset_indices = val[:i]
+            (
+                current_coreset_indices,
+                current_identity,
+                all_possible_next_coreset_indices
+            ) = val
 
-            # Format inputs - note that the calls in jax for loops already validate the
-            # ``i`` variable before calling.
-            current_coreset_indices = coreax.validation.cast_as_type(
-                x=current_coreset_indices,
-                object_name="current_coreset_indices",
-                type_caster=jnp.asarray,
-            )
+            # Update the "identity" matrix
+            current_identity = current_identity.at[i, i].set(1)
             
-            # Get current coreset, produce an array of idxs that represent each possible next coreset
-            if unique:
-                candidate_indices = jnp.delete(jnp.arange(num_data_points), current_coreset_indices).reshape(-1, 1)
-            else:
-                candidate_indices = jnp.arange(num_data_points).reshape(-1, 1)
-        
-            if batch_size is not None:
-                _, self.random_key = random.split(self.random_key)
-                batch_idx = random.choice(
-                    self.random_key,
-                    a=candidate_indices,
-                    shape=(batch_size,),
-                    replace=False,
-                )
-                candidate_indices = candidate_indices[batch_idx, :].reshape(-1, 1)
-            all_possible_next_coreset_indices = jnp.hstack(( jnp.tile( current_coreset_indices, (candidate_indices.shape[0], 1) ), candidate_indices ))
-            
-            # Extract all the coreset feature and response kernel matrices, and the coreset KWL product
-            K2s = K1[ all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] ]
-            L2s = L1[ all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] ]
-            KWL2s = KWL1[ all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] ]
+            # Update all the coreset feature and response kernel matrices, and the coreset KWL product
+            extract_idx = ( all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] )
+            K2s = K1[extract_idx]
+            L2s = L1[extract_idx]
+            KWL2s = KWL1[extract_idx]
         
             # Compute and store inverses for each coreset feature kernel matrix
-            W2s = vmapped_invert(K2s)
+            W2s = vmapped_invert(K2s, current_identity)
         
             # Compute each term of CMMD for each possible new coreset index
             term_2s = jnp.trace(jnp.matmul(jnp.matmul(jnp.matmul(W2s, L2s), W2s), K2s), axis1=1, axis2=2)
             term_3s = jnp.trace(jnp.matmul(KWL2s, W2s), axis1=1, axis2=2)
-        
-            # Choose the next coreset index
-            index_to_include_in_coreset = candidate_indices[(term_2s - 2*term_3s).argmin()].item()
-            return val.at[i].set(index_to_include_in_coreset)
-
+            loss = term_2s - 2*term_3s
+    
+            # Find the optimal next coreset index, ensuring we don't pick an already chosen point
+            # if we want the indices to be unique.
+            if unique:
+                already_chosen_indices_mask = jnp.isin(
+                    all_possible_next_coreset_indices[:, i],
+                    current_coreset_indices
+                )
+                loss = loss + jnp.where(already_chosen_indices_mask, jnp.inf, 0) 
+            index_to_include_in_coreset = all_possible_next_coreset_indices[loss.argmin(), i]
+    
+            # Repeat the chosen coreset index into the ith column of the array of possible next coreset indices
+            all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, i].set(
+                jnp.tile(index_to_include_in_coreset, (all_possible_next_coreset_indices.shape[0], ))
+            )
+            # Replace the (i+1)th column with the next possible coreset indices
+            if batch_size is None:
+                all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, i+1].set(candidate_indices)
+            else:
+                all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, i+1].set(batch_indices[:, i+1])
+                
+            # Add the chosen coreset index to the current coreset indices
+            current_coreset_indices = current_coreset_indices.at[i].set(index_to_include_in_coreset)
+            return (
+                current_coreset_indices,
+                current_identity,
+                all_possible_next_coreset_indices
+            )
+    
         # Greedily select coreset points
         body = partial(
             _greedy_body,
-            batch_size=self.batch_size,
             unique=self.unique,
+            batch_size = self.batch_size
         )
-        for i in range(0, coreset_size):
-            coreset_indices = body(i, coreset_indices)
+            
+        (coreset_indices, current_identity, all_possible_next_coreset_indices) = lax.fori_loop(
+            lower=0,
+            upper=coreset_size,
+            body_fun=body,
+            init_val=(
+                coreset_indices,
+                identity,
+                all_possible_next_coreset_indices
+            ),
+        )
             
         # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
