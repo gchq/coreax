@@ -536,12 +536,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
         identity = jnp.eye(feature_gramian.shape[0])
         inverse_feature_gramian = jnp.linalg.lstsq(feature_gramian + self.lambdas[0]*identity, identity)[0]
         
-        # Evaluate conditional mean embedding at all possible pairs of the available training data
-        training_CME = feature_gramian.dot(inverse_feature_gramian).dot(response_gramian)
+        # Evaluate conditional mean embedding (CME) at all possible pairs of the available training data
+        training_CME = feature_gramian @ inverse_feature_gramian @ response_gramian
 
-        # Pad the feature kernel gramian with zeros in an additional column and row
+        # Pad the gramians and training CME evaluations with zeros in an additional column and row
         # to allow us to extract subarrays and fill in elements with zeros simultaneously.
         feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode='constant')
+        response_gramian = jnp.pad(response_gramian, [(0, 1)], mode='constant')
+        training_CME = jnp.pad(training_CME, [(0, 1)], mode='constant')
         
         # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
         # identity matrix as we iterate to the full coreset size. 
@@ -617,18 +619,18 @@ class GreedyCMMD(coreax.reduction.Coreset):
             # Extract all the possible "next" coreset arrays
             extract_idx = ( all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] )
             coreset_feature_gramians = feature_gramian[extract_idx]
-            coreset_response_gramians = response_gramina[extract_idx]
+            coreset_response_gramians = response_gramian[extract_idx]
             coreset_CMEs = training_CME[extract_idx]
         
             # Compute and store inverses for each coreset feature kernel matrix
             inverse_coreset_feature_gramians = vmapped_invert(coreset_feature_gramians, current_identity)
 
             # Compute each term of CMMD for each possible new coreset index
-            term_2s = term_2s = jnp.trace(
+            term_2s = jnp.trace(
                 inverse_coreset_feature_gramians @ coreset_response_gramians @ inverse_coreset_feature_gramians @ coreset_feature_gramians,
                 axis1=1, axis2=2
             )
-            term_3s = term_2s = jnp.trace(
+            term_3s = jnp.trace(
                 coreset_CMEs @ inverse_coreset_feature_gramians,
                 axis1=1, axis2=2
             )
