@@ -29,6 +29,9 @@ from jax import random
 
 import coreax.approximation
 import coreax.kernel
+import coreax.util
+
+# pylint: disable=too-many-public-methods
 
 
 class TestApproximations(unittest.TestCase):
@@ -121,67 +124,6 @@ class TestApproximations(unittest.TestCase):
         np.testing.assert_array_equal(approximator.random_key, self.random_key)
         self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
 
-    def test_kernel_mean_approximator_creation_invalid_types(self) -> None:
-        """
-        Test the class KernelMeanApproximator rejects invalid input types.
-        """
-        # Disable pylint warning for abstract-class-instantiated as we are intentionally
-        # patching these whilst testing creation of the parent class
-        # pylint: disable=abstract-class-instantiated
-        # Patch the abstract method (approximate) of the KernelMeanApproximator, so it
-        # can be created
-        p = patch.multiple(
-            coreax.approximation.KernelMeanApproximator, __abstractmethods__=set()
-        )
-        p.start()
-
-        # Define the approximator with an incorrect kernel type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.KernelMeanApproximator,
-            kernel="not_a_kernel",
-            random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-        )
-
-        # Define the approximator with an incorrect random_key type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.KernelMeanApproximator,
-            kernel=self.kernel,
-            random_key=int,
-            num_kernel_points=self.num_kernel_points,
-        )
-
-        # Define the approximator with an incorrect num_kernel_points type (float) but
-        # that can be cast into an int
-        approximator = coreax.approximation.KernelMeanApproximator(
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=1.0 * self.num_kernel_points,
-        )
-        self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
-
-        # Define the approximator with an incorrect num_kernel_points type (float) that
-        # cannot be cast into an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.KernelMeanApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=[1],
-        )
-
-        # Define the approximator with a negative value of num_kernel_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.KernelMeanApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=-self.num_kernel_points,
-        )
-        # pylint: enable=abstract-class-instantiated
-
     def test_random_approximator(self) -> None:
         """
         Verify random approximator performance on toy problem.
@@ -230,100 +172,137 @@ class TestApproximations(unittest.TestCase):
         )
         self.assertLessEqual(approx_error_full, approx_error_partial)
 
-    def test_random_approximator_creation_invalid_types(self) -> None:
+    def test_random_approximator_negative_num_kernel_points(self) -> None:
         """
-        Test the class RandomApproximator rejects invalid input types.
+        Test the class RandomApproximator rejects negative values of num_kernel_points.
         """
-        # Define the approximator with an incorrect kernel type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.RandomApproximator,
-            kernel="not_a_kernel",
-            random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-
-        # Define the approximator with an incorrect random_key type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.RandomApproximator,
-            kernel=self.kernel,
-            random_key=int,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-
-        # Define the approximator with an incorrect num_kernel_points type (float) but
-        # that can be cast into an int
-        approximator = coreax.approximation.RandomApproximator(
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=1.0 * self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-        self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
-
-        # Define the approximator with an incorrect num_kernel_points type (float) that
-        # cannot be cast into an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.RandomApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=[1.0],
-            num_train_points=self.data.shape[0],
-        )
-
         # Define the approximator with a negative value of num_kernel_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.RandomApproximator,
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
             num_train_points=self.data.shape[0],
         )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
 
-        # Define the approximator with an incorrect num_train_points type (float) but
-        # that can be cast to an int
+        self.assertEqual(
+            error_raised.exception.args[0], "num_kernel_points must be positive"
+        )
+
+    def test_random_approximator_zero_num_kernel_points(self) -> None:
+        """
+        Test the class RandomApproximator does not fail with zero num_kernel_points.
+        """
+        # Define the approximator with a zero value of num_kernel_points
         approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=10.0,
+            num_kernel_points=0,
+            num_train_points=self.data.shape[0],
         )
-        self.assertEqual(approximator.num_train_points, 10)
 
-        # Define the approximator with an incorrect num_train_points type (float) and
-        # that cannot be cast to an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.RandomApproximator,
+        # In the case of zero num_kernel_points, we expect zero features to be used
+        # during the approximation, and this results in an approximation vector of zeros
+        np.testing.assert_array_equal(
+            approximator.approximate(self.data), jnp.zeros_like(self.true_distances)
+        )
+
+    def test_random_approximator_large_num_kernel_points(self) -> None:
+        """
+        Test the class RandomApproximator rejects too large values of num_kernel_points.
+        """
+        # Define the approximator with a value of num_kernel_points larger than the
+        # number of data-points in the dataset provided
+        approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=[10.0],
+            num_kernel_points=100 * self.data.shape[0],
+            num_train_points=self.data.shape[0],
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_kernel_points must be no larger than the number of points in "
+            "the provided data",
         )
 
+    def test_random_approximator_negative_num_train_points(self) -> None:
+        """
+        Test the class RandomApproximator rejects negative values of num_train_points.
+        """
         # Define the approximator with a negative value of num_train_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.RandomApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=-self.num_kernel_points,
-            num_train_points=-10,
-        )
-
-        # Define a valid approximator, but call approximate with an invalid input
         approximator = coreax.approximation.RandomApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.data.shape[0],
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=-self.data.shape[0],
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0], "num_train_points must be positive"
+        )
+
+    def test_random_approximator_zero_num_train_points(self) -> None:
+        """
+        Test the class RandomApproximator does not fail with zero num_train_points.
+        """
+        # Define the approximator with a zero value of num_train_points
+        approximator = coreax.approximation.RandomApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=0,
+        )
+
+        # In the case of zero num_train_points, we expect zero features to be used
+        # during the approximation, and this results in an approximation vector of zeros
+        np.testing.assert_array_equal(
+            approximator.approximate(self.data), jnp.zeros_like(self.true_distances)
+        )
+
+    def test_random_approximator_large_num_train_points(self) -> None:
+        """
+        Test the class RandomApproximator rejects too large values of num_train_points.
+        """
+        # Define the approximator with a value of num_train_points larger than the
+        # dataset provided
+        approximator = coreax.approximation.RandomApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=100 * self.data.shape[0],
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_train_points must be no larger than the number of points in "
+            "the provided data",
+        )
+
+    def test_random_approximator_invalid_kernel(self) -> None:
+        """
+        Test the class RandomApproximator rejects an invalid kernel.
+        """
+        approximator = coreax.approximation.RandomApproximator(
+            kernel=coreax.util.InvalidKernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
             num_train_points=self.data.shape[0],
         )
-        self.assertRaises(TypeError, approximator.approximate, "not_data")
+        with self.assertRaises(AttributeError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'compute'",
+        )
 
     def test_annchor_approximator(self) -> None:
         """
@@ -373,100 +352,154 @@ class TestApproximations(unittest.TestCase):
         )
         self.assertLessEqual(approx_error_full, approx_error_partial)
 
-    def test_annchor_approximator_creation_invalid_types(self) -> None:
+    def test_annchor_approximator_negative_num_kernel_points(self) -> None:
         """
-        Test the class ANNchorApproximator rejects invalid input types.
+        Test the class ANNchorApproximator rejects negative values of num_kernel_points.
         """
-        # Define the approximator with an incorrect kernel type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.ANNchorApproximator,
-            kernel="not_a_kernel",
-            random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-
-        # Define the approximator with an incorrect random_key type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.ANNchorApproximator,
-            kernel=self.kernel,
-            random_key=int,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-
-        # Define the approximator with an incorrect num_kernel_points type (float) but
-        # that can be cast into an int
-        approximator = coreax.approximation.ANNchorApproximator(
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=1.0 * self.num_kernel_points,
-            num_train_points=self.data.shape[0],
-        )
-        self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
-
-        # Define the approximator with an incorrect num_kernel_points type (float) that
-        # cannot be cast into an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.ANNchorApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=[1.0],
-            num_train_points=self.data.shape[0],
-        )
-
         # Define the approximator with a negative value of num_kernel_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.ANNchorApproximator,
+        approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
             num_train_points=self.data.shape[0],
         )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
 
-        # Define the approximator with an incorrect num_train_points type (float) but
-        # that can be cast to an int
+        self.assertEqual(
+            error_raised.exception.args[0], "num_kernel_points must be positive"
+        )
+
+    def test_annchor_approximator_zero_num_kernel_points(self) -> None:
+        """
+        Test the class ANNchorApproximator rejects zero values of num_kernel_points.
+        """
+        # Define the approximator with a zero value of num_kernel_points
         approximator = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=10.0,
+            num_kernel_points=0,
+            num_train_points=self.data.shape[0],
         )
-        self.assertEqual(approximator.num_train_points, 10)
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
 
-        # Define the approximator with an incorrect num_train_points type (float) and
-        # that cannot be cast to an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.ANNchorApproximator,
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_kernel_points must be positive and non-zero",
+        )
+
+    def test_annchor_approximator_large_num_kernel_points(self) -> None:
+        """
+        Test the class ANNchorApproximator usage of large values of num_kernel_points.
+        """
+        # Define an approximator with a value of num_kernel_points larger than the
+        # dataset provided
+        approximator_more_than_num_data = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-            num_train_points=[10.0],
+            num_kernel_points=100 * self.data.shape[0],
+            num_train_points=self.data.shape[0],
+        )
+        result_more_than_num_data = approximator_more_than_num_data.approximate(
+            self.data
         )
 
-        # Define the approximator with a negative value of num_train_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.ANNchorApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=-self.num_kernel_points,
-            num_train_points=-10,
-        )
-
-        # Define a valid approximator, but call approximate with an invalid input
-        approximator = coreax.approximation.ANNchorApproximator(
+        # Define an approximator with a value of num_kernel_points equal to the size of
+        # the dataset provided
+        approximator_exact_num_data = coreax.approximation.ANNchorApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=self.data.shape[0],
             num_train_points=self.data.shape[0],
         )
-        self.assertRaises(TypeError, approximator.approximate, "not_data")
+        result_exactly_num_data = approximator_exact_num_data.approximate(self.data)
+
+        # Check the output is very close if we use all the data provided, or ask for
+        # more than the number of points we have
+        approx_error_exact_num_data = np.sum(
+            np.square(self.true_distances - result_exactly_num_data)
+        )
+        approx_error_more_than_num_data = np.sum(
+            np.square(self.true_distances - result_more_than_num_data)
+        )
+        self.assertAlmostEqual(approx_error_exact_num_data, 0)
+        self.assertAlmostEqual(approx_error_more_than_num_data, 0)
+
+    def test_annchor_approximator_negative_num_train_points(self) -> None:
+        """
+        Test the class ANNchorApproximator rejects negative values of num_train_points.
+        """
+        # Define the approximator with a negative value of num_train_points
+        approximator = coreax.approximation.ANNchorApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=-self.data.shape[0],
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0], "num_train_points must be positive"
+        )
+
+    def test_annchor_approximator_zero_num_train_points(self) -> None:
+        """
+        Test the class ANNchorApproximator does not fail with zero num_train_points.
+        """
+        # Define the approximator with a zero value of num_train_points
+        approximator = coreax.approximation.ANNchorApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=0,
+        )
+
+        # In the case of zero num_train_points, we expect zero features to be used
+        # during the approximation, and this results in an approximation vector of zeros
+        np.testing.assert_array_equal(
+            approximator.approximate(self.data), jnp.zeros_like(self.true_distances)
+        )
+
+    def test_annchor_approximator_large_num_train_points(self) -> None:
+        """
+        Test the class ANNchorApproximator rejects too large values of num_train_points.
+        """
+        # Define the approximator with a value of num_train_points larger than the
+        # dataset provided
+        approximator = coreax.approximation.ANNchorApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=100 * self.data.shape[0],
+        )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_train_points must be no larger than the number of points in "
+            "the provided data",
+        )
+
+    def test_annchor_approximator_invalid_kernel(self) -> None:
+        """
+        Test the class ANNchorApproximator rejects an invalid kernel.
+        """
+        approximator = coreax.approximation.ANNchorApproximator(
+            kernel=coreax.util.InvalidKernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+            num_train_points=self.data.shape[0],
+        )
+        with self.assertRaises(AttributeError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'compute'",
+        )
 
     def test_nystrom_approximator(self) -> None:
         """
@@ -515,63 +548,80 @@ class TestApproximations(unittest.TestCase):
         )
         self.assertLessEqual(approx_error_full, approx_error_partial)
 
-    def test_nystrom_approximator_creation_invalid_types(self) -> None:
+    def test_nystrom_approximator_negative_num_kernel_points(self) -> None:
         """
-        Test the class NystromApproximator rejects invalid input types.
+        Test the class NystromApproximator rejects negative values of num_kernel_points.
         """
-        # Define the approximator with an incorrect kernel type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.NystromApproximator,
-            kernel="not_a_kernel",
-            random_key=self.random_key,
-            num_kernel_points=self.num_kernel_points,
-        )
-
-        # Define the approximator with an incorrect random_key type
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.NystromApproximator,
-            kernel=self.kernel,
-            random_key=int,
-            num_kernel_points=self.num_kernel_points,
-        )
-
-        # Define the approximator with an incorrect num_kernel_points type (float) but
-        # that can be cast into an int
-        approximator = coreax.approximation.NystromApproximator(
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=1.0 * self.num_kernel_points,
-        )
-        self.assertEqual(approximator.num_kernel_points, self.num_kernel_points)
-
-        # Define the approximator with an incorrect num_kernel_points type (float) that
-        # cannot be cast into an int
-        self.assertRaises(
-            TypeError,
-            coreax.approximation.NystromApproximator,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            num_kernel_points=[1],
-        )
-
         # Define the approximator with a negative value of num_kernel_points
-        self.assertRaises(
-            ValueError,
-            coreax.approximation.NystromApproximator,
+        approximator = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
             num_kernel_points=-self.num_kernel_points,
         )
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
 
-        # Define a valid approximator, but call approximate with an invalid input
+        self.assertEqual(
+            error_raised.exception.args[0], "num_kernel_points must be positive"
+        )
+
+    def test_nystrom_approximator_zero_num_kernel_points(self) -> None:
+        """
+        Test the class NystromApproximator rejects zero values of num_kernel_points.
+        """
+        # Define the approximator with a zero value of num_kernel_points
         approximator = coreax.approximation.NystromApproximator(
             kernel=self.kernel,
             random_key=self.random_key,
-            num_kernel_points=self.data.shape[0],
+            num_kernel_points=0,
         )
-        self.assertRaises(TypeError, approximator.approximate, "not_data")
+
+        # In the case of zero num_train_points, we expect zero features to be used
+        # during the approximation, and this results in an approximation vector of zeros
+        np.testing.assert_array_equal(
+            approximator.approximate(self.data), jnp.zeros_like(self.true_distances)
+        )
+
+    def test_nystrom_approximator_large_num_kernel_points(self) -> None:
+        """
+        Test the class NystromApproximator rejects large values of num_kernel_points.
+        """
+        # Define an approximator with a value of num_kernel_points larger than the
+        # dataset provided
+        approximator = coreax.approximation.NystromApproximator(
+            kernel=self.kernel,
+            random_key=self.random_key,
+            num_kernel_points=100 * self.data.shape[0],
+        )
+
+        with self.assertRaises(ValueError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "num_kernel_points must be no larger than the number of points in "
+            "the provided data",
+        )
+
+    def test_nystrom_approximator_invalid_kernel(self) -> None:
+        """
+        Test the class NystromApproximator rejects an invalid kernel.
+        """
+        approximator = coreax.approximation.NystromApproximator(
+            kernel=coreax.util.InvalidKernel,
+            random_key=self.random_key,
+            num_kernel_points=self.num_kernel_points,
+        )
+        with self.assertRaises(AttributeError) as error_raised:
+            approximator.approximate(self.data)
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'compute'",
+        )
+
+
+# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":

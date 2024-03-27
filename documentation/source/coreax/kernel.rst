@@ -1,4 +1,4 @@
 Kernels
-=======
+========
 
 .. automodule:: coreax.kernel

@@ -41,7 +41,6 @@ from typing_extensions import deprecated
 
 import coreax.kernel
 import coreax.util
-import coreax.validation
 
 
 class WeightsOptimiser(ABC):
@@ -53,9 +52,6 @@ class WeightsOptimiser(ABC):
 
     def __init__(self, kernel: coreax.kernel.Kernel) -> None:
         """Initialise a weights optimiser class."""
-        coreax.validation.validate_is_instance(
-            x=kernel, object_name="kernel", expected_type=coreax.kernel.Kernel
-        )
         self.kernel = kernel
 
     @abstractmethod
@@ -128,13 +124,9 @@ class SBQWeightsOptimiser(WeightsOptimiser):
         :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
+        # Format inputs
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
 
         # Compute the components of the kernel matrix. Note that to ensure the solver
         # can numerically compute the result, we add a small perturbation to the kernel
@@ -178,19 +170,9 @@ class MMDWeightsOptimiser(WeightsOptimiser):
             numerical solver computations
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Validate inputs
-        x = coreax.validation.cast_as_type(
-            x=x, object_name="x", type_caster=jnp.atleast_2d
-        )
-        y = coreax.validation.cast_as_type(
-            x=y, object_name="y", type_caster=jnp.atleast_2d
-        )
-        epsilon = coreax.validation.cast_as_type(
-            x=epsilon, object_name="epsilon", type_caster=float
-        )
-        coreax.validation.validate_in_range(
-            x=epsilon, object_name="epsilon", strict_inequalities=False, lower_bound=0
-        )
+        # Format inputs
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
 
         # Compute the components of the kernel matrix. Note that to ensure the solver
         # can numerically compute the result, we add a small perturbation to the kernel

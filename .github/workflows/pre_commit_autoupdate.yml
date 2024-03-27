@@ -2,25 +2,29 @@ name: Autoupdate pre-commit config
 
 on:
   schedule:
-    - cron: "0 0 * * 6"
+    - cron: "0 0 * * 0"
 
 jobs:
   pre_commit_autoupdate:
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       config_path: .pre-commit-config.yaml
       update_message_path: /tmp/message.txt
       update_branch: chore/pre-commit-autoupdate
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
       - uses: actions/checkout@v4
         with:
           ref: main
       - name: Create or checkout update branch
         id: create_branch
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           export pr_number=$( gh pr view ${{ env.update_branch }} --json number --jq '.number' )
           export pr_state=$( gh pr view ${{ env.update_branch }} --json state --jq '.state' )
@@ -53,12 +57,12 @@ jobs:
       - name: Store hash of baseline pre-commit config for comparison
         id: old_file
         run: echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT
+      - name: Overwrite config on branch with version from main
+        run: git checkout main ${{ env.config_path }}
       - name: Store hash of main pre-commit config for comparison
         id: main_file
-        run: |
-          git checkout main
-          echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT
-      - name: Run Pre-commit autoupdate
+        run: echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT
+      - name: Run pre-commit autoupdate on main pre-commit config
         id: autoupdate
         run: |
           pre-commit autoupdate > ${{ env.update_message_path }}
@@ -70,8 +74,9 @@ jobs:
       - name: Commit (with signature) pre-commit config
         id: commit
         if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          git checkout -m ${{ env.update_branch }}
           export message="chore(deps): autoupdate pre-commit hooks"
           export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.config_path }} )
           export content=$( base64 -i ${{ env.config_path }} )
@@ -82,6 +87,8 @@ jobs:
             --field sha="$sha"
       - name: Create or update pre-commit-autoupdate pull-request
         if: steps.commit.conclusion == 'success' || ( steps.main_file.outputs.hash != steps.new_file.outputs.hash )
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run : |
           export title="chore(deps): autoupdate pre-commit hooks"
           export body=$( cat ${{ env.update_message_path }} )
