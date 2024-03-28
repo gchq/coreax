@@ -458,7 +458,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
         num_feature_dimensions: int,
         lambdas: ArrayLike = jnp.array([1e-6, 1e-6]),
         unique: bool = True,
-        batch_size: int | None = None
+        batch_size: int | None = None,
+        refine_method: coreax.refine.Refine | None = None
     ):
         # Assign GreedyCMMD-specific attributes
         self.random_key = random_key
@@ -468,6 +469,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.lambdas = lambdas
         self.unique = unique
         self.batch_size = batch_size
+        self.refine_method = refine_method
         
         # Initialise parent with None attributes. CMMD coreset points cannot be weighted, 
         # the parent kernel is unused as we need separate kernels for features and responses
@@ -475,7 +477,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         super().__init__(
             weights_optimiser=None,
             kernel=None,
-            refine_method=None,
+            refine_method=self.refine_method,
         )
 
     def tree_flatten(self) -> tuple[tuple, dict]:
@@ -505,7 +507,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             "unique": self.unique,
             "batch_size": self.batch_size,
             "unused_kernel": self.kernel,
-            "unused_refine_method": self.refine_method,
+            "refine_method": self.refine_method,
             "unused_weights_optimiser": self.weights_optimiser,
         }
         return children, aux_data
@@ -519,14 +521,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
     
         :param coreset_size: The size of the of coreset to generate
         """
-        # Compute and store original feature and response kernel gramians.
+        # Compute original feature and response kernel gramians.
         x = self.original_data.pre_coreset_array[:, : self.num_feature_dimensions]
         y = self.original_data.pre_coreset_array[:, self.num_feature_dimensions :]
         n, _d = jnp.shape(x)
         n, _p = jnp.shape(y)
-    
-        feature_gramian = self.feature_kernel.compute(x, x)
-        response_gramian = self.response_kernel.compute(y, y)
+
+        self._feature_gramian = self.feature_kernel.compute(x, x)
+        self._response_gramian = self.response_kernel.compute(y, y)
 
         # Invert the feature gramian
         identity = jnp.eye(feature_gramian.shape[0])
@@ -536,10 +538,12 @@ class GreedyCMMD(coreax.reduction.Coreset):
         training_CME = feature_gramian @ inverse_feature_gramian @ response_gramian
 
         # Pad the gramians and training CME evaluations with zeros in an additional column and row
-        # to allow us to extract subarrays and fill in elements with zeros simultaneously.
-        feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode='constant')
-        response_gramian = jnp.pad(response_gramian, [(0, 1)], mode='constant')
-        training_CME = jnp.pad(training_CME, [(0, 1)], mode='constant')
+        # to allow us to extract subarrays and fill in elements with zeros simultaneously. 
+        # These should be class attributes as they will be required if we refine the coreset 
+        # after fitting. They are deleted after fitting if a refine method is not provided. 
+        self._feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode='constant')
+        self._response_gramian = jnp.pad(response_gramian, [(0, 1)], mode='constant')
+        self._training_CME = jnp.pad(training_CME, [(0, 1)], mode='constant')
         
         # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
         # identity matrix as we iterate to the full coreset size. 
@@ -595,15 +599,20 @@ class GreedyCMMD(coreax.reduction.Coreset):
             )(stacked_arrays)
     
         # Define main loop of GreedyCMMD
-        @partial(jit, static_argnames=["unique", "batch_size"])
+        @partial(jit, static_argnames=["unique"])
         def _greedy_body(
             i: int,
             val: tuple[ArrayLike, ArrayLike, ArrayLike],
-            unique: bool,
-            batch_size: int | None = None
+            unique: bool
         ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
             r"""
             Execute main loop of GreedyCMMD.
+
+            :param i: Loop counter
+            :param val: Loop updatable-variables
+            :param unique: Boolean that enforces the resulting coreset will only contain
+                unique elements
+            :return: Updated loop variables
             """
             # Unpack the components of the loop variables
             (
@@ -616,10 +625,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
             current_identity = current_identity.at[i, i].set(1)
             
             # Extract all the possible "next" coreset arrays
-            extract_idx = ( all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] )
-            coreset_feature_gramians = feature_gramian[extract_idx]
-            coreset_response_gramians = response_gramian[extract_idx]
-            coreset_CMEs = training_CME[extract_idx]
+            extract_indices = ( all_possible_next_coreset_indices[:, :, None], all_possible_next_coreset_indices[:, None, :] )
+            coreset_feature_gramians = self._feature_gramian[extract_indices]
+            coreset_response_gramians = self._response_gramian[extract_indices]
+            coreset_CMEs = self._training_CME[extract_indices]
         
             # Compute and store inverses for each coreset feature kernel matrix
             inverse_coreset_feature_gramians = vmapped_invert(coreset_feature_gramians, current_identity)
@@ -667,10 +676,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # Greedily select coreset points
         body = partial(
             _greedy_body,
-            unique=self.unique,
-            batch_size=batch_size
+            unique=self.unique
         )
-            
         (coreset_indices, current_identity, all_possible_next_coreset_indices) = lax.fori_loop(
             lower=0,
             upper=coreset_size,
@@ -681,6 +688,12 @@ class GreedyCMMD(coreax.reduction.Coreset):
                 all_possible_next_coreset_indices
             ),
         )
+
+        # If we are not refining, delete class attributes to free up memory
+        if self.refine_method is None:
+            del self._feature_gramian
+            del self._response_gramian
+            del self._training_CME
             
         # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
