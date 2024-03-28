@@ -24,6 +24,7 @@ module, all of which implement :class:`Metric`.
 
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
+from warnings import warn
 
 from abc import ABC, abstractmethod
 
@@ -573,9 +574,12 @@ class CMMD(Metric):
         term_3 = inverse_feature_gramian_1 @ cross_response_gramian @ inverse_feature_gramian_2 @ cross_feature_gramian
 
         # Compute CMMD
+        squared_result = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
+        if squared_result < 0:
+            warn(f'Squared CMMD ({round(squared_result.item(), 4)}) is negative, increase precision threshold or regularisation strength,', Warning)
         result = jnp.sqrt(
             coreax.util.apply_negative_precision_threshold(
-                jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3),
+                squared_result,
                 self.precision_threshold,
             )
         )
