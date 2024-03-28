@@ -526,13 +526,13 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # Compute original feature and response kernel gramians.
         x = self.original_data.pre_coreset_array[:, : self.num_feature_dimensions]
         y = self.original_data.pre_coreset_array[:, self.num_feature_dimensions :]
-        num_data_pairs = self.original_data.pre_coreset_array
+        num_data_pairs = self.original_data.pre_coreset_array.shape[0]
 
         feature_gramian = self.feature_kernel.compute(x, x)
         response_gramian = self.response_kernel.compute(y, y)
 
         # Invert the feature gramian
-        identity = jnp.eye(n)
+        identity = jnp.eye(num_data_pairs)
         inverse_feature_gramian = jnp.linalg.lstsq(feature_gramian + self.regularisation_params[0]*identity, identity)[0]
         
         # Evaluate conditional mean embedding (CME) at all possible pairs of the available training data
