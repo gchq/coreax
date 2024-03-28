@@ -457,8 +457,8 @@ class CMMD(Metric):
         function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the response space
     :param num_feature_dimensions: An integer representing the dimensionality of the features 
         :math:`x`
-    :param lambdas: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
-        the original dataset :math:`\mathcal{D}^{(1)}` and the coreset :math:`\mathcal{D}^{(2)}`
+    :param regularisation_params: A  :math:`1 \times 2` array of reguralisation parameters corresponding to 
+        the original dataset :math:`\mathcal{D}^{(1)}` and the coreset :math:`\mathcal{D}^{(2)}` respectively
     :param precision_threshold: Positive threshold we compare against for precision
     """
     
@@ -467,14 +467,14 @@ class CMMD(Metric):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         num_feature_dimensions: int,
-        lambdas: ArrayLike = jnp.array([1e-6, 1e-6]),
+        regularisation_params: ArrayLike = jnp.array([1e-6, 1e-6]),
         precision_threshold: float = 1e-6
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
         self.feature_kernel = feature_kernel
         self.response_kernel = response_kernel
         self.num_feature_dimensions = num_feature_dimensions
-        self.lambdas = lambdas
+        self.regularisation_params = regularisation_params
         self.precision_threshold = precision_threshold
         
         # Initialise parent
@@ -558,13 +558,13 @@ class CMMD(Metric):
         # Invert feature kernel gramians
         identity_1 = jnp.eye(feature_gramian_1.shape[0])
         inverse_feature_gramian_1 = jnp.linalg.lstsq(
-            feature_gramian_1 + self.lambdas[0]*identity_1,
+            feature_gramian_1 + self.regularisation_params[0]*identity_1,
             identity_1
         )[0]
         
         identity_2 = jnp.eye(feature_gramian_2.shape[0])
         inverse_feature_gramian_2 = jnp.linalg.lstsq(
-            feature_gramian_2 + self.lambdas[1]*identity_2,
+            feature_gramian_2 + self.regularisation_params[1]*identity_2,
             identity_2
         )[0]
 
