@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterator
-from typing import Literal, get_args
+from typing import Literal, cast, get_args
 
+import equinox as eqx
 import equinox.internal as eqxi
 import jax
 import jax.numpy as jnp
@@ -17,25 +18,27 @@ from jaxtyping import Array, ArrayLike, Inexact
 
 from coreax.recombination import (
     caratheodory_measure_reduction,
+    recombination,
     reveal_left_null_space_rank,
 )
 
 jax.config.update("jax_enable_x64", True)
 InexactScalarLike = Inexact[ArrayLike, ""]
 
-N = 100
-D = 10
+N = 64
+D = 2
 
 DEGENERACIES = Literal[None, "shape", "null", "co-linear", "convex"]
 
 
 @pytest.mark.parametrize("rcond", [None, 1e-6, 1e-12])
 @pytest.mark.parametrize("shape", [(N, D), (D, D)])
+@pytest.mark.parametrize("degeneracy", get_args(DEGENERACIES))
 class TestRecombinationCases:
     rng_seed = 0
 
     @pytest.fixture
-    def atomic_measure_factory(self):
+    def random_atomic_measure_factory(self):
         """Return a generator for random atomic measures with a specified degeneracy."""
         key_generator = eqxi.GetKey(self.rng_seed)
 
@@ -63,7 +66,7 @@ class TestRecombinationCases:
                     if is_degenerate:
                         if n < d:
                             raise ValueError(
-                                "It is impossible to generate a non-degenerate"
+                                "It is impossible to generate a non-degenerate "
                                 f"(rank >= d) node matrix with shape '{shape}'"
                             )
                         continue
@@ -80,6 +83,7 @@ class TestRecombinationCases:
                         nodes = nodes.at[d - 1].set(com - 1)
                         nodes = nodes.at[d].set(com + 1)
                     elif degeneracy == "null":
+                        # These need randomly inserting instead, rather than being all at the end.
                         nodes = nodes.at[(d - 1) :].set(0.0)
                     else:
                         raise ValueError(
@@ -94,15 +98,16 @@ class TestRecombinationCases:
 
         return random_atomic_measure_generator
 
-    @pytest.mark.parametrize("degeneracy", get_args(DEGENERACIES))
     def test_reveal_left_null_space_rank(
         self,
-        atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
+        random_atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
         shape: tuple[int, ...],
         rcond: float | None,
         degeneracy: DEGENERACIES,
     ):
-        for _, nodes in atomic_measure_factory(shape, rcond, degeneracy=degeneracy):
+        for _, nodes in random_atomic_measure_factory(
+            shape, rcond, degeneracy=degeneracy
+        ):
             rank = np.linalg.matrix_rank(nodes, tol=rcond)
             expected_null_space_rank = max(0, nodes.shape[0] - rank)
             _, s, _ = scipy.linalg.svd(nodes)
@@ -110,43 +115,86 @@ class TestRecombinationCases:
             assert null_space_rank == expected_null_space_rank
 
     @pytest.mark.parametrize("mode", ["svd", "qr"])
-    @pytest.mark.parametrize(
-        "assume_non_degenerate, degeneracy",
-        [(False, i) for i in get_args(DEGENERACIES)] + [(True, None)],
-    )
     def test_caratheodory_measure_reduction(
         self,
-        atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
+        random_atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
         shape: tuple[int, ...],
         rcond: float | None,
         mode: Literal["svd", "qr"],
-        assume_non_degenerate: bool,
         degeneracy: DEGENERACIES,
     ):
-        case_iterator = atomic_measure_factory(shape, rcond, degeneracy=degeneracy)
+        case_iterator = random_atomic_measure_factory(
+            shape, rcond, degeneracy=degeneracy
+        )
         for weights, nodes in case_iterator:
+            measure_reduction = caratheodory_measure_reduction
+            if mode != "qr":
+                measure_reduction = eqx.filter_jit(caratheodory_measure_reduction)
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
-                result_weights, result_nodes = caratheodory_measure_reduction(
+                result_weights, result_nodes = measure_reduction(
                     weights,
                     nodes,
                     rcond=rcond,
                     mode=mode,
-                    assume_non_degenerate=assume_non_degenerate,
+                    # assume_non_degenerate=(degeneracy is None),
                 )
-            rank_plus_1 = jnp.linalg.matrix_rank(nodes, tol=rcond) + 1
-            leading_shape = min(nodes.shape[0], rank_plus_1)
+            rank = jnp.linalg.matrix_rank(nodes, tol=rcond)
+            leading_shape = min(nodes.shape[0], cast(int, rank + 1))
             if leading_shape == nodes.shape[0]:
                 assert all("Nothing to do" in str(warn.message) for warn in record)
             else:
                 assert len(record) == 0
-            expected_weights_shape = (leading_shape,)
-            expected_nodes_shape = (leading_shape, nodes.shape[-1])
+
+            largest_augmented_node_rank = nodes.shape[-1] + 1
+            expected_weights_shape = (largest_augmented_node_rank,)
+            expected_nodes_shape = (largest_augmented_node_rank, nodes.shape[-1])
+            assert result_weights.shape <= expected_weights_shape
+            assert result_nodes.shape <= expected_nodes_shape
 
             result_com = np.average(result_nodes, 0, weights=result_weights)
             expected_com = np.average(nodes, 0, weights=weights)
+            np.testing.assert_almost_equal(np.sum(result_weights), 1.0)
+            np.testing.assert_array_almost_equal(result_com, expected_com)
 
+    @pytest.mark.parametrize("mode", ["svd"])
+    def test_tree_recombination(
+        self,
+        random_atomic_measure_factory: Callable[..., Iterator[tuple[Array, Array]]],
+        shape: tuple[int, ...],
+        rcond: float | None,
+        mode: Literal["svd", "qr"],
+        degeneracy: DEGENERACIES,
+    ):
+        case_iterator = random_atomic_measure_factory(
+            shape, rcond, degeneracy=degeneracy
+        )
+        for weights, nodes in case_iterator:
+            measure_reduction = recombination
+            # if degeneracy is None and mode != "qr":
+            #     measure_reduction = eqx.filter_jit(recombination)
+            with warnings.catch_warnings(record=True) as record:
+                warnings.simplefilter("always")
+                result_weights, result_nodes = measure_reduction(
+                    weights,
+                    nodes,
+                    rcond=rcond,
+                    mode=mode,
+                    # assume_non_degenerate=(degeneracy is None),
+                )
+            rank = jnp.linalg.matrix_rank(nodes, tol=rcond)
+            leading_shape = min(nodes.shape[0], cast(int, rank + 1))
+            if leading_shape == nodes.shape[0]:
+                assert all("Nothing to do" in str(warn.message) for warn in record)
+            else:
+                assert len(record) == 0
+            largest_augmented_node_rank = nodes.shape[-1] + 1
+            expected_weights_shape = (largest_augmented_node_rank,)
+            expected_nodes_shape = (largest_augmented_node_rank, nodes.shape[-1])
             assert result_weights.shape <= expected_weights_shape
             assert result_nodes.shape <= expected_nodes_shape
+
+            result_com = np.average(result_nodes, 0, weights=result_weights)
+            expected_com = np.average(nodes, 0, weights=weights)
             np.testing.assert_almost_equal(np.sum(result_weights), 1.0)
             np.testing.assert_array_almost_equal(result_com, expected_com)
