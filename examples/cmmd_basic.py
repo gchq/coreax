@@ -146,6 +146,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         greedy_cmmd.coreset[:, 1],
         s=50,
         color="red",
+        ec='black'
     )
     plt.axis("off")
     plt.title(
@@ -160,6 +161,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         random_sample_object.coreset[:, 1],
         s=50,
         color="red",
+        ec='black'
     )
     plt.title(
         f"Random, m={coreset_size}, "

@@ -20,12 +20,11 @@ pairs of features sampled from a Gaussian distribution with corresponding respon
 generated with a non-linear relationship to the features.
 
 A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for both the features
-and the repsonse. This coreset is compared to a coreset generated via uniform random sampling.
-Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
+and the repsonse. This coreset is then refined to improve quality.
 
-To reduce computational requirements, a map reduce approach is used, splitting the
-original dataset into distinct segments, with each segment handled on a different
-process.
+The coreset generated from the above process is compared to a coreset generated via
+uniform random sampling. Coreset quality is measured using conditional maximum mean discrepancy
+(CMMD).
 """
 
 # Support annotations with | in Python < 3.10
@@ -43,11 +42,11 @@ from coreax import (
     ArrayData,
     GreedyCMMD,
     RandomSample,
-    MapReduce,
     SizeReduce,
     SquaredExponentialKernel,
 )
 from coreax.kernel import median_heuristic
+from coreax.refine import RefineCMMD
 
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
@@ -58,10 +57,6 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     GreedyCMMD. Compare results to coresets generated via uniform random sampling.
     Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
 
-    To reduce computational requirements, a map reduce approach is used, splitting the
-    original dataset into distinct segments, with each segment handled on a different
-    process.
-
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
     :return: Coreset CMMD, random sample CMMD
@@ -69,7 +64,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response 
     # with non-linear relationship to the features with normal erros.
-    num_data_points = 2_000
+    num_data_points = 1_000
     num_features = 1
     feature_sd = 20
     response_sd = 0.5
@@ -79,7 +74,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     x = generator.multivariate_normal(np.zeros(num_features), feature_sd * np.eye(num_features), num_data_points)
     epsilon = generator.multivariate_normal(np.zeros(1), response_sd * np.eye(1), num_data_points)
     y = 1/200*x**3 + np.sin(x) + epsilon
-    
+
     # Standardise the data and stack it into one array
     x = ( x - x.mean() ) / x.std()
     y = ( y - y.mean() ) / y.std()
@@ -99,19 +94,31 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     feature_length_scale = median_heuristic(x[idx])
     response_length_scale = median_heuristic(y[idx])
 
+    # Define a refinement object
+    build_key, sample_key = random.split(random.key(random_seed))
+    refiner = RefineCMMD(
+        random_key=build_key,
+        unique=True,
+        batch_size=None,
+        order='forward'
+    )
+    
     print("Computing coreset...")
     # Compute a coreset using GreedyCMMD with Squared exponential kernels.
-    build_key, sample_key = random.split(random.key(random_seed))
     greedy_cmmd = GreedyCMMD(
         random_key=build_key,
         feature_kernel=SquaredExponentialKernel(length_scale=feature_length_scale),
-        response_kernel = SquaredExponentialKernel(length_scale=response_length_scale),
-        num_feature_dimensions = num_features
+        response_kernel=SquaredExponentialKernel(length_scale=response_length_scale),
+        num_feature_dimensions=num_features,
+        refine_method=refiner
     )
     greedy_cmmd.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=250)
+        strategy=SizeReduce(coreset_size=coreset_size)
     )
+    
+    # Refine the coreset to improve quality
+    greedy_cmmd.refine()
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
