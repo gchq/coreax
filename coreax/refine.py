@@ -816,22 +816,23 @@ class RefineCMMD(Refine):
         """
         # Validate that we have fitted a coresubset and extract relevant attributes
         self._validate_coreset(coreset)
-        num_original_data_pairs = coreset.original_data.pre_coreset_array.shape[0]
+        num_data_pairs = coreset.original_data.pre_coreset_array.shape[0]
         coreset_indices = coreset.coreset_indices
         coreset_size = coreset_indices.shape[0]
         
         # Sample the indices to be considered at each iteration ahead of time.
         # If we are batching, each column will consist of a subset of indices up to the 
-        # dataset size with no repeats. If we are not batching then each column will consist
-        # of a random permutation of indices up to the dataset size.
-        if self.batch_size is not None:
+        # dataset size with no repeats. Note that we oversample here purposefully.
+        # If we are not batching then each column will consist
+        # of a random permutation of indices up to the dataset size. 
+        if (self.batch_size is not None) and self.batch_size + 1 < num_data_pairs:
             batch_size = self.batch_size + 1
         else:
-            batch_size = num_original_data_pairs
+            batch_size = num_data_pairs
         
         def sample_batch_indices(key, batch_size):
             batch_key, _ = random.split(key)
-            return (batch_key, random.permutation(batch_key, num_original_data_pairs)[:batch_size])
+            return (batch_key, random.permutation(batch_key, num_data_pairs)[:batch_size])
             
         batch_key = coreset.random_key
         batch_indices = jnp.zeros((batch_size, coreset_size), dtype = jnp.int32)
@@ -840,7 +841,7 @@ class RefineCMMD(Refine):
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
         # If we are batching, replace the oversampled row of batch indices with the coreset indices
-        # to avoid the coreset getting worse after refinement if the batched indices can only make the CMMD worse.
+        # to avoid the coreset getting worse after refinement if the batched indices can only make raise the CMMD.
         if self.batch_size is not None:
             batch_indices = batch_indices.at[-1, :].set(coreset_indices)
 

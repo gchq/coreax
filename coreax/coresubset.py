@@ -556,7 +556,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             batch_key, _ = random.split(key)
             return (batch_key, random.permutation(batch_key, num_data_pairs)[:batch_size])
 
-        if self.batch_size is not None:
+        if (self.batch_size is not None) and self.batch_size < num_data_pairs:
             batch_size = self.batch_size
         else:
             batch_size = num_data_pairs
