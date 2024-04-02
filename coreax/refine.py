@@ -766,24 +766,34 @@ class RefineCMMD(Refine):
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
     :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
-    The class supports refinement via random batches as well as enforcing uniqueness.
+    The class supports refinement via random batches, enforcing uniqueness and reversing/randomising
+    the order of refinement.
 
     :param random_key: Key for random number generation
     :param unique: Boolean that enforces the resulting coreset will only contain
     unique elements
     :param batch_size: An integer representing the size of the batches of data pairs sampled at
-        each iteration for consideration for adding to the coreset
+        each iteration for consideration for refining the coreset
+    :param order: One of "forward", "reverse", "random". This dictates the order in which the coreset
+        pairs are refined, "forward" refers to refining the first coreset index first and the last index last,
+        "reverse" refers to refining the last coreset index first and the first index last,
+        "random" refers to randomising the order of refinement.
     """
     def __init__(
         self,
         random_key: coreax.util.KeyArrayLike,
         unique: bool = True,
-        batch_size: int | None = None
+        batch_size: int | None = None,
+        order: str = 'forward'
     ):
         # Assign attributes
-        self.random_key = random_key
-        self.unique = unique
-        self.batch_size = batch_size
+        self.random_key=random_key
+        self.unique=unique
+        self.batch_size=batch_size
+        
+        assert order in ["forward", "reverse", "random"], 'order must be one of "forward", "reverse" or "random"'
+        self.order=order
+        
         super().__init__(
             approximator=None,
         )
@@ -804,7 +814,7 @@ class RefineCMMD(Refine):
             :math:`m` coreset pair indices, coreset pairs, and feature and response kernel
             objects
         """
-        # Validate that we have fitted a coresubset and extract coreset indices and sizes
+        # Validate that we have fitted a coresubset and extract relevant attributes
         self._validate_coreset(coreset)
         num_original_data_pairs = coreset.original_data.pre_coreset_array.shape[0]
         coreset_indices = coreset.coreset_indices
@@ -829,19 +839,27 @@ class RefineCMMD(Refine):
             batch_key, sampled_indices = sample_batch_indices(batch_key, batch_size)
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
-        # If we are batching, add the current coreset index at each iteration to the candidate indices
+        # If we are batching, add the current coreset index at each iteration to the batch indices
         # to avoid the coreset getting worse after refinement if all the points only make the CMMD worse.
         if self.batch_size is not None:
             batch_indices = jnp.vstack((batch_indices, coreset_indices))
 
         # Initialise a batch_size x coreset_size array where each row is the coreset indices repeated.
         # This array will have its columns updated throughout the loop to allow us to extract arrays
-        # consisting of all possible coresets we wish to consider.
+        # consisting of all possible coresets we wish to consider. If the user requests to reverse
+        # or randomise the order of refinement, adjust the coreset indices accordingly, ensuring 
+        # we undo this before setting the coreset_indices attribute.
+        if self.order == 'reverse':
+            coreset_indices = jnp.flip(coreset_indices)
+        if self.order == 'random':
+            permutation_indices = random.permutation(coreset.random_key, jnp.arange(coreset_size))
+            coreset_indices = coreset_indices[permutation_indices]
+        
         all_possible_coreset_indices = jnp.tile(
             coreset_indices,
             (batch_size, 1)
         ).at[:, 0].set(batch_indices[:, 0])
-        
+
         # Define helper functions to allow us to invert an array of stacked square arrays    
         identity = jnp.eye(coreset_size)
         def invert_regularised_array(array, regularisation_constant):
@@ -868,6 +886,8 @@ class RefineCMMD(Refine):
     
             :param i: Loop counter
             :param val: Loop updatable-variables
+            :param unique: Boolean that enforces the resulting coreset will only contain
+                unique elements
             :return: Updated loop variables 
             """
             # Unpack the components of the loop variables
@@ -894,7 +914,7 @@ class RefineCMMD(Refine):
             loss = term_2s - 2*term_3s
     
             # Find the optimal replacement coreset index, ensuring we don't pick an already chosen point
-            # (except the index we are currently refining) if we want the indices to be unique.
+            # if we want the indices to be unique (except we allow keeping the index we are currently refining).
             if unique:
                 already_chosen_indices_mask = jnp.isin(
                     all_possible_coreset_indices[:, i],
@@ -923,7 +943,7 @@ class RefineCMMD(Refine):
             _refine_body,
             unique=self.unique
         )
-        (coreset_indices, _) = lax.fori_loop(
+        coreset_indices, _ = lax.fori_loop(
             lower=0,
             upper=coreset_size,
             body_fun=body,
@@ -933,6 +953,10 @@ class RefineCMMD(Refine):
             )
         )
 
+        if self.order == 'reverse':
+            coreset_indices = jnp.flip(coreset_indices)
+        if self.order =='random':
+            coreset_indices = coreset_indices[jnp.argsort(permutation_indices)]
         coreset.coreset_indices = coreset_indices
         coreset.coreset = coreset.original_data.pre_coreset_array[coreset_indices, :]
 
