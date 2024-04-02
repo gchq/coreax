@@ -825,7 +825,7 @@ class RefineCMMD(Refine):
         # dataset size with no repeats. If we are not batching then each column will consist
         # of a random permutation of indices up to the dataset size.
         if self.batch_size is not None:
-            batch_size = self.batch_size
+            batch_size = self.batch_size + 1
         else:
             batch_size = num_original_data_pairs
         
@@ -839,13 +839,12 @@ class RefineCMMD(Refine):
             batch_key, sampled_indices = sample_batch_indices(batch_key, batch_size)
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
-        # If we are batching, add the current coreset index at each iteration to the batch indices
-        # to avoid the coreset getting worse after refinement if all the points only make the CMMD worse.
+        # If we are batching, replace the oversampled row of batch indices with the coreset indices
+        # to avoid the coreset getting worse after refinement if the batched indices can only make the CMMD worse.
         if self.batch_size is not None:
-            batch_indices = jnp.vstack((batch_indices, coreset_indices))
+            batch_indices = batch_indices.at[-1, :].set(coreset_indices)
 
-        # Initialise a batch_size x coreset_size array where each row is the coreset indices repeated.
-        # This array will have its columns updated throughout the loop to allow us to extract arrays
+        # Initialise a batch_size x coreset_size array that will allow us to extract arrays
         # consisting of all possible coresets we wish to consider. If the user requests to reverse
         # or randomise the order of refinement, adjust the coreset indices accordingly, ensuring 
         # we undo this before setting the coreset_indices attribute.
