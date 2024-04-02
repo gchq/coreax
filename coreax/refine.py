@@ -767,7 +767,8 @@ class RefineCMMD(Refine):
     :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
     The class supports refinement via random batches, enforcing uniqueness and reversing/randomising
-    the order of refinement.
+    the order of refinement. Note that refinement follwoing fitting with the MapReduce strategy is not
+    supported.
 
     :param random_key: Key for random number generation
     :param unique: Boolean that enforces the resulting coreset will only contain
