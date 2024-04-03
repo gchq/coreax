@@ -106,11 +106,11 @@ repos:
       # Run the linter.
       - id: ruff
         args: [ --fix ]
+        # Abort if ruff linter fails as there is some duplication of functionality with
+        # the slow pylint hook
+        fail_fast: true
       # Run the formatter.
       - id: ruff-format
-        # Don't run the slow pylint hook if ruff has failed as there is some duplication
-        # of functionality
-        fail_fast: true
   - repo: local
     hooks:
       # Python static analysis tool
