@@ -66,7 +66,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.6.0
+    rev: v8.6.1
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
