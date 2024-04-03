@@ -103,14 +103,14 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.4
     hooks:
-      # Run the formatter.
-      - id: ruff-format
       # Run the linter.
       - id: ruff
         args: [ --fix ]
-        # Don't run the slow pylint hook if ruff has failed as there is some duplication
-        # of functionality
+        # Abort if ruff linter fails as there is some duplication of functionality with
+        # the slow pylint hook
         fail_fast: true
+      # Run the formatter.
+      - id: ruff-format
   - repo: local
     hooks:
       # Python static analysis tool
