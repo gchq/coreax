@@ -40,7 +40,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 from jax import Array, jit, lax, random, tree_util, vmap
@@ -48,10 +47,8 @@ from jax.typing import ArrayLike
 
 import coreax.approximation
 import coreax.kernel
+import coreax.reduction
 import coreax.util
-
-if TYPE_CHECKING:
-    import coreax.reduction
 
 
 class Refine(ABC):
@@ -107,7 +104,7 @@ class Refine(ABC):
         """
         # validate_fitted checks original_data
         coreset.validate_fitted("refine")
-        if coreset.coreset_indices is None:
+        if not isinstance(coreset, coreax.reduction.Coresubset):
             raise TypeError("Cannot refine when not finding a coresubset")
 
     def tree_flatten(self) -> tuple[tuple, dict]:

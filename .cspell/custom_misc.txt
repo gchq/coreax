@@ -7,9 +7,11 @@ coreset
 coresets
 coresubset
 coresubsets
+cubature
 diag
 docstrings
 elementwise
+forall
 GCHQ
 kbar
 kdtree
@@ -23,4 +25,5 @@ PRNG
 refs
 RKHS
 sigmas
+TLDR
 WMMd

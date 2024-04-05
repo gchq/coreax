@@ -55,14 +55,44 @@ from typing_extensions import Self
 import coreax.data
 import coreax.kernel
 import coreax.metrics
-import coreax.refine
 import coreax.util
 import coreax.weights
 
 
 class Coreset(ABC):
     r"""
-    Class for reducing data to a coreset.
+    Abstract base class for coresets.
+
+    TLDR: a coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data
+    points that, in some sense, best represent the "important" properties of a larger
+    set of :math:`n > \hat{n}` (potentially weighted) data points.
+
+    Given a dataset :math:`X = \{x_i\}_{i=1}^n, x \in \Omega`, where each node is paired
+    with a non-negative (probability) weight :math:`w_i \in \mathbb{R} \ge 0`, there
+    exists an implied discrete (probability) measure over :math:`\Omega`
+
+    .. math:
+        \eta_n = \sum_{i=1}^{n} w_i \delta_{x_i}.
+
+    If we then specify a set of test-functions :math:`\Phi = {\phi_1, \dots, \phi_M}`,
+    where :math:`\phi_i \colon \Omega \to \mathbb{R}`, which somehow capture the
+    "important" properties of the data, then there also exists an implied push-forward
+    measure over :math:`\mathbb{R}^M`
+
+    .. math:
+        \mu_n = \sum_{i=1}^{n} w_i \delta_{\Phi(x_i)}.
+
+    A coreset is simply a reduced measure containing :math:`\hat{n} < n` updated nodes
+    :math:`\hat{x}_i` and weights :math:`\hat{w}_i`, such that the push-forward measure
+    of the coreset :math:`\nu_\hat{n}` has (approximately for some algorithms) the same
+    "centre-of-mass" as the push-forward measure for the original data :math:`\mu_n`
+
+    .. math:
+        \text{CoM}(\mu_n) = \text{CoM}(\nu_\hat{n}),
+        \text{CoM}(\nu_\hat{n}) = \sum_{i=1}^\hat{n} \hat{w}_i \delta_{\Phi(\hat{x}_i)}.
+
+    Note: depending on the algorithm, the test-functions may be explicitly specified by
+    the user, or implicitly defined by the algorithm's specific objectives.
 
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
@@ -79,7 +109,7 @@ class Coreset(ABC):
         *,
         weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
         kernel: coreax.kernel.Kernel | None = None,
-        refine_method: coreax.refine.Refine | None = None,
+        refine_method: "coreax.refine.Refine | None" = None,
     ):
         """Initialise class and set internal attributes to defaults."""
         self.weights_optimiser = weights_optimiser
@@ -105,17 +135,6 @@ class Coreset(ABC):
         Calculated coreset. The order of rows need not be monotonic with those in the
         original data (applicable only to coresubset).
         """
-        self.coreset_indices: Array | None = None
-        """
-        Indices of :attr:`coreset` points in :attr:`original_data`, if applicable. The
-        order matches the rows of :attr:`coreset`.
-        """
-        self.kernel_matrix_row_sum_mean: ArrayLike | None = None
-        r"""
-        Mean vector over rows for the Gram matrix, a :math:`1 \times n` array. If
-        :meth:`fit_to_size` calculates this, it will be saved here automatically to save
-        recalculating it in :meth:`refine`.
-        """
 
     def clone_empty(self) -> Self:
         """
@@ -134,8 +153,6 @@ class Coreset(ABC):
         new_obj = copy(self)
         new_obj.original_data = None
         new_obj.coreset = None
-        new_obj.coreset_indices = None
-        new_obj.kernel_matrix_row_sum_mean = None
         return new_obj
 
     def fit(
@@ -225,21 +242,6 @@ class Coreset(ABC):
             weights_y=weights_y,
         )
 
-    def refine(self) -> None:
-        """
-        Refine coreset.
-
-        Only applicable to coreset methods that generate coresubsets.
-
-        :attr:`coreset` is updated in place.
-
-        :raises TypeError: When :attr:`refine_method` is :data:`None`
-        """
-        if self.refine_method is None:
-            raise TypeError("Cannot refine without a refine_method")
-        # Validate appropriate attributes are set on coreset inside refine_method.refine
-        self.refine_method.refine(self)
-
     def format(self) -> Array:
         """
         Format coreset to match the shape of the original data.
@@ -254,7 +256,7 @@ class Coreset(ABC):
         self.validate_fitted(Coreset.render.__name__)
         return self.original_data.render(self)
 
-    def copy_fit(self, other: Coreset, deep: bool = False) -> None:
+    def copy_fit(self, other: Self, deep: bool = False) -> None:
         """
         Copy fitted coreset from other instance to this instance.
 
@@ -263,17 +265,15 @@ class Coreset(ABC):
         :attr:`original_data` is correctly populated on this instance.
 
         :param other: :class:`Coreset` from which to copy calculated coreset
-        :param deep: If :data:`True`, make a shallow copy of :attr:`coreset` and
-            :attr:`coreset_indices`; otherwise, reference same objects
+        :param deep: If :data:`True`, make a shallow copy of :attr:`coreset`; otherwise,
+            reference the same objects
         :raises TypeError: If ``other`` does not have the **exact same type**.
         """
         other.validate_fitted(Coreset.copy_fit.__name__ + " from another Coreset")
         if deep:
             self.coreset = copy(other.coreset)
-            self.coreset_indices = copy(other.coreset_indices)
         else:
             self.coreset = other.coreset
-            self.coreset_indices = other.coreset_indices
 
     def validate_fitted(self, caller_name: str) -> None:
         """
@@ -291,6 +291,110 @@ class Coreset(ABC):
                 + Coreset.fit.__name__
                 + f" before calling {caller_name}"
             )
+
+
+class Coresubset(Coreset):
+    r"""
+    Abstract base class for coresubsets.
+
+    A coresubset is a coreset, with the additional condition that the support of the
+    reduced measure (the coreset), must be a subset of the support of the original
+    measure (the original data), such that
+
+    .. math:
+        \hat{x}_i = x_i, \forall i \in I,
+        I \subset \{1, \dots, n\}, text{card}(I) = \hat{n}.
+
+    Thus, a coresubset, unlike a corset, ensures that feasibility constraints on the
+    support of the measure are maintained :cite:`litterer2012recombination`. This is
+    vital if, for example, the test-functions are only defined on the support of the
+    original measure/nodes, rather than all of :math:`\Omega`.
+
+    In coresubsets, the measure reduction can be implicit (setting weights/nodes to
+    zero for all :math:`i \in I \ {1, \dots, n}`) or explicit (removing entries from the
+    weight/node arrays). The implicit approach is useful when input/output array shape
+    stability is required (E.G. for some JAX transformations); the explicit approach is
+    more similar to a standard coreset.
+
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`, or
+        :data:`None` if not applicable
+    """
+
+    def __init__(
+        self,
+        *,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
+        kernel: coreax.kernel.Kernel | None = None,
+        refine_method: "coreax.refine.Refine | None" = None,
+    ):
+        """Initialise class and set internal attributes to defaults."""
+        self.coreset_indices: Array | None = None
+        """
+        Indices of :attr:`~Coreset.coreset` points in :attr:`~Coreset.original_data`, if
+        applicable. The order matches the rows of :attr:`~Coreset.coreset`.
+        """
+        super().__init__(
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
+        )
+
+    def clone_empty(self) -> Self:
+        """
+        Create an empty copy of this class with all data removed.
+
+        Other parameters are retained.
+
+        .. warning:: This copy is shallow so :attr:`weights_optimiser` etc. still point
+            to the original object.
+
+        .. warning:: If any additional data attributes are added in a subclass, it
+            should reimplement this method.
+
+        :return: Copy of this class with data removed
+        """
+        new_obj = super().clone_empty()
+        new_obj.coreset_indices = None
+        return new_obj
+
+    def copy_fit(self, other: Self, deep: bool = False) -> None:
+        """
+        Copy fitted coreset from other instance to this instance.
+
+        The other coreset must be of the same type as this instance and
+        :attr:`~Coreset.original_data` must also be populated on ``other``. The user
+        must ensure :attr:`~Coreset.original_data` is correctly populated on this
+        instance.
+
+        :param other: :class:`Coreset` from which to copy calculated coreset
+        :param deep: If :data:`True`, make a shallow copy of :attr:`~Coreset.coreset`
+            and :attr:`coreset_indices`; otherwise, reference same objects
+        :raises TypeError: If ``other`` does not have the **exact same type**.
+        """
+        super().copy_fit(other, deep=deep)
+        if deep:
+            self.coreset_indices = copy(other.coreset_indices)
+        else:
+            self.coreset_indices = other.coreset_indices
+
+    def refine(self) -> None:
+        """
+        Refine coresubset.
+
+        Only applicable to coreset methods that generate coresubsets.
+
+        :attr:`~Coreset.coreset` is updated in place.
+
+        :raises TypeError: When :attr:`~Coreset.refine_method` is :data:`None`
+        """
+        if self.refine_method is None:
+            raise TypeError("Cannot refine without a refine_method")
+        # Validate appropriate attributes are set on coreset inside refine_method.refine
+        self.refine_method.refine(self)
 
 
 C = TypeVar("C", bound=Coreset)

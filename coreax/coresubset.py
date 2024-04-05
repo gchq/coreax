@@ -44,7 +44,7 @@ import coreax.util
 import coreax.weights
 
 
-class KernelHerding(coreax.reduction.Coreset):
+class KernelHerding(coreax.reduction.Coresubset):
     r"""
     Apply kernel herding to a dataset.
 
@@ -102,6 +102,13 @@ class KernelHerding(coreax.reduction.Coreset):
         self.unique = unique
         self.approximator = approximator
         self.random_key = random_key
+
+        self.kernel_matrix_row_sum_mean: ArrayLike | None = None
+        r"""
+        Mean vector over rows for the Gram matrix, a :math:`1 \times n` array. If
+        :meth:`fit_to_size` calculates this, it will be saved here automatically to save
+        recalculating it in :meth:`refine`.
+        """
 
         # Initialise parent
         super().__init__(
@@ -298,7 +305,7 @@ class KernelHerding(coreax.reduction.Coreset):
         return current_coreset_indices, current_kernel_similarity_penalty
 
 
-class RandomSample(coreax.reduction.Coreset):
+class RandomSample(coreax.reduction.Coresubset):
     r"""
     Reduce a dataset by uniformly randomly sampling a fixed number of points.
 
@@ -334,7 +341,7 @@ class RandomSample(coreax.reduction.Coreset):
         self.random_key = random_key
         self.unique = unique
 
-        # Initialise Coreset parent
+        # Initialise Coresubset parent
         super().__init__(
             weights_optimiser=weights_optimiser,
             kernel=kernel,
@@ -358,7 +365,6 @@ class RandomSample(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
             self.coreset_indices,
             self.coreset,
         )
