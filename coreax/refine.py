@@ -876,9 +876,12 @@ class RefineCMMD(Refine):
         # Refine coreset points
         body = partial(
             self._refine_body,
-            coreset=coreset,
             identity=identity,
+            feature_gramian=coreset._feature_gramian,
+            response_gramian=coreset._response_gramian,
+            training_CME=coreset._training_CME,
             batch_indices=batch_indices,
+            regularisation_paramater=coreset.regularisation_paramater
             unique=self.unique
         )
         coreset_indices, _ = lax.fori_loop(
@@ -899,13 +902,16 @@ class RefineCMMD(Refine):
         coreset.coreset = coreset.original_data.pre_coreset_array[coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["unique"])
+    @partial(jit, static_argnames=["regularisation_paramater", "unique"])
     def _refine_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],
-        coreset: coreax.reduction.Coreset,
-        identity: ArrayLike,
+        identity: ArrayLike
+        feature_gramian: ArrayLike,
+        response_gramian: ArrayLike,
+        training_CME: ArrayLike,
         batch_indices: ArrayLike,
+        regularisation_paramater: float,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike]:
         r"""
@@ -913,12 +919,12 @@ class RefineCMMD(Refine):
 
         :param i: Loop counter
         :param val: Loop updatable-variables
-        :param coreset: :class:`~coreax.reduction.Coreset` object with
-            :math:`n \times d` original features and `n \times p` corresponding responses,
-            :math:`m` coreset pair indices, coreset pairs, and feature and response kernel
-            objects
         :param identity: Identity matrix of same size as coreset
+        :param feature_gramian: Gram matrix of training features
+        :param response_gramian: Gram matrix of training responses
+        :param training_CME: Evaluation of CME on the training data
         :param batch_indices: Array of sampled batch indices
+        :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
         :param unique: Boolean that enforces the resulting coreset will only contain
             unique elements
         :return: Updated loop variables 
@@ -928,14 +934,14 @@ class RefineCMMD(Refine):
 
         # Extract all the possible arrays where the ith coreset index has been replaced by another
         extract_indices = ( all_possible_coreset_indices[:, :, None], all_possible_coreset_indices[:, None, :] )
-        coreset_feature_gramians = coreset._feature_gramian[extract_indices]
-        coreset_response_gramians = coreset._response_gramian[extract_indices]
-        coreset_CMEs = coreset._training_CME[extract_indices]
+        coreset_feature_gramians = feature_gramian[extract_indices]
+        coreset_response_gramians = response_gramian[extract_indices]
+        coreset_CMEs = training_CME[extract_indices]
         
         # Compute and store inverses for each coreset feature kernel matrix
         inverse_coreset_feature_gramians = coreax.util.invert_stacked_regularised_arrays(
             coreset_feature_gramians,
-            coreset.regularisation_paramater,
+            regularisation_paramater,
             identity
         )
 
