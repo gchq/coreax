@@ -568,14 +568,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
             batch_key, sampled_indices = sample_batch_indices(batch_key, batch_size)
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
-        # Initialise a rectangular array of size (n or batch_size) x coreset_size where each 
+        # Initialise a rectangular array of size batch_size x coreset_size where each 
         # entry consists of -1 apart from the first column which consists 
         # of all the possible first coreset indices. This will allow us to extract 
         # every possible "next" coreset kernel array ready for operations.
         all_possible_next_coreset_indices = jnp.hstack(
             (
                 batch_indices[:, [0]],
-                jnp.tile(-1, (batch_size, coreset_size-1))
+                jnp.tile(-1, (batch_indices.shape[0], coreset_size-1))
             )
         )
 
@@ -590,6 +590,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             feature_gramian=feature_gramian,
             response_gramian=response_gramian,
             training_CME=training_CME,
+            batch_indices=batch_indices,
             regularisation_paramater=self.regularisation_paramater,
             unique=self.unique
         )
@@ -615,13 +616,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
         
     @staticmethod
-    @partial(jit, static_argnames=["unique", "regularisation_paramater"])
+    @partial(jit, static_argnames=["regularisation_paramater", "unique"])
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike],
         feature_gramian: ArrayLike,
         response_gramian: ArrayLike,
         training_CME: ArrayLike,
+        batch_indices: ArrayLike,
         regularisation_paramater: float,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
@@ -636,6 +638,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
         :param unique: Boolean that enforces the resulting coreset will only contain
             unique elements
+        :param batch_indices: Array of sampled batch indices
         :return: Updated loop variables
         """
         # Unpack the components of the loop variables
@@ -690,7 +693,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, [i, i+1]].set(
             jnp.hstack(
                 (
-                    jnp.tile(index_to_include_in_coreset, (batch_size, 1)),
+                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[0], 1)),
                     batch_indices[:, [i+1]]
                 )
             )
