@@ -31,6 +31,7 @@ from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
+from jax.random import split, permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias
@@ -235,7 +236,6 @@ def invert_stacked_regularised_arrays(
     :param regularisation_paramater: Regularisation parameter for stable inversion of arrays
     :param identity: Block identity matrix
     :return: Stack of inverted of regularised arrays
-    
     """
     return vmap(
         partial(
@@ -244,7 +244,24 @@ def invert_stacked_regularised_arrays(
             identity=identity
         )
     )(stacked_arrays)
-            
+
+def sample_batch_indices(
+    random_key: coreax.util.KeyArrayLike,
+    data_size: int,
+    batch_size: int
+): -> tuple[coreax.util.KeyArrayLike, ArrayLike]
+    """
+    Sample a batch of unique indices where the largest possible index is dictated by data_size.
+
+    The function also returns a new Jax key for repeated batching.
+
+    :param random_key: Key for random number generation
+    :param data_size: Size of the data we wish to sample from
+    :param batch_size: Size of the batch we wish to sample
+    :return: (New Jax key, Batch of unique indices)
+    """
+    batch_key, _ = split(random_key)
+    return (batch_key, permutation(batch_key, data_size)[:batch_size])
 
 def jit_test(
     fn: Callable,
