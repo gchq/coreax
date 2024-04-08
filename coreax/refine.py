@@ -906,7 +906,7 @@ class RefineCMMD(Refine):
     def _refine_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],
-        identity: ArrayLike
+        identity: ArrayLike,
         feature_gramian: ArrayLike,
         response_gramian: ArrayLike,
         training_CME: ArrayLike,
