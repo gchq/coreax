@@ -815,16 +815,8 @@ class RefineCMMD(Refine):
             :math:`m` coreset pair indices, coreset pairs, and feature and response kernel
             objects
         """
-        # Validate that we have fitted a coresubset and stored required attributes
+        # Validate that we have fitted a coresubset and extract relevant attributes
         self._validate_coreset(coreset)
-        if not hasattr(coreset, "_feature_gramian"):
-            raise coreax.util.NotCalculatedError(
-                "Need to call "
-                + coreset.fit.__name__
-                + f" with refine_method attribute not None before calling refine."
-            )
-
-        # Extract relevant attributes
         num_data_pairs = coreset.original_data.pre_coreset_array.shape[0]
         coreset_indices = coreset.coreset_indices
         coreset_size = coreset_indices.shape[0]
@@ -957,7 +949,7 @@ class RefineCMMD(Refine):
         loss = term_2s - 2*term_3s
 
         # Find the optimal replacement coreset index, ensuring we don't pick an already chosen point
-        # if we want the indices to be unique (except we allow keeping the index we are currently refining).
+        # if we want the indices to be unique (except allow the index we are currently refining).
         if unique:
             already_chosen_indices_mask = jnp.isin(
                 all_possible_coreset_indices[:, i],
