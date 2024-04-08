@@ -249,7 +249,7 @@ def sample_batch_indices(
     random_key: coreax.util.KeyArrayLike,
     data_size: int,
     batch_size: int
-): -> tuple[coreax.util.KeyArrayLike, ArrayLike]
+) -> tuple[coreax.util.KeyArrayLike, ArrayLike]:
     """
     Sample a batch of unique indices where the largest possible index is dictated by data_size.
 
