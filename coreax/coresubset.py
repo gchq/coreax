@@ -590,7 +590,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             feature_gramian=feature_gramian,
             response_gramian=response_gramian,
             training_CME=training_CME,
-            regularisation_paramater=self.regularisation_paramater
+            regularisation_paramater=self.regularisation_paramater,
             unique=self.unique
         )
         (coreset_indices, _, _) = lax.fori_loop(
@@ -619,10 +619,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike],
-        feature_gramian: ArrayLike
-        response_gramian: ArrayLike
+        feature_gramian: ArrayLike,
+        response_gramian: ArrayLike,
         training_CME: ArrayLike,
-        regularisation_paramater: float
+        regularisation_paramater: float,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
         r"""
@@ -630,6 +630,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
 
         :param i: Loop counter
         :param val: Loop updatable-variables
+        :param feature_gramian: Gram matrix on features
+        :param response_gramian: Gram matrix on responses
+        :param training_CME: Evaluation of CME on the training data
+        :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
         :param unique: Boolean that enforces the resulting coreset will only contain
             unique elements
         :return: Updated loop variables
