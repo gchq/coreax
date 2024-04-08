@@ -7,7 +7,7 @@ default_stages:
   - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
@@ -101,7 +101,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.4
+    rev: v0.3.5
     hooks:
       # Run the linter.
       - id: ruff
