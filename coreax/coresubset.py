@@ -598,10 +598,22 @@ class GreedyCMMD(coreax.reduction.Coreset):
             )(stacked_arrays)
     
         # Define main loop of GreedyCMMD
-        @partial(jit, static_argnames=["unique"])
+        @partial(
+            jit,
+            static_argnames=
+            [
+            "unique",
+            "feature_gramian", 
+            "response_gramian", 
+            "training_CME"
+            ]
+        )
         def _greedy_body(
             i: int,
             val: tuple[ArrayLike, ArrayLike, ArrayLike],
+            feature_gramian: ArrayLike,
+            response_gramian: ArrayLike,
+            training_CME: ArrayLike,
             unique: bool
         ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
             r"""
@@ -675,6 +687,9 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # Greedily select coreset points
         body = partial(
             _greedy_body,
+            feature_gramian=feature_gramian,
+            response_gramian=response_gramian,
+            training_CME=training_CME,
             unique=self.unique
         )
         (coreset_indices, _, _) = lax.fori_loop(
