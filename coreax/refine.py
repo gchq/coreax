@@ -827,7 +827,8 @@ class RefineCMMD(Refine):
         # Sample the indices to be considered at each iteration ahead of time.
         # If we are batching, each column will consist of a subset of indices up to the 
         # dataset size with no repeats. Note that we oversample here purposefully
-        # as the additional row will be replaced to ensure we don't degrade the CMMD.
+        # as the additional row will be replaced with the coreset indices 
+        # to ensure we don't degrade the CMMD.
         # If we are not batching then each column will consist
         # of a random permutation of indices up to the dataset size. 
         if (self.batch_size is not None) and self.batch_size + 1 < num_data_pairs:
@@ -845,11 +846,6 @@ class RefineCMMD(Refine):
             )
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
-        # If we are batching, replace the oversampled row of batch indices with the coreset indices
-        # to avoid the coreset getting worse after refinement if the batched indices can only degrade the CMMD.
-        if self.batch_size is not None:
-            batch_indices = batch_indices.at[-1, :].set(coreset_indices)
-
         # If the user requests to reverse or randomise the order of refinement, adjust the coreset 
         # indices accordingly, ensuring we undo this before setting the coreset_indices attribute.
         if self.order == 'reverse':
@@ -858,6 +854,11 @@ class RefineCMMD(Refine):
             permutation_indices = random.permutation(coreset.random_key, jnp.arange(coreset_size))
             coreset_indices = coreset_indices[permutation_indices]
 
+        # If we are batching, replace the oversampled row of batch indices with the coreset indices
+        # to avoid the coreset getting worse after refinement if the batched indices can only degrade the CMMD.
+        if self.batch_size is not None:
+            batch_indices = batch_indices.at[-1, :].set(coreset_indices)
+            
         # Initialise a batch_size x coreset_size array that will allow us to extract arrays
         # consisting of all possible coresets we wish to consider. 
         all_possible_coreset_indices = jnp.tile(
