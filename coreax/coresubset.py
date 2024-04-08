@@ -553,10 +553,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # If we are batching, each column will consist of a subset of indices up to the 
         # dataset size with no repeats. If we are not batching then each column will consist
         # of a random permutation of indices up to the dataset size.
-        def sample_batch_indices(key, batch_size):
-            batch_key, _ = random.split(key)
-            return (batch_key, random.permutation(batch_key, num_data_pairs)[:batch_size])
-
         if (self.batch_size is not None) and self.batch_size < num_data_pairs:
             batch_size = self.batch_size
         else:
@@ -565,7 +561,11 @@ class GreedyCMMD(coreax.reduction.Coreset):
         batch_key = self.random_key
         batch_indices = jnp.zeros((batch_size, coreset_size), dtype = jnp.int32)
         for i in range(coreset_size):
-            batch_key, sampled_indices = sample_batch_indices(batch_key, batch_size)
+            batch_key, sampled_indices = coreax.util.sample_batch_indices(
+                random_key=batch_key,
+                data_size=num_data_pairs,
+                batch_size=batch_size
+            )
             batch_indices = batch_indices.at[:, i].set(sampled_indices)
 
         # Initialise a rectangular array of size batch_size x coreset_size where each 
@@ -575,7 +575,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
         all_possible_next_coreset_indices = jnp.hstack(
             (
                 batch_indices[:, [0]],
-                jnp.tile(-1, (batch_indices.shape[0], coreset_size-1))
+                jnp.tile(
+                    -1,
+                    (batch_indices.shape[0], coreset_size - 1)
+                )
             )
         )
 
@@ -635,10 +638,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
         :param feature_gramian: Gram matrix on features
         :param response_gramian: Gram matrix on responses
         :param training_CME: Evaluation of CME on the training data
+        :param batch_indices: Array of sampled batch indices
         :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
         :param unique: Boolean that enforces the resulting coreset will only contain
             unique elements
-        :param batch_indices: Array of sampled batch indices
         :return: Updated loop variables
         """
         # Unpack the components of the loop variables
@@ -689,11 +692,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
         index_to_include_in_coreset = all_possible_next_coreset_indices[loss.argmin(), i]
 
         # Repeat the chosen coreset index into the ith column of the array of possible next coreset indices
-        # and replace the (i+1)th column with the next possible coreset indices.
+        # and replace the (i+1)th column with the next batch of possible coreset indices.
         all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[:, [i, i+1]].set(
             jnp.hstack(
                 (
-                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[0], 1)),
+                    jnp.tile(
+                        index_to_include_in_coreset,
+                        (batch_indices.shape[0], 1)
+                    ),
                     batch_indices[:, [i+1]]
                 )
             )
