@@ -602,10 +602,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
             jit,
             static_argnames=
             [
-            "unique",
             "feature_gramian", 
             "response_gramian", 
-            "training_CME"
+            "training_CME",
+            "unique"
             ]
         )
         def _greedy_body(
