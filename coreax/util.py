@@ -193,6 +193,54 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     return sol.primal
 
 
+@jit
+def invert_regularised_array(
+    array: ArrayLike,
+    regularisation_paramater: float,
+    identity: ArrayLike
+) -> ArrayLike:
+    """
+    Using a least-squares solver, regularise the array and then invert it.
+    
+    The function is designed to invert square block arrays where only the top-left block is non-zero.
+    That is, we return a block array, the same size as the input array, where each block consists
+    of zeros except for the top-left block, which is the inverse of the original non-zero block. To achieve
+    this the 'identity' array must be a zero matrix except for ones on the diagonal up to the size
+    of the non-zero block.
+
+    :param array: Function callable to test
+    :param regularisation_paramater: Arguments passed during the calls to the passed function
+    :param identity: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function.
+    :return: inverse of regularised array
+    """
+    return jnp.linalg.lstsq( array + regularisation_paramater * identity, identity, rcond = None )[0]
+
+
+@jit
+def invert_stacked_regularised_arrays(
+    stacked_arrays: ArrayLike,
+    regularisation_paramater: float,
+    identity: ArrayLike
+) -> ArrayLike:
+    """
+    Efficiently invert a stack of regularised square arrays]
+
+    The function is designed to invert a stack of square block arrays where only the top-left block is non-zero.
+    That is, we return a stack of block arrays, the same size as the stack of input arrays, where each block consists
+    of zeros except for the top-left block, which is the inverse of the original non-zero block. To achieve
+    this the 'identity' array must be a zero matrix except for ones on the diagonal up to the size
+    of the non-zero block.
+    """
+    return vmap(
+        partial(
+            invert_regularised_array,
+            regularisation_paramater=regularisation_paramater,
+            identity=identity
+        )
+    )(stacked_arrays)
+            
+
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
