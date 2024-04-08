@@ -801,7 +801,7 @@ class RefineCMMD(Refine):
     
     def refine(
         self,
-        coreset: coreax.reduction.Coreset,
+        coreset: coreax.reduction.Coreset
     ) -> None:
         r"""
         Compute the refined coreset, of ``m`` pairs of features in ``d`` dimensions
@@ -904,7 +904,7 @@ class RefineCMMD(Refine):
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         coreset: coreax.reduction.Coreset,
-        identity: ArrayLike
+        identity: ArrayLike,
         batch_indices: ArrayLike,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike]:
