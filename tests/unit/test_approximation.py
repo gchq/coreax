@@ -131,23 +131,19 @@ class TestApproximations:
             true_distances,
         ) = problem
         # Define the approximator - full dataset used to fit the approximation
-        if not issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, coreax.approximation.NystromApproximator):
+            full_kwargs = {"num_kernel_points": data.shape[0]}
+            partial_kwargs = {"num_kernel_points": num_kernel_points}
+        else:
             full_kwargs = {
                 "num_kernel_points": data.shape[0],
                 "num_train_points": data.shape[0],
             }
-        else:
-            full_kwargs = {"num_kernel_points": data.shape[0]}
-        approximator_full = approximator(random_key, kernel, **full_kwargs)
-
-        # Define the approximator - full dataset used to fit the approximation
-        if not issubclass(approximator, coreax.approximation.NystromApproximator):
             partial_kwargs = {
                 "num_kernel_points": num_kernel_points,
                 "num_train_points": num_train_points,
             }
-        else:
-            partial_kwargs = {"num_kernel_points": num_kernel_points}
+        approximator_full = approximator(random_key, kernel, **full_kwargs)
         approximator_partial = approximator(random_key, kernel, **partial_kwargs)
 
         # Approximate the kernel row mean using the full training set (so the
@@ -188,14 +184,14 @@ class TestApproximations:
             num_train_points,
             true_distances,
         ) = problem
-        if not issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, coreax.approximation.NystromApproximator):
             kwargs = {
-                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier,
-                "num_train_points": num_train_points,
+                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier
             }
         else:
             kwargs = {
-                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier
+                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier,
+                "num_train_points": num_train_points,
             }
         test_approximator = approximator(random_key, kernel, **kwargs)
 
@@ -291,13 +287,13 @@ class TestApproximations:
             num_train_points,
             _,
         ) = problem
-        if not issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, coreax.approximation.NystromApproximator):
+            kwargs = {"num_kernel_points": num_kernel_points}
+        else:
             kwargs = {
                 "num_kernel_points": num_kernel_points,
                 "num_train_points": num_train_points,
             }
-        else:
-            kwargs = {"num_kernel_points": num_kernel_points}
         approximator = approximator(random_key, coreax.util.InvalidKernel(0), **kwargs)
         with pytest.raises(
             AttributeError,
