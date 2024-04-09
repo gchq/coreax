@@ -529,7 +529,7 @@ class RPCholesky(coreax.reduction.Coreset):
         x: ArrayLike,
         kernel_vectorised: coreax.util.KernelComputeType,
         unique: bool,
-    ) -> tuple[Array, Array]:
+    ) -> tuple[Array, Array, Array, Array]:
         r"""
         Execute main loop of RPCHOLESKY.
 
