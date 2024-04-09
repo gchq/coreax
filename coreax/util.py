@@ -198,7 +198,8 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
 def invert_regularised_array(
     array: ArrayLike,
     regularisation_paramater: float,
-    identity: ArrayLike
+    identity: ArrayLike,
+    rcond: float | None = None
 ) -> ArrayLike:
     """
     Using a least-squares solver, regularise the array and then invert it.
@@ -212,16 +213,23 @@ def invert_regularised_array(
     :param array: Array to be inverted
     :param regularisation_paramater: Regularisation parameter for stable inversion of array
     :param identity: Block identity matrix
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
+        singular values are treated as zero if they are smaller than rcond times the largest singular value of a
     :return: Inverse of regularised array
     """
-    return jnp.linalg.lstsq( array + regularisation_paramater * identity, identity, rcond = None )[0]
+    return jnp.linalg.lstsq(
+        array + regularisation_paramater * identity,
+        identity,
+        rcond=rcond
+    )[0]
 
 
 @jit
 def invert_stacked_regularised_arrays(
     stacked_arrays: ArrayLike,
     regularisation_paramater: float,
-    identity: ArrayLike
+    identity: ArrayLike,
+    rcond: float | None = None
 ) -> ArrayLike:
     """
     Efficiently invert a stack of regularised square arrays.
@@ -235,13 +243,16 @@ def invert_stacked_regularised_arrays(
     :param array: Stack of arrays to be inverted
     :param regularisation_paramater: Regularisation parameter for stable inversion of arrays
     :param identity: Block identity matrix
-    :return: Stack of inverted of regularised arrays
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
+        singular values are treated as zero if they are smaller than rcond times the largest singular value of a
+    :return: Stack of inverted regularised arrays
     """
     return vmap(
         partial(
             invert_regularised_array,
             regularisation_paramater=regularisation_paramater,
-            identity=identity
+            identity=identity,
+            rcond=rcond`
         )
     )(stacked_arrays)
 
