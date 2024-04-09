@@ -24,3 +24,7 @@ refs
 RKHS
 sigmas
 WMMd
+RPCHOLESKY
+nonnegative
+archiveprefix
+primaryclass
