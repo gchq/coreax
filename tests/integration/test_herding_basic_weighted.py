@@ -57,13 +57,15 @@ class TestHerdingBasic(unittest.TestCase):
             self.assertLess(
                 mmd_coreset,
                 mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than herding coreset MMD",
+                msg="MMD for random sampling was unexpectedly lower than \
+                    herding coreset MMD",
             )
 
             self.assertLess(
                 mmd_rpc,
                 mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than RPC coreset MMD",
+                msg="MMD for random sampling was unexpectedly lower than \
+                    RPC coreset MMD",
             )
 
 

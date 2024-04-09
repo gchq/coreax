@@ -410,9 +410,7 @@ class RandomSample(coreax.reduction.Coreset):
 
 
 class RPCholesky(coreax.reduction.Coreset):
-    r"""
-    RP Cholesky.
-    """
+    r"""RP Cholesky."""
 
     def __init__(
         self,
@@ -495,7 +493,7 @@ class RPCholesky(coreax.reduction.Coreset):
 
         try:
             n = len(self.original_data.pre_coreset_array)
-            F = jnp.zeros((n, coreset_size))
+            approximation_matrix = jnp.zeros((n, coreset_size))
             _, key = random.split(self.random_key)
 
             # Evaluate the diagonal of the Gram matrix
@@ -506,8 +504,13 @@ class RPCholesky(coreax.reduction.Coreset):
                 self.original_data.pre_coreset_array,
             )
 
-            residual_diagonal, F, coreset_indices, key = lax.fori_loop(
-                0, coreset_size, body, (residual_diagonal, F, coreset_indices, key)
+            residual_diagonal, approximation_matrix, coreset_indices, key = (
+                lax.fori_loop(
+                    0,
+                    coreset_size,
+                    body,
+                    (residual_diagonal, approximation_matrix, coreset_indices, key),
+                )
             )
 
         except IndexError as exception:
@@ -550,7 +553,7 @@ class RPCholesky(coreax.reduction.Coreset):
             ``current_coreset_indices`` and ``key``
         """
         # Unpack the components of the loop variables
-        residual_diagonal, F, current_coreset_indices, key = val
+        residual_diagonal, approximation_matrix, current_coreset_indices, key = val
         key, subkey = random.split(key)
         n = len(x)
 
@@ -559,17 +562,22 @@ class RPCholesky(coreax.reduction.Coreset):
         current_coreset_indices = current_coreset_indices.at[i].set(j)
 
         # remove overlap with previously chosen columns
-        g = kernel_vectorised(x, x[j]) - jnp.dot(F, F[j])[:, None]
+        g = (
+            kernel_vectorised(x, x[j])
+            - jnp.dot(approximation_matrix, approximation_matrix[j])[:, None]
+        )
 
         # update approximation
-        F = F.at[:, i].set((g / jnp.sqrt(g[j])).flatten())
+        approximation_matrix = approximation_matrix.at[:, i].set(
+            (g / jnp.sqrt(g[j])).flatten()
+        )
 
         # track diagonal of residual matrix
-        residual_diagonal = residual_diagonal - jnp.square(F[:, i])
+        residual_diagonal = residual_diagonal - jnp.square(approximation_matrix[:, i])
 
         # ensure diagonal remains nonnegative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
             # ensures that index j can't be drawn again in future
             residual_diagonal = residual_diagonal.at[j].set(0.0)
-        return residual_diagonal, F, current_coreset_indices, key
+        return residual_diagonal, approximation_matrix, current_coreset_indices, key
