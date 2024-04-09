@@ -109,7 +109,7 @@ class TestCoreSubset(unittest.TestCase):
         # Predefine the variables that are passed to the method
         coreset_indices_0 = jnp.zeros(self.coreset_size, dtype=jnp.int32)
         n = self.num_data_points_per_observation
-        F_0 = jnp.zeros((n, self.coreset_size))
+        approximation_matrix_0 = jnp.zeros((n, self.coreset_size))
         _, key = random.split(self.random_key)
         x = np.random.random(
             (
@@ -136,7 +136,7 @@ class TestCoreSubset(unittest.TestCase):
                 rpc_object._loop_body,
                 fn_kwargs={
                     "i": 0,
-                    "val": (residual_diagonal, F_0, coreset_indices_0, key),
+                    "val": (residual_diagonal, approximation_matrix_0, coreset_indices_0, key),
                     "x": x[i],
                     "kernel_vectorised": kernel.compute,
                     "unique": True,
