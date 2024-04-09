@@ -136,7 +136,12 @@ class TestCoreSubset(unittest.TestCase):
                 rpc_object._loop_body,
                 fn_kwargs={
                     "i": 0,
-                    "val": (residual_diagonal, approximation_matrix_0, coreset_indices_0, key),
+                    "val": (
+                        residual_diagonal,
+                        approximation_matrix_0,
+                        coreset_indices_0,
+                        key,
+                    ),
                     "x": x[i],
                     "kernel_vectorised": kernel.compute,
                     "unique": True,
