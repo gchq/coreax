@@ -531,10 +531,11 @@ class GreedyCMMD(coreax.reduction.Coreset):
 
         # Invert the feature gramian
         identity = jnp.eye(num_data_pairs)
-        inverse_feature_gramian = jnp.linalg.lstsq(
-            feature_gramian + self.regularisation_paramater*identity,
-            identity
-        )[0]
+        inverse_feature_gramian = coreax.util.invert_regularised_array(
+            array=feature_gramian,
+            regularisation_paramater=self.regularisation_paramater,
+            identity=identity
+        )
         
         # Evaluate conditional mean embedding (CME) at all possible pairs of the available training data
         training_CME = feature_gramian @ inverse_feature_gramian @ response_gramian
@@ -547,7 +548,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         
         # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
         # identity matrix as we iterate to the full coreset size. 
-        identity = jnp.zeros((coreset_size, coreset_size))
+        coreset_identity = jnp.zeros((coreset_size, coreset_size))
         
         # Sample the indices to be considered at each iteration ahead of time.
         # If we are batching, each column will consist of a subset of indices up to the 
@@ -603,7 +604,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             body_fun=body,
             init_val=(
                 coreset_indices,
-                identity,
+                coreset_identity,
                 all_possible_next_coreset_indices
             ),
         )
