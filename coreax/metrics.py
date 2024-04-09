@@ -557,16 +557,18 @@ class CMMD(Metric):
 
         # Invert feature kernel gramians
         identity_1 = jnp.eye(feature_gramian_1.shape[0])
-        inverse_feature_gramian_1 = jnp.linalg.lstsq(
-            feature_gramian_1 + self.regularisation_params[0]*identity_1,
-            identity_1
-        )[0]
+        inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
+            array=feature_gramian_1,
+            regularisation_paramater=self.regularisation_params[0],
+            identity=identity_1
+        )
         
         identity_2 = jnp.eye(feature_gramian_2.shape[0])
-        inverse_feature_gramian_2 = jnp.linalg.lstsq(
-            feature_gramian_2 + self.regularisation_params[1]*identity_2,
-            identity_2
-        )[0]
+        inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
+            array=feature_gramian_2,
+            regularisation_paramater=self.regularisation_params[1],
+            identity=identity_2
+        )
 
         # Compute each term in the CMMD
         term_1 = inverse_feature_gramian_1 @ response_gramian_1 @ inverse_feature_gramian_1 @ feature_gramian_1
