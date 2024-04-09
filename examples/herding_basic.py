@@ -39,6 +39,7 @@ from coreax import (
     ArrayData,
     KernelHerding,
     RandomSample,
+    RPCholesky,
     SizeReduce,
     SquaredExponentialKernel,
 )
@@ -88,15 +89,22 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
-    print("Computing coreset...")
-    # Compute a coreset using kernel herding with a Squared exponential kernel.
-    herding_key, sample_key = random.split(random.key(random_seed))
+    print("Computing herding coreset...")
+    # Compute a coreset using kernel herding with a squared exponential kernel.
+    herding_key, sample_key, rp_key = random.split(random.key(random_seed), num=3)
     herding_object = KernelHerding(
         herding_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
+
+    print("Computing RPC coreset...")
+    # Compute a coreset using RPC with a squared exponential kernel.
+    rp_object = RPCholesky(
+        rp_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
+    )
+    rp_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -117,6 +125,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     metric_object = MMD(kernel=mmd_kernel)
     maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
+    # Compute the MMD between the original data and the coreset generated via herding
+    maximum_mean_discrepancy_rpc = rp_object.compute_metric(metric_object)
+
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
     maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
@@ -124,6 +135,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
     print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
+    print(f"RPC coreset MMD: {maximum_mean_discrepancy_rpc}")
 
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
@@ -135,8 +147,22 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     plt.axis("off")
     plt.title(
-        f"Stein kernel herding, m={coreset_size}, "
+        f"Kernel herding, m={coreset_size}, "
         f"MMD={round(float(maximum_mean_discrepancy_herding), 6)}"
+    )
+    plt.show()
+
+    plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(
+        rp_object.coreset[:, 0],
+        rp_object.coreset[:, 1],
+        s=10,
+        color="red",
+    )
+    plt.axis("off")
+    plt.title(
+        f"RP Cholesky, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_rpc), 6)}"
     )
     plt.show()
 
@@ -162,6 +188,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     return (
         float(maximum_mean_discrepancy_herding),
+        float(maximum_mean_discrepancy_rpc),
         float(maximum_mean_discrepancy_random),
     )
 

@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.herding_refine import main as herding_refine_main
+from herding_refine_weighted import main as herding_refine_main
 
 # Integration tests are split across several files, to allow serial calls and avoid
 # sharing of JIT caches between tests. As a result, ignore the pylint warnings for
@@ -48,7 +48,7 @@ class TestHerdingRefine(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_refine.png"
-            mmd_coreset, mmd_random = herding_refine_main(out_path=out_path)
+            mmd_coreset, mmd_rpc, mmd_random = herding_refine_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 
@@ -57,7 +57,13 @@ class TestHerdingRefine(unittest.TestCase):
             self.assertLess(
                 mmd_coreset,
                 mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
+                msg="MMD for random sampling was unexpectedly lower than herding coreset MMD",
+            )
+
+            self.assertLess(
+                mmd_rpc,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than RPC coreset MMD",
             )
 
 
