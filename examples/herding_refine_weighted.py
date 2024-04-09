@@ -219,6 +219,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
 # pylint: enable=too-many-locals
 # pylint: enable=duplicate-code
+# pylint: disable=too-many-statements
 
 
 if __name__ == "__main__":
