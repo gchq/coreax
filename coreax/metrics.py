@@ -559,14 +559,14 @@ class CMMD(Metric):
         identity_1 = jnp.eye(feature_gramian_1.shape[0])
         inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
             array=feature_gramian_1,
-            regularisation_paramater=self.regularisation_params[0],
+            regularisation_parameter=self.regularisation_params[0],
             identity=identity_1
         )
         
         identity_2 = jnp.eye(feature_gramian_2.shape[0])
         inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
             array=feature_gramian_2,
-            regularisation_paramater=self.regularisation_params[1],
+            regularisation_parameter=self.regularisation_params[1],
             identity=identity_2
         )
 
