@@ -442,7 +442,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the response space
     :param num_feature_dimensions: An integer representing the dimensionality of the features 
         :math:`x`
-    :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
+    :param regularisation_parameter: Regularisation parameter for stable inversion of feature gram matrix
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs sampled at
@@ -457,7 +457,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         num_feature_dimensions: int,
-        regularisation_paramater: float = 1e-6,
+        regularisation_parameter: float = 1e-6,
         unique: bool = True,
         batch_size: int | None = None,
         refine_method: coreax.refine.RefineCMMD | None = None
@@ -467,7 +467,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.feature_kernel = feature_kernel
         self.response_kernel = response_kernel
         self.num_feature_dimensions = num_feature_dimensions
-        self.regularisation_paramater = regularisation_paramater
+        self.regularisation_parameter = regularisation_parameter
         self.unique = unique
         self.batch_size = batch_size
         self.refine_method = refine_method
@@ -503,7 +503,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         )
         aux_data = {
             "num_feature_dimensions": self.num_feature_dimensions,
-            "regularisation_paramater": self.regularisation_paramater,
+            "regularisation_parameter": self.regularisation_parameter,
             "unique": self.unique,
             "batch_size": self.batch_size,
             "refine_method": self.refine_method,
@@ -533,7 +533,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         identity = jnp.eye(num_data_pairs)
         inverse_feature_gramian = coreax.util.invert_regularised_array(
             array=feature_gramian,
-            regularisation_paramater=self.regularisation_paramater,
+            regularisation_parameter=self.regularisation_parameter,
             identity=identity
         )
         
@@ -595,7 +595,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             response_gramian=response_gramian,
             training_CME=training_CME,
             batch_indices=batch_indices,
-            regularisation_paramater=self.regularisation_paramater,
+            regularisation_parameter=self.regularisation_parameter,
             unique=self.unique
         )
         (coreset_indices, _, _) = lax.fori_loop(
@@ -628,7 +628,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         response_gramian: ArrayLike,
         training_CME: ArrayLike,
         batch_indices: ArrayLike,
-        regularisation_paramater: float,
+        regularisation_parameter: float,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
         r"""
@@ -640,7 +640,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         :param response_gramian: Gram matrix of training responses
         :param training_CME: Evaluation of CME on the training data
         :param batch_indices: Array of sampled batch indices
-        :param regularisation_paramater: Regularisation parameter for stable inversion of feature gram matrix
+        :param regularisation_parameter: Regularisation parameter for stable inversion of feature gram matrix
         :param unique: Boolean that enforces the resulting coreset will only contain
             unique elements
         :return: Updated loop variables
@@ -666,9 +666,9 @@ class GreedyCMMD(coreax.reduction.Coreset):
     
         # Compute and store inverses for each coreset feature kernel matrix
         inverse_coreset_feature_gramians = coreax.util.invert_stacked_regularised_arrays(
-            coreset_feature_gramians,
-            regularisation_paramater,
-            current_identity
+            stacked_arrays=coreset_feature_gramians,
+            regularisation_parameter=regularisation_parameter,
+            identity=current_identity
         )
 
         # Compute each term of CMMD for each possible new coreset index

@@ -197,7 +197,7 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
 @jit
 def invert_regularised_array(
     array: ArrayLike,
-    regularisation_paramater: float,
+    regularisation_parameter: float,
     identity: ArrayLike,
     rcond: float | None = None
 ) -> ArrayLike:
@@ -211,14 +211,14 @@ def invert_regularised_array(
     of the non-zero block.
 
     :param array: Array to be inverted
-    :param regularisation_paramater: Regularisation parameter for stable inversion of array
+    :param regularisation_parameter: Regularisation parameter for stable inversion of array
     :param identity: Block identity matrix
     :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
         singular values are treated as zero if they are smaller than rcond times the largest singular value of a
     :return: Inverse of regularised array
     """
     return jnp.linalg.lstsq(
-        array + regularisation_paramater * identity,
+        array + regularisation_parameter * identity,
         identity,
         rcond=rcond
     )[0]
@@ -227,7 +227,7 @@ def invert_regularised_array(
 @jit
 def invert_stacked_regularised_arrays(
     stacked_arrays: ArrayLike,
-    regularisation_paramater: float,
+    regularisation_parameter: float,
     identity: ArrayLike,
     rcond: float | None = None
 ) -> ArrayLike:
@@ -241,7 +241,7 @@ def invert_stacked_regularised_arrays(
     of the non-zero block.
 
     :param array: Stack of arrays to be inverted
-    :param regularisation_paramater: Regularisation parameter for stable inversion of arrays
+    :param regularisation_parameter: Regularisation parameter for stable inversion of arrays
     :param identity: Block identity matrix
     :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
         singular values are treated as zero if they are smaller than rcond times the largest singular value of a
@@ -250,7 +250,7 @@ def invert_stacked_regularised_arrays(
     return vmap(
         partial(
             invert_regularised_array,
-            regularisation_paramater=regularisation_paramater,
+            regularisation_parameter=regularisation_parameter,
             identity=identity,
             rcond=rcond`
         )
