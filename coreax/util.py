@@ -252,7 +252,7 @@ def invert_stacked_regularised_arrays(
             invert_regularised_array,
             regularisation_parameter=regularisation_parameter,
             identity=identity,
-            rcond=rcond`
+            rcond=rcond
         )
     )(stacked_arrays)
 
