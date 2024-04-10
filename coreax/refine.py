@@ -868,7 +868,7 @@ class RefineCMMD(Refine):
             response_gramian=coreset._response_gramian,
             training_CME=coreset._training_CME,
             batch_indices=batch_indices,
-            regularisation_paramater=coreset.regularisation_paramater,
+            regularisation_parameter=coreset.regularisation_parameter,
             unique=self.unique
         )
         coreset_indices, _ = lax.fori_loop(
