@@ -530,11 +530,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
         response_gramian = self.response_kernel.compute(y, y)
 
         # Invert the feature gramian
-        identity = jnp.eye(num_data_pairs)
         inverse_feature_gramian = coreax.util.invert_regularised_array(
             array=feature_gramian,
             regularisation_parameter=self.regularisation_parameter,
-            identity=identity
+            identity=jnp.eye(num_data_pairs)
         )
         
         # Evaluate conditional mean embedding (CME) at all possible pairs of the available training data
@@ -546,10 +545,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         response_gramian = jnp.pad(response_gramian, [(0, 1)], mode='constant')
         training_CME = jnp.pad(training_CME, [(0, 1)], mode='constant')
         
-        # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
-        # identity matrix as we iterate to the full coreset size. 
-        coreset_identity = jnp.zeros((coreset_size, coreset_size))
-        
         # Sample the indices to be considered at each iteration ahead of time.
         # If we are batching, each column will consist of a subset of indices up to the 
         # dataset size with no repeats. If we are not batching then each column will consist
@@ -559,15 +554,12 @@ class GreedyCMMD(coreax.reduction.Coreset):
         else:
             batch_size = num_data_pairs
             
-        batch_key = self.random_key
-        batch_indices = jnp.zeros((batch_size, coreset_size), dtype = jnp.int32)
-        for i in range(coreset_size):
-            batch_key, sampled_indices = coreax.util.sample_batch_indices(
-                random_key=batch_key,
-                data_size=num_data_pairs,
-                batch_size=batch_size
-            )
-            batch_indices = batch_indices.at[:, i].set(sampled_indices)
+        batch_indices = coreax.util.sample_batch_indices(
+            random_key=self.random_key,
+            data_size=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=coreset_size
+        )
 
         # Initialise a rectangular array of size batch_size x coreset_size where each 
         # entry consists of -1 apart from the first column which consists 
@@ -576,10 +568,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         all_possible_next_coreset_indices = jnp.hstack(
             (
                 batch_indices[:, [0]],
-                jnp.tile(
-                    -1,
-                    (batch_indices.shape[0], coreset_size - 1)
-                )
+                jnp.tile(-1, (batch_indices.shape[0], coreset_size - 1) )
             )
         )
 
@@ -588,6 +577,10 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # when the entire set is created.
         coreset_indices = -1*jnp.ones(coreset_size, dtype=jnp.int32)
 
+        # Initialise a zeros matrix that will eventually become a coreset_size x coreset_size
+        # identity matrix as we iterate to the full coreset size. 
+        coreset_identity = jnp.zeros((coreset_size, coreset_size))
+        
         # Greedily select coreset points
         body = partial(
             self._greedy_body,

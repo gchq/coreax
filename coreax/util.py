@@ -259,20 +259,24 @@ def invert_stacked_regularised_arrays(
 def sample_batch_indices(
     random_key: coreax.util.KeyArrayLike,
     data_size: int,
-    batch_size: int
+    batch_size: int,
+    num_batches: int
 ) -> tuple[coreax.util.KeyArrayLike, ArrayLike]:
     """
-    Sample a batch of unique indices where the largest possible index is dictated by data_size.
-
-    The function also returns a new Jax key for repeated batching.
+    Sample an array of column-unique indices where the largest possible index is dictated by data_size.
 
     :param random_key: Key for random number generation
     :param data_size: Size of the data we wish to sample from
     :param batch_size: Size of the batch we wish to sample
-    :return: (New Jax key, Batch of unique indices)
+    :param num_batches: Number of batches to sample
+    :return: Array of batch indices of size batch_size x num_batches
     """
-    batch_key, _ = split(random_key)
-    return (batch_key, permutation(batch_key, data_size)[:batch_size])
+    return permutation(
+        key=random_key,
+        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1) ).T,
+        axis=0,
+        independent=True
+    )[:batch_size, :]
 
 def jit_test(
     fn: Callable,

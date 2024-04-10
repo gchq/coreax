@@ -821,31 +821,6 @@ class RefineCMMD(Refine):
         coreset_indices = coreset.coreset_indices
         coreset_size = coreset_indices.shape[0]
 
-        # Define identity matrix for use in inversion
-        identity = jnp.eye(coreset_size)
-        
-        # Sample the indices to be considered at each iteration ahead of time.
-        # If we are batching, each column will consist of a subset of indices up to the 
-        # dataset size with no repeats. Note that we oversample here purposefully
-        # as the additional row will be replaced with the coreset indices 
-        # to ensure we don't degrade the CMMD.
-        # If we are not batching then each column will consist
-        # of a random permutation of indices up to the dataset size. 
-        if (self.batch_size is not None) and self.batch_size + 1 < num_data_pairs:
-            batch_size = self.batch_size + 1
-        else:
-            batch_size = num_data_pairs
-            
-        batch_key = coreset.random_key
-        batch_indices = jnp.zeros((batch_size, coreset_size), dtype = jnp.int32)
-        for i in range(coreset_size):
-            batch_key, sampled_indices = coreax.util.sample_batch_indices(
-                random_key=batch_key,
-                data_size=num_data_pairs,
-                batch_size=batch_size
-            )
-            batch_indices = batch_indices.at[:, i].set(sampled_indices)
-
         # If the user requests to reverse or randomise the order of refinement, adjust the coreset 
         # indices accordingly, ensuring we undo this before setting the coreset_indices attribute.
         if self.order == 'reverse':
@@ -853,6 +828,25 @@ class RefineCMMD(Refine):
         if self.order == 'random':
             permutation_indices = random.permutation(coreset.random_key, jnp.arange(coreset_size))
             coreset_indices = coreset_indices[permutation_indices]
+
+        # Define identity matrix for use in inversion
+        identity = jnp.eye(coreset_size)
+        
+        # Sample the indices to be considered at each iteration ahead of time.
+        # If we are batching, each column will consist of a subset of indices up to the 
+        # dataset size with no repeats. If we are not batching then each column will consist
+        # of a random permutation of indices up to the dataset size. 
+        if (self.batch_size is not None) and self.batch_size + 1 < num_data_pairs:
+            batch_size = self.batch_size + 1
+        else:
+            batch_size = num_data_pairs`
+
+        batch_indices = coreax.util.sample_batch_indices(
+            random_key=coreset.random_key,
+            data_size=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=coreset_size
+        )
 
         # If we are batching, replace the oversampled row of batch indices with the coreset indices
         # to avoid the coreset getting worse after refinement if the batched indices can only degrade the CMMD.
