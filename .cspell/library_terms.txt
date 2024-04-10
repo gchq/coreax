@@ -60,6 +60,7 @@ mimsave
 modindex
 myst
 nabla
+ndarray
 ndim
 nonzero
 numpy
