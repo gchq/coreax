@@ -839,7 +839,7 @@ class RefineCMMD(Refine):
         if (self.batch_size is not None) and self.batch_size + 1 < num_data_pairs:
             batch_size = self.batch_size + 1
         else:
-            batch_size = num_data_pairs`
+            batch_size = num_data_pairs
 
         batch_indices = coreax.util.sample_batch_indices(
             random_key=coreset.random_key,
