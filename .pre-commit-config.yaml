@@ -49,16 +49,11 @@ repos:
         description: Ensure file is ascii-encoded
         entry: python pre_commit_hooks/require_ascii.py
         language: python
-        types:
-          - text
         exclude:
-          .pylintrc
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
-    hooks:
-      # Check for binary files
-      - id: forbid-binary
-        exclude: ^examples/.+/.+.(gif|png)$
+          (?x)^(
+            .pylintrc|
+            examples/.+/.+.(gif|png)
+          )$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.5
     hooks:
