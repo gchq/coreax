@@ -85,6 +85,8 @@ class TestRecombinationCases:
                     elif degeneracy == "null":
                         # These need randomly inserting instead, rather than being all at the end.
                         nodes = nodes.at[(d - 1) :].set(0.0)
+                        weights = weights.at[(d - 1) :].set(0.0)
+                        weights = weights / jnp.sum(weights)
                     else:
                         raise ValueError(
                             f"Degeneracy must be one of {get_args(DEGENERACIES)}; "
@@ -171,8 +173,8 @@ class TestRecombinationCases:
         )
         for weights, nodes in case_iterator:
             measure_reduction = recombination
-            # if degeneracy is None and mode != "qr":
-            #     measure_reduction = eqx.filter_jit(recombination)
+            if degeneracy is None and mode != "qr":
+                measure_reduction = eqx.filter_jit(recombination)
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
                 result_weights, result_nodes = measure_reduction(
