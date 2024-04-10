@@ -889,7 +889,7 @@ class RefineCMMD(Refine):
         coreset.coreset = coreset.original_data.pre_coreset_array[coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["regularisation_paramater", "unique"])
+    @partial(jit, static_argnames=["regularisation_parameter", "unique"])
     def _refine_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],

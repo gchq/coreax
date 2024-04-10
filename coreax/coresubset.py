@@ -613,7 +613,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
         
     @staticmethod
-    @partial(jit, static_argnames=["regularisation_paramater", "unique"])
+    @partial(jit, static_argnames=["regularisation_parameter", "unique"])
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike],
