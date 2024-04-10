@@ -898,7 +898,7 @@ class RefineCMMD(Refine):
         response_gramian: ArrayLike,
         training_CME: ArrayLike,
         batch_indices: ArrayLike,
-        regularisation_paramater: float,
+        regularisation_parameter: float,
         unique: bool
     ) -> tuple[ArrayLike, ArrayLike]:
         r"""
