@@ -345,9 +345,9 @@ class RandomSample(coreax.reduction.Coreset):
         """
         Flatten a pytree.
 
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
+        Define arrays and dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration of
+        methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
             and dynamic values that are present in the class. The second is a dictionary
