@@ -69,7 +69,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response 
     # with non-linear relationship to the features with normal erros.
-    num_data_points = 2_000
+    num_data_points = 1_000
     num_features = 1
     feature_sd = 20
     response_sd = 0.5
@@ -110,7 +110,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     greedy_cmmd.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=250)
+        strategy=MapReduce(coreset_size=coreset_size, leaf_size=100)
     )
 
     print("Choosing random subset...")

@@ -64,7 +64,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response 
     # with non-linear relationship to the features with normal erros.
-    num_data_points = 1_000
+    num_data_points = 250
     num_features = 1
     feature_sd = 20
     response_sd = 0.5
@@ -100,7 +100,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         random_key=build_key,
         unique=True,
         batch_size=None,
-        order='forward'
+        order='random'
     )
     
     print("Computing coreset...")
