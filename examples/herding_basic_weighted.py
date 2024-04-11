@@ -51,7 +51,7 @@ from coreax.weights import MMDWeightsOptimiser
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Path | None = None) -> tuple[float, float]:
+def main(out_path: Path | None = None) -> tuple[float, float, float]:
     """
     Run the basic herding on tabular data example.
 
