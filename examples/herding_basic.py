@@ -68,7 +68,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _, _centers = make_blobs(
+    x, _, _ = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
