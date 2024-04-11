@@ -785,7 +785,7 @@ class RefineCMMD(Refine):
         random_key: coreax.util.KeyArrayLike,
         unique: bool = True,
         batch_size: int | None = None,
-        order: str = 'forward'
+        order: str = 'random'
     ):
         # Assign attributes
         self.random_key=random_key
