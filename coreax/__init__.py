@@ -60,7 +60,7 @@ loop over them individually. We currently do this using
 __version__ = "0.1.0"
 
 # pylint: disable=unused-import
-from coreax.coresubset import KernelHerding, RandomSample
+from coreax.coresubset import KernelHerding, RandomSample, RPCholesky
 from coreax.data import ArrayData
 from coreax.kernel import SquaredExponentialKernel, SteinKernel
 from coreax.metrics import MMD

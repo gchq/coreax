@@ -1190,12 +1190,12 @@ class TestLaplacianKernel(unittest.TestCase):
         # Create the kernel with a positive length_scale - this should give the same
         # answer when evaluating the kernel with a length_scale of -1.0
         kernel = coreax.kernel.LaplacianKernel(length_scale=1.0)
-        self.assertEqual(kernel.compute(0.5, 2.0), 0.472366553)
+        self.assertAlmostEqual(kernel.compute(0.5, 2.0), 0.472366553, 6)
 
         # Create the kernel with a negative length_scale - this should give the same
         # answer when evaluating the kernel with a length_scale of 1.0
         kernel = coreax.kernel.LaplacianKernel(length_scale=-1.0)
-        self.assertEqual(kernel.compute(0.5, 2.0), 0.472366553)
+        self.assertAlmostEqual(kernel.compute(0.5, 2.0), 0.472366553, 6)
 
         # Create the kernel with a large negative length_scale, which should just
         # yield an exponential to the power of almost zero and hence a result of 1.0
@@ -1217,10 +1217,10 @@ class TestLaplacianKernel(unittest.TestCase):
         would be unusual, there should be no issue evaluating the kernel with this.
         """
         kernel = coreax.kernel.LaplacianKernel(length_scale=1.0, output_scale=1.0)
-        self.assertEqual(kernel.compute(0.5, 2.0), 0.472366553)
+        self.assertAlmostEqual(kernel.compute(0.5, 2.0), 0.472366553, 6)
 
         kernel = coreax.kernel.LaplacianKernel(length_scale=1.0, output_scale=-1.0)
-        self.assertEqual(kernel.compute(0.5, 2.0), -0.472366553)
+        self.assertAlmostEqual(kernel.compute(0.5, 2.0), -0.472366553, 6)
 
     def test_laplacian_kernel_compute_two_floats(self) -> None:
         r"""

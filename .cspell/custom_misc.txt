@@ -1,6 +1,7 @@
 ANNchor
 approximator
 approximators
+archiveprefix
 cand
 coreax
 coreset
@@ -16,11 +17,14 @@ kdtree
 kernelised
 kernelized
 ml.p3.8xlarge
+nonnegative
 parsable
 PCIMQ
 PMLR
+primaryclass
 PRNG
 refs
 RKHS
+RPCHOLESKY
 sigmas
 WMMd
