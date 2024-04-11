@@ -24,7 +24,6 @@ module, all of which implement :class:`Metric`.
 
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
-from warnings import warn
 
 from abc import ABC, abstractmethod
 
