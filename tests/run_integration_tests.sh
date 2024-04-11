@@ -26,7 +26,7 @@ num_tests=0
 # Final total return code: 0 if successful; positive for a failure
 return_code=0
 
-for filename in ./tests/integration/test_*.py; do
+for filename in ./integration/test_*.py; do
   num_tests=$((num_tests + 1))
   pytest $filename
   return_code=$((return_code + $?))
