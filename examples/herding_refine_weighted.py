@@ -19,8 +19,11 @@ This example showcases how a coreset can be generated from a dataset containing 
 points sampled from ``k`` clusters in space.
 
 A coreset is generated using kernel herding, with a Squared Exponential kernel. This
-coreset is compared to a coreset generated via uniform random sampling. Coreset quality
-is measured using maximum mean discrepancy (MMD).
+coreset is then refined to improve quality.
+
+The coreset generated from the above process is compared to a coreset generated via
+uniform random sampling. Coreset quality is measured using maximum mean discrepancy
+(MMD).
 """
 
 # Support annotations with | in Python < 3.10
@@ -44,31 +47,36 @@ from coreax import (
     SquaredExponentialKernel,
 )
 from coreax.kernel import median_heuristic
+from coreax.refine import RefineRegular
+from coreax.weights import MMDWeightsOptimiser
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Path | None = None) -> tuple[float, float, float]:
+def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the basic herding on tabular data example.
+    Run the kernel herding on tabular data with a refine post-processing step.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    kernel herding. Compare results to coresets generated via uniform random sampling.
+    kernel herding. After generation, the coreset is improved by refining it (a greedy
+    approach to replace points in the coreset for those that improve some measure of
+    coreset quality). Compare results to coresets generated via uniform random sampling.
     Coreset quality is measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
+    # pylint: disable=too-many-statements
     # Create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
     num_data_points = 10_000
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _, _ = make_blobs(
+    x, _, _centers = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
@@ -89,22 +97,35 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
+    # Define a refinement object
+    refiner = RefineRegular()
+    kernel = SquaredExponentialKernel(length_scale=length_scale)
     print("Computing herding coreset...")
+    weights_optimiser_herding = MMDWeightsOptimiser(kernel=kernel)
     # Compute a coreset using kernel herding with a squared exponential kernel.
     herding_key, sample_key, rp_key = random.split(random.key(random_seed), num=3)
     herding_object = KernelHerding(
-        herding_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
+        herding_key,
+        kernel=kernel,
+        refine_method=refiner,
+        weights_optimiser=weights_optimiser_herding,
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
+    weights_herding = herding_object.solve_weights()
 
     print("Computing RPC coreset...")
+    weights_optimiser_rpc = MMDWeightsOptimiser(kernel=kernel)
     # Compute a coreset using RPC with a squared exponential kernel.
     rp_object = RPCholesky(
-        rp_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
+        rp_key,
+        kernel=SquaredExponentialKernel(length_scale=length_scale),
+        refine_method=refiner,
+        weights_optimiser=weights_optimiser_rpc,
     )
     rp_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
+    weights_rpc = rp_object.solve_weights()
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -123,10 +144,14 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(
+        metric_object, weights_y=weights_herding
+    )
 
-    # Compute the MMD between the original data and the coreset generated via herding
-    maximum_mean_discrepancy_rpc = rp_object.compute_metric(metric_object)
+    # Compute the MMD between the original data and the coreset generated via RPC
+    maximum_mean_discrepancy_rpc = rp_object.compute_metric(
+        metric_object, weights_y=weights_rpc
+    )
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling

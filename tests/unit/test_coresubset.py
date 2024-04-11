@@ -67,23 +67,23 @@ class TestKernelHerding(unittest.TestCase):
         """
         # Create a kernel herding object
         kernel = coreax.kernel.SquaredExponentialKernel()
-        coresubset_object_herding = coreax.coresubset.KernelHerding(
+        coresubset_object_not_random = coreax.coresubset.KernelHerding(
             self.random_key,
             kernel=kernel,
         )
 
         # Set attributes on the object to ensure actual values are returned
-        coresubset_object_herding.kernel_matrix_row_sum_mean = None
-        coresubset_object_herding.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
-        coresubset_object_herding.coreset = jnp.zeros([2, 3])
-        coresubset_object_herding.block_size = 5
-        coresubset_object_herding.unique = False
-        coresubset_object_herding.refine_method = "ABC"
-        coresubset_object_herding.weights_optimiser = "DEF"
-        coresubset_object_herding.approximator = "XYZ"
+        coresubset_object_not_random.kernel_matrix_row_sum_mean = None
+        coresubset_object_not_random.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
+        coresubset_object_not_random.coreset = jnp.zeros([2, 3])
+        coresubset_object_not_random.block_size = 5
+        coresubset_object_not_random.unique = False
+        coresubset_object_not_random.refine_method = "ABC"
+        coresubset_object_not_random.weights_optimiser = "DEF"
+        coresubset_object_not_random.approximator = "XYZ"
 
         # Call the method and check each output are as expected
-        output_children, output_aux_data = coresubset_object_herding.tree_flatten()
+        output_children, output_aux_data = coresubset_object_not_random.tree_flatten()
 
         self.assertEqual(len(output_children), 5)
         self.assertEqual(output_children[0], self.random_key)
@@ -122,15 +122,15 @@ class TestKernelHerding(unittest.TestCase):
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(
+        coresubset_object_not_random = coreax.coresubset.KernelHerding(
             self.random_key, kernel=kernel, refine_method=coreax.refine.RefineRegular()
         )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        coresubset_object_herding.fit(
+        coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        herding_coreset = coresubset_object_herding.coreset
+        fitted_coresubset = coresubset_object_not_random.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -143,18 +143,18 @@ class TestKernelHerding(unittest.TestCase):
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        herding_metric = metric.compute(x, herding_coreset)
+        not_random_metric = metric.compute(x, fitted_coresubset)
         random_metric = metric.compute(x, random_coreset)
-        self.assertLess(float(herding_metric), float(random_metric))
+        self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via kernel herding with refinement, to check refinement
         # improves the coreset quality
-        coresubset_object_herding.refine()
-        refined_herding_coreset = coresubset_object_herding.coreset
+        coresubset_object_not_random.refine()
+        refined_fitted_coresubset = coresubset_object_not_random.coreset
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_herding_metric = metric.compute(x, refined_herding_coreset)
-        self.assertLess(float(refined_herding_metric), float(herding_metric))
+        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_fit_compare_row_sum(self) -> None:
         """
@@ -173,41 +173,41 @@ class TestKernelHerding(unittest.TestCase):
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(
+        coresubset_object_not_random = coreax.coresubset.KernelHerding(
             self.random_key, kernel=kernel
         )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        coresubset_object_herding.fit(
+        coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        herding_coreset = coresubset_object_herding.coreset
+        fitted_coresubset = coresubset_object_not_random.coreset
 
         # Compute the kernel matrix row sum mean outside of the herding object
         kernel_matrix_row_sum = kernel.calculate_kernel_matrix_row_sum_mean(x=x)
-        coresubset_object_herding.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
-        coresubset_object_herding.fit(
+        coresubset_object_not_random.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
+        coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        herding_coreset_pre_computed_mean = coresubset_object_herding.coreset
+        fitted_coresubset_pre_computed_mean = coresubset_object_not_random.coreset
 
         # Check the two coresets agree
         np.testing.assert_array_equal(
-            herding_coreset, herding_coreset_pre_computed_mean
+            fitted_coresubset, fitted_coresubset_pre_computed_mean
         )
 
         # The previous check ensures that the result is the same, however we need to
         # test the passed kernel matrix row sum is being used. To do this, we give an
         # incorrect random kernel matrix row sum and check the resulting coreset is
         # different.
-        coresubset_object_herding.kernel_matrix_row_sum_mean = (
+        coresubset_object_not_random.kernel_matrix_row_sum_mean = (
             0.5 * kernel_matrix_row_sum
         )
-        coresubset_object_herding.fit(
+        coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        herding_coreset_invalid_mean = coresubset_object_herding.coreset
-        coreset_difference = abs(herding_coreset - herding_coreset_invalid_mean)
+        fitted_coresubset_invalid_mean = coresubset_object_not_random.coreset
+        coreset_difference = abs(fitted_coresubset - fitted_coresubset_invalid_mean)
         self.assertGreater(coreset_difference.sum(), 0)
 
     def test_fit_comparison_to_random_stein(self) -> None:
@@ -245,15 +245,15 @@ class TestKernelHerding(unittest.TestCase):
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(
+        coresubset_object_not_random = coreax.coresubset.KernelHerding(
             self.random_key, kernel=kernel
         )
 
         # Apply kernel herding on the dataset, and record the coreset for comparison
-        coresubset_object_herding.fit(
+        coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        herding_coreset = coresubset_object_herding.coreset
+        fitted_coresubset = coresubset_object_not_random.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -266,9 +266,9 @@ class TestKernelHerding(unittest.TestCase):
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        herding_metric = metric.compute(x, herding_coreset)
+        not_random_metric = metric.compute(x, fitted_coresubset)
         random_metric = metric.compute(x, random_coreset)
-        self.assertLess(float(herding_metric), float(random_metric))
+        self.assertLess(float(not_random_metric), float(random_metric))
 
     def test_fit_with_approximate_kernel_matrix_row_sum_mean(self):
         """
@@ -295,7 +295,7 @@ class TestKernelHerding(unittest.TestCase):
         )
 
         # Create a kernel herding object
-        coresubset_object_herding = coreax.coresubset.KernelHerding(
+        coresubset_object_not_random = coreax.coresubset.KernelHerding(
             herding_key, kernel=kernel, approximator=test_approximator
         )
 
@@ -305,11 +305,11 @@ class TestKernelHerding(unittest.TestCase):
             wraps=kernel.approximate_kernel_matrix_row_sum_mean,
         ) as mock_method:
             # Apply kernel herding on the dataset, and record the coreset for comparison
-            coresubset_object_herding.fit(
+            coresubset_object_not_random.fit(
                 original_data=data,
                 strategy=coreax.reduction.SizeReduce(self.coreset_size),
             )
-            herding_coreset = coresubset_object_herding.coreset
+            fitted_coresubset = coresubset_object_not_random.coreset
 
         # Check the approximation method in the Kernel class is called exactly once
         mock_method.assert_called_once()
@@ -325,9 +325,9 @@ class TestKernelHerding(unittest.TestCase):
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        herding_metric = metric.compute(x, herding_coreset)
+        not_random_metric = metric.compute(x, fitted_coresubset)
         random_metric = metric.compute(x, random_coreset)
-        self.assertLess(float(herding_metric), float(random_metric))
+        self.assertLess(float(not_random_metric), float(random_metric))
 
     def test_greedy_body(self) -> None:
         """
@@ -1074,6 +1074,349 @@ class TestRandomSample(unittest.TestCase):
         # as we don't have a pre_coreset_array attribute
         with self.assertRaises(AttributeError) as error_raised:
             random_sample.fit(
+                original_data=[1, 2, 3],
+                strategy=coreax.reduction.SizeReduce(coreset_size=2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "'list' object has no attribute 'pre_coreset_array'",
+        )
+
+
+class TestRPCholesky(unittest.TestCase):
+    """
+    Tests related to the RPCholesky class defined in coresubset.py.
+    """
+
+    def setUp(self):
+        """
+        Generate data for use across unit tests.
+        """
+        # Define data parameters
+        self.dimension = 3
+        self.random_data_generation_key = 0
+        self.coreset_size = 20
+        self.random_key = random.key(0)
+
+        # Define some generic data for use in input validation
+        generator = np.random.default_rng(self.random_data_generation_key)
+        self.generic_data = coreax.data.ArrayData.load(
+            generator.random((3, self.dimension))
+        )
+
+    def test_tree_flatten(self) -> None:
+        """
+        Test that the pytree is flattened as expected.
+        """
+        # Create a ROC object
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        coresubset_object_not_random = coreax.coresubset.RPCholesky(
+            self.random_key,
+            kernel=kernel,
+        )
+
+        # Set attributes on the object to ensure actual values are returned
+        coresubset_object_not_random.kernel_matrix_row_sum_mean = None
+        coresubset_object_not_random.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
+        coresubset_object_not_random.coreset = jnp.zeros([2, 3])
+        coresubset_object_not_random.block_size = 5
+        coresubset_object_not_random.unique = False
+        coresubset_object_not_random.refine_method = "ABC"
+        coresubset_object_not_random.weights_optimiser = "DEF"
+        coresubset_object_not_random.approximator = "XYZ"
+
+        # Call the method and check each output are as expected
+        output_children, output_aux_data = coresubset_object_not_random.tree_flatten()
+
+        self.assertEqual(len(output_children), 5)
+        self.assertEqual(output_children[0], self.random_key)
+        self.assertEqual(output_children[1], kernel)
+        self.assertIsNone(output_children[2])
+        np.testing.assert_array_equal(output_children[3], jnp.zeros(1, dtype=jnp.int32))
+        np.testing.assert_array_equal(output_children[4], jnp.zeros([2, 3]))
+        self.assertDictEqual(
+            output_aux_data,
+            {
+                "block_size": 5,
+                "unique": False,
+                "refine_method": "ABC",
+                "weights_optimiser": "DEF",
+            },
+        )
+
+    def test_fit_comparison_to_random_and_refined(self) -> None:
+        """
+        Test the fit method of the RPCholesky class with a simple example.
+
+        The test checks that a coreset generated via RPC has an improved quality
+        (measured by maximum mean discrepancy) than one generated by random sampling. We
+        further check that if the coreset generated by RPC is refined, the quality
+        improves yet again.
+        """
+        # Define specific test instance setup
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        num_data_points = 100
+
+        # Define some data - sufficiently large that we would not expect a random sample
+        # to typically compete with a RPC approach
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((num_data_points, self.dimension))
+        data = coreax.data.ArrayData.load(x)
+
+        # Create a RPC object
+        coresubset_object_not_random = coreax.coresubset.RPCholesky(
+            self.random_key, kernel=kernel, refine_method=coreax.refine.RefineRegular()
+        )
+
+        # Apply RPC on the dataset, and record the coreset for comparison
+        coresubset_object_not_random.fit(
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
+        )
+        fitted_coresubset = coresubset_object_not_random.coreset
+
+        # Create a random refinement object and generate a coreset, for comparison
+        coresubset_object_random = coreax.coresubset.RandomSample(
+            random_key=self.random_key, unique=True
+        )
+        coresubset_object_random.fit(
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
+        )
+        random_coreset = coresubset_object_random.coreset
+
+        # Define a metric and compare quality of produced coresets
+        metric = coreax.metrics.MMD(kernel=kernel)
+        not_random_metric = metric.compute(x, fitted_coresubset)
+        random_metric = metric.compute(x, random_coreset)
+        self.assertLess(float(not_random_metric), float(random_metric))
+
+        # Create a coreset via RPC with refinement, to check refinement
+        # improves the coreset quality
+        coresubset_object_not_random.refine()
+        refined_fitted_coresubset = coresubset_object_not_random.coreset
+
+        # Compare quality of refined coreset to non-refined coreset
+        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        self.assertLess(float(refined_not_random_metric), float(not_random_metric))
+
+    def test_fit_comparison_to_random_and_refined_not_unique(self) -> None:
+        """
+        Test the non-unique fit method of the RPCholesky class with a simple example.
+
+        The test checks that a coreset generated via RPC has an improved quality
+        (measured by maximum mean discrepancy) than one generated by random sampling. We
+        further check that if the coreset generated by RPC is refined, the quality
+        improves yet again.
+        """
+        # Define specific test instance setup
+        kernel = coreax.kernel.SquaredExponentialKernel()
+        num_data_points = 100
+
+        # Define some data - sufficiently large that we would not expect a random sample
+        # to typically compete with a RPC approach
+        generator = np.random.default_rng(self.random_data_generation_key)
+        x = generator.random((num_data_points, self.dimension))
+        data = coreax.data.ArrayData.load(x)
+
+        # Create a RPC object
+        coresubset_object_not_random = coreax.coresubset.RPCholesky(
+            self.random_key,
+            kernel=kernel,
+            refine_method=coreax.refine.RefineRegular(),
+            unique=False,
+        )
+
+        # Apply RPC on the dataset, and record the coreset for comparison
+        coresubset_object_not_random.fit(
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
+        )
+        fitted_coresubset = coresubset_object_not_random.coreset
+
+        # Create a random refinement object and generate a coreset, for comparison
+        coresubset_object_random = coreax.coresubset.RandomSample(
+            random_key=self.random_key, unique=True
+        )
+        coresubset_object_random.fit(
+            original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
+        )
+        random_coreset = coresubset_object_random.coreset
+
+        # Define a metric and compare quality of produced coresets
+        metric = coreax.metrics.MMD(kernel=kernel)
+        not_random_metric = metric.compute(x, fitted_coresubset)
+        random_metric = metric.compute(x, random_coreset)
+        self.assertLess(float(not_random_metric), float(random_metric))
+
+        # Create a coreset via RPC with refinement, to check refinement
+        # improves the coreset quality
+        coresubset_object_not_random.refine()
+        refined_fitted_coresubset = coresubset_object_not_random.coreset
+
+        # Compare quality of refined coreset to non-refined coreset
+        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        self.assertLess(float(refined_not_random_metric), float(not_random_metric))
+
+    def test_rp_cholesky_invalid_weights_optimiser(self):
+        """
+        Test the class RPCholesky when given an invalid weights_optimiser object.
+        """
+        # Define a RPC object with the invalid weights_optimiser - note that
+        # InvalidKernel also does not have a solve method, so suits the purpose of
+        # this test
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            weights_optimiser=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should not use the weights optimiser at all, so is expected to
+        # run without issue
+        rpc_object.fit(
+            original_data=self.generic_data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we weight the coreset generated during the call to fit, we will use
+        # the weights optimiser, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            rpc_object.solve_weights()
+
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'solve'",
+        )
+
+    def test_rp_cholesky_invalid_refine_method(self):
+        """
+        Test the class RPCholesky when given an invalid refine_method object.
+        """
+        # Define a RPC object with the invalid refine_method - note that
+        # InvalidKernel also does not have a refine method, so suits the purpose of
+        # this test
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+            refine_method=coreax.util.InvalidKernel,
+        )
+
+        # The fit method should not use the refine method at all, so is expected to run
+        # without issue
+        rpc_object.fit(
+            original_data=self.generic_data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+
+        # Now, if we refine the coreset generated during the call to fit, we will use
+        # the refine method, so expect an error to be raised
+        with self.assertRaises(AttributeError) as error_raised:
+            rpc_object.refine()
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'refine'",
+        )
+
+    def test_rp_cholesky_fit_zero_coreset_size(self):
+        """
+        Test how RPC performs when given a zero value of coreset_size.
+        """
+        # Define a RPC object
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a coreset size of 0 - this should try to run a JAX
+        # loop with start and end points being the same, and index an empty array,
+        # so raise a value error
+        with self.assertRaises(ValueError) as error_raised:
+            rpc_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=0),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be non-zero",
+        )
+
+    def test_rp_cholesky_fit_negative_coreset_size(self):
+        """
+        Test how RPC performs when given a negative value of coreset_size.
+        """
+        # Define a RPC object
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a negative coreset size - this should try to run a
+        # JAX loop with start and end points being the same, and index an empty array,
+        # so raise a value error
+        with self.assertRaises(ValueError) as error_raised:
+            rpc_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=-2),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must not be negative",
+        )
+
+    def test_rp_cholesky_fit_float_coreset_size(self):
+        """
+        Test how RPC performs when given a float value of coreset_size.
+        """
+        # Define a RPC object
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a float given for coreset size - which should error
+        # when we try to create a JAX array with a non-integer size
+        with self.assertRaises(ValueError) as error_raised:
+            rpc_object.fit(
+                original_data=self.generic_data,
+                strategy=coreax.reduction.SizeReduce(coreset_size=2.0),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "coreset_size must be a positive integer",
+        )
+
+    def test_rp_cholesky_fit_invalid_size_reduce(self):
+        """
+        Test how RPC performs when given an invalid reduction strategy.
+        """
+        # Define a RPC object
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with an invalid reduction strategy, which should error as
+        # there is no reduce method
+        with self.assertRaises(AttributeError) as error_raised:
+            rpc_object.fit(
+                original_data=self.generic_data, strategy=coreax.util.InvalidKernel
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "type object 'InvalidKernel' has no attribute 'reduce'",
+        )
+
+    def test_rp_cholesky_fit_invalid_data(self):
+        """
+        Test how RPC performs when given an invalid data.
+        """
+        # Define a RPC object
+        rpc_object = coreax.coresubset.RPCholesky(
+            random_key=self.random_key,
+            kernel=coreax.kernel.SquaredExponentialKernel(),
+        )
+
+        # Call the fit method with a list rather than a data object. This should error
+        # as there is no attribute pre_coreset_array
+        with self.assertRaises(AttributeError) as error_raised:
+            rpc_object.fit(
                 original_data=[1, 2, 3],
                 strategy=coreax.reduction.SizeReduce(coreset_size=2),
             )

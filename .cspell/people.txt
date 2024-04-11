@@ -1,5 +1,6 @@
 Chatalic
 Duvenaud
+Epperly
 Ermon
 Ferenc
 Frobenius
@@ -19,4 +20,6 @@ Rudi
 Sahaj
 Schreuder
 Smirnov
+Tropp
 Wittawat
+Yifan
