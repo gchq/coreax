@@ -587,13 +587,19 @@ class RPCholesky(coreax.reduction.Coreset):
         num_data_points = len(x)
 
         # Sample a new index with probability proportional to residual diagonal
-        selected_pivot_point = random.choice(subkey, num_data_points, (1,), p=residual_diagonal, replace=False)[0]
-        current_coreset_indices = current_coreset_indices.at[i].set(selected_pivot_point)
+        selected_pivot_point = random.choice(
+            subkey, num_data_points, (1,), p=residual_diagonal, replace=False
+        )[0]
+        current_coreset_indices = current_coreset_indices.at[i].set(
+            selected_pivot_point
+        )
 
         # Remove overlap with previously chosen columns
         g = (
             kernel_vectorised(x, x[selected_pivot_point])
-            - jnp.dot(approximation_matrix, approximation_matrix[selected_pivot_point])[:, None]
+            - jnp.dot(approximation_matrix, approximation_matrix[selected_pivot_point])[
+                :, None
+            ]
         )
 
         # Update approximation
