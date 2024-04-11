@@ -410,7 +410,36 @@ class RandomSample(coreax.reduction.Coreset):
 
 
 class RPCholesky(coreax.reduction.Coreset):
-    r"""RP Cholesky."""
+    r"""
+    Apply Randomly Pivoted Cholesky (RPCholesky) to a dataset.
+
+    RPCholesky is a stochastic, iterative and greedy approach to determine this
+    compressed representation.
+
+    Given a dataset :math:`X` with :math:`N` data-points, and a desired coreset size of :math:`M`,
+    RPCholesky determines which points to select to constitute this coreset.
+
+    This is done by first computing the kernel Gram matrix of the original data, and isolating
+    the diagonal of this. A 'pivot point' is then sampled, where sampling probabilities correspond
+    to the size of the elements on this diagonal. The data-point corresponding to this pivot point
+    is added to the coreset, and the diagonal of the Gram matrix is updated to add a
+    repulsion term of sorts - encouraging the coreset to select a range of distinct
+    points in the original data. The pivot sampling and diagonal updating steps are repeated until
+    :math:`M` points have been selected.
+
+    :param random_key: Key for random number generation
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
+    :param block_size: Size of matrix blocks to process when computing the kernel
+        matrix row sum mean. Larger blocks will require more memory in the system.
+    :param unique: Boolean that enforces the resulting coreset will only contain
+        unique elements
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
+    """
 
     def __init__(
         self,
@@ -466,7 +495,7 @@ class RPCholesky(coreax.reduction.Coreset):
 
     def fit_to_size(self, coreset_size: int) -> None:
         r"""
-        Execute RPCHOLESKY algorithm with Jax.
+        Execute RPCholesky algorithm with Jax.
 
         Computes a low-rank approximation of the Gram matrix.
 
@@ -492,8 +521,8 @@ class RPCholesky(coreax.reduction.Coreset):
         )
 
         try:
-            n = len(self.original_data.pre_coreset_array)
-            approximation_matrix = jnp.zeros((n, coreset_size))
+            num_data_points = len(self.original_data.pre_coreset_array)
+            approximation_matrix = jnp.zeros((num_data_points, coreset_size))
             _, key = random.split(self.random_key)
 
             # Evaluate the diagonal of the Gram matrix
@@ -531,9 +560,9 @@ class RPCholesky(coreax.reduction.Coreset):
         unique: bool,
     ) -> tuple[Array, Array, Array, Array]:
         r"""
-        Execute main loop of RPCHOLESKY.
+        Execute main loop of RPCholesky.
 
-        This function carries out one iteration of RPCHOLESKY, defined in Algorithm 1 of
+        This function carries out one iteration of RPCholesky, defined in Algorithm 1 of
         :cite:`chen2023randomly`.
 
         :param i: Loop counter, counting how many points are in the coreset on call of
@@ -555,29 +584,29 @@ class RPCholesky(coreax.reduction.Coreset):
         # Unpack the components of the loop variables
         residual_diagonal, approximation_matrix, current_coreset_indices, key = val
         key, subkey = random.split(key)
-        n = len(x)
+        num_data_points = len(x)
 
-        # sample a new index with probability proportional to residual diagonal
-        j = random.choice(subkey, n, (1,), p=residual_diagonal, replace=False)[0]
-        current_coreset_indices = current_coreset_indices.at[i].set(j)
+        # Sample a new index with probability proportional to residual diagonal
+        selected_pivot_point = random.choice(subkey, num_data_points, (1,), p=residual_diagonal, replace=False)[0]
+        current_coreset_indices = current_coreset_indices.at[i].set(selected_pivot_point)
 
-        # remove overlap with previously chosen columns
+        # Remove overlap with previously chosen columns
         g = (
-            kernel_vectorised(x, x[j])
-            - jnp.dot(approximation_matrix, approximation_matrix[j])[:, None]
+            kernel_vectorised(x, x[selected_pivot_point])
+            - jnp.dot(approximation_matrix, approximation_matrix[selected_pivot_point])[:, None]
         )
 
-        # update approximation
+        # Update approximation
         approximation_matrix = approximation_matrix.at[:, i].set(
-            (g / jnp.sqrt(g[j])).flatten()
+            (g / jnp.sqrt(g[selected_pivot_point])).flatten()
         )
 
-        # track diagonal of residual matrix
+        # Track diagonal of residual matrix
         residual_diagonal = residual_diagonal - jnp.square(approximation_matrix[:, i])
 
-        # ensure diagonal remains nonnegative
+        # Ensure diagonal remains nonnegative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
             # ensures that index j can't be drawn again in future
-            residual_diagonal = residual_diagonal.at[j].set(0.0)
+            residual_diagonal = residual_diagonal.at[selected_pivot_point].set(0.0)
         return residual_diagonal, approximation_matrix, current_coreset_indices, key
