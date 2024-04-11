@@ -20,12 +20,16 @@ within this file verify that refinement approaches used produce the expected res
 simple examples.
 """
 
+from __future__ import annotations
+
 import itertools
-import unittest
+from abc import ABC, abstractmethod
 from unittest.mock import patch
 
 import jax.numpy as jnp
-from jax import random
+import jax.random as jr
+import pytest
+from jax import Array
 
 import coreax.approximation
 import coreax.data
@@ -38,402 +42,153 @@ import coreax.util
 class CoresetMock(coreax.reduction.Coreset):
     """Test version of :class:`Coreset` with all methods implemented."""
 
-    def fit_to_size(self, coreset_size: int) -> None:
+    def fit_to_size(self, coreset_size: int):
         raise NotImplementedError
 
 
-class TestRefine(unittest.TestCase):
-    """
-    Tests related to refine.py functions.
-    """
+class TestRefine:
+    """Tests related to `coreax.refine.Refine`."""
 
-    def setUp(self):
-        self.random_key = random.key(0)
+    random_key = jr.key(0)
 
-    def test_validate_coreset_ok(self) -> None:
+    # Disable pylint warning for protected-access as we are testing a single part of
+    # the over-arching algorithm ``coreax.refine.Refine._validate_coreset``.
+    # pylint: disable=protected-access
+    def test_validate_coreset_ok(self):
         """Check validation passes with populated coresubset."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
         coreset.coreset_indices = jnp.array(0)
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
         coreax.refine.Refine._validate_coreset(coreset)
-        # pylint: enable=protected-access
 
-    def test_validate_coreset_no_fit(self) -> None:
+    def test_validate_coreset_no_fit(self):
         """Check validation fails when coreset has not been calculated."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        self.assertRaises(
-            coreax.util.NotCalculatedError,
-            coreax.refine.Refine._validate_coreset,
-            coreset,
-        )
-        # pylint: enable=protected-access
+        with pytest.raises(coreax.util.NotCalculatedError):
+            coreax.refine.Refine._validate_coreset(coreset)
 
-    def test_validate_coreset_not_coresubset(self) -> None:
+    def test_validate_coreset_not_coresubset(self):
         """Check validation raises TypeError when not a coresubset."""
         coreset = CoresetMock()
         coreset.original_data = coreax.data.ArrayData.load(1)
         coreset.coreset = jnp.array(1)
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        self.assertRaises(TypeError, coreax.refine.Refine._validate_coreset, coreset)
-        # pylint: enable=protected-access
+
+        with pytest.raises(TypeError):
+            coreax.refine.Refine._validate_coreset(coreset)
+
+    # pylint: enable=protected-access
 
 
-class TestRefineRegular(unittest.TestCase):
-    """
-    Tests related to :meth:`~coreax.refine.RefineRegular`.
-    """
+class BaseRefineTest(ABC):
+    """Base tests for concrete implementations of `coreax.refine.Refine`."""
 
-    def setUp(self):
-        self.random_key = random.key(0)
+    random_key = jr.key(0)
 
-    def test_refine_ones(self) -> None:
-        """
-        Test that refining an optimal coreset leaves ``coreset_indices`` unchanged.
-        """
+    @abstractmethod
+    def refine_method(self) -> coreax.refine.Refine:
+        """Abstract pytest fixture returning an initialised refine object."""
+
+    def test_invalid_kernel_argument(self, refine_method: coreax.refine.Refine):
+        """Test behaviour of the ``refine`` method when passed an invalid kernel."""
         original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
         best_indices = {0, 1}
         coreset_indices = jnp.array(list(best_indices))
-
-        coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
-        )
+        coreset_obj = CoresetMock(weights_optimiser=None, kernel=None)
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
 
-        refine_regular = coreax.refine.RefineRegular()
-        refine_regular.refine(coreset=coreset_obj)
+        # Attempt to refine using this coreset - we don't have a kernel, and so we
+        # should attempt to call compute on a None type object, which should raise an
+        # attribute error
+        with pytest.raises(AttributeError, match="object has no attribute 'compute'"):
+            refine_method.refine(coreset=coreset_obj)
 
-        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
+    def test_invalid_coreset_argument(self, refine_method: coreax.refine.Refine):
+        """Test behaviour of the ``refine`` method when passed an invalid coreset."""
+        # Define an object to pass that is not a coreset, and does not have the
+        # associated attributes required to refine
+        with pytest.raises(
+            AttributeError, match="object has no attribute 'validate_fitted'"
+        ):
+            refine_method.refine(coreset=coreax.util.InvalidKernel(x=1.0))
 
-    def test_refine_ints(self) -> None:
+    @pytest.mark.parametrize(
+        "array, test_indices, best_indices",
+        [
+            (
+                jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]]),
+                list(itertools.combinations(range(4), 2)),
+                [{0, 1}, {0, 3}, {1, 2}, {2, 3}],
+            ),
+            (jnp.asarray([[0, 0], [1, 1], [2, 2]]), [[2, 2]], [{0, 2}]),
+        ],
+    )
+    @pytest.mark.parametrize("use_cached_row_sum_mean", [False, True])
+    def test_refine(
+        self,
+        refine_method: coreax.refine.Refine,
+        array: Array,
+        test_indices: list[list[int] | set[int]],
+        best_indices: list[set[int]],
+        use_cached_row_sum_mean: bool,
+    ):
         """
-        Test the regular refine method with a toy example.
+        Test behaviour of the ``refine`` method when passed valid arguments.
 
-        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
-        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
-        i.e. ``X_c =  [[0,0], [[2,2]]``.
+        Each set of ``test_indices`` is used as an initialisation and the refinement
+        result compared to every set of indices in ``best_indices``.
 
-        Test this example, for every 2-point coreset, that refine() updates the coreset
-        indices to [0, 2].
+        When ``use_cached_row_sum_mean=True``, we expect the corresponding cached value
+        in the coreset object to be used by refine, otherwise, we expect the kernel's
+        calculate_kernel_matrix_row_sum_mean to be called (exactly once).
         """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        index_pairs = (
-            set(combo)
-            for combo in itertools.combinations(range(len(original_array)), 2)
-        )
-
-        refine_regular = coreax.refine.RefineRegular()
-
-        for test_indices in index_pairs:
-            coreset_indices = jnp.array(list(test_indices))
-
+        for indices in test_indices:
+            coreset_indices = jnp.array(indices)
+            kernel = coreax.kernel.SquaredExponentialKernel()
             coreset_obj = CoresetMock(
                 weights_optimiser=None,
-                kernel=coreax.kernel.SquaredExponentialKernel(),
+                kernel=kernel,
             )
             coreset_obj.coreset_indices = coreset_indices
-            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-            coreset_obj.coreset = original_array[coreset_indices, :]
+            coreset_obj.original_data = coreax.data.ArrayData.load(array)
+            coreset_obj.coreset = array[coreset_indices, :]
 
-            refine_regular.refine(coreset=coreset_obj)
-
-            with self.subTest(test_indices):
-                self.assertSetEqual(
-                    set(coreset_obj.coreset_indices.tolist()), best_indices
-                )
-
-    def test_refine_regular_no_kernel_matrix_row_sum_mean(self):
-        """
-        Test RefineRegular with a toy example, with no kernel matrix row sum mean.
-
-        This test checks, when ``kernel_matrix_row_sum_mean`` is ``None`` and when no
-        approximator is given, that the method ``calculate_kernel_matrix_row_sum_mean``
-        in the class Kernel is called exactly once.
-
-        It also checks that the refined coreset indices returned are as expected, for
-        a toy example:
-
-        For ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that minimises the MMD is
-         specified by the indices ``coreset_indices = [0, 2]``, i.e.
-         ``X_c =  [[0,0], [[2,2]]``.
-
-        We test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
-        coreset indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-        kernel = coreax.kernel.SquaredExponentialKernel()
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
-        refine_regular = coreax.refine.RefineRegular()
-
-        with patch.object(
-            coreax.kernel.Kernel,
-            "calculate_kernel_matrix_row_sum_mean",
-            wraps=kernel.calculate_kernel_matrix_row_sum_mean,
-        ) as mock_method:
-            refine_regular.refine(coreset=coreset_obj)
-
-        # Check the approximation method in the Kernel class is called exactly once
-        mock_method.assert_called_once()
-
-        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
-
-    def test_kernel_mean_row_sum_approx_invalid(self):
-        """
-        Test for error when an invalid approximator is given.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        best_indices = {0, 1}
-        coreset_indices = jnp.array(list(best_indices))
-
-        coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-
-        # Define the refinement object with an invalid approximator
-        refine_regular = coreax.refine.RefineRegular(approximator="not_an_approximator")
-
-        # Attempt to refine the coreset with the invalid approximator - this should
-        # raise an attribute error as we can't access the approximate attribute on the
-        # input
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_regular.refine(coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'str' object has no attribute 'approximate'",
-        )
-
-    def test_kernel_mean_row_sum_approx_valid(self):
-        """
-        Test for no-error when a valid approximator is given.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        best_indices = {0, 1}
-        coreset_indices = jnp.array(list(best_indices))
-        kernel = coreax.kernel.SquaredExponentialKernel()
-        approximator = coreax.approximation.RandomApproximator(
-            self.random_key, kernel=kernel, num_train_points=2, num_kernel_points=2
-        )
-        coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel = kernel
-        refine_regular = coreax.refine.RefineRegular(approximator=approximator)
-        # This step passing is a test that the approximator does not cause an issue with
-        # the code run
-        refine_regular.refine(coreset=coreset_obj)
-
-    def test_invalid_coreset(self):
-        """
-        Test how RefineRegular handles an invalid coreset input.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        refine_regular = coreax.refine.RefineRegular()
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_regular.refine(coreset=coreax.util.InvalidKernel(x=1.0))
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'InvalidKernel' object has no attribute 'validate_fitted'",
-        )
-
-    def test_valid_coreset_no_kernel(self):
-        """
-        Test how RefineRegular handles a coreset input without an attached kernel.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        best_indices = {0, 1}
-        coreset_indices = jnp.array(list(best_indices))
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=None)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-
-        # Attempt to refine using this coreset - we don't have a kernel, and so we
-        # should attempt to call compute on a None type object, which should raise an
-        # attribute error
-        refine_regular = coreax.refine.RefineRegular()
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_regular.refine(coreset=coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'NoneType' object has no attribute 'compute'",
-        )
+            if use_cached_row_sum_mean:
+                refine_method.refine(coreset=coreset_obj)
+            else:
+                # If we aren't using the cached kernel_matrix_row_sum_mean, then
+                # calculate_kernel_matrix_row_sum_mean should be called exactly once.
+                coreset_obj.kernel_matrix_row_sum_mean = None
+                with patch.object(
+                    coreax.kernel.Kernel,
+                    "calculate_kernel_matrix_row_sum_mean",
+                    wraps=kernel.calculate_kernel_matrix_row_sum_mean,
+                ) as mock_method:
+                    refine_method.refine(coreset=coreset_obj)
+                mock_method.assert_called_once()
+                refine_method.refine(coreset=coreset_obj)
+            assert any(
+                set(coreset_obj.coreset_indices.tolist()) == i for i in best_indices
+            )
 
 
-class TestRefineRandom(unittest.TestCase):
-    """
-    Tests related to :meth:`~coreax.refine.RefineRandom`.
-    """
+class TestRefineRegular(BaseRefineTest):
+    """Tests related to :meth:`~coreax.refine.RefineRegular`."""
 
-    def setUp(self):
-        self.random_key = random.key(0)
+    @pytest.fixture
+    def refine_method(self):
+        return coreax.refine.RefineRegular()
 
-    def test_refine_rand(self):
-        """
-        Test the random refine method with a toy example.
 
-        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
-        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
-        i.e. ``X_c =  [[0,0], [[2,2]]``.
+class TestRefineRandom(BaseRefineTest):
+    """Tests related to :meth:`~coreax.refine.RefineRandom`."""
 
-        Test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
-        coreset indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-
-        coreset_obj = CoresetMock(
-            weights_optimiser=None, kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-
-        refine_rand = coreax.refine.RefineRandom(self.random_key, p=1.0)
-        refine_rand.refine(coreset=coreset_obj)
-
-        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
-
-    def test_refine_rand_no_kernel_matrix_row_sum_mean(self):
-        """
-        Test RefineRandom with a toy example, with no kernel matrix row sum mean.
-
-        This test checks, when ``kernel_matrix_row_sum_mean`` is ``None`` and when no
-        approximator is given, that the method ``calculate_kernel_matrix_row_sum_mean``
-        in the class Kernel is called exactly once.
-
-        It also checks that the refined coreset indices returned are as expected, for
-        a toy example:
-
-        For ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that minimises the MMD is
-         specified by the indices ``coreset_indices = [0, 2]``, i.e.
-         ``X_c =  [[0,0], [[2,2]]``.
-
-        We test, when given ``coreset_indices=[2,2]``, that ``refine()`` updates the
-        coreset indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-        kernel = coreax.kernel.SquaredExponentialKernel()
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
-        refine_rand = coreax.refine.RefineRandom(self.random_key, p=1.0)
-
-        with patch.object(
-            coreax.kernel.Kernel,
-            "calculate_kernel_matrix_row_sum_mean",
-            wraps=kernel.calculate_kernel_matrix_row_sum_mean,
-        ) as mock_method:
-            refine_rand.refine(coreset=coreset_obj)
-
-        # Check the approximation method in the Kernel class is called exactly once
-        mock_method.assert_called_once()
-
-        self.assertSetEqual(set(coreset_obj.coreset_indices.tolist()), best_indices)
-
-    def test_invalid_coreset(self):
-        """
-        Test how RefineRandom handles an invalid coreset input.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        refine_random = coreax.refine.RefineRandom(self.random_key, p=0.5)
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_random.refine(coreset=coreax.util.InvalidKernel(x=1.0))
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'InvalidKernel' object has no attribute 'validate_fitted'",
-        )
-
-    def test_valid_coreset_no_kernel(self):
-        """
-        Test how RefineRandom handles a coreset input without an attached kernel.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        best_indices = {0, 1}
-        coreset_indices = jnp.array(list(best_indices))
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=None)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-
-        # Attempt to refine using this coreset - we don't have a kernel, and so we
-        # should attempt to call compute on a None type object, which should raise an
-        # attribute error
-        refine_random = coreax.refine.RefineRandom(self.random_key, p=0.5)
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_random.refine(coreset=coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'NoneType' object has no attribute 'compute'",
-        )
-
-    def test_zero_original_data_proportion(self):
-        """
-        Test how RefineRandom handles a proportion of original data to sample of 0.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-        kernel = coreax.kernel.SquaredExponentialKernel()
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
-
-        # Attempt to refine a coreset by considering 0% of points from the original
-        # data - which should try to divide by 0 and raise a value error highlighting
-        # the root cause
-        refine_random = coreax.refine.RefineRandom(self.random_key, p=0.0)
-        with self.assertRaises(ValueError) as error_raised:
-            refine_random.refine(coreset=coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "input p must be greater than 0",
-        )
+    @pytest.fixture
+    def refine_method(self):
+        return coreax.refine.RefineRandom(self.random_key, p=1.0)
 
     def test_zero_original_data_points(self):
         """
@@ -452,17 +207,15 @@ class TestRefineRandom(unittest.TestCase):
         # which should try to divide by 0 and raise a value error highlighting
         # the root cause
         refine_random = coreax.refine.RefineRandom(self.random_key, p=0.5)
-        with self.assertRaises(ValueError) as error_raised:
+        with pytest.raises(ValueError, match="original_array must not be empty"):
             refine_random.refine(coreset=coreset_obj)
 
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "original_array must not be empty",
-        )
-
-    def test_negative_original_data_proportion(self):
+    @pytest.mark.parametrize("p", [0, -0.5, 1.5])
+    def test_original_data_proportion(self, p: float):
         """
-        Test how RefineRandom handles a negative proportion of original data to sample.
+        Test how RefineRandom on different proportions of the original data to sample.
+
+        ``p`` should be capped at ``1``, and an error raised for ``p <= 0``.
         """
         original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
         test_indices = [2, 2]
@@ -474,160 +227,18 @@ class TestRefineRandom(unittest.TestCase):
         coreset_obj.coreset = original_array[coreset_indices, :]
         coreset_obj.kernel_matrix_row_sum_mean = None
 
-        # Attempt to refine a coreset by considering a negative number of points from
-        # the original data - which should be capped at 0, then try to divide by 0 and
-        # raise a value error highlighting the root cause
-        refine_random = coreax.refine.RefineRandom(self.random_key, p=-0.5)
-        with self.assertRaises(ValueError) as error_raised:
+        refine_random = coreax.refine.RefineRandom(self.random_key, p=p)
+        if p <= 0:
+            with pytest.raises(ValueError, match="input p must be greater than 0"):
+                refine_random.refine(coreset=coreset_obj)
+        else:
             refine_random.refine(coreset=coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "input p must be greater than 0",
-        )
-
-    def test_above_one_original_data_proportion(self):
-        """
-        Test how RefineRandom handles a large proportion of original data to sample.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        test_indices = [2, 2]
-        coreset_indices = jnp.array(test_indices)
-        kernel = coreax.kernel.SquaredExponentialKernel()
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=kernel)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
-
-        # Attempt to refine a coreset by considering more than 100% of the original
-        # data to refine with. This should simply be capped at 100%.
-        refine_random = coreax.refine.RefineRandom(self.random_key, p=1.5)
-        refine_random.refine(coreset=coreset_obj)
-        self.assertEqual(refine_random.p, 1.0)
+            assert refine_random.p == min(p, 1.0)
 
 
-class TestRefineReverse(unittest.TestCase):
-    """
-    Tests related to :meth:`~coreax.refine.RefineReverse`.
-    """
+class TestRefineReverse(BaseRefineTest):
+    """Tests related to :meth:`~coreax.refine.RefineReverse`."""
 
-    def setUp(self):
-        self.random_key = random.key(0)
-
-    def test_refine_reverse(self):
-        """
-        Test the reverse refine method with a toy example.
-
-        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
-        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
-        i.e. ``X_c =  [[0,0], [[2,2]]``.
-
-        Test, for every 2-point coreset, that ``refine()`` updates the coreset
-        indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        index_pairs = (
-            set(combo)
-            for combo in itertools.combinations(range(len(original_array)), 2)
-        )
-
-        refine_rev = coreax.refine.RefineReverse()
-
-        for test_indices in index_pairs:
-            coreset_indices = jnp.array(list(test_indices))
-
-            coreset_obj = CoresetMock(
-                weights_optimiser=None,
-                kernel=coreax.kernel.SquaredExponentialKernel(),
-            )
-            coreset_obj.coreset_indices = coreset_indices
-            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-            coreset_obj.coreset = original_array[coreset_indices, :]
-
-            refine_rev.refine(coreset=coreset_obj)
-
-            with self.subTest(test_indices):
-                self.assertSetEqual(
-                    set(coreset_obj.coreset_indices.tolist()), best_indices
-                )
-
-    def test_refine_reverse_no_kernel_matrix_row_sum_mean(self):
-        """
-        Test the reverse refine method with a toy example, no kernel row sum mean.
-
-        For a toy example, ``X = [[0,0], [1,1], [2,2]]``, the 2-point coreset that
-        minimises the MMD is specified by the indices ``coreset_indices = [0, 2]``,
-        i.e. ``X_c =  [[0,0], [[2,2]]``.
-
-        Test, for every 2-point coreset, that ``refine()`` updates the coreset
-        indices to ``[0, 2]``.
-        """
-        original_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-        best_indices = {0, 2}
-        index_pairs = (
-            set(combo)
-            for combo in itertools.combinations(range(len(original_array)), 2)
-        )
-
-        refine_rev = coreax.refine.RefineReverse()
-
-        for test_indices in index_pairs:
-            coreset_indices = jnp.array(list(test_indices))
-
-            coreset_obj = CoresetMock(
-                weights_optimiser=None,
-                kernel=coreax.kernel.SquaredExponentialKernel(),
-            )
-            coreset_obj.coreset_indices = coreset_indices
-            coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-            coreset_obj.coreset = original_array[coreset_indices, :]
-            coreset_obj.kernel_matrix_row_sum_mean = None
-            refine_rev.refine(coreset=coreset_obj)
-
-            with self.subTest(test_indices):
-                self.assertSetEqual(
-                    set(coreset_obj.coreset_indices.tolist()), best_indices
-                )
-
-    def test_invalid_coreset(self):
-        """
-        Test how RefineReverse handles an invalid coreset input.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        refine_reverse = coreax.refine.RefineReverse()
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_reverse.refine(coreset=coreax.util.InvalidKernel(x=1.0))
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'InvalidKernel' object has no attribute 'validate_fitted'",
-        )
-
-    def test_valid_coreset_no_kernel(self):
-        """
-        Test how RefineReverse handles a coreset input without an attached kernel.
-        """
-        # Define an object to pass that is not a coreset, and does not have the
-        # associated attributes required to refine
-        original_array = jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]])
-        best_indices = {0, 1}
-        coreset_indices = jnp.array(list(best_indices))
-        coreset_obj = CoresetMock(weights_optimiser=None, kernel=None)
-        coreset_obj.coreset_indices = coreset_indices
-        coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = original_array[coreset_indices, :]
-
-        # Attempt to refine using this coreset - we don't have a kernel, and so we
-        # should attempt to call compute on a None type object, which should raise an
-        # attribute error
-        refine_reverse = coreax.refine.RefineRegular()
-        with self.assertRaises(AttributeError) as error_raised:
-            refine_reverse.refine(coreset=coreset_obj)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'NoneType' object has no attribute 'compute'",
-        )
+    @pytest.fixture
+    def refine_method(self):
+        return coreax.refine.RefineReverse()
