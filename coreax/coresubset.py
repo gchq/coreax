@@ -416,16 +416,17 @@ class RPCholesky(coreax.reduction.Coreset):
     RPCholesky is a stochastic, iterative and greedy approach to determine this
     compressed representation.
 
-    Given a dataset :math:`X` with :math:`N` data-points, and a desired coreset size of :math:`M`,
-    RPCholesky determines which points to select to constitute this coreset.
+    Given a dataset :math:`X` with :math:`N` data-points, and a desired coreset size of
+    :math:`M`, RPCholesky determines which points to select to constitute this coreset.
 
-    This is done by first computing the kernel Gram matrix of the original data, and isolating
-    the diagonal of this. A 'pivot point' is then sampled, where sampling probabilities correspond
-    to the size of the elements on this diagonal. The data-point corresponding to this pivot point
-    is added to the coreset, and the diagonal of the Gram matrix is updated to add a
-    repulsion term of sorts - encouraging the coreset to select a range of distinct
-    points in the original data. The pivot sampling and diagonal updating steps are repeated until
-    :math:`M` points have been selected.
+    This is done by first computing the kernel Gram matrix of the original data, and
+    isolating the diagonal of this. A 'pivot point' is then sampled, where sampling
+    probabilities correspond to the size of the elements on this diagonal. The
+    data-point corresponding to this pivot point is added to the coreset, and the
+    diagonal of the Gram matrix is updated to add a repulsion term of sorts -
+    encouraging the coreset to select a range of distinct points in the original data.
+    The pivot sampling and diagonal updating steps are repeated until :math:`M` points
+    have been selected.
 
     :param random_key: Key for random number generation
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
@@ -433,10 +434,10 @@ class RPCholesky(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel
-        matrix row sum mean. Larger blocks will require more memory in the system.
-    :param unique: Boolean that enforces the resulting coreset will only contain
-        unique elements
+    :param block_size: Size of matrix blocks to process when computing the kernel matrix
+        row sum mean. Larger blocks will require more memory in the system.
+    :param unique: Boolean that enforces the resulting coreset will only contain unique
+        elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
     """
