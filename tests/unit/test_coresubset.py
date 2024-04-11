@@ -1262,7 +1262,7 @@ class TestRPCholesky(unittest.TestCase):
         # Define a RPC object with the invalid weights_optimiser - note that
         # InvalidKernel also does not have a solve method, so suits the purpose of
         # this test
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
             weights_optimiser=coreax.util.InvalidKernel,
@@ -1270,7 +1270,7 @@ class TestRPCholesky(unittest.TestCase):
 
         # The fit method should not use the weights optimiser at all, so is expected to
         # run without issue
-        herding_object.fit(
+        rpc_object.fit(
             original_data=self.generic_data,
             strategy=coreax.reduction.SizeReduce(self.coreset_size),
         )
@@ -1278,7 +1278,7 @@ class TestRPCholesky(unittest.TestCase):
         # Now, if we weight the coreset generated during the call to fit, we will use
         # the weights optimiser, so expect an error to be raised
         with self.assertRaises(AttributeError) as error_raised:
-            herding_object.solve_weights()
+            rpc_object.solve_weights()
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -1292,7 +1292,7 @@ class TestRPCholesky(unittest.TestCase):
         # Define a RPC object with the invalid refine_method - note that
         # InvalidKernel also does not have a refine method, so suits the purpose of
         # this test
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
             refine_method=coreax.util.InvalidKernel,
@@ -1300,7 +1300,7 @@ class TestRPCholesky(unittest.TestCase):
 
         # The fit method should not use the refine method at all, so is expected to run
         # without issue
-        herding_object.fit(
+        rpc_object.fit(
             original_data=self.generic_data,
             strategy=coreax.reduction.SizeReduce(self.coreset_size),
         )
@@ -1308,7 +1308,7 @@ class TestRPCholesky(unittest.TestCase):
         # Now, if we refine the coreset generated during the call to fit, we will use
         # the refine method, so expect an error to be raised
         with self.assertRaises(AttributeError) as error_raised:
-            herding_object.refine()
+            rpc_object.refine()
         self.assertEqual(
             error_raised.exception.args[0],
             "type object 'InvalidKernel' has no attribute 'refine'",
@@ -1319,7 +1319,7 @@ class TestRPCholesky(unittest.TestCase):
         Test how RPC performs when given a zero value of coreset_size.
         """
         # Define a RPC object
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
         )
@@ -1328,7 +1328,7 @@ class TestRPCholesky(unittest.TestCase):
         # loop with start and end points being the same, and index an empty array,
         # so raise a value error
         with self.assertRaises(ValueError) as error_raised:
-            herding_object.fit(
+            rpc_object.fit(
                 original_data=self.generic_data,
                 strategy=coreax.reduction.SizeReduce(coreset_size=0),
             )
@@ -1342,7 +1342,7 @@ class TestRPCholesky(unittest.TestCase):
         Test how RPC performs when given a negative value of coreset_size.
         """
         # Define a RPC object
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
         )
@@ -1351,7 +1351,7 @@ class TestRPCholesky(unittest.TestCase):
         # JAX loop with start and end points being the same, and index an empty array,
         # so raise a value error
         with self.assertRaises(ValueError) as error_raised:
-            herding_object.fit(
+            rpc_object.fit(
                 original_data=self.generic_data,
                 strategy=coreax.reduction.SizeReduce(coreset_size=-2),
             )
@@ -1365,7 +1365,7 @@ class TestRPCholesky(unittest.TestCase):
         Test how RPC performs when given a float value of coreset_size.
         """
         # Define a RPC object
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
         )
@@ -1373,7 +1373,7 @@ class TestRPCholesky(unittest.TestCase):
         # Call the fit method with a float given for coreset size - which should error
         # when we try to create a JAX array with a non-integer size
         with self.assertRaises(ValueError) as error_raised:
-            herding_object.fit(
+            rpc_object.fit(
                 original_data=self.generic_data,
                 strategy=coreax.reduction.SizeReduce(coreset_size=2.0),
             )
@@ -1387,7 +1387,7 @@ class TestRPCholesky(unittest.TestCase):
         Test how RPC performs when given an invalid reduction strategy.
         """
         # Define a RPC object
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
         )
@@ -1395,7 +1395,7 @@ class TestRPCholesky(unittest.TestCase):
         # Call the fit method with an invalid reduction strategy, which should error as
         # there is no reduce method
         with self.assertRaises(AttributeError) as error_raised:
-            herding_object.fit(
+            rpc_object.fit(
                 original_data=self.generic_data, strategy=coreax.util.InvalidKernel
             )
         self.assertEqual(
@@ -1408,7 +1408,7 @@ class TestRPCholesky(unittest.TestCase):
         Test how RPC performs when given an invalid data.
         """
         # Define a RPC object
-        herding_object = coreax.coresubset.RPCholesky(
+        rpc_object = coreax.coresubset.RPCholesky(
             random_key=self.random_key,
             kernel=coreax.kernel.SquaredExponentialKernel(),
         )
@@ -1416,7 +1416,7 @@ class TestRPCholesky(unittest.TestCase):
         # Call the fit method with a list rather than a data object. This should error
         # as there is no attribute pre_coreset_array
         with self.assertRaises(AttributeError) as error_raised:
-            herding_object.fit(
+            rpc_object.fit(
                 original_data=[1, 2, 3],
                 strategy=coreax.reduction.SizeReduce(coreset_size=2),
             )
