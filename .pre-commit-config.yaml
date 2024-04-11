@@ -7,7 +7,7 @@ default_stages:
   - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
@@ -49,16 +49,11 @@ repos:
         description: Ensure file is ascii-encoded
         entry: python pre_commit_hooks/require_ascii.py
         language: python
-        types:
-          - text
         exclude:
-          .pylintrc
-  - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 3.0.0
-    hooks:
-      # Check for binary files
-      - id: forbid-binary
-        exclude: ^examples/.+/.+.(gif|png)$
+          (?x)^(
+            .pylintrc|
+            examples/.+/.+.(gif|png)
+          )$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.5
     hooks:
@@ -66,7 +61,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.6.0
+    rev: v8.6.1
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -101,19 +96,16 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.1
+    rev: v0.3.5
     hooks:
       # Run the linter.
       - id: ruff
         args: [ --fix ]
+        # Abort if ruff linter fails as there is some duplication of functionality with
+        # the slow pylint hook
+        fail_fast: true
       # Run the formatter.
       - id: ruff-format
-        # Don't run the slow pylint hook unless all prior hooks have passed.
-        # Note: the behaviour of `fail_fast` diverges from that documented,
-        # https://pre-commit.com/#hooks-fail_fast. The documentation should
-        # instead read: "if true, pre-commit will stop running hooks if this
-        # *or any previous* hook fails".
-        fail_fast: true
   - repo: local
     hooks:
       # Python static analysis tool
