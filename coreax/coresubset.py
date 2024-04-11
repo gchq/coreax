@@ -614,6 +614,6 @@ class RPCholesky(coreax.reduction.Coreset):
         # Ensure diagonal remains nonnegative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
-            # ensures that index j can't be drawn again in future
+            # ensures that index selected_pivot_point can't be drawn again in future
             residual_diagonal = residual_diagonal.at[selected_pivot_point].set(0.0)
         return residual_diagonal, approximation_matrix, current_coreset_indices, key
