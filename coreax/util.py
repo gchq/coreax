@@ -214,9 +214,14 @@ def invert_regularised_array(
     :param regularisation_parameter: Regularisation parameter for stable inversion of array
     :param identity: Block identity matrix
     :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
-        singular values are treated as zero if they are smaller than rcond times the largest singular value of a
+        singular values are treated as zero if they are smaller than rcond times the largest singular value of a.
+        The default value of N will use the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 wil use machine precision.
     :return: Inverse of regularised array
     """
+    if array.shape != identity.shape:
+        raise ValueError("Leading dimensions of array and identity must match")
+        
     return jnp.linalg.lstsq(
         array + regularisation_parameter * identity,
         identity,
@@ -247,6 +252,9 @@ def invert_stacked_regularised_arrays(
         singular values are treated as zero if they are smaller than rcond times the largest singular value of a
     :return: Stack of inverted regularised arrays
     """
+    if stacked_arrays.shape[1:] != identity.shape:
+        raise ValueError("Second and third dimensions of stacked_arrays and dimensions of identity must match")
+
     return vmap(
         partial(
             invert_regularised_array,
@@ -255,6 +263,7 @@ def invert_stacked_regularised_arrays(
             rcond=rcond
         )
     )(stacked_arrays)
+
 
 def sample_batch_indices(
     random_key: coreax.util.KeyArrayLike,
@@ -271,12 +280,23 @@ def sample_batch_indices(
     :param num_batches: Number of batches to sample
     :return: Array of batch indices of size batch_size x num_batches
     """
+    if data_size < batch_size:
+        raise ValueError("data_size must be greater than or equal to batch_size.")
+    elif (data_size <= 0.0) or not isinstance(data_size, int):
+        raise ValueError("data_size must be a positive integer.")
+    elif (batch_size <= 0.0) or not isinstance(batch_size, int):
+        raise ValueError("batch_size must be a positive integer.")
+    elif (num_batches <= 0.0) or not isinstance(num_batches, int):
+        raise ValueError("num_batches must be a positive integer.")
+    
+    
     return permutation(
         key=random_key,
         x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1) ).T,
         axis=0,
         independent=True
     )[:batch_size, :]
+
 
 def jit_test(
     fn: Callable,

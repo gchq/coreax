@@ -23,6 +23,7 @@ import unittest
 import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
+from jax.random import key
 
 import coreax.util
 
@@ -172,6 +173,225 @@ class TestUtil(unittest.TestCase):
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
 
+    def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
+        """
+        Test the function invert_regularised_array with invalid array dimensions.
+
+        An array and identity with unequal dimensions are given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_regularised_array,
+            array=jnp.eye(2),
+            regularisation_parameter=1e-6,
+            identity=jnp.eye(3),
+            rcond=None,
+        )
+
+    def test_invert_stacked_regularised_arrays_unequal_array_dimensions(self) -> None:
+        """
+        Test the function invert_stacked_regularised_arrays with invalid array dimensions.
+
+        Stacked arrays and identity with unequal dimensions are given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_stacked_regularised_arrays,
+            stacked_arrays=random.uniform(
+                key=key(0),
+                shape=(3, 1, 2)
+            ),
+            regularisation_parameter=1e-6,
+            identity=jnp.eye(2),
+            rcond=None,
+        )
+    
+    def test_invert_stacked_regularised_arrays(self) -> None:
+        """
+        Test vmap version of invert_regularised_array.
+        """
+        num_arrays = 3
+        dimension = 2
+        identity = jnp.eye(dimension)
+        regularisation_parameter = 1e-6
+        rcond = None
+        
+        stacked_arrays = random.uniform(
+            key=key(0),
+            shape=(num_arrays, dimension, dimension)
+        )
+        stacked_pos_semi_def_arrays = stacked_arrays @ jnp.transpose(stacked_arrays, (0, 2, 1))
+        
+        expected_output = jnp.array(
+            [
+                jnp.linalg.lstsq(
+                    a=array + regularisation_parameter*identity,
+                    b=identity,
+                    rcond=rcond
+                )[0]
+                for array in stacked_pos_semi_def_arrays
+            ]
+        )
+        output = coreax.util.invert_stacked_regularised_arrays(
+            stacked_pos_semi_def_arrays,
+            regularisation_parameter,
+            identity=identity,
+            rcond=rcond
+        )
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
+        )
+    
+    def test_sample_batch_indices_negative_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A negative data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=-1,
+            batch_size=1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_zero_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A zero data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=0,
+            batch_size=1,
+            num_batches=1,
+        )
+    
+    def test_sample_batch_indices_float_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A float data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1.,
+            batch_size=1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_negative_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A negative batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=-1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_zero_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A zero batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=0,
+            num_batches=1,
+        )
+    
+    def test_sample_batch_indices_float_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A float batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1.,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_data_size_smaller_than_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid combination of batch size and data size.
+
+        Data size is smaller than batch size, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=2.,
+            num_batches=1,
+        )
+        
+    def test_sample_batch_indices_negative_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A negative number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=-1,
+        )
+
+    def test_sample_batch_indices_zero_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A zero number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=0,
+        )
+
+    def test_sample_batch_indices_float_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A float number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=1.,
+        )
+        
     def test_jit_test(self) -> None:
         """
         Test jit_test calls the function in question twice when checking performance.
