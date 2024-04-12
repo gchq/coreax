@@ -485,6 +485,8 @@ class CMMD(Metric):
         # Initialise parent
         super().__init__()
 
+    # Disable pylint warning for arguments-renamed as the use of x and y as arguments
+    # for different datasets is problematic when we are considering supervised data.
     # pylint: disable=arguments-renamed
     def compute(
         self,
