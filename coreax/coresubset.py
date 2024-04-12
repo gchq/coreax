@@ -102,6 +102,7 @@ class KernelHerding(coreax.reduction.Coreset):
         self.unique = unique
         self.approximator = approximator
         self.random_key = random_key
+        self.kernel_matrix_row_sum_mean = None
 
         # Initialise parent
         super().__init__(
@@ -208,8 +209,10 @@ class KernelHerding(coreax.reduction.Coreset):
             raise
 
         # Assign coreset indices & coreset to original data object
+        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["kernel_vectorised", "unique"])
@@ -405,8 +408,10 @@ class RandomSample(coreax.reduction.Coreset):
             raise
 
         # Assign coreset indices and coreset to the object
+        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = random_indices
-        self.coreset = self.original_data.pre_coreset_array[random_indices]
+        self.coreset = self.original_data.pre_coreset_array[random_indices, :]
+        # pylint: enable=attribute-defined-outside-init
 
 
 class RPCholesky(coreax.reduction.Coreset):
@@ -548,8 +553,10 @@ class RPCholesky(coreax.reduction.Coreset):
                 raise ValueError("coreset_size must be non-zero") from exception
             raise
 
+        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["kernel_vectorised", "unique"])
@@ -828,15 +835,17 @@ class GreedyCMMD(coreax.reduction.Coreset):
             ),
         )
 
-        # If we are refining, create necessary class attributes
+        # If we are refining, update necessary class attributes
         if self.refine_method is not None:
             self._feature_gramian = feature_gramian
             self._response_gramian = response_gramian
             self._training_cme = training_cme
 
         # Assign coreset indices & coreset to original data object
+        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["regularisation_parameter", "unique"])
