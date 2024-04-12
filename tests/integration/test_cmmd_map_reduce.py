@@ -34,7 +34,7 @@ class TestGreedyCMMDMapReduce(unittest.TestCase):
     Test end-to-end code run with a basic tabular data example.
     """
 
-    def test_greedy_CMMD_map_reduce(self) -> None:
+    def test_greedy_cmmd_map_reduce(self) -> None:
         """
         Test cmmd_map_reduce.py example.
 

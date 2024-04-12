@@ -34,7 +34,7 @@ class TestGreedyCMMDRefine(unittest.TestCase):
     Test end-to-end code run with a tabular data example that applies refinement.
     """
 
-    def test_greedy_CMMD_refine(self) -> None:
+    def test_greedy_cmmd_refine(self) -> None:
         """
         Test cmmd_refine.py example.
 

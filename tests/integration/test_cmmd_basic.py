@@ -34,7 +34,7 @@ class TestGreedyCMMDBasic(unittest.TestCase):
     Test end-to-end code run with a basic tabular data example.
     """
 
-    def test_greedy_CMMD_basic(self) -> None:
+    def test_greedy_cmmd_basic(self) -> None:
         """
         Test cmmd_basic.py example.
 

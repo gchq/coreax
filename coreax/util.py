@@ -31,7 +31,7 @@ from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
-from jax.random import split, permutation
+from jax.random import permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias
@@ -204,18 +204,20 @@ def invert_regularised_array(
     """
     Using a least-squares solver, regularise the array and then invert it.
 
-    The function is designed to invert square block arrays where only the top-left block is non-zero.
-    That is, we return a block array, the same size as the input array, where each block consists
-    of zeros except for the top-left block, which is the inverse of the original non-zero block. To achieve
-    this the 'identity' array must be a zero matrix except for ones on the diagonal up to the size
-    of the non-zero block.
+    The function is designed to invert square block arrays where only the top-left block
+    is non-zero. That is, we return a block array, the same size as the input array,
+    where each block consists of zeros except for the top-left block, which is the
+    inverse of the original non-zero block. To achieve this the 'identity' array must be
+    a zero matrix except for ones on the diagonal up to the size of the non-zero block.
 
     :param array: Array to be inverted
-    :param regularisation_parameter: Regularisation parameter for stable inversion of array
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array
     :param identity: Block identity matrix
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
-        singular values are treated as zero if they are smaller than rcond times the largest singular value of a.
-        The default value of N will use the machine precision multiplied by the largest dimension of the array.
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
         An alternate value of -1 wil use machine precision.
     :return: Inverse of regularised array
     """
@@ -237,22 +239,27 @@ def invert_stacked_regularised_arrays(
     """
     Efficiently invert a stack of regularised square arrays.
 
-    The function is designed to invert a stack of square block arrays where only the top-left block is non-zero.
-    That is, we return a stack of block arrays, the same size as the stack of input arrays, where each block consists
-    of zeros except for the top-left block, which is the inverse of the original non-zero block. To achieve
-    this the 'identity' array must be a zero matrix except for ones on the diagonal up to the size
-    of the non-zero block.
+    The function is designed to invert a stack of square block arrays where only the
+    top-left block is non-zero.
+    That is, we return a stack of block arrays, the same size as the stack of input
+    arrays, where each block consists of zeros except for the top-left block, which is
+    the inverse of the original non-zero block. To achieve this the 'identity' array
+    must be a zero matrix except for ones on the diagonal up to the size of the non-zero
+      block.
 
     :param array: Stack of arrays to be inverted
-    :param regularisation_parameter: Regularisation parameter for stable inversion of arrays
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        arrays
     :param identity: Block identity matrix
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank determination,
-        singular values are treated as zero if they are smaller than rcond times the largest singular value of a
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a
     :return: Stack of inverted regularised arrays
     """
     if stacked_arrays.shape[1:] != identity.shape:
         raise ValueError(
-            "Second and third dimensions of stacked_arrays and dimensions of identity must match"
+            "Second and third dimensions of stacked_arrays and dimensions of identity \
+            must match"
         )
 
     return vmap(
@@ -272,7 +279,8 @@ def sample_batch_indices(
     num_batches: int,
 ) -> ArrayLike:
     """
-    Sample an array of column-unique indices where the largest possible index is dictated by data_size.
+    Sample an array of column-unique indices where the largest possible index is
+    dictated by data_size.
 
     :param random_key: Key for random number generation
     :param data_size: Size of the data we wish to sample from

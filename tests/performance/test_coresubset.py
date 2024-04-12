@@ -178,7 +178,7 @@ class TestSupervisedCoreSubset(unittest.TestCase):
         y = jnp.sin(10 * x) @ coefficients + 0.1 * errors
 
         # Create a GreedyCMMD object
-        greedy_CMMD_object = coreax.coresubset.GreedyCMMD(
+        greedy_cmmd_object = coreax.coresubset.GreedyCMMD(
             random_key=self.random_key,
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
@@ -203,14 +203,15 @@ class TestSupervisedCoreSubset(unittest.TestCase):
                 identity=jnp.eye(self.num_data_points_per_observation),
             )
 
-            training_CME = feature_gramian @ inverse_feature_gramian @ response_gramian
+            training_cme = feature_gramian @ inverse_feature_gramian @ response_gramian
 
             feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
             response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
-            training_CME = jnp.pad(training_CME, [(0, 1)], mode="constant")
+            training_cme = jnp.pad(training_cme, [(0, 1)], mode="constant")
 
+            # pylint: disable=protected-access
             deltas = coreax.util.jit_test(
-                greedy_CMMD_object._greedy_body,
+                greedy_cmmd_object._greedy_body,
                 fn_kwargs={
                     "i": 0,
                     "val": (
@@ -220,7 +221,7 @@ class TestSupervisedCoreSubset(unittest.TestCase):
                     ),
                     "feature_gramian": feature_gramian,
                     "response_gramian": response_gramian,
-                    "training_CME": training_CME,
+                    "training_cme": training_cme,
                     "batch_indices": batch_indices,
                     "regularisation_parameter": self.regularisation_parameter,
                     "unique": True,

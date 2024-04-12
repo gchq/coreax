@@ -437,28 +437,33 @@ class CMMD(Metric):
 
     For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
     :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
-    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with
-    :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs
+    with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
     the conditional maximum mean discrepancy is given by:
 
     .. math::
 
-        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) =
+        ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
 
-    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings estimated
-    with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
-    and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel functions
-    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
-    :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
+    embeddings estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+    respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding
+    to the kernel functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow
+    \mathbb{R}` and :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
+    respectively.
 
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the feature space
-    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the response space
-    :param num_feature_dimensions: An integer representing the dimensionality of the features
-        :math:`x`
-    :param regularisation_params: A  :math:`1 \times 2` array of reguralisation parameters corresponding to
-        the original dataset :math:`\mathcal{D}^{(1)}` and the coreset :math:`\mathcal{D}^{(2)}` respectively
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param num_feature_dimensions: An integer representing the dimensionality of the
+        features :math:`x`
+    :param regularisation_params: A  :math:`1 \times 2` array of regularisation
+        parameters corresponding to the original dataset :math:`\mathcal{D}^{(1)}` and
+        the coreset :math:`\mathcal{D}^{(2)}` respectively
     :param precision_threshold: Positive threshold we compare against for precision
     """
 
@@ -480,10 +485,11 @@ class CMMD(Metric):
         # Initialise parent
         super().__init__()
 
+    # pylint: disable=arguments-renamed
     def compute(
         self,
-        D1: ArrayLike,
-        D2: ArrayLike,
+        d1: ArrayLike,
+        d2: ArrayLike,
         block_size: None = None,
         weights_x: None = None,
         weights_y: None = None,
@@ -491,59 +497,67 @@ class CMMD(Metric):
         r"""
         Calculate conditional maximum mean discrepancy.
 
-        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n``
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
+        :param d1: The original dataset :math:`\mathcal{D}^{(1)} =
+            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`, responses should be concatenated after the
+            features
+        :param d2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+            \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with :math:`\tilde{x}\in\mathbb{R}^d`
+            and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
             concatenated after the features
-        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with
-            :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
-            concatenated after the features
-        :param block_size: :data:`None`, included for compatability reasons
-        :param weights_x: :data:`None`, included for compatability reasons
-        :param weights_y: :data:`None`, included for compatability reasons
+        :param block_size: :data:`None`, included for compatibility reasons
+        :param weights_x: :data:`None`, included for compatibility reasons
+        :param weights_y: :data:`None`, included for compatibility reasons
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
-        # Make sure that compatability params are None
+        # Make sure that compatibility params are None
         assert block_size is None, "CMMD computation does not support blocking"
         assert (
             weights_x or weights_y
         ) is None, "CMMD computation does not support weights"
 
-        return self.conditional_maximum_mean_discrepancy(D1, D2)
+        return self.conditional_maximum_mean_discrepancy(d1, d2)
+
+    # pylint: enable=arguments-renamed
 
     def conditional_maximum_mean_discrepancy(
-        self, D1: ArrayLike, D2: ArrayLike
+        self, d1: ArrayLike, d2: ArrayLike
     ) -> Array:
         r"""
         Calculate standard conditional maximum mean discrepancy metric.
 
-        For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
-        :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
-        :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n`` pairs with
-        :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
-        the conditional maximum mean discrepancy is given by:
+        For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs
+        with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+        :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n``
+        pairs with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in
+        \mathbb{R}^p`, the conditional maximum mean discrepancy is given by:
 
         .. math::
 
-            \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+            \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} -
+            \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
 
-        where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings estimated
-        with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
-        and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel functions
+        where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
+        embeddings estimated with :math:`\mathcal{D}^{(1)}` and
+        :math:`\mathcal{D}^{(2)}` respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l`
+        are the RKHSs corresponding to the kernel functions
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
         :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
-        :param D1: The original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n``
-            pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, responses should be
-            concatenated after the features
-        :param D2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with
-            :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
+        :param d1: The original dataset :math:`\mathcal{D}^{(1)} =
+            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`, responses should be concatenated after the
+            features
+        :param d2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+            \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with :math:`\tilde{x}\in\mathbb{R}^d`
+            and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
             concatenated after the features
         """
         # Extract and format features and responses from D1 and D2
-        x1 = jnp.atleast_2d(D1[:, : self.num_feature_dimensions])
-        y1 = jnp.atleast_2d(D1[:, self.num_feature_dimensions :])
-        x2 = jnp.atleast_2d(D2[:, : self.num_feature_dimensions])
-        y2 = jnp.atleast_2d(D2[:, self.num_feature_dimensions :])
+        x1 = jnp.atleast_2d(d1[:, : self.num_feature_dimensions])
+        y1 = jnp.atleast_2d(d1[:, self.num_feature_dimensions :])
+        x2 = jnp.atleast_2d(d2[:, : self.num_feature_dimensions])
+        y2 = jnp.atleast_2d(d2[:, self.num_feature_dimensions :])
 
         # Compute feature kernel gramians
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
@@ -594,7 +608,8 @@ class CMMD(Metric):
         squared_result = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
         if squared_result < 0:
             warn(
-                f"Squared CMMD ({round(squared_result.item(), 4)}) is negative, increase precision threshold or regularisation strength,",
+                f"Squared CMMD ({round(squared_result.item(), 4)}) is negative,"
+                + " increase precision threshold or regularisation strength.",
                 Warning,
             )
         result = jnp.sqrt(
