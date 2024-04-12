@@ -33,7 +33,7 @@ from __future__ import annotations
 from functools import partial
 
 import jax.numpy as jnp
-from jax import Array, jit, lax, random
+from jax import Array, jit, lax, random, vmap
 from jax.typing import ArrayLike
 
 import coreax.approximation
@@ -345,9 +345,9 @@ class RandomSample(coreax.reduction.Coreset):
         """
         Flatten a pytree.
 
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
+        Define arrays and dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration of
+        methods inside this class.
 
         :return: Tuple containing two elements. The first is a tuple holding the arrays
             and dynamic values that are present in the class. The second is a dictionary
@@ -407,6 +407,216 @@ class RandomSample(coreax.reduction.Coreset):
         # Assign coreset indices and coreset to the object
         self.coreset_indices = random_indices
         self.coreset = self.original_data.pre_coreset_array[random_indices]
+
+
+class RPCholesky(coreax.reduction.Coreset):
+    r"""
+    Apply Randomly Pivoted Cholesky (RPCholesky) to a dataset.
+
+    RPCholesky is a stochastic, iterative and greedy approach to determine this
+    compressed representation.
+
+    Given a dataset :math:`X` with :math:`N` data-points, and a desired coreset size of
+    :math:`M`, RPCholesky determines which points to select to constitute this coreset.
+
+    This is done by first computing the kernel Gram matrix of the original data, and
+    isolating the diagonal of this. A 'pivot point' is then sampled, where sampling
+    probabilities correspond to the size of the elements on this diagonal. The
+    data-point corresponding to this pivot point is added to the coreset, and the
+    diagonal of the Gram matrix is updated to add a repulsion term of sorts -
+    encouraging the coreset to select a range of distinct points in the original data.
+    The pivot sampling and diagonal updating steps are repeated until :math:`M` points
+    have been selected.
+
+    :param random_key: Key for random number generation
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
+    :param block_size: Size of matrix blocks to process when computing the kernel matrix
+        row sum mean. Larger blocks will require more memory in the system.
+    :param unique: Boolean that enforces the resulting coreset will only contain unique
+        elements
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
+    """
+
+    def __init__(
+        self,
+        random_key: coreax.util.KeyArrayLike,
+        *,
+        kernel: coreax.kernel.Kernel,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
+        block_size: int = 10_000,
+        unique: bool = True,
+        refine_method: coreax.refine.Refine | None = None,
+    ):
+        """Initialise a RPCholesky class."""
+        # Assign specific attributes
+        self.block_size = block_size
+        self.unique = unique
+        self.random_key = random_key
+
+        # Initialise parent
+        super().__init__(
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
+        )
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays and dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration of
+        methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        children = (
+            self.random_key,
+            self.kernel,
+            self.kernel_matrix_row_sum_mean,
+            self.coreset_indices,
+            self.coreset,
+        )
+        aux_data = {
+            "block_size": self.block_size,
+            "unique": self.unique,
+            "refine_method": self.refine_method,
+            "weights_optimiser": self.weights_optimiser,
+        }
+        return children, aux_data
+
+    def fit_to_size(self, coreset_size: int) -> None:
+        r"""
+        Execute RPCholesky algorithm with Jax.
+
+        Computes a low-rank approximation of the Gram matrix.
+
+        :param coreset_size: The size of the of coreset to generate
+        """
+        try:
+            # Note that a TypeError is raised if the size input to jnp.zeros is negative
+            coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
+        except TypeError as exception:
+            if coreset_size < 0:
+                raise ValueError("coreset_size must not be negative") from exception
+            if isinstance(coreset_size, float):
+                raise ValueError(
+                    "coreset_size must be a positive integer"
+                ) from exception
+            raise
+
+        body = partial(
+            self._loop_body,
+            x=self.original_data.pre_coreset_array,
+            kernel_vectorised=self.kernel.compute,
+            unique=self.unique,
+        )
+
+        try:
+            num_data_points = len(self.original_data.pre_coreset_array)
+            approximation_matrix = jnp.zeros((num_data_points, coreset_size))
+            _, key = random.split(self.random_key)
+
+            # Evaluate the diagonal of the Gram matrix
+            residual_diagonal = vmap(
+                self.kernel.compute_elementwise, in_axes=(0, 0), out_axes=0
+            )(
+                self.original_data.pre_coreset_array,
+                self.original_data.pre_coreset_array,
+            )
+
+            residual_diagonal, approximation_matrix, coreset_indices, key = (
+                lax.fori_loop(
+                    0,
+                    coreset_size,
+                    body,
+                    (residual_diagonal, approximation_matrix, coreset_indices, key),
+                )
+            )
+
+        except IndexError as exception:
+            if coreset_size == 0:
+                raise ValueError("coreset_size must be non-zero") from exception
+            raise
+
+        self.coreset_indices = coreset_indices
+        self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+
+    @staticmethod
+    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
+    def _loop_body(
+        i: int,
+        val: tuple[ArrayLike, ArrayLike, ArrayLike, coreax.util.KeyArrayLike],
+        x: ArrayLike,
+        kernel_vectorised: coreax.util.KernelComputeType,
+        unique: bool,
+    ) -> tuple[Array, Array, Array, Array]:
+        r"""
+        Execute main loop of RPCholesky.
+
+        This function carries out one iteration of RPCholesky, defined in Algorithm 1 of
+        :cite:`chen2023randomly`.
+
+        :param i: Loop counter, counting how many points are in the coreset on call of
+            this method
+        :param val: Tuple containing a :math:`m \times 1` array of the residual
+            diagonal, :math:`n \times m` Cholesky matrix F, :math:`1 \times m` array of
+            current coreset indices and a PRNGKey for sampling. Note that the array
+            holding current coreset indices should always be the same length (however
+            many coreset points are desired). The ``i``-th element of this gets updated
+            to the index of the selected coreset point in iteration ``i``.
+        :param x: :math:`n \times d` data matrix
+        :param kernel_vectorised: Vectorised kernel computation function. This should be
+            the :meth:`~coreax.kernel.Kernel.compute` method of a
+            :class:`~coreax.kernel.Kernel` object
+        :param unique: Flag for enforcing unique elements
+        :returns: Updated loop variables ``residual_diagonal``, ``F``,
+            ``current_coreset_indices`` and ``key``
+        """
+        # Unpack the components of the loop variables
+        residual_diagonal, approximation_matrix, current_coreset_indices, key = val
+        key, subkey = random.split(key)
+        num_data_points = len(x)
+
+        # Sample a new index with probability proportional to residual diagonal
+        selected_pivot_point = random.choice(
+            subkey, num_data_points, (1,), p=residual_diagonal, replace=False
+        )[0]
+        current_coreset_indices = current_coreset_indices.at[i].set(
+            selected_pivot_point
+        )
+
+        # Remove overlap with previously chosen columns
+        g = (
+            kernel_vectorised(x, x[selected_pivot_point])
+            - jnp.dot(approximation_matrix, approximation_matrix[selected_pivot_point])[
+                :, None
+            ]
+        )
+
+        # Update approximation
+        approximation_matrix = approximation_matrix.at[:, i].set(
+            (g / jnp.sqrt(g[selected_pivot_point])).flatten()
+        )
+
+        # Track diagonal of residual matrix
+        residual_diagonal = residual_diagonal - jnp.square(approximation_matrix[:, i])
+
+        # Ensure diagonal remains nonnegative
+        residual_diagonal = residual_diagonal.clip(min=0)
+        if unique:
+            # ensures that index selected_pivot_point can't be drawn again in future
+            residual_diagonal = residual_diagonal.at[selected_pivot_point].set(0.0)
+        return residual_diagonal, approximation_matrix, current_coreset_indices, key
 
 
 class GreedyCMMD(coreax.reduction.Coreset):

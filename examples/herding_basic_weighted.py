@@ -19,11 +19,8 @@ This example showcases how a coreset can be generated from a dataset containing 
 points sampled from ``k`` clusters in space.
 
 A coreset is generated using kernel herding, with a Squared Exponential kernel. This
-coreset is then refined to improve quality.
-
-The coreset generated from the above process is compared to a coreset generated via
-uniform random sampling. Coreset quality is measured using maximum mean discrepancy
-(MMD).
+coreset is compared to a coreset generated via uniform random sampling. Coreset quality
+is measured using maximum mean discrepancy (MMD).
 """
 
 # Support annotations with | in Python < 3.10
@@ -42,38 +39,38 @@ from coreax import (
     ArrayData,
     KernelHerding,
     RandomSample,
+    RPCholesky,
     SizeReduce,
     SquaredExponentialKernel,
 )
 from coreax.kernel import median_heuristic
-from coreax.refine import RefineRegular
+from coreax.weights import MMDWeightsOptimiser
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Path | None = None) -> tuple[float, float]:
+def main(out_path: Path | None = None) -> tuple[float, float, float]:
     """
-    Run the kernel herding on tabular data with a refine post-processing step.
+    Run the basic herding on tabular data example.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    kernel herding. After generation, the coreset is improved by refining it (a greedy
-    approach to replace points in the coreset for those that improve some measure of
-    coreset quality). Compare results to coresets generated via uniform random sampling.
+    kernel herding. Compare results to coresets generated via uniform random sampling.
     Coreset quality is measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
     :return: Coreset MMD, random sample MMD
     """
+    # pylint: disable=too-many-statements
     # Create some data. Here we'll use 10,000 points in 2D from 6 distinct clusters. 2D
     # for plotting below.
     num_data_points = 10_000
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _, _centers = make_blobs(
+    x, _, _ = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
@@ -94,23 +91,29 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
-    # Define a refinement object
-    refiner = RefineRegular()
-
-    print("Computing coreset...")
-    # Compute a coreset using kernel herding with a Squared exponential kernel.
-    herding_key, sample_key = random.split(random.key(random_seed))
+    kernel = SquaredExponentialKernel(length_scale=length_scale)
+    print("Computing herding coreset...")
+    weights_optimiser_herding = MMDWeightsOptimiser(kernel=kernel)
+    # Compute a coreset using kernel herding with a squared exponential kernel.
+    herding_key, sample_key, rp_key = random.split(random.key(random_seed), num=3)
     herding_object = KernelHerding(
-        herding_key,
-        kernel=SquaredExponentialKernel(length_scale=length_scale),
-        refine_method=refiner,
+        herding_key, kernel=kernel, weights_optimiser=weights_optimiser_herding
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
+    weights_herding = herding_object.solve_weights()
 
-    # Refine the coreset to improve quality
-    herding_object.refine()
+    weights_optimiser_rpc = MMDWeightsOptimiser(kernel=kernel)
+    print("Computing RPC coreset...")
+    # Compute a coreset using RPC with a squared exponential kernel.
+    rp_object = RPCholesky(
+        rp_key,
+        kernel=SquaredExponentialKernel(length_scale=length_scale),
+        weights_optimiser=weights_optimiser_rpc,
+    )
+    rp_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
+    weights_rpc = rp_object.solve_weights()
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -129,7 +132,14 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
+    maximum_mean_discrepancy_herding = herding_object.compute_metric(
+        metric_object, weights_y=weights_herding
+    )
+
+    # Compute the MMD between the original data and the coreset generated via herding
+    maximum_mean_discrepancy_rpc = rp_object.compute_metric(
+        metric_object, weights_y=weights_rpc
+    )
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
@@ -138,6 +148,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
     print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
+    print(f"RPC coreset MMD: {maximum_mean_discrepancy_rpc}")
 
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
@@ -149,8 +160,22 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     )
     plt.axis("off")
     plt.title(
-        f"Stein kernel herding, m={coreset_size}, "
+        f"Kernel herding, m={coreset_size}, "
         f"MMD={round(float(maximum_mean_discrepancy_herding), 6)}"
+    )
+    plt.show()
+
+    plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(
+        rp_object.coreset[:, 0],
+        rp_object.coreset[:, 1],
+        s=10,
+        color="red",
+    )
+    plt.axis("off")
+    plt.title(
+        f"RP Cholesky, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_rpc), 6)}"
     )
     plt.show()
 
@@ -176,6 +201,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     return (
         float(maximum_mean_discrepancy_herding),
+        float(maximum_mean_discrepancy_rpc),
         float(maximum_mean_discrepancy_random),
     )
 
