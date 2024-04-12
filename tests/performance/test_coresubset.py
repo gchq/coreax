@@ -133,7 +133,7 @@ class TestSupervisedCoreSubset(unittest.TestCase):
         sequential function calls, in order to catch suboptimal JIT tracing.
         """
         # Predefine the common variables that are passed to the method
-        coreset_indices_0 = -1*jnp.ones(self.coreset_size, dtype=jnp.int32)
+        coreset_indices_0 = -1 * jnp.ones(self.coreset_size, dtype=jnp.int32)
         coreset_identity_0 = jnp.zeros((self.coreset_size, self.coreset_size))
         feature_kernel = coreax.kernel.SquaredExponentialKernel()
         response_kernel = coreax.kernel.SquaredExponentialKernel()
@@ -141,52 +141,52 @@ class TestSupervisedCoreSubset(unittest.TestCase):
             random_key=self.random_key,
             data_size=self.num_data_points_per_observation,
             batch_size=self.num_data_points_per_observation,
-            num_batches=self.coreset_size
+            num_batches=self.coreset_size,
         )
         all_possible_next_coreset_indices_0 = jnp.hstack(
             (
                 batch_indices[:, [0]],
-                jnp.tile(-1, (batch_indices.shape[0], self.coreset_size - 1) )
+                jnp.tile(-1, (batch_indices.shape[0], self.coreset_size - 1)),
             )
-        )      
-        
+        )
+
         # Generate multi-output supervised dataset
         x = random.uniform(
             self.random_key,
             shape=(
                 self.num_samples_to_generate,
                 self.num_data_points_per_observation,
-                self.feature_dimension
-            )
+                self.feature_dimension,
+            ),
         )
         coefficients = random.uniform(
             self.random_key,
             shape=(
                 self.num_samples_to_generate,
                 self.feature_dimension,
-                self.response_dimension
-            )
+                self.response_dimension,
+            ),
         )
         errors = random.normal(
-            key,
+            self.random_key,
             shape=(
                 self.num_samples_to_generate,
                 self.num_data_points_per_observation,
-                self.response_dimension
-            )
+                self.response_dimension,
+            ),
         )
-        y = jnp.sin(10*x) @ coefficients + 0.1*errors
-        
+        y = jnp.sin(10 * x) @ coefficients + 0.1 * errors
+
         # Create a GreedyCMMD object
-        greedy_CMMD_object = GreedyCMMD(
+        greedy_CMMD_object = coreax.coresubset.GreedyCMMD(
             random_key=self.random_key,
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
-            num_feature_dimensions=self.feature_dimension, 
-            regularisation_parameter=regularisation_parameter,
+            num_feature_dimensions=self.feature_dimension,
+            regularisation_parameter=self.regularisation_parameter,
             unique=True,
             batch_size=None,
-            refine_method=None
+            refine_method=None,
         )
 
         # Test performance
@@ -196,30 +196,34 @@ class TestSupervisedCoreSubset(unittest.TestCase):
             # Compute _greedy_body inputs
             feature_gramian = feature_kernel.compute(x[i], x[i])
             response_gramian = response_kernel.compute(y[i], y[i])
-            
+
             inverse_feature_gramian = coreax.util.invert_regularised_array(
                 array=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(self.num_data_points_per_observation)
+                identity=jnp.eye(self.num_data_points_per_observation),
             )
-            
+
             training_CME = feature_gramian @ inverse_feature_gramian @ response_gramian
-            
-            feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode='constant')
-            response_gramian = jnp.pad(response_gramian, [(0, 1)], mode='constant')
-            training_CME = jnp.pad(training_CME, [(0, 1)], mode='constant')      
-            
+
+            feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
+            response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
+            training_CME = jnp.pad(training_CME, [(0, 1)], mode="constant")
+
             deltas = coreax.util.jit_test(
                 greedy_CMMD_object._greedy_body,
                 fn_kwargs={
                     "i": 0,
-                    "val": (coreset_indices_0, coreset_identity_0, all_possible_next_coreset_indices_0),
+                    "val": (
+                        coreset_indices_0,
+                        coreset_identity_0,
+                        all_possible_next_coreset_indices_0,
+                    ),
                     "feature_gramian": feature_gramian,
                     "response_gramian": response_gramian,
                     "training_CME": training_CME,
                     "batch_indices": batch_indices,
                     "regularisation_parameter": self.regularisation_parameter,
-                    "unique": True
+                    "unique": True,
                 },
                 jit_kwargs={"static_argnames": ["regularisation_parameter", "unique"]},
             )
@@ -227,7 +231,8 @@ class TestSupervisedCoreSubset(unittest.TestCase):
             pre.append(deltas[0])
             post.append(deltas[1])
         p_value = ks_2samp(pre, post).pvalue
-        self.assertLessEqual(p_value, self.threshold) 
+        self.assertLessEqual(p_value, self.threshold)
+
 
 # pylint: enable=duplicate-code
 

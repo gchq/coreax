@@ -199,11 +199,11 @@ def invert_regularised_array(
     array: ArrayLike,
     regularisation_parameter: float,
     identity: ArrayLike,
-    rcond: float | None = None
+    rcond: float | None = None,
 ) -> ArrayLike:
     """
     Using a least-squares solver, regularise the array and then invert it.
-    
+
     The function is designed to invert square block arrays where only the top-left block is non-zero.
     That is, we return a block array, the same size as the input array, where each block consists
     of zeros except for the top-left block, which is the inverse of the original non-zero block. To achieve
@@ -221,11 +221,9 @@ def invert_regularised_array(
     """
     if array.shape != identity.shape:
         raise ValueError("Leading dimensions of array and identity must match")
-        
+
     return jnp.linalg.lstsq(
-        array + regularisation_parameter * identity,
-        identity,
-        rcond=rcond
+        array + regularisation_parameter * identity, identity, rcond=rcond
     )[0]
 
 
@@ -234,7 +232,7 @@ def invert_stacked_regularised_arrays(
     stacked_arrays: ArrayLike,
     regularisation_parameter: float,
     identity: ArrayLike,
-    rcond: float | None = None
+    rcond: float | None = None,
 ) -> ArrayLike:
     """
     Efficiently invert a stack of regularised square arrays.
@@ -253,24 +251,26 @@ def invert_stacked_regularised_arrays(
     :return: Stack of inverted regularised arrays
     """
     if stacked_arrays.shape[1:] != identity.shape:
-        raise ValueError("Second and third dimensions of stacked_arrays and dimensions of identity must match")
+        raise ValueError(
+            "Second and third dimensions of stacked_arrays and dimensions of identity must match"
+        )
 
     return vmap(
         partial(
             invert_regularised_array,
             regularisation_parameter=regularisation_parameter,
             identity=identity,
-            rcond=rcond
+            rcond=rcond,
         )
     )(stacked_arrays)
 
 
 def sample_batch_indices(
-    random_key: coreax.util.KeyArrayLike,
+    random_key: KeyArrayLike,
     data_size: int,
     batch_size: int,
-    num_batches: int
-) ->  ArrayLike:
+    num_batches: int,
+) -> ArrayLike:
     """
     Sample an array of column-unique indices where the largest possible index is dictated by data_size.
 
@@ -288,13 +288,12 @@ def sample_batch_indices(
         raise ValueError("batch_size must be a positive integer.")
     elif (num_batches <= 0.0) or not isinstance(num_batches, int):
         raise ValueError("num_batches must be a positive integer.")
-    
-    
+
     return permutation(
         key=random_key,
-        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1) ).T,
+        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1)).T,
         axis=0,
-        independent=True
+        independent=True,
     )[:batch_size, :]
 
 

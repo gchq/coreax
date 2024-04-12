@@ -23,7 +23,7 @@ import unittest
 import jax.numpy as jnp
 import numpy as np
 from scipy.stats import ortho_group
-from jax.random import key
+from jax.random import key, uniform
 
 import coreax.util
 
@@ -197,15 +197,12 @@ class TestUtil(unittest.TestCase):
         self.assertRaises(
             ValueError,
             coreax.util.invert_stacked_regularised_arrays,
-            stacked_arrays=random.uniform(
-                key=key(0),
-                shape=(3, 1, 2)
-            ),
+            stacked_arrays=uniform(key=key(0), shape=(3, 1, 2)),
             regularisation_parameter=1e-6,
             identity=jnp.eye(2),
             rcond=None,
         )
-    
+
     def test_invert_stacked_regularised_arrays(self) -> None:
         """
         Test vmap version of invert_regularised_array.
@@ -215,19 +212,20 @@ class TestUtil(unittest.TestCase):
         identity = jnp.eye(dimension)
         regularisation_parameter = 1e-6
         rcond = None
-        
-        stacked_arrays = random.uniform(
-            key=key(0),
-            shape=(num_arrays, dimension, dimension)
+
+        stacked_arrays = uniform(
+            key=key(0), shape=(num_arrays, dimension, dimension)
         )
-        stacked_pos_semi_def_arrays = stacked_arrays @ jnp.transpose(stacked_arrays, (0, 2, 1))
-        
+        stacked_pos_semi_def_arrays = stacked_arrays @ jnp.transpose(
+            stacked_arrays, (0, 2, 1)
+        )
+
         expected_output = jnp.array(
             [
                 jnp.linalg.lstsq(
-                    a=array + regularisation_parameter*identity,
+                    a=array + regularisation_parameter * identity,
                     b=identity,
-                    rcond=rcond
+                    rcond=rcond,
                 )[0]
                 for array in stacked_pos_semi_def_arrays
             ]
@@ -236,12 +234,12 @@ class TestUtil(unittest.TestCase):
             stacked_pos_semi_def_arrays,
             regularisation_parameter,
             identity=identity,
-            rcond=rcond
+            rcond=rcond,
         )
         self.assertAlmostEqual(
             float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
         )
-    
+
     def test_sample_batch_indices_negative_data_size(self) -> None:
         """
         Test the function sample_batch_indices with an invalid data size.
@@ -271,7 +269,7 @@ class TestUtil(unittest.TestCase):
             batch_size=1,
             num_batches=1,
         )
-    
+
     def test_sample_batch_indices_float_data_size(self) -> None:
         """
         Test the function sample_batch_indices with an invalid data size.
@@ -282,7 +280,7 @@ class TestUtil(unittest.TestCase):
             ValueError,
             coreax.util.sample_batch_indices,
             random_key=key(0),
-            data_size=1.,
+            data_size=1.0,
             batch_size=1,
             num_batches=1,
         )
@@ -316,7 +314,7 @@ class TestUtil(unittest.TestCase):
             batch_size=0,
             num_batches=1,
         )
-    
+
     def test_sample_batch_indices_float_batch_size(self) -> None:
         """
         Test the function sample_batch_indices with an invalid batch size.
@@ -328,7 +326,7 @@ class TestUtil(unittest.TestCase):
             coreax.util.sample_batch_indices,
             random_key=key(0),
             data_size=1,
-            batch_size=1.,
+            batch_size=1.0,
             num_batches=1,
         )
 
@@ -343,10 +341,10 @@ class TestUtil(unittest.TestCase):
             coreax.util.sample_batch_indices,
             random_key=key(0),
             data_size=1,
-            batch_size=2.,
+            batch_size=2.0,
             num_batches=1,
         )
-        
+
     def test_sample_batch_indices_negative_num_batches(self) -> None:
         """
         Test the function sample_batch_indices with an invalid number of batches.
@@ -389,9 +387,9 @@ class TestUtil(unittest.TestCase):
             random_key=key(0),
             data_size=1,
             batch_size=1,
-            num_batches=1.,
+            num_batches=1.0,
         )
-        
+
     def test_jit_test(self) -> None:
         """
         Test jit_test calls the function in question twice when checking performance.
