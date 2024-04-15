@@ -486,7 +486,8 @@ class CMMD(Metric):
         super().__init__()
 
     # Disable pylint warning for arguments-renamed as the use of x and y as arguments
-    # for different datasets is problematic when we are considering supervised data.
+    # for different datasets is bound to create misunderstandings when we are
+    # considering supervised data.
     # pylint: disable=arguments-renamed
     def compute(
         self,
@@ -514,9 +515,8 @@ class CMMD(Metric):
         """
         # Make sure that compatibility params are None
         assert block_size is None, "CMMD computation does not support blocking"
-        assert (
-            weights_x or weights_y
-        ) is None, "CMMD computation does not support weights"
+        assert weights_x is None, "CMMD computation does not support weights"
+        assert weights_y is None, "CMMD computation does not support weights"
 
         return self.conditional_maximum_mean_discrepancy(d1, d2)
 
