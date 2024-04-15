@@ -209,10 +209,8 @@ class KernelHerding(coreax.reduction.Coreset):
             raise
 
         # Assign coreset indices & coreset to original data object
-        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
-        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["kernel_vectorised", "unique"])
@@ -408,10 +406,8 @@ class RandomSample(coreax.reduction.Coreset):
             raise
 
         # Assign coreset indices and coreset to the object
-        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = random_indices
         self.coreset = self.original_data.pre_coreset_array[random_indices, :]
-        # pylint: enable=attribute-defined-outside-init
 
 
 class RPCholesky(coreax.reduction.Coreset):
@@ -553,10 +549,8 @@ class RPCholesky(coreax.reduction.Coreset):
                 raise ValueError("coreset_size must be non-zero") from exception
             raise
 
-        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
-        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["kernel_vectorised", "unique"])
@@ -842,10 +836,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
             self._training_cme = training_cme
 
         # Assign coreset indices & coreset to original data object
-        # pylint: disable=attribute-defined-outside-init
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
-        # pylint: enable=attribute-defined-outside-init
 
     @staticmethod
     @partial(jit, static_argnames=["regularisation_parameter", "unique"])
