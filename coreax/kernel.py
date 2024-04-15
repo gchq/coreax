@@ -972,9 +972,115 @@ class SteinKernel(Kernel):
         )
 
 
+class LinearKernel(Kernel):
+    """Define a linear kernel."""
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        children = ()
+        aux_data = {
+            "length_scale": self.length_scale,
+            "output_scale": self.output_scale,
+        }
+        return children, aux_data
+
+    def compute_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Evaluate the linear kernel on input vectors ``x`` and ``y``.
+
+        We assume ``x`` and ``y`` are two vectors of the same dimension.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Kernel evaluated at (``x``, ``y``)
+        """
+        return x.dot(y)
+
+    def grad_x_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the linear kernel function w.r.t. ``x``.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
+        method for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Jacobian
+            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return y
+
+    def grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Element-wise gradient (Jacobian) of the linear kernel function w.r.t. ``y``.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
+        method for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Jacobian
+            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return x
+
+    def divergence_x_grad_y_elementwise(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> Array:
+        r"""
+        Elementwise divergence w.r.t. ``x`` of Jacobian of Linear w.r.t. ``y``.
+
+        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
+        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
+
+        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
+        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
+
+        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Trace of the Laplace-style operator; a real number
+        """
+        return x.shape[0]
+
+
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
+kernel_classes = (
+    SquaredExponentialKernel,
+    PCIMQKernel,
+    SteinKernel,
+    LaplacianKernel,
+    LinearKernel
+    )
 for _current_class in kernel_classes:
     tree_util.register_pytree_node(
         _current_class, _current_class.tree_flatten, _current_class.tree_unflatten

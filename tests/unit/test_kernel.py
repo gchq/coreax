@@ -2035,6 +2035,177 @@ class TestPCIMQKernel(unittest.TestCase):
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
 
+class TestLinearKernel(unittest.TestCase):
+    """
+    Tests related to the LinearKernel defined in ``kernel.py``.
+    """
+
+    def test_linear_kernel_compute(self) -> None:
+        r"""
+        Test the class LinearKernel distance computations.
+
+        The Linear kernel is defined as
+        :math:`k(x,y) = x^Ty.
+        """
+        # Define input data
+        num_points = 10
+        x = np.arange(num_points).reshape(-1, 1)
+        y = x + 1.0
+
+        # Compute expected output
+        expected_output = np.zeros((num_points, num_points))
+        for x_idx, x_ in enumerate(x):
+            for y_idx, y_ in enumerate(y):
+                expected_output[x_idx, y_idx] = x_ * y_
+
+        # Compute distance using the kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.compute(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_linear_kernel_gradients_wrt_x(self) -> None:
+        r"""
+        Test the class Linear gradient computations with respect to ``x``.
+        """
+        # Setup data
+        num_points = 10
+        dimension = 2
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_output[x_idx, y_idx] = y[y_idx]
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.grad_x(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_linear_kernel_grad_x_elementwise(self) -> None:
+        """
+        Test the Linear kernel element-wise gradient computations w.r.t. ``x``.
+        """
+        # Setup data
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = y
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.grad_x_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
+    def test_linear_kernel_gradients_wrt_y(self) -> None:
+        """
+        Test the class Linear gradient computations with respect to ``y``.
+        """
+        # Setup data
+        num_points = 10
+        dimension = 2
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_output[x_idx, y_idx] = x[y_idx]
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_linear_kernel_grad_y_elementwise(self) -> None:
+        """
+        Test the Linear kernel element-wise gradient computations w.r.t. ``y``.
+        """
+        # Setup data
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 1))
+        y = generator.random((1, 1))
+
+        # Define expected output
+        expected_output = x
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.grad_y_elementwise(x, y)
+
+        # Check output matches expected
+        self.assertAlmostEqual(output, expected_output, places=6)
+
+    def test_linear_div_x_grad_y(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of kernel Jacobian w.r.t. ``y``.
+        """
+        # Setup data
+        num_points = 10
+        dimension = 2
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
+
+        # Define expected output
+        expected_output = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_output[x_idx, y_idx] = dimension
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.divergence_x_grad_y(x, y)
+
+        # Check output matches expected
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def test_linear_div_x_grad_y_elementwise(self) -> None:
+        """
+        Test the divergence w.r.t. ``x`` of Jacobian w.r.t. ``y`` element-wise.
+        """
+        # Setup data
+        random_data_generation_key = 1_989
+
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((1, 2))
+        y = generator.random((1, 2))
+
+        # Define expected output
+        expected_output = 2
+
+        # Compute output using Kernel class
+        kernel = coreax.kernel.LinearKernel()
+        output = kernel.divergence_x_grad_y_elementwise(x, y)
+
+        self.assertAlmostEqual(output, expected_output, places=6)
+
+
 class TestSteinKernel(unittest.TestCase):
     """
     Tests related to the SteinKernel defined in ``kernel.py``.
