@@ -813,7 +813,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             self._greedy_body,
             feature_gramian=feature_gramian,
             response_gramian=response_gramian,
-            training_CME=training_cme,
+            training_cme=training_cme,
             batch_indices=batch_indices,
             regularisation_parameter=self.regularisation_parameter,
             unique=self.unique,
@@ -858,7 +858,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         :param val: Loop updatable-variables
         :param feature_gramian: Gram matrix of training features
         :param response_gramian: Gram matrix of training responses
-        :param training_CME: Evaluation of CME on the training data
+        :param training_cme: Evaluation of CME on the training data
         :param batch_indices: Array of sampled batch indices
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of feature gram matrix
