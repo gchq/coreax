@@ -875,7 +875,7 @@ class RefineCMMD(Refine):
             identity=identity,
             feature_gramian=coreset._feature_gramian,
             response_gramian=coreset._response_gramian,
-            training_CME=coreset._training_cme,
+            training_cme=coreset._training_cme,
             batch_indices=batch_indices,
             regularisation_parameter=coreset.regularisation_parameter,
             unique=self.unique,
