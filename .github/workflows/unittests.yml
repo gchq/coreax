@@ -36,6 +36,8 @@ jobs:
       run: pip install -e .[test]
     - name: Test with pytest
       run: pytest --ignore=tests/integration
+    - name: Test collection of integration tests
+      run: pytest tests/integration --collect-only
   tests-pinned:
     name: Run tests with pinned package versions
     strategy:
