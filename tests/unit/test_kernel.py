@@ -2056,7 +2056,7 @@ class TestLinearKernel(unittest.TestCase):
         expected_output = np.zeros((num_points, num_points))
         for x_idx, x_ in enumerate(x):
             for y_idx, y_ in enumerate(y):
-                expected_output[x_idx, y_idx] = x_[x_idx] * y_[y_idx]
+                expected_output[x_idx, y_idx] = x_.item() * y_.item()
 
         # Compute distance using the kernel class
         kernel = coreax.kernel.LinearKernel()
