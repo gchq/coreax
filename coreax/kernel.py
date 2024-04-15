@@ -1069,7 +1069,7 @@ class LinearKernel(Kernel):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        return x.shape[0]
+        return jnp.atleast_2d(x).shape[1]
 
 
 # Define the pytree node for the added class to ensure methods with JIT decorators
