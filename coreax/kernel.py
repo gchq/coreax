@@ -509,11 +509,8 @@ class SquaredExponentialKernel(Kernel):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        children = ()
-        aux_data = {
-            "length_scale": self.length_scale,
-            "output_scale": self.output_scale,
-        }
+        children = (self.length_scale, self.output_scale)
+        aux_data = {}
         return children, aux_data
 
     def compute_elementwise(
@@ -626,11 +623,8 @@ class LaplacianKernel(Kernel):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        children = ()
-        aux_data = {
-            "length_scale": self.length_scale,
-            "output_scale": self.output_scale,
-        }
+        children = (self.length_scale, self.output_scale)
+        aux_data = {}
         return children, aux_data
 
     def compute_elementwise(
@@ -746,11 +740,8 @@ class PCIMQKernel(Kernel):
             of class attributes, and values being the values of the corresponding class
             attributes.
         """
-        children = ()
-        aux_data = {
-            "length_scale": self.length_scale,
-            "output_scale": self.output_scale,
-        }
+        children = (self.length_scale, self.output_scale)
+        aux_data = {}
         return children, aux_data
 
     def compute_elementwise(
@@ -937,12 +928,23 @@ class SteinKernel(Kernel):
         """
         # The score function is assumed to not change here - but it might if the kernel
         # changes - but this does not work when kernel is specified in children
-        children = (self.base_kernel,)
+        children = (self.base_kernel, self.output_scale)
         aux_data = {
             "score_function": self.score_function,
-            "output_scale": self.output_scale,
         }
         return children, aux_data
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        """
+        Reconstruct a pytree from the tree definition and the leaves.
+
+        Arrays & dynamic values (children) and auxiliary data (static values) are
+        reconstructed. A method to reconstruct the pytree needs to be specified to
+        enable JIT decoration of methods inside this class.
+        """
+        base_kernel, output_scale = children
+        return cls(base_kernel, output_scale=output_scale, **aux_data)
 
     def compute_elementwise(
         self,
