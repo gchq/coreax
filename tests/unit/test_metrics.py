@@ -20,7 +20,7 @@ verify that metric computations produce the expected results on simple examples.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, NonCallableMagicMock, patch
 
 import jax.numpy as jnp
 from jax import random
@@ -76,8 +76,8 @@ class TestMMD(unittest.TestCase):
 
         :num_points_x: Number of test data points
         :d: Dimension of data
-        :m: Number of points to randomly select for second dataset ``y``
-        :max_size: Maximum number of points for block calculations
+        :num_points_y: Number of points to randomly select for second dataset ``y``
+        :block_size: Maximum number of points for block calculations
         """
         # Define data parameters
         self.num_points_x = 30
@@ -635,7 +635,7 @@ class TestMMD(unittest.TestCase):
         r"""
         Test sum_weighted_pairwise_distances, which calculates w^T*K*w matrices.
 
-        Computations are done in blocks of size max_size.
+        Computations are done in blocks of size block_size.
 
         For the dataset of 3 points in 2 dimensions :math:`x`, and second dataset
         :math:`y`:
@@ -987,242 +987,395 @@ class TestMMD(unittest.TestCase):
 
 class TestCMMD(unittest.TestCase):
     """
-    Tests related to the conditional maximum mean discrepancy (CMMD) class 
+    Tests related to the conditional maximum mean discrepancy (CMMD) class
     in metrics.py.
     """
 
     # Disable pylint warning for too-many-instance-attributes as we use each of these in
     # subsequent tests, variable names ensure human readability and understanding
     # pylint: disable=too-many-instance-attributes
-    def setUp(self):
+    def setUp(self) -> None:
         r"""
         Generate data for shared use across unit tests.
 
-        Generate ``num_points_x`` random points in ``d`` dimensions from a uniform
-        distribution [0, 1).
-        Randomly select ``num_points_y`` points for second dataset ``y``.
-        Generate weights: ``weights_x`` for original data, ``weights_y`` for second
-        dataset ``y``.
+        Generate two supervised datasets of size ``dataset_size_1`` and
+        ``dataset_size_2`` with feature dimension of size ``feature_dimension``,
+        and response dimension of size ``response_dimension``.
 
-        :num_points_x: Number of test data points
-        :d: Dimension of data
-        :m: Number of points to randomly select for second dataset ``y``
-        :max_size: Maximum number of points for block calculations
+        :dataset_size_1: Number of data points in first dataset
+        :dataset_size_2: Number of data points in second dataset
+        :feature_dimension: Dimension of feature space
+        :response_dimension: Dimension of response space
+        :regularisation_params: A  :math:`1 \times 2` array of regularisation
+            parameters corresponding to the original dataset :math:`\mathcal{D}^{(1)}`
+            and the coreset :math:`\mathcal{D}^{(2)}` respectively
+        :precision_threshold: Positive threshold we compare against for precision
         """
         # Define data parameters
-        self.num_points_x = 30
-        self.dimension = 10
-        self.num_points_y = 5
-        self.block_size = 3
+        self.dataset_size_1 = 10
+        self.dataset_size_2 = 15
+        self.feature_dimension = 5
+        self.response_dimension = 5
+        self.regularisation_params = jnp.array([1e-6, 1e-6])
+        self.precision_threshold = 1e-6
 
-        # Define example datasets
-        self.x = random.uniform(
-            random.key(0), shape=(self.num_points_x, self.dimension)
+        # Generate first multi-output supervised dataset
+        x1 = jnp.sin(
+            10
+            * random.uniform(
+                random.key(0),
+                shape=(
+                    self.dataset_size_1,
+                    self.feature_dimension,
+                ),
+            )
         )
-        self.y = random.choice(random.key(0), self.x, shape=(self.num_points_y,))
-        self.weights_x = (
-            random.uniform(random.key(0), shape=(self.num_points_x,))
-            / self.num_points_x
+        coefficients1 = random.uniform(
+            random.key(0),
+            shape=(
+                self.feature_dimension,
+                self.response_dimension,
+            ),
         )
-        self.weights_y = (
-            random.uniform(random.key(0), shape=(self.num_points_y,))
-            / self.num_points_y
+        errors1 = random.normal(
+            random.key(0),
+            shape=(
+                self.dataset_size_1,
+                self.response_dimension,
+            ),
         )
+        y1 = x1 @ coefficients1 + 0.1 * errors1
+        self.d1 = jnp.hstack((x1, y1))
 
-    def test_mmd_compare_same_data(self) -> None:
+        # Generate second multi-output supervised dataset
+        x2 = jnp.sin(
+            10
+            * random.uniform(
+                random.key(1),
+                shape=(
+                    self.dataset_size_2,
+                    self.feature_dimension,
+                ),
+            )
+        )
+        coefficients2 = random.uniform(
+            random.key(1),
+            shape=(
+                self.feature_dimension,
+                self.response_dimension,
+            ),
+        )
+        errors2 = random.normal(
+            random.key(1),
+            shape=(
+                self.dataset_size_2,
+                self.response_dimension,
+            ),
+        )
+        y2 = x2 @ coefficients2 + 0.1 * errors2
+        self.d2 = jnp.hstack((x2, y2))
+
+    def test_cmmd_compare_same_data(self) -> None:
         r"""
-        Test the MMD of a dataset with itself is zero, for several different kernels.
+        Test the CMMD of a dataset with itself is zero, for several different kernels.
         """
         # Define a metric object using the SquaredExponentialKernel
-        metric = coreax.metrics.MMD(
-            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0)
+        metric = coreax.metrics.CMMD(
+            feature_kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0),
+            response_kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0),
+            num_feature_dimensions=self.feature_dimension,
+            regularisation_params=self.regularisation_params,
+            precision_threshold=self.precision_threshold,
         )
-        self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
+        self.assertAlmostEqual(float(metric.compute(self.d1, self.d1)), 0.0)
 
         # Define a metric object using the LaplacianKernel
-        metric = coreax.metrics.MMD(
-            kernel=coreax.kernel.LaplacianKernel(length_scale=1.0)
+        metric = coreax.metrics.CMMD(
+            feature_kernel=coreax.kernel.LaplacianKernel(length_scale=1.0),
+            response_kernel=coreax.kernel.LaplacianKernel(length_scale=1.0),
+            num_feature_dimensions=self.feature_dimension,
+            regularisation_params=self.regularisation_params,
+            precision_threshold=self.precision_threshold,
         )
-        self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
+        self.assertAlmostEqual(float(metric.compute(self.d1, self.d1)), 0.0)
 
         # Define a metric object using the PCIMQKernel
-        metric = coreax.metrics.MMD(kernel=coreax.kernel.PCIMQKernel(length_scale=1.0))
-        self.assertAlmostEqual(float(metric.compute(self.x, self.x)), 0.0)
+        metric = coreax.metrics.CMMD(
+            feature_kernel=coreax.kernel.PCIMQKernel(length_scale=1.0),
+            response_kernel=coreax.kernel.PCIMQKernel(length_scale=1.0),
+            num_feature_dimensions=self.feature_dimension,
+            regularisation_params=self.regularisation_params,
+            precision_threshold=self.precision_threshold,
+        )
+        self.assertAlmostEqual(float(metric.compute(self.d1, self.d1)), 0.0)
 
-    def test_mmd_ones(self):
+    # Lots of overfull lines of mathematics upcoming
+    # pylint: disable=line-too-long
+    def test_cmmd_ints_no_regularisation(self) -> None:
         r"""
-        Test MMD computation with a small example dataset of ones and zeros.
+        Test CMMD computation with a small example dataset of integers with no 
+        regularisation.
 
-        For the dataset of 4 points in 2 dimensions, :math:`x`, and another dataset
-        :math:`y`, given by:
+        For the first dataset of 3 pairs in 2 feature dimensions and 1 response
+        dimension, :math:`\mathcal{D}_1` given by:
+        .. math::
+
+            x_1 = [[0,0], [1,1]]
+            y_1 = [[0], [1]]
+
+        and a second dataset of 2 pairs in 2 feature dimensions and 1 response
+        dimension, :math:`\mathcal{D}_2` given by:
 
         .. math::
 
-            x = [[0,0], [1,1], [0,0], [1,1]]
+            x_2 = [[1,1], [3,3]]
+            y_2 = [[1], [3]]
 
-            y = [[0,0], [1,1]]
-
-        the Gaussian (aka radial basis function) kernel,
-        :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
+        the Gaussian (aka radial basis function) kernels with length-scale equal to one,
+        :math:`k(a,b) = l(a,b) = \exp (-||a-b||^2/2)` gives:
 
         .. math::
 
-            k(x,x) = \exp(-\begin{bmatrix}0 & 2 & 0 & 2 \\ 2 & 0 & 2 & 0\\ 0 & 2 & 0 &
-            2 \\ 2 & 0 & 2 & 0\end{bmatrix}/2\sigma^2).
+            K_{11} = \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix},
 
-            k(y,y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \end{bmatrix}/2\sigma^2).
+            K_{11}^{-1} = \frac{1}{1 - e^{-2}}\begin{bmatrix}1 & -e^{-1}\\ -e^{-1} & 1\end{bmatrix},
 
-            k(x,y) = \exp(-\begin{bmatrix}0 & 2  \\ 2 & 0 \\0 & 2  \\ 2 & 0
-            \end{bmatrix}/2\sigma^2).
+            K_{22} = \begin{bmatrix}1 & e^{-4}\\ e^{-4} & 1\end{bmatrix},
+
+            K_{22}^{-1} = \frac{1}{1 - e^{-8}}\begin{bmatrix}1 & -e^{-4}\\ -e^{-4} & 1\end{bmatrix},
+
+            K_{21} = \begin{bmatrix}e^{-1} & 1\\ e^{-9} & e^{-4}\end{bmatrix},
+
+            L_{11} = \begin{bmatrix}1 & e^{-1/2}\\ e^{-1/2} &1\end{bmatrix},
+
+            L_{22} = \begin{bmatrix}1 & e^{-2}\\ e^{-2} &1\end{bmatrix},
+
+            L_{12} = \begin{bmatrix}e^{-1/2} & e^{-9/2}\\ 1 & e^{-2}\end{bmatrix}.
 
         Then
 
         .. math::
 
-            \text{MMD}^2(x,y) = \mathbb{E}(k(x,x)) + \mathbb{E}(k(y,y)) -
-            2\mathbb{E}(k(x,y))
+            \text{CMMD}(\mathcal{D}_1, \mathcal{D}_2) = \sqrt{\text{Tr}(T_1) + \text{Tr}(T_2) - 2\text{Tr}(T_3)}
+            \end{align*}
 
-            = \frac{1}{2} + e^{-1/2} + \frac{1}{2} + e^{-1/2} - 2\left(\frac{1}{2}
-            + e^{-1/2}\right)
+        where
 
-            = 0.
+        .. math::
+             
+            T_1 := K_{11}^{-1}L_{11}K_{11}^{-1}K_{11} = K_{11}^{-1}L_{11}
+
+            = \frac{1}{1 - e^{-2}}\begin{bmatrix}1 & -e^{-1}\\ -e^{-1} & 1\end{bmatrix}\begin{bmatrix}1 & e^{-1/2}\\ e^{-1/2} &1\end{bmatrix}
+
+            = \frac{1}{1 - e^{-2}}\begin{bmatrix}1 - e^{-3/2} & e^{-1/2} - e^{-1}\\ e^{-1/2} - e^{-1} & 1 - e^{-3/2}\end{bmatrix}
+
+            \implies \text{Tr}(T_1) = \frac{2(1 - e^{-3/2})}{1 - e^{-2}}
+
+
+            T_2 := K_{22}^{-1}L_{22}K_{22}^{-1}K_{22} = K_{22}^{-1}L_{22}
+            
+            =\frac{1}{1 - e^{-8}}\begin{bmatrix}1 & -e^{-4}\\ -e^{-4} & 1\end{bmatrix}\begin{bmatrix}1 & e^{-2}\\ e^{-2} &1\end{bmatrix}
+            
+            = \frac{1}{1 - e^{-8}}\begin{bmatrix}1 - e^{-6} & e^{-2} - e^{-4}\\ e^{-2} - e^{-4} & 1 - e^{-6}\end{bmatrix}
+            
+            \implies \text{Tr}(T_2) = \frac{2(1 - e^{-6})}{1 - e^{-8}}
+
+
+            T_3 := K_{21}^{-1}K_{11}^{-1}L_{12}K_{22}^{-1}
+            
+            = \frac{1}{(1 - e^{-2})(1 - e^{-8})}\begin{bmatrix}e^{-1} & 1\\ e^{-9} & e^{-4}\end{bmatrix}\begin{bmatrix}1 & -e^{-1}\\ -e^{-1} & 1\end{bmatrix}\begin{bmatrix}e^{-1/2} & e^{-9/2}\\ 1 & e^{-2}\end{bmatrix}\begin{bmatrix}1 & -e^{-4}\\ -e^{-4} & 1\end{bmatrix}
+            
+            = \frac{1}{(1 - e^{-2})(1 - e^{-8})}\begin{bmatrix}0 & 1 - e^{-2}\\ e^{-9} - e^{-5} & e^{-4} - e^{-10}\end{bmatrix}\begin{bmatrix}e^{-1/2} - e^{-17/2} & 0\\ 1 -e^{-6} & e^{-2} - e^{-4}\end{bmatrix}
+            
+            = \frac{1}{(1 - e^{-2})(1 - e^{-8})}\begin{bmatrix}(1 - e^{-2})(1 - e^{-6}) & (1 - e^{-2})(e^{-2} - e^{-4})\\  (e^{-9} - e^{-5}) (e^{-1/2} - e^{-17/2}) +  (e^{-4} - e^{-10}) (1 - e^{-6}) & (e^{-2} - e^{-4})(e^{-4} - e^{-10})\end{bmatrix}
+            
+            \implies \text{Tr}(T_3) = \frac{(1 - e^{-2})(1 - e^{-6})  + (e^{-2} - e^{-4})(e^{-4} - e^{-10})}{(1 - e^{-2})(1 - e^{-8})}
+
+        therefore
+
+        .. math::
+    
+            \text{CMMD}(\mathcal{D}_1, \mathcal{D}_2) &= \sqrt{\text{Tr}(T_1) + \text{Tr}(T_2) - 2\text{Tr}(T_3)}
+            
+            =  \sqrt{ \frac{2(1 - e^{-3/2})}{1 - e^{-2}} + \frac{2(1 - e^{-6})}{1 - e^{-8}} -2 \frac{(1 - e^{-2})(1 - e^{-6})  + (e^{-2} - e^{-4})(e^{-4} - e^{-10})}{(1 - e^{-2})(1 - e^{-8})} }
         """
         # Setup data
-        x = jnp.array([[0, 0], [1, 1], [0, 0], [1, 1]])
-        y = jnp.array([[0, 0], [1, 1]])
-        length_scale = 1.0
+        x1 = jnp.array([[0,0], [1,1]])
+        y1 = jnp.array([[0], [1]])
+        d1 = jnp.hstack((x1, y1))
 
-        # Set expected MMD
-        expected_output = 0.0
+        x2 = jnp.array([[1,1], [3,3]])
+        y2 = jnp.array([[1], [3]])
+        d2 = jnp.hstack((x2, y2))
 
-        # Define a metric object using an RBF kernel
-        metric = coreax.metrics.MMD(
-            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
-        )
-
-        # Compute MMD using the metric object
-        output = metric.compute(x=x, y=y)
-
-        # Check output matches expected
-        self.assertAlmostEqual(float(output), expected_output, places=5)
-
-    def test_mmd_ints(self):
-        r"""
-        Test MMD computation with a small example dataset of integers.
-
-        For the dataset of 3 points in 2 dimensions, :math:`x`, and second dataset
-        :math:`y`, given by:
-
-        .. math::
-
-            x = [[0,0], [1,1], [2,2]]
-
-            y = [[0,0], [1,1]]
-
-        the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
-
-        .. math::
-
-            k(x,x) = \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \\ 8 & 2 & 0
-            \end{bmatrix}/2\sigma^2) = \begin{bmatrix}1 & e^{-1} & e^{-4} \\ e^{-1} &
-            1 & e^{-1} \\ e^{-4} & e^{-1} & 1\end{bmatrix}.
-
-            k(y,y) = \exp(-\begin{bmatrix}0 & 2 \\ 2 & 0 \end{bmatrix}/2\sigma^2) =
-             \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix}.
-
-            k(x,y) =  \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2 \end{bmatrix}
-            /2\sigma^2) = \begin{bmatrix}1 & e^{-1} \\  e^{-1} & 1 \\ e^{-4} & e^{-1}
-            \end{bmatrix}.
-
-        Then
-
-        .. math::
-
-            \text{MMD}^2(x,y) = \mathbb{E}(k(x,x)) + \mathbb{E}(k(y,y)) -
-            2\mathbb{E}(k(x,y))
-
-            = \frac{3+4e^{-1}+2e^{-4}}{9} + \frac{2 + 2e^{-1}}{2} -2 \times
-            \frac{2 + 3e^{-1}+e^{-4}}{6}
-
-            = \frac{3 - e^{-1} -2e^{-4}}{18}.
-        """
-        # Setup data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-        length_scale = 1.0
-
-        # Set expected MMD
-        expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
+        # Set expected CMMD
+        t1 = ( 2 * ( 1 - jnp.exp(-3/2) ) ) / ( 1 - jnp.exp(-2) )
+        t2 = ( 2 * ( 1 - jnp.exp(-6) ) ) / ( 1 - jnp.exp(-8) )
+        t3 = ( ( 1 - jnp.exp(-2) ) * ( 1 - jnp.exp(-6) ) + ( jnp.exp(-2) - jnp.exp(-4) ) * ( jnp.exp(-4)- jnp.exp(-10) ) ) / ( ( 1 - jnp.exp(-2) ) * ( 1 - jnp.exp(-8) ) )
+        #pylint: enable=line-too-long
+        expected_cmmd = jnp.sqrt( t1 + t2 - 2*t3 )
 
         # Define a metric object using an RBF kernel
-        metric = coreax.metrics.MMD(
-            kernel=coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        metric = coreax.metrics.CMMD(
+            feature_kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0),
+            response_kernel=coreax.kernel.SquaredExponentialKernel(length_scale=1.0),
+            num_feature_dimensions=2,
+            regularisation_params=jnp.array([0, 0]),
+            precision_threshold=self.precision_threshold
         )
 
         # Compute MMD using the metric object
-        output = metric.compute(x=x, y=y)
+        output = metric.compute(d1=d1, d2=d2)
 
         # Check output matches expected
-        self.assertAlmostEqual(float(output), float(expected_output), places=5)
+        self.assertAlmostEqual(output, expected_cmmd, places=5)
 
-    def test_mmd_rand(self):
+    def test_cmmd_rand(self) -> None:
         r"""
-        Test MMD computed from randomly generated test data agrees with method result.
+        Test CMMD computed from randomly generated test data agrees with method result.
         """
-        # Define a kernel object
+        # Define kernel objects
         length_scale = 1.0
-        kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
+        feature_kernel = coreax.kernel.SquaredExponentialKernel(
+            length_scale=length_scale
+        )
+        response_kernel = coreax.kernel.SquaredExponentialKernel(
+            length_scale=length_scale
+        )
 
-        # Compute each term in the MMD formula
-        kernel_nn = kernel.compute(self.x, self.x)
-        kernel_mm = kernel.compute(self.y, self.y)
-        kernel_nm = kernel.compute(self.x, self.y)
+        # Extract data
+        x1 = jnp.atleast_2d(self.d1[:, : self.feature_dimension])
+        y1 = jnp.atleast_2d(self.d1[:, self.feature_dimension :])
+        x2 = jnp.atleast_2d(self.d2[:, : self.feature_dimension])
+        y2 = jnp.atleast_2d(self.d2[:, self.feature_dimension :])
 
-        # Compute overall MMD by
-        expected_mmd = (
-            kernel_nn.mean() + kernel_mm.mean() - 2 * kernel_nm.mean()
-        ) ** 0.5
+        # Compute feature kernel gramians
+        feature_gramian_1 = feature_kernel.compute(x1, x1)
+        feature_gramian_2 = feature_kernel.compute(x2, x2)
+        cross_feature_gramian = feature_kernel.compute(x2, x1)
 
+        # Compute response kernel gramians
+        response_gramian_1 = response_kernel.compute(y1, y1)
+        response_gramian_2 = response_kernel.compute(y2, y2)
+        cross_response_gramian = response_kernel.compute(y1, y2)
+
+        # Invert feature kernel gramians
+        identity_1 = jnp.eye(feature_gramian_1.shape[0])
+        inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
+            array=feature_gramian_1,
+            regularisation_parameter=self.regularisation_params[0],
+            identity=identity_1,
+        )
+
+        identity_2 = jnp.eye(feature_gramian_2.shape[0])
+        inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
+            array=feature_gramian_2,
+            regularisation_parameter=self.regularisation_params[1],
+            identity=identity_2,
+        )
+
+        # Compute each term in the CMMD
+        term_1 = (
+            inverse_feature_gramian_1
+            @ response_gramian_1
+            @ inverse_feature_gramian_1
+            @ feature_gramian_1
+        )
+        term_2 = (
+            inverse_feature_gramian_2
+            @ response_gramian_2
+            @ inverse_feature_gramian_2
+            @ feature_gramian_2
+        )
+        term_3 = (
+            inverse_feature_gramian_1
+            @ cross_response_gramian
+            @ inverse_feature_gramian_2
+            @ cross_feature_gramian
+        )
+
+        # Compute CMMD
+        expected_cmmd = jnp.sqrt(
+            coreax.util.apply_negative_precision_threshold(
+                jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3),
+                self.precision_threshold,
+            )
+        )
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = coreax.metrics.CMMD(
+            feature_kernel=feature_kernel,
+            response_kernel=response_kernel,
+            num_feature_dimensions=self.feature_dimension,
+            regularisation_params=self.regularisation_params,
+            precision_threshold=self.precision_threshold,
+        )
 
-        # Compute MMD using the metric object
-        output = metric.compute(x=self.x, y=self.y)
+        # Compute CMMD using the metric object
+        output = metric.compute(d1=self.d1, d2=self.d2)
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_mmd, places=5)
-
-    def test_compute_given_weights_not_none(self) -> None:
-        """
-        Test compute when given a not None block size.
-        """
-        # Define a metric object
-        metric = coreax.metrics.MMD(kernel=MagicMock())
-
-        # Compute MMD with a zero block_size - this should raise an error explaining
-        # this parameter must be a positive integer
-        with self.assertRaises(ValueError) as error_raised:
-            metric.compute(x=self.x, y=self.y, block_size=0)
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "block_size must be a positive integer",
-        )
+        self.assertAlmostEqual(output, expected_cmmd, places=5)
 
     def test_compute_given_block_size_not_none(self) -> None:
         """
-        Test compute when given a not None block size.
+        Test compute when given a block size which is not None.
         """
         # Define a metric object
-        metric = coreax.metrics.MMD(kernel=MagicMock())
+        metric = coreax.metrics.CMMD(
+            feature_kernel=MagicMock(),
+            response_kernel=MagicMock(),
+            num_feature_dimensions=NonCallableMagicMock(),
+        )
 
-        # Compute MMD with a zero block_size - this should raise an error explaining
-        # this parameter must be a positive integer
-        with self.assertRaises(ValueError) as error_raised:
-            metric.compute(x=self.x, y=self.y, block_size=0)
+        # Compute CMMD with a block size which is not None - this should raise an error
+        # explaining this parameter is not supported.
+        with self.assertRaises(AssertionError) as error_raised:
+            metric.compute(d1=self.d1, d2=self.d2, block_size=0)
         self.assertEqual(
             error_raised.exception.args[0],
-            "block_size must be a positive integer",
+            "CMMD computation does not support blocking",
         )
+
+    def test_compute_given_weights_x_not_none(self) -> None:
+        """
+        Test compute when given weights_x which is not None.
+        """
+        # Define a metric object
+        metric = coreax.metrics.CMMD(
+            feature_kernel=MagicMock(),
+            response_kernel=MagicMock(),
+            num_feature_dimensions=NonCallableMagicMock(),
+        )
+
+        # Compute CMMD with weights_x vector is not None - this should raise an error
+        # explaining this parameter is not supported.
+        with self.assertRaises(AssertionError) as error_raised:
+            metric.compute(d1=self.d1, d2=self.d2, weights_x=jnp.ones(self.d1.shape[0]))
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "CMMD computation does not support weights",
+        )
+
+    def test_compute_given_weights_y_not_none(self) -> None:
+        """
+        Test compute when given weights_x which is not None.
+        """
+        # Define a metric object
+        metric = coreax.metrics.CMMD(
+            feature_kernel=MagicMock(),
+            response_kernel=MagicMock(),
+            num_feature_dimensions=NonCallableMagicMock(),
+        )
+
+        # Compute CMMD with weights_y vector is not None - this should raise an error
+        # explaining this parameter is not supported.
+        with self.assertRaises(AssertionError) as error_raised:
+            metric.compute(d1=self.d1, d2=self.d2, weights_y=jnp.ones(self.d1.shape[0]))
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "CMMD computation does not support weights",
+        )
+
 
 # pylint: enable=too-many-public-methods
 
