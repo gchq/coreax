@@ -1136,7 +1136,7 @@ class TestCMMD(unittest.TestCase):
 
         .. math::
 
-            K_{11} = \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix},
+            k(x_1_x_1) := K_{11} = \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1\end{bmatrix},
 
             K_{11}^{-1} = \frac{1}{1 - e^{-2}}\begin{bmatrix}1 & -e^{-1}\\ -e^{-1} & 1\end{bmatrix},
 
