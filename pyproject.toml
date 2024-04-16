@@ -17,7 +17,6 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
 license = {file = "LICENSE"}
@@ -112,7 +111,7 @@ ignore-init-module-imports = true
 "coreax/__init__.py" = ["F401"]
 "documentation/source/conf.py" = ["E402"]
 "documentation/source/snippets/*" = ["D100", "F821"]
-"examples/*" = ["PLR0914", "PLR0915", "PLR6104"]
+"examples/*" = ["PLR0914", "PLR0915"]
 "tests/*" = ["D102", "D200", "PLR0904"]
 
 [tool.ruff.lint.pylint]
