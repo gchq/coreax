@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from herding_refine_weighted import main as herding_refine_main
+from examples.herding_refine_weighted import main as herding_refine_main
 
 # Integration tests are split across several files, to allow serial calls and avoid
 # sharing of JIT caches between tests. As a result, ignore the pylint warnings for
