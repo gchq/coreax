@@ -101,9 +101,9 @@ def main(
     """
     # Convert to absolute paths
     if not in_path.is_absolute():
-        in_path = Path(__file__).parent / in_path
+        in_path = Path(__file__).parent.joinpath(in_path)
     if out_path is not None and not out_path.is_absolute():
-        out_path = Path(__file__).parent / out_path
+        out_path = Path(__file__).parent.joinpath(out_path)
 
     # Path to original image
     original_data = cv2.imread(str(in_path))

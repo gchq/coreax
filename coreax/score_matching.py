@@ -384,9 +384,8 @@ class SlicedScoreMatching(ScoreMatching):
         #  time.
         # Perturb the inputs with Gaussian noise
         x_perturbed = x + sigmas[i] * random.normal(random.key(0), x.shape)
-        obj = (
-            obj
-            + sigmas[i] ** 2
+        obj += (
+            sigmas[i] ** 2
             * self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
                 x_perturbed, random_vectors
             ).mean()

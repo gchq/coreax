@@ -194,7 +194,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
 
     if out_path is not None:
         if not out_path.is_absolute():
-            out_path = Path(__file__).parent / out_path
+            out_path = Path(__file__).parent.joinpath(out_path)
         plt.savefig(out_path)
 
     plt.show()

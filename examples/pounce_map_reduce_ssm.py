@@ -80,9 +80,9 @@ def main(
     """
     # Convert input and absolute paths to absolute paths
     if not in_path.is_absolute():
-        in_path = Path(__file__).parent / in_path
+        in_path = Path(__file__).parent.joinpath(in_path)
     if out_path is not None and not out_path.is_absolute():
-        out_path = Path(__file__).parent / out_path
+        out_path = Path(__file__).parent.joinpath(out_path)
 
     # Create output directory
     if out_path is not None:
