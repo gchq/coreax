@@ -609,7 +609,7 @@ class RPCholesky(coreax.reduction.Coreset):
         )
 
         # Track diagonal of residual matrix
-        residual_diagonal = residual_diagonal - jnp.square(approximation_matrix[:, i])
+        residual_diagonal -= jnp.square(approximation_matrix[:, i])
 
         # Ensure diagonal remains nonnegative
         residual_diagonal = residual_diagonal.clip(min=0)
