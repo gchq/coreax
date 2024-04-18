@@ -51,7 +51,6 @@ repos:
         language: python
         exclude:
           (?x)^(
-            .pylintrc|
             examples/.+/.+.(gif|png)
           )$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
