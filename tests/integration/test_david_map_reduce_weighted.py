@@ -53,11 +53,11 @@ class TestDavid(unittest.TestCase):
             )
             out_path = Path(tmp_dir) / "david_coreset.png"
             mmd_coreset, mmd_random = david_map_reduce_weighted_main(
-                in_path=in_path, out_path=out_path
+                in_path=in_path, out_path=out_path, downsampling_factor=4
             )
 
             self.assertEqual(
-                call("Image dimensions: (215, 180)"),
+                call("Image dimensions: (53, 45)"),
                 mock_print.call_args_list[0],
                 msg="Unexpected print statement. Likely due to unexpected image size",
             )

@@ -45,6 +45,7 @@ import cv2
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from flax import linen
 from jax import random
 
 from coreax import (
@@ -74,6 +75,7 @@ MIN_LENGTH_SCALE = 1e-6
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
     out_path: Path | None = None,
+    downsampling_factor: int = 1,
 ) -> tuple[float, float]:
     """
     Run the 'david' example for image sampling.
@@ -97,6 +99,7 @@ def main(
         absolute path is given
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
+    :param downsampling_factor: the window size to average (downsample) the images over.
     :return: Coreset MMD, random sample MMD
     """
     # Convert to absolute paths
@@ -108,23 +111,28 @@ def main(
     # Path to original image
     original_data = cv2.imread(str(in_path))
     image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
+    # Pool/downsample the image
+    window_shape = (downsampling_factor, downsampling_factor)
+    pooled_image_data = linen.avg_pool(
+        image_data[..., None], window_shape, strides=window_shape
+    )[..., 0]
 
-    print(f"Image dimensions: {image_data.shape}")
-    pre_coreset_data = np.column_stack(np.nonzero(image_data < MAX_8BIT))
-    pixel_values = image_data[image_data < MAX_8BIT]
+    print(f"Image dimensions: {pooled_image_data.shape}")
+    pre_coreset_data = np.column_stack(np.nonzero(pooled_image_data < MAX_8BIT))
+    pixel_values = pooled_image_data[pooled_image_data < MAX_8BIT]
     pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
         np.float32
     )
     num_data_points = pre_coreset_data.shape[0]
 
-    # Request 8000 coreset points
-    coreset_size = 8_000
+    # Request coreset points
+    coreset_size = 8_000 // downsampling_factor
 
     # Setup the original data object
     data = ArrayData.load(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
-    num_samples_length_scale = min(num_data_points, 1_000)
+    num_samples_length_scale = min(num_data_points, 1000 // downsampling_factor)
     random_seed = 1_989
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
@@ -157,11 +165,13 @@ def main(
         herding_key,
         kernel=herding_kernel,
         weights_optimiser=weights_optimiser,
-        block_size=1_000,
+        block_size=1_000 // downsampling_factor,
     )
     herding_object.fit(
         original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=10_000),
+        strategy=MapReduce(
+            coreset_size=coreset_size, leaf_size=10_000 // downsampling_factor
+        ),
     )
     herding_weights = herding_object.solve_weights()
 
@@ -184,13 +194,13 @@ def main(
     # Compute the MMD between the original data and the coreset generated via herding
     metric_object = MMD(kernel=mmd_kernel)
     maximum_mean_discrepancy_herding = herding_object.compute_metric(
-        metric_object, block_size=1_000
+        metric_object, block_size=1_000 // downsampling_factor
     )
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
     maximum_mean_discrepancy_random = random_sample_object.compute_metric(
-        metric_object, block_size=1_000
+        metric_object, block_size=1_000 // downsampling_factor
     )
 
     # Print the MMD values
@@ -198,11 +208,11 @@ def main(
     print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
 
     print("Plotting")
-    # Plot the original image
+    # Plot the pre-coreset image
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 3, 1)
-    plt.imshow(image_data, cmap="gray")
-    plt.title("Original")
+    plt.imshow(pooled_image_data, cmap="gray")
+    plt.title("Pre-Coreset")
     plt.axis("off")
 
     # Plot the coreset image and weight the points using a function of the coreset
