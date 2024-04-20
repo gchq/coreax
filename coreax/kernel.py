@@ -66,10 +66,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, tree_util, vmap
+from jax import Array, grad, jacrev, jit, tree_util
 from jax.typing import ArrayLike
 
-import coreax.util
+from coreax.util import KernelComputeType, pairwise, squared_distance
 
 if TYPE_CHECKING:
     import coreax.approximation
@@ -90,7 +90,7 @@ def median_heuristic(x: ArrayLike) -> Array:
     # Format inputs
     x = jnp.atleast_2d(x)
     # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(coreax.util.squared_distance_pairwise(x, x), k=1)
+    square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
     # Calculate the median of the square distances
     median_square_distance = jnp.median(
         square_distances[jnp.triu_indices_from(square_distances, k=1)]
@@ -139,7 +139,6 @@ class Kernel(ABC):
         """
         return cls(*children, **aux_data)
 
-    @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
@@ -157,14 +156,7 @@ class Kernel(ABC):
         :return: Kernel evaluations between points in ``x`` and ``y``. If ``x`` = ``y``,
             then this is the Gram matrix corresponding to the RKHS inner product.
         """
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        fn = vmap(
-            vmap(self.compute_elementwise, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
+        return pairwise(self.compute_elementwise)(x, y)
 
     @abstractmethod
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -179,7 +171,6 @@ class Kernel(ABC):
         :return: Kernel evaluated at (``x``, ``y``)
         """
 
-    @jit
     def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
@@ -194,16 +185,8 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`n \times m \times d` array of pairwise Jacobians
         """
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        fn = vmap(
-            vmap(self.grad_x_elementwise, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
+        return pairwise(self.grad_x_elementwise)(x, y)
 
-    @jit
     def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
@@ -218,14 +201,7 @@ class Kernel(ABC):
         :param y: An :math:`m \times d` dataset (array) or a single value (point)
         :return: An :math:`m \times n \times d` array of pairwise Jacobians
         """
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        fn = vmap(
-            vmap(self.grad_y_elementwise, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
+        return pairwise(self.grad_y_elementwise)(x, y)
 
     def grad_x_elementwise(
         self,
@@ -271,7 +247,6 @@ class Kernel(ABC):
         """
         return grad(self.compute_elementwise, 1)(x, y)
 
-    @jit
     def divergence_x_grad_y(
         self,
         x: ArrayLike,
@@ -290,18 +265,7 @@ class Kernel(ABC):
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Array of Laplace-style operator traces :math:`n \times m` array
         """
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-        fn = vmap(
-            vmap(
-                self.divergence_x_grad_y_elementwise,
-                in_axes=(0, None),
-                out_axes=0,
-            ),
-            in_axes=(None, 0),
-            out_axes=1,
-        )
-        return fn(x, y)
+        return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
 
     def divergence_x_grad_y_elementwise(
         self,
@@ -334,7 +298,7 @@ class Kernel(ABC):
         kernel_row_sum: ArrayLike,
         i: int,
         j: int,
-        kernel_pairwise: coreax.util.KernelComputeType,
+        kernel_pairwise: KernelComputeType,
         max_size: int = 10_000,
     ) -> Array:
         r"""
@@ -411,16 +375,6 @@ class Kernel(ABC):
         """
         x = jnp.atleast_2d(x)
 
-        # Define the function to call to evaluate the kernel for all pairwise sets of
-        # points
-        kernel_pairwise = jit(
-            vmap(
-                vmap(self.compute_elementwise, in_axes=(0, None), out_axes=0),
-                in_axes=(None, 0),
-                out_axes=1,
-            )
-        )
-
         # Ensure data format is as required
         num_data_points = len(x)
         kernel_row_sum = jnp.zeros(num_data_points)
@@ -442,7 +396,7 @@ class Kernel(ABC):
                     kernel_row_sum,
                     i,
                     j,
-                    kernel_pairwise,
+                    self.compute,
                     max_size,
                 )
         return kernel_row_sum
@@ -528,7 +482,7 @@ class SquaredExponentialKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         return self.output_scale * jnp.exp(
-            -coreax.util.squared_distance(x, y) / (2 * self.length_scale**2)
+            -squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     def grad_x_elementwise(
@@ -598,7 +552,7 @@ class SquaredExponentialKernel(Kernel):
         k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(x)
-        return scale * k * (d - scale * coreax.util.squared_distance(x, y))
+        return scale * k * (d - scale * squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
@@ -759,7 +713,7 @@ class PCIMQKernel(Kernel):
         :return: Kernel evaluated at (``x``, ``y``)
         """
         scaling = 2 * self.length_scale**2
-        mq_array = coreax.util.squared_distance(x, y) / scaling
+        mq_array = squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     def grad_x_elementwise(
@@ -830,7 +784,7 @@ class PCIMQKernel(Kernel):
         return (
             self.output_scale
             / scale
-            * (d * k**3 - 3 * k**5 * coreax.util.squared_distance(x, y) / scale)
+            * (d * k**3 - 3 * k**5 * squared_distance(x, y) / scale)
         )
 
 
