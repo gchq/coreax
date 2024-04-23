@@ -85,6 +85,7 @@ pytrees
 quickstart
 rcfile
 rect
+rerunfailures
 rightarrow
 rtol
 samp
