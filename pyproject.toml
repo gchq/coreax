@@ -25,6 +25,7 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
+    "equinox",
     "flax",
     "jax",
     "jaxopt",
@@ -119,6 +120,7 @@ ignore-init-module-imports = true
 [tool.ruff.lint.pylint]
 max-args = 10
 max-locals = 20
+allow-dunder-method-names = ["__check_init__"]
 
 [tool.coverage.run]
 command_line = "-m pytest tests/unit --cov"
