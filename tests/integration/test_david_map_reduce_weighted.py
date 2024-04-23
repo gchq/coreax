@@ -56,6 +56,7 @@ class TestDavid(unittest.TestCase):
                 in_path=in_path, out_path=out_path, downsampling_factor=4
             )
 
+            # 'downsampling_factor' reduces image size from (215, 180) -> (53, 45).
             self.assertEqual(
                 call("Image dimensions: (53, 45)"),
                 mock_print.call_args_list[0],
