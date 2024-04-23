@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wording improvements in README.
 - Documentation now builds without warnings.
 - GitHub workflow runs automatically after Pre-commit autoupdate.
+- `coreax.kernel.Kernel.length_scale` and `coreax.kernel.Kernel.output_scale` are treated as dynamic elements of the kernel pytree.
 
 ### Changed
 
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Single requirements files covering all supported Python versions.
 
 ### Removed
+- Bash script to run integration tests has been removed. `pytest tests/integration` should now work as expected.
 
 ### Deprecated
 
