@@ -13,419 +13,263 @@
 # limitations under the License.
 
 r"""
-Classes and associated functionality to approximate kernel matrix row sum mean.
+Classes and associated functionality to approximate kernels.
 
-When a dataset is very large, computing the mean distance between a given point
-and all other points can be time-consuming. For many approaches in this library, such an
-operation would need to be done for all data points in the dataset. To reduce the
-computational demand of this, the quantity can instead be approximated by various
-methods.
+When a dataset is very large, methods which have to evaluate all pairwise combinations
+of the data, such as :meth:`~coreax.kernel.Kernel.calculate_kernel_matrix_row_sum_mean`,
+can become prohibitively expensive. To reduce this computational cost, such methods can
+instead be approximated (providing suitable approximation error can be achieved).
 
-For a concrete example of the (true) kernel matrix row sum mean, consider the data:
-
-.. math::
-
-    x = [ [0.0, 0.0], [0.5, 0.5], [1.0, 0.0], [-1.0, 0.0] ]
-
-and a :class:`~coreax.kernel.SquaredExponentialKernel` which is defined as
-
-.. math::
-
-    k(x,y) = \text{output_scale} * \exp(-||x-y||^2/2 * \text{length_scale}^2)
-
-For simplicity, we set ``length_scale`` to :math:`\frac{1}{\sqrt{2}}`
-and ``output_scale`` to 1.
-
-For a single row (data point), the kernel matrix row sum mean is computed by
-applying the kernel to this data record and all other data records. We then sum
-the results and divide by the number of data points. The first
-data point ``[0, 0]`` in the data considered here therefore gives a result of:
-
-.. math::
-
-      (1/4) * (
-      exp(-((0.0 - 0.0)^2 + (0.0 - 0.0)^2)) +
-      exp(-((0.0 - 0.5)^2 + (0.0 - 0.5)^2)) +
-      exp(-((0.0 - 1.0)^2 + (0.0 - 0.0)^2)) +
-      exp(-((0.0 - -1.0)^2 + (0.0 - 0.0)^2))
-      )
-
-which evaluates to 0.5855723855138795.
-
-We can repeat the above but considering each data-point in ``x`` in turn and
-attain an array with one element for each data point in the original dataset. For this
-example data, the final result would be:
-
-.. math::
-
-    [
-        0.5855723855138795,
-        0.5737865795122914,
-        0.4981814349432025,
-        0.3670700196710188
-    ]
-
-The approximations within this module attempt to accurately estimate the result of the
-above calculations, without having to perform as many evaluations of the kernel. All
-approximators in this module implement the base class :class:`KernelMeanApproximator`.
+The :class:`ApproximateKernel`\ s in this module provide the functionality required to
+override specific methods of a ``base_kernel`` with their approximate counterparts.
+Because :class:`ApproximateKernel`\ s inherit from :class:`~coreax.kernel.Kernel`, with
+all functionality provided through composition with a ``base_kernel``, they can be
+freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expected.
 """
 
-from abc import ABC, abstractmethod
-from functools import partial
+from collections.abc import Callable
 
+import jax
 import jax.numpy as jnp
-from jax import Array, jit, lax, random
+import jax.random as jr
+import jax.tree_util as jtu
+from jax import Array
 from jax.typing import ArrayLike
+from typing_extensions import Literal, override
 
-import coreax.kernel
-import coreax.util
+from coreax.kernel import CompositeKernel, Kernel
+from coreax.util import KeyArrayLike
 
 
-class KernelMeanApproximator(ABC):
+def _random_indices(
+    random_key: KeyArrayLike,
+    num_data_points: int,
+    num_select: int,
+    mode: Literal["kernel", "train"] = "kernel",
+):
+    try:
+        selected_indices = jr.choice(
+            random_key,
+            num_data_points,
+            (num_select,),
+            replace=False,
+        )
+    except ValueError as exception:
+        if num_select > num_data_points:
+            raise ValueError(
+                f"'num_{mode}_points' must be no larger than the number of points in "
+                "the provided data"
+            ) from exception
+        raise
+    return selected_indices
+
+
+def _random_regression(
+    key: KeyArrayLike,
+    push_forward: Callable[[Array], Array],
+    data,
+    features,
+    num_train_points,
+):
+    num_data_points = len(data)
+    train_idx = _random_indices(key, num_data_points, num_train_points, mode="train")
+    target = push_forward(data[train_idx]).sum(axis=1) / num_data_points
+    params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
+    return features @ params
+
+
+class ApproximateKernel(CompositeKernel):
     """
-    Base class for approximation methods to kernel row sum means.
+    Base class for approximated kernels.
 
-    When a dataset is very large, computing the mean distance between a given point
-    and all other points can be time-consuming. Instead, this property can be
-    approximated by various methods. :class:`KernelMeanApproximator` is the base class
-    for implementing these approximation methods.
+    Provides approximations of the methods in the ``base_kernel``.
 
-    .. note::
+    The :meth:`~coreax.kernel.Kernel.calculate_kernel_matrix_row_sum` method is
+    particularly amenable to approximation, with significant performance improvements
+    possible depending on the acceptable levels of error.
 
-        The parameter `num_kernel_points` can take any non-negative value, however,
-        setting this to 0 will simply produce a kernel mean approximation of zero at all
-        points.
+    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
+        to be approximated
+    """
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.base_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.base_kernel.grad_x_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.base_kernel.grad_y_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.base_kernel.divergence_x_grad_y_elementwise(x, y)
+
+
+class RandomRegressionKernel(Kernel):
+    """
+    An kernel that requires the attributes for random regression.
 
     :param random_key: Key for random number generation
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
-    :param num_kernel_points: Number of kernel evaluation points
-    """
-
-    def __init__(
-        self,
-        random_key: coreax.util.KeyArrayLike,
-        kernel: coreax.kernel.Kernel,
-        num_kernel_points: int = 10_000,
-    ):
-        """Define approximator to the mean of the row sum of kernel distance matrix."""
-        # Assign inputs
-        self.kernel = kernel
-        self.random_key = random_key
-        self.num_kernel_points = num_kernel_points
-
-    @abstractmethod
-    def approximate(self, data: ArrayLike) -> Array:
-        r"""
-        Approximate kernel matrix row sum mean.
-
-        :param data: Original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by the number of
-            data points in the dataset
-        """
-
-
-class RandomApproximator(KernelMeanApproximator):
-    """
-    Approximate the kernel matrix row mean using regression on randomly sampled points.
-
-    When a dataset is very large, computing the mean distance between a given point
-    and all other points can be time-consuming. Instead, this property can be
-    approximated by various methods. :class:`RandomApproximator` is a class that does
-    such an approximation using kernel regression on a subset of randomly selected
-    points from the dataset.
-
-    :param random_key: Key for random number generation
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def __init__(
-        self,
-        random_key: coreax.util.KeyArrayLike,
-        kernel: coreax.kernel.Kernel,
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
-    ):
-        """Approximate kernel row mean by regression on points selected randomly."""
-        self.num_train_points = num_train_points
+    random_key: KeyArrayLike
+    num_kernel_points: int = 10_000
+    num_train_points: int = 10_000
 
-        # Initialise parent
-        super().__init__(
-            random_key=random_key,
-            kernel=kernel,
-            num_kernel_points=num_kernel_points,
-        )
+    def __check_init__(self):
+        """Check that 'num_kernel_points' and 'num_train_points' are feasible."""
+        if self.num_kernel_points <= 0:
+            raise ValueError("'num_kernel_points' must be a positive integer")
+        if self.num_train_points <= 0:
+            raise ValueError("'num_train_points' must be a positive integer")
 
-    def approximate(
-        self,
-        data: ArrayLike,
+
+class MonteCarloApproximateKernel(RandomRegressionKernel, ApproximateKernel):
+    """
+    Approximate a base kernel via random subset selection.
+
+    Only the kernel matrix row sum mean is approximated here, all other methods
+    are inherited directly from the ``base_kernel``.
+
+    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
+        to be approximated
+    :param random_key: Key for random number generation
+    :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
+    """
+
+    def calculate_kernel_matrix_row_sum_mean(
+        self, x: ArrayLike, max_size: int = 10_000
     ) -> Array:
         r"""
-        Compute approximate kernel row mean by regression on randomly selected points.
+        Calculate the kernel matrix row sum mean by Monte Carlo approximation.
 
-        :param data: Original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by the number of
-            data points in the dataset
+        A uniform random subset of ``x`` is used to approximate the kernel matrix row
+        sum mean.
+
+        :param x: Data matrix, :math:`n \times d`
+        :param max_size: Size of matrix block to process
+        :return: Approximation of the kernel matrix row sum
         """
-        # Format input
-        data = jnp.atleast_2d(data)
-
-        # Record dataset size
+        data = jnp.atleast_2d(x)
         num_data_points = len(data)
-
-        # Randomly select points for kernel regression
-        key, subkey = random.split(self.random_key)
-        try:
-            features_idx = random.choice(
-                subkey, num_data_points, (self.num_kernel_points,), replace=False
-            )
-        except TypeError as exception:
-            if self.num_kernel_points < 0:
-                raise ValueError("num_kernel_points must be positive") from exception
-            raise
-        except ValueError as exception:
-            if self.num_kernel_points > num_data_points:
-                raise ValueError(
-                    "num_kernel_points must be no larger than the number of points in "
-                    "the provided data"
-                ) from exception
-            raise
-
-        # Compute feature matrix
-        features = self.kernel.compute(data, data[features_idx])
-
-        try:
-            train_idx = random.choice(
-                key, num_data_points, (self.num_train_points,), replace=False
-            )
-        except TypeError as exception:
-            if self.num_train_points < 0:
-                raise ValueError("num_train_points must be positive") from exception
-            raise
-        except ValueError as exception:
-            if self.num_train_points > num_data_points:
-                raise ValueError(
-                    "num_train_points must be no larger than the number of points in "
-                    "the provided data"
-                ) from exception
-            raise
-
-        # Isolate targets for regression problem
-        target = (
-            self.kernel.compute(data[train_idx], data).sum(axis=1) / num_data_points
+        key, subkey = jr.split(self.random_key)
+        features_idx = _random_indices(key, num_data_points, self.num_kernel_points)
+        features = self.base_kernel.compute(data, data[features_idx])
+        return _random_regression(
+            subkey,
+            jtu.Partial(self.base_kernel.compute, y=data),
+            data,
+            features,
+            self.num_train_points,
         )
 
-        # Solve regression problem
-        params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
 
-        return features @ params
-
-
-class ANNchorApproximator(KernelMeanApproximator):
+class ANNchorApproximateKernel(RandomRegressionKernel, ApproximateKernel):
     r"""
-    Approximation method to kernel mean through regression on ANNchor selected points.
+    Approximate a base kernel via random kernel regression on ANNchor selected points.
 
-    When a dataset is very large, computing the mean distance between a given point
-    and all other points can be time-consuming. Instead, this property can be
-    approximated by various methods. :class:`ANNchorApproximator` is a class that does
-    such an approximation using kernel regression on a subset of points selected via the
-    ANNchor approach from the dataset. The ANNchor implementation used can be found
-    `here <https://github.com/gchq/annchor>`_.
+    Only the kernel matrix row sum mean is approximated here, all other methods
+    are inherited directly from the ``base_kernel``.
 
+    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
+        to be approximated
     :param random_key: Key for random number generation
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def __init__(
-        self,
-        random_key: coreax.util.KeyArrayLike,
-        kernel: coreax.kernel.Kernel,
-        num_kernel_points: int = 10_000,
-        num_train_points: int = 10_000,
-    ):
-        """Approximate kernel row mean by regression on ANNchor selected points."""
-        self.num_train_points = num_train_points
-
-        # Initialise parent
-        super().__init__(
-            random_key=random_key,
-            kernel=kernel,
-            num_kernel_points=num_kernel_points,
-        )
-
-    def approximate(
-        self,
-        data: ArrayLike,
+    def calculate_kernel_matrix_row_sum_mean(
+        self, x: ArrayLike, max_size: int = 10_000
     ) -> Array:
         r"""
-        Compute approximate kernel row mean by regression on ANNchor selected points.
+        Calculate the kernel matrix row sum mean by random regression on ANNchor points.
 
-        :param data: Original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by the number of
-            data points in the dataset
+        A subset of ``x`` is selected via the ANNchor approach and random kernel
+        regression used to approximate the kernel matrix row sum mean. The ANNchor
+        implementation used can be found `here <https://github.com/gchq/annchor>`_.
+
+        :param x: Data matrix, :math:`n \times d`
+        :param max_size: Size of matrix block to process
+        :return: Approximation of the kernel matrix row sum
         """
-        # Format input
-        data = jnp.atleast_2d(data)
-
-        # Record dataset size
+        data = jnp.atleast_2d(x)
         num_data_points = len(data)
 
         # Select point for kernel regression using ANNchor construction
-        try:
-            features = jnp.zeros((num_data_points, self.num_kernel_points))
-        except TypeError as exception:
-            if self.num_kernel_points <= 0:
-                raise ValueError("num_kernel_points must be positive") from exception
-            raise
-
+        features = jnp.zeros((num_data_points, self.num_kernel_points))
         # Compute feature matrix
-        try:
-            features = features.at[:, 0].set(self.kernel.compute(data, data[0])[:, 0])
-        except IndexError as exception:
-            if self.num_kernel_points <= 0:
-                raise ValueError(
-                    "num_kernel_points must be positive and non-zero"
-                ) from exception
-            raise
-        body = partial(_anchor_body, data=data, kernel_function=self.kernel.compute)
-        features = lax.fori_loop(1, self.num_kernel_points, body, features)
+        features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
 
-        # Randomly select training points
-        try:
-            train_idx = random.choice(
-                self.random_key,
-                num_data_points,
-                (self.num_train_points,),
-                replace=False,
+        def _annchor_body(idx: int, features: Array) -> Array:
+            r"""
+            Execute main loop of the ANNchor construction.
+
+            :param idx: Loop counter
+            :param features: Loop variables to be updated
+            :return: Updated loop variables ``features``
+            """
+            max_entry = features.max(axis=1).argmin()
+            features = features.at[:, idx].set(
+                self.base_kernel.compute(data, data[max_entry])[:, 0]
             )
-        except TypeError as exception:
-            if self.num_train_points < 0:
-                raise ValueError("num_train_points must be positive") from exception
-            raise
-        except ValueError as exception:
-            if self.num_train_points > num_data_points:
-                raise ValueError(
-                    "num_train_points must be no larger than the number of points in "
-                    "the provided data"
-                ) from exception
-            raise
+            return features
 
-        # Isolate targets for regression problem
-        target = (
-            self.kernel.compute(data[train_idx], data).sum(axis=1) / num_data_points
+        features = jax.lax.fori_loop(1, self.num_kernel_points, _annchor_body, features)
+        return _random_regression(
+            self.random_key,
+            jtu.Partial(self.base_kernel.compute, y=data),
+            data,
+            features,
+            self.num_train_points,
         )
 
-        # solve regression problem
-        params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
 
-        return features @ params
-
-
-class NystromApproximator(KernelMeanApproximator):
+class NystromApproximateKernel(RandomRegressionKernel, ApproximateKernel):
     """
-    Approximate kernel matrix row sum mean using as Nystrom approximation.
+    Approximate a base kernel via Nystrom approximation.
 
-    When a dataset is very large, computing the mean distance between a given point
-    and all other points can be time-consuming. Instead, this property can be
-    approximated by various methods. NystromApproximator is a class that does such an
-    approximation using a Nystrom approximation on a subset of points selected at
-    random from the data. Further details for Nystrom kernel mean embeddings can be
-    found in :cite:`chatalic2022nystrom`.
+    Only the kernel matrix row sum mean is approximated here, all other methods
+    are inherited directly from the ``base_kernel``.
 
+    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
+        to be approximated
     :param random_key: Key for random number generation
     :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
+    :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def __init__(
-        self,
-        random_key: coreax.util.KeyArrayLike,
-        kernel: coreax.kernel.Kernel,
-        num_kernel_points: int = 10_000,
-    ):
-        """Approximate kernel row mean by using Nystrom approximation."""
-        # Initialise parent
-        super().__init__(
-            random_key=random_key,
-            kernel=kernel,
-            num_kernel_points=num_kernel_points,
-        )
-
-    def approximate(
-        self,
-        data: ArrayLike,
+    def calculate_kernel_matrix_row_sum_mean(
+        self, x: ArrayLike, max_size: int = 10_000
     ) -> Array:
         r"""
-        Compute approximate kernel row sum mean using a Nystrom approximation.
+        Calculate the kernel matrix row sum mean by Nystrom approximation.
 
         We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
         subset of this to approximate the kernel matrix row sum mean. The ``m`` points
         are selected uniformly at random, and the Nystrom estimator, as defined in
         :cite:`chatalic2022nystrom` is computed using this subset.
 
-        :param data: Original :math:`n \times d` data
-        :return: Approximation of the kernel matrix row sum divided by the number of
-            data points in the dataset
+        :param x: Data matrix, :math:`n \times d`
+        :param max_size: Size of matrix block to process
+        :return: Approximation of the kernel matrix row sum
         """
-        # Format input
-        data = jnp.atleast_2d(data)
-
-        # Record dataset size
+        data = jnp.atleast_2d(x)
         num_data_points = len(data)
 
         # Randomly select points for kernel regression
-        try:
-            sample_points = random.choice(
-                self.random_key,
-                num_data_points,
-                (self.num_kernel_points,),
-                replace=False,
-            )
-        except TypeError as exception:
-            if self.num_kernel_points <= 0:
-                raise ValueError("num_kernel_points must be positive") from exception
-            raise
-        except ValueError as exception:
-            if self.num_kernel_points > num_data_points:
-                raise ValueError(
-                    "num_kernel_points must be no larger than the number of points in "
-                    "the provided data"
-                ) from exception
-            raise
-
+        sample_idx = _random_indices(
+            self.random_key, num_data_points, self.num_kernel_points
+        )
         # Solve for kernel distances
-        kernel_mn = self.kernel.compute(data[sample_points], data)
-        kernel_mm = self.kernel.compute(data[sample_points], data[sample_points])
+        kernel_mn = self.base_kernel.compute(data[sample_idx], data)
+        kernel_mm = self.base_kernel.compute(data[sample_idx], data[sample_idx])
         alpha = (jnp.linalg.pinv(kernel_mm) @ kernel_mn).sum(axis=1) / num_data_points
-
         return kernel_mn.T @ alpha
-
-
-@partial(jit, static_argnames=["kernel_function"])
-def _anchor_body(
-    idx: int,
-    features: ArrayLike,
-    data: ArrayLike,
-    kernel_function: coreax.util.KernelComputeType,
-) -> Array:
-    r"""
-    Execute main loop of the ANNchor construction.
-
-    :param idx: Loop counter
-    :param features: Loop variables to be updated
-    :param data: Original :math:`n \times d` dataset
-    :param kernel_function: Vectorised kernel function on pairs ``(X,x)``:
-        :math:`k: \mathbb{R}^{n \times d} \times \mathbb{R}^d \rightarrow \mathbb{R}^n`
-    :return: Updated loop variables ``features``
-    """
-    # Format inputs
-    features = jnp.atleast_2d(features)
-    data = jnp.atleast_2d(data)
-
-    max_entry = features.max(axis=1).argmin()
-    features = features.at[:, idx].set(kernel_function(data, data[max_entry])[:, 0])
-
-    return features

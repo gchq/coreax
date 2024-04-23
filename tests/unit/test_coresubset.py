@@ -28,7 +28,6 @@ import numpy as np
 from jax import random
 from jax.typing import ArrayLike
 
-import coreax.approximation
 import coreax.coresubset
 import coreax.data
 import coreax.kernel
@@ -36,8 +35,7 @@ import coreax.metrics
 import coreax.reduction
 import coreax.refine
 import coreax.util
-
-# pylint: disable=too-many-public-methods
+from coreax.approximation import ANNchorApproximateKernel
 
 
 class TestKernelHerding(unittest.TestCase):
@@ -80,7 +78,6 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_not_random.unique = False
         coresubset_object_not_random.refine_method = "ABC"
         coresubset_object_not_random.weights_optimiser = "DEF"
-        coresubset_object_not_random.approximator = "XYZ"
 
         # Call the method and check each output are as expected
         output_children, output_aux_data = coresubset_object_not_random.tree_flatten()
@@ -98,7 +95,6 @@ class TestKernelHerding(unittest.TestCase):
                 "unique": False,
                 "refine_method": "ABC",
                 "weights_optimiser": "DEF",
-                "approximator": "XYZ",
             },
         )
 
@@ -290,29 +286,21 @@ class TestKernelHerding(unittest.TestCase):
 
         approximator_key, herding_key = random.split(self.random_key)
 
-        test_approximator = coreax.approximation.ANNchorApproximator(
-            approximator_key, kernel=kernel, num_kernel_points=50, num_train_points=50
+        test_approximate_kernel = ANNchorApproximateKernel(
+            kernel, approximator_key, num_kernel_points=50, num_train_points=50
         )
 
         # Create a kernel herding object
         coresubset_object_not_random = coreax.coresubset.KernelHerding(
-            herding_key, kernel=kernel, approximator=test_approximator
+            herding_key, kernel=test_approximate_kernel
         )
 
-        with patch.object(
-            coreax.kernel.Kernel,
-            "approximate_kernel_matrix_row_sum_mean",
-            wraps=kernel.approximate_kernel_matrix_row_sum_mean,
-        ) as mock_method:
-            # Apply kernel herding on the dataset, and record the coreset for comparison
-            coresubset_object_not_random.fit(
-                original_data=data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-            fitted_coresubset = coresubset_object_not_random.coreset
-
-        # Check the approximation method in the Kernel class is called exactly once
-        mock_method.assert_called_once()
+        # Apply kernel herding on the dataset, and record the coreset for comparison
+        coresubset_object_not_random.fit(
+            original_data=data,
+            strategy=coreax.reduction.SizeReduce(self.coreset_size),
+        )
+        fitted_coresubset = coresubset_object_not_random.coreset
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -551,7 +539,7 @@ class TestKernelHerding(unittest.TestCase):
 
         self.assertEqual(
             error_raised.exception.args[0],
-            "max_size must be a positive integer",
+            "'max_size' must be a positive integer",
         )
 
     def test_kernel_herding_negative_block_size(self):
@@ -576,7 +564,7 @@ class TestKernelHerding(unittest.TestCase):
 
         self.assertEqual(
             error_raised.exception.args[0],
-            "max_size must be a positive integer",
+            "'max_size' must be a positive integer",
         )
 
     def test_kernel_herding_float_block_size(self):
@@ -626,32 +614,6 @@ class TestKernelHerding(unittest.TestCase):
         self.assertEqual(
             error_raised.exception.args[0],
             "'>' not supported between instances of 'str' and 'int'",
-        )
-
-    def test_kernel_herding_invalid_approximator(self):
-        """
-        Test the class KernelHerding when given an invalid approximator object.
-        """
-        # Define a kernel herding object with the invalid approximator - note that
-        # InvalidKernel also does not have a approximate method, so suits the purpose of
-        # this test
-        herding_object = coreax.coresubset.KernelHerding(
-            random_key=self.random_key,
-            kernel=coreax.kernel.SquaredExponentialKernel(),
-            approximator=coreax.util.InvalidKernel,
-        )
-
-        # The fit method should try to approximate the kernel matrix row sum, which
-        # should lead to an attribute errors since an appropriate method is not defined
-        with self.assertRaises(AttributeError) as error_raised:
-            herding_object.fit(
-                original_data=self.generic_data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "type object 'InvalidKernel' has no attribute 'approximate'",
         )
 
     def test_kernel_herding_fit_zero_coreset_size(self):
@@ -1123,7 +1085,6 @@ class TestRPCholesky(unittest.TestCase):
         coresubset_object_not_random.unique = False
         coresubset_object_not_random.refine_method = "ABC"
         coresubset_object_not_random.weights_optimiser = "DEF"
-        coresubset_object_not_random.approximator = "XYZ"
 
         # Call the method and check each output are as expected
         output_children, output_aux_data = coresubset_object_not_random.tree_flatten()
@@ -1424,9 +1385,6 @@ class TestRPCholesky(unittest.TestCase):
             error_raised.exception.args[0],
             "'list' object has no attribute 'pre_coreset_array'",
         )
-
-
-# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":
