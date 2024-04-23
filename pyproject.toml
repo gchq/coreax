@@ -44,6 +44,7 @@ test = [
     "opencv-python",
     "pyqt5",
     "pytest-cov",
+    "pytest-rerunfailures",
     "scipy",
 ]
 # Compile documentation
