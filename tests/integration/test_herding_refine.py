@@ -64,6 +64,13 @@ class TestHerdingRefine(unittest.TestCase):
             )
 
             self.assertLess(
+                mmd_stein,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than \
+                    Stein thinning coreset MMD",
+            )
+
+            self.assertLess(
                 mmd_rpc,
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than \

@@ -30,7 +30,6 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
-from collections.abc import Callable
 from functools import partial
 
 import jax.numpy as jnp
