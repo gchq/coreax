@@ -22,6 +22,12 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-latest
+        # macos-latest does not support python 3.9
+        # https://github.com/actions/setup-python/issues/696#issuecomment-1637587760
+        exclude:
+        - { python-version: "3.9", os: "macos-latest" }
+        include:
+        - { python-version: "3.9", os: "macos-13" }
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
