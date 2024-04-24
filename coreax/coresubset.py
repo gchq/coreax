@@ -657,7 +657,7 @@ class SteinThinning(coreax.reduction.Coreset):
         elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
-    :param score_method: :class:`~coreax.refine.ScoreMatching` object to use, or
+    :param score_method: :class:`~coreax.score_matching.ScoreMatching` object to use, or
         :data:`None` (default), which will use kernel density matching
     :param regularise: Boolean that enforces regularisation, as in
         :cite:`benard2023kernel`.
