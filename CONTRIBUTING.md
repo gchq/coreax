@@ -117,9 +117,13 @@ instead of `Blu`.
 Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
 
 ### Testing
-[Unittest][unittest] is used to write tests for coreax, while [Pytest][pytest] is used to run tests. As much effort should
-be put into developing tests as the code. Tests should be provided to test functionality and also ensuring exceptions and
-warnings are raised or managed appropriately. This includes:
+All tests are ran via the following [Pytest][pytest] command:
+```bash
+  pytest tests/
+```
+Either [Pytest][pytest] or [Unittest][unittest] can be used to write tests for coreax.
+[Pytest][pytest] is recommended where it would simplify code, such as for parameterized tests. As much effort should be put into developing tests as is put into developing the code.
+Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
