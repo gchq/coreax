@@ -48,7 +48,9 @@ class TestHerdingRefine(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_refine.png"
-            mmd_coreset, mmd_rpc, mmd_random = herding_refine_main(out_path=out_path)
+            mmd_coreset, mmd_rpc, mmd_stein, mmd_random = herding_refine_main(
+                out_path=out_path
+            )
 
             mock_show.assert_has_calls([call(), call()])
 

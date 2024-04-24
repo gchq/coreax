@@ -40,8 +40,11 @@ from coreax import (
     KernelHerding,
     RandomSample,
     RPCholesky,
+    PCIMQKernel,
     SizeReduce,
+    SlicedScoreMatching,
     SquaredExponentialKernel,
+    SteinThinning,
 )
 from coreax.kernel import median_heuristic
 
@@ -91,13 +94,32 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
 
     print("Computing herding coreset...")
     # Compute a coreset using kernel herding with a squared exponential kernel.
-    herding_key, sample_key, rp_key = random.split(random.key(random_seed), num=3)
+    herding_key, sample_key, rp_key, stein_key = random.split(
+        random.key(random_seed), num=4
+    )
     herding_object = KernelHerding(
         herding_key, kernel=SquaredExponentialKernel(length_scale=length_scale)
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
     )
+
+    print("Computing Stein thinning coreset...")
+    # Compute a coreset using Stein thinning with a PCIMQ base kernel.
+    base_kernel = PCIMQKernel(length_scale=length_scale)
+    _, subkey = random.split(stein_key)
+    sliced_score_matcher = SlicedScoreMatching(
+        subkey,
+        random.rademacher,
+        use_analytic=True,
+        num_random_vectors=100,
+        learning_rate=0.001,
+        num_epochs=50,
+    )
+    stein_object = SteinThinning(
+        stein_key, kernel=base_kernel, score_method=sliced_score_matcher
+    )
+    stein_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
 
     print("Computing RPC coreset...")
     # Compute a coreset using RPC with a squared exponential kernel.
@@ -125,7 +147,10 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
     metric_object = MMD(kernel=mmd_kernel)
     maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
 
-    # Compute the MMD between the original data and the coreset generated via herding
+    # Compute the MMD between the original data and the coreset generated via ST
+    maximum_mean_discrepancy_stein = stein_object.compute_metric(metric_object)
+
+    # Compute the MMD between the original data and the coreset generated via RPC
     maximum_mean_discrepancy_rpc = rp_object.compute_metric(metric_object)
 
     # Compute the MMD between the original data and the coreset generated via random
@@ -135,6 +160,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
     print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
+    print(f"Stein thinning coreset MMD: {maximum_mean_discrepancy_stein}")
     print(f"RPC coreset MMD: {maximum_mean_discrepancy_rpc}")
 
     # Produce some scatter plots (assume 2-dimensional data)
@@ -168,6 +194,20 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
+        stein_object.coreset[:, 0],
+        stein_object.coreset[:, 1],
+        s=10,
+        color="red",
+    )
+    plt.axis("off")
+    plt.title(
+        f"Stein thinning, m={coreset_size}, "
+        f"MMD={round(float(maximum_mean_discrepancy_stein), 6)}"
+    )
+    plt.show()
+
+    plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(
         random_sample_object.coreset[:, 0],
         random_sample_object.coreset[:, 1],
         s=10,
@@ -189,6 +229,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float]:
     return (
         float(maximum_mean_discrepancy_herding),
         float(maximum_mean_discrepancy_rpc),
+        float(maximum_mean_discrepancy_stein),
         float(maximum_mean_discrepancy_random),
     )
 
