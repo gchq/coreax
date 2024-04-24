@@ -622,6 +622,7 @@ class RPCholesky(coreax.reduction.Coreset):
         return residual_diagonal, approximation_matrix, current_coreset_indices, key
 
 
+# pylint: disable=too-many-instance-attributes
 class SteinThinning(coreax.reduction.Coreset):
     r"""
     Apply regularised Stein thinning to a dataset.
@@ -681,6 +682,7 @@ class SteinThinning(coreax.reduction.Coreset):
         self.random_key = random_key
         self.regularise = regularise
         self.score_method = score_method
+        self.stein_kernel = None
 
         # Initialise parent
         super().__init__(
@@ -706,6 +708,7 @@ class SteinThinning(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
+            self.stein_kernel,
             self.kernel_matrix_row_sum_mean,
             self.coreset_indices,
             self.coreset,
