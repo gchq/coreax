@@ -709,7 +709,6 @@ class SteinThinning(coreax.reduction.Coreset):
             self.random_key,
             self.kernel,
             self.stein_kernel,
-            self.kernel_matrix_row_sum_mean,
             self.coreset_indices,
             self.coreset,
         )
