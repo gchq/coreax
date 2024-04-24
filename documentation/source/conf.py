@@ -80,6 +80,10 @@ autodoc_mock_imports = ["cv2", "imageio", "matplotlib"]
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+# Fixes ISSUE #561 pending a fix for ISSUE #570
+show_warning_types = True
+suppress_warnings = ["config.cache"]
+
 # sphinx extensions
 extensions = [
     "sphinx.ext.autodoc",
