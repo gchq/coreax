@@ -80,9 +80,11 @@ autodoc_mock_imports = ["cv2", "imageio", "matplotlib"]
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+# pylint: disable=invalid-name
 # Fixes ISSUE #561 pending a fix for ISSUE #570
 show_warning_types = True
 suppress_warnings = ["config.cache"]
+# pylint: enable=invalid-name
 
 # sphinx extensions
 extensions = [
