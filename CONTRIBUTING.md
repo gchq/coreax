@@ -121,10 +121,9 @@ All tests are ran via the following [Pytest][pytest] command:
 ```bash
   pytest tests/
 ```
-Either [Pytest][pytest] or [Unittest][unittest] can be used to write tests for coreax. 
-[Pytest][pytest] is recommended where it would simplify code, such as for parameterized tests. As much effort should be put into developing tests as is put into developing 
-the code. Tests should be provided to test functionality and also ensuring exceptions and
-warnings are raised or managed appropriately. This includes:
+Either [Pytest][pytest] or [Unittest][unittest] can be used to write tests for coreax.
+[Pytest][pytest] is recommended where it would simplify code, such as for parameterized tests. As much effort should be put into developing tests as is put into developing the code.
+Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
