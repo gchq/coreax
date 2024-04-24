@@ -350,7 +350,7 @@ class TestKernelHerding(unittest.TestCase):
             # kernel_matrix_row_sum_mean
             kernel_matrix_row_sum_mean = jnp.asarray([0.6, 0.75, 0.55])
 
-            def mock_kernel_vectorised(x, y):
+            def mock_kernel_vectorised(_, y):
                 """
                 Evaluate a (mocked) vectorised kernel over two inputs.
 
@@ -393,7 +393,8 @@ class TestKernelHerding(unittest.TestCase):
             # set the penalty for point index 1 to be infinite
             np.testing.assert_array_equal(
                 # kernel_similarity_penalty_1, np.asarray([0.5, np.inf, 0.5])
-                kernel_similarity_penalty_1, np.asarray([1.0, np.inf, 1.0])
+                kernel_similarity_penalty_1,
+                np.asarray([1.0, np.inf, 1.0]),
             )
 
             # Alter the penalty applied to the points for an illustrative test. This
@@ -1487,7 +1488,7 @@ class TestSteinThinning(unittest.TestCase):
                 "refine_method": "ABC",
                 "regularise": True,
                 "weights_optimiser": "DEF",
-                "score_method": "XYZ"
+                "score_method": "XYZ",
             },
         )
 
