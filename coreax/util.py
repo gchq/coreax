@@ -31,7 +31,7 @@ from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
-from jax.random import permutation, normal
+from jax.random import normal, permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias
@@ -193,13 +193,14 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     ).params
     return sol.primal
 
+
 @partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
 def randomised_eigendecomposition(
-        random_key : KeyArrayLike,
-        array: ArrayLike,
-        oversampling_parameter: int = 10,
-        power_iterations: int = 1,
-        ):
+    random_key: KeyArrayLike,
+    array: ArrayLike,
+    oversampling_parameter: int = 10,
+    power_iterations: int = 1,
+):
     """
     Approximate the eigendecomposition of symmetric two-dimensional arrays.
 
@@ -216,7 +217,8 @@ def randomised_eigendecomposition(
     :return: Tuple of approximate eigenvalues and eigenvectors
     """
     # Input handling
-    if len(array.shape) != 2:
+    supported_array_shape = 2
+    if len(array.shape) != supported_array_shape:
         raise ValueError("array must be two-dimensional")
     if array.shape[0] != array.shape[1]:
         raise ValueError("array must be square")
@@ -227,9 +229,8 @@ def randomised_eigendecomposition(
 
     # Generate a matrix of standard Gaussian draws
     standard_gaussian_array = normal(
-        random_key,
-        shape = (array.shape[0], oversampling_parameter)
-        )
+        random_key, shape=(array.shape[0], oversampling_parameter)
+    )
 
     # QR decomposition finding orthonormal array with range approximating range of a
     approximate_range = array @ standard_gaussian_array
@@ -250,6 +251,7 @@ def randomised_eigendecomposition(
 
     return array_approximate_eigenvalues, array_approximate_eigenvectors
 
+
 @partial(jit, static_argnames=("regularisation_parameter", "rcond"))
 def invert_regularised_array(
     array: ArrayLike,
@@ -258,7 +260,7 @@ def invert_regularised_array(
     rcond: float | None = None,
 ) -> ArrayLike:
     """
-    Using a least-squares solver, regularise the array and then invert it.
+    Regularise and array and then invert it using a least-squares solver.
 
     The function is designed to invert square block arrays where only the top-left block
     is non-zero. That is, we return a block array, the same size as the input array,
@@ -281,7 +283,7 @@ def invert_regularised_array(
         if rcond < 0 and rcond != -1:
             raise ValueError(
                 "regularisation_parameter must be non-negative, except for value of -1"
-                )
+            )
     if regularisation_parameter < 0:
         raise ValueError("regularisation_parameter must be non-negative")
     if array.shape != identity.shape:
@@ -303,7 +305,7 @@ def invert_stacked_regularised_arrays(
     Efficiently invert a stack of regularised square arrays.
 
     The function is designed to invert a stack of square block arrays where only the
-    top-left block is non-zero. That is, we return a stack of block arrays, the same 
+    top-left block is non-zero. That is, we return a stack of block arrays, the same
     size as the stack of input arrays, where each block consists of zeros except for the
     top-left block, which is the inverse of the original non-zero block. To achieve this
     the 'identity' array must be a zero matrix except for ones on the diagonal up to the
@@ -343,8 +345,10 @@ def sample_batch_indices(
     num_batches: int,
 ) -> ArrayLike:
     """
-    Sample an array of column-unique indices where the largest possible index is
-    dictated by data_size.
+    Sample an array of indices of size batch_size x num_batches.
+
+    Each column of the sampled array will contain unique elements. The largest possible
+    index is dictated by data_size.
 
     :param random_key: Key for random number generation
     :param data_size: Size of the data we wish to sample from

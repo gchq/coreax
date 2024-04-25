@@ -26,6 +26,7 @@ dispname
 dollarmath
 dtype
 dtypes
+eigh
 emibcn
 eprint
 figsize
@@ -33,12 +34,14 @@ fori_loop
 fracv
 furo
 genindex
+hstack
 imageio
 imread
 imshow
 inproceedings
 intercal
 intersphinx
+isin
 isort
 issubdtype
 jacrev

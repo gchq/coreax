@@ -19,9 +19,9 @@ This example showcases how a coreset can be generated from a dataset containing 
 pairs of features sampled from a Gaussian distribution with corresponding responses
 generated with a non-linear relationship to the features.
 
-A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for both the 
-features and the response. This coreset is compared to a coreset generated via uniform 
-random sampling. Coreset quality is measured using conditional maximum mean discrepancy 
+A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for both the
+features and the response. This coreset is compared to a coreset generated via uniform
+random sampling. Coreset quality is measured using conditional maximum mean discrepancy
 (CMMD).
 """
 
@@ -46,6 +46,8 @@ from coreax import (
 from coreax.kernel import median_heuristic
 
 
+# Experiment requires a decent amount of setup
+# pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the basic GreedyCMMD on tabular data example.
@@ -131,6 +133,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         feature_kernel=feature_cmmd_kernel,
         response_kernel=response_cmmd_kernel,
         num_feature_dimensions=1,
+        regularisation_parameters=jnp.array([1e-6, 1e-6]),
     )
     cmmd_greedy = greedy_cmmd.compute_metric(metric_object)
 
@@ -177,6 +180,9 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(cmmd_random),
         float(cmmd_greedy),
     )
+
+
+# pylint: enable=too-many-locals
 
 
 if __name__ == "__main__":

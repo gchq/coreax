@@ -22,10 +22,12 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
+from jax.random import key, normal, uniform
 from scipy.stats import ortho_group
-from jax.random import key, uniform, normal
 
 import coreax.util
+
+# pylint: disable=too-many-public-methods
 
 
 class TestUtil(unittest.TestCase):
@@ -177,8 +179,7 @@ class TestUtil(unittest.TestCase):
         self,
     ) -> None:
         """
-        Test the function randomised_eigendecomposition with float
-        oversampling_parameter.
+        Test randomised_eigendecomposition with float oversampling_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -191,8 +192,7 @@ class TestUtil(unittest.TestCase):
 
     def test_randomised_eigendecomposition_non_square_array(self) -> None:
         """
-        Test the function randomised_eigendecomposition with float
-        oversampling_parameter.
+        Test randomised_eigendecomposition with float oversampling_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -205,8 +205,7 @@ class TestUtil(unittest.TestCase):
 
     def test_randomised_eigendecomposition_float_oversampling_parameter(self) -> None:
         """
-        Test the function randomised_eigendecomposition with float
-        oversampling_parameter.
+        Test randomised_eigendecomposition with float oversampling_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -219,8 +218,7 @@ class TestUtil(unittest.TestCase):
 
     def test_randomised_eigendecomposition_neg_oversampling_parameter(self) -> None:
         """
-        Test the function randomised_eigendecomposition with negative
-        oversampling_parameter.
+        Test randomised_eigendecomposition with negative oversampling_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -233,8 +231,7 @@ class TestUtil(unittest.TestCase):
 
     def test_randomised_eigendecomposition_float_power_iterations(self) -> None:
         """
-        Test the function randomised_eigendecomposition with float
-        power_iterations.
+        Test randomised_eigendecomposition with float power_iterations.
         """
         self.assertRaises(
             ValueError,
@@ -247,8 +244,7 @@ class TestUtil(unittest.TestCase):
 
     def test_randomised_eigendecomposition_negative_power_iterations(self) -> None:
         """
-        Test the function randomised_eigendecomposition with negative
-        power_iterations.
+        Test randomised_eigendecomposition with negative power_iterations.
         """
         self.assertRaises(
             ValueError,
@@ -300,8 +296,7 @@ class TestUtil(unittest.TestCase):
 
     def test_invert_regularised_array_negative_regularisation_parameter(self) -> None:
         """
-        Test the function invert_regularised_array with negative
-        regularisation_parameter.
+        Test invert_regularised_array with negative regularisation_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -314,8 +309,7 @@ class TestUtil(unittest.TestCase):
 
     def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
         """
-        Test the function invert_regularised_array with negative
-        regularisation_parameter.
+        Test invert_regularised_array with negative regularisation_parameter.
         """
         self.assertRaises(
             ValueError,
@@ -328,7 +322,7 @@ class TestUtil(unittest.TestCase):
 
     def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
         """
-        Test the function invert_regularised_array with invalid array dimensions.
+        Test invert_regularised_array with invalid array dimensions.
 
         An array and identity with unequal dimensions are given, which should be
         rejected by the function.
@@ -365,8 +359,7 @@ class TestUtil(unittest.TestCase):
 
     def test_invert_stacked_regularised_arrays_unequal_array_dimensions(self) -> None:
         """
-        Test the function invert_stacked_regularised_arrays with invalid array
-        dimensions.
+        Test invert_stacked_regularised_arrays with invalid array dimensions.
 
         Stacked arrays and identity with unequal dimensions are given, which should be
         rejected by the function.
@@ -510,8 +503,7 @@ class TestUtil(unittest.TestCase):
 
     def test_sample_batch_indices_data_size_smaller_than_batch_size(self) -> None:
         """
-        Test the function sample_batch_indices with an invalid combination of batch size
-        and data size.
+        Test sample_batch_indices with invalid combination of batch_size and data_size.
 
         Data size is smaller than batch size, which should be rejected by the function.
         """
@@ -618,6 +610,9 @@ class TestUtil(unittest.TestCase):
         )
         self.assertGreater(pre_time, wait_time)
         self.assertLess(post_time, (pre_time - wait_time))
+
+
+# pylint: enable=too-many-public-methods
 
 
 class TestSilentTQDM(unittest.TestCase):

@@ -640,6 +640,8 @@ class GreedyCMMDMock(coreax.coresubset.GreedyCMMD):
         raise NotImplementedError
 
 
+# We require more instance variables for the supervised case
+# pylint: disable=too-many-instance-attributes
 class TestRefineCMMD(unittest.TestCase):
     """
     Tests related to :meth:`~coreax.refine.RefineCMMD`.
@@ -766,8 +768,7 @@ class TestRefineCMMD(unittest.TestCase):
 
     def test_no_training_cme(self) -> None:
         """
-        Test how RefineCMMD handles a coreset input without a computed training CME
-        array.
+        Test RefineCMMD handling coreset input without a computed training CME array.
         """
         # Define an object to pass that does not have the associated attributes
         # required to refine
@@ -1009,12 +1010,12 @@ class TestRefineCMMD(unittest.TestCase):
             response_kernel=self.response_kernel,
             num_feature_dimensions=self.num_feature_dimensions,
         )
-        original_array = jnp.zeros(shape = (0, 0))
+        original_array = jnp.zeros(shape=(0, 0))
         coreset_indices = jnp.array([])
 
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
-        coreset_obj.coreset = jnp.zeros(shape = (0, 0))
+        coreset_obj.coreset = jnp.zeros(shape=(0, 0))
         coreset_obj.feature_gramian = self.feature_gramian
         coreset_obj.response_gramian = self.response_gramian
         coreset_obj.training_cme = self.training_cme
@@ -1045,14 +1046,12 @@ class TestRefineCMMD(unittest.TestCase):
         best_indices = {2, 0}
         index_pairs = (
             set(combo)
-            for combo in itertools.combinations(
-                range(self.original_array.shape[0]), 2
-            )
+            for combo in itertools.combinations(range(self.original_array.shape[0]), 2)
         )
 
         refine_cmmd_forward = coreax.refine.RefineCMMD(
-            random_key = self.random_key,
-            order='forward')
+            random_key=self.random_key, order="forward"
+        )
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
@@ -1092,14 +1091,12 @@ class TestRefineCMMD(unittest.TestCase):
         best_indices = {2, 0}
         index_pairs = (
             set(combo)
-            for combo in itertools.combinations(
-                range(self.original_array.shape[0]), 2
-            )
+            for combo in itertools.combinations(range(self.original_array.shape[0]), 2)
         )
 
         refine_cmmd_reverse = coreax.refine.RefineCMMD(
-            random_key = self.random_key,
-            order='reverse')
+            random_key=self.random_key, order="reverse"
+        )
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
@@ -1139,14 +1136,12 @@ class TestRefineCMMD(unittest.TestCase):
         best_indices = {2, 0}
         index_pairs = (
             set(combo)
-            for combo in itertools.combinations(
-                range(self.original_array.shape[0]), 2
-            )
+            for combo in itertools.combinations(range(self.original_array.shape[0]), 2)
         )
 
         refine_cmmd_random = coreax.refine.RefineCMMD(
-            random_key = self.random_key,
-            order='random')
+            random_key=self.random_key, order="random"
+        )
 
         for test_indices in index_pairs:
             coreset_indices = jnp.array(list(test_indices))
@@ -1172,6 +1167,7 @@ class TestRefineCMMD(unittest.TestCase):
                 )
 
 
+# pylint: enable=too-many-instance-attributes
 # pylint: enable=too-many-public-methods
 
 

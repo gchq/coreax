@@ -23,7 +23,7 @@ A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for b
 features and the response. This coreset is then refined to improve quality.
 
 The coreset generated from the above process is compared to a coreset generated via
-uniform random sampling. Coreset quality is measured using conditional maximum mean 
+uniform random sampling. Coreset quality is measured using conditional maximum mean
 discrepancy (CMMD).
 """
 
@@ -49,11 +49,14 @@ from coreax.kernel import median_heuristic
 from coreax.refine import RefineCMMD
 
 
+# Experiment requires a decent amount of setup
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the basic GreedyCMMD on tabular data example.
 
-    Generate a set of features from a Gaussian distribution, generate response with a 
+    Generate a set of features from a Gaussian distribution, generate response with a
     non-linear relationship to the features and Gaussian errors. Generate a coreset via
     GreedyCMMD. Compare results to coresets generated via uniform random sampling.
     Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
@@ -143,6 +146,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         feature_kernel=feature_cmmd_kernel,
         response_kernel=response_cmmd_kernel,
         num_feature_dimensions=1,
+        regularisation_parameters=jnp.array([1e-6, 1e-6]),
     )
     cmmd_greedy = greedy_cmmd.compute_metric(metric_object)
 
@@ -151,9 +155,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     cmmd_random = random_sample_object.compute_metric(metric_object)
 
     # Print the CMMD values
-    print(
-        f"Random sampling coreset CMMD: {cmmd_random}"
-    )
+    print(f"Random sampling coreset CMMD: {cmmd_random}")
     print(f"GreedyCMMD coreset CMMD: {cmmd_greedy}")
 
     # Produce some scatter plots (assume 1-dimensional features and response)
@@ -166,10 +168,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         ec="black",
     )
     plt.axis("off")
-    plt.title(
-        f"GreedyCMMD, m={coreset_size}, "
-        f"CMMD={round(cmmd_greedy.item(), 6)}"
-    )
+    plt.title(f"GreedyCMMD, m={coreset_size}, " f"CMMD={round(cmmd_greedy.item(), 6)}")
     plt.show()
 
     plt.scatter(x, y, s=2.0, alpha=0.5, color="black")
@@ -180,10 +179,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         color="red",
         ec="black",
     )
-    plt.title(
-        f"Random, m={coreset_size}, "
-        f"CMMD={round(cmmd_random.item(), 6)}"
-    )
+    plt.title(f"Random, m={coreset_size}, " f"CMMD={round(cmmd_random.item(), 6)}")
     plt.axis("off")
 
     if out_path is not None:
@@ -197,6 +193,10 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
         float(cmmd_greedy),
         float(cmmd_random),
     )
+
+
+# pylint: enable=too-many-locals
+# pylint: enable=too-many-statements
 
 
 if __name__ == "__main__":

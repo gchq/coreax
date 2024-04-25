@@ -791,16 +791,17 @@ class RefineCMMD(Refine):
         batch_size: int | None = None,
         order: str = "random",
     ):
+        """Initialise RefineCMMD class."""
         # Assign attributes
         self.random_key = random_key
         self.unique = unique
         self.batch_size = batch_size
 
-        assert order in [
+        assert order in set(
             "forward",
             "reverse",
             "random",
-        ], 'order must be one of "forward", "reverse" or "random"'
+        ), 'order must be one of "forward", "reverse" or "random"'
         self.order = order
 
         super().__init__(
@@ -809,11 +810,12 @@ class RefineCMMD(Refine):
 
     def refine(self, coreset: coreax.reduction.Coreset) -> None:
         r"""
-        Compute the refined coreset, of ``m`` pairs of features in ``d`` dimensions
-        and responses in ``p`` dimensions.
+        Refine the coreset targeting CMMD.
 
-        The Coreset object is updated in-place. The refinement procedure replaces
-        elements with pairs most reducing conditional maximum mean discrepancy (CMMD).
+        Compute the refined coreset, of ``m`` pairs of features in ``d`` dimensions
+        and responses in ``p`` dimensions. The Coreset object is updated in-place. The
+        refinement procedure replaces elements with pairs most reducing conditional
+        maximum mean discrepancy (CMMD).
 
         :param coreset: :class:`~coreax.reduction.Coreset` object with
             :math:`n \times d` original features and `n \times p` corresponding
@@ -884,8 +886,8 @@ class RefineCMMD(Refine):
         )
 
         def _refine_body(
-        i: int,
-        val: tuple[ArrayLike, ArrayLike],
+            i: int,
+            val: tuple[ArrayLike, ArrayLike],
         ) -> tuple[ArrayLike, ArrayLike]:
             r"""Execute main loop of the refine method."""
             # Unpack the components of the loop variables
@@ -923,14 +925,14 @@ class RefineCMMD(Refine):
             loss = term_2s - 2 * term_3s
 
             # Find the optimal replacement coreset index, ensuring we don't pick an
-            # already chosen point if we want the indices to be unique (except allow the
-            # index we are currently refining).
+            # already chosen points if we want the indices to be unique (except allow
+            # the index we are currently refining).
             if coreset.unique:
                 already_chosen_indices_mask = jnp.isin(
                     all_possible_coreset_indices[:, i],
                     current_coreset_indices.at[i].set(-1),
                 )
-                loss = loss + jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
             index_to_include_in_coreset = all_possible_coreset_indices[loss.argmin(), i]
 
             # Repeat the chosen replacement coreset index into the ith column of the
@@ -942,9 +944,8 @@ class RefineCMMD(Refine):
                 jnp.hstack(
                     (
                         jnp.tile(
-                            index_to_include_in_coreset,
-                            (batch_indices.shape[0], 1)
-                            ),
+                            index_to_include_in_coreset, (batch_indices.shape[0], 1)
+                        ),
                         batch_indices[:, [i + 1]],
                     )
                 )
@@ -971,8 +972,11 @@ class RefineCMMD(Refine):
         coreset.coreset_indices = coreset_indices
         coreset.coreset = coreset.original_data.pre_coreset_array[coreset_indices, :]
 
+
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
+
+
 refine_classes = (RefineRegular, RefineRandom, RefineReverse, RefineCMMD)
 for _current_class in refine_classes:
     tree_util.register_pytree_node(

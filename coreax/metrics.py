@@ -461,7 +461,7 @@ class CMMD(Metric):
         \mathbb{R}` on the response space
     :param num_feature_dimensions: An integer representing the dimensionality of the
         features :math:`x`
-    :param regularisation_params: A  :math:`1 \times 2` array of regularisation
+    :param regularisation_parameters: A  :math:`1 \times 2` array of regularisation
         parameters corresponding to the original dataset :math:`\mathcal{D}^{(1)}` and
         the coreset :math:`\mathcal{D}^{(2)}` respectively
     :param precision_threshold: Positive threshold we compare against for precision
@@ -472,14 +472,14 @@ class CMMD(Metric):
         feature_kernel: coreax.kernel.Kernel,
         response_kernel: coreax.kernel.Kernel,
         num_feature_dimensions: int,
-        regularisation_params: ArrayLike = jnp.array([1e-6, 1e-6]),
+        regularisation_parameters: ArrayLike,
         precision_threshold: float = 1e-6,
     ):
         """Calculate conditional maximum mean discrepancy between two datasets."""
         self.feature_kernel = feature_kernel
         self.response_kernel = response_kernel
         self.num_feature_dimensions = num_feature_dimensions
-        self.regularisation_params = regularisation_params
+        self.regularisation_parameters = regularisation_parameters
         self.precision_threshold = precision_threshold
 
         # Initialise parent
@@ -521,7 +521,8 @@ class CMMD(Metric):
         return self.conditional_maximum_mean_discrepancy(dataset_1, dataset_2)
 
     # pylint: enable=arguments-renamed
-
+    # Clarity means I need to assign more local variables
+    # pylint: disable=too-many-locals
     def conditional_maximum_mean_discrepancy(
         self, dataset_1: ArrayLike, dataset_2: ArrayLike
     ) -> Array:
@@ -575,14 +576,14 @@ class CMMD(Metric):
         identity_1 = jnp.eye(feature_gramian_1.shape[0])
         inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
             array=feature_gramian_1,
-            regularisation_parameter=self.regularisation_params[0],
+            regularisation_parameter=self.regularisation_parameters[0],
             identity=identity_1,
         )
 
         identity_2 = jnp.eye(feature_gramian_2.shape[0])
         inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
             array=feature_gramian_2,
-            regularisation_parameter=self.regularisation_params[1],
+            regularisation_parameter=self.regularisation_parameters[1],
             identity=identity_2,
         )
 
@@ -613,6 +614,7 @@ class CMMD(Metric):
                 f"Squared CMMD ({round(squared_result.item(), 4)}) is negative,"
                 + " increase precision threshold or regularisation strength.",
                 Warning,
+                stacklevel=1,
             )
         result = jnp.sqrt(
             coreax.util.apply_negative_precision_threshold(
@@ -621,3 +623,6 @@ class CMMD(Metric):
             )
         )
         return result
+
+
+# pylint: enable=too-many-locals

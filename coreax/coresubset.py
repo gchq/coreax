@@ -610,7 +610,7 @@ class RPCholesky(coreax.reduction.Coreset):
         )
 
         # Track diagonal of residual matrix
-        residual_diagonal = residual_diagonal - jnp.square(approximation_matrix[:, i])
+        residual_diagonal -= jnp.square(approximation_matrix[:, i])
 
         # Ensure diagonal remains nonnegative
         residual_diagonal = residual_diagonal.clip(min=0)
@@ -620,6 +620,8 @@ class RPCholesky(coreax.reduction.Coreset):
         return residual_diagonal, approximation_matrix, current_coreset_indices, key
 
 
+# We need more instance attributes here
+# pylint: disable=too-many-instance-attributes
 class GreedyCMMD(coreax.reduction.Coreset):
     r"""
     Apply GreedyCMMD to a supervised dataset.
@@ -681,6 +683,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         batch_size: int | None = None,
         refine_method: coreax.refine.RefineCMMD | None = None,
     ):
+        """Initialise a GreedyCMMD class."""
         # Assign GreedyCMMD-specific attributes
         self.random_key = random_key
         self.feature_kernel = feature_kernel
@@ -742,8 +745,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
         r"""
         Execute greedyCMMD algorithm with Jax.
 
-        We compute the feature and response kernel matrices, invert the feature 
-        kernel matrix, and then iteratively add points to the coreset that minimise the 
+        We compute the feature and response kernel matrices, invert the feature
+        kernel matrix, and then iteratively add points to the coreset that minimise the
         Conditional Maximum Mean Discrepancy.
 
         :param coreset_size: The size of the of coreset to generate
@@ -816,10 +819,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # allow us to invert static matrices using coreax.util.invert_regularised_array.
         coreset_identity = jnp.zeros((coreset_size, coreset_size))
 
-        def _greedy_body(
-                i: int,
-                val: tuple[ArrayLike, ArrayLike, ArrayLike]
-                ):
+        def _greedy_body(i: int, val: tuple[ArrayLike, ArrayLike, ArrayLike]):
             r"""Execute main loop of GreedyCMMD."""
             # Unpack the components of the loop variables
             (
@@ -869,7 +869,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
                 already_chosen_indices_mask = jnp.isin(
                     all_possible_next_coreset_indices[:, i], current_coreset_indices
                 )
-                loss = loss + jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
             index_to_include_in_coreset = all_possible_next_coreset_indices[
                 loss.argmin(), i
             ]
@@ -883,8 +883,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
                 jnp.hstack(
                     (
                         jnp.tile(
-                            index_to_include_in_coreset,
-                            (batch_indices.shape[0], 1)),
+                            index_to_include_in_coreset, (batch_indices.shape[0], 1)
+                        ),
                         batch_indices[:, [i + 1]],
                     )
                 )
@@ -921,3 +921,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+
+
+# pylint: enable=too-many-instance-attributes
