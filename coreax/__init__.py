@@ -62,7 +62,7 @@ __version__ = "0.1.0"
 # pylint: disable=unused-import
 from coreax.coresubset import KernelHerding, RandomSample, RPCholesky, GreedyCMMD
 from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, SteinKernel, LinearKernel
+from coreax.kernel import SquaredExponentialKernel, SteinKernel
 from coreax.metrics import MMD, CMMD
 from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
