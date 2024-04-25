@@ -24,10 +24,9 @@ class factories and checks for numerical precision.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
-import functools as ft
 import time
 from collections.abc import Callable, Iterable, Iterator
-from functools import partial
+from functools import partial, wraps
 from typing import TypeVar
 
 import jax.numpy as jnp
@@ -94,7 +93,7 @@ def pairwise(
         for every pairwise combination of its input arguments.
     """
 
-    @ft.wraps(fn)
+    @wraps(fn)
     def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
