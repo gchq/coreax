@@ -47,14 +47,6 @@ https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods.
 Performance tests are implemented in tests/performance/ that verify the code is in-fact
 faster when using JIT compilation, and should be updated as new JIT functionality is
 included in the codebase.
-
-Warning about integration tests using Jax: where multiple unit tests are run from a
-parent process, Jax is likely to re-use compiled tracers if present. This can result in
-errors where data types within the tracers differ (as they are likely to do in
-integration tests). Unfortunately, this doesn't seem to be rectified by multiprocessing,
-so a simple method to run a batch of tests from separate parent processes is to run or
-loop over them individually. We currently do this using
-``tests/integration/test_run.sh``.
 """
 
 __version__ = "0.1.0"
