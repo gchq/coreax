@@ -26,6 +26,7 @@ module, all of which implement :class:`Metric`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from warnings import warn
 
 import jax.numpy as jnp
 from jax import Array
@@ -428,3 +429,195 @@ class MMD(Metric):
                     weighted_pairwise_distance_sum += pairwise_distances_part.sum()
 
         return weighted_pairwise_distance_sum
+
+
+class CMMD(Metric):
+    r"""
+    Definition and calculation of the conditional maximum mean discrepancy metric.
+
+    For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
+    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs
+    with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
+    the conditional maximum mean discrepancy is given by:
+
+    .. math::
+
+        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) =
+        ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+
+    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
+    embeddings estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
+    respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding
+    to the kernel functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow
+    \mathbb{R}` and :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
+    respectively.
+
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param num_feature_dimensions: An integer representing the dimensionality of the
+        features :math:`x`
+    :param regularisation_params: A  :math:`1 \times 2` array of regularisation
+        parameters corresponding to the original dataset :math:`\mathcal{D}^{(1)}` and
+        the coreset :math:`\mathcal{D}^{(2)}` respectively
+    :param precision_threshold: Positive threshold we compare against for precision
+    """
+
+    def __init__(
+        self,
+        feature_kernel: coreax.kernel.Kernel,
+        response_kernel: coreax.kernel.Kernel,
+        num_feature_dimensions: int,
+        regularisation_params: ArrayLike = jnp.array([1e-6, 1e-6]),
+        precision_threshold: float = 1e-6,
+    ):
+        """Calculate conditional maximum mean discrepancy between two datasets."""
+        self.feature_kernel = feature_kernel
+        self.response_kernel = response_kernel
+        self.num_feature_dimensions = num_feature_dimensions
+        self.regularisation_params = regularisation_params
+        self.precision_threshold = precision_threshold
+
+        # Initialise parent
+        super().__init__()
+
+    # Disable pylint warning for arguments-renamed as the use of x and y as arguments
+    # for different datasets is bound to create misunderstandings when we are
+    # considering supervised data.
+    # pylint: disable=arguments-renamed
+    def compute(
+        self,
+        dataset_1: ArrayLike,
+        dataset_2: ArrayLike,
+        block_size: None = None,
+        weights_x: None = None,
+        weights_y: None = None,
+    ) -> Array:
+        r"""
+        Calculate conditional maximum mean discrepancy.
+
+        :param dataset_1: The original dataset :math:`\mathcal{D}^{(1)} =
+            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`, responses should be concatenated after the
+            features
+        :param dataset_2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+            \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with :math:`\tilde{x}\in\mathbb{R}^d`
+            and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
+            concatenated after the features
+        :param block_size: :data:`None`, included for compatibility reasons
+        :param weights_x: :data:`None`, included for compatibility reasons
+        :param weights_y: :data:`None`, included for compatibility reasons
+        :return: Conditional maximum mean discrepancy as a 0-dimensional array
+        """
+        # Make sure that compatibility params are None
+        assert block_size is None, "CMMD computation does not support blocking"
+        assert weights_x is None, "CMMD computation does not support weights"
+        assert weights_y is None, "CMMD computation does not support weights"
+
+        return self.conditional_maximum_mean_discrepancy(dataset_1, dataset_2)
+
+    # pylint: enable=arguments-renamed
+
+    def conditional_maximum_mean_discrepancy(
+        self, dataset_1: ArrayLike, dataset_2: ArrayLike
+    ) -> Array:
+        r"""
+        Calculate standard conditional maximum mean discrepancy metric.
+
+        For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs
+        with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+        :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``n``
+        pairs with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in
+        \mathbb{R}^p`, the conditional maximum mean discrepancy is given by:
+
+        .. math::
+
+            \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} -
+            \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+
+        where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
+        embeddings estimated with :math:`\mathcal{D}^{(1)}` and
+        :math:`\mathcal{D}^{(2)}` respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l`
+        are the RKHSs corresponding to the kernel functions
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
+        :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+
+        :param dataset_1: The original dataset :math:`\mathcal{D}^{(1)} =
+            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`, responses should be concatenated after the
+            features
+        :param dataset_2: Dataset :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+            \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs with :math:`\tilde{x}\in\mathbb{R}^d`
+            and :math:`\tilde{y}\in\mathbb{R}^p`, responses should be
+            concatenated after the features
+        """
+        # Extract and format features and responses from D1 and D2
+        x1 = jnp.atleast_2d(dataset_1[:, : self.num_feature_dimensions])
+        y1 = jnp.atleast_2d(dataset_1[:, self.num_feature_dimensions :])
+        x2 = jnp.atleast_2d(dataset_2[:, : self.num_feature_dimensions])
+        y2 = jnp.atleast_2d(dataset_2[:, self.num_feature_dimensions :])
+
+        # Compute feature kernel gramians
+        feature_gramian_1 = self.feature_kernel.compute(x1, x1)
+        feature_gramian_2 = self.feature_kernel.compute(x2, x2)
+        cross_feature_gramian = self.feature_kernel.compute(x2, x1)
+
+        # Compute response kernel gramians
+        response_gramian_1 = self.response_kernel.compute(y1, y1)
+        response_gramian_2 = self.response_kernel.compute(y2, y2)
+        cross_response_gramian = self.response_kernel.compute(y1, y2)
+
+        # Invert feature kernel gramians
+        identity_1 = jnp.eye(feature_gramian_1.shape[0])
+        inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
+            array=feature_gramian_1,
+            regularisation_parameter=self.regularisation_params[0],
+            identity=identity_1,
+        )
+
+        identity_2 = jnp.eye(feature_gramian_2.shape[0])
+        inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
+            array=feature_gramian_2,
+            regularisation_parameter=self.regularisation_params[1],
+            identity=identity_2,
+        )
+
+        # Compute each term in the CMMD
+        term_1 = (
+            inverse_feature_gramian_1
+            @ response_gramian_1
+            @ inverse_feature_gramian_1
+            @ feature_gramian_1
+        )
+        term_2 = (
+            inverse_feature_gramian_2
+            @ response_gramian_2
+            @ inverse_feature_gramian_2
+            @ feature_gramian_2
+        )
+        term_3 = (
+            inverse_feature_gramian_1
+            @ cross_response_gramian
+            @ inverse_feature_gramian_2
+            @ cross_feature_gramian
+        )
+
+        # Compute CMMD
+        squared_result = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
+        if squared_result < 0:
+            warn(
+                f"Squared CMMD ({round(squared_result.item(), 4)}) is negative,"
+                + " increase precision threshold or regularisation strength.",
+                Warning,
+            )
+        result = jnp.sqrt(
+            coreax.util.apply_negative_precision_threshold(
+                squared_result,
+                self.precision_threshold,
+            )
+        )
+        return result

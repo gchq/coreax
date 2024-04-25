@@ -31,6 +31,7 @@ from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
+from jax.random import permutation, normal
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias
@@ -191,6 +192,181 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
     return sol.primal
+
+@partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
+def randomised_eigendecomposition(
+        random_key : KeyArrayLike,
+        array: ArrayLike,
+        oversampling_parameter: int = 10,
+        power_iterations: int = 1,
+        ):
+    """
+    Approximate the eigendecomposition of symmetric two-dimensional arrays.
+
+    Using (:cite: `halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
+    eigendecomposition of a symmetric matrix. The parameters oversampling_parameter and
+    power_iterations present a trade-off between speed and approximation quality.
+
+    :param random_key: Key for random number generation
+    :param array: Array to be decomposed
+    :param oversampling_parameter: Number of columns to sample, the larger the
+        oversampling_parameter gets the more accurate but slower the method will be
+    :param power_iterations: Number of power iterations to do, the larger
+        power_iterations gets the more accurate but slower the method will be
+    :return: Tuple of approximate eigenvalues and eigenvectors
+    """
+    # Input handling
+    if len(array.shape) != 2:
+        raise ValueError("array must be two-dimensional")
+    if array.shape[0] != array.shape[1]:
+        raise ValueError("array must be square")
+    if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
+        raise ValueError("oversampling_parameter must be a positive integer")
+    if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
+        raise ValueError("power_iterations must be a positive integer")
+
+    # Generate a matrix of standard Gaussian draws
+    standard_gaussian_array = normal(
+        random_key,
+        shape = (array.shape[0], oversampling_parameter)
+        )
+
+    # QR decomposition finding orthonormal array with range approximating range of a
+    approximate_range = array @ standard_gaussian_array
+    q = jnp.linalg.qr(approximate_range)[0]
+
+    # Power iterations for improved accuracy
+    for _ in range(power_iterations):
+        orthonormalised = array.T @ q
+        q_orthonormalised = jnp.linalg.qr(orthonormalised)[0]
+        approximate_range = array @ q_orthonormalised
+        q = jnp.linalg.qr(approximate_range)[0]
+
+    # Form the approximate a array and compute its exact eigendecomposition and correct
+    # the eigenvectors.
+    array_approximation = q.T @ array @ q
+    array_approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+    array_approximate_eigenvectors = q @ eigenvectors
+
+    return array_approximate_eigenvalues, array_approximate_eigenvectors
+
+@partial(jit, static_argnames=("regularisation_parameter", "rcond"))
+def invert_regularised_array(
+    array: ArrayLike,
+    regularisation_parameter: float,
+    identity: ArrayLike,
+    rcond: float | None = None,
+) -> ArrayLike:
+    """
+    Using a least-squares solver, regularise the array and then invert it.
+
+    The function is designed to invert square block arrays where only the top-left block
+    is non-zero. That is, we return a block array, the same size as the input array,
+    where each block consists of zeros except for the top-left block, which is the
+    inverse of the original non-zero block. To achieve this the 'identity' array must be
+    a zero matrix except for ones on the diagonal up to the size of the non-zero block.
+
+    :param array: Array to be inverted
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array
+    :param identity: Block identity matrix
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 wil use machine precision.
+    :return: Inverse of regularised array
+    """
+    if rcond is not None:
+        if rcond < 0 and rcond != -1:
+            raise ValueError(
+                "regularisation_parameter must be non-negative, except for value of -1"
+                )
+    if regularisation_parameter < 0:
+        raise ValueError("regularisation_parameter must be non-negative")
+    if array.shape != identity.shape:
+        raise ValueError("Leading dimensions of array and identity must match")
+
+    return jnp.linalg.lstsq(
+        array + regularisation_parameter * identity, identity, rcond=rcond
+    )[0]
+
+
+@partial(jit, static_argnames=("regularisation_parameter", "rcond"))
+def invert_stacked_regularised_arrays(
+    stacked_arrays: ArrayLike,
+    regularisation_parameter: float,
+    identity: ArrayLike,
+    rcond: float | None = None,
+) -> ArrayLike:
+    """
+    Efficiently invert a stack of regularised square arrays.
+
+    The function is designed to invert a stack of square block arrays where only the
+    top-left block is non-zero. That is, we return a stack of block arrays, the same 
+    size as the stack of input arrays, where each block consists of zeros except for the
+    top-left block, which is the inverse of the original non-zero block. To achieve this
+    the 'identity' array must be a zero matrix except for ones on the diagonal up to the
+    size of the non-zero block.
+
+    :param array: Stack of arrays to be inverted
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        arrays
+    :param identity: Block identity matrix
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a
+    :return: Stack of inverted regularised arrays
+    """
+    if stacked_arrays.shape[1:] != identity.shape:
+        raise ValueError(
+            (
+                "Second and third dimensions of stacked_arrays and dimensions of "
+                "identity must match"
+            )
+        )
+
+    return vmap(
+        partial(
+            invert_regularised_array,
+            regularisation_parameter=regularisation_parameter,
+            identity=identity,
+            rcond=rcond,
+        )
+    )(stacked_arrays)
+
+
+def sample_batch_indices(
+    random_key: KeyArrayLike,
+    data_size: int,
+    batch_size: int,
+    num_batches: int,
+) -> ArrayLike:
+    """
+    Sample an array of column-unique indices where the largest possible index is
+    dictated by data_size.
+
+    :param random_key: Key for random number generation
+    :param data_size: Size of the data we wish to sample from
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+    :return: Array of batch indices of size batch_size x num_batches
+    """
+    if data_size < batch_size:
+        raise ValueError("data_size must be greater than or equal to batch_size")
+    if (data_size <= 0.0) or not isinstance(data_size, int):
+        raise ValueError("data_size must be a positive integer")
+    if (batch_size <= 0.0) or not isinstance(batch_size, int):
+        raise ValueError("batch_size must be a positive integer")
+    if (num_batches <= 0.0) or not isinstance(num_batches, int):
+        raise ValueError("num_batches must be a positive integer")
+
+    return permutation(
+        key=random_key,
+        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1)).T,
+        axis=0,
+        independent=True,
+    )[:batch_size, :]
 
 
 def jit_test(
