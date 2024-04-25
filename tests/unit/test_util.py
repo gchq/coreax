@@ -19,12 +19,11 @@ expected results on simple examples.
 
 import time
 import unittest
-from unittest.mock import Mock
 
 import jax.numpy as jnp
 import numpy as np
-import pytest
 from scipy.stats import ortho_group
+from jax.random import key, uniform, normal
 
 import coreax.util
 
@@ -174,46 +173,451 @@ class TestUtil(unittest.TestCase):
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
 
+    def test_randomised_eigendecomposition_larger_than_two_dimension_array(
+        self,
+    ) -> None:
+        """
+        Test the function randomised_eigendecomposition with float
+        oversampling_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.zeros(((2, 2, 2))),
+            oversampling_parameter=1.0,
+            power_iterations=1,
+        )
 
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "args, kwargs, jit_kwargs",
-    [
-        ((2,), {}, {}),
-        ((2,), {"a": 3}, {"static_argnames": "a"}),
-        ((), {"a": 3}, {"static_argnames": "a"}),
-    ],
-)
-def test_jit_test(args, kwargs, jit_kwargs) -> None:
-    """
-    Check that ``jit_test`` returns the expected timings.
+    def test_randomised_eigendecomposition_non_square_array(self) -> None:
+        """
+        Test the function randomised_eigendecomposition with float
+        oversampling_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.zeros(((2, 3))),
+            oversampling_parameter=1.0,
+            power_iterations=1,
+        )
 
-    ``jit_test`` returns a pre_time and a post_time. The former is the time for
-    JIT compiling and executing the passed function, the latter is the time for
-    dispatching the JIT compiled function.
-    """
-    wait_time = 2
-    trace_counter = Mock()
+    def test_randomised_eigendecomposition_float_oversampling_parameter(self) -> None:
+        """
+        Test the function randomised_eigendecomposition with float
+        oversampling_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.eye(2),
+            oversampling_parameter=1.0,
+            power_iterations=1,
+        )
 
-    def _mock(x=1.0, *, a=2.0):
-        trace_counter()
-        time.sleep(wait_time)
-        return x + a
+    def test_randomised_eigendecomposition_neg_oversampling_parameter(self) -> None:
+        """
+        Test the function randomised_eigendecomposition with negative
+        oversampling_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.eye(2),
+            oversampling_parameter=-1,
+            power_iterations=1,
+        )
 
-    pre_time, post_time = coreax.util.jit_test(
-        _mock, fn_args=args, fn_kwargs=kwargs, jit_kwargs=jit_kwargs
-    )
-    # Tracing should only occur once, thus, `trace_counter` should only
-    # be called once. Also implicitly checked in the below timing checks.
-    trace_counter.assert_called_once()
+    def test_randomised_eigendecomposition_float_power_iterations(self) -> None:
+        """
+        Test the function randomised_eigendecomposition with float
+        power_iterations.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.eye(2),
+            oversampling_parameter=10,
+            power_iterations=1.0,
+        )
 
-    # At trace time `time.sleep` will be called. Thus, we can be sure that,
-    # `pre_time` is lower bounded by `wait_time`.
-    assert pre_time > wait_time
-    # Post compilation `time.sleep` will be ignored, with JAX compiling the
-    # function to the identity function. Thus, we can be almost sure that
-    # `post_time` is upper bounded by `pre_time - wait_time`.
-    assert post_time < (pre_time - wait_time)
+    def test_randomised_eigendecomposition_negative_power_iterations(self) -> None:
+        """
+        Test the function randomised_eigendecomposition with negative
+        power_iterations.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.randomised_eigendecomposition,
+            random_key=key(0),
+            array=jnp.eye(2),
+            oversampling_parameter=10,
+            power_iterations=-1,
+        )
+
+    def test_randomised_eigendecomposition(self) -> None:
+        """
+        Test randomised_eigendecomposition.
+        """
+        random_key = key(0)
+        dimension = 3
+        oversampling_parameter = 25
+        power_iterations = 2
+
+        array = normal(random_key, (dimension, dimension))
+        symmetric_array = array.T @ array
+
+        (
+            expected_eigenvalues,
+            expected_eigenvectors,
+        ) = jnp.linalg.eigh(symmetric_array)
+        (
+            output_eigenvalues,
+            output_eigenvectors,
+        ) = coreax.util.randomised_eigendecomposition(
+            random_key=random_key,
+            array=symmetric_array,
+            oversampling_parameter=oversampling_parameter,
+            power_iterations=power_iterations,
+        )
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(expected_eigenvalues - output_eigenvalues)),
+            0.0,
+            places=3,
+        )
+        # Eigenvectors are computed up to sign
+        self.assertAlmostEqual(
+            float(
+                jnp.linalg.norm(abs(expected_eigenvectors) - abs(output_eigenvectors))
+            ),
+            0.0,
+            places=3,
+        )
+
+    def test_invert_regularised_array_negative_regularisation_parameter(self) -> None:
+        """
+        Test the function invert_regularised_array with negative
+        regularisation_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_regularised_array,
+            array=jnp.eye(2),
+            regularisation_parameter=-1,
+            identity=jnp.eye(3),
+            rcond=None,
+        )
+
+    def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
+        """
+        Test the function invert_regularised_array with negative
+        regularisation_parameter.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_regularised_array,
+            array=jnp.eye(2),
+            regularisation_parameter=1e-6,
+            identity=jnp.eye(3),
+            rcond=-10,
+        )
+
+    def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
+        """
+        Test the function invert_regularised_array with invalid array dimensions.
+
+        An array and identity with unequal dimensions are given, which should be
+        rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_regularised_array,
+            array=jnp.eye(2),
+            regularisation_parameter=1e-6,
+            identity=jnp.eye(3),
+            rcond=None,
+        )
+
+    def test_invert_regularised_array(self) -> None:
+        """
+        Test invert_regularised_array.
+        """
+        regularisation_parameter = 1
+        identity = jnp.eye(2)
+        rcond = -1
+        array = jnp.ones((2, 2))
+
+        expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
+
+        output = coreax.util.invert_regularised_array(
+            array,
+            regularisation_parameter,
+            identity=identity,
+            rcond=rcond,
+        )
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
+        )
+
+    def test_invert_stacked_regularised_arrays_unequal_array_dimensions(self) -> None:
+        """
+        Test the function invert_stacked_regularised_arrays with invalid array
+        dimensions.
+
+        Stacked arrays and identity with unequal dimensions are given, which should be
+        rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.invert_stacked_regularised_arrays,
+            stacked_arrays=uniform(key=key(0), shape=(3, 1, 2)),
+            regularisation_parameter=1e-6,
+            identity=jnp.eye(2),
+            rcond=None,
+        )
+
+    def test_invert_stacked_regularised_arrays(self) -> None:
+        """
+        Test vmap version of invert_regularised_array.
+        """
+        random_key = key(0)
+        num_arrays = 3
+        dimension = 2
+        identity = jnp.eye(dimension)
+        regularisation_parameter = 1e-6
+        rcond = None
+
+        stacked_arrays = uniform(
+            key=random_key, shape=(num_arrays, dimension, dimension)
+        )
+        stacked_pos_semi_def_arrays = stacked_arrays @ jnp.transpose(
+            stacked_arrays, (0, 2, 1)
+        )
+
+        expected_output = jnp.array(
+            [
+                jnp.linalg.lstsq(
+                    a=array + regularisation_parameter * identity,
+                    b=identity,
+                    rcond=rcond,
+                )[0]
+                for array in stacked_pos_semi_def_arrays
+            ]
+        )
+        output = coreax.util.invert_stacked_regularised_arrays(
+            stacked_pos_semi_def_arrays,
+            regularisation_parameter,
+            identity=identity,
+            rcond=rcond,
+        )
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
+        )
+
+    def test_sample_batch_indices_negative_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A negative data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=-1,
+            batch_size=1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_zero_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A zero data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=0,
+            batch_size=1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_float_data_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid data size.
+
+        A float data size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1.0,
+            batch_size=1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_negative_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A negative batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=-1,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_zero_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A zero batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=0,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_float_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid batch size.
+
+        A float batch size is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1.0,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_data_size_smaller_than_batch_size(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid combination of batch size
+        and data size.
+
+        Data size is smaller than batch size, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=2.0,
+            num_batches=1,
+        )
+
+    def test_sample_batch_indices_negative_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A negative number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=-1,
+        )
+
+    def test_sample_batch_indices_zero_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A zero number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=0,
+        )
+
+    def test_sample_batch_indices_float_num_batches(self) -> None:
+        """
+        Test the function sample_batch_indices with an invalid number of batches.
+
+        A float number of batches is given, which should be rejected by the function.
+        """
+        self.assertRaises(
+            ValueError,
+            coreax.util.sample_batch_indices,
+            random_key=key(0),
+            data_size=1,
+            batch_size=1,
+            num_batches=1.0,
+        )
+
+    def test_jit_test(self) -> None:
+        """
+        Test jit_test calls the function in question twice when checking performance.
+
+        The function jit_test is used to assess the performance of other functions and
+        methods in the codebase. It's inputs are a function (denoted fn) and inputs to
+        provide to fn. This unit test checks that fn is called twice. In a practical
+        usage of jit_test, the first call to fn performs the JIT compilation, and the
+        second call assesses if a performance improvement has occurred given the
+        JIT compilation.
+        """
+        wait_time = 2.0
+
+        def _mock(x):
+            time.sleep(wait_time)
+            return x
+
+        pre_time, post_time = coreax.util.jit_test(_mock, fn_args=(2,))
+
+        # At trace time `time.sleep` will be called. Thus, we can be sure that,
+        # `pre_time` is lower bounded by `wait_time`.
+        self.assertGreater(pre_time, wait_time)
+        # Post compilation `time.sleep` will be ignored, with JAX compiling the
+        # function to the identity function. Thus, we can be almost sure that
+        # `post_time` is upper bounded by `pre_time - wait_time`.
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_kwargs(x, a=2.0):
+            return _mock(x) + a
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_kwargs,
+            fn_args=(2,),
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
+        self.assertLess(post_time, (pre_time - wait_time))
+
+        def _mock_with_only_kwargs(a=2.0):
+            return _mock(a)
+
+        pre_time, post_time = coreax.util.jit_test(
+            _mock_with_only_kwargs,
+            fn_kwargs={"a": 3},
+            jit_kwargs={"static_argnames": "a"},
+        )
+        self.assertGreater(pre_time, wait_time)
+        self.assertLess(post_time, (pre_time - wait_time))
 
 
 class TestSilentTQDM(unittest.TestCase):
