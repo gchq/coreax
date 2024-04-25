@@ -139,6 +139,7 @@ class Kernel(ABC):
         """
         return cls(*children, **aux_data)
 
+    @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
