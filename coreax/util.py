@@ -26,14 +26,14 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterable, Iterator
-from functools import partial
+from functools import partial, wraps
 from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
@@ -82,6 +82,30 @@ def apply_negative_precision_threshold(
     return x
 
 
+def pairwise(
+    fn: Callable[[ArrayLike, ArrayLike], Array],
+) -> Callable[[ArrayLike, ArrayLike], Array]:
+    """
+    Transform a function so it returns all pairwise evaluations of its inputs.
+
+    :param fn: the function to apply the pairwise transform to.
+    :returns: function that returns an array whose entries are the evaluations of `fn`
+        for every pairwise combination of its input arguments.
+    """
+
+    @wraps(fn)
+    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
+        return vmap(
+            vmap(fn, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )(x, y)
+
+    return pairwise_fn
+
+
 @jit
 def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     """
@@ -97,7 +121,10 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     return jnp.dot(x - y, x - y)
 
 
-@jit
+@deprecated(
+    "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
+    "will be removed in version 0.3.0"
+)
 def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise square distance between two arrays.
@@ -107,15 +134,7 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
-    x = jnp.atleast_2d(x)
-    y = jnp.atleast_2d(y)
-    # Use vmap to turn distance between individual vectors into a pairwise distance.
-    fn = vmap(
-        vmap(squared_distance, in_axes=(None, 0), out_axes=0),
-        in_axes=(0, None),
-        out_axes=0,
-    )
-    return fn(x, y)
+    return pairwise(squared_distance)(x, y)
 
 
 @jit
@@ -132,7 +151,10 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     return x - y
 
 
-@jit
+@deprecated(
+    "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
+    "will be removed in version 0.3.0"
+)
 def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
@@ -142,12 +164,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
-    x = jnp.atleast_2d(x)
-    y = jnp.atleast_2d(y)
-    fn = vmap(
-        vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
-    )
-    return fn(x, y)
+    return pairwise(difference)(x, y)
 
 
 def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:

@@ -27,7 +27,7 @@ from jax import random
 
 import coreax.kernel
 import coreax.metrics
-import coreax.util
+from coreax.util import pairwise, squared_distance
 
 # pylint: disable=too-many-public-methods
 
@@ -397,7 +397,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
+        kernel.compute = pairwise(squared_distance)
 
         # Define a metric object
         metric = coreax.metrics.MMD(kernel=kernel)
@@ -425,7 +425,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
+        kernel.compute = pairwise(squared_distance)
 
         # Define a metric object
         metric = coreax.metrics.MMD(kernel=kernel)
@@ -673,7 +673,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
+        kernel.compute = pairwise(squared_distance)
 
         # Define a metric object
         metric = coreax.metrics.MMD(kernel=kernel)
@@ -705,7 +705,7 @@ class TestMMD(unittest.TestCase):
 
         # Define a kernel object and set pairwise computations to be the square distance
         kernel = MagicMock()
-        kernel.compute = coreax.util.squared_distance_pairwise
+        kernel.compute = pairwise(squared_distance)
 
         # Define a metric object
         metric = coreax.metrics.MMD(kernel=kernel)
