@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import itertools
 from abc import ABC, abstractmethod
+from typing import NamedTuple
 from unittest.mock import patch
 
 import jax.numpy as jnp
@@ -81,8 +82,14 @@ class TestRefine:
     # pylint: enable=protected-access
 
 
-class BaseRefineTest(ABC):
-    """Base tests for concrete implementations of `coreax.refine.Refine`."""
+class _RefineProblem(NamedTuple):
+    array: Array
+    test_indices: list[tuple[int, ...] | list[int] | set[int]]
+    best_indices: list[set[int]]
+
+
+class RefineTestCase(ABC):
+    """Abstract test case for concrete implementations of `coreax.refine.Refine`."""
 
     random_key = jr.key(0)
 
@@ -116,35 +123,44 @@ class BaseRefineTest(ABC):
             refine_method.refine(coreset=coreax.util.InvalidKernel(x=1.0))
 
     @pytest.mark.parametrize(
-        "array, test_indices, best_indices",
+        "problem",
         [
-            (
-                jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]]),
-                list(itertools.combinations(range(4), 2)),
-                [{0, 1}, {0, 3}, {1, 2}, {2, 3}],
+            _RefineProblem(
+                array=jnp.asarray([[0, 0], [1, 1], [0, 0], [1, 1]]),
+                test_indices=list(itertools.combinations(range(4), 2)),
+                best_indices=[{0, 1}, {0, 3}, {1, 2}, {2, 3}],
             ),
-            (jnp.asarray([[0, 0], [1, 1], [2, 2]]), [[2, 2]], [{0, 2}]),
+            _RefineProblem(
+                array=jnp.asarray([[0, 0], [1, 1], [2, 2]]),
+                test_indices=list(itertools.combinations(range(3), 2)),
+                best_indices=[{0, 2}],
+            ),
         ],
+        ids=["no_unique_best", "unique_best"],
     )
     @pytest.mark.parametrize("use_cached_row_sum_mean", [False, True])
     def test_refine(
         self,
         refine_method: coreax.refine.Refine,
-        array: Array,
-        test_indices: list[list[int] | set[int]],
-        best_indices: list[set[int]],
+        problem: _RefineProblem,
         use_cached_row_sum_mean: bool,
     ):
         """
         Test behaviour of the ``refine`` method when passed valid arguments.
 
-        Each set of ``test_indices`` is used as an initialisation and the refinement
-        result compared to every set of indices in ``best_indices``.
+        Each test problem consists of an ``array``, a list of sets of ``test_indices``,
+        and a list of sets of ``best_indices``. We test that, when given a coresubset
+        on ``array`` with indices given by any set in ``test_indices``, the ``refine``
+        method returns a coresubset with indices equal to a set in ``best_indices``.
+
+        - The ``no_unique_best`` case tests scenarios with multiple "best" solutions.
+        - The ``unique_best`` cases tests scenarios with a unique "best" solution.
 
         When ``use_cached_row_sum_mean=True``, we expect the corresponding cached value
         in the coreset object to be used by refine, otherwise, we expect the kernel's
         calculate_kernel_matrix_row_sum_mean to be called (exactly once).
         """
+        array, test_indices, best_indices = problem
         for indices in test_indices:
             coreset_indices = jnp.array(indices)
             kernel = coreax.kernel.SquaredExponentialKernel()
@@ -175,7 +191,7 @@ class BaseRefineTest(ABC):
             )
 
 
-class TestRefineRegular(BaseRefineTest):
+class TestRefineRegular(RefineTestCase):
     """Tests related to :meth:`~coreax.refine.RefineRegular`."""
 
     @pytest.fixture
@@ -183,7 +199,7 @@ class TestRefineRegular(BaseRefineTest):
         return coreax.refine.RefineRegular()
 
 
-class TestRefineRandom(BaseRefineTest):
+class TestRefineRandom(RefineTestCase):
     """Tests related to :meth:`~coreax.refine.RefineRandom`."""
 
     @pytest.fixture
@@ -213,7 +229,7 @@ class TestRefineRandom(BaseRefineTest):
     @pytest.mark.parametrize("p", [0, -0.5, 1.5])
     def test_original_data_proportion(self, p: float):
         """
-        Test how RefineRandom on different proportions of the original data to sample.
+        Test RefineRandom on different (degenerate) original data sampling proportions.
 
         ``p`` should be capped at ``1``, and an error raised for ``p <= 0``.
         """
@@ -236,7 +252,7 @@ class TestRefineRandom(BaseRefineTest):
             assert refine_random.p == min(p, 1.0)
 
 
-class TestRefineReverse(BaseRefineTest):
+class TestRefineReverse(RefineTestCase):
     """Tests related to :meth:`~coreax.refine.RefineReverse`."""
 
     @pytest.fixture
