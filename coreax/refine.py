@@ -798,9 +798,11 @@ class RefineCMMD(Refine):
         self.batch_size = batch_size
 
         assert order in set(
-            "forward",
-            "reverse",
-            "random",
+            [
+                "forward",
+                "reverse",
+                "random",
+            ]
         ), 'order must be one of "forward", "reverse" or "random"'
         self.order = order
 
@@ -885,6 +887,10 @@ class RefineCMMD(Refine):
             jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[:, 0])
         )
 
+        # body_fn of GreedyCMMD and RefineCMMD are very similar, might be worth
+        # thinking of how this could be avoided?
+        # pylint: disable=duplicate-code
+        @jit
         def _refine_body(
             i: int,
             val: tuple[ArrayLike, ArrayLike],
@@ -956,6 +962,8 @@ class RefineCMMD(Refine):
                 index_to_include_in_coreset
             )
             return current_coreset_indices, all_possible_coreset_indices
+
+        # pylint: enable=duplicate-code
 
         # Refine coreset points
         coreset_indices, _ = lax.fori_loop(

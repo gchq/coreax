@@ -819,7 +819,14 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # allow us to invert static matrices using coreax.util.invert_regularised_array.
         coreset_identity = jnp.zeros((coreset_size, coreset_size))
 
-        def _greedy_body(i: int, val: tuple[ArrayLike, ArrayLike, ArrayLike]):
+        # body_fn of GreedyCMMD and RefineCMMD are very similar, might be worth
+        # thinking of how this could be avoided?
+        # pylint: disable=duplicate-code
+        @jit
+        def _greedy_body(
+            i: int,
+            val: tuple[ArrayLike, ArrayLike, ArrayLike],
+        ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
             r"""Execute main loop of GreedyCMMD."""
             # Unpack the components of the loop variables
             (
@@ -899,6 +906,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
                 current_identity,
                 all_possible_next_coreset_indices,
             )
+
+        # pylint: enable=duplicate-code
 
         # Greedily select coreset points
         (coreset_indices, _, _) = lax.fori_loop(
