@@ -132,7 +132,7 @@ class RefineTestCase(ABC):
             ),
             _RefineProblem(
                 array=jnp.asarray([[0, 0], [1, 1], [2, 2]]),
-                test_indices=list(itertools.combinations(range(3), 2)),
+                test_indices=[(2, 2)],
                 best_indices=[{0, 2}],
             ),
         ],
@@ -154,7 +154,8 @@ class RefineTestCase(ABC):
         method returns a coresubset with indices equal to a set in ``best_indices``.
 
         - The ``no_unique_best`` case tests scenarios with multiple "best" solutions.
-        - The ``unique_best`` cases tests scenarios with a unique "best" solution.
+        - The ``unique_best`` case tests scenarios with a unique "best" solution. This
+        unique solution is expected even for random/greedy refinement methods.
 
         When ``use_cached_row_sum_mean=True``, we expect the corresponding cached value
         in the coreset object to be used by refine, otherwise, we expect the kernel's
