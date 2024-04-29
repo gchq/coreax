@@ -153,9 +153,6 @@ class KernelHerding(coreax.reduction.Coreset):
 
         :param coreset_size: The size of the of coreset to generate
         """
-        if coreset_size == 0:
-            raise ValueError("coreset_size must be non-zero")
-
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
@@ -184,9 +181,7 @@ class KernelHerding(coreax.reduction.Coreset):
             # Note that a TypeError is raised if the size input to jnp.zeros is negative
             coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
         except TypeError as exception:
-            if coreset_size < 0:
-                raise ValueError("coreset_size must not be negative") from exception
-            if isinstance(coreset_size, float):
+            if coreset_size <= 0 or isinstance(coreset_size, float):
                 raise ValueError(
                     "coreset_size must be a positive integer"
                 ) from exception
@@ -732,9 +727,9 @@ class SteinThinning(coreax.reduction.Coreset):
 
         :param coreset_size: The size of the of coreset to generate
         """
-        if coreset_size == 0:
-            raise ValueError("coreset_size must be non-zero")
-
+        # Check if coreset size is viable
+        if coreset_size <= 0 or isinstance(coreset_size, float):
+            raise ValueError("coreset_size must be a positive integer")
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
@@ -749,7 +744,11 @@ class SteinThinning(coreax.reduction.Coreset):
             )
 
         # Create a Stein kernel
-        self.stein_kernel = coreax.kernel.SteinKernel(self.kernel, score_function)
+        if isinstance(self.kernel, coreax.kernel.SteinKernel):
+            self.stein_kernel = self.kernel
+            self.stein_kernel.score_function = score_function
+        else:
+            self.stein_kernel = coreax.kernel.SteinKernel(self.kernel, score_function)
 
         # Initialise variables that will be updated throughout the loop. These are
         # initially local variables, with the coreset indices being assigned to self
@@ -760,9 +759,7 @@ class SteinThinning(coreax.reduction.Coreset):
             coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
 
         except TypeError as exception:
-            if coreset_size < 0:
-                raise ValueError("coreset_size must not be negative") from exception
-            if isinstance(coreset_size, float):
+            if coreset_size <= 0 or isinstance(coreset_size, float):
                 raise ValueError(
                     "coreset_size must be a positive integer"
                 ) from exception
@@ -846,8 +843,8 @@ class SteinThinning(coreax.reduction.Coreset):
 
         .. math::
 
-            x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
-                \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
+            x_{T+1} = \arg\min_{x} \left( k_P(x, x) + \Delta^+ \log p(x) -
+                \lambda T \log p(x) + \frac{2}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
 
         where :math:`k_P` is the Stein kernel induced by the supplied base kernel,
         :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
@@ -889,7 +886,7 @@ class SteinThinning(coreax.reduction.Coreset):
         # point in the data-set, when added to the coreset, will minimise KSD.
         index_to_include_in_coreset = (
             kernel_diagonal
-            + current_kernel_similarity_penalty
+            + 2.0 * current_kernel_similarity_penalty
             - i * regularised_log_pdf
         ).argmin()
 
