@@ -26,7 +26,6 @@ dispname
 dollarmath
 dtype
 dtypes
-eigh
 emibcn
 eprint
 figsize

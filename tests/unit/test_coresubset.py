@@ -1508,9 +1508,9 @@ class TestGreedyCMMD(unittest.TestCase):
                 "unique": False,
                 "batch_size": 1,
                 "refine_method": "ABC",
-                "unused_kernel": None,
-                "unused_weights_optimiser": "DEF",
-                "unused_kernel_mean": None,
+                "kernel": None,
+                "weights_optimiser": "DEF",
+                "kernel_matrix_row_sum_mean": None,
             },
         )
 
@@ -1526,7 +1526,6 @@ class TestGreedyCMMD(unittest.TestCase):
             feature_kernel=coreax.kernel.SquaredExponentialKernel(),
             response_kernel=coreax.kernel.SquaredExponentialKernel(),
             num_feature_dimensions=self.feature_dimension,
-            refine_method=coreax.util.InvalidKernel,
         )
 
         # The fit method should not use the refine method at all, so is expected to run
@@ -1538,11 +1537,11 @@ class TestGreedyCMMD(unittest.TestCase):
 
         # Now, if we refine the coreset generated during the call to fit, we will use
         # the refine method, so expect an error to be raised
-        with self.assertRaises(AttributeError) as error_raised:
+        with self.assertRaises(TypeError) as error_raised:
             greedy_cmmd_object.refine()
         self.assertEqual(
             error_raised.exception.args[0],
-            "type object 'InvalidKernel' has no attribute 'refine'",
+            "Cannot refine without a refine_method",
         )
 
     def test_greedy_cmmd_fit_zero_coreset_size(self):

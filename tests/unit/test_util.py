@@ -23,7 +23,7 @@ from unittest.mock import Mock
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax.random import key, uniform
+from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
@@ -31,7 +31,6 @@ from coreax.util import (
     apply_negative_precision_threshold,
     difference,
     invert_regularised_array,
-    invert_stacked_regularised_arrays,
     jit_test,
     pairwise,
     sample_batch_indices,
@@ -153,18 +152,6 @@ class TestUtil:
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
 
-    def test_invert_regularised_array_negative_regularisation_parameter(self) -> None:
-        """
-        Test invert_regularised_array with negative regularisation_parameter.
-        """
-        with pytest.raises(ValueError):
-            invert_regularised_array(
-                array=jnp.eye(2),
-                regularisation_parameter=-1,
-                identity=jnp.eye(2),
-                rcond=None,
-            )
-
     def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
         """
         Test invert_regularised_array with negative regularisation_parameter.
@@ -205,57 +192,6 @@ class TestUtil:
 
         output = invert_regularised_array(
             array,
-            regularisation_parameter,
-            identity=identity,
-            rcond=rcond,
-        )
-        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
-
-    def test_invert_stacked_regularised_arrays_unequal_array_dimensions(self) -> None:
-        """
-        Test invert_stacked_regularised_arrays with invalid array dimensions.
-
-        Stacked arrays and identity with unequal dimensions are given, which should be
-        rejected by the function.
-        """
-        with pytest.raises(ValueError):
-            invert_stacked_regularised_arrays(
-                stacked_arrays=uniform(key=key(0), shape=(3, 1, 2)),
-                regularisation_parameter=1e-6,
-                identity=jnp.eye(2),
-                rcond=None,
-            )
-
-    def test_invert_stacked_regularised_arrays(self) -> None:
-        """
-        Test vmap version of invert_regularised_array.
-        """
-        random_key = key(0)
-        num_arrays = 3
-        dimension = 2
-        identity = jnp.eye(dimension)
-        regularisation_parameter = 1e-6
-        rcond = None
-
-        stacked_arrays = uniform(
-            key=random_key, shape=(num_arrays, dimension, dimension)
-        )
-        stacked_pos_semi_def_arrays = stacked_arrays @ jnp.transpose(
-            stacked_arrays, (0, 2, 1)
-        )
-
-        expected_output = jnp.array(
-            [
-                jnp.linalg.lstsq(
-                    a=array + regularisation_parameter * identity,
-                    b=identity,
-                    rcond=rcond,
-                )[0]
-                for array in stacked_pos_semi_def_arrays
-            ]
-        )
-        output = invert_stacked_regularised_arrays(
-            stacked_pos_semi_def_arrays,
             regularisation_parameter,
             identity=identity,
             rcond=rcond,

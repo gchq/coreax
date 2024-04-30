@@ -462,8 +462,8 @@ class CMMD(Metric):
     :param num_feature_dimensions: An integer representing the dimensionality of the
         features :math:`x`
     :param regularisation_parameters: A  :math:`1 \times 2` array of regularisation
-        parameters corresponding to the original dataset :math:`\mathcal{D}^{(1)}` and
-        the coreset :math:`\mathcal{D}^{(2)}` respectively
+        parameters corresponding to the first dataset :math:`\mathcal{D}^{(1)}` and
+        second datasets :math:`\mathcal{D}^{(2)}` respectively
     :param precision_threshold: Positive threshold we compare against for precision
     """
 
@@ -516,8 +516,6 @@ class CMMD(Metric):
         return self.conditional_maximum_mean_discrepancy(dataset_1, dataset_2)
 
     # pylint: enable=arguments-renamed
-    # Clarity means I need to assign more local variables
-    # pylint: disable=too-many-locals
     def conditional_maximum_mean_discrepancy(
         self, dataset_1: ArrayLike, dataset_2: ArrayLike
     ) -> Array:
@@ -560,46 +558,37 @@ class CMMD(Metric):
         # Compute feature kernel gramians
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
-        cross_feature_gramian = self.feature_kernel.compute(x2, x1)
-
-        # Compute response kernel gramians
-        response_gramian_1 = self.response_kernel.compute(y1, y1)
-        response_gramian_2 = self.response_kernel.compute(y2, y2)
-        cross_response_gramian = self.response_kernel.compute(y1, y2)
 
         # Invert feature kernel gramians
-        identity_1 = jnp.eye(feature_gramian_1.shape[0])
         inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
             array=feature_gramian_1,
-            regularisation_parameter=self.regularisation_parameters[0].item(),
-            identity=identity_1,
+            regularisation_parameter=self.regularisation_parameters[0],
+            identity=jnp.eye(feature_gramian_1.shape[0]),
         )
-
-        identity_2 = jnp.eye(feature_gramian_2.shape[0])
         inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
             array=feature_gramian_2,
-            regularisation_parameter=self.regularisation_parameters[1].item(),
-            identity=identity_2,
+            regularisation_parameter=self.regularisation_parameters[1],
+            identity=jnp.eye(feature_gramian_2.shape[0]),
         )
 
         # Compute each term in the CMMD
         term_1 = (
             inverse_feature_gramian_1
-            @ response_gramian_1
+            @ self.response_kernel.compute(y1, y1)
             @ inverse_feature_gramian_1
             @ feature_gramian_1
         )
         term_2 = (
             inverse_feature_gramian_2
-            @ response_gramian_2
+            @ self.response_kernel.compute(y2, y2)
             @ inverse_feature_gramian_2
             @ feature_gramian_2
         )
         term_3 = (
             inverse_feature_gramian_1
-            @ cross_response_gramian
+            @ self.response_kernel.compute(y1, y2)
             @ inverse_feature_gramian_2
-            @ cross_feature_gramian
+            @ self.feature_kernel.compute(x2, x1)
         )
 
         # Compute CMMD
@@ -618,6 +607,3 @@ class CMMD(Metric):
             )
         )
         return result
-
-
-# pylint: enable=too-many-locals

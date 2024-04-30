@@ -211,7 +211,7 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     return sol.primal
 
 
-@partial(jit, static_argnames=("regularisation_parameter", "rcond"))
+@partial(jit, static_argnames="rcond")
 def invert_regularised_array(
     array: ArrayLike,
     regularisation_parameter: float,
@@ -230,7 +230,7 @@ def invert_regularised_array(
 
     :param array: Array to be inverted
     :param regularisation_parameter: Regularisation parameter for stable inversion of
-        array
+        array, negative values will be converted to positive
     :param identity: Block identity matrix
     :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
         determination, singular values are treated as zero if they are smaller than
@@ -244,58 +244,13 @@ def invert_regularised_array(
             raise ValueError(
                 "regularisation_parameter must be non-negative, except for value of -1"
             )
-    if regularisation_parameter < 0:
-        raise ValueError("regularisation_parameter must be non-negative")
     if array.shape != identity.shape:
         raise ValueError("Leading dimensions of array and identity must match")
 
+    regularisation_parameter = abs(regularisation_parameter)
     return jnp.linalg.lstsq(
         array + regularisation_parameter * identity, identity, rcond=rcond
     )[0]
-
-
-@partial(jit, static_argnames=("regularisation_parameter", "rcond"))
-def invert_stacked_regularised_arrays(
-    stacked_arrays: ArrayLike,
-    regularisation_parameter: float,
-    identity: ArrayLike,
-    rcond: float | None = None,
-) -> ArrayLike:
-    """
-    Efficiently invert a stack of regularised square arrays.
-
-    The function is designed to invert a stack of square block arrays where only the
-    top-left block is non-zero. That is, we return a stack of block arrays, the same
-    size as the stack of input arrays, where each block consists of zeros except for the
-    top-left block, which is the inverse of the non-zero input block. The fastest way to
-    compute this requires the 'identity' array to be a zero matrix except for ones on
-    the diagonal up to the size of the non-zero block.
-
-    :param array: Stack of arrays to be inverted
-    :param regularisation_parameter: Regularisation parameter for stable inversion of
-        arrays
-    :param identity: Block identity matrix
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
-        determination, singular values are treated as zero if they are smaller than
-        rcond times the largest singular value of a
-    :return: Stack of inverted regularised arrays
-    """
-    if stacked_arrays.shape[1:] != identity.shape:
-        raise ValueError(
-            (
-                "Second and third dimensions of stacked_arrays and dimensions of "
-                "identity must match"
-            )
-        )
-
-    return vmap(
-        partial(
-            invert_regularised_array,
-            regularisation_parameter=regularisation_parameter,
-            identity=identity,
-            rcond=rcond,
-        )
-    )(stacked_arrays)
 
 
 def sample_batch_indices(

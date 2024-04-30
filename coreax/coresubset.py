@@ -407,7 +407,7 @@ class RandomSample(coreax.reduction.Coreset):
 
         # Assign coreset indices and coreset to the object
         self.coreset_indices = random_indices
-        self.coreset = self.original_data.pre_coreset_array[random_indices, :]
+        self.coreset = self.original_data.pre_coreset_array[random_indices]
 
 
 class RPCholesky(coreax.reduction.Coreset):
@@ -667,8 +667,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
-    :param refine_method: :class:`~coreax.refine.RefineCMMD` object, or :data:`None`
-        (default) if no refinement is required
     """
 
     def __init__(
@@ -681,7 +679,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         regularisation_parameter: float = 1e-6,
         unique: bool = True,
         batch_size: int | None = None,
-        refine_method: coreax.refine.RefineCMMD | None = None,
     ):
         """Initialise a GreedyCMMD class."""
         # Assign GreedyCMMD-specific attributes
@@ -692,7 +689,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.regularisation_parameter = regularisation_parameter
         self.unique = unique
         self.batch_size = batch_size
-        self.refine_method = refine_method
         self.feature_gramian = None
         self.response_gramian = None
         self.training_cme = None
@@ -702,7 +698,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         super().__init__(
             weights_optimiser=None,
             kernel=None,
-            refine_method=self.refine_method,
+            refine_method=None,
         )
 
     def tree_flatten(self) -> tuple[tuple, dict]:
@@ -735,9 +731,9 @@ class GreedyCMMD(coreax.reduction.Coreset):
             "unique": self.unique,
             "batch_size": self.batch_size,
             "refine_method": self.refine_method,
-            "unused_kernel": self.kernel,
-            "unused_weights_optimiser": self.weights_optimiser,
-            "unused_kernel_mean": self.kernel_matrix_row_sum_mean,
+            "kernel": self.kernel,
+            "weights_optimiser": self.weights_optimiser,
+            "kernel_matrix_row_sum_mean": self.kernel_matrix_row_sum_mean,
         }
         return children, aux_data
 
@@ -756,7 +752,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         if (coreset_size <= 0) or not isinstance(coreset_size, int):
             raise ValueError("coreset_size must be a positive integer")
 
-        # Compute original feature and response kernel gramians.
         x = self.original_data.pre_coreset_array[:, : self.num_feature_dimensions]
         y = self.original_data.pre_coreset_array[:, self.num_feature_dimensions :]
         num_data_pairs = self.original_data.pre_coreset_array.shape[0]
@@ -764,7 +759,6 @@ class GreedyCMMD(coreax.reduction.Coreset):
         feature_gramian = self.feature_kernel.compute(x, x)
         response_gramian = self.response_kernel.compute(y, y)
 
-        # Invert the feature gramian
         inverse_feature_gramian = coreax.util.invert_regularised_array(
             array=feature_gramian,
             regularisation_parameter=self.regularisation_parameter,
@@ -819,24 +813,19 @@ class GreedyCMMD(coreax.reduction.Coreset):
         # allow us to invert static matrices using coreax.util.invert_regularised_array.
         coreset_identity = jnp.zeros((coreset_size, coreset_size))
 
-        # body_fn of GreedyCMMD and RefineCMMD are very similar, might be worth
-        # thinking of how this could be avoided?
-        # pylint: disable=duplicate-code
-        @jit
+        invert_stacked_regularised_arrays = vmap(
+            coreax.util.invert_regularised_array, in_axes=(0, None, None, None)
+        )
+
         def _greedy_body(
             i: int,
             val: tuple[ArrayLike, ArrayLike, ArrayLike],
         ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
             r"""Execute main loop of GreedyCMMD."""
-            # Unpack the components of the loop variables
-            (
-                current_coreset_indices,
-                current_identity,
-                all_possible_next_coreset_indices,
-            ) = val
+            coreset_indices, identity, all_possible_next_coreset_indices = val
 
-            # Update the "identity" matrix
-            current_identity = current_identity.at[i, i].set(1)
+            # Update the "identity" matrix to allow for sub-array inversion
+            updated_identity = identity.at[i, i].set(1)
 
             # Extract all the possible "next" coreset arrays
             extract_indices = (
@@ -847,16 +836,13 @@ class GreedyCMMD(coreax.reduction.Coreset):
             coreset_response_gramians = response_gramian[extract_indices]
             coreset_cmes = training_cme[extract_indices]
 
-            # Compute and store inverses for each coreset feature kernel matrix
-            inverse_coreset_feature_gramians = (
-                coreax.util.invert_stacked_regularised_arrays(
-                    stacked_arrays=coreset_feature_gramians,
-                    regularisation_parameter=self.regularisation_parameter,
-                    identity=current_identity,
-                )
+            inverse_coreset_feature_gramians = invert_stacked_regularised_arrays(
+                coreset_feature_gramians,
+                self.regularisation_parameter,
+                updated_identity,
+                None,
             )
 
-            # Compute each term of CMMD for each possible new coreset index
             term_2s = jnp.trace(
                 inverse_coreset_feature_gramians
                 @ coreset_response_gramians
@@ -874,7 +860,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
             # chosen point if we want the indices to be unique.
             if self.unique:
                 already_chosen_indices_mask = jnp.isin(
-                    all_possible_next_coreset_indices[:, i], current_coreset_indices
+                    all_possible_next_coreset_indices[:, i], coreset_indices
                 )
                 loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
             index_to_include_in_coreset = all_possible_next_coreset_indices[
@@ -884,33 +870,28 @@ class GreedyCMMD(coreax.reduction.Coreset):
             # Repeat the chosen coreset index into the ith column of the array of
             # possible next coreset indices and replace the (i+1)th column with the next
             # batch of possible coreset indices.
-            all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[
-                :, [i, i + 1]
-            ].set(
-                jnp.hstack(
-                    (
-                        jnp.tile(
-                            index_to_include_in_coreset, (batch_indices.shape[0], 1)
-                        ),
-                        batch_indices[:, [i + 1]],
-                    )
+            updated_next_possible_coreset_indices = jnp.hstack(
+                (
+                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[0], 1)),
+                    batch_indices[:, [i + 1]],
                 )
             )
+            all_possible_next_coreset_indices = all_possible_next_coreset_indices.at[
+                :, [i, i + 1]
+            ].set(updated_next_possible_coreset_indices)
 
             # Add the chosen coreset index to the current coreset indices
-            current_coreset_indices = current_coreset_indices.at[i].set(
+            updated_coreset_indices = coreset_indices.at[i].set(
                 index_to_include_in_coreset
             )
             return (
-                current_coreset_indices,
-                current_identity,
+                updated_coreset_indices,
+                updated_identity,
                 all_possible_next_coreset_indices,
             )
 
-        # pylint: enable=duplicate-code
-
         # Greedily select coreset points
-        (coreset_indices, _, _) = lax.fori_loop(
+        coreset_indices, _, _ = lax.fori_loop(
             lower=0,
             upper=coreset_size,
             body_fun=_greedy_body,
