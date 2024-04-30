@@ -848,23 +848,9 @@ class SteinKernel(Kernel):
         output_scale: float = 1.0,
     ):
         """Define the Stein kernel, i.e. the application of the Stein operator."""
-        # Check that the base_kernel provided has the relevant JAX pytree methods to
-        # allow functionality within this kernel
-        if not hasattr(base_kernel, "tree_flatten"):
-            raise AttributeError(
-                "base_kernel must have the method tree_flatten implemented"
-            )
-
-        if not hasattr(base_kernel, "tree_unflatten"):
-            raise AttributeError(
-                "base_kernel must have the method tree_unflatten implemented"
-            )
-
         self.base_kernel = base_kernel
         self.score_function = score_function
         self.output_scale = output_scale
-
-        # Initialise parent
         super().__init__(output_scale=output_scale)
 
     def tree_flatten(self) -> tuple[tuple, dict]:
