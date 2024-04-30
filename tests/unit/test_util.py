@@ -22,7 +22,7 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from jax.random import key, normal, uniform
+from jax.random import key, uniform
 from scipy.stats import ortho_group
 
 import coreax.util
@@ -174,125 +174,6 @@ class TestUtil(unittest.TestCase):
                 kernel_mm=np.array([1, 2, 3]),
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
-
-    def test_randomised_eigendecomposition_larger_than_two_dimension_array(
-        self,
-    ) -> None:
-        """
-        Test randomised_eigendecomposition with float oversampling_parameter.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.zeros(((2, 2, 2))),
-            oversampling_parameter=1.0,
-            power_iterations=1,
-        )
-
-    def test_randomised_eigendecomposition_non_square_array(self) -> None:
-        """
-        Test randomised_eigendecomposition with float oversampling_parameter.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.zeros(((2, 3))),
-            oversampling_parameter=1.0,
-            power_iterations=1,
-        )
-
-    def test_randomised_eigendecomposition_float_oversampling_parameter(self) -> None:
-        """
-        Test randomised_eigendecomposition with float oversampling_parameter.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.eye(2),
-            oversampling_parameter=1.0,
-            power_iterations=1,
-        )
-
-    def test_randomised_eigendecomposition_neg_oversampling_parameter(self) -> None:
-        """
-        Test randomised_eigendecomposition with negative oversampling_parameter.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.eye(2),
-            oversampling_parameter=-1,
-            power_iterations=1,
-        )
-
-    def test_randomised_eigendecomposition_float_power_iterations(self) -> None:
-        """
-        Test randomised_eigendecomposition with float power_iterations.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.eye(2),
-            oversampling_parameter=10,
-            power_iterations=1.0,
-        )
-
-    def test_randomised_eigendecomposition_negative_power_iterations(self) -> None:
-        """
-        Test randomised_eigendecomposition with negative power_iterations.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.randomised_eigendecomposition,
-            random_key=key(0),
-            array=jnp.eye(2),
-            oversampling_parameter=10,
-            power_iterations=-1,
-        )
-
-    def test_randomised_eigendecomposition(self) -> None:
-        """
-        Test randomised_eigendecomposition.
-        """
-        random_key = key(0)
-        dimension = 3
-        oversampling_parameter = 25
-        power_iterations = 2
-
-        array = normal(random_key, (dimension, dimension))
-        symmetric_array = array.T @ array
-
-        (
-            expected_eigenvalues,
-            expected_eigenvectors,
-        ) = jnp.linalg.eigh(symmetric_array)
-        (
-            output_eigenvalues,
-            output_eigenvectors,
-        ) = coreax.util.randomised_eigendecomposition(
-            random_key=random_key,
-            array=symmetric_array,
-            oversampling_parameter=oversampling_parameter,
-            power_iterations=power_iterations,
-        )
-        self.assertAlmostEqual(
-            float(jnp.linalg.norm(expected_eigenvalues - output_eigenvalues)),
-            0.0,
-            places=3,
-        )
-        # Eigenvectors are computed up to sign
-        self.assertAlmostEqual(
-            float(
-                jnp.linalg.norm(abs(expected_eigenvectors) - abs(output_eigenvectors))
-            ),
-            0.0,
-            places=3,
-        )
 
     def test_invert_regularised_array_negative_regularisation_parameter(self) -> None:
         """

@@ -6,7 +6,6 @@ Ferenc
 Frobenius
 Garg
 Garreau
-Halko
 Huszar
 Jiaxin
 Jitkrittum

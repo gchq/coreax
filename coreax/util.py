@@ -31,7 +31,7 @@ from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
-from jax.random import normal, permutation
+from jax.random import permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias
@@ -192,64 +192,6 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
     return sol.primal
-
-
-@partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
-def randomised_eigendecomposition(
-    random_key: KeyArrayLike,
-    array: ArrayLike,
-    oversampling_parameter: int = 10,
-    power_iterations: int = 1,
-):
-    """
-    Approximate the eigendecomposition of symmetric two-dimensional arrays.
-
-    Using (:cite: `halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
-    eigendecomposition of a symmetric matrix. The parameters oversampling_parameter and
-    power_iterations present a trade-off between speed and approximation quality.
-
-    :param random_key: Key for random number generation
-    :param array: Array to be decomposed
-    :param oversampling_parameter: Number of columns to sample, the larger the
-        oversampling_parameter gets the more accurate but slower the method will be
-    :param power_iterations: Number of power iterations to do, the larger
-        power_iterations gets the more accurate but slower the method will be
-    :return: Tuple of approximate eigenvalues and eigenvectors
-    """
-    # Input handling
-    supported_array_shape = 2
-    if len(array.shape) != supported_array_shape:
-        raise ValueError("array must be two-dimensional")
-    if array.shape[0] != array.shape[1]:
-        raise ValueError("array must be square")
-    if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
-        raise ValueError("oversampling_parameter must be a positive integer")
-    if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
-        raise ValueError("power_iterations must be a positive integer")
-
-    # Generate a matrix of standard Gaussian draws
-    standard_gaussian_array = normal(
-        random_key, shape=(array.shape[0], oversampling_parameter)
-    )
-
-    # QR decomposition finding orthonormal array with range approximating range of a
-    approximate_range = array @ standard_gaussian_array
-    q = jnp.linalg.qr(approximate_range)[0]
-
-    # Power iterations for improved accuracy
-    for _ in range(power_iterations):
-        orthonormalised = array.T @ q
-        q_orthonormalised = jnp.linalg.qr(orthonormalised)[0]
-        approximate_range = array @ q_orthonormalised
-        q = jnp.linalg.qr(approximate_range)[0]
-
-    # Form the approximate a array and compute its exact eigendecomposition and correct
-    # the eigenvectors.
-    array_approximation = q.T @ array @ q
-    array_approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
-    array_approximate_eigenvectors = q @ eigenvectors
-
-    return array_approximate_eigenvalues, array_approximate_eigenvectors
 
 
 @partial(jit, static_argnames=("regularisation_parameter", "rcond"))
