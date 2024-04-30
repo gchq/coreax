@@ -19,9 +19,11 @@ expected results on simple examples.
 
 import time
 import unittest
+from unittest.mock import Mock
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from jax.random import key, uniform
 from scipy.stats import ortho_group
 
@@ -442,58 +444,46 @@ class TestUtil(unittest.TestCase):
             num_batches=1.0,
         )
 
-    def test_jit_test(self) -> None:
-        """
-        Test jit_test calls the function in question twice when checking performance.
 
-        The function jit_test is used to assess the performance of other functions and
-        methods in the codebase. It's inputs are a function (denoted fn) and inputs to
-        provide to fn. This unit test checks that fn is called twice. In a practical
-        usage of jit_test, the first call to fn performs the JIT compilation, and the
-        second call assesses if a performance improvement has occurred given the
-        JIT compilation.
-        """
-        wait_time = 2.0
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize(
+    "args, kwargs, jit_kwargs",
+    [
+        ((2,), {}, {}),
+        ((2,), {"a": 3}, {"static_argnames": "a"}),
+        ((), {"a": 3}, {"static_argnames": "a"}),
+    ],
+)
+def test_jit_test(args, kwargs, jit_kwargs) -> None:
+    """
+    Check that ``jit_test`` returns the expected timings.
 
-        def _mock(x):
-            time.sleep(wait_time)
-            return x
+    ``jit_test`` returns a pre_time and a post_time. The former is the time for
+    JIT compiling and executing the passed function, the latter is the time for
+    dispatching the JIT compiled function.
+    """
+    wait_time = 2
+    trace_counter = Mock()
 
-        pre_time, post_time = coreax.util.jit_test(_mock, fn_args=(2,))
+    def _mock(x=1.0, *, a=2.0):
+        trace_counter()
+        time.sleep(wait_time)
+        return x + a
 
-        # At trace time `time.sleep` will be called. Thus, we can be sure that,
-        # `pre_time` is lower bounded by `wait_time`.
-        self.assertGreater(pre_time, wait_time)
-        # Post compilation `time.sleep` will be ignored, with JAX compiling the
-        # function to the identity function. Thus, we can be almost sure that
-        # `post_time` is upper bounded by `pre_time - wait_time`.
-        self.assertLess(post_time, (pre_time - wait_time))
+    pre_time, post_time = coreax.util.jit_test(
+        _mock, fn_args=args, fn_kwargs=kwargs, jit_kwargs=jit_kwargs
+    )
+    # Tracing should only occur once, thus, `trace_counter` should only
+    # be called once. Also implicitly checked in the below timing checks.
+    trace_counter.assert_called_once()
 
-        def _mock_with_kwargs(x, a=2.0):
-            return _mock(x) + a
-
-        pre_time, post_time = coreax.util.jit_test(
-            _mock_with_kwargs,
-            fn_args=(2,),
-            fn_kwargs={"a": 3},
-            jit_kwargs={"static_argnames": "a"},
-        )
-        self.assertGreater(pre_time, wait_time)
-        self.assertLess(post_time, (pre_time - wait_time))
-
-        def _mock_with_only_kwargs(a=2.0):
-            return _mock(a)
-
-        pre_time, post_time = coreax.util.jit_test(
-            _mock_with_only_kwargs,
-            fn_kwargs={"a": 3},
-            jit_kwargs={"static_argnames": "a"},
-        )
-        self.assertGreater(pre_time, wait_time)
-        self.assertLess(post_time, (pre_time - wait_time))
-
-
-# pylint: enable=too-many-public-methods
+    # At trace time `time.sleep` will be called. Thus, we can be sure that,
+    # `pre_time` is lower bounded by `wait_time`.
+    assert pre_time > wait_time
+    # Post compilation `time.sleep` will be ignored, with JAX compiling the
+    # function to the identity function. Thus, we can be almost sure that
+    # `post_time` is upper bounded by `pre_time - wait_time`.
+    assert post_time < (pre_time - wait_time)
 
 
 class TestSilentTQDM(unittest.TestCase):
@@ -509,6 +499,9 @@ class TestSilentTQDM(unittest.TestCase):
     def test_write(self):
         """Test that silenced version of TQDM write command does not crash."""
         self.assertIsNone(coreax.util.SilentTQDM(range(1)).write("something"))
+
+
+# pylint: enable=too-many-public-methods
 
 
 if __name__ == "__main__":
