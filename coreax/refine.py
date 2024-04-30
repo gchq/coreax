@@ -746,8 +746,6 @@ class RefineReverse(Refine):
 
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-
-
 refine_classes = (RefineRegular, RefineRandom, RefineReverse)
 for _current_class in refine_classes:
     tree_util.register_pytree_node(
