@@ -48,7 +48,7 @@ class TestHerdingBasic(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_basic.png"
-            mmd_coreset, _, mmd_random = herding_basic_main(out_path=out_path)
+            mmd_coreset, _, _, mmd_random = herding_basic_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 
