@@ -249,7 +249,57 @@ def randomised_eigendecomposition(
     array_approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
     array_approximate_eigenvectors = q @ eigenvectors
 
-    return array_approximate_eigenvalues, array_approximate_eigenvectors
+    return array_approximate_eigenvectors, array_approximate_eigenvalues
+
+
+def randomised_lstsq(
+    random_key: KeyArrayLike,
+    a: ArrayLike,
+    b: ArrayLike,
+    rcond: float | None = None,
+    oversampling_parameter: int = 10,
+    power_iterations: int = 1,
+) -> tuple[Array]:
+    """Ra."""
+    # Input validation
+    a = jnp.atleast_2d(a)
+    b = jnp.atleast_2d(b)
+    if a.shape[0] != b.shape[0]:
+        raise ValueError("Leading dimensions of input arrays must match")
+    if rcond is not None:
+        if rcond < 0 and rcond != -1:
+            raise ValueError(
+                "regularisation_parameter must be non-negative, except for value of -1"
+            )
+
+    # Set rcond parameter if not given
+    n, m = a.shape
+    if rcond is None:
+        rcond = jnp.finfo(a.dtype).eps * max(n, m)
+    elif rcond == -1:
+        rcond = jnp.finfo(a.dtype).eps
+
+    # Get approximate eigendecomposition
+    approx_eigenvectors, approx_eigenvalues = randomised_eigendecomposition(
+        random_key=random_key,
+        array=a,
+        oversampling_parameter=oversampling_parameter,
+        power_iterations=power_iterations,
+    )
+
+    # Mask the eigenvalues that are almost zero according to value of rcond
+    mask = (
+        approx_eigenvalues
+        >= jnp.array(rcond, dtype=approx_eigenvalues.dtype) * approx_eigenvalues[0]
+    )
+
+    # Invert the safe eigenvalues
+    safe_approx_eigenvalues = jnp.where(mask, approx_eigenvalues, 1).astype(a.dtype)
+    safe_approx_eigenvalues_inv = jnp.where(mask, 1 / safe_approx_eigenvalues, 0)[
+        :, jnp.newaxis
+    ]
+    print(approx_eigenvectors)
+    print(safe_approx_eigenvalues_inv)
 
 
 def jit_test(

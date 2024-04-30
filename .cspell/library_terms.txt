@@ -30,6 +30,7 @@ eigh
 emibcn
 eprint
 figsize
+finfo
 fori_loop
 fracv
 furo
@@ -64,6 +65,7 @@ modindex
 myst
 nabla
 ndim
+newaxis
 nonzero
 numpy
 opencv
