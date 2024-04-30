@@ -914,7 +914,7 @@ class RefineCMMD(Refine):
 
             # Compute and store inverses for each coreset feature kernel matrix
             inverse_coreset_feature_gramians = invert_stacked_regularised_arrays(
-                coreset.coreset_feature_gramians,
+                coreset_feature_gramians,
                 coreset.regularisation_parameter,
                 identity,
                 None,
