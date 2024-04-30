@@ -18,7 +18,6 @@ expected results on simple examples.
 """
 
 import time
-import unittest
 from unittest.mock import Mock
 
 import jax.numpy as jnp
@@ -27,12 +26,21 @@ import pytest
 from jax.random import key, uniform
 from scipy.stats import ortho_group
 
-import coreax.util
+from coreax.util import (
+    SilentTQDM,
+    apply_negative_precision_threshold,
+    difference,
+    invert_regularised_array,
+    invert_stacked_regularised_arrays,
+    jit_test,
+    pairwise,
+    sample_batch_indices,
+    solve_qp,
+    squared_distance,
+)
 
-# pylint: disable=too-many-public-methods
 
-
-class TestUtil(unittest.TestCase):
+class TestUtil:
     """
     Tests for general utility functions.
     """
@@ -43,21 +51,21 @@ class TestUtil(unittest.TestCase):
         """
         x, y = ortho_group.rvs(dim=2)
         expected_distance = jnp.linalg.norm(x - y) ** 2
-        output_distance = coreax.util.squared_distance(x, y)
-        self.assertAlmostEqual(output_distance, expected_distance, places=3)
-        output_distance = coreax.util.squared_distance(x, x)
-        self.assertAlmostEqual(output_distance, 0.0, places=3)
-        output_distance = coreax.util.squared_distance(y, y)
-        self.assertAlmostEqual(output_distance, 0.0, places=3)
+        output_distance = squared_distance(x, y)
+        assert output_distance == pytest.approx(expected_distance, abs=1e-3)
+        output_distance = squared_distance(x, x)
+        assert output_distance == pytest.approx(0.0, abs=1e-3)
+        output_distance = squared_distance(y, y)
+        assert output_distance == pytest.approx(0.0, abs=1e-3)
 
-    def test_squared_distance_dist_pairwise(self) -> None:
+    def test_pairwise_squared_distance(self) -> None:
         """
-        Test vmap version of sq distance.
+        Test the pairwise transform on the squared distance function.
         """
         # create an orthonormal matrix
         dimension = 3
         orthonormal_matrix = ortho_group.rvs(dim=dimension)
-        inner_distance = coreax.util.squared_distance_pairwise(
+        inner_distance = pairwise(squared_distance)(
             orthonormal_matrix, orthonormal_matrix
         )
         # Use original numpy because Jax arrays are immutable
@@ -65,14 +73,12 @@ class TestUtil(unittest.TestCase):
         np.fill_diagonal(expected_output, 0.0)
         # Frobenius norm
         difference_in_distances = jnp.linalg.norm(inner_distance - expected_output)
-        self.assertEqual(difference_in_distances.ndim, 0)
-        self.assertAlmostEqual(float(difference_in_distances), 0.0, places=3)
+        assert difference_in_distances.ndim == 0
+        assert difference_in_distances == pytest.approx(0.0, abs=1e-3)
 
     def test_pairwise_difference(self) -> None:
         """
-        Test the function pairwise_difference.
-
-        This test ensures efficient computation of pairwise differences.
+        Test the pairwise transform on the difference function.
         """
         num_points_x = 10
         num_points_y = 10
@@ -81,69 +87,39 @@ class TestUtil(unittest.TestCase):
         x_array = generator.random((num_points_x, dimension))
         y_array = generator.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
-        output = coreax.util.pairwise_difference(x_array, y_array)
-        self.assertAlmostEqual(
-            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
-        )
+        output = pairwise(difference)(x_array, y_array)
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     def test_apply_negative_precision_threshold_invalid(self) -> None:
         """
-        Test the function apply_negative_precision_threshold with an invalid threshold.
+        Test apply_negative_precision_threshold for an invalid threshold.
 
         A negative precision threshold is given, which should be rejected by the
         function.
         """
-        self.assertRaises(
-            ValueError,
-            coreax.util.apply_negative_precision_threshold,
-            x=0.1,
-            precision_threshold=-1e-8,
+        with pytest.raises(ValueError):
+            apply_negative_precision_threshold(x=0.1, precision_threshold=-1e-8)
+
+    @pytest.mark.parametrize(
+        "value, threshold, expected",
+        [
+            (-0.01, 0.001, -0.01),
+            (-0.0001, 0.001, 0.0),
+            (0.01, 0.001, 0.01),
+            (0.000001, 0.001, 0.000001),
+        ],
+        ids=["no_change", "with_change", "positive_input_1", "positive_input_2"],
+    )
+    def test_apply_negative_precision_threshold(
+        self, value: float, threshold: float, expected: float
+    ) -> None:
+        """
+        Test apply_negative_precision_threshold for valid thresholds.
+        """
+        func_out = apply_negative_precision_threshold(
+            x=value, precision_threshold=threshold
         )
-
-    def test_apply_negative_precision_threshold_valid_no_change(self) -> None:
-        """
-        Test the function apply_negative_precision_threshold with no change needed.
-
-        This test questions if the value -0.01 is sufficiently close to 0 to set it to
-        0, however the precision threshold is sufficiently small to consider this a
-        distinct value and not apply a cap.
-        """
-        func_out = coreax.util.apply_negative_precision_threshold(
-            x=-0.01, precision_threshold=0.001
-        )
-        self.assertEqual(func_out, -0.01)
-
-    def test_apply_negative_precision_threshold_valid_with_change(self) -> None:
-        """
-        Test the function apply_negative_precision_threshold with a change needed.
-
-        This test questions if the value -0.0001 is sufficiently close to 0 to set it to
-        0. In this instance, the precision threshold is sufficiently large to consider
-        -0.0001 close enough to 0 to apply a cap.
-        """
-        func_out = coreax.util.apply_negative_precision_threshold(
-            x=-0.0001, precision_threshold=0.001
-        )
-        self.assertEqual(func_out, 0.0)
-
-    def test_apply_negative_precision_threshold_valid_positive_input(self) -> None:
-        """
-        Test the function apply_negative_precision_threshold with no change needed.
-
-        This test questions if the value 0.01 is sufficiently close to 0 to set it to
-        0. Since the function should only cap negative numbers to 0 if they are
-        sufficiently close, it should have no impact on this positive input, regardless
-        of the threshold supplied.
-        """
-        func_out_1 = coreax.util.apply_negative_precision_threshold(
-            x=0.01, precision_threshold=0.001
-        )
-        self.assertEqual(func_out_1, 0.01)
-
-        func_out_2 = coreax.util.apply_negative_precision_threshold(
-            x=0.000001, precision_threshold=0.001
-        )
-        self.assertEqual(func_out_2, 0.000001)
+        assert func_out == expected
 
     def test_solve_qp_invalid_kernel_mm(self) -> None:
         """
@@ -155,8 +131,8 @@ class TestUtil(unittest.TestCase):
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
-        with self.assertRaisesRegex(TypeError, "not a valid JAX array type"):
-            coreax.util.solve_qp(
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
                 kernel_mm="invalid_kernel_mm",
                 kernel_matrix_row_sum_mean=np.array([1, 2, 3]),
             )
@@ -171,8 +147,8 @@ class TestUtil(unittest.TestCase):
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
-        with self.assertRaisesRegex(TypeError, "not a valid JAX array type"):
-            coreax.util.solve_qp(
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
                 kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
             )
@@ -181,27 +157,25 @@ class TestUtil(unittest.TestCase):
         """
         Test invert_regularised_array with negative regularisation_parameter.
         """
-        self.assertRaises(
-            ValueError,
-            coreax.util.invert_regularised_array,
-            array=jnp.eye(2),
-            regularisation_parameter=-1,
-            identity=jnp.eye(3),
-            rcond=None,
-        )
+        with pytest.raises(ValueError):
+            invert_regularised_array(
+                array=jnp.eye(2),
+                regularisation_parameter=-1,
+                identity=jnp.eye(2),
+                rcond=None,
+            )
 
     def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
         """
         Test invert_regularised_array with negative regularisation_parameter.
         """
-        self.assertRaises(
-            ValueError,
-            coreax.util.invert_regularised_array,
-            array=jnp.eye(2),
-            regularisation_parameter=1e-6,
-            identity=jnp.eye(3),
-            rcond=-10,
-        )
+        with pytest.raises(ValueError):
+            invert_regularised_array(
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(2),
+                rcond=-10,
+            )
 
     def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
         """
@@ -210,14 +184,13 @@ class TestUtil(unittest.TestCase):
         An array and identity with unequal dimensions are given, which should be
         rejected by the function.
         """
-        self.assertRaises(
-            ValueError,
-            coreax.util.invert_regularised_array,
-            array=jnp.eye(2),
-            regularisation_parameter=1e-6,
-            identity=jnp.eye(3),
-            rcond=None,
-        )
+        with pytest.raises(ValueError):
+            invert_regularised_array(
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(3),
+                rcond=None,
+            )
 
     def test_invert_regularised_array(self) -> None:
         """
@@ -230,15 +203,13 @@ class TestUtil(unittest.TestCase):
 
         expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
 
-        output = coreax.util.invert_regularised_array(
+        output = invert_regularised_array(
             array,
             regularisation_parameter,
             identity=identity,
             rcond=rcond,
         )
-        self.assertAlmostEqual(
-            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
-        )
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     def test_invert_stacked_regularised_arrays_unequal_array_dimensions(self) -> None:
         """
@@ -247,14 +218,13 @@ class TestUtil(unittest.TestCase):
         Stacked arrays and identity with unequal dimensions are given, which should be
         rejected by the function.
         """
-        self.assertRaises(
-            ValueError,
-            coreax.util.invert_stacked_regularised_arrays,
-            stacked_arrays=uniform(key=key(0), shape=(3, 1, 2)),
-            regularisation_parameter=1e-6,
-            identity=jnp.eye(2),
-            rcond=None,
-        )
+        with pytest.raises(ValueError):
+            invert_stacked_regularised_arrays(
+                stacked_arrays=uniform(key=key(0), shape=(3, 1, 2)),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(2),
+                rcond=None,
+            )
 
     def test_invert_stacked_regularised_arrays(self) -> None:
         """
@@ -284,225 +254,111 @@ class TestUtil(unittest.TestCase):
                 for array in stacked_pos_semi_def_arrays
             ]
         )
-        output = coreax.util.invert_stacked_regularised_arrays(
+        output = invert_stacked_regularised_arrays(
             stacked_pos_semi_def_arrays,
             regularisation_parameter,
             identity=identity,
             rcond=rcond,
         )
-        self.assertAlmostEqual(
-            float(jnp.linalg.norm(output - expected_output)), 0.0, places=3
-        )
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
-    def test_sample_batch_indices_negative_data_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid data size.
-
-        A negative data size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=-1,
-            batch_size=1,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_zero_data_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid data size.
-
-        A zero data size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=0,
-            batch_size=1,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_float_data_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid data size.
-
-        A float data size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1.0,
-            batch_size=1,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_negative_batch_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid batch size.
-
-        A negative batch size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=-1,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_zero_batch_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid batch size.
-
-        A zero batch size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=0,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_float_batch_size(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid batch size.
-
-        A float batch size is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=1.0,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_data_size_smaller_than_batch_size(self) -> None:
-        """
-        Test sample_batch_indices with invalid combination of batch_size and data_size.
-
-        Data size is smaller than batch size, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=2.0,
-            num_batches=1,
-        )
-
-    def test_sample_batch_indices_negative_num_batches(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid number of batches.
-
-        A negative number of batches is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=1,
-            num_batches=-1,
-        )
-
-    def test_sample_batch_indices_zero_num_batches(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid number of batches.
-
-        A zero number of batches is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=1,
-            num_batches=0,
-        )
-
-    def test_sample_batch_indices_float_num_batches(self) -> None:
-        """
-        Test the function sample_batch_indices with an invalid number of batches.
-
-        A float number of batches is given, which should be rejected by the function.
-        """
-        self.assertRaises(
-            ValueError,
-            coreax.util.sample_batch_indices,
-            random_key=key(0),
-            data_size=1,
-            batch_size=1,
-            num_batches=1.0,
-        )
-
-
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "args, kwargs, jit_kwargs",
-    [
-        ((2,), {}, {}),
-        ((2,), {"a": 3}, {"static_argnames": "a"}),
-        ((), {"a": 3}, {"static_argnames": "a"}),
-    ],
-)
-def test_jit_test(args, kwargs, jit_kwargs) -> None:
-    """
-    Check that ``jit_test`` returns the expected timings.
-
-    ``jit_test`` returns a pre_time and a post_time. The former is the time for
-    JIT compiling and executing the passed function, the latter is the time for
-    dispatching the JIT compiled function.
-    """
-    wait_time = 2
-    trace_counter = Mock()
-
-    def _mock(x=1.0, *, a=2.0):
-        trace_counter()
-        time.sleep(wait_time)
-        return x + a
-
-    pre_time, post_time = coreax.util.jit_test(
-        _mock, fn_args=args, fn_kwargs=kwargs, jit_kwargs=jit_kwargs
+    @pytest.mark.parametrize(
+        "data_size",
+        "batch_size",
+        "num_batches",
+        [
+            (1.0, 1, 1),
+            (1, 1.0, 1),
+            (1, 1, 1.0),
+            (-1, 1, 1),
+            (1, -1, 1),
+            (1, 1, -1),
+            (0, 1, 1),
+            (1, 0, 1),
+            (1, 1, 0),
+            (1, 2, 1),
+        ],
+        ids=[
+            "float_data_size",
+            "float_batch_size",
+            "float_num_batches",
+            "negative_data_size",
+            "negative_batch_size",
+            "negative_num_batches",
+            "zero_data_size",
+            "zero_batch_size",
+            "zero_num_batches",
+            "data_size_smaller_than_batch_size",
+        ],
     )
-    # Tracing should only occur once, thus, `trace_counter` should only
-    # be called once. Also implicitly checked in the below timing checks.
-    trace_counter.assert_called_once()
+    def test_sample_batch_indices(
+        self,
+        data_size: int,
+        batch_size: int,
+        num_batches: int,
+    ) -> None:
+        """
+        Test sample_batch_indices for valid input parameters.
+        """
+        with pytest.raises(ValueError):
+            sample_batch_indices(
+                random_key=key(0),
+                data_size=data_size,
+                batch_size=batch_size,
+                num_batches=num_batches,
+            )
 
-    # At trace time `time.sleep` will be called. Thus, we can be sure that,
-    # `pre_time` is lower bounded by `wait_time`.
-    assert pre_time > wait_time
-    # Post compilation `time.sleep` will be ignored, with JAX compiling the
-    # function to the identity function. Thus, we can be almost sure that
-    # `post_time` is upper bounded by `pre_time - wait_time`.
-    assert post_time < (pre_time - wait_time)
+    @pytest.mark.flaky(reruns=3)
+    @pytest.mark.parametrize(
+        "args, kwargs, jit_kwargs",
+        [
+            ((2,), {}, {}),
+            ((2,), {"a": 3}, {"static_argnames": "a"}),
+            ((), {"a": 3}, {"static_argnames": "a"}),
+        ],
+    )
+    def test_jit_test(self, args, kwargs, jit_kwargs) -> None:
+        """
+        Check that ``jit_test`` returns the expected timings.
+
+        ``jit_test`` returns a pre_time and a post_time. The former is the time for
+        JIT compiling and executing the passed function, the latter is the time for
+        dispatching the JIT compiled function.
+        """
+        wait_time = 2
+        trace_counter = Mock()
+
+        def _mock(x=1.0, *, a=2.0):
+            trace_counter()
+            time.sleep(wait_time)
+            return x + a
+
+        pre_time, post_time = jit_test(
+            _mock, fn_args=args, fn_kwargs=kwargs, jit_kwargs=jit_kwargs
+        )
+        # Tracing should only occur once, thus, `trace_counter` should only
+        # be called once. Also implicitly checked in the below timing checks.
+        trace_counter.assert_called_once()
+
+        # At trace time `time.sleep` will be called. Thus, we can be sure that,
+        # `pre_time` is lower bounded by `wait_time`.
+        assert pre_time > wait_time
+        # Post compilation `time.sleep` will be ignored, with JAX compiling the
+        # function to the identity function. Thus, we can be almost sure that
+        # `post_time` is upper bounded by `pre_time - wait_time`.
+        assert post_time < (pre_time - wait_time)
 
 
-class TestSilentTQDM(unittest.TestCase):
+class TestSilentTQDM:
     """Test silent substitute for TQDM."""
 
     def test_iterator(self):
         """Test that iterator works."""
         iterator_length = 10
         expect = list(range(iterator_length))
-        actual = list(coreax.util.SilentTQDM(range(iterator_length)))
-        self.assertListEqual(actual, expect)
+        actual = list(SilentTQDM(range(iterator_length)))
+        assert actual == expect
 
     def test_write(self):
         """Test that silenced version of TQDM write command does not crash."""
-        self.assertIsNone(coreax.util.SilentTQDM(range(1)).write("something"))
-
-
-# pylint: enable=too-many-public-methods
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert SilentTQDM(range(1)).write("something") is None
