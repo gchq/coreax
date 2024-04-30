@@ -35,6 +35,7 @@ import coreax.kernel
 import coreax.metrics
 import coreax.reduction
 import coreax.refine
+import coreax.score_matching
 import coreax.util
 
 # pylint: disable=too-many-public-methods
@@ -1610,6 +1611,24 @@ class TestSteinThinning(unittest.TestCase):
         # Compare quality of refined coreset to non-refined coreset
         refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
+
+    def test_stein_kernel_is_set(self):
+        """
+        Test whether a Stein kernel is set when supplied.
+        """
+        x = np.random.random((10, 4))
+        base_kernel = coreax.kernel.SquaredExponentialKernel()
+        score_function = coreax.score_matching.KernelDensityMatching(
+            base_kernel.length_scale, x
+        ).match(None)
+        kernel = coreax.kernel.SteinKernel(
+            base_kernel=base_kernel, score_function=score_function
+        )
+        kernel.label = "test"
+        stein_object = coreax.coresubset.SteinThinning(
+            random_key=self.random_key, kernel=kernel
+        )
+        self.assertEqual(stein_object.kernel.label, "test")
 
     def test_stein_thinning_invalid_weights_optimiser(self):
         """
