@@ -263,9 +263,7 @@ class TestUtil:
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     @pytest.mark.parametrize(
-        "data_size",
-        "batch_size",
-        "num_batches",
+        "data_size, batch_size, num_batches",
         [
             (1.0, 1, 1),
             (1, 1.0, 1),
