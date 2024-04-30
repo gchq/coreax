@@ -207,8 +207,9 @@ def invert_regularised_array(
     The function is designed to invert square block arrays where only the top-left block
     is non-zero. That is, we return a block array, the same size as the input array,
     where each block consists of zeros except for the top-left block, which is the
-    inverse of the original non-zero block. To achieve this the 'identity' array must be
-    a zero matrix except for ones on the diagonal up to the size of the non-zero block.
+    inverse of the non-zero input block. The fastest way to compute this requires the
+    'identity' array to be a zero matrix except for ones on the diagonal up to the size
+    of the non-zero block.
 
     :param array: Array to be inverted
     :param regularisation_parameter: Regularisation parameter for stable inversion of
@@ -218,7 +219,7 @@ def invert_regularised_array(
         determination, singular values are treated as zero if they are smaller than
         rcond times the largest singular value of a. The default value of None will use
         the machine precision multiplied by the largest dimension of the array.
-        An alternate value of -1 wil use machine precision.
+        An alternate value of -1 will use machine precision.
     :return: Inverse of regularised array
     """
     if rcond is not None:
@@ -249,9 +250,9 @@ def invert_stacked_regularised_arrays(
     The function is designed to invert a stack of square block arrays where only the
     top-left block is non-zero. That is, we return a stack of block arrays, the same
     size as the stack of input arrays, where each block consists of zeros except for the
-    top-left block, which is the inverse of the original non-zero block. To achieve this
-    the 'identity' array must be a zero matrix except for ones on the diagonal up to the
-    size of the non-zero block.
+    top-left block, which is the inverse of the non-zero input block. The fastest way to
+    compute this requires the 'identity' array to be a zero matrix except for ones on
+    the diagonal up to the size of the non-zero block.
 
     :param array: Stack of arrays to be inverted
     :param regularisation_parameter: Regularisation parameter for stable inversion of
