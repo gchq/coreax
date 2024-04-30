@@ -754,16 +754,8 @@ class SteinThinning(coreax.reduction.Coreset):
         # initially local variables, with the coreset indices being assigned to self
         # when the entire set is created
         kernel_similarity_penalty = jnp.zeros(num_data_points)
-        try:
-            # Note that a TypeError is raised if the size input to jnp.zeros is negative
-            coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
-
-        except TypeError as exception:
-            if coreset_size <= 0 or isinstance(coreset_size, float):
-                raise ValueError(
-                    "coreset_size must be a positive integer"
-                ) from exception
-            raise
+        # Note that a TypeError is raised if the size input to jnp.zeros is negative
+        coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
 
         # Evaluate the diagonal of the Gram matrix
         stein_kernel_diagonal = vmap(
@@ -808,17 +800,12 @@ class SteinThinning(coreax.reduction.Coreset):
             regularised_log_pdf=regularised_log_pdf,
             unique=self.unique,
         )
-        try:
-            coreset_indices, kernel_similarity_penalty = lax.fori_loop(
-                lower=0,
-                upper=coreset_size,
-                body_fun=body,
-                init_val=(coreset_indices, kernel_similarity_penalty),
-            )
-        except IndexError as exception:
-            if coreset_size == 0:
-                raise ValueError("coreset_size must be non-zero") from exception
-            raise
+        coreset_indices, kernel_similarity_penalty = lax.fori_loop(
+            lower=0,
+            upper=coreset_size,
+            body_fun=body,
+            init_val=(coreset_indices, kernel_similarity_penalty),
+        )
 
         # Assign coreset indices & coreset to original data object
         self.coreset_indices = coreset_indices
