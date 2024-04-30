@@ -62,11 +62,12 @@ class _PairwiseProblemFactory(Protocol, Generic[_Kernel_contra]):
     ) -> tuple[ArrayLike, ArrayLike, Array | np.ndarray]: ...
 
 
-class _Problem(NamedTuple, Generic[_Kernel]):
+# Once we support only python 3.11+ this should be generic on _Kernel
+class _Problem(NamedTuple):
     x: ArrayLike
     y: ArrayLike
     expected_output: ArrayLike
-    kernel: _Kernel
+    kernel: Kernel
 
 
 class BaseKernelTest(ABC, Generic[_Kernel]):
@@ -81,9 +82,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
         """
 
     @abstractmethod
-    def problem(
-        self, request, kernel_factory: _KernelFactory[_Kernel]
-    ) -> _Problem[_Kernel]:
+    def problem(self, request, kernel_factory: _KernelFactory[_Kernel]) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
     @pytest.fixture
@@ -121,7 +120,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
 
         return pairwise_problem
 
-    def test_compute(self, problem: _Problem[_Kernel]):
+    def test_compute(self, problem: _Problem):
         """Test ``compute`` method of ``coreax.kernel.Kernel``."""
         x, y, expected_output, kernel = problem
         output = kernel.compute(x, y)
@@ -316,7 +315,7 @@ class TestSquaredExponentialKernel(
         self,
         request,
         kernel_factory: _KernelFactory[SquaredExponentialKernel],
-    ) -> _Problem[SquaredExponentialKernel]:
+    ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
 
@@ -463,7 +462,7 @@ class TestLaplacianKernel(
         self,
         request,
         kernel_factory: _KernelFactory[LaplacianKernel],
-    ) -> _Problem[LaplacianKernel]:
+    ) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -592,7 +591,7 @@ class TestPCIMQKernel(
         self,
         request,
         kernel_factory: _KernelFactory[PCIMQKernel],
-    ) -> _Problem[PCIMQKernel]:
+    ) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -718,7 +717,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
         self,
         request,
         kernel_factory: _KernelFactory[SteinKernel],
-    ) -> _Problem[SteinKernel]:
+    ) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
         kernel = kernel_factory(length_scale, 1.0)
