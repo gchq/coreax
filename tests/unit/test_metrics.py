@@ -20,7 +20,7 @@ verify that metric computations produce the expected results on simple examples.
 """
 
 import unittest
-from unittest.mock import MagicMock, NonCallableMagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import jax.numpy as jnp
 from jax import random
@@ -1337,84 +1337,9 @@ class TestCMMD(unittest.TestCase):
         # Check output matches expected
         self.assertAlmostEqual(output, expected_cmmd, places=5)
 
-    # pylint: enable=duplicate-code
 
-    def test_compute_given_block_size_not_none(self) -> None:
-        """
-        Test compute when given a block size which is not None.
-        """
-        # Define a metric object
-        metric = coreax.metrics.CMMD(
-            feature_kernel=MagicMock(),
-            response_kernel=MagicMock(),
-            num_feature_dimensions=NonCallableMagicMock(),
-            regularisation_parameters=NonCallableMagicMock(),
-        )
-
-        # Compute CMMD with a block size which is not None - this should raise an error
-        # explaining this parameter is not supported.
-        with self.assertRaises(AssertionError) as error_raised:
-            metric.compute(
-                dataset_1=self.dataset_1, dataset_2=self.dataset_2, block_size=0
-            )
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "CMMD computation does not support blocking",
-        )
-
-    # pylint: enable=too-many-locals
-
-    def test_compute_given_weights_x_not_none(self) -> None:
-        """
-        Test compute when given weights_x which is not None.
-        """
-        # Define a metric object
-        metric = coreax.metrics.CMMD(
-            feature_kernel=MagicMock(),
-            response_kernel=MagicMock(),
-            num_feature_dimensions=NonCallableMagicMock(),
-            regularisation_parameters=NonCallableMagicMock(),
-        )
-
-        # Compute CMMD with weights_x vector is not None - this should raise an error
-        # explaining this parameter is not supported.
-        with self.assertRaises(AssertionError) as error_raised:
-            metric.compute(
-                dataset_1=self.dataset_1,
-                dataset_2=self.dataset_2,
-                weights_x=jnp.ones(self.dataset_1.shape[0]),
-            )
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "CMMD computation does not support weights",
-        )
-
-    def test_compute_given_weights_y_not_none(self) -> None:
-        """
-        Test compute when given weights_x which is not None.
-        """
-        # Define a metric object
-        metric = coreax.metrics.CMMD(
-            feature_kernel=MagicMock(),
-            response_kernel=MagicMock(),
-            num_feature_dimensions=NonCallableMagicMock(),
-            regularisation_parameters=NonCallableMagicMock(),
-        )
-
-        # Compute CMMD with weights_y vector is not None - this should raise an error
-        # explaining this parameter is not supported.
-        with self.assertRaises(AssertionError) as error_raised:
-            metric.compute(
-                dataset_1=self.dataset_1,
-                dataset_2=self.dataset_2,
-                weights_y=jnp.ones(self.dataset_1.shape[0]),
-            )
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "CMMD computation does not support weights",
-        )
-
-
+# pylint: enable=duplicate-code
+# pylint: enable=too-many-locals
 # pylint: enable=too-many-public-methods
 
 

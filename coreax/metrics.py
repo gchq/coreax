@@ -513,11 +513,6 @@ class CMMD(Metric):
         :param weights_y: :data:`None`, included for compatibility reasons
         :return: Conditional maximum mean discrepancy as a 0-dimensional array
         """
-        # Make sure that compatibility params are None
-        assert block_size is None, "CMMD computation does not support blocking"
-        assert weights_x is None, "CMMD computation does not support weights"
-        assert weights_y is None, "CMMD computation does not support weights"
-
         return self.conditional_maximum_mean_discrepancy(dataset_1, dataset_2)
 
     # pylint: enable=arguments-renamed
@@ -614,7 +609,7 @@ class CMMD(Metric):
                 f"Squared CMMD ({round(squared_result.item(), 4)}) is negative,"
                 + " increase precision threshold or regularisation strength.",
                 Warning,
-                stacklevel=1,
+                stacklevel=2,
             )
         result = jnp.sqrt(
             coreax.util.apply_negative_precision_threshold(
