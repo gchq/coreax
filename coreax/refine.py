@@ -744,9 +744,252 @@ class RefineReverse(Refine):
         return jnp.asarray(coreset_indices)
 
 
+class RefineCMMD(Refine):
+    r"""
+    Define the RefineCMMD class.
+
+    The refinement process happens iteratively. The iteration is carried out over
+    data pairs. Coreset elements are replaced by pairs most reducing the conditional
+    maximum mean discrepancy (CMMD). For a dataset
+    :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
+    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs
+    with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
+    the CMMD is defined as:
+
+    .. math::
+
+        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} -
+          \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+
+    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings
+    estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
+    and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel
+    functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
+    :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+
+    The class supports refinement via random batches, enforcing uniqueness and
+    reversing/randomising the order of refinement. Note that refinement following
+    fitting with the MapReduce strategy is not supported.
+
+    :param random_key: Key for random number generation
+    :param unique: Boolean that enforces the resulting coreset will only contain
+    unique elements
+    :param batch_size: An integer representing the size of the batches of data pairs
+        sampled at each iteration for consideration for refining the coreset
+    :param order: One of "forward", "reverse", "random". This dictates the order in
+        which the coreset pairs are refined, "forward" refers to refining the first
+        coreset index first and the last index last, "reverse" refers to refining the
+        last coreset index first and the first index last, "random" refers to
+        randomising the order of refinement
+    """
+
+    def __init__(
+        self,
+        random_key: coreax.util.KeyArrayLike,
+        unique: bool = True,
+        batch_size: int | None = None,
+        order: str = "random",
+    ):
+        """Initialise RefineCMMD class."""
+        # Assign attributes
+        self.random_key = random_key
+        self.unique = unique
+        self.batch_size = batch_size
+
+        assert order in set(
+            [
+                "forward",
+                "reverse",
+                "random",
+            ]
+        ), 'order must be one of "forward", "reverse" or "random"'
+        self.order = order
+
+        super().__init__(
+            approximator=None,
+        )
+
+    def refine(self, coreset: coreax.reduction.Coreset) -> None:
+        r"""
+        Refine the coreset targeting CMMD.
+
+        Compute the refined coreset, of ``m`` pairs of features in ``d`` dimensions
+        and responses in ``p`` dimensions. The Coreset object is updated in-place. The
+        refinement procedure replaces elements with pairs most reducing conditional
+        maximum mean discrepancy (CMMD).
+
+        :param coreset: :class:`~coreax.reduction.Coreset` object with
+            :math:`n \times d` original features and `n \times p` corresponding
+            responses, :math:`m` coreset pair indices, coreset pairs, and feature and
+            response kernel objects
+        """
+        # Validate that we have both fitted a coresubset and stored required attributes
+        self._validate_coreset(coreset)
+        error_msg = (
+            (
+                "In order to refine, 'fit_to_size' must be run with 'refine_method' "
+                "attribute set to 'RefineCMMD' object and with reduction strategy not "
+                "MapReduce."
+            ),
+        )
+        assert coreset.feature_gramian is not None, error_msg
+        assert coreset.response_gramian is not None, error_msg
+        assert coreset.training_cme is not None, error_msg
+
+        # Extract relevant attributes
+        num_data_pairs = coreset.original_data.pre_coreset_array.shape[0]
+        coreset_indices = coreset.coreset_indices
+        coreset_size = coreset_indices.shape[0]
+
+        # If the user requests to reverse or randomise the order of refinement, adjust
+        # the coreset indices accordingly, ensuring we undo this before setting the
+        # coreset_indices attribute at the end of refinement.
+        if self.order == "reverse":
+            coreset_indices = jnp.flip(coreset_indices)
+        if self.order == "random":
+            permutation_indices = random.permutation(
+                coreset.random_key, jnp.arange(coreset_size)
+            )
+            coreset_indices = coreset_indices[permutation_indices]
+
+        # Define identity matrix for use in inversion
+        identity = jnp.eye(coreset_size)
+
+        # Sample the indices to be considered at each iteration ahead of time.
+        # If we are batching, each column will consist of a subset of indices up to the
+        # dataset size with no repeats. If we are not batching then each column will
+        # consist of a random permutation of indices up to the dataset size.
+        if self.batch_size is not None:
+            assert (
+                self.batch_size <= num_data_pairs
+            ), "batch_size must be smaller than or equal to the original dataset size"
+            batch_size = self.batch_size
+        else:
+            batch_size = num_data_pairs
+
+        batch_indices = coreax.util.sample_batch_indices(
+            random_key=coreset.random_key,
+            data_size=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=coreset_size,
+        )
+
+        # If we are batching, add a row of coreset indices to the batch indices to avoid
+        # the coreset getting worse after refinement if the batched indices can only
+        # degrade the CMMD.
+        if self.batch_size is not None:
+            batch_indices = jnp.vstack((batch_indices, coreset_indices))
+
+        # Initialise a batch_size x coreset_size array that will allow us to extract
+        # arrays consisting of all possible coresets we wish to consider.
+        all_possible_coreset_indices = (
+            jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[:, 0])
+        )
+
+        invert_stacked_regularised_arrays = vmap(
+            coreax.util.invert_regularised_array, in_axes=(0, None, None, None)
+        )
+
+        # body_fn of GreedyCMMD and RefineCMMD are very similar, might be worth
+        # thinking of how this could be avoided?
+        # pylint: disable=duplicate-code
+        def _refine_body(
+            i: int,
+            val: tuple[ArrayLike, ArrayLike],
+        ) -> tuple[ArrayLike, ArrayLike]:
+            r"""Execute main loop of the refine method."""
+            # Unpack the components of the loop variables
+            current_coreset_indices, all_possible_coreset_indices = val
+
+            # Extract all the possible arrays where the ith coreset index has been
+            # replaced by another
+            extract_indices = (
+                all_possible_coreset_indices[:, :, None],
+                all_possible_coreset_indices[:, None, :],
+            )
+            coreset_feature_gramians = coreset.feature_gramian[extract_indices]
+            coreset_response_gramians = coreset.response_gramian[extract_indices]
+            coreset_cmes = coreset.training_cme[extract_indices]
+
+            # Compute and store inverses for each coreset feature kernel matrix
+            inverse_coreset_feature_gramians = invert_stacked_regularised_arrays(
+                coreset.coreset_feature_gramians,
+                coreset.regularisation_parameter,
+                identity,
+                None,
+            )
+
+            # Compute each term of CMMD for each possible replacement coreset index
+            term_2s = jnp.trace(
+                inverse_coreset_feature_gramians
+                @ coreset_response_gramians
+                @ inverse_coreset_feature_gramians
+                @ coreset_feature_gramians,
+                axis1=1,
+                axis2=2,
+            )
+            term_3s = jnp.trace(
+                coreset_cmes @ inverse_coreset_feature_gramians, axis1=1, axis2=2
+            )
+            loss = term_2s - 2 * term_3s
+
+            # Find the optimal replacement coreset index, ensuring we don't pick an
+            # already chosen points if we want the indices to be unique (except allow
+            # the index we are currently refining).
+            if coreset.unique:
+                already_chosen_indices_mask = jnp.isin(
+                    all_possible_coreset_indices[:, i],
+                    current_coreset_indices.at[i].set(-1),
+                )
+                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+            index_to_include_in_coreset = all_possible_coreset_indices[loss.argmin(), i]
+
+            # Repeat the chosen replacement coreset index into the ith column of the
+            # array of possible coreset indices and replace the (i+1)th column with the
+            # next candidate coreset indices to consider.
+            all_possible_coreset_indices = all_possible_coreset_indices.at[
+                :, [i, i + 1]
+            ].set(
+                jnp.hstack(
+                    (
+                        jnp.tile(
+                            index_to_include_in_coreset, (batch_indices.shape[0], 1)
+                        ),
+                        batch_indices[:, [i + 1]],
+                    )
+                )
+            )
+
+            # Add the chosen coreset index to the current coreset indices
+            current_coreset_indices = current_coreset_indices.at[i].set(
+                index_to_include_in_coreset
+            )
+            return current_coreset_indices, all_possible_coreset_indices
+
+        # pylint: enable=duplicate-code
+
+        # Refine coreset points
+        coreset_indices, _ = lax.fori_loop(
+            lower=0,
+            upper=coreset_size,
+            body_fun=_refine_body,
+            init_val=(coreset_indices, all_possible_coreset_indices),
+        )
+
+        if self.order == "reverse":
+            coreset_indices = jnp.flip(coreset_indices)
+        if self.order == "random":
+            coreset_indices = coreset_indices[jnp.argsort(permutation_indices)]
+        coreset.coreset_indices = coreset_indices
+        coreset.coreset = coreset.original_data.pre_coreset_array[coreset_indices, :]
+
+
 # Define the pytree node for the added class to ensure methods with JIT decorators
 # are able to run. This tuple must be updated when a new class object is defined.
-refine_classes = (RefineRegular, RefineRandom, RefineReverse)
+
+
+refine_classes = (RefineRegular, RefineRandom, RefineReverse, RefineCMMD)
 for _current_class in refine_classes:
     tree_util.register_pytree_node(
         _current_class, _current_class.tree_flatten, _current_class.tree_unflatten

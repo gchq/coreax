@@ -667,6 +667,8 @@ class GreedyCMMD(coreax.reduction.Coreset):
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
+    :param refine_method: :class:`~coreax.refine.RefineCMMD` object to use,
+        or :data:`None` (default) if no refinement is required
     """
 
     def __init__(
@@ -679,6 +681,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         regularisation_parameter: float = 1e-6,
         unique: bool = True,
         batch_size: int | None = None,
+        refine_method: coreax.refine.RefineCMMD | None = None,
     ):
         """Initialise a GreedyCMMD class."""
         # Assign GreedyCMMD-specific attributes
@@ -689,6 +692,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         self.regularisation_parameter = regularisation_parameter
         self.unique = unique
         self.batch_size = batch_size
+        self.refine_method = refine_method
         self.feature_gramian = None
         self.response_gramian = None
         self.training_cme = None
@@ -698,7 +702,7 @@ class GreedyCMMD(coreax.reduction.Coreset):
         super().__init__(
             weights_optimiser=None,
             kernel=None,
-            refine_method=None,
+            refine_method=self.refine_method,
         )
 
     def tree_flatten(self) -> tuple[tuple, dict]:

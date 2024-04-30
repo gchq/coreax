@@ -12,6 +12,7 @@ coresubset
 coresubsets
 diag
 docstrings
+eigendecomposition
 elementwise
 GCHQ
 gramian
@@ -22,6 +23,7 @@ kernelised
 kernelized
 ml.p3.8xlarge
 nonnegative
+orthonormalised
 parsable
 PCIMQ
 PMLR
