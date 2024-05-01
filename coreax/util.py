@@ -26,15 +26,15 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterable, Iterator
-from functools import partial
+from functools import partial, wraps
 from typing import TypeVar
 
 import jax.numpy as jnp
 from jax import Array, block_until_ready, jit, vmap
-from jax.random import normal
+from jax.random import normal, permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 #: Kernel evaluation function.
 KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
@@ -83,6 +83,30 @@ def apply_negative_precision_threshold(
     return x
 
 
+def pairwise(
+    fn: Callable[[ArrayLike, ArrayLike], Array],
+) -> Callable[[ArrayLike, ArrayLike], Array]:
+    """
+    Transform a function so it returns all pairwise evaluations of its inputs.
+
+    :param fn: the function to apply the pairwise transform to.
+    :returns: function that returns an array whose entries are the evaluations of `fn`
+        for every pairwise combination of its input arguments.
+    """
+
+    @wraps(fn)
+    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
+        return vmap(
+            vmap(fn, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )(x, y)
+
+    return pairwise_fn
+
+
 @jit
 def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     """
@@ -98,7 +122,10 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     return jnp.dot(x - y, x - y)
 
 
-@jit
+@deprecated(
+    "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
+    "will be removed in version 0.3.0"
+)
 def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise square distance between two arrays.
@@ -108,15 +135,7 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
         :math:`n \times m` array
     """
-    x = jnp.atleast_2d(x)
-    y = jnp.atleast_2d(y)
-    # Use vmap to turn distance between individual vectors into a pairwise distance.
-    fn = vmap(
-        vmap(squared_distance, in_axes=(None, 0), out_axes=0),
-        in_axes=(0, None),
-        out_axes=0,
-    )
-    return fn(x, y)
+    return pairwise(squared_distance)(x, y)
 
 
 @jit
@@ -133,7 +152,10 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     return x - y
 
 
-@jit
+@deprecated(
+    "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
+    "will be removed in version 0.3.0"
+)
 def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
@@ -143,12 +165,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     :return: Pairwise differences between ``x_array`` and ``y_array`` as an
         :math:`n \times m \times d` array
     """
-    x = jnp.atleast_2d(x)
-    y = jnp.atleast_2d(y)
-    fn = vmap(
-        vmap(difference, in_axes=(0, None), out_axes=0), in_axes=(None, 0), out_axes=1
-    )
-    return fn(x, y)
+    return pairwise(difference)(x, y)
 
 
 def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
@@ -192,6 +209,83 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
     return sol.primal
+
+
+@partial(jit, static_argnames="rcond")
+def invert_regularised_array(
+    array: ArrayLike,
+    regularisation_parameter: float,
+    identity: ArrayLike,
+    rcond: float | None = None,
+) -> ArrayLike:
+    """
+    Regularise and array and then invert it using a least-squares solver.
+
+    The function is designed to invert square block arrays where only the top-left block
+    is non-zero. That is, we return a block array, the same size as the input array,
+    where each block consists of zeros except for the top-left block, which is the
+    inverse of the non-zero input block. The fastest way to compute this requires the
+    'identity' array to be a zero matrix except for ones on the diagonal up to the size
+    of the non-zero block.
+
+    :param array: Array to be inverted
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array, negative values will be converted to positive
+    :param identity: Block identity matrix
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 will use machine precision.
+    :return: Inverse of regularised array
+    """
+    if rcond is not None:
+        if rcond < 0 and rcond != -1:
+            raise ValueError(
+                "regularisation_parameter must be non-negative, except for value of -1"
+            )
+    if array.shape != identity.shape:
+        raise ValueError("Leading dimensions of array and identity must match")
+
+    regularisation_parameter = abs(regularisation_parameter)
+    return jnp.linalg.lstsq(
+        array + regularisation_parameter * identity, identity, rcond=rcond
+    )[0]
+
+
+def sample_batch_indices(
+    random_key: KeyArrayLike,
+    data_size: int,
+    batch_size: int,
+    num_batches: int,
+) -> ArrayLike:
+    """
+    Sample an array of indices of size batch_size x num_batches.
+
+    Each column of the sampled array will contain unique elements. The largest possible
+    index is dictated by data_size.
+
+    :param random_key: Key for random number generation
+    :param data_size: Size of the data we wish to sample from
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+    :return: Array of batch indices of size batch_size x num_batches
+    """
+    if data_size < batch_size:
+        raise ValueError("data_size must be greater than or equal to batch_size")
+    if (data_size <= 0.0) or not isinstance(data_size, int):
+        raise ValueError("data_size must be a positive integer")
+    if (batch_size <= 0.0) or not isinstance(batch_size, int):
+        raise ValueError("batch_size must be a positive integer")
+    if (num_batches <= 0.0) or not isinstance(num_batches, int):
+        raise ValueError("num_batches must be a positive integer")
+
+    return permutation(
+        key=random_key,
+        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1)).T,
+        axis=0,
+        independent=True,
+    )[:batch_size, :]
 
 
 @partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
@@ -249,9 +343,10 @@ def randomised_eigendecomposition(
     array_approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
     array_approximate_eigenvectors = q @ eigenvectors
 
-    return array_approximate_eigenvectors, array_approximate_eigenvalues
+    return array_approximate_eigenvalues, array_approximate_eigenvectors
 
 
+# @partial(jit, static_argnames=("oversampling_parameter", "power_iterations", "rcond"))
 def randomised_lstsq(
     random_key: KeyArrayLike,
     a: ArrayLike,
@@ -262,10 +357,6 @@ def randomised_lstsq(
 ) -> tuple[Array]:
     """Ra."""
     # Input validation
-    a = jnp.atleast_2d(a)
-    b = jnp.atleast_2d(b)
-    if a.shape[0] != b.shape[0]:
-        raise ValueError("Leading dimensions of input arrays must match")
     if rcond is not None:
         if rcond < 0 and rcond != -1:
             raise ValueError(
@@ -280,7 +371,7 @@ def randomised_lstsq(
         rcond = jnp.finfo(a.dtype).eps
 
     # Get approximate eigendecomposition
-    approx_eigenvectors, approx_eigenvalues = randomised_eigendecomposition(
+    approx_eigenvalues, approx_eigenvectors = randomised_eigendecomposition(
         random_key=random_key,
         array=a,
         oversampling_parameter=oversampling_parameter,
@@ -298,8 +389,11 @@ def randomised_lstsq(
     safe_approx_eigenvalues_inv = jnp.where(mask, 1 / safe_approx_eigenvalues, 0)[
         :, jnp.newaxis
     ]
-    print(approx_eigenvectors)
-    print(safe_approx_eigenvalues_inv)
+
+    # Solve Ax = b
+    return approx_eigenvectors.T.dot(
+        safe_approx_eigenvalues_inv * (approx_eigenvectors.T.dot(b))
+    )
 
 
 def jit_test(
