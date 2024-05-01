@@ -42,6 +42,7 @@ intercal
 intersphinx
 isort
 issubdtype
+jacfwd
 jacrev
 jax
 jaxlib
@@ -50,6 +51,7 @@ jumanjihouse
 linalg
 linkcheck
 literalinclude
+logpdf
 lstsq
 mathbb
 mathbf
@@ -61,6 +63,7 @@ mimsave
 modindex
 myst
 nabla
+ndarray
 ndim
 nonzero
 numpy
