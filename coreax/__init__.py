@@ -58,7 +58,7 @@ from coreax.approximation import (
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
 )
-from coreax.coresubset import KernelHerding, RandomSample, RPCholesky
+from coreax.coresubset import KernelHerding, RandomSample, RPCholesky, SteinThinning
 from coreax.data import ArrayData
 from coreax.kernel import (
     CompositeKernel,
