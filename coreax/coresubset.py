@@ -137,8 +137,8 @@ class KernelHerding(coreax.reduction.Coreset):
         Execute kernel herding algorithm with Jax.
 
         We first compute the kernel matrix row sum mean if it is not given, and then
-        iterative add points to the coreset balancing  selecting points in high density
-        regions with selecting points far from those already in the coreset.
+        iteratively add points to the coreset, balancing selecting points in high
+        density regions with selecting points far from those already in the coreset.
 
         :param coreset_size: The size of the of coreset to generate
         """
@@ -591,7 +591,7 @@ class RPCholesky(coreax.reduction.Coreset):
         # Track diagonal of residual matrix
         residual_diagonal -= jnp.square(approximation_matrix[:, i])
 
-        # Ensure diagonal remains nonnegative
+        # Ensure diagonal remains non-negative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
             # ensures that index selected_pivot_point can't be drawn again in future

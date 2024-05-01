@@ -30,9 +30,9 @@ from jax.typing import ArrayLike
 
 from coreax.approximation import (
     ANNchorApproximateKernel,
-    ApproximateKernel,
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
+    RandomRegressionKernel,
 )
 from coreax.kernel import Kernel, SquaredExponentialKernel
 from coreax.util import InvalidKernel, KeyArrayLike
@@ -55,9 +55,9 @@ class _Problem(NamedTuple):
         NystromApproximateKernel,
     ],
 )
-class TestApproximations:
+class TestRandomRegressionApproximations:
     """
-    Tests related to approximation.py classes & functions.
+    Tests related to ``RandomRegressionKernels`` in approximation.py .
     """
 
     @pytest.fixture
@@ -129,7 +129,7 @@ class TestApproximations:
         )
 
     def test_approximation_accuracy(
-        self, problem: _Problem, approximator: type[ApproximateKernel]
+        self, problem: _Problem, approximator: type[RandomRegressionKernel]
     ) -> None:
         """
         Verify approximator performance on toy problem.
@@ -182,7 +182,7 @@ class TestApproximations:
     def test_degenerate_num_kernel_points(
         self,
         problem: _Problem,
-        approximator: type[ApproximateKernel],
+        approximator: type[RandomRegressionKernel],
         num_kernel_points_multiplier: int,
     ) -> None:
         """
@@ -236,17 +236,12 @@ class TestApproximations:
     def test_degenerate_num_train_points(
         self,
         problem: _Problem,
-        approximator: type[ApproximateKernel],
+        approximator: type[RandomRegressionKernel],
         num_train_points_multiplier: int,
     ) -> None:
         """
         Test approximators correctly handle degenerate cases of num_train_points.
         """
-        if issubclass(approximator, NystromApproximateKernel):
-            pytest.skip(
-                f"Incompatible with '{NystromApproximateKernel.__module__}"
-                + f".{NystromApproximateKernel.__qualname__}'"
-            )
         random_key, data, kernel = problem.random_key, problem.data, problem.kernel
         kwargs = {
             "num_kernel_points": problem.num_kernel_points,
@@ -267,7 +262,7 @@ class TestApproximations:
                 test_approximator.calculate_kernel_matrix_row_sum_mean(data)
 
     def test_invalid_kernel(
-        self, problem: _Problem, approximator: type[ApproximateKernel]
+        self, problem: _Problem, approximator: type[RandomRegressionKernel]
     ) -> None:
         """
         Test approximators correctly handle invalid kernels.
