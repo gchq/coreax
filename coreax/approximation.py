@@ -32,28 +32,32 @@ from collections.abc import Callable
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-import jax.tree_util as jtu
 from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import Literal, override
 
-from coreax.kernel import CompositeKernel, Kernel
+from coreax.kernel import CompositeKernel
 from coreax.util import KeyArrayLike
 
 
 def _random_indices(
-    random_key: KeyArrayLike,
+    key: KeyArrayLike,
     num_data_points: int,
     num_select: int,
     mode: Literal["kernel", "train"] = "kernel",
 ):
+    """
+    Select a random subset of indices.
+
+    :param key: RNG key for seeding the random selection
+    :param num_data_points: The total number of indexable data points
+    :param num_select: The number of indices to select
+    :param mode: The selection mode, used for error message formatting
+    :return: A randomly selected subset of indices, of size ``num_samples``, for a
+        dataset with ``num_data_points`` indexable entries.
+    """
     try:
-        selected_indices = jr.choice(
-            random_key,
-            num_data_points,
-            (num_select,),
-            replace=False,
-        )
+        selected_indices = jr.choice(key, num_data_points, (num_select,), replace=False)
     except ValueError as exception:
         if num_select > num_data_points:
             raise ValueError(
@@ -64,18 +68,34 @@ def _random_indices(
     return selected_indices
 
 
-def _random_regression(
+def _random_least_squares(
     key: KeyArrayLike,
-    push_forward: Callable[[Array], Array],
-    data,
-    features,
-    num_train_points,
-):
+    data: Array,
+    features: Array,
+    num_indices: int,
+    target_map: Callable[[Array], Array] = lambda x: x,
+) -> Array:
+    r"""
+    Solve the least-square problem on a random subset of the system.
+
+    A linear system :math:`Ax = b`, solved via least-squares as :math:`x = A^+ b`, can
+    be approximated by random least-square as `x \approx \hat{x} = \hat{A}^+ \hat{b}`,
+    where :math:`\hat{A} = A_i\ \text{and}\ \hat{b} = b_i\, \forall i \in I]`. `I` is a
+    random subset of indices for the original system of equations.
+
+    :param key: RNG key for seeding the random selection
+    :param data: The data :math:`z`; yields :math:`b` when pushed through the target map
+    :param features: The feature matrix :math:`A`
+    :param num_indices: The size of the random subset of indices :math:`I`
+    :param target_map: The target map :math:`\phi` which defines :math:`b := \phi(z)`,
+        where :math:`z` is the input ``data``
+    :return: The push-forward of the approximate solution :math:`A\hat{x}`
+    """
     num_data_points = len(data)
-    train_idx = _random_indices(key, num_data_points, num_train_points, mode="train")
-    target = push_forward(data[train_idx]).sum(axis=1) / num_data_points
-    params, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
-    return features @ params
+    train_idx = _random_indices(key, num_data_points, num_indices, mode="train")
+    target = target_map(data[train_idx])
+    approximate_solution, _, _, _ = jnp.linalg.lstsq(features[train_idx], target)
+    return features @ approximate_solution
 
 
 class ApproximateKernel(CompositeKernel):
@@ -109,10 +129,12 @@ class ApproximateKernel(CompositeKernel):
         return self.base_kernel.divergence_x_grad_y_elementwise(x, y)
 
 
-class RandomRegressionKernel(Kernel):
+class RandomRegressionKernel(ApproximateKernel):
     """
-    An kernel that requires the attributes for random regression.
+    An approximate kernel that requires the attributes for random regression.
 
+    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
+        to be approximated
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
@@ -130,7 +152,7 @@ class RandomRegressionKernel(Kernel):
             raise ValueError("'num_train_points' must be a positive integer")
 
 
-class MonteCarloApproximateKernel(RandomRegressionKernel, ApproximateKernel):
+class MonteCarloApproximateKernel(RandomRegressionKernel):
     """
     Approximate a base kernel via random subset selection.
 
@@ -159,19 +181,19 @@ class MonteCarloApproximateKernel(RandomRegressionKernel, ApproximateKernel):
         """
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
-        key, subkey = jr.split(self.random_key)
-        features_idx = _random_indices(key, num_data_points, self.num_kernel_points)
+        key = self.random_key
+        features_idx = _random_indices(key, num_data_points, self.num_kernel_points - 1)
         features = self.base_kernel.compute(data, data[features_idx])
-        return _random_regression(
-            subkey,
-            jtu.Partial(self.base_kernel.compute, y=data),
+        return _random_least_squares(
+            key,
             data,
             features,
             self.num_train_points,
+            lambda x: self.base_kernel.compute(x, data).sum(axis=1) / num_data_points,
         )
 
 
-class ANNchorApproximateKernel(RandomRegressionKernel, ApproximateKernel):
+class ANNchorApproximateKernel(RandomRegressionKernel):
     r"""
     Approximate a base kernel via random kernel regression on ANNchor selected points.
 
@@ -201,13 +223,10 @@ class ANNchorApproximateKernel(RandomRegressionKernel, ApproximateKernel):
         """
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
-
-        # Select point for kernel regression using ANNchor construction
         features = jnp.zeros((num_data_points, self.num_kernel_points))
-        # Compute feature matrix
         features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
 
-        def _annchor_body(idx: int, features: Array) -> Array:
+        def _annchor_body(idx: int, _features: Array) -> Array:
             r"""
             Execute main loop of the ANNchor construction.
 
@@ -215,23 +234,23 @@ class ANNchorApproximateKernel(RandomRegressionKernel, ApproximateKernel):
             :param features: Loop variables to be updated
             :return: Updated loop variables ``features``
             """
-            max_entry = features.max(axis=1).argmin()
-            features = features.at[:, idx].set(
+            max_entry = _features.max(axis=1).argmin()
+            _features = _features.at[:, idx].set(
                 self.base_kernel.compute(data, data[max_entry])[:, 0]
             )
-            return features
+            return _features
 
         features = jax.lax.fori_loop(1, self.num_kernel_points, _annchor_body, features)
-        return _random_regression(
+        return _random_least_squares(
             self.random_key,
-            jtu.Partial(self.base_kernel.compute, y=data),
             data,
             features,
             self.num_train_points,
+            lambda x: self.base_kernel.compute(x, data).mean(axis=1),
         )
 
 
-class NystromApproximateKernel(RandomRegressionKernel, ApproximateKernel):
+class NystromApproximateKernel(RandomRegressionKernel):
     """
     Approximate a base kernel via Nystrom approximation.
 
@@ -263,13 +282,14 @@ class NystromApproximateKernel(RandomRegressionKernel, ApproximateKernel):
         """
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
-
-        # Randomly select points for kernel regression
-        sample_idx = _random_indices(
+        feature_idx = _random_indices(
             self.random_key, num_data_points, self.num_kernel_points
         )
-        # Solve for kernel distances
-        kernel_mn = self.base_kernel.compute(data[sample_idx], data)
-        kernel_mm = self.base_kernel.compute(data[sample_idx], data[sample_idx])
-        alpha = (jnp.linalg.pinv(kernel_mm) @ kernel_mn).sum(axis=1) / num_data_points
-        return kernel_mn.T @ alpha
+        features = self.base_kernel.compute(data, data[feature_idx])
+        return _random_least_squares(
+            self.random_key,  # intentional key reuse to ensure train_idx = feature_idx
+            data,
+            features,
+            self.num_train_points,
+            lambda x: self.base_kernel.compute(x, x).sum(axis=1) / num_data_points,
+        )
