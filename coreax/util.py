@@ -241,9 +241,7 @@ def invert_regularised_array(
     """
     if rcond is not None:
         if rcond < 0 and rcond != -1:
-            raise ValueError(
-                "regularisation_parameter must be non-negative, except for value of -1"
-            )
+            raise ValueError("rcond must be non-negative, except for value of -1")
     if array.shape != identity.shape:
         raise ValueError("Leading dimensions of array and identity must match")
 
@@ -359,9 +357,7 @@ def randomised_lstsq(
     # Input validation
     if rcond is not None:
         if rcond < 0 and rcond != -1:
-            raise ValueError(
-                "regularisation_parameter must be non-negative, except for value of -1"
-            )
+            raise ValueError("rcond must be non-negative, except for value of -1")
 
     # Set rcond parameter if not given
     n, m = a.shape
@@ -371,7 +367,7 @@ def randomised_lstsq(
         rcond = jnp.finfo(a.dtype).eps
 
     # Get approximate eigendecomposition
-    approx_eigenvalues, approx_eigenvectors = randomised_eigendecomposition(
+    approximate_eigenvalues, approximate_eigenvectors = randomised_eigendecomposition(
         random_key=random_key,
         array=a,
         oversampling_parameter=oversampling_parameter,
@@ -380,19 +376,18 @@ def randomised_lstsq(
 
     # Mask the eigenvalues that are almost zero according to value of rcond
     mask = (
-        approx_eigenvalues
-        >= jnp.array(rcond, dtype=approx_eigenvalues.dtype) * approx_eigenvalues[0]
+        approximate_eigenvalues
+        >= jnp.array(rcond, dtype=approximate_eigenvalues.dtype)
+        * approximate_eigenvalues[0]
     )
-
-    # Invert the safe eigenvalues
-    safe_approx_eigenvalues = jnp.where(mask, approx_eigenvalues, 1).astype(a.dtype)
-    safe_approx_eigenvalues_inv = jnp.where(mask, 1 / safe_approx_eigenvalues, 0)[
+    # Invert the eigenvalues and extend array ready for broadcasting
+    approximate_inverse_eigenvalues = jnp.where(mask, 1 / approximate_eigenvalues, 0)[
         :, jnp.newaxis
     ]
 
-    # Solve Ax = b
-    return approx_eigenvectors.T.dot(
-        safe_approx_eigenvalues_inv * (approx_eigenvectors.T.dot(b))
+    # Solve Ax = b, x = A^-1b = UL^-1U^Tb
+    return approximate_eigenvectors.T.dot(
+        (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(b)
     )
 
 
