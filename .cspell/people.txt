@@ -1,3 +1,4 @@
+Benard
 Chatalic
 Duvenaud
 Epperly
@@ -21,7 +22,9 @@ Sahaj
 Schreuder
 Smirnov
 Smola
+Staber
 Tropp
+Veiga
 Wittawat
 Yifan
 Yutian
