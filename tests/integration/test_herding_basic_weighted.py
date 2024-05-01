@@ -48,7 +48,9 @@ class TestHerdingBasic(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_basic_weighted.png"
-            mmd_coreset, mmd_rpc, mmd_random = herding_basic_main(out_path=out_path)
+            mmd_coreset, mmd_rpc, mmd_stein, mmd_random = herding_basic_main(
+                out_path=out_path
+            )
 
             mock_show.assert_has_calls([call(), call()])
 
@@ -59,6 +61,13 @@ class TestHerdingBasic(unittest.TestCase):
                 mmd_random,
                 msg="MMD for random sampling was unexpectedly lower than \
                     herding coreset MMD",
+            )
+
+            self.assertLess(
+                mmd_stein,
+                mmd_random,
+                msg="MMD for random sampling was unexpectedly lower than \
+                    Stein thinning coreset MMD",
             )
 
             self.assertLess(
