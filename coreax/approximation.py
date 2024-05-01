@@ -34,10 +34,13 @@ import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
 from jax.typing import ArrayLike
-from typing_extensions import Literal, override
+from typing_extensions import TYPE_CHECKING, Literal, override
 
 from coreax.kernel import CompositeKernel
 from coreax.util import KeyArrayLike
+
+if TYPE_CHECKING:
+    from coreax.kernel import Kernel  # noqa: F401
 
 
 def _random_indices(
