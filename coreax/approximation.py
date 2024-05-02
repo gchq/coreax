@@ -234,7 +234,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
             Execute main loop of the ANNchor construction.
 
             :param idx: Loop counter
-            :param features: Loop variables to be updated
+            :param _features: Loop variables to be updated
             :return: Updated loop variables ``features``
             """
             max_entry = _features.max(axis=1).argmin()
