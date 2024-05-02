@@ -32,12 +32,12 @@ from __future__ import annotations
 
 from functools import partial
 
+import equinox as eqx
 import jax.numpy as jnp
-from jax import Array, jacfwd, jit, lax, random, vmap
+from jax import Array, jacfwd, lax, random, vmap
 from jax.scipy.stats import gaussian_kde
 from jax.typing import ArrayLike
 
-import coreax.approximation
 import coreax.kernel
 import coreax.reduction
 import coreax.refine
@@ -81,10 +81,6 @@ class KernelHerding(coreax.reduction.Coreset):
         unique elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
-    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        that has been created using the same kernel one wishes to use for herding. If
-        :data:`None` (default) then calculation is exact, but can be computationally
-        intensive.
     """
 
     def __init__(
@@ -96,13 +92,11 @@ class KernelHerding(coreax.reduction.Coreset):
         block_size: int = 10_000,
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
-        approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a KernelHerding class."""
         # Assign herding-specific attributes
         self.block_size = block_size
         self.unique = unique
-        self.approximator = approximator
         self.random_key = random_key
 
         # Initialise parent
@@ -138,7 +132,6 @@ class KernelHerding(coreax.reduction.Coreset):
             "unique": self.unique,
             "refine_method": self.refine_method,
             "weights_optimiser": self.weights_optimiser,
-            "approximator": self.approximator,
         }
         return children, aux_data
 
@@ -146,32 +139,22 @@ class KernelHerding(coreax.reduction.Coreset):
         r"""
         Execute kernel herding algorithm with Jax.
 
-        We first compute the kernel matrix row sum mean (either exactly, or
-        approximately) if it is not given, and then iterative add points to the coreset
-        balancing  selecting points in high density regions with selecting points far
-        from those already in the coreset.
+        We first compute the kernel matrix row sum mean if it is not given, and then
+        iteratively add points to the coreset, balancing selecting points in high
+        density regions with selecting points far from those already in the coreset.
 
         :param coreset_size: The size of the of coreset to generate
         """
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
-        # If needed, compute the kernel matrix row sum mean - with or without an
-        # approximator as specified by the inputs to this method
+        # If needed, compute the kernel matrix row sum mean
         if self.kernel_matrix_row_sum_mean is None:
-            if self.approximator is not None:
-                self.kernel_matrix_row_sum_mean = (
-                    self.kernel.approximate_kernel_matrix_row_sum_mean(
-                        x=self.original_data.pre_coreset_array,
-                        approximator=self.approximator,
-                    )
+            self.kernel_matrix_row_sum_mean = (
+                self.kernel.calculate_kernel_matrix_row_sum_mean(
+                    x=self.original_data.pre_coreset_array, max_size=self.block_size
                 )
-            else:
-                self.kernel_matrix_row_sum_mean = (
-                    self.kernel.calculate_kernel_matrix_row_sum_mean(
-                        x=self.original_data.pre_coreset_array, max_size=self.block_size
-                    )
-                )
+            )
 
         # Initialise variables that will be updated throughout the loop. These are
         # initially local variables, with the coreset indices being assigned to self
@@ -212,7 +195,6 @@ class KernelHerding(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],
@@ -532,13 +514,16 @@ class RPCholesky(coreax.reduction.Coreset):
                 self.original_data.pre_coreset_array,
             )
 
-            residual_diagonal, approximation_matrix, coreset_indices, key = (
-                lax.fori_loop(
-                    0,
-                    coreset_size,
-                    body,
-                    (residual_diagonal, approximation_matrix, coreset_indices, key),
-                )
+            (
+                residual_diagonal,
+                approximation_matrix,
+                coreset_indices,
+                key,
+            ) = lax.fori_loop(
+                0,
+                coreset_size,
+                body,
+                (residual_diagonal, approximation_matrix, coreset_indices, key),
             )
 
         except IndexError as exception:
@@ -550,7 +535,6 @@ class RPCholesky(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
     def _loop_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, coreax.util.KeyArrayLike],
@@ -609,7 +593,7 @@ class RPCholesky(coreax.reduction.Coreset):
         # Track diagonal of residual matrix
         residual_diagonal -= jnp.square(approximation_matrix[:, i])
 
-        # Ensure diagonal remains nonnegative
+        # Ensure diagonal remains non-negative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
             # ensures that index selected_pivot_point can't be drawn again in future
@@ -745,8 +729,9 @@ class SteinThinning(coreax.reduction.Coreset):
 
         # Create a Stein kernel
         if isinstance(self.kernel, coreax.kernel.SteinKernel):
-            self.stein_kernel = self.kernel
-            self.stein_kernel.score_function = score_function
+            self.stein_kernel = eqx.tree_at(
+                lambda x: x.score_function, self.kernel, score_function
+            )
         else:
             self.stein_kernel = coreax.kernel.SteinKernel(self.kernel, score_function)
 
@@ -812,7 +797,6 @@ class SteinThinning(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],

@@ -44,7 +44,7 @@ from coreax import (
     SizeReduce,
     SquaredExponentialKernel,
 )
-from coreax.approximation import ANNchorApproximator
+from coreax.approximation import ANNchorApproximateKernel
 from coreax.kernel import median_heuristic
 
 
@@ -94,20 +94,19 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     length_scale = median_heuristic(x[idx])
 
     # Define a kernel to use
-    herding_kernel = SquaredExponentialKernel(length_scale=length_scale)
+    herding_key, approximator_key, sample_key = random.split(random.key(random_seed), 3)
+    herding_kernel = ANNchorApproximateKernel(
+        SquaredExponentialKernel(length_scale=length_scale),
+        approximator_key,
+        num_kernel_points=500,
+        num_train_points=500,
+    )
 
     print("Computing coreset...")
     # Compute a coreset using kernel herding with a Squared exponential kernel.
-    herding_key, approximator_key, sample_key = random.split(random.key(random_seed), 3)
     herding_object = KernelHerding(
         herding_key,
         kernel=herding_kernel,
-        approximator=ANNchorApproximator(
-            approximator_key,
-            kernel=herding_kernel,
-            num_kernel_points=500,
-            num_train_points=500,
-        ),
     )
     herding_object.fit(
         original_data=data, strategy=SizeReduce(coreset_size=coreset_size)
