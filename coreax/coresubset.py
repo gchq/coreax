@@ -54,7 +54,8 @@ class KernelHerding(coreax.reduction.Coreset):
     compressed representation.
 
     Given one has selected :math:`T` data points for their compressed representation of
-    the original dataset, kernel herding selects the next point as:
+    the original dataset, by equation 8 of :cite:`chen2012herding`, kernel herding
+    selects the next point as:
 
     .. math::
 
@@ -207,7 +208,7 @@ class KernelHerding(coreax.reduction.Coreset):
         Execute main loop of greedy kernel herding.
 
         This function carries out one iteration of kernel herding. Recall that kernel
-        herding is defined as
+        herding is defined, by equation 8 of :cite:`chen2012herding`, as
 
         .. math::
 
