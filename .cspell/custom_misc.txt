@@ -11,13 +11,13 @@ coresubsets
 diag
 docstrings
 elementwise
+forall
 GCHQ
 kbar
 kdtree
 kernelised
 kernelized
 ml.p3.8xlarge
-nonnegative
 parsable
 PCIMQ
 PMLR

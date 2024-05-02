@@ -165,7 +165,7 @@ class KernelRowSumTest(Generic[_Kernel]):
         """
         warn_context = error_context = contextlib.nullcontext()
         if max_size <= 0:
-            warn_context = pytest.warns(UserWarning, match="max_size is not positive")
+            warn_context = pytest.warns(UserWarning, match="'max_size' is not positive")
         elif any(isinstance(x, float) for x in [max_size, i, j]):
             error_context = pytest.raises(ValueError, match="must be an integer")
 
@@ -202,7 +202,7 @@ class KernelRowSumTest(Generic[_Kernel]):
         context = contextlib.nullcontext()
         if max_size <= 0:
             context = pytest.raises(
-                ValueError, match="max_size must be a positive integer"
+                ValueError, match="'max_size' must be a positive integer"
             )
         elif isinstance(max_size, float):
             context = pytest.raises(
@@ -339,7 +339,8 @@ class TestSquaredExponentialKernel(
         - `near_zero_length_scale`: should approximately equal zero
         - `negative_output_scale`: should negate the positive equivalent.
         """
-        kernel = kernel_factory(np.sqrt(np.float32(np.pi) / 2.0), 1.0)
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
         mode = request.param
         x = 0.5
         y = 2.0
@@ -356,8 +357,8 @@ class TestSquaredExponentialKernel(
                 [[0.279923327, 1.4996075e-14], [1.4211038e-09, 1.0]]
             )
         elif mode == "normalized":
-            kernel.length_scale = np.e
-            kernel.output_scale = 1 / (np.sqrt(2 * np.pi) * kernel.length_scale)
+            length_scale = np.e
+            output_scale = 1 / (np.sqrt(2 * np.pi) * length_scale)
             num_points = 10
             x = np.arange(num_points)
             y = x + 1.0
@@ -366,29 +367,31 @@ class TestSquaredExponentialKernel(
             expected_distances = np.zeros((num_points, num_points))
             for x_idx, x_ in enumerate(x):
                 for y_idx, y_ in enumerate(y):
-                    expected_distances[x_idx, y_idx] = scipy_norm(
-                        y_, kernel.length_scale
-                    ).pdf(x_)
+                    expected_distances[x_idx, y_idx] = scipy_norm(y_, length_scale).pdf(
+                        x_
+                    )
             x, y = x.reshape(-1, 1), y.reshape(-1, 1)
         elif mode == "negative_length_scale":
-            kernel.length_scale = -1
+            length_scale = -1
             expected_distances = 0.324652467
         elif mode == "large_negative_length_scale":
-            kernel.length_scale = -10000.0
+            length_scale = -10000.0
             expected_distances = 1.0
         elif mode == "near_zero_length_scale":
-            kernel.length_scale = -0.0000001
+            length_scale = -0.0000001
             expected_distances = 0.0
         elif mode == "negative_output_scale":
-            kernel.length_scale = 1
-            kernel.output_scale = -1
+            length_scale = 1
+            output_scale = -1
             expected_distances = -0.324652467
         else:
             raise ValueError("Invalid problem mode")
-
+        kernel = kernel_factory(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
-    def expected_grad_x(self, x: ArrayLike, y: ArrayLike, kernel: Kernel) -> np.ndarray:
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
+    ) -> np.ndarray:
         x = np.atleast_2d(x)
         y = np.atleast_2d(y)
         num_points, dimension = x.shape
@@ -406,11 +409,13 @@ class TestSquaredExponentialKernel(
                 )
         return expected_gradients
 
-    def expected_grad_y(self, x: ArrayLike, y: ArrayLike, kernel: Kernel) -> np.ndarray:
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
+    ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: Kernel
+        self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
         x = np.atleast_2d(x)
         y = np.atleast_2d(y)
@@ -481,7 +486,8 @@ class TestLaplacianKernel(
         - `near_zero_length_scale`: should approximately equal zero
         - `negative_output_scale`: should negate the positive equivalent.
         """
-        kernel = kernel_factory(np.sqrt(np.float32(np.pi) / 2.0), 1.0)
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
         mode = request.param
         x = 0.5
         y = 2.0
@@ -498,21 +504,21 @@ class TestLaplacianKernel(
                 [[0.279923327, 0.00171868172], [0.00613983027, 1.0]]
             )
         elif mode == "negative_length_scale":
-            kernel.length_scale = -1
+            length_scale = -1
             expected_distances = 0.472366553
         elif mode == "large_negative_length_scale":
-            kernel.length_scale = -10000.0
+            length_scale = -10000.0
             expected_distances = 1.0
         elif mode == "near_zero_length_scale":
-            kernel.length_scale = -0.0000001
+            length_scale = -0.0000001
             expected_distances = 0.0
         elif mode == "negative_output_scale":
-            kernel.length_scale = 1
-            kernel.output_scale = -1
+            length_scale = 1
+            output_scale = -1
             expected_distances = -0.472366553
         else:
             raise ValueError("Invalid problem mode")
-
+        kernel = kernel_factory(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -610,7 +616,8 @@ class TestPCIMQKernel(
         - `near_zero_length_scale`: should approximately equal zero
         - `negative_output_scale`: should negate the positive equivalent.
         """
-        kernel = kernel_factory(np.sqrt(np.float32(np.pi) / 2.0), 1.0)
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
         mode = request.param
         x = 0.5
         y = 2.0
@@ -627,21 +634,21 @@ class TestPCIMQKernel(
                 [[0.66325021409, 0.17452514991], [0.21631125495, 1.0]]
             )
         elif mode == "negative_length_scale":
-            kernel.length_scale = -1
+            length_scale = -1
             expected_distances = 0.685994341
         elif mode == "large_negative_length_scale":
-            kernel.length_scale = -10000.0
+            length_scale = -10000.0
             expected_distances = 1.0
         elif mode == "near_zero_length_scale":
-            kernel.length_scale = -0.0000001
+            length_scale = -0.0000001
             expected_distances = 0.0
         elif mode == "negative_output_scale":
-            kernel.length_scale = 1
-            kernel.output_scale = -1
+            length_scale = 1
+            output_scale = -1
             expected_distances = -0.685994341
         else:
             raise ValueError("Invalid problem mode")
-
+        kernel = kernel_factory(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
