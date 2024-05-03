@@ -720,8 +720,8 @@ class SteinThinning(coreax.reduction.Coreset):
         # Choose a score function
         if self.score_method is None:
             score_function = coreax.score_matching.KernelDensityMatching(
-                self.kernel.length_scale, self.original_data.pre_coreset_array
-            ).match(None)
+                self.kernel.length_scale,
+            ).match(self.original_data.pre_coreset_array)
         else:
             score_function = self.score_method.match(
                 self.original_data.pre_coreset_array
