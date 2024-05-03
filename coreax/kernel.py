@@ -97,7 +97,6 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
-    @eqx.filter_jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.

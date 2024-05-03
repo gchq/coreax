@@ -43,8 +43,7 @@ from typing import TYPE_CHECKING, Any
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax.typing import ArrayLike
-from jaxtyping import Array, Shaped
+from jaxtyping import Array, ArrayLike, Shaped
 
 if TYPE_CHECKING:
     import coreax.reduction

@@ -48,6 +48,7 @@ from tqdm import tqdm
 
 import coreax.kernel
 import coreax.networks
+import coreax.util
 
 
 class ScoreMatching(ABC):
@@ -72,7 +73,7 @@ class ScoreMatching(ABC):
         return cls(*children, **aux_data)
 
     @abstractmethod
-    def match(self, x):
+    def match(self, x: ArrayLike) -> Callable:
         r"""
         Match some model score function to that of a dataset ``x``.
 
@@ -525,28 +526,16 @@ class KernelDensityMatching(ScoreMatching):
 
     :param length_scale: Kernel ``length_scale`` to use when fitting the kernel density
         estimate
-    :param kde_data: Set of :math:`n \times d` samples from the underlying distribution
-        that are used to build the kernel density estimate
     """
 
-    def __init__(self, length_scale: float, kde_data: ArrayLike):
+    def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
-        # Validate inputs (note that the kernel length_scale is validated upon kernel
-        # creation)
-        kde_data = jnp.atleast_2d(kde_data)
-
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
-
-        # Hold the data the kernel density estimate will be built from, which will be
-        # needed for any call of the score function.
-        self.kde_data = kde_data
-
-        # Initialise parent
         super().__init__()
 
     def tree_flatten(self):
@@ -557,12 +546,12 @@ class KernelDensityMatching(ScoreMatching):
         A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
-        children = (self.kde_data,)
+        children = ()
         aux_data = {"kernel": self.kernel}
 
         return children, aux_data
 
-    def match(self, x: ArrayLike | None = None) -> Callable:
+    def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -573,9 +562,11 @@ class KernelDensityMatching(ScoreMatching):
         samples we wish to evaluate the score function at, and the data used to build
         the kernel density estimate.
 
-        :param x: The :math:`n \times d` data vectors. Unused in this implementation.
+        :param x: Set of :math:`n \times d` samples from the underlying distribution
+            that are used to build the kernel density estimate
         :return: A function that applies the learned score function to input ``x``
         """
+        kde_data = x
 
         def score_function(x_):
             r"""
@@ -593,10 +584,10 @@ class KernelDensityMatching(ScoreMatching):
             x_ = jnp.atleast_2d(x_)
 
             # Get the gram matrix row-mean
-            gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
+            gram_matrix_row_means = self.kernel.compute_mean(x_, kde_data, axis=1)
 
             # Compute gradients with respect to x
-            gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
+            gradients = self.kernel.grad_x(x_, kde_data).mean(axis=1)
 
             # Compute final evaluation of the score function
             score_result = gradients / gram_matrix_row_means[:, None]

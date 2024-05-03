@@ -1,14 +1,15 @@
 """Module for defining coreset data structures."""
 
-from __future__ import annotations
-
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 
 from coreax.data import Data, as_data
+
+if TYPE_CHECKING:
+    from typing import Any  # noqa: F401
 
 _Data = TypeVar("_Data", bound=Data)
 
@@ -57,6 +58,14 @@ class Coreset(eqx.Module, Generic[_Data]):
 
     nodes: Data = eqx.field(converter=as_data)
     pre_coreset_data: _Data
+
+    def __check_init__(self):
+        """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
+        if len(self.nodes) > len(self.pre_coreset_data):
+            raise ValueError(
+                "'len(nodes)' cannot be greater than 'len(pre_coreset_data)' "
+                "by definition of a Coreset"
+            )
 
     def __len__(self):
         """Return Coreset size/length."""
