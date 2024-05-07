@@ -22,64 +22,69 @@ two-dimensional :class:`~jax.Array`. Data reductions are performed along the fir
 dimension.
 """
 
-# import equinox as eqx
-# import jax.numpy as jnp
-# from jaxtyping import Array, Shaped
+from __future__ import annotations
+
+import equinox as eqx
+import jax.numpy as jnp
+from jaxtyping import Array, Shaped
 
 
-# class WeightedData(eqx.Module):
-#     """
-#     Class to apply pre-processing to unsupervised data.
+# pylint: disable=too-few-public-methods
+class WeightedData(eqx.Module):
+    """
+    Class to apply pre-processing to unsupervised data.
 
-#     :param data: Array of data to be reduced to a coreset
-#     :param weights: Array of weight corresponding to data points
-#     """
+    :param data: Array of data to be reduced to a coreset
+    :param weights: Array of weight corresponding to data points
+    """
 
-#     data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
-#     weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
+    data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
+    weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
 
-#     def __init__(
-#         self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
-#     ):
-#         """Initialise WeightedData class."""
-#         self.data = data
-#         if weights is None:
-#             n = data.shape[0]
-#             self.weights = jnp.broadcast_to(1 / n, (n,))
-#         else:
-#             self.weights = weights
+    def __init__(
+        self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
+    ):
+        """Initialise WeightedData class."""
+        self.data = data
+        if weights is None:
+            n = data.shape[0]
+            self.weights = jnp.broadcast_to(1 / n, (n,))
+        else:
+            self.weights = weights
 
-#     def __check_init__(self):
-#         """Check for valid __init__ inputs."""
-#         if self.weights.shape[0] != self.data.shape[0]:
-#             raise ValueError("Leading dimensions of `weights`
-# and `data` must be equal")
+    def __check_init__(self):
+        """Check for valid __init__ inputs."""
+        if self.weights.shape[0] != self.data.shape[0]:
+            raise ValueError("Leading dimensions of `weights` and `data` must be equal")
 
 
-# class SupervisedWeightedData(WeightedData):
-#     """
-#     Class to apply pre-processing to supervised data.
+class SupervisedWeightedData(WeightedData):
+    """
+    Class to apply pre-processing to supervised data.
 
-#     :param data: Array of data to be reduced to a coreset
-#     :param supervision: Array of supervision corresponding to data
-#     :param weights: Array of weight corresponding to data pairs
-#     """
+    :param data: Array of data to be reduced to a coreset
+    :param supervision: Array of supervision corresponding to data
+    :param weights: Array of weight corresponding to data pairs
+    """
 
-#     supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
+    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
 
-#     def __init__(
-#         self,
-#         data: Shaped[Array, " n d"],
-#         supervision: Shaped[Array, " n *p"],
-#         weights: Shaped[Array, " n"] | None = None,
-#     ):
-#         """Initialise SupervisedWeightedData class."""
-#         self.supervision = supervision
-#         super().__init__(data, weights)
+    def __init__(
+        self,
+        data: Shaped[Array, " n d"],
+        supervision: Shaped[Array, " n *p"],
+        weights: Shaped[Array, " n"] | None = None,
+    ):
+        """Initialise SupervisedWeightedData class."""
+        self.supervision = supervision
+        super().__init__(data, weights)
 
-#     def __check_init__(self):
-#         """Check for valid __init__ inputs."""
-#         if self.supervision.shape[0] != self.data.shape[0]:
-#             raise ValueError(
-#                 "Leading dimensions of `supervision` and `data` must be equal"
-#             )
+    def __check_init__(self):
+        """Check for valid __init__ inputs."""
+        if self.supervision.shape[0] != self.data.shape[0]:
+            raise ValueError(
+                "Leading dimensions of `supervision` and `data` must be equal"
+            )
+
+
+# pylint: enable=too-few-public-methods
