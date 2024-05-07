@@ -17,6 +17,7 @@ elementwise
 GCHQ
 gramian
 gramians
+Hermitan
 kbar
 kdtree
 kernelised

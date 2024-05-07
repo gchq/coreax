@@ -294,11 +294,13 @@ def randomised_eigendecomposition(
     power_iterations: int = 1,
 ):
     """
-    Approximate the eigendecomposition of symmetric two-dimensional arrays.
+    Approximate the eigendecomposition of kernel matrices.
 
     Using (:cite: `halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
-    eigendecomposition of a symmetric matrix. The parameters oversampling_parameter and
+    eigendecomposition of a kernel matrix. The parameters oversampling_parameter and
     power_iterations present a trade-off between speed and approximation quality.
+
+    Give explanation of how to use the returns
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
@@ -319,57 +321,57 @@ def randomised_eigendecomposition(
     if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
         raise ValueError("power_iterations must be a positive integer")
 
-    # Generate a matrix of standard Gaussian draws
-    standard_gaussian_array = normal(
+    standard_gaussian_draws = normal(
         random_key, shape=(array.shape[0], oversampling_parameter)
     )
 
-    # QR decomposition finding orthonormal array with range approximating range of a
-    approximate_range = array @ standard_gaussian_array
-    q = jnp.linalg.qr(approximate_range)[0]
+    # QR decomposition finding orthonormal array with range approximating range of array
+    approximate_range = array @ standard_gaussian_draws
+    q, _ = jnp.linalg.qr(approximate_range)
 
     # Power iterations for improved accuracy
     for _ in range(power_iterations):
-        orthonormalised = array.T @ q
-        q_orthonormalised = jnp.linalg.qr(orthonormalised)[0]
-        approximate_range = array @ q_orthonormalised
-        q = jnp.linalg.qr(approximate_range)[0]
+        approximate_range_ = array.T @ q
+        q_, _ = jnp.linalg.qr(approximate_range_)
+        approximate_range = array @ q_
+        q, _ = jnp.linalg.qr(approximate_range)
 
-    # Form the approximate a array and compute its exact eigendecomposition and correct
+    # Form the low rank array and compute its exact eigendecomposition and correct
     # the eigenvectors.
     array_approximation = q.T @ array @ q
-    array_approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+    eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
     array_approximate_eigenvectors = q @ eigenvectors
 
-    return array_approximate_eigenvalues, array_approximate_eigenvectors
+    return eigenvalues, array_approximate_eigenvectors
 
 
-# @partial(jit, static_argnames=("oversampling_parameter", "power_iterations", "rcond"))
-def randomised_lstsq(
+@partial(jit, static_argnames=("rcond", "oversampling_parameter", "power_iterations"))
+def randomised_invert_regularised_array(
     random_key: KeyArrayLike,
-    a: ArrayLike,
-    b: ArrayLike,
+    array: ArrayLike,
+    regularisation_parameter: float,
+    identity: ArrayLike,
     rcond: float | None = None,
-    oversampling_parameter: int = 10,
+    oversampling_parameter: int = 25,
     power_iterations: int = 1,
 ) -> tuple[Array]:
-    """Ra."""
+    """Guidance on how to set."""
     # Input validation
     if rcond is not None:
         if rcond < 0 and rcond != -1:
             raise ValueError("rcond must be non-negative, except for value of -1")
 
     # Set rcond parameter if not given
-    n, m = a.shape
+    n, m = array.shape
     if rcond is None:
-        rcond = jnp.finfo(a.dtype).eps * max(n, m)
+        rcond = jnp.finfo(array.dtype).eps * max(n, m)
     elif rcond == -1:
-        rcond = jnp.finfo(a.dtype).eps
+        rcond = jnp.finfo(array.dtype).eps
 
     # Get approximate eigendecomposition
     approximate_eigenvalues, approximate_eigenvectors = randomised_eigendecomposition(
         random_key=random_key,
-        array=a,
+        array=array + regularisation_parameter * identity,
         oversampling_parameter=oversampling_parameter,
         power_iterations=power_iterations,
     )
@@ -378,16 +380,18 @@ def randomised_lstsq(
     mask = (
         approximate_eigenvalues
         >= jnp.array(rcond, dtype=approximate_eigenvalues.dtype)
-        * approximate_eigenvalues[0]
+        * approximate_eigenvalues[-1]
     )
+    safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
+
     # Invert the eigenvalues and extend array ready for broadcasting
-    approximate_inverse_eigenvalues = jnp.where(mask, 1 / approximate_eigenvalues, 0)[
-        :, jnp.newaxis
-    ]
+    approximate_inverse_eigenvalues = jnp.where(
+        mask, 1 / safe_approximate_eigenvalues, 0
+    )[:, jnp.newaxis]
 
     # Solve Ax = b, x = A^-1b = UL^-1U^Tb
-    return approximate_eigenvectors.T.dot(
-        (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(b)
+    return approximate_eigenvectors.dot(
+        (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
     )
 
 
