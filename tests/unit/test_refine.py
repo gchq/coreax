@@ -159,7 +159,7 @@ class RefineTestCase(ABC):
 
         When ``use_cached_row_sum_mean=True``, we expect the corresponding cached value
         in the coreset object to be used by refine, otherwise, we expect the kernel's
-        calculate_kernel_matrix_row_sum_mean to be called (exactly once).
+        gramian_row_mean to be called (exactly once).
         """
         array, test_indices, best_indices = problem
         for indices in test_indices:
@@ -176,13 +176,13 @@ class RefineTestCase(ABC):
             if use_cached_row_sum_mean:
                 refine_method.refine(coreset=coreset_obj)
             else:
-                # If we aren't using the cached kernel_matrix_row_sum_mean, then
-                # calculate_kernel_matrix_row_sum_mean should be called exactly once.
-                coreset_obj.kernel_matrix_row_sum_mean = None
+                # If we aren't using the cached gramian_row_mean, then
+                # gramian_row_mean should be called exactly once.
+                coreset_obj.gramian_row_mean = None
                 with patch.object(
                     coreax.kernel.Kernel,
-                    "calculate_kernel_matrix_row_sum_mean",
-                    wraps=kernel.calculate_kernel_matrix_row_sum_mean,
+                    "gramian_row_mean",
+                    wraps=kernel.gramian_row_mean,
                 ) as mock_method:
                     refine_method.refine(coreset=coreset_obj)
                 mock_method.assert_called_once()
@@ -218,13 +218,13 @@ class TestRefineRandom(RefineTestCase):
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = jnp.asarray([])
-        coreset_obj.kernel_matrix_row_sum_mean = None
+        coreset_obj.gramian_row_mean = None
 
         # Attempt to refine a coreset by considering no original data points
         # which should try to divide by 0 and raise a value error highlighting
         # the root cause
         refine_random = coreax.refine.RefineRandom(self.random_key, p=0.5)
-        with pytest.raises(ValueError, match="original_array must not be empty"):
+        with pytest.raises(ValueError, match="must not be empty"):
             refine_random.refine(coreset=coreset_obj)
 
     @pytest.mark.parametrize("p", [0, -0.5, 1.5])
@@ -242,7 +242,7 @@ class TestRefineRandom(RefineTestCase):
         coreset_obj.coreset_indices = coreset_indices
         coreset_obj.original_data = coreax.data.ArrayData.load(original_array)
         coreset_obj.coreset = original_array[coreset_indices, :]
-        coreset_obj.kernel_matrix_row_sum_mean = None
+        coreset_obj.gramian_row_mean = None
 
         refine_random = coreax.refine.RefineRandom(self.random_key, p=p)
         if p <= 0:

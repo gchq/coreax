@@ -51,17 +51,20 @@ automatic differentiated default.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
-import warnings
 from abc import abstractmethod
 from collections.abc import Callable
+from typing import TypeVar
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
 from typing_extensions import override
 
-from coreax.util import KernelComputeType, pairwise, squared_distance
+from coreax.util import pairwise, squared_distance
+
+T = TypeVar("T")
 
 
 @jit
@@ -224,128 +227,83 @@ class Kernel(eqx.Module):
         pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
         return pseudo_hessian.trace()
 
-    def update_kernel_matrix_row_sum(
+    def gramian_row_mean(
         self,
         x: ArrayLike,
-        kernel_row_sum: ArrayLike,
-        i: int,
-        j: int,
-        kernel_pairwise: KernelComputeType,
-        max_size: int = 10_000,
+        *,
+        block_size: int | None = None,
+        unroll: tuple[int | bool, int | bool] = (1, 1),
     ) -> Array:
         r"""
-        Update the row sum of the kernel matrix with a single block of values.
+        Compute the (blocked) row-wise mean of the kernel's Gramian matrix.
 
-        The row sum of the kernel matrix may involve a large number of pairwise
-        computations, so this can be done in blocks to reduce memory requirements.
+        The Gramian is a symmetric matrix :math:`G_{ij} = K(x_i, x_j)`, whose 'row-mean'
+        is given by the vector :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`, where ``K`` is
+        a :class:`~coreax.kernel.Kernel` and ``x`` is a :math:`n \times d` data matrix.
 
-        The kernel matrix block ``i``:``i`` + ``max_size`` :math:`\times`
-        ``j``:``j`` + ``max_size`` is used to update the row sum. Symmetry of the kernel
-        matrix is exploited to reduced repeated calculation.
+        .. note:
+            Because the Gramian is symmetric, the 'row-mean' and 'column-mean' are
+            equivalent. Use of the name 'row-mean' here is purley by convention.
+
+        To avoid materializing the entire Gramian (memory cost :math:`\mathcal{O}(n^2)),
+        we accumulate the mean in blocks (memory cost :math:`\mathcal{O}(B^2)`, where
+        ``B`` is a user-specified block size).
 
         :param x: Data matrix, :math:`n \times d`
-        :param kernel_row_sum: Full data structure for Gram matrix row sum,
-            :math:`1 \times n`
-        :param i: Kernel matrix block start
-        :param j: Kernel matrix block end
-        :param kernel_pairwise: Pairwise kernel evaluation function
-        :param max_size: Size of matrix block to process
-        :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
-            ``j``:``j`` + ``max_size`` populated
+        :param block_size: Size of Gramian blocks to process; a value of `None` implies
+            a block size equal to :math:`n`; a value that is not an integer divisor of
+            :math:`n` yields :math:`\text{floor}(n / B)` blocks of size ``B`` and a
+            final block of size `n - \text{floor}(n / B)`; to reduce overheads, select
+            the largest integer multiple block size which does not exhaust the available
+            memory resources
+        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
+            calls, allows for trade-offs between compilation and runtime cost; consult
+            the JAX docs for further information
+        :return: Gramian 'row/column-mean', :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`.
         """
         x = jnp.atleast_2d(x)
-        kernel_row_sum = jnp.asarray(kernel_row_sum)
-
-        # Compute the kernel row sum for this particular chunk of data
+        num_data_points = x.shape[0]
+        if block_size is None:
+            _block_size = num_data_points
+        else:
+            # Clamp 'block_size' to [1, num_data_points]. Explicit cast will raise an
+            # error if 'block_size' cannot be interpreted as an int.
+            _block_size = min(max(1, abs(int(block_size))), num_data_points)
+        num_blocks = num_data_points // _block_size
+        split_point = num_blocks * _block_size
+        block_iterable_x, trailing_x = x[:split_point], x[split_point:]
         try:
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size], x[j : j + max_size]
-            )
-        except AttributeError as exception:
-            if isinstance(max_size, float):
-                raise ValueError("'max_size' must be an integer") from exception
-            if isinstance(i, float):
-                raise ValueError("index 'i' must be an integer") from exception
-            if isinstance(j, float):
-                raise ValueError("index 'j' must be an integer") from exception
+            block_x = block_iterable_x.reshape(num_blocks, -1, x.shape[1])
+        except ZeroDivisionError as err:
+            if x.size == 0:
+                raise ValueError("'x' must not be empty") from err
             raise
+        outer_unroll, inner_unroll = unroll
+        requires_trailing_block = split_point < num_data_points
 
-        if max_size <= 0:
-            warnings.warn(
-                "'max_size' is not positive - this may give unexpected results",
-                UserWarning,
-                stacklevel=2,
-            )
+        def outer_loop(_: T, outer_x: Array) -> tuple[T, Array]:
+            """Block the outer argument of :math:`K(x, x_{b_2})`."""
 
-        # Assign the kernel row sum to the relevant part of this full matrix
-        kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
-            kernel_row_sum[i : i + max_size] + kernel_row_sum_part.sum(axis=1)
-        )
+            def inner_loop(_: T, inner_x: Array) -> tuple[T, Array]:
+                """Block the inner argument of :math:`K(x_{b_1}, x_{b_2})`."""
+                gramian_block = self.compute(inner_x, outer_x)
+                return _, jnp.sum(gramian_block, axis=0)
 
-        if i != j:
-            kernel_row_sum = kernel_row_sum.at[j : j + max_size].set(
-                kernel_row_sum[j : j + max_size] + kernel_row_sum_part.sum(axis=0)
-            )
+            _, row_sum = jax.lax.scan(inner_loop, _, block_x, unroll=inner_unroll)
+            if requires_trailing_block:
+                _, trailing_row_sum = inner_loop(_, trailing_x)
+                row_sum = jnp.r_[row_sum, trailing_row_sum[None, ...]]
+            return _, jnp.sum(row_sum, axis=0)
 
-        return kernel_row_sum
-
-    def calculate_kernel_matrix_row_sum(
-        self, x: ArrayLike, max_size: int = 10_000
-    ) -> Array:
-        r"""
-        Compute the row sum of the kernel matrix.
-
-        The row sum of the kernel matrix is the sum of distances between a given point
-        and all possible pairs of points that contain this given point. The row sum is
-        calculated block-wise to limit memory overhead.
-
-        :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Kernel matrix row sum
-        """
-        x = jnp.atleast_2d(x)
-
-        # Ensure data format is as required
-        num_data_points = len(x)
-        kernel_row_sum = jnp.zeros(num_data_points)
-
-        # Validate sensible inputs have been given
-        max_size = max(0, max_size)
-        try:
-            row_index_range = range(0, num_data_points, max_size)
-        except ValueError as exception:
-            if max_size == 0:
-                raise ValueError("'max_size' must be a positive integer") from exception
-            raise
-
-        # Iterate over upper triangular blocks
-        for i in row_index_range:
-            for j in range(i, num_data_points, max_size):
-                kernel_row_sum = self.update_kernel_matrix_row_sum(
-                    x,
-                    kernel_row_sum,
-                    i,
-                    j,
-                    self.compute,
-                    max_size,
-                )
-        return kernel_row_sum
-
-    def calculate_kernel_matrix_row_sum_mean(
-        self, x: ArrayLike, max_size: int = 10_000
-    ) -> Array:
-        r"""
-        Compute the mean of the row sum of the kernel matrix.
-
-        The mean of the row sum of the kernel matrix is the mean of the sum of distances
-        between a given point and all possible pairs of points that contain this given
-        point.
-
-        :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        """
-        x = jnp.atleast_2d(x)
-        return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
+        # Compute the Gramian row sum over the 'block' iterable part of 'x'.
+        _, block_row_sum = jax.lax.scan(outer_loop, None, block_x, unroll=outer_unroll)
+        # If 'block_size' is not an integer divisor of 'num_data_points', there remains
+        # a differently sized 'trailing block' which must be handled outside the scan.
+        if requires_trailing_block:
+            _, trailing_block_row_sum = outer_loop(_, trailing_x)
+            block_row_sum = jnp.r_[block_row_sum.reshape(-1), trailing_block_row_sum]
+        row_sum = jnp.sum(block_row_sum.reshape(-1, num_data_points), axis=0)
+        return row_sum / num_data_points
 
 
 class SquaredExponentialKernel(Kernel):

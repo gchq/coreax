@@ -168,7 +168,6 @@ except TypeError:
 
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
-    coreax.util.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",  # no expand
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }

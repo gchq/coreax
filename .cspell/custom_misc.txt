@@ -13,6 +13,7 @@ docstrings
 elementwise
 forall
 GCHQ
+Gramian
 kbar
 kdtree
 kernelised

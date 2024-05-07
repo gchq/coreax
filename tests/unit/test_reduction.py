@@ -73,7 +73,7 @@ class TestCoreset(unittest.TestCase):
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
-        kernel_matrix_row_sum_mean = MagicMock()
+        gramian_row_mean = MagicMock()
         original = CoresetMock(
             weights_optimiser=weights_optimiser,
             kernel=kernel,
@@ -82,7 +82,7 @@ class TestCoreset(unittest.TestCase):
         original.original_data = original_data
         original.coreset = coreset
         original.coreset_indices = coreset_indices
-        original.kernel_matrix_row_sum_mean = kernel_matrix_row_sum_mean
+        original.gramian_row_mean = gramian_row_mean
 
         # Create copy
         duplicate = original.clone_empty()
@@ -100,8 +100,8 @@ class TestCoreset(unittest.TestCase):
         self.assertIsNone(duplicate.coreset)
         self.assertIs(original.coreset_indices, coreset_indices)
         self.assertIsNone(duplicate.coreset_indices)
-        self.assertIs(original.kernel_matrix_row_sum_mean, kernel_matrix_row_sum_mean)
-        self.assertIsNone(duplicate.kernel_matrix_row_sum_mean)
+        self.assertIs(original.gramian_row_mean, gramian_row_mean)
+        self.assertIsNone(duplicate.gramian_row_mean)
 
     def test_fit(self):
         """Test that original data is saved and reduction strategy called."""
