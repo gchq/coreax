@@ -23,14 +23,17 @@ from unittest.mock import Mock
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
     SilentTQDM,
     apply_negative_precision_threshold,
     difference,
+    invert_regularised_array,
     jit_test,
     pairwise,
+    sample_batch_indices,
     solve_qp,
     squared_distance,
 )
@@ -147,6 +150,96 @@ class TestUtil:
             solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
                 gramian_row_mean="invalid_gramian_row_mean",
+            )
+
+    def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
+        """
+        Test invert_regularised_array with negative regularisation_parameter.
+        """
+        with pytest.raises(ValueError):
+            invert_regularised_array(
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(2),
+                rcond=-10,
+            )
+
+    def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
+        """
+        Test invert_regularised_array with invalid array dimensions.
+
+        An array and identity with unequal dimensions are given, which should be
+        rejected by the function.
+        """
+        with pytest.raises(ValueError):
+            invert_regularised_array(
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(3),
+                rcond=None,
+            )
+
+    def test_invert_regularised_array(self) -> None:
+        """
+        Test invert_regularised_array.
+        """
+        regularisation_parameter = 1
+        identity = jnp.eye(2)
+        rcond = -1
+        array = jnp.ones((2, 2))
+
+        expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
+
+        output = invert_regularised_array(
+            array,
+            regularisation_parameter,
+            identity=identity,
+            rcond=rcond,
+        )
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
+
+    @pytest.mark.parametrize(
+        "data_size, batch_size, num_batches",
+        [
+            (1.0, 1, 1),
+            (1, 1.0, 1),
+            (1, 1, 1.0),
+            (-1, 1, 1),
+            (1, -1, 1),
+            (1, 1, -1),
+            (0, 1, 1),
+            (1, 0, 1),
+            (1, 1, 0),
+            (1, 2, 1),
+        ],
+        ids=[
+            "float_data_size",
+            "float_batch_size",
+            "float_num_batches",
+            "negative_data_size",
+            "negative_batch_size",
+            "negative_num_batches",
+            "zero_data_size",
+            "zero_batch_size",
+            "zero_num_batches",
+            "data_size_smaller_than_batch_size",
+        ],
+    )
+    def test_sample_batch_indices(
+        self,
+        data_size: int,
+        batch_size: int,
+        num_batches: int,
+    ) -> None:
+        """
+        Test sample_batch_indices for valid input parameters.
+        """
+        with pytest.raises(ValueError):
+            sample_batch_indices(
+                random_key=key(0),
+                data_size=data_size,
+                batch_size=batch_size,
+                num_batches=num_batches,
             )
 
     @pytest.mark.flaky(reruns=3)
