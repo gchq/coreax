@@ -37,10 +37,8 @@ import coreax.kernel
 import coreax.proposed_data
 import coreax.util
 
-_Data = TypeVar("_Data", bound=coreax.proposed_data.WeightedData)
-_SupervisedData = TypeVar(
-    "_SupervisedData", bound=coreax.proposed_data.SupervisedWeightedData
-)
+_Data = TypeVar("_Data", bound=coreax.proposed_data.Data)
+_SupervisedData = TypeVar("_SupervisedData", bound=coreax.proposed_data.SupervisedData)
 
 
 class Metric(ABC, Generic[_Data]):
