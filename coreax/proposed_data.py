@@ -16,8 +16,8 @@
 Classes for reading unsupervised and supervised input data.
 
 In order to calculate a coreset, :meth:`~coreax.reduction.Coreset.fit` requires an
-instance of a subclass of :class:`WeightedData`. It is necessary to use
-:class:`WeightedData` because :class:`~coreax.reduction.Coreset` requires a
+instance of a subclass of :class:`Data`. It is necessary to use
+:class:`Data` because :class:`~coreax.reduction.Coreset` requires a
 two-dimensional :class:`~jax.Array`. Data reductions are performed along the first
 dimension.
 """
@@ -30,12 +30,14 @@ from jaxtyping import Array, Shaped
 
 
 # pylint: disable=too-few-public-methods
-class WeightedData(eqx.Module):
-    """
-    Class to apply pre-processing to unsupervised data.
+class Data(eqx.Module):
+    r"""
+    Class for representing unsupervised data.
 
-    :param data: Array of data to be reduced to a coreset
-    :param weights: Array of weight corresponding to data points
+    :param data: An :math:`n \times d` array defining the unsupervised dataset
+    :param weights: An :math:`n`-vector of weights with. Each element of the weights
+        vector is associated with the data point at the corresponding index of the
+        data array.
     """
 
     data: Shaped[Array, " n d"]
@@ -44,7 +46,7 @@ class WeightedData(eqx.Module):
     def __init__(
         self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
     ):
-        """Initialise WeightedData class."""
+        """Initialise Data class."""
         self.data = data
         if weights is None:
             n = data.shape[0]
@@ -53,18 +55,22 @@ class WeightedData(eqx.Module):
             self.weights = weights
 
     def __check_init__(self):
-        """Check for valid __init__ inputs."""
+        """Check leading dimensions of weights and data match."""
         if self.weights.shape[0] != self.data.shape[0]:
-            raise ValueError("Leading dimensions of `weights` and `data` must be equal")
+            raise ValueError("Leading dimensions of 'weights' and 'data' must be equal")
 
 
-class SupervisedWeightedData(WeightedData):
-    """
-    Class to apply pre-processing to supervised data.
+class SupervisedData(Data):
+    r"""
+    Class for supervised data.
 
-    :param data: Array of data to be reduced to a coreset
-    :param supervision: Array of supervision corresponding to data
-    :param weights: Array of weight corresponding to data pairs
+    :param data: An :math:`n \times d` array defining the features of the supervised
+        dataset paired with the responses.
+    :param supervision: An :math:`n \times p` array defining the responses of the
+        supervised dataset paired with the features.
+    :param weights: An :math:`n`-vector of weights with. Each element of the weights
+        vector is associated with the data pair at the corresponding index of the
+        data and supervision arrays.
     """
 
     supervision: Shaped[Array, " n *p"]
@@ -75,15 +81,15 @@ class SupervisedWeightedData(WeightedData):
         supervision: Shaped[Array, " n *p"],
         weights: Shaped[Array, " n"] | None = None,
     ):
-        """Initialise SupervisedWeightedData class."""
+        """Initialise SupervisedData class."""
         self.supervision = supervision
         super().__init__(data, weights)
 
     def __check_init__(self):
-        """Check for valid __init__ inputs."""
+        """Check leading dimensions of supervision and data match."""
         if self.supervision.shape[0] != self.data.shape[0]:
             raise ValueError(
-                "Leading dimensions of `supervision` and `data` must be equal"
+                "Leading dimensions of 'supervision' and 'data' must be equal"
             )
 
 
