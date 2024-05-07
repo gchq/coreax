@@ -19,6 +19,7 @@ kdtree
 kernelised
 kernelized
 ml.p3.8xlarge
+parameterisable
 parsable
 PCIMQ
 PMLR
@@ -30,4 +31,3 @@ RKHS
 RPCHOLESKY
 sigmas
 WMMd
-parameterisable
