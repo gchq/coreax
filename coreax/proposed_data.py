@@ -38,8 +38,8 @@ class WeightedData(eqx.Module):
     :param weights: Array of weight corresponding to data points
     """
 
-    data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
-    weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
+    data: Shaped[Array, " n d"]
+    weights: Shaped[Array, " n"]
 
     def __init__(
         self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
@@ -67,7 +67,7 @@ class SupervisedWeightedData(WeightedData):
     :param weights: Array of weight corresponding to data pairs
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
+    supervision: Shaped[Array, " n *p"]
 
     def __init__(
         self,

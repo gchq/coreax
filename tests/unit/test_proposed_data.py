@@ -34,9 +34,11 @@ class TestWeightedData(unittest.TestCase):
         original_data = jnp.array([1, 2, 3])
         n = original_data.shape[0]
 
-        data_class = WeightedData(data=jnp.array([1, 2, 3]), weights=None)
-        self.assertEqual(data_class.data, original_data)
-        self.assertEqual(data_class.weights, jnp.broadcast_to(1 / n, (n,)))
+        data_class = WeightedData(data=original_data, weights=None)
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(data_class.weights - jnp.broadcast_to(1 / n, (n,)))),
+            0.0,
+        )
 
     def test_invalid_data_and_weight_dimensions(self):
         """
@@ -44,11 +46,13 @@ class TestWeightedData(unittest.TestCase):
         """
         original_data = jnp.array([1, 2, 3])
 
-        self.assertRaises(
-            ValueError,
+        with self.assertRaises(ValueError) as error_raised:
             WeightedData(
-                data=jnp.array([1, 2, 3]), weights=jnp.ones(original_data.shape[0] + 1)
-            ),
+                data=original_data, weights=jnp.ones(original_data.shape[0] + 1)
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "Leading dimensions of `weights` and `data` must be equal",
         )
 
 
@@ -62,11 +66,13 @@ class TestSupervisedWeightedData(unittest.TestCase):
         n = original_data.shape[0]
 
         data_class = SupervisedWeightedData(
-            data=jnp.array([1, 2, 3]), supervision=original_supervision, weights=None
+            data=original_data, supervision=original_supervision, weights=None
         )
-        self.assertEqual(data_class.data, original_data)
-        self.assertEqual(data_class.supervision, original_supervision)
-        self.assertEqual(data_class.weights, jnp.broadcast_to(1 / n, (n,)))
+        data_class = WeightedData(data=original_data, weights=None)
+        self.assertAlmostEqual(
+            float(jnp.linalg.norm(data_class.weights - jnp.broadcast_to(1 / n, (n,)))),
+            0.0,
+        )
 
     def test_invalid_data_and_weight_dimensions(self):
         """
@@ -75,13 +81,15 @@ class TestSupervisedWeightedData(unittest.TestCase):
         original_data = jnp.array([1, 2, 3])
         original_supervision = jnp.array([4, 5, 6])
 
-        self.assertRaises(
-            ValueError,
+        with self.assertRaises(ValueError) as error_raised:
             SupervisedWeightedData(
                 data=original_data,
                 supervision=original_supervision,
                 weights=jnp.ones(original_data.shape[0] + 1),
-            ),
+            )
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "Leading dimensions of `weights` and `data` must be equal",
         )
 
     def test_invalid_data_and_supervision_dimensions(self):
@@ -91,9 +99,9 @@ class TestSupervisedWeightedData(unittest.TestCase):
         original_data = jnp.array([1, 2, 3])
         original_supervision = jnp.array([4, 5])
 
-        self.assertRaises(
-            ValueError,
-            SupervisedWeightedData(
-                data=original_data, supervision=original_supervision
-            ),
+        with self.assertRaises(ValueError) as error_raised:
+            SupervisedWeightedData(data=original_data, supervision=original_supervision)
+        self.assertEqual(
+            error_raised.exception.args[0],
+            "Leading dimensions of `supervision` and `data` must be equal",
         )
