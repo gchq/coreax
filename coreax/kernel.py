@@ -307,12 +307,10 @@ class Kernel(eqx.Module):
 
 
 class LinearKernel(Kernel):
-    """
-    Define a linear kernel.
+    """Define a linear kernel."""
 
-    :param length_scale: Kernel smoothing/bandwidth parameter
-    :param output_scale: Kernel normalisation constant
-    """
+    length_scale: float = 1.0
+    output_scale: float = 1.0
 
     @override
     def compute_elementwise(
