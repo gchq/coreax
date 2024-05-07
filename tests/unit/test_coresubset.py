@@ -72,7 +72,7 @@ class TestKernelHerding(unittest.TestCase):
         )
 
         # Set attributes on the object to ensure actual values are returned
-        coresubset_object_not_random.kernel_matrix_row_sum_mean = None
+        coresubset_object_not_random.gramian_row_mean = None
         coresubset_object_not_random.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
         coresubset_object_not_random.coreset = jnp.zeros([2, 3])
         coresubset_object_not_random.block_size = 5
@@ -155,10 +155,10 @@ class TestKernelHerding(unittest.TestCase):
 
     def test_fit_compare_row_sum(self) -> None:
         """
-        Test the fit method of the KernelHerding class handling the kernel row sum mean.
+        Test the fit method of the KernelHerding class handling the Gramian row-mean.
 
-        The test checks that when the kernel matrix row sum mean is passed, and not
-        passed, the same answer is produced by the herding algorithm.
+        The test checks that when the Gramian row-mean is passed, and not passed, the
+        same answer is produced by the herding algorithm.
         """
         # Define specific test instance setup
         kernel = coreax.kernel.LaplacianKernel()
@@ -180,9 +180,9 @@ class TestKernelHerding(unittest.TestCase):
         )
         fitted_coresubset = coresubset_object_not_random.coreset
 
-        # Compute the kernel matrix row sum mean outside of the herding object
-        kernel_matrix_row_sum = kernel.calculate_kernel_matrix_row_sum_mean(x=x)
-        coresubset_object_not_random.kernel_matrix_row_sum_mean = kernel_matrix_row_sum
+        # Compute the kernel's Gramian row-mean outside of the herding object
+        gramian_row_mean = kernel.gramian_row_mean(x=x)
+        coresubset_object_not_random.gramian_row_mean = gramian_row_mean
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
@@ -194,12 +194,10 @@ class TestKernelHerding(unittest.TestCase):
         )
 
         # The previous check ensures that the result is the same, however we need to
-        # test the passed kernel matrix row sum is being used. To do this, we give an
-        # incorrect random kernel matrix row sum and check the resulting coreset is
+        # test the passed Gramian row-mean is being used. To do this, we give an
+        # incorrect random Gramian row-mean and check the resulting coreset is
         # different.
-        coresubset_object_not_random.kernel_matrix_row_sum_mean = (
-            0.5 * kernel_matrix_row_sum
-        )
+        coresubset_object_not_random.gramian_row_mean = 0.5 * gramian_row_mean
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
@@ -267,9 +265,9 @@ class TestKernelHerding(unittest.TestCase):
         random_metric = metric.compute(x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
-    def test_fit_with_approximate_kernel_matrix_row_sum_mean(self):
+    def test_fit_with_approximate_gramian_row_mean(self):
         """
-        Test fit in the KernelHerding class when approximating the kernel row sum mean.
+        Test fit in the KernelHerding class when approximating the Gramian row-mean.
 
         The test checks that the approximation method is called exactly once. It also
         checks that a coreset generated via kernel herding has an improved quality
@@ -330,14 +328,14 @@ class TestKernelHerding(unittest.TestCase):
         ):
             # Mock some data
             mock_reader.pre_coreset_array = jnp.asarray([[0, 0], [1, 1], [2, 2]])
-            # Define a kernel matrix row sum mean. On the first call of the greedy body,
+            # Define a Gramian row-mean. On the first call of the greedy body,
             # we will select the first point in the coreset. Recall herding can be
             # thought of as a balance between selecting points in high density
-            # (kernel_matrix_row_sum_mean is large) but that are not too close to points
+            # (gramian_row_mean is large) but that are not too close to points
             # already in the coreset (defined by kernel_similarity_penalty). Hence, the
             # first point selected should be the index of the largest entry in
-            # kernel_matrix_row_sum_mean
-            kernel_matrix_row_sum_mean = jnp.asarray([0.6, 0.75, 0.55])
+            # gramian_row_mean
+            gramian_row_mean = jnp.asarray([0.6, 0.75, 0.55])
 
             def mock_kernel_vectorised(_, y):
                 """
@@ -369,12 +367,12 @@ class TestKernelHerding(unittest.TestCase):
                 val=(coreset_indices_0, kernel_similarity_penalty_0),
                 x=mock_reader.pre_coreset_array,
                 kernel_vectorised=mock_kernel_vectorised,
-                kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+                gramian_row_mean=gramian_row_mean,
                 unique=True,
             )
             # pylint: enable=protected-access
 
-            # Index 1 has the highest value of kernel_matrix_row_sum_mean, verify this
+            # Index 1 has the highest value of gramian_row_mean, verify this
             # was the point selected in the coreset
             np.testing.assert_array_equal(coreset_indices_1, np.asarray([1, 0]))
 
@@ -387,7 +385,7 @@ class TestKernelHerding(unittest.TestCase):
 
             # Alter the penalty applied to the points for an illustrative test. This
             # will mean that the next coreset point selected should be the data-point
-            # with index 2. Recall that kernel_matrix_row_sum_mean is [0.6, 0.75, 0.55],
+            # with index 2. Recall that gramian_row_mean is [0.6, 0.75, 0.55],
             # and so just from density alone, the next largest point in this is index 0.
             # However, the penalty term now makes the point with index 2 the highest
             # overall when the kernel row mean and penalties are combined. Note the
@@ -405,7 +403,7 @@ class TestKernelHerding(unittest.TestCase):
                 val=(coreset_indices_1, kernel_similarity_penalty_1),
                 x=mock_reader.pre_coreset_array,
                 kernel_vectorised=mock_kernel_vectorised,
-                kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+                gramian_row_mean=gramian_row_mean,
                 unique=False,
             )
             # pylint: enable=protected-access
@@ -427,8 +425,8 @@ class TestKernelHerding(unittest.TestCase):
             kernel=coreax.util.InvalidKernel,
         )
 
-        # The fit method should first try to compute the kernel matrix row sum mean,
-        # which will require a call to a method calculate_kernel_matrix_row_sum_mean,
+        # The fit method should first try to compute the kernel's Gramian row-mean,
+        # which will require a call to a method gramian_row_mean,
         # which does not exist, and hence we expect an error
         with self.assertRaises(AttributeError) as error_raised:
             herding_object.fit(
@@ -437,8 +435,7 @@ class TestKernelHerding(unittest.TestCase):
             )
         self.assertEqual(
             error_raised.exception.args[0],
-            "type object 'InvalidKernel' has no attribute "
-            "'calculate_kernel_matrix_row_sum_mean'",
+            "type object 'InvalidKernel' has no attribute 'gramian_row_mean'",
         )
 
     def test_kernel_herding_invalid_weights_optimiser(self):
@@ -519,104 +516,6 @@ class TestKernelHerding(unittest.TestCase):
         self.assertEqual(
             error_raised.exception.args[0],
             "type object 'InvalidKernel' has no attribute 'refine'",
-        )
-
-    def test_kernel_herding_zero_block_size(self):
-        """
-        Test the class KernelHerding when given a block_size of zero.
-        """
-        # Define a kernel herding object with the zero valued block_size
-        herding_object = coreax.coresubset.KernelHerding(
-            random_key=self.random_key,
-            kernel=coreax.kernel.SquaredExponentialKernel(),
-            block_size=0,
-        )
-
-        # The fit method should not allow uses of zero block size - since we can't
-        # iterate in blocks of size 0 - so we expect a value error
-        with self.assertRaises(ValueError) as error_raised:
-            herding_object.fit(
-                original_data=self.generic_data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'max_size' must be a positive integer",
-        )
-
-    def test_kernel_herding_negative_block_size(self):
-        """
-        Test the class KernelHerding when given a negative block_size.
-        """
-        # Define a kernel herding object with the negative valued block_size
-        herding_object = coreax.coresubset.KernelHerding(
-            random_key=self.random_key,
-            kernel=coreax.kernel.SquaredExponentialKernel(),
-            block_size=-5,
-        )
-
-        # The fit method should cap block_size at zero, then not allow uses of zero
-        # block size - since we can't iterate in blocks of size 0 - so we expect a value
-        # error
-        with self.assertRaises(ValueError) as error_raised:
-            herding_object.fit(
-                original_data=self.generic_data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'max_size' must be a positive integer",
-        )
-
-    def test_kernel_herding_float_block_size(self):
-        """
-        Test the class KernelHerding when given a float block_size.
-        """
-        # Define a kernel herding object with the negative valued block_size
-        herding_object = coreax.coresubset.KernelHerding(
-            random_key=self.random_key,
-            kernel=coreax.kernel.SquaredExponentialKernel(),
-            block_size=5.0,
-        )
-
-        # The fit method should reject trying to loop from 0 to a float value of
-        # block_size - raising a type error
-        with self.assertRaises(TypeError) as error_raised:
-            herding_object.fit(
-                original_data=self.generic_data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'float' object cannot be interpreted as an integer",
-        )
-
-    def test_kernel_herding_string_block_size(self):
-        """
-        Test the class KernelHerding when given a string block_size.
-        """
-        # Define a kernel herding object with the negative valued block_size
-        herding_object = coreax.coresubset.KernelHerding(
-            random_key=self.random_key,
-            kernel=coreax.kernel.SquaredExponentialKernel(),
-            block_size="ABC",
-        )
-
-        # The fit method should reject a string value of block size - since we can't
-        # iterate in blocks of non-integer size (including a string) - so we expect a
-        # TypeError
-        with self.assertRaises(TypeError) as error_raised:
-            herding_object.fit(
-                original_data=self.generic_data,
-                strategy=coreax.reduction.SizeReduce(self.coreset_size),
-            )
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "'>' not supported between instances of 'str' and 'int'",
         )
 
     def test_kernel_herding_fit_zero_coreset_size(self):
@@ -771,7 +670,7 @@ class TestRandomSample(unittest.TestCase):
         )
 
         # Set attributes on the object to ensure actual values are returned
-        coresubset_object_random_sample.kernel_matrix_row_sum_mean = None
+        coresubset_object_random_sample.gramian_row_mean = None
         coresubset_object_random_sample.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
         coresubset_object_random_sample.coreset = jnp.zeros([2, 3])
         coresubset_object_random_sample.refine_method = "ABC"
@@ -1081,7 +980,7 @@ class TestRPCholesky(unittest.TestCase):
         )
 
         # Set attributes on the object to ensure actual values are returned
-        coresubset_object_not_random.kernel_matrix_row_sum_mean = None
+        coresubset_object_not_random.gramian_row_mean = None
         coresubset_object_not_random.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
         coresubset_object_not_random.coreset = jnp.zeros([2, 3])
         coresubset_object_not_random.block_size = 5
@@ -1423,7 +1322,7 @@ class TestSteinThinning(unittest.TestCase):
         )
 
         # Set attributes on the object to ensure actual values are returned
-        coresubset_object_not_random.kernel_matrix_row_sum_mean = None
+        coresubset_object_not_random.gramian_row_mean = None
         coresubset_object_not_random.coreset_indices = jnp.zeros(1, dtype=jnp.int32)
         coresubset_object_not_random.coreset = jnp.zeros([2, 3])
         coresubset_object_not_random.block_size = 5

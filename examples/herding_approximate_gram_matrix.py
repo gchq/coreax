@@ -19,10 +19,9 @@ This example showcases how a coreset can be generated from a dataset containing 
 points sampled from ``k`` clusters in space.
 
 A coreset is generated using kernel herding, with a Squared Exponential kernel. To
-reduce computational demand, we approximate the kernel matrix row sum mean (also known
-as the mean of the Gram matrix row sum). This coreset is compared to a coreset generated
-via uniform random sampling. Coreset quality is measured using maximum mean discrepancy
-(MMD).
+reduce computational demand, we approximate the kernel's Gramian row mean. This coreset
+is compared to a coreset generated via uniform random sampling. Coreset quality is
+measured using maximum mean discrepancy (MMD).
 """
 
 # Support annotations with | in Python < 3.10
@@ -54,13 +53,13 @@ from coreax.kernel import median_heuristic
 # pylint: disable=too-many-locals
 def main(out_path: Path | None = None) -> tuple[float, float]:
     """
-    Run the tabular data herding example with an approximate kernel matrix row sum mean.
+    Run the tabular data herding example with an approximate kernel Gramian row-mean.
 
     Generate a set of points from distinct clusters in a plane. Generate a coreset via
-    kernel herding, where computation time is reduced by approximating the kernel matrix
-    row sum mean, rather than computing it exactly with all data-points. Compare results
-    to coresets generated via uniform random sampling. Coreset quality is measured using
-    maximum mean discrepancy (MMD).
+    kernel herding, where computation time is reduced by approximating the kernel's
+    Gramian row-mean, rather than computing it exactly with all data-points. Compare
+    results to coresets generated via uniform random sampling. Coreset quality is
+    measured using maximum mean discrepancy (MMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given

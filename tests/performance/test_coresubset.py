@@ -80,7 +80,7 @@ class TestCoreSubset(unittest.TestCase):
         post = []
         for i in range(self.num_samples_to_generate):
             # pylint: disable=protected-access
-            kernel_matrix_rsm = kernel.calculate_kernel_matrix_row_sum_mean(x[i])
+            kernel_matrix_rsm = kernel.gramian_row_mean(x[i])
             deltas = coreax.util.jit_test(
                 herding_object._greedy_body,
                 fn_kwargs={
@@ -88,7 +88,7 @@ class TestCoreSubset(unittest.TestCase):
                     "val": (coreset_indices_0, kernel_similarity_penalty_0),
                     "x": x[i],
                     "kernel_vectorised": kernel.compute,
-                    "kernel_matrix_row_sum_mean": kernel_matrix_rsm,
+                    "gramian_row_mean": kernel_matrix_rsm,
                     "unique": True,
                 },
                 jit_kwargs={"static_argnames": ["kernel_vectorised", "unique"]},

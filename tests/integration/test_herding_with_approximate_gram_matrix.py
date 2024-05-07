@@ -15,7 +15,7 @@
 """
 Integration test for basic herding example.
 
-This test uses an approximation to the kernel matrix row sum mean rather than an exact
+This test uses an approximation to the kernel's Gramian row-mean rather than an exact
 computation.
 """
 
