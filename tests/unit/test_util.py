@@ -26,6 +26,7 @@ import pytest
 from jax.random import key, normal
 from scipy.stats import ortho_group
 
+from coreax.kernel import SquaredExponentialKernel
 from coreax.util import (
     SilentTQDM,
     apply_negative_precision_threshold,
@@ -243,15 +244,6 @@ class TestUtil:
                 num_batches=num_batches,
             )
 
-    @pytest.mark.flaky(reruns=3)
-    @pytest.mark.parametrize(
-        "args, kwargs, jit_kwargs",
-        [
-            ((2,), {}, {}),
-            ((2,), {"a": 3}, {"static_argnames": "a"}),
-            ((), {"a": 3}, {"static_argnames": "a"}),
-        ],
-    )
     def test_randomised_eigendecomposition_larger_than_two_dimension_array(
         self,
     ) -> None:
@@ -328,38 +320,44 @@ class TestUtil:
 
     def test_randomised_eigendecomposition(self) -> None:
         """
-        Test randomised_eigendecomposition.
+        Test randomised_eigendecomposition with random kernel matrix.
         """
         random_key = key(0)
-        dimension = 3
-        oversampling_parameter = 25
-        power_iterations = 2
+        dimension = 100
+        oversampling_parameter = 10
+        power_iterations = 1
 
-        array = normal(random_key, (dimension, dimension))
-        symmetric_array = array.T @ array
+        # Make kernel matrix
+        x = normal(key(1), (dimension, 1))
+        array = SquaredExponentialKernel().compute(x, x)
 
-        (
-            expected_eigenvalues,
-            expected_eigenvectors,
-        ) = jnp.linalg.eigh(symmetric_array)
         (
             output_eigenvalues,
             output_eigenvectors,
         ) = randomised_eigendecomposition(
             random_key=random_key,
-            array=symmetric_array,
+            array=array,
             oversampling_parameter=oversampling_parameter,
             power_iterations=power_iterations,
         )
         assert jnp.linalg.norm(
-            expected_eigenvalues - output_eigenvalues
+            array
+            - (
+                output_eigenvectors
+                @ jnp.diag(output_eigenvalues)
+                @ output_eigenvectors.T
+            )
         ) == pytest.approx(0.0, abs=1e-3)
 
-        # Eigenvectors are computed up to sign
-        assert jnp.linalg.norm(
-            jnp.linalg.norm(abs(expected_eigenvectors) - abs(output_eigenvectors))
-        ) == pytest.approx(0.0, abs=1e-3)
-
+    @pytest.mark.flaky(reruns=3)
+    @pytest.mark.parametrize(
+        "args, kwargs, jit_kwargs",
+        [
+            ((2,), {}, {}),
+            ((2,), {"a": 3}, {"static_argnames": "a"}),
+            ((), {"a": 3}, {"static_argnames": "a"}),
+        ],
+    )
     def test_jit_test(self, args, kwargs, jit_kwargs) -> None:
         """
         Check that ``jit_test`` returns the expected timings.
