@@ -62,7 +62,7 @@ class Data(eqx.Module):
 
 class SupervisedData(Data):
     r"""
-    Class for supervised data.
+    Class for representing supervised data.
 
     :param data: An :math:`n \times d` array defining the features of the supervised
         dataset paired with the responses.
