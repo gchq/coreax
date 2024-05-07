@@ -68,7 +68,6 @@ class TestSupervisedWeightedData(unittest.TestCase):
         data_class = SupervisedWeightedData(
             data=original_data, supervision=original_supervision, weights=None
         )
-        data_class = WeightedData(data=original_data, weights=None)
         self.assertAlmostEqual(
             float(jnp.linalg.norm(data_class.weights - jnp.broadcast_to(1 / n, (n,)))),
             0.0,
