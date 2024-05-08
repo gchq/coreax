@@ -388,7 +388,7 @@ class TestKernelHerding(unittest.TestCase):
             # with index 2. Recall that gramian_row_mean is [0.6, 0.75, 0.55],
             # and so just from density alone, the next largest point in this is index 0.
             # However, the penalty term now makes the point with index 2 the highest
-            # overall when the kernel row mean and penalties are combined. Note the
+            # overall when the kernel row-mean and penalties are combined. Note the
             # 2.0* here because we divide the penalty term by loop index + 1
             kernel_similarity_penalty_1 = kernel_similarity_penalty_1.at[0].set(
                 2.0 * 0.59
@@ -644,7 +644,7 @@ class TestRandomSample(unittest.TestCase):
         ``n``: Number of test data points
         ``d``: Dimension of data
         ``m``: Number of points to randomly select for second dataset Y
-        ``max_size``: Maximum number of points for block calculations
+        ``block_size``: Maximum number of points for block calculations
         """
         # Define data parameters
         self.num_points_in_data = 30

@@ -16,9 +16,9 @@ r"""
 Classes and associated functionality to approximate kernels.
 
 When a dataset is very large, methods which have to evaluate all pairwise combinations
-of the data, such as :meth:`~coreax.kernel.Kernel.gramian_row_mean`,
-can become prohibitively expensive. To reduce this computational cost, such methods can
-instead be approximated (providing suitable approximation error can be achieved).
+of the data, such as :meth:`~coreax.kernel.Kernel.gramian_row_mean`, can become
+prohibitively expensive. To reduce this computational cost, such methods can instead be
+approximated (providing suitable approximation error can be achieved).
 
 The :class:`ApproximateKernel`\ s in this module provide the functionality required to
 override specific methods of a ``base_kernel`` with their approximate counterparts.
@@ -177,8 +177,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
         Gramian row-mean.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the base kernel's Gramian row mean
+        :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
         data = jnp.atleast_2d(x)
@@ -218,8 +217,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         implementation used can be found `here <https://github.com/gchq/annchor>`_.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the base kernel's Gramian row mean
+        :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
         data = jnp.atleast_2d(x)
@@ -275,8 +273,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
         in :cite:`chatalic2022nystrom` is computed using this subset.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the base kernel's Gramian row mean
+        :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
         data = jnp.atleast_2d(x)

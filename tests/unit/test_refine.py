@@ -138,12 +138,12 @@ class RefineTestCase(ABC):
         ],
         ids=["no_unique_best", "unique_best"],
     )
-    @pytest.mark.parametrize("use_cached_row_sum_mean", [False, True])
+    @pytest.mark.parametrize("use_cached_row_mean", [False, True])
     def test_refine(
         self,
         refine_method: coreax.refine.Refine,
         problem: _RefineProblem,
-        use_cached_row_sum_mean: bool,
+        use_cached_row_mean: bool,
     ):
         """
         Test behaviour of the ``refine`` method when passed valid arguments.
@@ -157,8 +157,8 @@ class RefineTestCase(ABC):
         - The ``unique_best`` case tests scenarios with a unique "best" solution. This
         unique solution is expected even for random/greedy refinement methods.
 
-        When ``use_cached_row_sum_mean=True``, we expect the corresponding cached value
-        in the coreset object to be used by refine, otherwise, we expect the kernel's
+        When ``use_cached_row_mean=True``, we expect the corresponding cached value in
+        the coreset object to be used by refine, otherwise, we expect the kernel's
         gramian_row_mean to be called (exactly once).
         """
         array, test_indices, best_indices = problem
@@ -173,7 +173,7 @@ class RefineTestCase(ABC):
             coreset_obj.original_data = coreax.data.ArrayData.load(array)
             coreset_obj.coreset = array[coreset_indices, :]
 
-            if use_cached_row_sum_mean:
+            if use_cached_row_mean:
                 refine_method.refine(coreset=coreset_obj)
             else:
                 # If we aren't using the cached gramian_row_mean, then

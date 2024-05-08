@@ -19,7 +19,7 @@ This example showcases how a coreset can be generated from a dataset containing 
 points sampled from ``k`` clusters in space.
 
 A coreset is generated using kernel herding, with a Squared Exponential kernel. To
-reduce computational demand, we approximate the kernel's Gramian row mean. This coreset
+reduce computational demand, we approximate the kernel's Gramian row-mean. This coreset
 is compared to a coreset generated via uniform random sampling. Coreset quality is
 measured using maximum mean discrepancy (MMD).
 """

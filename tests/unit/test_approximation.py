@@ -153,7 +153,7 @@ class TestRandomRegressionApproximations:
         approximator_full = approximator(kernel, random_key, **full_kwargs)
         approximator_partial = approximator(kernel, random_key, **partial_kwargs)
 
-        # Approximate the kernel row mean using the full training set (so the
+        # Approximate the kernel row-mean using the full training set (so the
         # approximation should be very close to the true) and only part of the data for
         # training (so the error should grow)
         approximate_kernel_mean_full = approximator_full.gramian_row_mean(data)
