@@ -157,6 +157,7 @@ intersphinx_mapping = {  # linking to external documentation
 nitpick_ignore = [
     ("py:class", "flax.core.scope.Scope"),
     ("py:class", "flax.linen.module._Sentinel"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
 ]
 
 # Quotes are required with UnionType for Python < 3.10
