@@ -307,7 +307,12 @@ class Kernel(eqx.Module):
 
 
 class LinearKernel(Kernel):
-    """Define a linear kernel."""
+    r"""
+    Define a linear kernel.
+
+    The linear kernel is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d
+    \xrightarrow{} \mathbb{R}`, :math:`k(x, y) = x^Ty`.
+    """
 
     length_scale: float = 1.0
     output_scale: float = 1.0
