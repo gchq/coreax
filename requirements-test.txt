@@ -31,7 +31,7 @@ scipy==1.12.0; python_version >= '3.9'
 tensorstore==0.1.52; python_version >= '3.9'
 threadpoolctl==3.2.0; python_version >= '3.8'
 toolz==0.12.0; python_version >= '3.5'
-tqdm==4.66.1; python_version >= '3.7'
+tqdm==4.66.3; python_version >= '3.7'
 typeguard==2.13.3
 typing-extensions==4.9.0; python_version >= '3.8'
 zipp==3.17.0; python_version >= '3.8'
