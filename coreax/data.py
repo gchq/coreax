@@ -196,10 +196,14 @@ class Data(eqx.Module):
     r"""
     Class for representing unsupervised data.
 
-    :param data: An :math:`n \times d` array defining the unsupervised dataset
+    A dataset of size `n` consists of a set of pairs :math:`\{(x_i, w_i)\}_{i=1}^n`
+    where :math`x_i` are the features or inputs and :math:`w_i` are weights.
+
+    :param data: An :math:`n \times d` array defining the features of the unsupervised
+        dataset.
     :param weights: An :math:`n`-vector of weights where each element of the weights
-        vector is associated with the data point at the corresponding index of the
-        data array.
+        vector is is paired with the corresponding index of the data array, forming the
+        pair :math:`(x_i, w_i)`
     """
 
     data: Shaped[Array, " n d"]
