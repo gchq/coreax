@@ -130,12 +130,12 @@ class TestUtil:
         with pytest.raises(TypeError, match="not a valid JAX array type"):
             solve_qp(
                 kernel_mm="invalid_kernel_mm",
-                kernel_matrix_row_sum_mean=np.array([1, 2, 3]),
+                gramian_row_mean=np.array([1, 2, 3]),
             )
 
-    def test_solve_qp_invalid_kernel_matrix_row_sum_mean(self) -> None:
+    def test_solve_qp_invalid_gramian_row_mean(self) -> None:
         """
-        Test how solve_qp handles invalid inputs of kernel_matrix_row_sum_mean.
+        Test how solve_qp handles invalid inputs of gramian_row_mean.
 
         The output of solve_qp is indirectly tested when testing the various weight
         optimisers that are used in this codebase. This test just ensures sensible
@@ -146,7 +146,7 @@ class TestUtil:
         with pytest.raises(TypeError, match="not a valid JAX array type"):
             solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
-                kernel_matrix_row_sum_mean="invalid_kernel_matrix_row_sum_mean",
+                gramian_row_mean="invalid_gramian_row_mean",
             )
 
     @pytest.mark.flaky(reruns=3)

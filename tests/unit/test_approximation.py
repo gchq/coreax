@@ -76,8 +76,8 @@ class TestRandomRegressionApproximations:
         For simplicity, we set ``length_scale`` to :math:`1.0/np.sqrt(2)`
         and ``output_scale`` to 1.0.
 
-        The tests here ensure that approximations to the kernel matrix row sum mean are
-        valid. For a single row (data record), kernel matrix row sum mean is computed by
+        The tests here ensure that approximations to the kernel's Gramian row-mean are
+        valid. For a single row (data record), kernel's Gramian row-mean is computed by
         applying the kernel to this data record and all other data records. We then sum
         the results and divide by the number of data records. The first
         data-record ``[0, 0]`` in the data considered here therefore gives a result of:
@@ -153,15 +153,11 @@ class TestRandomRegressionApproximations:
         approximator_full = approximator(kernel, random_key, **full_kwargs)
         approximator_partial = approximator(kernel, random_key, **partial_kwargs)
 
-        # Approximate the kernel row mean using the full training set (so the
+        # Approximate the kernel row-mean using the full training set (so the
         # approximation should be very close to the true) and only part of the data for
         # training (so the error should grow)
-        approximate_kernel_mean_full = (
-            approximator_full.calculate_kernel_matrix_row_sum_mean(data)
-        )
-        approximate_kernel_mean_partial = (
-            approximator_partial.calculate_kernel_matrix_row_sum_mean(data)
-        )
+        approximate_kernel_mean_full = approximator_full.gramian_row_mean(data)
+        approximate_kernel_mean_partial = approximator_partial.gramian_row_mean(data)
 
         # Check the approximation is close to the true value
         np.testing.assert_array_almost_equal(
@@ -209,12 +205,8 @@ class TestRandomRegressionApproximations:
                 num_kernel_points=jnp.shape(data)[0],
                 num_train_points=jnp.shape(data)[0],
             )
-            result_exactly_num_data = (
-                approximator_exact_num_data.calculate_kernel_matrix_row_sum_mean(data)
-            )
-            result_more_than_num_data = (
-                test_approximator.calculate_kernel_matrix_row_sum_mean(data)
-            )
+            result_exactly_num_data = approximator_exact_num_data.gramian_row_mean(data)
+            result_more_than_num_data = test_approximator.gramian_row_mean(data)
             # Check the output is very close if we use all the data provided, or ask for
             # more than the number of points we have
             exact_delta = true_distances - result_exactly_num_data
@@ -230,7 +222,7 @@ class TestRandomRegressionApproximations:
             )
             with pytest.raises(ValueError, match=expected_msg):
                 test_approximator = approximator(kernel, random_key, **kwargs)
-                test_approximator.calculate_kernel_matrix_row_sum_mean(data)
+                test_approximator.gramian_row_mean(data)
 
     @pytest.mark.parametrize("num_train_points_multiplier", [-1, 0, 100])
     def test_degenerate_num_train_points(
@@ -259,7 +251,7 @@ class TestRandomRegressionApproximations:
             )
             with pytest.raises(ValueError, match=expected_msg):
                 test_approximator = approximator(kernel, random_key, **kwargs)
-                test_approximator.calculate_kernel_matrix_row_sum_mean(data)
+                test_approximator.gramian_row_mean(data)
 
     def test_invalid_kernel(
         self, problem: _Problem, approximator: type[RandomRegressionKernel]

@@ -166,12 +166,10 @@ class RefineRegular(Refine):
             original_array, original_array
         )
 
-        # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
-        kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
-        if kernel_matrix_row_sum_mean is None:
-            kernel_matrix_row_sum_mean = (
-                coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
-            )
+        # If not already done on Coreset, calculate gramian_row_mean
+        gramian_row_mean = coreset.gramian_row_mean
+        if gramian_row_mean is None:
+            gramian_row_mean = coreset.kernel.gramian_row_mean(original_array)
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
@@ -179,7 +177,7 @@ class RefineRegular(Refine):
             self._refine_body,
             x=original_array,
             kernel=coreset.kernel,
-            kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+            gramian_row_mean=gramian_row_mean,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
         )
         coreset_indices = lax.fori_loop(0, num_points_in_coreset, body, coreset_indices)
@@ -194,7 +192,7 @@ class RefineRegular(Refine):
         coreset_indices: ArrayLike,
         x: ArrayLike,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
         r"""
@@ -205,7 +203,7 @@ class RefineRegular(Refine):
         :param x: Original :math:`n \times d` dataset
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
+        :param gramian_row_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal, a :math:`1 \times n`
             array
@@ -218,7 +216,7 @@ class RefineRegular(Refine):
                 coreset_indices=coreset_indices,
                 x=x,
                 kernel=kernel,
-                kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+                gramian_row_mean=gramian_row_mean,
                 kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
             ).argmax()
         )
@@ -232,7 +230,7 @@ class RefineRegular(Refine):
         coreset_indices: ArrayLike,
         x: ArrayLike,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
         r"""
@@ -248,7 +246,7 @@ class RefineRegular(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -257,14 +255,14 @@ class RefineRegular(Refine):
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
         x = jnp.asarray(x)
-        kernel_matrix_row_sum_mean = jnp.asarray(kernel_matrix_row_sum_mean)
+        gramian_row_mean = jnp.asarray(gramian_row_mean)
         return (
             kernel.compute(x[coreset_indices], x[i]).sum()
             - kernel.compute(x, x[coreset_indices]).sum(axis=1)
             + kernel.compute(x, x[i])[:, 0]
             - kernel_gram_matrix_diagonal
         ) / (num_points_in_coreset**2) - (
-            kernel_matrix_row_sum_mean[i] - kernel_matrix_row_sum_mean
+            gramian_row_mean[i] - gramian_row_mean
         ) / num_points_in_coreset
 
 
@@ -335,12 +333,10 @@ class RefineRandom(Refine):
             original_array, original_array
         )
 
-        # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
-        kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
-        if kernel_matrix_row_sum_mean is None:
-            kernel_matrix_row_sum_mean = (
-                coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
-            )
+        # If not already done on Coreset, calculate gramian_row_mean
+        gramian_row_mean = coreset.gramian_row_mean
+        if gramian_row_mean is None:
+            gramian_row_mean = coreset.kernel.gramian_row_mean(original_array)
 
         coreset_indices = jnp.asarray(coreset_indices)
         num_points_in_coreset = len(coreset_indices)
@@ -360,7 +356,7 @@ class RefineRandom(Refine):
             x=original_array,
             n_cand=n_cand,
             kernel=coreset.kernel,
-            kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+            gramian_row_mean=gramian_row_mean,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
         )
         _, coreset_indices = lax.fori_loop(
@@ -377,7 +373,7 @@ class RefineRandom(Refine):
         x: ArrayLike,
         n_cand: int,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> tuple[coreax.util.KeyArray, Array]:
         r"""
@@ -390,7 +386,7 @@ class RefineRandom(Refine):
         :param n_cand: Number of candidates for comparison
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
+        :param gramian_row_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -408,7 +404,7 @@ class RefineRandom(Refine):
             coreset_indices,
             x=x,
             kernel=kernel,
-            kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+            gramian_row_mean=gramian_row_mean,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
         )
         coreset_indices = lax.cond(
@@ -431,7 +427,7 @@ class RefineRandom(Refine):
         coreset_indices: ArrayLike,
         x: ArrayLike,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
         r"""
@@ -446,7 +442,7 @@ class RefineRandom(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -454,7 +450,7 @@ class RefineRandom(Refine):
         """
         coreset_indices = jnp.asarray(coreset_indices)
         x = jnp.asarray(x)
-        kernel_matrix_row_sum_mean = jnp.asarray(kernel_matrix_row_sum_mean)
+        gramian_row_mean = jnp.asarray(gramian_row_mean)
         kernel_gram_matrix_diagonal = jnp.asarray(kernel_gram_matrix_diagonal)
         num_points_in_coreset = len(coreset_indices)
 
@@ -464,8 +460,7 @@ class RefineRandom(Refine):
             + kernel.compute(x[candidate_indices, :], x[i])[:, 0]
             - kernel_gram_matrix_diagonal[candidate_indices]
         ) / (num_points_in_coreset**2) - (
-            kernel_matrix_row_sum_mean[i]
-            - kernel_matrix_row_sum_mean[candidate_indices]
+            gramian_row_mean[i] - gramian_row_mean[candidate_indices]
         ) / num_points_in_coreset
 
     @jit
@@ -549,12 +544,10 @@ class RefineReverse(Refine):
             original_array, original_array
         )
 
-        # If not already done on Coreset, calculate kernel_matrix_row_sum_mean
-        kernel_matrix_row_sum_mean = coreset.kernel_matrix_row_sum_mean
-        if kernel_matrix_row_sum_mean is None:
-            kernel_matrix_row_sum_mean = (
-                coreset.kernel.calculate_kernel_matrix_row_sum_mean(original_array)
-            )
+        # If not already done on Coreset, calculate gramian_row_mean
+        gramian_row_mean = coreset.gramian_row_mean
+        if gramian_row_mean is None:
+            gramian_row_mean = coreset.kernel.gramian_row_mean(original_array)
 
         num_points_in_x = len(original_array)
 
@@ -562,7 +555,7 @@ class RefineReverse(Refine):
             self._refine_rev_body,
             x=original_array,
             kernel=coreset.kernel,
-            kernel_matrix_row_sum_mean=kernel_matrix_row_sum_mean,
+            gramian_row_mean=gramian_row_mean,
             kernel_gram_matrix_diagonal=kernel_gram_matrix_diagonal,
         )
         coreset_indices = lax.fori_loop(0, num_points_in_x, body, coreset_indices)
@@ -576,7 +569,7 @@ class RefineReverse(Refine):
         coreset_indices: ArrayLike,
         x: ArrayLike,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
         r"""
@@ -587,7 +580,7 @@ class RefineReverse(Refine):
         :param x: Original :math:`n \times d` dataset
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: Mean vector over rows for the Gram matrix,
+        :param gramian_row_mean: Mean vector over rows for the Gram matrix,
             a :math:`1 \times n` array
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -598,7 +591,7 @@ class RefineReverse(Refine):
             coreset_indices,
             x,
             kernel,
-            kernel_matrix_row_sum_mean,
+            gramian_row_mean,
             kernel_gram_matrix_diagonal,
         )
         coreset_indices = lax.cond(
@@ -619,7 +612,7 @@ class RefineReverse(Refine):
         coreset_indices: ArrayLike,
         x: ArrayLike,
         kernel: coreax.kernel.Kernel,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        gramian_row_mean: ArrayLike,
         kernel_gram_matrix_diagonal: ArrayLike,
     ) -> Array:
         r"""
@@ -633,7 +626,7 @@ class RefineReverse(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param kernel_matrix_row_sum_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -641,7 +634,7 @@ class RefineReverse(Refine):
         """
         coreset_indices = jnp.asarray(coreset_indices)
         x = jnp.asarray(x)
-        kernel_matrix_row_sum_mean = jnp.asarray(kernel_matrix_row_sum_mean)
+        gramian_row_mean = jnp.asarray(gramian_row_mean)
         kernel_gram_matrix_diagonal = jnp.asarray(kernel_gram_matrix_diagonal)
         num_points_in_coreset = len(coreset_indices)
 
@@ -651,7 +644,7 @@ class RefineReverse(Refine):
             + kernel.compute(x[coreset_indices], x[i])[:, 0]
             - kernel_gram_matrix_diagonal[coreset_indices]
         ) / (num_points_in_coreset**2) - (
-            kernel_matrix_row_sum_mean[coreset_indices] - kernel_matrix_row_sum_mean[i]
+            gramian_row_mean[coreset_indices] - gramian_row_mean[i]
         ) / num_points_in_coreset
 
     @jit

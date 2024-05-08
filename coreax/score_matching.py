@@ -592,7 +592,7 @@ class KernelDensityMatching(ScoreMatching):
             original_number_of_dimensions = x_.ndim
             x_ = jnp.atleast_2d(x_)
 
-            # Get the gram matrix row means
+            # Get the gram matrix row-mean
             gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
 
             # Compute gradients with respect to x
