@@ -70,7 +70,6 @@ from coreax.kernel import (
     SteinKernel,
 )
 from coreax.metrics import MMD
-from coreax.proposed_data import Data, SupervisedData
 from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 
