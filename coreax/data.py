@@ -197,7 +197,7 @@ class Data(eqx.Module):
     Class for representing unsupervised data.
 
     :param data: An :math:`n \times d` array defining the unsupervised dataset
-    :param weights: An :math:`n`-vector of weights with. Each element of the weights
+    :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is associated with the data point at the corresponding index of the
         data array.
     """
@@ -226,13 +226,18 @@ class SupervisedData(Data):
     r"""
     Class for representing supervised data.
 
+    A supervised dataset of size `n` consists of a set of triples
+    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math`x_i` are the features or inputs,
+    :math:`y_i` are the responses or outputs, and :math:`w_i` are weights which
+    correspond to the pairs :math:`(x_i, y_i)`.
+
     :param data: An :math:`n \times d` array defining the features of the supervised
-        dataset paired with the responses.
+        dataset paired with the corresponding index of the supervision.
     :param supervision: An :math:`n \times p` array defining the responses of the
-        supervised dataset paired with the features.
-    :param weights: An :math:`n`-vector of weights with. Each element of the weights
-        vector is associated with the data pair at the corresponding index of the
-        data and supervision arrays.
+        supervised paired with the corresponding index of the data.
+    :param weights: An :math:`n`-vector of weights where each element of the weights
+        vector is is paired with the corresponding index of the data and supervision
+        array, forming the triple :math:`(x_i, y_i, w_i)`
     """
 
     supervision: Shaped[Array, " n *p"]
