@@ -203,17 +203,9 @@ class TestLinearKernel(
         return kernel
 
     @override
-    @pytest.fixture(
-        params=[
-            "floats",
-            "vectors",
-            "arrays",
-        ]
-    )
-    def problem(  # noqa: C901
-        self,
-        request,
-        kernel_factory: _KernelFactory[LinearKernel],
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request, kernel_factory: _KernelFactory[LinearKernel]
     ) -> _Problem:
         r"""
         Test problems for the Linear kernel.

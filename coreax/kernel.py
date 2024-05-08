@@ -24,7 +24,7 @@ In this library, we often use kernels as a smoothing tool: given a dataset of di
 points, we can reconstruct the underlying data generating distribution through smoothing
 of the data with kernels.
 
-Some kernels are parameterisable and may represent other well known kernels when given
+Some kernels are parameterizable and may represent other well known kernels when given
 appropriate parameter values. For example, the :class:`SquaredExponentialKernel`,
 
 .. math::
@@ -313,36 +313,20 @@ class LinearKernel(Kernel):
     output_scale: float = 1.0
 
     @override
-    def compute_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        return x.dot(y)
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.dot(x, y)
 
     @override
-    def grad_x_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        return y
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(y)
 
     @override
-    def grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        return x
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(x)
 
     @override
-    def divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        return x.shape[0]
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(x).shape[0]
 
 
 class SquaredExponentialKernel(Kernel):
