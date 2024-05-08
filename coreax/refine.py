@@ -246,7 +246,7 @@ class RefineRegular(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param gramian_row_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -442,7 +442,7 @@ class RefineRandom(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param gramian_row_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
@@ -626,7 +626,7 @@ class RefineReverse(Refine):
         :param x: :math:`n \times d` original data
         :param kernel: Kernel used for calculating the maximum
             mean discrepancy, for comparing candidate coresets during refinement
-        :param gramian_row_mean: :math:`1 \times n` row mean of the
+        :param gramian_row_mean: :math:`1 \times n` row-mean of the
             :math:`n \times n` kernel matrix
         :param kernel_gram_matrix_diagonal: Gram matrix diagonal,
             a :math:`1 \times n` array
