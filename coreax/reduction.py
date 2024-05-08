@@ -110,7 +110,7 @@ class Coreset(ABC):
         Indices of :attr:`coreset` points in :attr:`original_data`, if applicable. The
         order matches the rows of :attr:`coreset`.
         """
-        self.kernel_matrix_row_sum_mean: ArrayLike | None = None
+        self.gramian_row_mean: ArrayLike | None = None
         r"""
         Mean vector over rows for the Gram matrix, a :math:`1 \times n` array. If
         :meth:`fit_to_size` calculates this, it will be saved here automatically to save
@@ -135,7 +135,7 @@ class Coreset(ABC):
         new_obj.original_data = None
         new_obj.coreset = None
         new_obj.coreset_indices = None
-        new_obj.kernel_matrix_row_sum_mean = None
+        new_obj.gramian_row_mean = None
         return new_obj
 
     def fit(

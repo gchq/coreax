@@ -16,9 +16,9 @@ r"""
 Classes and associated functionality to approximate kernels.
 
 When a dataset is very large, methods which have to evaluate all pairwise combinations
-of the data, such as :meth:`~coreax.kernel.Kernel.calculate_kernel_matrix_row_sum_mean`,
-can become prohibitively expensive. To reduce this computational cost, such methods can
-instead be approximated (providing suitable approximation error can be achieved).
+of the data, such as :meth:`~coreax.kernel.Kernel.gramian_row_mean`, can become
+prohibitively expensive. To reduce this computational cost, such methods can instead be
+approximated (providing suitable approximation error can be achieved).
 
 The :class:`ApproximateKernel`\ s in this module provide the functionality required to
 override specific methods of a ``base_kernel`` with their approximate counterparts.
@@ -107,9 +107,9 @@ class ApproximateKernel(CompositeKernel):
 
     Provides approximations of the methods in the ``base_kernel``.
 
-    The :meth:`~coreax.kernel.Kernel.calculate_kernel_matrix_row_sum` method is
-    particularly amenable to approximation, with significant performance improvements
-    possible depending on the acceptable levels of error.
+    The :meth:`~coreax.kernel.Kernel.gramian_row_mean` method is particularly amenable
+    to approximation, with significant performance improvements possible depending on
+    the acceptable levels of error.
 
     :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
         to be approximated
@@ -159,8 +159,8 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     """
     Approximate a base kernel via random subset selection.
 
-    Only the kernel matrix row sum mean is approximated here, all other methods
-    are inherited directly from the ``base_kernel``.
+    Only the Gramian row-mean is approximated here, all other methods are inherited
+    directly from the ``base_kernel``.
 
     :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
         to be approximated
@@ -169,19 +169,17 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def calculate_kernel_matrix_row_sum_mean(
-        self, x: ArrayLike, max_size: int = 10_000
-    ) -> Array:
+    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
         r"""
-        Calculate the kernel matrix row sum mean by Monte Carlo approximation.
+        Approximate the Gramian row-mean by Monte-Carlo sampling.
 
-        A uniform random subset of ``x`` is used to approximate the kernel matrix row
-        sum mean.
+        A uniform random subset of ``x`` is used to approximate the base kernel's
+        Gramian row-mean.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the kernel matrix row sum
+        :return: Approximation of the base kernel's Gramian row-mean
         """
+        del kwargs
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
         key = self.random_key
@@ -200,8 +198,8 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     r"""
     Approximate a base kernel via random kernel regression on ANNchor selected points.
 
-    Only the kernel matrix row sum mean is approximated here, all other methods
-    are inherited directly from the ``base_kernel``.
+    Only the base kernel's Gramian row-mean is approximated here, all other methods are
+    inherited directly from the ``base_kernel``.
 
     :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
         to be approximated
@@ -210,20 +208,18 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def calculate_kernel_matrix_row_sum_mean(
-        self, x: ArrayLike, max_size: int = 10_000
-    ) -> Array:
+    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
         r"""
-        Calculate the kernel matrix row sum mean by random regression on ANNchor points.
+        Approximate the Gramian row-mean by random regression on ANNchor points.
 
         A subset of ``x`` is selected via the ANNchor approach and random kernel
-        regression used to approximate the kernel matrix row sum mean. The ANNchor
+        regression used to approximate the base kernel's Gramian row-mean. The ANNchor
         implementation used can be found `here <https://github.com/gchq/annchor>`_.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the kernel matrix row sum
+        :return: Approximation of the base kernel's Gramian row-mean
         """
+        del kwargs
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
         features = jnp.zeros((num_data_points, self.num_kernel_points))
@@ -257,32 +253,29 @@ class NystromApproximateKernel(RandomRegressionKernel):
     """
     Approximate a base kernel via Nystrom approximation.
 
-    Only the kernel matrix row sum mean is approximated here, all other methods
+    Only the base kernel's Gramian row-mean is approximated here, all other methods
     are inherited directly from the ``base_kernel``.
 
     :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
         to be approximated
     :param random_key: Key for random number generation
-    :param kernel: A :class:`~coreax.kernel.Kernel` object
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def calculate_kernel_matrix_row_sum_mean(
-        self, x: ArrayLike, max_size: int = 10_000
-    ) -> Array:
+    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
         r"""
-        Calculate the kernel matrix row sum mean by Nystrom approximation.
+        Approximate the Gramian row-mean by Nystrom approximation.
 
         We consider a :math:`n \times d` dataset, and wish to use an :math:`m \times d`
-        subset of this to approximate the kernel matrix row sum mean. The ``m`` points
-        are selected uniformly at random, and the Nystrom estimator, as defined in
-        :cite:`chatalic2022nystrom` is computed using this subset.
+        subset of this to approximate the base kernel's Gramian row-mean. The ``m``
+        points are selected uniformly at random, and the Nystrom estimator, as defined
+        in :cite:`chatalic2022nystrom` is computed using this subset.
 
         :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Approximation of the kernel matrix row sum
+        :return: Approximation of the base kernel's Gramian row-mean
         """
+        del kwargs
         data = jnp.atleast_2d(x)
         num_data_points = len(data)
         feature_idx = _random_indices(

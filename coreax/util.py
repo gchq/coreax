@@ -35,9 +35,6 @@ from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
 
-#: Kernel evaluation function.
-KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
-
 #: JAX random key type annotations.
 KeyArray: TypeAlias = Array
 KeyArrayLike: TypeAlias = ArrayLike
@@ -84,7 +81,7 @@ def apply_negative_precision_threshold(
 
 def pairwise(
     fn: Callable[[ArrayLike, ArrayLike], Array],
-) -> Callable[[ArrayLike, ArrayLike], Array]:
+) -> Callable[[Array, Array], Array]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -94,7 +91,7 @@ def pairwise(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
+    def pairwise_fn(x: Array, y: Array) -> Array:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
@@ -167,7 +164,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     return pairwise(difference)(x, y)
 
 
-def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
+def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike) -> Array:
     r"""
     Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
@@ -185,13 +182,13 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param kernel_matrix_row_sum_mean: :math:`m \times 1` array of Gram matrix means
+    :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters.
     q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(kernel_matrix_row_sum_mean)
+    c = -jnp.asarray(gramian_row_mean)
 
     # Define the equality constraint parameters
     num_points = q_array.shape[0]

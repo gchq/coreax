@@ -30,6 +30,7 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
 
 import equinox as eqx
@@ -76,8 +77,8 @@ class KernelHerding(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel
-        matrix row sum mean. Larger blocks will require more memory in the system.
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
@@ -124,7 +125,7 @@ class KernelHerding(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -140,7 +141,7 @@ class KernelHerding(coreax.reduction.Coreset):
         r"""
         Execute kernel herding algorithm with Jax.
 
-        We first compute the kernel matrix row sum mean if it is not given, and then
+        We first compute the kernel's Gramian row-mean if it is not given, and then
         iteratively add points to the coreset, balancing selecting points in high
         density regions with selecting points far from those already in the coreset.
 
@@ -149,12 +150,10 @@ class KernelHerding(coreax.reduction.Coreset):
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
-        # If needed, compute the kernel matrix row sum mean
-        if self.kernel_matrix_row_sum_mean is None:
-            self.kernel_matrix_row_sum_mean = (
-                self.kernel.calculate_kernel_matrix_row_sum_mean(
-                    x=self.original_data.pre_coreset_array, max_size=self.block_size
-                )
+        # If needed, compute the kernel's Gramian row-mean
+        if self.gramian_row_mean is None:
+            self.gramian_row_mean = self.kernel.gramian_row_mean(
+                x=self.original_data.pre_coreset_array, block_size=self.block_size
             )
 
         # Initialise variables that will be updated throughout the loop. These are
@@ -176,7 +175,7 @@ class KernelHerding(coreax.reduction.Coreset):
             self._greedy_body,
             x=self.original_data.pre_coreset_array,
             kernel_vectorised=self.kernel.compute,
-            kernel_matrix_row_sum_mean=self.kernel_matrix_row_sum_mean,
+            gramian_row_mean=self.gramian_row_mean,
             unique=self.unique,
         )
         try:
@@ -200,8 +199,8 @@ class KernelHerding(coreax.reduction.Coreset):
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelComputeType,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
+        gramian_row_mean: ArrayLike,
         unique: bool,
     ) -> tuple[Array, Array]:
         r"""
@@ -218,7 +217,7 @@ class KernelHerding(coreax.reduction.Coreset):
         where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken
         over the entire dataset, and the search is over the entire dataset.
 
-        The kernel matrix row sum mean, :math:`\mathbb{E}[k(x, x')]` does not change
+        The kernel's Gramian row-mean, :math:`\mathbb{E}[k(x, x')]` does not change
         across iterations. Each iteration, the set of coreset points updates with the
         newly selected point :math:`x_{T+1}`. Additionally, the penalties one applies,
         :math:`k(x, x_t)` update as these coreset points are updated.
@@ -235,7 +234,7 @@ class KernelHerding(coreax.reduction.Coreset):
         :param kernel_vectorised: Vectorised kernel computation function. This should be
             the :meth:`~coreax.kernel.Kernel.compute` method of a
             :class:`~coreax.kernel.Kernel` object
-        :param kernel_matrix_row_sum_mean: A :math:`1 \times n` array holding the mean
+        :param gramian_row_mean: A :math:`1 \times n` array holding the mean
             over rows for the kernel Gram matrix
         :param unique: Flag for enforcing unique elements
         :returns: Updated loop variables ``current_coreset_indices`` and
@@ -252,11 +251,11 @@ class KernelHerding(coreax.reduction.Coreset):
         # Evaluate the kernel herding formula at this iteration - that is, select which
         # point in the data-set, when added to the coreset, will minimise maximum mean
         # discrepancy. This is essentially a balance between a point lying in a high
-        # density region (the corresponding entry in kernel_matrix_row_sum_mean is
+        # density region (the corresponding entry in gramian_row_mean is
         # large) whilst being far away from points already in the coreset
         # (current_kernel_similarity_penalty being small).
         index_to_include_in_coreset = (
-            kernel_matrix_row_sum_mean - current_kernel_similarity_penalty / (i + 1)
+            gramian_row_mean - current_kernel_similarity_penalty / (i + 1)
         ).argmax()
 
         # Update all the penalties we apply, because we now have additional points
@@ -339,7 +338,7 @@ class RandomSample(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -415,8 +414,8 @@ class RPCholesky(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel matrix
-        row sum mean. Larger blocks will require more memory in the system.
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain unique
         elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
@@ -463,7 +462,7 @@ class RPCholesky(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -540,7 +539,7 @@ class RPCholesky(coreax.reduction.Coreset):
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, coreax.util.KeyArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelComputeType,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
         unique: bool,
     ) -> tuple[Array, Array, Array, Array]:
         r"""
@@ -631,8 +630,8 @@ class SteinThinning(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel matrix
-        row sum mean. Larger blocks will require more memory in the system.
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain unique
         elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
@@ -802,7 +801,7 @@ class SteinThinning(coreax.reduction.Coreset):
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelComputeType,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
         kernel_diagonal: ArrayLike,
         regularised_log_pdf: ArrayLike,
         unique: bool,

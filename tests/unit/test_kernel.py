@@ -21,7 +21,6 @@ the codebase produce the expected results on simple examples.
 
 from __future__ import annotations
 
-import contextlib
 from abc import ABC, abstractmethod
 from typing import Generic, Literal, NamedTuple, Protocol, TypeVar
 
@@ -43,23 +42,10 @@ from coreax.kernel import (
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
 _Kernel_co = TypeVar("_Kernel_co", bound=Kernel, covariant=True)
-_Kernel_contra = TypeVar("_Kernel_contra", bound=Kernel, contravariant=True)
 
 
 class _KernelFactory(Protocol, Generic[_Kernel_co]):
     def __call__(self, length_scale: float, output_scale: float) -> _Kernel_co: ...
-
-
-class _PairwiseProblemFactory(Protocol, Generic[_Kernel_contra]):
-    def __call__(
-        self,
-        kernel: _Kernel_contra,
-        i: int = 0,
-        j: int = 0,
-        max_size: int | None = None,
-        *,
-        square: bool = True,
-    ) -> tuple[ArrayLike, ArrayLike, Array | np.ndarray]: ...
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -85,141 +71,58 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     def problem(self, request, kernel_factory: _KernelFactory[_Kernel]) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
-    @pytest.fixture
-    def pairwise_problem_factory(self) -> _PairwiseProblemFactory[_Kernel]:
-        """
-        Return a factory for a ``pairwise_problem``.
-
-        Used here for tests of ``pairwise_compute`` and for tests of
-        ``{update, calculate}_kernel_matrix_row_{sum, mean}`` in ``KernelRowSumTest``.
-        """
-
-        def pairwise_problem(
-            kernel: _Kernel,
-            i: int = 0,
-            j: int = 0,
-            max_size: int | None = None,
-            *,
-            square: bool = True,
-        ) -> tuple[ArrayLike, ArrayLike, Array | np.ndarray]:
-            x = np.array([[0.0], [1.0], [2.0], [3.0], [4.0]])
-            if square:
-                y = x
-            else:
-                y = np.array([[10.0], [3.0], [0.0]])
-            max_size_x = x.shape[0] if max_size is None else max_size
-            max_size_y = y.shape[0] if max_size is None else max_size
-            expected_output = np.zeros([x.shape[0], y.shape[0]])
-            if max_size == 0:
-                return x, y, expected_output
-
-            for x_idx, x_ in enumerate(x[i : i + max_size_x]):
-                for y_idx, y_ in enumerate(y[j : j + max_size_y]):
-                    expected_output[x_idx, y_idx] = kernel.compute(x_, y_)[0, 0]
-            return x, y, expected_output
-
-        return pairwise_problem
-
     def test_compute(self, problem: _Problem):
         """Test ``compute`` method of ``coreax.kernel.Kernel``."""
         x, y, expected_output, kernel = problem
         output = kernel.compute(x, y)
         np.testing.assert_array_almost_equal(output, expected_output)
 
-    def test_pairwise_compute(
-        self,
-        pairwise_problem_factory: _PairwiseProblemFactory[_Kernel],
-        kernel_factory: _KernelFactory[_Kernel],
-    ):
-        """Test (pairwise) ``compute`` method of ``coreax.kernel.Kernel``."""
-        kernel = kernel_factory(1 / np.sqrt(2.0), 1.0)
-        x, y, expected_output = pairwise_problem_factory(kernel, square=False)
-        output = kernel.compute(x, y)
-        np.testing.assert_array_almost_equal(output, expected_output)
 
-
-class KernelRowSumTest(Generic[_Kernel]):
-    """Test the ``kernel_matrix_row_sum`` methods of a ``coreax.kernel.Kernel``."""
+class KernelGramianRowMeanTest(Generic[_Kernel]):
+    """Test the ``gramian_row_mean`` method of a ``coreax.kernel.Kernel``."""
 
     @pytest.mark.parametrize(
-        "max_size, i, j",
-        [(0, 0, 1), (-3, 0, 0), (3.0, 0, 0), (3, 0.0, 0), (2, 0, 0.0)],
+        "block_size",
+        [None, 0, -1, 1.2, 2, 3, 9],
         ids=[
-            "zero_max_size",
-            "negative_max_size",
-            "float_max_size",
-            "float_i",
-            "float_j",
+            "none",
+            "zero",
+            "negative",
+            "floating",
+            "integer_multiple",
+            "fractional_multiple",
+            "oversized",
         ],
     )
-    def test_updated_kernel_matrix_row_sum(
+    def test_gramian_row_mean(
         self,
-        pairwise_problem_factory: _PairwiseProblemFactory[_Kernel],
         kernel_factory: _KernelFactory[_Kernel],
-        max_size: int,
-        i: int,
-        j: int,
+        block_size: int | float | None,
     ):
-        """
-        Test ``updated_kernel_matrix_row_sum`` method of ``coreax.kernel.Kernel``.
-        """
-        warn_context = error_context = contextlib.nullcontext()
-        if max_size <= 0:
-            warn_context = pytest.warns(UserWarning, match="'max_size' is not positive")
-        elif any(isinstance(x, float) for x in [max_size, i, j]):
-            error_context = pytest.raises(ValueError, match="must be an integer")
-
+        """Test the ``gramian_row_mean`` for all expected classes of 'block_size'."""
         kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x, _, expected_output = pairwise_problem_factory(
-            kernel, i=int(i), j=int(j), max_size=int(max_size)
+        x = np.array(
+            [
+                [0.0, 1.0],
+                [1.0, 2.0],
+                [2.0, 3.0],
+                [3.0, 4.0],
+                [4.0, 5.0],
+                [5.0, 6.0],
+                [6.0, 7.0],
+                [7.0, 8.0],
+            ]
         )
-        sum_expected_output = expected_output.sum(axis=-1)
-        if int(i) != int(j):
-            sum_expected_output += expected_output.sum(axis=0)
+        expected_output = kernel.compute(x, x).mean(axis=0)
+        mean_output = kernel.gramian_row_mean(x, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected_output)
 
-        kernel_row_sum = jnp.zeros(max(jnp.shape(x)))
-        with warn_context, error_context:
-            output = kernel.update_kernel_matrix_row_sum(
-                x, kernel_row_sum, i, j, kernel.compute, max_size=max_size
-            )
-        if isinstance(error_context, contextlib.nullcontext):
-            np.testing.assert_array_almost_equal(output, sum_expected_output)
-
-    @pytest.mark.parametrize(
-        "max_size",
-        [0, -3, 3.2],
-        ids=["zero_max_size", "negative_max_size", "float_max_size"],
-    )
-    def test_calculate_kernel_matrix_row_sum_and_mean(
-        self,
-        pairwise_problem_factory: _PairwiseProblemFactory[_Kernel],
-        kernel_factory: _KernelFactory[_Kernel],
-        max_size: int,
-    ):
-        """
-        Test ``calculate_kernel_matrix_row_{x}`` methods of ``coreax.kernel.Kernel``.
-        """
-        context = contextlib.nullcontext()
-        if max_size <= 0:
-            context = pytest.raises(
-                ValueError, match="'max_size' must be a positive integer"
-            )
-        elif isinstance(max_size, float):
-            context = pytest.raises(
-                TypeError, match="object cannot be interpreted as an integer"
-            )
-
+    def tests_empty_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
+        """Test the ``gramian_row_mean`` for an empty dataset."""
         kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x, _, expected_output = pairwise_problem_factory(kernel)
-        sum_expected_output = expected_output.sum(axis=-1)
-        mean_expected_output = sum_expected_output / jnp.shape(x)[0]
-        with context:
-            sum_output = kernel.calculate_kernel_matrix_row_sum(x, max_size)
-        with context:
-            mean_output = kernel.calculate_kernel_matrix_row_sum_mean(x, max_size)
-        if isinstance(context, contextlib.nullcontext):
-            np.testing.assert_array_almost_equal(sum_output, sum_expected_output)
-            np.testing.assert_array_almost_equal(mean_output, mean_expected_output)
+        x = jnp.array([])
+        with pytest.raises(ValueError, match="'x' must not be empty"):
+            kernel.gramian_row_mean(x)
 
 
 class KernelGradientTest(ABC, Generic[_Kernel]):
@@ -286,7 +189,7 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
 class TestSquaredExponentialKernel(
     BaseKernelTest[SquaredExponentialKernel],
-    KernelRowSumTest[SquaredExponentialKernel],
+    KernelGramianRowMeanTest[SquaredExponentialKernel],
     KernelGradientTest[SquaredExponentialKernel],
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
@@ -439,7 +342,7 @@ class TestSquaredExponentialKernel(
 
 class TestLaplacianKernel(
     BaseKernelTest[LaplacianKernel],
-    KernelRowSumTest[LaplacianKernel],
+    KernelGramianRowMeanTest[LaplacianKernel],
     KernelGradientTest[LaplacianKernel],
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
@@ -569,7 +472,7 @@ class TestLaplacianKernel(
 
 class TestPCIMQKernel(
     BaseKernelTest[PCIMQKernel],
-    KernelRowSumTest[PCIMQKernel],
+    KernelGramianRowMeanTest[PCIMQKernel],
     KernelGradientTest[PCIMQKernel],
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
