@@ -41,9 +41,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+import equinox as eqx
 import jax.numpy as jnp
-from jax import Array
 from jax.typing import ArrayLike
+from jaxtyping import Array, Shaped
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -188,3 +189,81 @@ class ArrayData(DataReader):
         :return: Array of coreset in format matching original data
         """
         return coreset.coreset
+
+
+# pylint: disable=too-few-public-methods
+class Data(eqx.Module):
+    r"""
+    Class for representing unsupervised data.
+
+    A dataset of size `n` consists of a set of pairs :math:`\{(x_i, w_i)\}_{i=1}^n`
+    where :math`x_i` are the features or inputs and :math:`w_i` are weights.
+
+    :param data: An :math:`n \times d` array defining the features of the unsupervised
+        dataset.
+    :param weights: An :math:`n`-vector of weights where each element of the weights
+        vector is is paired with the corresponding index of the data array, forming the
+        pair :math:`(x_i, w_i)`, or if not required, default :data:`None` will result in
+        uniform weighting.
+    """
+
+    data: Shaped[Array, " n d"]
+    weights: Shaped[Array, " n"]
+
+    def __init__(
+        self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
+    ):
+        """Initialise Data class."""
+        self.data = data
+        if weights is None:
+            n = data.shape[0]
+            self.weights = jnp.broadcast_to(1 / n, (n,))
+        else:
+            self.weights = weights
+
+    def __check_init__(self):
+        """Check leading dimensions of weights and data match."""
+        if self.weights.shape[0] != self.data.shape[0]:
+            raise ValueError("Leading dimensions of 'weights' and 'data' must be equal")
+
+
+class SupervisedData(Data):
+    r"""
+    Class for representing supervised data.
+
+    A supervised dataset of size `n` consists of a set of triples
+    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math`x_i` are the features or inputs,
+    :math:`y_i` are the responses or outputs, and :math:`w_i` are weights which
+    correspond to the pairs :math:`(x_i, y_i)`.
+
+    :param data: An :math:`n \times d` array defining the features of the supervised
+        dataset paired with the corresponding index of the supervision.
+    :param supervision: An :math:`n \times p` array defining the responses of the
+        supervised paired with the corresponding index of the data.
+    :param weights: An :math:`n`-vector of weights where each element of the weights
+        vector is is paired with the corresponding index of the data and supervision
+        array, forming the triple :math:`(x_i, y_i, w_i)`, or if not required, default
+        :data:`None` will result in uniform weighting.
+    """
+
+    supervision: Shaped[Array, " n *p"]
+
+    def __init__(
+        self,
+        data: Shaped[Array, " n d"],
+        supervision: Shaped[Array, " n *p"],
+        weights: Shaped[Array, " n"] | None = None,
+    ):
+        """Initialise SupervisedData class."""
+        self.supervision = supervision
+        super().__init__(data, weights)
+
+    def __check_init__(self):
+        """Check leading dimensions of supervision and data match."""
+        if self.supervision.shape[0] != self.data.shape[0]:
+            raise ValueError(
+                "Leading dimensions of 'supervision' and 'data' must be equal"
+            )
+
+
+# pylint: enable=too-few-public-methods
