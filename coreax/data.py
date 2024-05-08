@@ -203,7 +203,8 @@ class Data(eqx.Module):
         dataset.
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data array, forming the
-        pair :math:`(x_i, w_i)`
+        pair :math:`(x_i, w_i)`, or if not required, default :data:`None` will result in
+        uniform weighting.
     """
 
     data: Shaped[Array, " n d"]
@@ -241,7 +242,8 @@ class SupervisedData(Data):
         supervised paired with the corresponding index of the data.
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data and supervision
-        array, forming the triple :math:`(x_i, y_i, w_i)`
+        array, forming the triple :math:`(x_i, y_i, w_i)`, or if not required, default
+        :data:`None` will result in uniform weighting.
     """
 
     supervision: Shaped[Array, " n *p"]
