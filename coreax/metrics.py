@@ -60,7 +60,7 @@ class Metric(ABC, Generic[_Data]):
         """
 
 
-class MMD(Metric):
+class MMD(Metric, Generic[_Data]):
     r"""
     Definition and calculation of the maximum mean discrepancy metric.
 
