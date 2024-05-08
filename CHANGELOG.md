@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
-- Additional data classes that draw distinction between supervised and
-unsupervised datasets.
+- Additional data classes coreax.data.Data and coreax.data.SupervisedData that draw
+distinction between supervised and unsupervised datasets, and handle weighted data.
 
 ### Fixed
 
