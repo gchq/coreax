@@ -3,8 +3,6 @@ approximator
 approximators
 archiveprefix
 cand
-cmes
-CMMD
 coreax
 coreset
 coresets
@@ -13,6 +11,7 @@ coresubsets
 diag
 docstrings
 elementwise
+forall
 GCHQ
 Gramian
 kbar
@@ -20,14 +19,13 @@ kdtree
 kernelised
 kernelized
 ml.p3.8xlarge
-nonnegative
 parsable
 PCIMQ
 PMLR
 primaryclass
 PRNG
-rcond
 refs
+regulariser
 RKHS
 RPCHOLESKY
 sigmas

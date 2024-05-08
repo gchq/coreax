@@ -26,6 +26,7 @@ dispname
 dollarmath
 dtype
 dtypes
+dunder
 emibcn
 eprint
 figsize
@@ -33,16 +34,15 @@ fori_loop
 fracv
 furo
 genindex
-hstack
 imageio
 imread
 imshow
 inproceedings
 intercal
 intersphinx
-isin
 isort
 issubdtype
+jacfwd
 jacrev
 jax
 jaxlib
@@ -52,6 +52,7 @@ jumanjihouse
 linalg
 linkcheck
 literalinclude
+logpdf
 lstsq
 mathbb
 mathbf
@@ -63,6 +64,7 @@ mimsave
 modindex
 myst
 nabla
+ndarray
 ndim
 nonzero
 numpy
