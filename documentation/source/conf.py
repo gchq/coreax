@@ -159,10 +159,7 @@ nitpick_ignore = [
     ("py:class", "flax.linen.module._Sentinel"),
     ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
     ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
-<<<<<<< HEAD
     ("py:class", "jaxtyping.Shaped[Array, 'n *p']"),
-=======
->>>>>>> db126df (fix: fixed docs not building)
     ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
     ("py:class", "jaxtyping.Shaped[Array, 'n']"),
 ]
