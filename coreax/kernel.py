@@ -314,9 +314,6 @@ class LinearKernel(Kernel):
     \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
-
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return jnp.dot(x, y)
@@ -514,11 +511,9 @@ class SteinKernel(CompositeKernel):
         the Stein kernel
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
-    :param output_scale: Kernel normalisation constant
     """
 
     score_function: Callable[[ArrayLike], Array]
-    output_scale: float = 1.0
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
