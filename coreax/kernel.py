@@ -314,6 +314,9 @@ class LinearKernel(Kernel):
     \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
     """
 
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return jnp.dot(x, y)
