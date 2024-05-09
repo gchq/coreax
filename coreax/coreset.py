@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Generic, TypeVar
+
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 
 from coreax.data import Data
+
+_Data = TypeVar("_Data", bound=Data)
 
 
 def _convert_to_weighted(data: Data | Array):
@@ -15,7 +19,7 @@ def _convert_to_weighted(data: Data | Array):
     return Data(data)
 
 
-class Coreset(eqx.Module):
+class Coreset(eqx.Module, Generic[_Data]):
     r"""
     Data structure for representing a coreset.
 
@@ -58,7 +62,7 @@ class Coreset(eqx.Module):
     """
 
     nodes: Data = eqx.field(converter=_convert_to_weighted)
-    pre_coreset_data: Data
+    pre_coreset_data: _Data
 
     def __len__(self):
         """Return Coreset size/length."""
@@ -70,7 +74,7 @@ class Coreset(eqx.Module):
         return self.nodes
 
 
-class Coresubset(Coreset):
+class Coresubset(Coreset[_Data], Generic[_Data]):
     r"""
     Data structure for representing a coresubset.
 
