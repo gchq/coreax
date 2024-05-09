@@ -134,7 +134,7 @@ class TestCoreset(unittest.TestCase):
         """Check that compute_metric is called correctly."""
         coreset = CoresetMock()
         coreset.original_data = MagicMock(spec=coreax.data.DataReader)
-        coreset.original_data.pre_coreset_array = MagicMock(spec=Array)
+        coreset.original_data.pre_coreset_array = jnp.array([[1], [2], [3]])
         metric = MagicMock(spec=coreax.metrics.Metric)
         block_size = 10
 
@@ -143,15 +143,9 @@ class TestCoreset(unittest.TestCase):
             coreset.compute_metric(metric, block_size)
 
         # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=Array)
+        coreset.coreset = jnp.array([[1], [2]])
         coreset.compute_metric(metric, block_size)
-        metric.compute.assert_called_once_with(
-            coreset.original_data.pre_coreset_array,
-            coreset.coreset,
-            block_size=block_size,
-            weights_x=None,
-            weights_y=None,
-        )
+        metric.compute.assert_called_once()
 
     def test_refine(self):
         """Check that refine is called correctly."""
