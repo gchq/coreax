@@ -314,9 +314,6 @@ class LinearKernel(Kernel):
     \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
-
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return jnp.dot(x, y)
@@ -340,8 +337,9 @@ class SquaredExponentialKernel(Kernel):
 
     The squared exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = output_scale \exp(\frac{||x-y||^2}{2 length_scale^2})` where
-    :math:`||\cdot||` is the usual :math:L_2`-norm.
+    :math:`k(x, y) = \text{output_scale} \exp(\frac{||x-y||^2}
+    {2 \text{length_scale}^2})` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter
     :param output_scale: Kernel normalisation constant
@@ -378,11 +376,12 @@ class LaplacianKernel(Kernel):
 
     The Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = output_scale \exp(\frac{||x-y||_1}{2 length_scale^2})`  where
-    :math:`||\cdot||_1` is the :math:L_1`-norm.
+    :math:`k(x, y) = \text{output_scale}
+    \exp(\frac{||x-y||_1}{2 \text{length_scale}^2})`  where
+    :math:`||\cdot||_1` is the :math:`L_1`-norm.
     .
-    :param length_scale: Kernel ``length_scale`` to use
-    :param output_scale: Output scale to use
+    :param length_scale: Kernel smoothing/bandwidth parameter
+    :param output_scale: Kernel normalisation constant
     """
 
     length_scale: float = 1.0
@@ -419,8 +418,9 @@ class PCIMQKernel(Kernel):
 
     The PCIMQ kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{output_scale}{\sqrt{1 + \frac{||x-y||^2}{2 length_scale^2}}}
-    where :math:`||\cdot||` is the usual :math:L_2`-norm.
+    :math:`k(x, y) = \frac{output_scale}{\sqrt{1 + \frac{||x-y||^2}
+    {2 \text{length_scale}^2}}}
+    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter
     :param output_scale: Kernel normalisation constant
