@@ -293,22 +293,25 @@ def randomised_eigendecomposition(
     oversampling_parameter: int = 10,
     power_iterations: int = 1,
 ):
-    """
-    Approximate the eigendecomposition of kernel matrices.
+    r"""
+    Approximate the eigendecomposition of kernel gramians.
 
-    Using (:cite: `halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
-    eigendecomposition of a kernel matrix. The parameters oversampling_parameter and
-    power_iterations present a trade-off between speed and approximation quality.
+    Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
+    eigendecomposition of a kernel gram matrix. The parameters 'oversampling_parameter'
+    and 'power_iterations' present a trade-off between speed and approximation quality.
 
-    Give explanation of how to use the returns
+    Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
+    :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
+    :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
+    :math:`U\in\mathbb{R}^{n\times p}` such that we have :math:`K \approx U\Lambda U^T`.
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
-    :param oversampling_parameter: Number of columns to sample, the larger the
+    :param oversampling_parameter: Number of random columns to sample, the larger the
         oversampling_parameter gets the more accurate but slower the method will be
     :param power_iterations: Number of power iterations to do, the larger
         power_iterations gets the more accurate but slower the method will be
-    :return: Tuple of approximate eigenvalues and eigenvectors
+    :return: eigenvalues and eigenvectors that approximately decompose the target array
     """
     # Input handling
     supported_array_shape = 2
@@ -355,11 +358,37 @@ def randomised_invert_regularised_array(
     oversampling_parameter: int = 25,
     power_iterations: int = 1,
 ) -> tuple[Array]:
-    """Guidance on how to set."""
+    """
+    Invert a regularised array using its randomised eigendecomposition.
+
+    Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we regularise and then
+    approximate the eigendecomposition of the input array. The parameters
+    'oversampling_parameter' and 'power_iterations' present a trade-off between speed
+    and approximation quality.
+
+    The function is designed to invert square block arrays where only the top-left block
+    is non-zero. That is, we return a block array, the same size as the input array,
+    where each block consists of zeros except for the top-left block, which is the
+    inverse of the non-zero input block. The fastest way to compute this requires the
+    'identity' array to be a zero matrix except for ones on the diagonal up to the size
+    of the non-zero block.
+
+    :param array: Array to be inverted
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array, negative values will be converted to positive
+    :param identity: Block identity matrix
+    :param oversampling_parameter: Number of random columns to sample, the larger the
+        oversampling_parameter gets the more accurate but slower the method will be
+    :param power_iterations: Number of power iterations to do, the larger
+        power_iterations gets the more accurate but slower the method will be
+    :return: eigenvalues and eigenvectors that approximately decompose the target array
+    """
     # Input validation
     if rcond is not None:
         if rcond < 0 and rcond != -1:
             raise ValueError("rcond must be non-negative, except for value of -1")
+    if array.shape != identity.shape:
+        raise ValueError("Leading dimensions of array and identity must match")
 
     # Set rcond parameter if not given
     n, m = array.shape
@@ -371,12 +400,12 @@ def randomised_invert_regularised_array(
     # Get approximate eigendecomposition
     approximate_eigenvalues, approximate_eigenvectors = randomised_eigendecomposition(
         random_key=random_key,
-        array=array + regularisation_parameter * identity,
+        array=array + abs(regularisation_parameter) * identity,
         oversampling_parameter=oversampling_parameter,
         power_iterations=power_iterations,
     )
 
-    # Mask the eigenvalues that are almost zero according to value of rcond
+    # Mask the eigenvalues that are zero or almost zero according to value of rcond
     mask = (
         approximate_eigenvalues
         >= jnp.array(rcond, dtype=approximate_eigenvalues.dtype)
@@ -389,7 +418,7 @@ def randomised_invert_regularised_array(
         mask, 1 / safe_approximate_eigenvalues, 0
     )[:, jnp.newaxis]
 
-    # Solve Ax = b, x = A^-1b = UL^-1U^Tb
+    # Solve Ax = I, x = A^-1 = UL^-1U^T
     return approximate_eigenvectors.dot(
         (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
     )

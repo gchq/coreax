@@ -35,10 +35,13 @@ from coreax.util import (
     jit_test,
     pairwise,
     randomised_eigendecomposition,
+    randomised_invert_regularised_array,
     sample_batch_indices,
     solve_qp,
     squared_distance,
 )
+
+# pylint: disable=too-many-public-methods
 
 
 class TestUtil:
@@ -156,7 +159,7 @@ class TestUtil:
 
     def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
         """
-        Test invert_regularised_array with negative regularisation_parameter.
+        Test invert_regularised_array with negative rcond not negative one.
         """
         with pytest.raises(ValueError):
             invert_regularised_array(
@@ -248,7 +251,7 @@ class TestUtil:
         self,
     ) -> None:
         """
-        Test randomised_eigendecomposition with float oversampling_parameter.
+        Test randomised_eigendecomposition with larger than two-dimensional array.
         """
         with pytest.raises(ValueError):
             randomised_eigendecomposition(
@@ -260,7 +263,7 @@ class TestUtil:
 
     def test_randomised_eigendecomposition_non_square_array(self) -> None:
         """
-        Test randomised_eigendecomposition with float oversampling_parameter.
+        Test randomised_eigendecomposition with a non-square array.
         """
         with pytest.raises(ValueError):
             randomised_eigendecomposition(
@@ -349,6 +352,65 @@ class TestUtil:
             )
         ) == pytest.approx(0.0, abs=1e-3)
 
+    def test_randomised_invert_regularised_array_negative_rcond(self) -> None:
+        """
+        Test randomised_invert_regularised_array with negative rcond not negative one.
+        """
+        with pytest.raises(ValueError):
+            randomised_invert_regularised_array(
+                key(0),
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(2),
+                rcond=-10,
+            )
+
+    def test_randomised_invert_regularised_array_unequal_array_dimensions(self) -> None:
+        """
+        Test randomised_invert_regularised_array with invalid array dimensions.
+
+        An array and identity with unequal dimensions are given, which should be
+        rejected by the function.
+        """
+        with pytest.raises(ValueError):
+            randomised_invert_regularised_array(
+                key(0),
+                array=jnp.eye(2),
+                regularisation_parameter=1e-6,
+                identity=jnp.eye(3),
+                rcond=None,
+            )
+
+    def test_randomised_invert_regularised_array(self) -> None:
+        """
+        Test randomised_invert_regularised_array.
+        """
+        random_key = key(0)
+        dimension = 1000
+        regularisation_parameter = 1e-6
+        identity = jnp.eye(dimension)
+        rcond = None
+        oversampling_parameter = 25
+        power_iterations = 1
+
+        # Make kernel matrix
+        x = normal(key(1), (dimension, 1))
+        array = SquaredExponentialKernel().compute(x, x)
+
+        output = randomised_invert_regularised_array(
+            random_key,
+            array,
+            regularisation_parameter,
+            identity,
+            rcond,
+            oversampling_parameter,
+            power_iterations,
+        )
+        expected_output = invert_regularised_array(
+            array, regularisation_parameter, identity, rcond
+        )
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
+
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
         "args, kwargs, jit_kwargs",
@@ -388,6 +450,9 @@ class TestUtil:
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
         assert post_time < (pre_time - wait_time)
+
+
+# pylint: enable=too-many-public-methods
 
 
 class TestSilentTQDM:
