@@ -19,7 +19,6 @@ kdtree
 kernelised
 kernelized
 ml.p3.8xlarge
-parameterizable
 parsable
 PCIMQ
 PMLR
