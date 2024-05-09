@@ -198,7 +198,8 @@ class TestLinearKernel(
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[LinearKernel]:
         def kernel(length_scale, output_scale):
-            return LinearKernel(length_scale, output_scale)
+            del length_scale, output_scale
+            return LinearKernel()
 
         return kernel
 
