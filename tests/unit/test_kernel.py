@@ -190,7 +190,7 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
 class TestLinearKernel(
     BaseKernelTest[LinearKernel],
-    KernelRowSumTest[LinearKernel],
+    KernelGramianRowMeanTest[LinearKernel],
     KernelGradientTest[LinearKernel],
 ):
     """Test ``coreax.kernel.LinearKernel``."""
