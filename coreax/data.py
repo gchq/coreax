@@ -191,7 +191,6 @@ class ArrayData(DataReader):
         return coreset.coreset
 
 
-# pylint: disable=too-few-public-methods
 class Data(eqx.Module):
     r"""
     Class for representing unsupervised data.
@@ -207,8 +206,8 @@ class Data(eqx.Module):
         uniform weighting.
     """
 
-    data: Shaped[Array, " n d"]
-    weights: Shaped[Array, " n"]
+    data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
+    weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
 
     def __init__(
         self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
@@ -225,6 +224,10 @@ class Data(eqx.Module):
         """Check leading dimensions of weights and data match."""
         if self.weights.shape[0] != self.data.shape[0]:
             raise ValueError("Leading dimensions of 'weights' and 'data' must be equal")
+
+    def __len__(self):
+        """Return data length."""
+        return len(self.data)
 
 
 class SupervisedData(Data):
@@ -246,7 +249,7 @@ class SupervisedData(Data):
         :data:`None` will result in uniform weighting.
     """
 
-    supervision: Shaped[Array, " n *p"]
+    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
 
     def __init__(
         self,
@@ -264,6 +267,3 @@ class SupervisedData(Data):
             raise ValueError(
                 "Leading dimensions of 'supervision' and 'data' must be equal"
             )
-
-
-# pylint: enable=too-few-public-methods
