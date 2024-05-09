@@ -306,6 +306,34 @@ class Kernel(eqx.Module):
         return row_sum / num_data_points
 
 
+class LinearKernel(Kernel):
+    r"""
+    Define a linear kernel.
+
+    The linear kernel is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d
+    \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.dot(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(x)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(x).shape[0]
+
+
 class SquaredExponentialKernel(Kernel):
     """
     Define a squared exponential kernel.
