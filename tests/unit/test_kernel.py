@@ -35,6 +35,7 @@ from typing_extensions import override
 from coreax.kernel import (
     Kernel,
     LaplacianKernel,
+    LinearKernel,
     PCIMQKernel,
     SquaredExponentialKernel,
     SteinKernel,
@@ -185,6 +186,91 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
     ) -> Array | np.ndarray:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
+
+
+class TestLinearKernel(
+    BaseKernelTest[LinearKernel],
+    KernelGramianRowMeanTest[LinearKernel],
+    KernelGradientTest[LinearKernel],
+):
+    """Test ``coreax.kernel.LinearKernel``."""
+
+    @pytest.fixture
+    def kernel_factory(self) -> _KernelFactory[LinearKernel]:
+        def kernel(length_scale, output_scale):
+            return LinearKernel(length_scale, output_scale)
+
+        return kernel
+
+    @override
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request, kernel_factory: _KernelFactory[LinearKernel]
+    ) -> _Problem:
+        r"""
+        Test problems for the Linear kernel.
+
+        The kernel is defined as
+        :math:`k(x,y) = x^Ty`.
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 1.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 20.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[20, 44], [70, 174]])
+        else:
+            raise ValueError("Invalid problem mode")
+        kernel = kernel_factory(1.0, 1.0)
+        return _Problem(x, y, expected_distances, kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = y[y_idx]
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = x[x_idx]
+        return expected_gradients
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_divergence[x_idx, y_idx] = dimension
+        return expected_divergence
 
 
 class TestSquaredExponentialKernel(
