@@ -120,7 +120,7 @@ class MMD(Metric, Generic[_Data]):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         # Format inputs
-        reference_points = jnp.atleast_2d(reference_data.data)
+        reference_points = reference_data.data
         num_reference_points = len(reference_points)
         reference_weights = jnp.atleast_1d(reference_data.weights)
         if jnp.allclose(
@@ -129,7 +129,7 @@ class MMD(Metric, Generic[_Data]):
         ):
             reference_weights = None
 
-        comparison_points = jnp.atleast_2d(comparison_data.data)
+        comparison_points = comparison_data.data
         num_comparison_points = len(comparison_points)
         comparison_weights = jnp.atleast_1d(comparison_data.weights)
         if jnp.allclose(
