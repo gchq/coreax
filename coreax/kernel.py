@@ -338,10 +338,10 @@ class SquaredExponentialKernel(Kernel):
     r"""
     Define a squared exponential kernel.
 
-    The squared exponential kernel is defined as
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
+    exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \text{output_scale} \exp(\frac{||x-y||^2}
-    {2 \text{length_scale}^2})` where
+    :math:`k(x, y) = \rho \exp(\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter
@@ -377,10 +377,10 @@ class LaplacianKernel(Kernel):
     r"""
     Define a Laplacian kernel.
 
-    The Laplacian kernel is defined as
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \text{output_scale}
-    \exp(\frac{||x-y||_1}{2 \text{length_scale}^2})`  where
+    :math:`k(x, y) = \rho \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
     .
     :param length_scale: Kernel smoothing/bandwidth parameter
@@ -419,10 +419,10 @@ class PCIMQKernel(Kernel):
     r"""
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
-    The PCIMQ kernel is defined as
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    PCIMQ kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{output_scale}{\sqrt{1 + \frac{||x-y||^2}
-    {2 \text{length_scale}^2}}}
+    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
     where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter
