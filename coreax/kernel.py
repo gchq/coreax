@@ -341,7 +341,7 @@ class SquaredExponentialKernel(Kernel):
     Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
     exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho \exp(\frac{||x-y||^2}{2 \lambda^2})` where
+    :math:`k(x, y) = \rho * \exp(\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
