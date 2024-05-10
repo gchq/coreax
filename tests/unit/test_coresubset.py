@@ -26,7 +26,6 @@ from unittest.mock import patch
 import jax.numpy as jnp
 import numpy as np
 from jax import random
-from jax.typing import ArrayLike
 
 import coreax.coresubset
 import coreax.data
@@ -36,7 +35,6 @@ import coreax.reduction
 import coreax.refine
 import coreax.score_matching
 import coreax.util
-from coreax.approximation import ANNchorApproximateKernel
 
 
 class TestKernelHerding(unittest.TestCase):
