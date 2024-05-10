@@ -81,7 +81,7 @@ def apply_negative_precision_threshold(
 
 def pairwise(
     fn: Callable[[ArrayLike, ArrayLike], Array],
-) -> Callable[[Array, Array], Array]:
+) -> Callable[[ArrayLike, ArrayLike], Array]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -91,7 +91,7 @@ def pairwise(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: Array, y: Array) -> Array:
+    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
