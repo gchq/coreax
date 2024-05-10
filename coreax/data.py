@@ -191,7 +191,6 @@ class ArrayData(DataReader):
         return coreset.coreset
 
 
-# pylint: disable=too-few-public-methods
 class Data(eqx.Module):
     r"""
     Class for representing unsupervised data.
@@ -200,15 +199,15 @@ class Data(eqx.Module):
     where :math`x_i` are the features or inputs and :math:`w_i` are weights.
 
     :param data: An :math:`n \times d` array defining the features of the unsupervised
-        dataset.
+        dataset; d-vectors are converted to :math:`1 \times d` arrays
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data array, forming the
         pair :math:`(x_i, w_i)`, or if not required, default :data:`None` will result in
-        uniform weighting.
+        uniform weighting
     """
 
-    data: Shaped[Array, " n d"]
-    weights: Shaped[Array, " n"]
+    data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
+    weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
 
     def __init__(
         self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
@@ -226,6 +225,10 @@ class Data(eqx.Module):
         if self.weights.shape[0] != self.data.shape[0]:
             raise ValueError("Leading dimensions of 'weights' and 'data' must be equal")
 
+    def __len__(self):
+        """Return data length."""
+        return len(self.data)
+
 
 class SupervisedData(Data):
     r"""
@@ -237,16 +240,18 @@ class SupervisedData(Data):
     correspond to the pairs :math:`(x_i, y_i)`.
 
     :param data: An :math:`n \times d` array defining the features of the supervised
-        dataset paired with the corresponding index of the supervision.
+        dataset paired with the corresponding index of the supervision;  d-vectors are
+        converted to :math:`1 \times d` arrays
     :param supervision: An :math:`n \times p` array defining the responses of the
-        supervised paired with the corresponding index of the data.
+        supervised paired with the corresponding index of the data; d-vectors are
+        converted to :math:`1 \times d` arrays
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data and supervision
         array, forming the triple :math:`(x_i, y_i, w_i)`, or if not required, default
-        :data:`None` will result in uniform weighting.
+        :data:`None` will result in uniform weighting
     """
 
-    supervision: Shaped[Array, " n *p"]
+    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
 
     def __init__(
         self,
@@ -264,6 +269,3 @@ class SupervisedData(Data):
             raise ValueError(
                 "Leading dimensions of 'supervision' and 'data' must be equal"
             )
-
-
-# pylint: enable=too-few-public-methods
