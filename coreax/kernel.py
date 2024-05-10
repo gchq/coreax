@@ -380,9 +380,9 @@ class LaplacianKernel(Kernel):
     Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
     Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
+    :math:`k(x, y) = \rho * \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
-    .
+
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
