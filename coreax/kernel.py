@@ -97,19 +97,13 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
-    def __mul__(self, new_kernel: Kernel):
-        """Add two kernel functions together."""
-        base_kernel = self
+    def __add__(self, add_kernel):
+        """Overload `+` operator."""
+        return AdditiveKernel(self, add_kernel)
 
-        class Product(Kernel):
-            """Define a kernel which is a product of two kernels."""
-
-            @override
-            @eqx.filter_jit
-            def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
-                return base_kernel.compute(x, y) * new_kernel.compute(x, y)
-
-        return Product
+    def __mul__(self, prod_kernel):
+        """Overload `*` operator."""
+        return ProductKernel(self, prod_kernel)
 
     @eqx.filter_jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -382,6 +376,85 @@ def _block_data_convert(
             raise
 
     return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
+
+
+class AdditiveKernel(Kernel):
+    """Define a kernel which is a summation of two kernels."""
+
+    first_kernel: Kernel
+    second_kernel: Kernel
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.divergence_x_grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+
+
+class ProductKernel(Kernel):
+    r"""
+    Define a kernel which is a product of two kernels.
+
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` define the product kernel
+    :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`p(x,y) = k(x,y)l(x,y)
+
+    :param first_kernel: Instance of class coreax.kernel.Kernel
+    :param second_kernel: Instance of class coreax.kernel.Kernel
+    """
+
+    first_kernel: Kernel
+    second_kernel: Kernel
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
+        return pseudo_hessian.trace()
 
 
 class LinearKernel(Kernel):
