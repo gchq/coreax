@@ -314,9 +314,6 @@ class LinearKernel(Kernel):
     \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
-
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return jnp.dot(x, y)
@@ -331,7 +328,7 @@ class LinearKernel(Kernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(x).shape[0]
+        return jnp.asarray(jnp.shape(x)[0])
 
 
 class SquaredExponentialKernel(Kernel):
@@ -357,13 +354,15 @@ class SquaredExponentialKernel(Kernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (x - y) / self.length_scale**2 * self.compute_elementwise(x, y)
+        return (
+            jnp.subtract(x, y) / self.length_scale**2 * self.compute_elementwise(x, y)
+        )
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
-        d = len(x)
+        d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
 
 
@@ -381,7 +380,7 @@ class LaplacianKernel(Kernel):
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
-            -jnp.linalg.norm(x - y, ord=1) / (2 * self.length_scale**2)
+            -jnp.linalg.norm(jnp.subtract(x, y), ord=1) / (2 * self.length_scale**2)
         )
 
     @override
@@ -391,7 +390,7 @@ class LaplacianKernel(Kernel):
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return (
-            jnp.sign(x - y)
+            jnp.sign(jnp.subtract(x, y))
             / (2 * self.length_scale**2)
             * self.compute_elementwise(x, y)
         )
@@ -399,7 +398,7 @@ class LaplacianKernel(Kernel):
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
-        d = len(x)
+        d = len(jnp.asarray(x))
         return -d * k / (4 * self.length_scale**4)
 
 
@@ -428,7 +427,7 @@ class PCIMQKernel(Kernel):
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return (
             self.output_scale
-            * (x - y)
+            * jnp.subtract(x, y)
             / (2 * self.length_scale**2)
             * (self.compute_elementwise(x, y) / self.output_scale) ** 3
         )
@@ -437,7 +436,7 @@ class PCIMQKernel(Kernel):
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y) / self.output_scale
         scale = 2 * self.length_scale**2
-        d = len(x)
+        d = len(jnp.asarray(x))
         return (
             self.output_scale
             / scale
@@ -512,11 +511,9 @@ class SteinKernel(CompositeKernel):
         the Stein kernel
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
-    :param output_scale: Kernel normalisation constant
     """
 
     score_function: Callable[[ArrayLike], Array]
-    output_scale: float = 1.0
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
