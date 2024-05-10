@@ -344,8 +344,8 @@ class SquaredExponentialKernel(Kernel):
     :math:`k(x, y) = \rho \exp(\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:\lambda
-    :param output_scale: Kernel normalisation constant, :math:\rho
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
     length_scale: float = 1.0
@@ -383,8 +383,8 @@ class LaplacianKernel(Kernel):
     :math:`k(x, y) = \rho \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
     .
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:\lambda
-    :param output_scale: Kernel normalisation constant, :math:\rho
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
     length_scale: float = 1.0
@@ -425,8 +425,8 @@ class PCIMQKernel(Kernel):
     :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
     where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:\lambda
-    :param output_scale: Kernel normalisation constant, :math:\rho
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
     length_scale: float = 1.0
