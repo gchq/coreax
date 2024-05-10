@@ -82,6 +82,10 @@ class MMD(Metric, Generic[_Data]):
 
     where :math:`k` is the selected kernel.
 
+    Common uses of MMD include comparing a reduced representation of a dataset to the
+    original dataset, comparing different original datasets to one another, or
+    comparing reduced representations of different original datasets to one another.
+
     :param kernel: Kernel object with compute method defined mapping
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param precision_threshold: Positive threshold we compare against for precision
