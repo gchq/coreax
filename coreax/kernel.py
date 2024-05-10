@@ -97,6 +97,20 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
+    def __mul__(self, new_kernel: Kernel):
+        """Add two kernel functions together."""
+        base_kernel = self
+
+        class Product(Kernel):
+            """Define a kernel which is a product of two kernels."""
+
+            @override
+            @eqx.filter_jit
+            def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
+                return base_kernel.compute(x, y) * new_kernel.compute(x, y)
+
+        return Product
+
     @eqx.filter_jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
