@@ -53,9 +53,15 @@ class Metric(ABC, Generic[_Data]):
 
         Return a zero-dimensional array.
 
-        :param reference_data: An instance of the class :class:`coreax.data.Data`
+        :param reference_data: An instance of the class :class:`coreax.data.Data`,
+            containing an :math:`n \times d` array of data. Or an instance of the class
+            :class:`coreax.data.SupervisedData` containing an :math:`n \times d` array
+            of data, and a corresponding :math:`n \times p` array of supervision.
         :param comparison_data: An instance of the class :class:`coreax.data.Data` to
-            compare against ``reference_data``
+            compare against ``reference_data`` containing an :math:`m \times d` array of
+            data. Or an instance of the class :class:`coreax.data.SupervisedData` to
+            compare against ``reference_data`` containing an :math:`m \times d` array of
+            data, and a corresponding :math:`m \times p` array of supervision.
         :return: Metric computed as a zero-dimensional array
         """
 
@@ -104,9 +110,11 @@ class MMD(Metric, Generic[_Data]):
         both datasets and reference weights are not uniform in the weighted case, the
         calculation is done block-wise to limit memory requirements.
 
-        :param reference_data: An instance of the class :class:`coreax.data.Data`
+        :param reference_data: An instance of the class :class:`coreax.data.Data`,
+            containing an :math:`n \times d` array of data
         :param comparison_data: An instance of the class :class:`coreax.data.Data` to
-            compare against ``reference_data``
+            compare against ``reference_data`` containing an :math:`m \times d` array of
+            data
         :param block_size: Size of matrix block to process, or :data:`None` to not split
             into blocks
         :return: Maximum mean discrepancy as a 0-dimensional array
@@ -265,9 +273,9 @@ class MMD(Metric, Generic[_Data]):
         r"""
         Calculate maximum mean discrepancy (MMD) whilst limiting memory requirements.
 
-        :param reference_points: The original :math:`n \times d` data
-        :param comparison_points: An :math:`m \times d` array defining a representation
-            of ``reference_data``, for example a coreset
+        :param reference_points: :math:`n \times d` array of reference data
+        :param comparison_points: An :math:`m \times d` array to compare to
+            ``reference_points``
         :param block_size: Size of matrix blocks to process
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
@@ -314,9 +322,9 @@ class MMD(Metric, Generic[_Data]):
 
         This calculation is executed whilst limiting memory requirements.
 
-        :param reference_points: The original :math:`n \times d` data
-        :param comparison_points: An :math:`m \times d` array defining a representation
-            of ``reference_points``, for example a coreset
+        :param reference_points: :math:`n \times d` array of reference data
+        :param comparison_points: An :math:`m \times d` array to compare to
+            ``reference_points```
         :param reference_weights: :math:`n` weights of reference data
         :param comparison_weights: :math:`m` weights of points in ``comparison_points``
         :param block_size: Size of matrix blocks to process
