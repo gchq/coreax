@@ -130,7 +130,7 @@ class MMD(Metric, Generic[_Data]):
         ):
             comparison_weights = None
 
-        if comparison_weights is None:
+        if comparison_weights is None and reference_weights is None:
             if block_size is None or block_size > max(
                 num_reference_points, num_comparison_points
             ):
@@ -141,13 +141,14 @@ class MMD(Metric, Generic[_Data]):
                 reference_points, comparison_points, block_size
             )
 
-        if (
-            block_size is None
-            or reference_weights is None
-            or block_size > max(num_reference_points, num_comparison_points)
+        if block_size is None or block_size > max(
+            num_reference_points, num_comparison_points
         ):
             return self.weighted_maximum_mean_discrepancy(
-                reference_points, comparison_points, comparison_weights
+                reference_points,
+                comparison_points,
+                reference_weights,
+                comparison_weights,
             )
 
         return self.weighted_maximum_mean_discrepancy_block(
@@ -203,26 +204,39 @@ class MMD(Metric, Generic[_Data]):
         self,
         reference_points: ArrayLike,
         comparison_points: ArrayLike,
-        comparison_weights: ArrayLike,
+        reference_weights: ArrayLike | None = None,
+        comparison_weights: ArrayLike | None = None,
     ) -> Array:
         r"""
-        Calculate one-sided, weighted maximum mean discrepancy (WMMD).
+        Calculate weighted maximum mean discrepancy (WMMD).
 
-        Only data points in ``comparison_points`` are weighted.
-
-        :param reference_points: The original :math:`n \times d` data
+        :param reference_points: :math:`n \times d` array of reference data
         :param comparison_points: An :math:`m \times d` array to compare to
             ``reference_points``
+        :param reference_weights: :math:`m \times 1` weights vector for data
+            ``reference_points``, or :data:`None` (default) if unweighted
         :param comparison_weights: :math:`m \times 1` weights vector for data
-            ``comparison_points``
+            ``comparison_points``, or :data:`None` (default) if unweighted
         :return: Weighted maximum mean discrepancy as a 0-dimensional array
         """
         # Format inputs
         reference_points = jnp.atleast_2d(reference_points)
-        comparison_points = jnp.atleast_2d(comparison_points)
-        comparison_weights = jnp.atleast_1d(comparison_weights)
+        num_reference_points = len(reference_points)
+        if reference_weights is None:
+            reference_weights = jnp.broadcast_to(
+                1 / num_reference_points, (num_reference_points,)
+            )
+        else:
+            reference_weights = jnp.atleast_1d(reference_weights)
 
-        num_reference_points = float(len(reference_points))
+        comparison_points = jnp.atleast_2d(comparison_points)
+        num_comparison_points = len(comparison_points)
+        if comparison_weights is None:
+            comparison_weights = jnp.broadcast_to(
+                1 / num_comparison_points, (num_comparison_points,)
+            )
+        else:
+            comparison_weights = jnp.atleast_1d(comparison_weights)
 
         # Compute each term in the weighted MMD formula
         kernel_nn = self.kernel.compute(reference_points, reference_points)
@@ -233,9 +247,10 @@ class MMD(Metric, Generic[_Data]):
         # would otherwise square-root a negative number very close to 0.0.
         result = jnp.sqrt(
             coreax.util.apply_negative_precision_threshold(
-                jnp.dot(comparison_weights.T, jnp.dot(kernel_mm, comparison_weights))
-                + kernel_nn.sum() / num_reference_points**2
-                - 2 * jnp.dot(comparison_weights.T, kernel_nm.mean(axis=0)),
+                jnp.dot(reference_weights.T, jnp.dot(kernel_nn, reference_weights))
+                + jnp.dot(comparison_weights.T, jnp.dot(kernel_mm, comparison_weights))
+                - 2
+                * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights),
                 self.precision_threshold,
             )
         )

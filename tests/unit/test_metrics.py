@@ -391,11 +391,12 @@ class TestMMD(unittest.TestCase):
 
         # Define expected output
         comparison_weights = self.comparison_data.weights
-        expected_output = (
-            jnp.mean(kernel_nn)
+        reference_weights = self.reference_data.weights
+        expected_output = jnp.sqrt(
+            jnp.dot(reference_weights.T, jnp.dot(kernel_nn, reference_weights))
             + jnp.dot(comparison_weights.T, jnp.dot(kernel_mm, comparison_weights))
-            - 2 * jnp.dot(comparison_weights.T, kernel_nm.mean(axis=0))
-        ).item() ** 0.5
+            - 2 * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights),
+        )
 
         # Define a metric object
         metric = coreax.metrics.MMD(kernel=kernel)
@@ -404,6 +405,7 @@ class TestMMD(unittest.TestCase):
         output = metric.weighted_maximum_mean_discrepancy(
             reference_points=self.reference_points,
             comparison_points=self.comparison_points,
+            reference_weights=self.reference_weights,
             comparison_weights=self.comparison_weights,
         )
 
@@ -413,6 +415,8 @@ class TestMMD(unittest.TestCase):
     def test_weighted_mmd_uniform_weights(self) -> None:
         r"""
         Test that weighted MMD equals MMD if weights are uniform.
+
+        Uniform weights are such that :math:`w_1 = 1/n` and :math:`w_2 = 1/m`.
         """
         # Define a kernel object
         length_scale = 1.0
@@ -425,6 +429,8 @@ class TestMMD(unittest.TestCase):
         uniform_wmmd = metric.weighted_maximum_mean_discrepancy(
             reference_points=self.reference_points,
             comparison_points=self.comparison_points,
+            reference_weights=jnp.ones(self.num_reference_points)
+            / self.num_reference_points,
             comparison_weights=jnp.ones(self.num_comparison_points)
             / self.num_comparison_points,
         )
@@ -1139,8 +1145,6 @@ class TestMMD(unittest.TestCase):
         )
 
 
-# pylint: enable=duplicate-code
-# pylint: enable=too-many-locals
 # pylint: enable=too-many-public-methods
 
 

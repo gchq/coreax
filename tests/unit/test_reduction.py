@@ -134,18 +134,36 @@ class TestCoreset(unittest.TestCase):
         """Check that compute_metric is called correctly."""
         coreset = CoresetMock()
         coreset.original_data = MagicMock(spec=coreax.data.DataReader)
-        coreset.original_data.pre_coreset_array = jnp.array([[1], [2], [3]])
+        coreset.original_data.pre_coreset_array = jnp.array([[1], [2]])
+        weights_x = jnp.array([1 / 2, 1 / 2])
+
         metric = MagicMock(spec=coreax.metrics.Metric)
         block_size = 10
 
         # First try prior to fitting a coreset
         with self.assertRaises(coreax.util.NotCalculatedError):
-            coreset.compute_metric(metric, block_size)
+            coreset.compute_metric(
+                metric,
+                block_size,
+            )
 
         # Now test with a calculated coreset
-        coreset.coreset = jnp.array([[1], [2]])
-        coreset.compute_metric(metric, block_size)
-        metric.compute.assert_called_once()
+        coreset.coreset = jnp.array([[1]])
+        weights_y = jnp.array([1])
+        coreset.compute_metric(
+            metric=metric,
+            block_size=block_size,
+            weights_x=weights_x,
+            weights_y=weights_y,
+        )
+
+        metric.compute.assert_called_once_with(
+            coreax.data.Data(
+                data=coreset.original_data.pre_coreset_array, weights=weights_x
+            ),
+            coreax.data.Data(data=coreset.coreset, weights=weights_y),
+            block_size,
+        )
 
     def test_refine(self):
         """Check that refine is called correctly."""
