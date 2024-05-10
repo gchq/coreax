@@ -260,9 +260,12 @@ class MMD(Metric, Generic[_Data]):
         result = jnp.sqrt(
             coreax.util.apply_negative_precision_threshold(
                 jnp.dot(reference_weights.T, jnp.dot(kernel_nn, reference_weights))
+                / reference_weights.sum() ** 2
                 + jnp.dot(comparison_weights.T, jnp.dot(kernel_mm, comparison_weights))
+                / comparison_weights.sum() ** 2
                 - 2
-                * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights),
+                * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights)
+                / (reference_weights.sum() * comparison_weights.sum()),
                 self.precision_threshold,
             )
         )
