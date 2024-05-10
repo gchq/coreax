@@ -20,6 +20,7 @@ produce the expected results on simple examples.
 """
 
 import unittest
+from functools import partial
 from unittest.mock import MagicMock
 
 import jax.numpy as jnp
@@ -31,81 +32,56 @@ from jax.typing import ArrayLike
 import coreax.data
 import coreax.reduction
 
+DATA_ARRAY = jnp.array([[1], [2], [3]])
+SUPERVISION = jnp.array([[4], [5], [6]])
 
+
+@pytest.mark.parametrize(
+    "data_type",
+    [
+        partial(coreax.data.Data, DATA_ARRAY),
+        partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
+    ],
+)
 class TestData:
     """Test operation of Data class."""
 
-    def test_uniform_weights(self):
+    def test_default_weights(self, data_type):
         """Test that if no weights are given a uniform weight vector is made."""
-        original_data = jnp.array([1, 2, 3])
-        n = original_data.shape[0]
+        _data = data_type()
+        n = _data.data.shape[0]
+        expected_weights = jnp.broadcast_to(1 / n, (n,))
+        np.testing.assert_array_almost_equal(_data.weights, expected_weights)
 
-        data = coreax.data.Data(data=original_data, weights=None)
-        np.testing.assert_array_almost_equal(
-            data.weights, jnp.broadcast_to(1 / n, (n,)), decimal=5
-        )
-
-    def test_invalid_data_and_weight_dimensions(self):
+    def test_invalid_weight_dimensions(self, data_type):
         """
         Test that __check_init__ raises expected errors.
         """
-        original_data = jnp.array([1, 2, 3])
         with pytest.raises(
             ValueError, match="Leading dimensions of 'weights' and 'data' must be equal"
         ):
-            coreax.data.Data(
-                data=original_data, weights=jnp.ones(original_data.shape[0] + 1)
-            )
+            invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
+            data_type(weights=invalid_weights)
+
+    def test_len(self, data_type):
+        """Test length of data."""
+        _data = data_type()
+        assert len(_data) == len(_data.data)
 
 
 class TestSupervisedData:
     """Test operation of SupervisedData class."""
 
-    def test_uniform_weights(self):
-        """Test that if no weights are given a uniform weight vector is made."""
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5, 6])
-        n = original_data.shape[0]
-
-        data = coreax.data.SupervisedData(
-            data=original_data, supervision=original_supervision, weights=None
-        )
-        np.testing.assert_array_almost_equal(
-            data.weights, jnp.broadcast_to(1 / n, (n,)), decimal=5
-        )
-
-    def test_invalid_data_and_weight_dimensions(self):
-        """
-        Test that __check_init__ raises ValueError when weights array has bad dimension.
-        """
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5, 6])
-
-        with pytest.raises(
-            ValueError, match="Leading dimensions of 'weights' and 'data' must be equal"
-        ):
-            coreax.data.SupervisedData(
-                data=original_data,
-                supervision=original_supervision,
-                weights=jnp.ones(original_data.shape[0] + 1),
-            )
-
-    def test_invalid_data_and_supervision_dimensions(self):
+    def test_invalid_supervision_dimensions(self):
         """
         Test that __check_init__ raises ValueError when supervision has bad dimension.
         """
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5])
-
         with pytest.raises(
             ValueError,
             match="Leading dimensions of 'supervision' and 'data' must be equal",
         ):
-            coreax.data.SupervisedData(
-                data=original_data,
-                supervision=original_supervision,
-                weights=jnp.ones(original_data.shape[0] + 1),
-            )
+            invalid_supervision = jnp.ones(DATA_ARRAY.shape[0])
+            coreax.data.SupervisedData(DATA_ARRAY, invalid_supervision)
 
 
 class DataReaderConcrete(coreax.data.DataReader):
