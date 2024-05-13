@@ -586,7 +586,7 @@ class SquaredExponentialKernel(Kernel):
     Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
     exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(\frac{||x-y||^2}{2 \lambda^2})` where
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
@@ -620,6 +620,68 @@ class SquaredExponentialKernel(Kernel):
         return scale * k * (d - scale * squared_distance(x, y))
 
 
+class RationalQuadraticKernel(Kernel):
+    r"""
+    Define a rational quadratic kernel.
+
+    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+    :math:`\alpha =`'relative_weighting', the rational
+    quadratic kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param relative_weighting: Parameter controlling the relative weighting of
+        large-scale and small-scale variations, :math:`\alpha`. As
+        :math:`alpha \to \infty` the rational quadratic kernel is identical to the
+        squared exponential kernel.
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+    relative_weighting: float = 1.0
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.output_scale
+            * (
+                1
+                + squared_distance(x, y)
+                / (2 * self.relative_weighting * self.length_scale**2)
+            )
+            ** -self.relative_weighting
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (self.output_scale * jnp.subtract(x, y) / self.length_scale**2) * (
+            1
+            + squared_distance(x, y)
+            / (2 * self.relative_weighting * self.length_scale**2)
+        ) ** (-self.relative_weighting - 1)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        d = len(jnp.asarray(x))
+        sq_dist = squared_distance(x, y)
+        power = self.relative_weighting + 1
+        body = 1 + sq_dist / (2 * self.relative_weighting * self.length_scale**2)
+        factor = self.output_scale / self.length_scale**2
+
+        first_term = factor * body**-power
+        second_term = -(
+            factor * power * sq_dist / (self.relative_weighting * self.length_scale**2)
+        ) * body ** -(power + 1)
+        return d * first_term + second_term
+
+
 class LaplacianKernel(Kernel):
     r"""
     Define a Laplacian kernel.
@@ -627,7 +689,7 @@ class LaplacianKernel(Kernel):
     Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
     Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
