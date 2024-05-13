@@ -116,6 +116,7 @@ class TestKernelHerding(unittest.TestCase):
         # to typically compete with a kernel herding approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
 
         # Create a kernel herding object
@@ -127,7 +128,7 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -136,21 +137,23 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via kernel herding with refinement, to check refinement
         # improves the coreset quality
         coresubset_object_not_random.refine()
-        refined_fitted_coresubset = coresubset_object_not_random.coreset
+        refined_fitted_coresubset = coreax.data.Data(
+            coresubset_object_not_random.coreset
+        )
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        refined_not_random_metric = metric.compute(metric_x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_fit_compare_row_sum(self) -> None:
@@ -222,6 +225,7 @@ class TestKernelHerding(unittest.TestCase):
         num_data_points = 500
         generator = np.random.default_rng(1_989)
         x = generator.normal(mu, std_dev, size=(num_data_points, 1))
+        metric_x = coreax.data.Data(x)
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             """
@@ -248,7 +252,7 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -257,12 +261,12 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
     def test_fit_with_approximate_gramian_row_mean(self):
@@ -281,6 +285,7 @@ class TestKernelHerding(unittest.TestCase):
         # to typically compete with a kernel herding approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
 
         approximator_key, herding_key = random.split(self.random_key)
@@ -299,7 +304,7 @@ class TestKernelHerding(unittest.TestCase):
             original_data=data,
             strategy=coreax.reduction.SizeReduce(self.coreset_size),
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -308,12 +313,12 @@ class TestKernelHerding(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
     def test_greedy_body(self) -> None:
@@ -1024,6 +1029,7 @@ class TestRPCholesky(unittest.TestCase):
         # to typically compete with a RPC approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
 
         # Create a RPC object
@@ -1035,7 +1041,7 @@ class TestRPCholesky(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -1044,21 +1050,23 @@ class TestRPCholesky(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via RPC with refinement, to check refinement
         # improves the coreset quality
         coresubset_object_not_random.refine()
-        refined_fitted_coresubset = coresubset_object_not_random.coreset
+        refined_fitted_coresubset = coreax.data.Data(
+            coresubset_object_not_random.coreset
+        )
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        refined_not_random_metric = metric.compute(metric_x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_fit_comparison_to_random_and_refined_not_unique(self) -> None:
@@ -1078,6 +1086,7 @@ class TestRPCholesky(unittest.TestCase):
         # to typically compete with a RPC approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
 
         # Create a RPC object
@@ -1092,7 +1101,7 @@ class TestRPCholesky(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -1101,21 +1110,23 @@ class TestRPCholesky(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via RPC with refinement, to check refinement
         # improves the coreset quality
         coresubset_object_not_random.refine()
-        refined_fitted_coresubset = coresubset_object_not_random.coreset
+        refined_fitted_coresubset = coreax.data.Data(
+            coresubset_object_not_random.coreset
+        )
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        refined_not_random_metric = metric.compute(metric_x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_rp_cholesky_invalid_weights_optimiser(self):
@@ -1367,6 +1378,7 @@ class TestSteinThinning(unittest.TestCase):
         # to typically compete with a SteinThinning approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
 
         # Define specific test instance setup
@@ -1385,7 +1397,7 @@ class TestSteinThinning(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -1394,21 +1406,23 @@ class TestSteinThinning(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via SteinThinning with refinement, to check refinement
         # improves the coreset quality
         coresubset_object_not_random.refine()
-        refined_fitted_coresubset = coresubset_object_not_random.coreset
+        refined_fitted_coresubset = coreax.data.Data(
+            coresubset_object_not_random.coreset
+        )
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        refined_not_random_metric = metric.compute(metric_x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_fit_comparison_to_random_and_refined_not_unique(self) -> None:
@@ -1427,10 +1441,12 @@ class TestSteinThinning(unittest.TestCase):
         # to typically compete with a SteinThinning approach
         generator = np.random.default_rng(self.random_data_generation_key)
         x = generator.random((num_data_points, self.dimension))
+        metric_x = coreax.data.Data(x)
         data = coreax.data.ArrayData.load(x)
         num_samples_length_scale = min(num_data_points, 1_000)
         idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
         length_scale = float(coreax.kernel.median_heuristic(x[idx]))
+
         # Define specific test instance setup
         kernel = coreax.kernel.SquaredExponentialKernel(length_scale=length_scale)
 
@@ -1446,7 +1462,7 @@ class TestSteinThinning(unittest.TestCase):
         coresubset_object_not_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        fitted_coresubset = coresubset_object_not_random.coreset
+        fitted_coresubset = coreax.data.Data(coresubset_object_not_random.coreset)
 
         # Create a random refinement object and generate a coreset, for comparison
         coresubset_object_random = coreax.coresubset.RandomSample(
@@ -1455,21 +1471,23 @@ class TestSteinThinning(unittest.TestCase):
         coresubset_object_random.fit(
             original_data=data, strategy=coreax.reduction.SizeReduce(self.coreset_size)
         )
-        random_coreset = coresubset_object_random.coreset
+        random_coreset = coreax.data.Data(coresubset_object_random.coreset)
 
         # Define a metric and compare quality of produced coresets
         metric = coreax.metrics.MMD(kernel=kernel)
-        not_random_metric = metric.compute(x, fitted_coresubset)
-        random_metric = metric.compute(x, random_coreset)
+        not_random_metric = metric.compute(metric_x, fitted_coresubset)
+        random_metric = metric.compute(metric_x, random_coreset)
         self.assertLess(float(not_random_metric), float(random_metric))
 
         # Create a coreset via SteinThinning with refinement, to check refinement
         # improves the coreset quality
         coresubset_object_not_random.refine()
-        refined_fitted_coresubset = coresubset_object_not_random.coreset
+        refined_fitted_coresubset = coreax.data.Data(
+            coresubset_object_not_random.coreset
+        )
 
         # Compare quality of refined coreset to non-refined coreset
-        refined_not_random_metric = metric.compute(x, refined_fitted_coresubset)
+        refined_not_random_metric = metric.compute(metric_x, refined_fitted_coresubset)
         self.assertLess(float(refined_not_random_metric), float(not_random_metric))
 
     def test_stein_thinning_invalid_weights_optimiser(self):
