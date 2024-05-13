@@ -108,11 +108,12 @@ class MMD(Metric, Generic[_Data]):
         r"""
         Calculate maximum mean discrepancy.
 
-        If uniform weights are given for dataset ``reference_data``, standard MMD is
-        calculated. If non-uniform weights are given, weighted MMD is calculated. For
-        both cases, if the size of matrix blocks to process is less than the size of
-        both datasets and reference weights are not uniform in the weighted case, the
-        calculation is done block-wise to limit memory requirements.
+        If uniform weights are given for datasets ``reference_data`` and
+        ``comparison_data`` standard MMD is calculated. If non-uniform weights are
+        given, weighted MMD is calculated. For both cases, if the size of matrix blocks
+        to process is less than the size of both datasets, and the reference and
+        comparison weights are not uniform in the weighted case, the calculation is done
+        block-wise to limit memory requirements.
 
         :param reference_data: An instance of the class :class:`coreax.data.Data`,
             containing an :math:`n \times d` array of data
