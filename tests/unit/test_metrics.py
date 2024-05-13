@@ -330,18 +330,21 @@ class TestMMD(unittest.TestCase):
 
             reference_data = [[0,0], [1,1], [2,2]]
 
+            w_1 = [1,1,1]
+
             comparison_data = [[0,0], [1,1]]
 
-            w_comparison_data = [1,0]
+            w_2 = [1,0]
 
         the weighted maximum mean discrepancy is calculated via:
 
         .. math::
 
             \text{WMMD}^2(\mathcal{D}_1,\mathcal{D}_2) =
-            \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1))
-             + w_2^T k(\mathcal{D}_2,\mathcal{D}_2) w_2
-             - 2\mathbb{E}_x(k(\mathcal{D}_1,\mathcal{D}_2)) w_2
+            \frac{1}{||w_1||**2}w_1^T \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)) w_1
+             + \frac{1}{||w_2||**2}w_2^T k(\mathcal{D}_2,\mathcal{D}_2) w_2
+             - \frac{2}{||w_1||||w_2||} w_1
+             \mathbb{E}_x(k(\mathcal{D}_1,\mathcal{D}_2)) w_2
 
             = \frac{3+4e^{-1}+2e^{-4}}{9} + 1 - 2 \times \frac{1 + e^{-1} + e^{-4}}{3}
 
@@ -349,7 +352,10 @@ class TestMMD(unittest.TestCase):
         """
         # Setup data
         reference_points = jnp.array([[0, 0], [1, 1], [2, 2]])
-        reference_data = coreax.data.Data(data=reference_points)
+        reference_weights = jnp.array([1, 1, 1])
+        reference_data = coreax.data.Data(
+            data=reference_points, weights=reference_weights
+        )
         comparison_points = jnp.array([[0, 0], [1, 1]])
         comparison_weights = jnp.array([1, 0])
         comparison_data = coreax.data.Data(
@@ -394,8 +400,12 @@ class TestMMD(unittest.TestCase):
         reference_weights = self.reference_data.weights
         expected_output = jnp.sqrt(
             jnp.dot(reference_weights.T, jnp.dot(kernel_nn, reference_weights))
+            / reference_weights.sum() ** 2
             + jnp.dot(comparison_weights.T, jnp.dot(kernel_mm, comparison_weights))
-            - 2 * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights),
+            / comparison_weights.sum() ** 2
+            - 2
+            * jnp.dot(jnp.dot(reference_weights.T, kernel_nm), comparison_weights)
+            / (reference_weights.sum() * comparison_weights.sum())
         )
 
         # Define a metric object
