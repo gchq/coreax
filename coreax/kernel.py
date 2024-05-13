@@ -682,6 +682,60 @@ class RationalQuadraticKernel(Kernel):
         return d * first_term + second_term
 
 
+class PeriodicKernel(Kernel):
+    r"""
+    Define a periodic kernel.
+
+    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+    :math:`\p =`'periodicity', the periodic kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+    periodicity: float = 1.0
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * (
+            jnp.exp(
+                -2
+                * jnp.sin(
+                    jnp.pi * jnp.linalg.norm(jnp.subtract(x, y)) / self.periodicity
+                )
+                ** 2
+                / self.length_scale**2
+            )
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        dist = jnp.linalg.norm(jnp.subtract(x, y))
+        body = jnp.pi * dist / self.periodicity
+        return (
+            (
+                4
+                * (x - y)
+                * self.output_scale
+                * jnp.pi
+                / (dist * self.periodicity * self.length_scale**2)
+            )
+            * jnp.sin(body)
+            * jnp.cos(body)
+            * jnp.exp(-(2 / self.length_scale**2) * jnp.sin(body) ** 2)
+        )
+
+
 class LaplacianKernel(Kernel):
     r"""
     Define a Laplacian kernel.
