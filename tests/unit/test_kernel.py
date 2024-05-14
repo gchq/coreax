@@ -44,11 +44,6 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
-_Kernel_co = TypeVar("_Kernel_co", bound=Kernel, covariant=True)
-
-
-class _KernelFactory(Protocol, Generic[_Kernel_co]):
-    def __call__(self, length_scale: float, output_scale: float) -> _Kernel_co: ...
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -97,14 +92,15 @@ class KernelMeanTest(Generic[_Kernel]):
     )
     @pytest.mark.parametrize("axis", [None, 0, 1])
     def test_compute_mean(
-        self,
-        kernel: _Kernel,
-        block_size: int | float | None,
-        axis: int | None,
+        self, kernel: _Kernel, block_size: int | float | None, axis: int | None
     ):
-        """Test the ``gramian_row_mean`` for all expected classes of 'block_size'."""
-        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x = np.array(
+        """
+        Test the `compute_mean` methods.
+
+        Considers all classes of 'block_size' and 'axis', along with implicitly and
+        explicitly weighted data.
+        """
+        x = jnp.array(
             [
                 [0.0, 1.0],
                 [1.0, 2.0],
@@ -116,16 +112,39 @@ class KernelMeanTest(Generic[_Kernel]):
                 [7.0, 8.0],
             ]
         )
-        expected_output = kernel.compute(x, x).mean(axis=0)
-        mean_output = kernel.gramian_row_mean(x, block_size=block_size)
-        np.testing.assert_array_almost_equal(mean_output, expected_output)
+        y = x[:-1] + 1
+        kernel_matrix = kernel.compute(x, y)
+        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
+        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
+        if axis == 0:
+            weights = x_weights
+        elif axis == 1:
+            weights = y_weights
+        else:
+            weights = x_weights[..., None] * y_weights[None, ...]
+        expected = jnp.average(kernel_matrix, axis, weights)
+        mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
-    def tests_empty_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
-        """Test the ``gramian_row_mean`` for an empty dataset."""
-        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x = jnp.array([])
-        with pytest.raises(ValueError, match="'x' must not be empty"):
-            kernel.gramian_row_mean(x)
+    def test_gramian_row_mean(self, kernel: _Kernel):
+        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
+        bs = None
+        unroll = (1, 1)
+        x = jnp.array(
+            [
+                [0.0, 1.0],
+                [1.0, 2.0],
+                [2.0, 3.0],
+                [3.0, 4.0],
+                [4.0, 5.0],
+                [5.0, 6.0],
+                [6.0, 7.0],
+                [7.0, 8.0],
+            ]
+        )
+        expected = kernel.compute_mean(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = kernel.gramian_row_mean(x, block_size=bs, unroll=unroll)
+        np.testing.assert_array_equal(output, expected)
 
 
 class KernelGradientTest(ABC, Generic[_Kernel]):
@@ -191,22 +210,10 @@ class TestLinearKernel(
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
-    def parameter_factory(self):
-        def parameter_generator():
-            random_seed = 2_024
-            generator = np.random.default_rng(random_seed)
-            parameters = jnp.abs(generator.random(2))
-            return parameters[0], parameters[1]
-
-        return parameter_generator
-
-    @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[LinearKernel]:
-        def kernel(length_scale, output_scale):
-            del length_scale, output_scale
-            return LinearKernel()
-
-        return kernel
+    def kernel(self):
+        random_seed = 2_024
+        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        return LinearKernel(parameters[0], parameters[1])
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
@@ -285,21 +292,10 @@ class TestSquaredExponentialKernel(
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
     @pytest.fixture
-    def parameter_factory(self):
-        def parameter_generator():
-            random_seed = 2_024
-            generator = np.random.default_rng(random_seed)
-            parameters = jnp.abs(generator.random(2))
-            return parameters[0], parameters[1]
-
-        return parameter_generator
-
-    @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[SquaredExponentialKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return SquaredExponentialKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self):
+        random_seed = 2_024
+        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        return SquaredExponentialKernel(parameters[0], parameters[1])
 
     @override
     @pytest.fixture(
@@ -446,21 +442,10 @@ class TestLaplacianKernel(
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
-    def parameter_factory(self):
-        def parameter_generator():
-            random_seed = 2_024
-            generator = np.random.default_rng(random_seed)
-            parameters = jnp.abs(generator.random(2))
-            return parameters[0], parameters[1]
-
-        return parameter_generator
-
-    @pytest.fixture
-    def kernel_factory(self):
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return LaplacianKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self):
+        random_seed = 2_024
+        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        return LaplacianKernel(parameters[0], parameters[1])
 
     @override
     @pytest.fixture(
@@ -582,21 +567,10 @@ class TestPCIMQKernel(
     """Test ``coreax.kernel.PCIMQKernel``."""
 
     @pytest.fixture
-    def parameter_factory(self):
-        def parameter_generator():
-            random_seed = 2_024
-            generator = np.random.default_rng(random_seed)
-            parameters = jnp.abs(generator.random(2))
-            return parameters[0], parameters[1]
-
-        return parameter_generator
-
-    @pytest.fixture
-    def kernel_factory(self):
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return PCIMQKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self):
+        random_seed = 2_024
+        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        return PCIMQKernel(parameters[0], parameters[1])
 
     @override
     @pytest.fixture(
@@ -725,20 +699,12 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
     @pytest.fixture
-    def parameter_factory(self):
-        def parameter_generator():
-            random_seed = 2_024
-            generator = np.random.default_rng(random_seed)
-            parameters = jnp.abs(generator.random(2))
-            return parameters[0], parameters[1]
+    def kernel(self):
+        random_seed = 2_024
+        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        base_kernel = PCIMQKernel(parameters[0], parameters[1])
 
-        return parameter_generator
-
-    @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[SteinKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
-            base_kernel = PCIMQKernel(length_scale, output_scale)
-            return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
+        return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
     def problem(self, request) -> _Problem:
