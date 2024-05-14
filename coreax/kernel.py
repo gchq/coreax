@@ -53,15 +53,18 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable
+from math import ceil
 from typing import TypeVar
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
 from typing_extensions import override
 
+from coreax.data import Data, is_data
 from coreax.util import pairwise, squared_distance
 
 T = TypeVar("T")
@@ -229,81 +232,139 @@ class Kernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: ArrayLike,
+        x: ArrayLike | Data,
         *,
         block_size: int | None = None,
         unroll: tuple[int | bool, int | bool] = (1, 1),
-    ) -> Array:
+    ):
         r"""
-        Compute the (blocked) row-wise mean of the kernel's Gramian matrix.
+        Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
-        The Gramian is a symmetric matrix :math:`G_{ij} = K(x_i, x_j)`, whose 'row-mean'
-        is given by the vector :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`, where ``K`` is
-        a :class:`~coreax.kernel.Kernel` and ``x`` is a :math:`n \times d` data matrix.
-
-        .. note:
-            Because the Gramian is symmetric, the 'row-mean' and 'column-mean' are
-            equivalent. Use of the name 'row-mean' here is purley by convention.
-
-        To avoid materializing the entire Gramian (memory cost :math:`\mathcal{O}(n^2)),
-        we accumulate the mean in blocks (memory cost :math:`\mathcal{O}(B^2)`, where
-        ``B`` is a user-specified block size).
+        A convenience method for calling meth:`compute_mean`. Equivalent to the call
+        :code:`compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)`.
 
         :param x: Data matrix, :math:`n \times d`
-        :param block_size: Size of Gramian blocks to process; a value of `None` implies
-            a block size equal to :math:`n`; a value that is not an integer divisor of
-            :math:`n` yields :math:`\text{floor}(n / B)` blocks of size ``B`` and a
-            final block of size `n - \text{floor}(n / B)`; to reduce overheads, select
-            the largest integer multiple block size which does not exhaust the available
-            memory resources
+        :param block_size: Size of matrix blocks to process; a value of :data:`None`
+            sets :math:`B_x = n`, effectively disabling the block accumulation; an
+            integer value ``B`` sets :math:`B_x = B`; to reduce overheads, it is often
+            sensible to select the largest block size which does not exhaust the
+            available memory resources
         :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
             calls, allows for trade-offs between compilation and runtime cost; consult
             the JAX docs for further information
         :return: Gramian 'row/column-mean', :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`.
         """
-        x = jnp.atleast_2d(x)
-        num_data_points = x.shape[0]
-        if block_size is None:
-            _block_size = num_data_points
-        else:
-            # Clamp 'block_size' to [1, num_data_points]. Explicit cast will raise an
-            # error if 'block_size' cannot be interpreted as an int.
-            _block_size = min(max(1, abs(int(block_size))), num_data_points)
-        num_blocks = num_data_points // _block_size
-        split_point = num_blocks * _block_size
-        block_iterable_x, trailing_x = x[:split_point], x[split_point:]
-        try:
-            block_x = block_iterable_x.reshape(num_blocks, -1, x.shape[1])
-        except ZeroDivisionError as err:
-            if x.size == 0:
-                raise ValueError("'x' must not be empty") from err
-            raise
-        outer_unroll, inner_unroll = unroll
-        requires_trailing_block = split_point < num_data_points
+        return self.compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)
 
-        def outer_loop(_: T, outer_x: Array) -> tuple[T, Array]:
-            """Block the outer argument of :math:`K(x, x_{b_2})`."""
+    def compute_mean(
+        self,
+        x: ArrayLike | Data,
+        y: ArrayLike | Data,
+        axis: int | None = None,
+        *,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: tuple[int | bool, int | bool] = (1, 1),
+    ) -> Array:
+        r"""
+        Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
-            def inner_loop(_: T, inner_x: Array) -> tuple[T, Array]:
-                """Block the inner argument of :math:`K(x_{b_1}, x_{b_2})`."""
-                gramian_block = self.compute(inner_x, outer_x)
-                return _, jnp.sum(gramian_block, axis=0)
+        The :math:`n \times m` kernel matrix :math:`K_{ij} = k(x_i, y_j)`, where
+        ``x`` and ``y`` are respectively :math:`n \times d` and :math:`m \times d`
+        (weighted) data matrices, has the following (weighted) means:
 
-            _, row_sum = jax.lax.scan(inner_loop, _, block_x, unroll=inner_unroll)
-            if requires_trailing_block:
-                _, trailing_row_sum = inner_loop(_, trailing_x)
-                row_sum = jnp.r_[row_sum, trailing_row_sum[None, ...]]
-            return _, jnp.sum(row_sum, axis=0)
+        - mean (:code:`axis=None`) :math:`\frac{1}{n m}\sum_{i,j=1}^{n, m} K_{ij}`
+        - row-mean (:code:`axis=0`) :math:`\frac{1}{n}\sum_{i=1}^{n} K_{ij}`
+        - column-mean (:code:`axis=1`) :math:`\frac{1}{m}\sum_{j=1}^{m} K_{ij}`
 
-        # Compute the Gramian row sum over the 'block' iterable part of 'x'.
-        _, block_row_sum = jax.lax.scan(outer_loop, None, block_x, unroll=outer_unroll)
-        # If 'block_size' is not an integer divisor of 'num_data_points', there remains
-        # a differently sized 'trailing block' which must be handled outside the scan.
-        if requires_trailing_block:
-            _, trailing_block_row_sum = outer_loop(_, trailing_x)
-            block_row_sum = jnp.r_[block_row_sum.reshape(-1), trailing_block_row_sum]
-        row_sum = jnp.sum(block_row_sum.reshape(-1, num_data_points), axis=0)
-        return row_sum / num_data_points
+        If ``x`` and ``y`` are of type :class:`~coreax.data.Data`, their weights are
+        used to compute the weighted mean as defined in :func:`jax.numpy.average`.
+
+        .. note:
+            Unlike the conventional 'mean', which is a scalar, the 'row-mean' is an
+            :math:`m`-vector, while the 'column-mean' is an :math:`n`-vector.
+
+        To avoid materializing the entire matrix (memory cost :math:`\mathcal{O}(n m)),
+        we accumulate the mean over blocks (memory cost :math:`\mathcal{O}(B_x B_y)`,
+        where ``B_x`` and ``B_y`` are user-specified block-sizes for blocking the ``x``
+        and ``y`` parameters respectively.
+
+        .. note:
+            The data ``x`` and/or ``y`` are padded with zero-valued and zero-weighted
+            data points, when ``B_x`` and/or ``B_y``an non-integer divisors of ``n``
+            and/or ``m``. Padding does not alter the result, but does provide the block
+            shape stability required by :func:`jax.lax.scan` (used for block iteration).
+
+        :param x: Data matrix, :math:`n \times d`
+        :param y: Data matrix, :math:`m \times d`
+        :param axis: Which axis of the kernel matrix to compute the mean over; a value
+            of `None` computes the mean over both axes
+        :param block_size: Size of matrix blocks to process; a value of :data:`None`
+            sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
+            accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
+            allows different sizes to be specified for ``B_x`` and ``B_y``; to reduce
+            overheads, it is often sensible to select the largest block size which does
+            not exhaust the available memory resources
+        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
+            calls, allows for trade-offs between compilation and runtime cost; consult
+            the JAX docs for further information
+        :return: The (weighted) mean of the kernel matrix :math:`K_{ij}`
+        """
+        inner_unroll, outer_unroll = unroll
+        operands = x, y
+        # Handle scalar and tuple block size parameters
+        flat_block_size = jtu.tree_leaves(block_size, is_leaf=lambda x: x is None)
+        _block_size = tuple(flat_block_size) * (len(operands) // len(flat_block_size))
+        # Row-mean is the argument reversed column-mean due to symmetry k(x,y) = k(y,x)
+        if axis == 0:
+            operands = operands[::-1]
+            _block_size = _block_size[::-1]
+        (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
+            _block_data_convert, operands, _block_size, is_leaf=is_data
+        )
+
+        def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
+            """Block reduce/accumulate over ``x``."""
+
+            def slice_sum(accumulated_sum: Array, y_block: Data) -> tuple[Array, Array]:
+                """Block reduce/accumulate over ``y``."""
+                x_, w_x = x_block.data, x_block.weights
+                y_, w_y = y_block.data, y_block.weights
+                column_sum_slice = jnp.dot(self.compute(x_, y_), w_y)
+                accumulated_sum += jnp.dot(w_x, column_sum_slice)
+                return accumulated_sum, column_sum_slice
+
+            accumulated_sum, column_sum_slices = jax.lax.scan(
+                slice_sum, accumulated_sum, block_y, unroll=inner_unroll
+            )
+            return accumulated_sum, jnp.sum(column_sum_slices, axis=0)
+
+        accumulated_sum, column_sum_blocks = jax.lax.scan(
+            block_sum, jnp.asarray(0.0), block_x, unroll=outer_unroll
+        )
+        if axis is None:
+            return accumulated_sum
+        num_rows_padded = block_x.data.shape[0] * block_x.data.shape[1]
+        column_sum_padded = column_sum_blocks.reshape(num_rows_padded, -1).sum(axis=1)
+        return column_sum_padded[:unpadded_len_x]
+
+
+def _block_data_convert(
+    x: ArrayLike | Data, block_size: int | None
+) -> tuple[Array, int]:
+    """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
+    x = x if isinstance(x, Data) else Data(jnp.asarray(x))
+    x = x.normalize()
+    block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
+    unpadded_length = len(x)
+
+    def _pad_reshape(x: Array) -> Array:
+        n, *remaining_shape = jnp.shape(x)
+        padding = (0, ceil(n / block_size) * block_size - n)
+        skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
+        x_padded = jnp.pad(x, (padding, *skip_padding))
+        return x_padded.reshape(-1, block_size, *remaining_shape)
+
+    return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
 
 
 class LinearKernel(Kernel):
@@ -541,9 +602,4 @@ class SteinKernel(CompositeKernel):
         gky = self.base_kernel.grad_y_elementwise(x, y)
         score_x = self.score_function(x)
         score_y = self.score_function(y)
-        return (
-            div
-            + jnp.dot(gkx, score_y)
-            + jnp.dot(gky, score_x)
-            + k * jnp.dot(score_x, score_y)
-        )
+        return div + gkx @ score_y + gky @ score_x + k * score_x @ score_y
