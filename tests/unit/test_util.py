@@ -86,25 +86,22 @@ class TestUtil:
         output = pairwise(difference)(x_array, y_array)
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
-    def test_apply_negative_precision_threshold_invalid(self) -> None:
-        """
-        Test apply_negative_precision_threshold for an invalid threshold.
-
-        A negative precision threshold is given, which should be rejected by the
-        function.
-        """
-        with pytest.raises(ValueError):
-            apply_negative_precision_threshold(x=0.1, precision_threshold=-1e-8)
-
     @pytest.mark.parametrize(
         "value, threshold, expected",
         [
             (-0.01, 0.001, -0.01),
             (-0.0001, 0.001, 0.0),
+            (-0.0001, -0.001, 0.0),
             (0.01, 0.001, 0.01),
             (0.000001, 0.001, 0.000001),
         ],
-        ids=["no_change", "with_change", "positive_input_1", "positive_input_2"],
+        ids=[
+            "no_change",
+            "with_change",
+            "negative_threshold_with_change",
+            "positive_input_1",
+            "positive_input_2",
+        ],
     )
     def test_apply_negative_precision_threshold(
         self, value: float, threshold: float, expected: float
