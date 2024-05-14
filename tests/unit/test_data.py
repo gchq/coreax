@@ -37,6 +37,12 @@ DATA_ARRAY = jnp.array([[1], [2], [3]])
 SUPERVISION = jnp.array([[4], [5], [6]])
 
 
+def test_is_data():
+    """Test functionality of `is_data` filter method."""
+    assert not coreax.data.is_data(123)
+    assert coreax.data.is_data(coreax.data.Data(1))
+
+
 @pytest.mark.parametrize(
     "data_type",
     [
