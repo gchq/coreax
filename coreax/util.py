@@ -58,8 +58,8 @@ class InvalidKernel:
 
 
 def apply_negative_precision_threshold(
-    x: float, precision_threshold: float = 1e-8
-) -> float:
+    x: ArrayLike, precision_threshold: float = 1e-8
+) -> Array:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -67,12 +67,8 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
-    if precision_threshold < 0.0:
-        raise ValueError("precision_threshold must not be negative.")
-    if -precision_threshold < x < 0.0:
-        return 0.0
-
-    return x
+    _x = jnp.asarray(x)
+    return jnp.where((-jnp.abs(precision_threshold) < _x) & (_x < 0.0), 0.0, _x)
 
 
 def pairwise(
