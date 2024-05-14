@@ -290,7 +290,7 @@ class Kernel(eqx.Module):
 
         .. note:
             The data ``x`` and/or ``y`` are padded with zero-valued and zero-weighted
-            data points, when ``B_x`` and/or ``B_y``an non-integer divisors of ``n``
+            data points, when ``B_x`` and/or ``B_y`` are non-integer divisors of ``n``
             and/or ``m``. Padding does not alter the result, but does provide the block
             shape stability required by :func:`jax.lax.scan` (used for block iteration).
 

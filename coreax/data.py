@@ -231,7 +231,7 @@ class Data(eqx.Module):
 
 
 def is_data(x: Any | Data):
-    """Return 'True' if element is and instance of 'coreax.data.Data'."""
+    """Return 'True' if element is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
 
 
