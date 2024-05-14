@@ -162,7 +162,7 @@ class TestCoreset(unittest.TestCase):
                 data=coreset.original_data.pre_coreset_array, weights=weights_x
             ),
             coreax.data.Data(data=coreset.coreset, weights=weights_y),
-            block_size,
+            block_size=block_size,
         )
 
     def test_refine(self):
