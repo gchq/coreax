@@ -28,7 +28,7 @@ import numpy as np
 import pytest
 from jax import Array
 from jax import numpy as jnp
-from jax.random import key, normal
+from jax import random as jxr
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
 from typing_extensions import override
@@ -212,7 +212,7 @@ class TestLinearKernel(
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
-        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        parameters = jnp.abs(jxr.normal(key=jxr.key(random_seed), shape=(2,)))
         return LinearKernel(output_scale=parameters[0], constant=parameters[1])
 
     @override
@@ -294,7 +294,7 @@ class TestSquaredExponentialKernel(
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
-        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        parameters = jnp.abs(jxr.normal(key=jxr.key(random_seed), shape=(2,)))
         return SquaredExponentialKernel(
             length_scale=parameters[0], output_scale=parameters[1]
         )
@@ -446,7 +446,7 @@ class TestLaplacianKernel(
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
-        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        parameters = jnp.abs(jxr.normal(key=jxr.key(random_seed), shape=(2,)))
         return LaplacianKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
@@ -571,7 +571,7 @@ class TestPCIMQKernel(
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
-        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        parameters = jnp.abs(jxr.normal(key=jxr.key(random_seed), shape=(2,)))
         return PCIMQKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
@@ -703,7 +703,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
-        parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
+        parameters = jnp.abs(jxr.normal(key=jxr.key(random_seed), shape=(2,)))
         base_kernel = PCIMQKernel(
             length_scale=parameters[0], output_scale=parameters[1]
         )
