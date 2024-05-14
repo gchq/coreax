@@ -579,6 +579,53 @@ class LinearKernel(Kernel):
         return self.output_scale * jnp.asarray(jnp.shape(x)[0])
 
 
+class PolynomialKernel(Kernel):
+    r"""
+    Define a polynomial kernel.
+
+    Given :math:`\rho =`'output_scale', :math:`c =`'constant', and :math:`d=`'degree',
+    the polynomial kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho (x^Ty + c)^d`.
+
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param constant: Additive constant, :math:`c`
+    :param degree: Degree of kernel, must be a positive integer greater than 1.
+    """
+
+    output_scale: float = 1.0
+    constant: float = 0
+    degree: int = 2
+
+    def __check_init__(self):
+        """Ensure degree is an integer greater than 1."""
+        min_degree = 2
+        if not isinstance(self.degree, int) or self.degree < min_degree:
+            raise ValueError("'degree' must be a positive integer greater than 1")
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * (jnp.dot(x, y) + self.constant) ** self.degree
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.output_scale
+            * self.degree
+            * jnp.asarray(y)
+            * (jnp.dot(x, y) + self.constant) ** (self.degree - 1)
+        )
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.output_scale
+            * self.degree
+            * jnp.asarray(x)
+            * (jnp.dot(x, y) + self.constant) ** (self.degree - 1)
+        )
+
+
 class SquaredExponentialKernel(Kernel):
     r"""
     Define a squared exponential kernel.
@@ -618,6 +665,54 @@ class SquaredExponentialKernel(Kernel):
         scale = 1 / self.length_scale**2
         d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
+
+
+class ExponentialKernel(Kernel):
+    r"""
+    Define an exponential kernel.
+
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    exponential kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.exp(
+            -jnp.linalg.norm(jnp.subtract(x, y)) / (2 * self.length_scale**2)
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+
+    @override
+    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+
+    @override
+    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+
+    @override
+    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
 
 
 class RationalQuadraticKernel(Kernel):
@@ -733,6 +828,70 @@ class PeriodicKernel(Kernel):
             * jnp.sin(body)
             * jnp.cos(body)
             * jnp.exp(-(2 / self.length_scale**2) * jnp.sin(body) ** 2)
+        )
+
+    @override
+    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Periodic kernel function is infinite when `x`=`y`"
+        )
+
+    @override
+    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Periodic kernel function is infinite when `x`=`y`"
+        )
+
+    @override
+    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Periodic kernel function is infinite when `x`=`y`"
+        )
+
+
+class LocallyPeriodicKernel(ProductKernel):
+    r"""
+    Define a locally periodic kernel.
+
+    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+    :math:`\p =`'periodicity', the periodic kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
+    :math:`l` is the squared exponential kernel.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
+    """
+
+    def __init__(self, length_scale, output_scale, periodicity):
+        """Initialise LocallyPeriodicKernel with ProductKernel attributes."""
+        self.first_kernel = PeriodicKernel(
+            length_scale=length_scale,
+            output_scale=output_scale,
+            periodicity=periodicity,
+        )
+
+        self.second_kernel = SquaredExponentialKernel(
+            length_scale=length_scale, output_scale=output_scale
+        )
+
+    @override
+    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
+        )
+
+    @override
+    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
+        )
+
+    @override
+    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+        raise ZeroDivisionError(
+            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
         )
 
 
