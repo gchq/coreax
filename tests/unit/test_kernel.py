@@ -22,7 +22,7 @@ the codebase produce the expected results on simple examples.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, NamedTuple, Protocol, TypeVar
+from typing import Callable, Generic, Literal, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 import pytest
@@ -47,9 +47,7 @@ _Kernel_co = TypeVar("_Kernel_co", bound=Kernel, covariant=True)
 
 
 class _KernelFactory(Protocol, Generic[_Kernel_co]):
-    def __call__(
-        self, length_scale: float = 1.0, output_scale: float = 1.0
-    ) -> _Kernel_co: ...
+    def __call__(self, length_scale: float, output_scale: float) -> _Kernel_co: ...
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -64,12 +62,14 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     """Test the ``compute`` methods of a ``coreax.kernel.Kernel``."""
 
     @abstractmethod
-    def kernel_factory(self) -> _KernelFactory[_Kernel]:
+    def parameter_factory(self) -> Callable[[int], tuple]:
         """
-        Abstract pytest fixture which returns a kernel factory.
+        Abstract pytest fixture which returns a parameter factory.
+        """
 
-        Factory expects a ``length_scale`` and an ``output_scale`` as inputs.
-        """
+    @abstractmethod
+    def kernel_factory(self) -> _KernelFactory[_Kernel]:
+        """Abstract pytest fixture which returns a kernel factory."""
 
     @abstractmethod
     def problem(self, request, kernel_factory: _KernelFactory[_Kernel]) -> _Problem:
@@ -103,18 +103,14 @@ class KernelMeanTest(Generic[_Kernel]):
     @pytest.mark.parametrize("axis", [None, 0, 1])
     def test_compute_mean(
         self,
+        parameter_factory: Callable[[int], tuple],
         kernel_factory: _KernelFactory[_Kernel],
         block_size: int | float | None,
         axis: int | None,
     ):
-        """
-        Test the `compute_mean` methods.
-
-        Considers all classes of 'block_size' and 'axis', along with implicitly and
-        explicitly weighted data.
-        """
-        kernel = kernel_factory()
-        x = jnp.array(
+        """Test the ``gramian_row_mean`` for all expected classes of 'block_size'."""
+        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
+        x = np.array(
             [
                 [0.0, 1.0],
                 [1.0, 2.0],
@@ -126,40 +122,16 @@ class KernelMeanTest(Generic[_Kernel]):
                 [7.0, 8.0],
             ]
         )
-        y = x[:-1] + 1
-        kernel_matrix = kernel.compute(x, y)
-        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
-        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
-        if axis == 0:
-            weights = x_weights
-        elif axis == 1:
-            weights = y_weights
-        else:
-            weights = x_weights[..., None] * y_weights[None, ...]
-        expected = jnp.average(kernel_matrix, axis, weights)
-        mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
-        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
+        expected_output = kernel.compute(x, x).mean(axis=0)
+        mean_output = kernel.gramian_row_mean(x, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected_output)
 
-    def test_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
-        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
-        kernel = kernel_factory()
-        bs = None
-        unroll = (1, 1)
-        x = jnp.array(
-            [
-                [0.0, 1.0],
-                [1.0, 2.0],
-                [2.0, 3.0],
-                [3.0, 4.0],
-                [4.0, 5.0],
-                [5.0, 6.0],
-                [6.0, 7.0],
-                [7.0, 8.0],
-            ]
-        )
-        expected = kernel.compute_mean(x, x, axis=0, block_size=bs, unroll=unroll)
-        output = kernel.gramian_row_mean(x, block_size=bs, unroll=unroll)
-        np.testing.assert_array_equal(output, expected)
+    def tests_empty_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
+        """Test the ``gramian_row_mean`` for an empty dataset."""
+        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
+        x = jnp.array([])
+        with pytest.raises(ValueError, match="'x' must not be empty"):
+            kernel.gramian_row_mean(x)
 
 
 class KernelGradientTest(ABC, Generic[_Kernel]):
@@ -178,22 +150,17 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
     @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
     @pytest.mark.parametrize("elementwise", [False, True])
-    @pytest.mark.parametrize(
-        "length_scale, output_scale",
-        [(np.sqrt(np.float32(np.pi) / 2.0), 1.0), (1.0, np.e)],
-    )
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],
+        parameter_factory: Callable[[int], tuple],
         kernel_factory: _KernelFactory[_Kernel],
-        length_scale: float,
-        output_scale: float,
         mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
         elementwise: bool,
     ):
         """Test computation of the kernel gradients."""
         x, y = gradient_problem
-        kernel = kernel_factory(length_scale, output_scale)
+        kernel = kernel_factory(*parameter_factory())
         test_mode = mode
         reference_mode = "expected_" + mode
         if elementwise:
@@ -232,8 +199,18 @@ class TestLinearKernel(
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
+    def parameter_factory(self):
+        def parameter_generator():
+            random_seed = 2_024
+            generator = np.random.default_rng(random_seed)
+            parameters = jnp.abs(generator.random(2))
+            return parameters[0], parameters[1]
+
+        return parameter_generator
+
+    @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[LinearKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
+        def kernel(length_scale, output_scale):
             del length_scale, output_scale
             return LinearKernel()
 
@@ -248,7 +225,7 @@ class TestLinearKernel(
         Test problems for the Linear kernel.
 
         The kernel is defined as
-        :math:`k(x,y) = x^Ty`.
+        :math:`k(x,y) = \text{output_scale} * x^Ty` + \text{constant}.
 
         We consider the following cases:
         - `floats`: where x and y are floats
@@ -270,7 +247,7 @@ class TestLinearKernel(
             expected_distances = np.array([[20, 44], [70, 174]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = kernel_factory(1.0, 1.0)
+        kernel = kernel_factory(1.0, 0.0)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -282,7 +259,7 @@ class TestLinearKernel(
         expected_gradients = np.zeros((num_points, num_points, dimension))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = y[y_idx]
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * y[y_idx]
         return expected_gradients
 
     def expected_grad_y(
@@ -294,7 +271,7 @@ class TestLinearKernel(
         expected_gradients = np.zeros((num_points, num_points, dimension))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = x[x_idx]
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * x[x_idx]
         return expected_gradients
 
     def expected_divergence_x_grad_y(
@@ -306,7 +283,7 @@ class TestLinearKernel(
         expected_divergence = np.zeros((num_points, num_points))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_divergence[x_idx, y_idx] = dimension
+                expected_divergence[x_idx, y_idx] = kernel.output_scale * dimension
         return expected_divergence
 
 
@@ -316,6 +293,16 @@ class TestSquaredExponentialKernel(
     KernelGradientTest[SquaredExponentialKernel],
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
+
+    @pytest.fixture
+    def parameter_factory(self):
+        def parameter_generator():
+            random_seed = 2_024
+            generator = np.random.default_rng(random_seed)
+            parameters = jnp.abs(generator.random(2))
+            return parameters[0], parameters[1]
+
+        return parameter_generator
 
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[SquaredExponentialKernel]:
@@ -471,6 +458,16 @@ class TestLaplacianKernel(
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
+    def parameter_factory(self):
+        def parameter_generator():
+            random_seed = 2_024
+            generator = np.random.default_rng(random_seed)
+            parameters = jnp.abs(generator.random(2))
+            return parameters[0], parameters[1]
+
+        return parameter_generator
+
+    @pytest.fixture
     def kernel_factory(self):
         def kernel(length_scale=1.0, output_scale=1.0):
             return LaplacianKernel(length_scale, output_scale)
@@ -599,6 +596,16 @@ class TestPCIMQKernel(
     KernelGradientTest[PCIMQKernel],
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
+
+    @pytest.fixture
+    def parameter_factory(self):
+        def parameter_generator():
+            random_seed = 2_024
+            generator = np.random.default_rng(random_seed)
+            parameters = jnp.abs(generator.random(2))
+            return parameters[0], parameters[1]
+
+        return parameter_generator
 
     @pytest.fixture
     def kernel_factory(self):
@@ -736,6 +743,16 @@ class TestPCIMQKernel(
 
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
+
+    @pytest.fixture
+    def parameter_factory(self):
+        def parameter_generator():
+            random_seed = 2_024
+            generator = np.random.default_rng(random_seed)
+            parameters = jnp.abs(generator.random(2))
+            return parameters[0], parameters[1]
+
+        return parameter_generator
 
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[SteinKernel]:
