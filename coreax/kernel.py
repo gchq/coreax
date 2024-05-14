@@ -376,25 +376,31 @@ class LinearKernel(Kernel):
     r"""
     Define a linear kernel.
 
-    The linear kernel is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d
-    \to \mathbb{R}`, :math:`k(x, y) = x^Ty`.
+    Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
+    defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho x^Ty + c`.
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param constant: Additive constant, :math:`c`
     """
+
+    output_scale: float = 1.0
+    constant: float = 0.0
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.dot(x, y)
+        return self.output_scale * jnp.dot(x, y) + self.constant
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(y)
+        return self.output_scale * jnp.asarray(y)
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(x)
+        return self.output_scale * jnp.asarray(x)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(jnp.shape(x)[0])
+        return self.output_scale * jnp.asarray(jnp.shape(x)[0])
 
 
 class SquaredExponentialKernel(Kernel):

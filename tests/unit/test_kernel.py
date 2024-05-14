@@ -22,12 +22,13 @@ the codebase produce the expected results on simple examples.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, NamedTuple, Protocol, TypeVar
+from typing import Generic, Literal, NamedTuple, TypeVar
 
 import numpy as np
 import pytest
 from jax import Array
 from jax import numpy as jnp
+from jax import random as jr
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
 from typing_extensions import override
@@ -43,13 +44,6 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
-_Kernel_co = TypeVar("_Kernel_co", bound=Kernel, covariant=True)
-
-
-class _KernelFactory(Protocol, Generic[_Kernel_co]):
-    def __call__(
-        self, length_scale: float = 1.0, output_scale: float = 1.0
-    ) -> _Kernel_co: ...
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -64,15 +58,11 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     """Test the ``compute`` methods of a ``coreax.kernel.Kernel``."""
 
     @abstractmethod
-    def kernel_factory(self) -> _KernelFactory[_Kernel]:
-        """
-        Abstract pytest fixture which returns a kernel factory.
-
-        Factory expects a ``length_scale`` and an ``output_scale`` as inputs.
-        """
+    def kernel(self) -> _Kernel:
+        """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
-    def problem(self, request, kernel_factory: _KernelFactory[_Kernel]) -> _Problem:
+    def problem(self, request) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
     def test_compute(self, problem: _Problem):
@@ -102,10 +92,7 @@ class KernelMeanTest(Generic[_Kernel]):
     )
     @pytest.mark.parametrize("axis", [None, 0, 1])
     def test_compute_mean(
-        self,
-        kernel_factory: _KernelFactory[_Kernel],
-        block_size: int | float | None,
-        axis: int | None,
+        self, kernel: _Kernel, block_size: int | float | None, axis: int | None
     ):
         """
         Test the `compute_mean` methods.
@@ -113,7 +100,6 @@ class KernelMeanTest(Generic[_Kernel]):
         Considers all classes of 'block_size' and 'axis', along with implicitly and
         explicitly weighted data.
         """
-        kernel = kernel_factory()
         x = jnp.array(
             [
                 [0.0, 1.0],
@@ -140,9 +126,8 @@ class KernelMeanTest(Generic[_Kernel]):
         mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
         np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
-    def test_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
+    def test_gramian_row_mean(self, kernel: _Kernel):
         """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
-        kernel = kernel_factory()
         bs = None
         unroll = (1, 1)
         x = jnp.array(
@@ -178,22 +163,15 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
     @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
     @pytest.mark.parametrize("elementwise", [False, True])
-    @pytest.mark.parametrize(
-        "length_scale, output_scale",
-        [(np.sqrt(np.float32(np.pi) / 2.0), 1.0), (1.0, np.e)],
-    )
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],
-        kernel_factory: _KernelFactory[_Kernel],
-        length_scale: float,
-        output_scale: float,
+        kernel: _Kernel,
         mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
         elementwise: bool,
     ):
         """Test computation of the kernel gradients."""
         x, y = gradient_problem
-        kernel = kernel_factory(length_scale, output_scale)
         test_mode = mode
         reference_mode = "expected_" + mode
         if elementwise:
@@ -232,23 +210,19 @@ class TestLinearKernel(
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[LinearKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
-            del length_scale, output_scale
-            return LinearKernel()
-
-        return kernel
+    def kernel(self) -> _Kernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return LinearKernel(output_scale=parameters[0], constant=parameters[1])
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(
-        self, request, kernel_factory: _KernelFactory[LinearKernel]
-    ) -> _Problem:
+    def problem(self, request) -> _Problem:
         r"""
         Test problems for the Linear kernel.
 
         The kernel is defined as
-        :math:`k(x,y) = x^Ty`.
+        :math:`k(x,y) = \text{output_scale} * x^Ty` + \text{constant}.
 
         We consider the following cases:
         - `floats`: where x and y are floats
@@ -270,7 +244,7 @@ class TestLinearKernel(
             expected_distances = np.array([[20, 44], [70, 174]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = kernel_factory(1.0, 1.0)
+        kernel = LinearKernel(1.0, 0.0)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -282,7 +256,7 @@ class TestLinearKernel(
         expected_gradients = np.zeros((num_points, num_points, dimension))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = y[y_idx]
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * y[y_idx]
         return expected_gradients
 
     def expected_grad_y(
@@ -294,7 +268,7 @@ class TestLinearKernel(
         expected_gradients = np.zeros((num_points, num_points, dimension))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = x[x_idx]
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * x[x_idx]
         return expected_gradients
 
     def expected_divergence_x_grad_y(
@@ -306,7 +280,7 @@ class TestLinearKernel(
         expected_divergence = np.zeros((num_points, num_points))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                expected_divergence[x_idx, y_idx] = dimension
+                expected_divergence[x_idx, y_idx] = kernel.output_scale * dimension
         return expected_divergence
 
 
@@ -318,11 +292,12 @@ class TestSquaredExponentialKernel(
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
     @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[SquaredExponentialKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return SquaredExponentialKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self) -> _Kernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return SquaredExponentialKernel(
+            length_scale=parameters[0], output_scale=parameters[1]
+        )
 
     @override
     @pytest.fixture(
@@ -338,9 +313,7 @@ class TestSquaredExponentialKernel(
         ]
     )
     def problem(  # noqa: C901
-        self,
-        request,
-        kernel_factory: _KernelFactory[SquaredExponentialKernel],
+        self, request
     ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
@@ -412,7 +385,7 @@ class TestSquaredExponentialKernel(
             expected_distances = -0.324652467
         else:
             raise ValueError("Invalid problem mode")
-        kernel = kernel_factory(length_scale, output_scale)
+        kernel = SquaredExponentialKernel(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -471,11 +444,10 @@ class TestLaplacianKernel(
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
-    def kernel_factory(self):
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return LaplacianKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self) -> _Kernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return LaplacianKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
     @pytest.fixture(
@@ -489,11 +461,7 @@ class TestLaplacianKernel(
             "negative_output_scale",
         ]
     )
-    def problem(
-        self,
-        request,
-        kernel_factory: _KernelFactory[LaplacianKernel],
-    ) -> _Problem:
+    def problem(self, request) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -544,7 +512,7 @@ class TestLaplacianKernel(
             expected_distances = -0.472366553
         else:
             raise ValueError("Invalid problem mode")
-        kernel = kernel_factory(length_scale, output_scale)
+        kernel = LaplacianKernel(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -601,11 +569,10 @@ class TestPCIMQKernel(
     """Test ``coreax.kernel.PCIMQKernel``."""
 
     @pytest.fixture
-    def kernel_factory(self):
-        def kernel(length_scale=1.0, output_scale=1.0):
-            return PCIMQKernel(length_scale, output_scale)
-
-        return kernel
+    def kernel(self) -> _Kernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return PCIMQKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
     @pytest.fixture(
@@ -619,11 +586,7 @@ class TestPCIMQKernel(
             "negative_output_scale",
         ]
     )
-    def problem(
-        self,
-        request,
-        kernel_factory: _KernelFactory[PCIMQKernel],
-    ) -> _Problem:
+    def problem(self, request) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -674,7 +637,7 @@ class TestPCIMQKernel(
             expected_distances = -0.685994341
         else:
             raise ValueError("Invalid problem mode")
-        kernel = kernel_factory(length_scale, output_scale)
+        kernel = PCIMQKernel(length_scale, output_scale)
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
@@ -738,22 +701,22 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
     @pytest.fixture
-    def kernel_factory(self) -> _KernelFactory[SteinKernel]:
-        def kernel(length_scale=1.0, output_scale=1.0):
-            base_kernel = PCIMQKernel(length_scale, output_scale)
-            return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
+    def kernel(self) -> _Kernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        base_kernel = PCIMQKernel(
+            length_scale=parameters[0], output_scale=parameters[1]
+        )
 
-        return kernel
+        return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
-    def problem(
-        self,
-        request,
-        kernel_factory: _KernelFactory[SteinKernel],
-    ) -> _Problem:
+    def problem(self, request) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
-        kernel = kernel_factory(length_scale, 1.0)
+        kernel = SteinKernel(
+            base_kernel=PCIMQKernel(length_scale, 1), score_function=jnp.negative
+        )
         score_function = kernel.score_function
         beta = 0.5
         num_points_x = 10
