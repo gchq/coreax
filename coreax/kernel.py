@@ -97,13 +97,66 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
-    def __add__(self, add_kernel):
+    def __add__(self, addition: Kernel | int | float):
         """Overload `+` operator."""
-        return AdditiveKernel(self, add_kernel)
+        if not isinstance(addition, (Kernel, int, float)):
+            return NotImplemented
+        if isinstance(addition, Kernel):
+            return AdditiveKernel(self, addition)
+        if isinstance(addition, (int, float)):
+            return AdditiveKernel(self, LinearKernel(0, addition))
+        return None
 
-    def __mul__(self, prod_kernel):
+    def __radd__(self, addition: Kernel | int | float):
+        """Overload right `+` operator."""
+        if not isinstance(addition, (Kernel, int, float)):
+            return NotImplemented
+        if isinstance(addition, Kernel):
+            return AdditiveKernel(addition, self)
+        if isinstance(addition, (int, float)):
+            return AdditiveKernel(LinearKernel(0, addition), self)
+        return None
+
+    def __mul__(self, product: Kernel | int | float):
         """Overload `*` operator."""
-        return ProductKernel(self, prod_kernel)
+        if not isinstance(product, (Kernel, int, float)):
+            return NotImplemented
+        if isinstance(product, Kernel):
+            return ProductKernel(self, product)
+        if isinstance(product, (int, float)):
+            return ProductKernel(self, LinearKernel(0, product))
+        return None
+
+    def __rmul__(self, product: Kernel | int | float):
+        """Overload right `*` operator."""
+        if not isinstance(product, (Kernel, int, float)):
+            return NotImplemented
+        if isinstance(product, Kernel):
+            return ProductKernel(product, self)
+        if isinstance(product, (int, float)):
+            return ProductKernel(LinearKernel(0, product), self)
+        return None
+
+    def __pow__(self, power: int):
+        """
+        Overload `**` operator.
+
+        I ensure the first and second kernels are symmetric for even powers to make use
+        of reduced computation capabilities in ProductKernel.
+        """
+        min_power = 2
+        if not isinstance(power, int) or power < min_power:
+            raise ValueError("'power' must be an integer greater than 1.")
+
+        first_kernel = self
+        second_kernel = self
+        for i in range(min_power, power):
+            if i % 2 == 0:
+                first_kernel = ProductKernel(first_kernel, self)
+            else:
+                second_kernel = ProductKernel(second_kernel, self)
+
+        return ProductKernel(first_kernel, second_kernel)
 
     @eqx.filter_jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -382,10 +435,10 @@ class AdditiveKernel(Kernel):
     r"""
     Define a kernel which is a summation of two kernels.
 
-    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` define the product kernel
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the product kernel
     :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
-    :math:`p(x,y) = k(x,y) + l(x,y)
+    :math:`p(x,y) := k(x,y) + l(x,y)`
 
     :param first_kernel: Instance of class coreax.kernel.Kernel
     :param second_kernel: Instance of class coreax.kernel.Kernel
@@ -396,24 +449,32 @@ class AdditiveKernel(Kernel):
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return 2 * self.first_kernel.compute_elementwise(x, y)
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return 2 * self.first_kernel.grad_x_elementwise(x, y)
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return 2 * self.first_kernel.grad_y_elementwise(x, y)
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return 2 * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -423,10 +484,10 @@ class ProductKernel(Kernel):
     r"""
     Define a kernel which is a product of two kernels.
 
-    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` define the product kernel
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the product kernel
     :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
-    :math:`p(x,y) = k(x,y)l(x,y)
+    :math:`p(x,y) = k(x,y)l(x,y)`
 
     :param first_kernel: Instance of class coreax.kernel.Kernel
     :param second_kernel: Instance of class coreax.kernel.Kernel
@@ -437,12 +498,20 @@ class ProductKernel(Kernel):
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return self.first_kernel.compute_elementwise(x, y) ** 2
         return self.first_kernel.compute_elementwise(
             x, y
         ) * self.second_kernel.compute_elementwise(x, y)
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_x_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) * self.second_kernel.compute_elementwise(
@@ -453,6 +522,12 @@ class ProductKernel(Kernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_y_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) * self.second_kernel.compute_elementwise(
@@ -474,6 +549,7 @@ class LinearKernel(Kernel):
     Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
     defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho x^Ty + c`.
+
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     :param constant: Additive constant, :math:`c`
     """
