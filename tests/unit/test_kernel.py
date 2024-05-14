@@ -32,6 +32,7 @@ from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
 from typing_extensions import override
 
+from coreax.data import Data
 from coreax.kernel import (
     Kernel,
     LaplacianKernel,
@@ -46,7 +47,9 @@ _Kernel_co = TypeVar("_Kernel_co", bound=Kernel, covariant=True)
 
 
 class _KernelFactory(Protocol, Generic[_Kernel_co]):
-    def __call__(self, length_scale: float, output_scale: float) -> _Kernel_co: ...
+    def __call__(
+        self, length_scale: float = 1.0, output_scale: float = 1.0
+    ) -> _Kernel_co: ...
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -79,12 +82,12 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
         np.testing.assert_array_almost_equal(output, expected_output)
 
 
-class KernelGramianRowMeanTest(Generic[_Kernel]):
-    """Test the ``gramian_row_mean`` method of a ``coreax.kernel.Kernel``."""
+class KernelMeanTest(Generic[_Kernel]):
+    """Test the ``compute_mean`` method of a ``coreax.kernel.Kernel``."""
 
     @pytest.mark.parametrize(
         "block_size",
-        [None, 0, -1, 1.2, 2, 3, 9],
+        [None, 0, -1, 1.2, 2, 3, 9, (None, 2), (2, None)],
         ids=[
             "none",
             "zero",
@@ -93,16 +96,25 @@ class KernelGramianRowMeanTest(Generic[_Kernel]):
             "integer_multiple",
             "fractional_multiple",
             "oversized",
+            "tuple[none, integer_multiple]",
+            "tuple[integer_multiple, none]",
         ],
     )
-    def test_gramian_row_mean(
+    @pytest.mark.parametrize("axis", [None, 0, 1])
+    def test_compute_mean(
         self,
         kernel_factory: _KernelFactory[_Kernel],
         block_size: int | float | None,
+        axis: int | None,
     ):
-        """Test the ``gramian_row_mean`` for all expected classes of 'block_size'."""
-        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x = np.array(
+        """
+        Test the `compute_mean` methods.
+
+        Considers all classes of 'block_size' and 'axis', along with implicitly and
+        explicitly weighted data.
+        """
+        kernel = kernel_factory()
+        x = jnp.array(
             [
                 [0.0, 1.0],
                 [1.0, 2.0],
@@ -114,16 +126,40 @@ class KernelGramianRowMeanTest(Generic[_Kernel]):
                 [7.0, 8.0],
             ]
         )
-        expected_output = kernel.compute(x, x).mean(axis=0)
-        mean_output = kernel.gramian_row_mean(x, block_size=block_size)
-        np.testing.assert_array_almost_equal(mean_output, expected_output)
+        y = x[:-1] + 1
+        kernel_matrix = kernel.compute(x, y)
+        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
+        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
+        if axis == 0:
+            weights = x_weights
+        elif axis == 1:
+            weights = y_weights
+        else:
+            weights = x_weights[..., None] * y_weights[None, ...]
+        expected = jnp.average(kernel_matrix, axis, weights)
+        mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
-    def tests_empty_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
-        """Test the ``gramian_row_mean`` for an empty dataset."""
-        kernel = kernel_factory(1 / np.sqrt(2), 1.0)
-        x = jnp.array([])
-        with pytest.raises(ValueError, match="'x' must not be empty"):
-            kernel.gramian_row_mean(x)
+    def test_gramian_row_mean(self, kernel_factory: _KernelFactory[_Kernel]):
+        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
+        kernel = kernel_factory()
+        bs = None
+        unroll = (1, 1)
+        x = jnp.array(
+            [
+                [0.0, 1.0],
+                [1.0, 2.0],
+                [2.0, 3.0],
+                [3.0, 4.0],
+                [4.0, 5.0],
+                [5.0, 6.0],
+                [6.0, 7.0],
+                [7.0, 8.0],
+            ]
+        )
+        expected = kernel.compute_mean(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = kernel.gramian_row_mean(x, block_size=bs, unroll=unroll)
+        np.testing.assert_array_equal(output, expected)
 
 
 class KernelGradientTest(ABC, Generic[_Kernel]):
@@ -190,14 +226,14 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
 class TestLinearKernel(
     BaseKernelTest[LinearKernel],
-    KernelGramianRowMeanTest[LinearKernel],
+    KernelMeanTest[LinearKernel],
     KernelGradientTest[LinearKernel],
 ):
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[LinearKernel]:
-        def kernel(length_scale, output_scale):
+        def kernel(length_scale=1.0, output_scale=1.0):
             del length_scale, output_scale
             return LinearKernel()
 
@@ -276,14 +312,14 @@ class TestLinearKernel(
 
 class TestSquaredExponentialKernel(
     BaseKernelTest[SquaredExponentialKernel],
-    KernelGramianRowMeanTest[SquaredExponentialKernel],
+    KernelMeanTest[SquaredExponentialKernel],
     KernelGradientTest[SquaredExponentialKernel],
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[SquaredExponentialKernel]:
-        def kernel(length_scale, output_scale):
+        def kernel(length_scale=1.0, output_scale=1.0):
             return SquaredExponentialKernel(length_scale, output_scale)
 
         return kernel
@@ -429,14 +465,14 @@ class TestSquaredExponentialKernel(
 
 class TestLaplacianKernel(
     BaseKernelTest[LaplacianKernel],
-    KernelGramianRowMeanTest[LaplacianKernel],
+    KernelMeanTest[LaplacianKernel],
     KernelGradientTest[LaplacianKernel],
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
     def kernel_factory(self):
-        def kernel(length_scale, output_scale):
+        def kernel(length_scale=1.0, output_scale=1.0):
             return LaplacianKernel(length_scale, output_scale)
 
         return kernel
@@ -559,14 +595,14 @@ class TestLaplacianKernel(
 
 class TestPCIMQKernel(
     BaseKernelTest[PCIMQKernel],
-    KernelGramianRowMeanTest[PCIMQKernel],
+    KernelMeanTest[PCIMQKernel],
     KernelGradientTest[PCIMQKernel],
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
 
     @pytest.fixture
     def kernel_factory(self):
-        def kernel(length_scale, output_scale):
+        def kernel(length_scale=1.0, output_scale=1.0):
             return PCIMQKernel(length_scale, output_scale)
 
         return kernel
@@ -703,7 +739,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
 
     @pytest.fixture
     def kernel_factory(self) -> _KernelFactory[SteinKernel]:
-        def kernel(length_scale, output_scale):
+        def kernel(length_scale=1.0, output_scale=1.0):
             base_kernel = PCIMQKernel(length_scale, output_scale)
             return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
