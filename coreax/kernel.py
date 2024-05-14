@@ -362,7 +362,12 @@ def _block_data_convert(
         padding = (0, ceil(n / block_size) * block_size - n)
         skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
         x_padded = jnp.pad(x, (padding, *skip_padding))
-        return x_padded.reshape(-1, block_size, *remaining_shape)
+        try:
+            return x_padded.reshape(-1, block_size, *remaining_shape)
+        except ZeroDivisionError as err:
+            if 0 in x.shape:
+                raise ValueError("'x' must not be empty") from err
+            raise
 
     return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
 
