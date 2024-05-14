@@ -110,7 +110,7 @@ def main(
 
     # Path to original image
     original_data = cv2.imread(str(in_path))
-    image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
+    image_data = np.asarray(cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY))
     # Pool/downsample the image
     window_shape = (downsampling_factor, downsampling_factor)
     pooled_image_data = linen.avg_pool(
@@ -261,6 +261,7 @@ def main(
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-statements
 # pylint: enable=duplicate-code
+
 
 if __name__ == "__main__":
     main()
