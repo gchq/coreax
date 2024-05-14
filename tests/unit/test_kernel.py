@@ -58,7 +58,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     """Test the ``compute`` methods of a ``coreax.kernel.Kernel``."""
 
     @abstractmethod
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
@@ -210,10 +210,10 @@ class TestLinearKernel(
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         random_seed = 2_024
         parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
-        return LinearKernel(parameters[0], parameters[1])
+        return LinearKernel(output_scale=parameters[0], constant=parameters[1])
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
@@ -292,10 +292,12 @@ class TestSquaredExponentialKernel(
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
     @pytest.fixture
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         random_seed = 2_024
         parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
-        return SquaredExponentialKernel(parameters[0], parameters[1])
+        return SquaredExponentialKernel(
+            length_scale=parameters[0], output_scale=parameters[1]
+        )
 
     @override
     @pytest.fixture(
@@ -442,10 +444,10 @@ class TestLaplacianKernel(
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         random_seed = 2_024
         parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
-        return LaplacianKernel(parameters[0], parameters[1])
+        return LaplacianKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
     @pytest.fixture(
@@ -567,10 +569,10 @@ class TestPCIMQKernel(
     """Test ``coreax.kernel.PCIMQKernel``."""
 
     @pytest.fixture
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         random_seed = 2_024
         parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
-        return PCIMQKernel(parameters[0], parameters[1])
+        return PCIMQKernel(length_scale=parameters[0], output_scale=parameters[1])
 
     @override
     @pytest.fixture(
@@ -699,10 +701,12 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
     @pytest.fixture
-    def kernel(self):
+    def kernel(self) -> _Kernel:
         random_seed = 2_024
         parameters = jnp.abs(normal(key=key(random_seed), shape=(2,)))
-        base_kernel = PCIMQKernel(parameters[0], parameters[1])
+        base_kernel = PCIMQKernel(
+            length_scale=parameters[0], output_scale=parameters[1]
+        )
 
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
