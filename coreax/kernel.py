@@ -108,14 +108,8 @@ class Kernel(eqx.Module):
         return None
 
     def __radd__(self, addition: Kernel | int | float):
-        """Overload right `+` operator."""
-        if not isinstance(addition, (Kernel, int, float)):
-            return NotImplemented
-        if isinstance(addition, Kernel):
-            return AdditiveKernel(addition, self)
-        if isinstance(addition, (int, float)):
-            return AdditiveKernel(LinearKernel(0, addition), self)
-        return None
+        """Overload right `+` operator, order is mathematically irrelevant."""
+        return self.__add__(addition)
 
     def __mul__(self, product: Kernel | int | float):
         """Overload `*` operator."""
@@ -128,14 +122,8 @@ class Kernel(eqx.Module):
         return None
 
     def __rmul__(self, product: Kernel | int | float):
-        """Overload right `*` operator."""
-        if not isinstance(product, (Kernel, int, float)):
-            return NotImplemented
-        if isinstance(product, Kernel):
-            return ProductKernel(product, self)
-        if isinstance(product, (int, float)):
-            return ProductKernel(LinearKernel(0, product), self)
-        return None
+        """Overload right `*` operator, order is mathematically irrelevant."""
+        return self.__mul__(product)
 
     def __pow__(self, power: int):
         """
@@ -449,32 +437,24 @@ class AdditiveKernel(Kernel):
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
-        if self.first_kernel == self.second_kernel:
-            return 2 * self.first_kernel.compute_elementwise(x, y)
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
-        if self.first_kernel == self.second_kernel:
-            return 2 * self.first_kernel.grad_x_elementwise(x, y)
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
-        if self.first_kernel == self.second_kernel:
-            return 2 * self.first_kernel.grad_y_elementwise(x, y)
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
-        if self.first_kernel == self.second_kernel:
-            return 2 * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
