@@ -39,7 +39,7 @@ copy of a coreset, call :meth:`format() <DataReader.format>` on a subclass to re
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -201,33 +201,38 @@ class Data(eqx.Module):
     :param data: An :math:`n \times d` array defining the features of the unsupervised
         dataset; d-vectors are converted to :math:`1 \times d` arrays
     :param weights: An :math:`n`-vector of weights where each element of the weights
-        vector is is paired with the corresponding index of the data array, forming the
-        pair :math:`(x_i, w_i)`, or if not required, default :data:`None` will result in
-        uniform weighting
+        vector is paired with the corresponding index of the data array, forming the
+        pair :math:`(x_i, w_i)`; if passed a scalar weight, it will be broadcast to an
+        :math:`n`-vector. the default value of :data:`None` sets the weights to
+        the ones vector (implies a scalar weight of one);
     """
 
-    data: Shaped[Array, " n d"] = eqx.field(converter=jnp.atleast_2d)
-    weights: Shaped[Array, " n"] = eqx.field(converter=jnp.atleast_1d)
+    data: Shaped[Array, " n d"]
+    weights: Shaped[Array, " n"]
 
     def __init__(
-        self, data: Shaped[Array, " n d"], weights: Shaped[Array, " n"] | None = None
+        self,
+        data: Shaped[ArrayLike, " n d"],
+        weights: Shaped[ArrayLike, " n"] | None = None,
     ):
         """Initialise Data class."""
-        self.data = data
-        if weights is None:
-            n = data.shape[0]
-            self.weights = jnp.broadcast_to(1 / n, (n,))
-        else:
-            self.weights = weights
-
-    def __check_init__(self):
-        """Check leading dimensions of weights and data match."""
-        if self.weights.shape[0] != self.data.shape[0]:
-            raise ValueError("Leading dimensions of 'weights' and 'data' must be equal")
+        self.data = jnp.atleast_2d(data)
+        n = self.data.shape[0]
+        self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
     def __len__(self):
         """Return data length."""
         return len(self.data)
+
+    def normalize(self) -> Data:
+        """Return a copy of 'self' with 'weights' that sum to one."""
+        normalized_weights = self.weights / jnp.sum(self.weights)
+        return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
+
+
+def is_data(x: Any | Data):
+    """Return 'True' if element is an instance of 'coreax.data.Data'."""
+    return isinstance(x, Data)
 
 
 class SupervisedData(Data):
@@ -247,8 +252,9 @@ class SupervisedData(Data):
         converted to :math:`1 \times d` arrays
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data and supervision
-        array, forming the triple :math:`(x_i, y_i, w_i)`, or if not required, default
-        :data:`None` will result in uniform weighting
+        array, forming the triple :math:`(x_i, y_i, w_i)`; if passed a scalar weight,
+        it will be broadcast to an :math:`n`-vector. the default value of :data:`None`
+        sets the weights to the ones vector (implies a scalar weight of one);
     """
 
     supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)

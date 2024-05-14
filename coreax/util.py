@@ -44,7 +44,6 @@ class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
 
 
-# pylint: disable=too-few-public-methods
 class InvalidKernel:
     """
     Simple class that does not have a compute method on to test kernel.
@@ -56,9 +55,6 @@ class InvalidKernel:
     def __init__(self, x: float):
         """Initialise the invalid kernel object."""
         self.x = x
-
-
-# pylint: enable=too-few-public-methods
 
 
 def apply_negative_precision_threshold(
