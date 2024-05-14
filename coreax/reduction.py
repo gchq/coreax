@@ -222,7 +222,7 @@ class Coreset(ABC):
         )
         coreset_data = coreax.data.Data(data=self.coreset, weights=weights_y)
 
-        return metric.compute(pre_coreset_data, coreset_data, block_size)
+        return metric.compute(pre_coreset_data, coreset_data, block_size=block_size)
 
     def refine(self) -> None:
         """
