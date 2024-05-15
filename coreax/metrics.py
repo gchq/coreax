@@ -60,14 +60,14 @@ class MMD(Metric[_Data]):
     r"""
     Definition and calculation of the (weighted) maximum mean discrepancy metric.
 
-    For a dataset :math:`\mathcal_{D}_1` of ``n`` points in ``d`` dimensions, and
-    another dataset :math:`\mathcal_{D}_2` of ``m`` points in ``d`` dimensions, the
+    For a dataset :math:`\mathcal{D}_1` of ``n`` points in ``d`` dimensions, and
+    another dataset :math:`\mathcal{D}_2` of ``m`` points in ``d`` dimensions, the
     (weighted) maximum mean discrepancy is given by:
 
     .. math:
-        \text{MMD}^2(\mathcal_{D}_1,\mathcal_{D}_2) = \mathbb{E}(k(\mathcal_{D}_1,
-        \mathcal_{D}_1)) + \mathbb{E}(k(\mathcal_{D}_2,\mathcal_{D}_2))
-        - 2\mathbb{E}(k(\mathcal_{D}_1,\mathcal_{D}_2))
+        \text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
+        \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
+        - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
 
     where :math:`k` is the selected kernel, and the expectation is with respect to the
     normalized data weights.
@@ -98,9 +98,9 @@ class MMD(Metric[_Data]):
         Compute the (weighted) maximum mean discrepancy.
 
         .. math:
-            \text{MMD}^2(\mathcal_{D}_1,\mathcal_{D}_2) = \mathbb{E}(k(\mathcal_{D}_1,
-            \mathcal_{D}_1)) + \mathbb{E}(k(\mathcal_{D}_2,\mathcal_{D}_2))
-            - 2\mathbb{E}(k(\mathcal_{D}_1,\mathcal_{D}_2))
+            \text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
+            \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
+            - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
 
         :param reference_data: An instance of the class :class:`coreax.data.Data`,
             containing an :math:`n \times d` array of data
