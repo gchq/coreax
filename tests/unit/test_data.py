@@ -72,6 +72,11 @@ class TestData:
             invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
             data_type(weights=invalid_weights)
 
+    def test_arraylike(self, data_type):
+        """Test interpreting data as a JAX array."""
+        _data = data_type()
+        assert eqx.tree_equal(jnp.asarray(_data), _data.data)
+
     def test_len(self, data_type):
         """Test length of data."""
         _data = data_type()

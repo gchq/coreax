@@ -350,7 +350,7 @@ def _block_data_convert(
     x: ArrayLike | Data, block_size: int | None
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
-    x = x if isinstance(x, Data) else Data(jnp.asarray(x))
+    x = x if isinstance(x, Data) else Data(x)
     x = x.normalize()
     block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
     unpadded_length = len(x)
@@ -367,7 +367,7 @@ def _block_data_convert(
                 raise ValueError("'x' must not be empty") from err
             raise
 
-    return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
+    return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array), unpadded_length
 
 
 class LinearKernel(Kernel):
