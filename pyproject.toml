@@ -122,7 +122,7 @@ ignore-init-module-imports = true
 [tool.ruff.lint.pylint]
 max-args = 10
 max-locals = 20
-allow-dunder-method-names = ["__check_init__"]
+allow-dunder-method-names = ["__check_init__", "__jax_array__"]
 
 [tool.coverage.run]
 command_line = "-m pytest tests/unit --cov"
