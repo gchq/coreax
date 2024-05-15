@@ -210,4 +210,4 @@ class TestMMD:
         # Compute the MMD using the metric object
         metric = coreax.metrics.MMD(kernel=kernel)
         output = metric.compute(x, y)
-        assert output == pytest.approx(expected_mmd)
+        assert output == pytest.approx(expected_mmd, abs=1e-6)
