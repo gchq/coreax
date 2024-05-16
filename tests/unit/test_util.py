@@ -21,6 +21,7 @@ import time
 from unittest.mock import Mock
 
 import jax.numpy as jnp
+import jax.tree_util as jtu
 import numpy as np
 import pytest
 from scipy.stats import ortho_group
@@ -33,18 +34,15 @@ from coreax.util import (
     pairwise,
     solve_qp,
     squared_distance,
+    tree_leaves_repeat,
 )
 
 
 class TestUtil:
-    """
-    Tests for general utility functions.
-    """
+    """Tests for general utility functions."""
 
     def test_squared_distance_dist(self) -> None:
-        """
-        Test square distance under float32.
-        """
+        """Test square distance under float32."""
         x, y = ortho_group.rvs(dim=2)
         expected_distance = jnp.linalg.norm(x - y) ** 2
         output_distance = squared_distance(x, y)
@@ -55,9 +53,7 @@ class TestUtil:
         assert output_distance == pytest.approx(0.0, abs=1e-3)
 
     def test_pairwise_squared_distance(self) -> None:
-        """
-        Test the pairwise transform on the squared distance function.
-        """
+        """Test the pairwise transform on the squared distance function."""
         # create an orthonormal matrix
         dimension = 3
         orthonormal_matrix = ortho_group.rvs(dim=dimension)
@@ -73,9 +69,7 @@ class TestUtil:
         assert difference_in_distances == pytest.approx(0.0, abs=1e-3)
 
     def test_pairwise_difference(self) -> None:
-        """
-        Test the pairwise transform on the difference function.
-        """
+        """Test the pairwise transform on the difference function."""
         num_points_x = 10
         num_points_y = 10
         dimension = 3
@@ -87,9 +81,31 @@ class TestUtil:
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     @pytest.mark.parametrize(
+        "length",
+        (0, 1, -1, 2, 10),
+        ids=[
+            "zero",
+            "below_tree_length",
+            "negative",
+            "tree_length",
+            "above_tree_length",
+        ],
+    )
+    def test_tree_leaves_repeat(self, length: int) -> None:
+        """Test tree_leaves_repeat for various length parameters."""
+        tree = (None, 1)
+        tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
+        repeated_tree_leaves = tree_leaves_repeat(tree, length)
+        expected_leaves = tree_leaves + [
+            1,
+        ] * (length - len(tree))
+        assert repeated_tree_leaves == expected_leaves
+
+    @pytest.mark.parametrize(
         "value, threshold, expected",
         [
             (-0.01, 0.001, -0.01),
+            (-0.01, -0.001, -0.01),
             (-0.0001, 0.001, 0.0),
             (-0.0001, -0.001, 0.0),
             (0.01, 0.001, 0.01),
@@ -97,6 +113,7 @@ class TestUtil:
         ],
         ids=[
             "no_change",
+            "negative_threshold_no_change",
             "with_change",
             "negative_threshold_with_change",
             "positive_input_1",
@@ -106,9 +123,7 @@ class TestUtil:
     def test_apply_negative_precision_threshold(
         self, value: float, threshold: float, expected: float
     ) -> None:
-        """
-        Test apply_negative_precision_threshold for valid thresholds.
-        """
+        """Test apply_negative_precision_threshold for valid thresholds."""
         func_out = apply_negative_precision_threshold(
             x=value, precision_threshold=threshold
         )

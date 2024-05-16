@@ -27,13 +27,17 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
+
+PyTreeDef: TypeAlias = Any
+Leaf: TypeAlias = Any
 
 #: JAX random key type annotations.
 KeyArray: TypeAlias = Array
@@ -55,6 +59,25 @@ class InvalidKernel:
     def __init__(self, x: float):
         """Initialise the invalid kernel object."""
         self.x = x
+
+
+def tree_leaves_repeat(tree: PyTreeDef, length: int = 2) -> list[Leaf]:
+    """
+    Flatten a PyTree to its leaves and (potentially) repeat the trailing leaf.
+
+    The PyTree 'tree' is flattened, but unlike the standard flattening, :data:`None` is
+    treated as a valid leaf and the trailing leaf (potentially) repeated such that
+    the length of the collection of leaves is given by the 'length' parameter.
+
+    :param tree: The PyTree to flatten and whose trailing leaf to (potentially) repeat
+    :param length: The length of the flattened PyTree after any repetition; values are
+        implicitly clipped by :code:`max(len(tree_leaves), length)`
+    :return: The PyTree leaves, with the trailing leaf repeated as many times as
+        required for the collection of leaves to have length 'repeated_length'
+    """
+    tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
+    num_repeats = length - len(tree_leaves)
+    return tree_leaves + tree_leaves[-1:] * num_repeats
 
 
 def apply_negative_precision_threshold(
