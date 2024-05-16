@@ -31,7 +31,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     with a non-negative (probability) weight :math:`w_i \in \mathbb{R} \ge 0`, there
     exists an implied discrete (probability) measure over :math:`\Omega`
 
-    .. math:
+    .. math::
         \eta_n = \sum_{i=1}^{n} w_i \delta_{x_i}.
 
     If we then specify a set of test-functions :math:`\Phi = {\phi_1, \dots, \phi_M}`,
@@ -39,7 +39,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     "important" properties of the data, then there also exists an implied push-forward
     measure over :math:`\mathbb{R}^M`
 
-    .. math:
+    .. math::
         \mu_n = \sum_{i=1}^{n} w_i \delta_{\Phi(x_i)}.
 
     A coreset is simply a reduced measure containing :math:`\hat{n} < n` updated nodes
@@ -47,12 +47,12 @@ class Coreset(eqx.Module, Generic[_Data]):
     of the coreset :math:`\nu_\hat{n}` has (approximately for some algorithms) the same
     "centre-of-mass" as the push-forward measure for the original data :math:`\mu_n`
 
-    .. math:
+    .. math::
         \text{CoM}(\mu_n) = \text{CoM}(\nu_\hat{n}),
         \text{CoM}(\nu_\hat{n}) = \int_\Omega \Phi(\omega) d\nu_\hat{x}(\omega),
         \text{CoM}(\nu_\hat{n}) = \sum_{i=1}^\hat{n} \hat{w}_i \delta_{\Phi(\hat{x}_i)}.
 
-    .. note:
+    .. note::
         Depending on the algorithm, the test-functions may be explicitly specified by
         the user, or implicitly defined by the algorithm's specific objectives.
 
