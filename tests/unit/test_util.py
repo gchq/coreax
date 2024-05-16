@@ -21,7 +21,6 @@ import time
 from unittest.mock import Mock
 
 import jax.numpy as jnp
-import jax.tree_util as jtu
 import numpy as np
 import pytest
 from scipy.stats import ortho_group
@@ -93,12 +92,9 @@ class TestUtil:
     )
     def test_tree_leaves_repeat(self, length: int) -> None:
         """Test tree_leaves_repeat for various length parameters."""
-        tree = (None, 1)
-        tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
+        tree = [None, 1]
         repeated_tree_leaves = tree_leaves_repeat(tree, length)
-        expected_leaves = tree_leaves + [
-            1,
-        ] * (length - len(tree))
+        expected_leaves = tree + [1] * (length - len(tree))
         assert repeated_tree_leaves == expected_leaves
 
     @pytest.mark.parametrize(
