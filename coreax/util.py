@@ -27,13 +27,17 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
+
+PyTreeDef: TypeAlias = Any
+Leaf: TypeAlias = Any
 
 #: JAX random key type annotations.
 KeyArray: TypeAlias = Array
@@ -57,9 +61,28 @@ class InvalidKernel:
         self.x = x
 
 
+def tree_leaves_repeat(tree: PyTreeDef, length: int = 2) -> list[Leaf]:
+    """
+    Flatten a PyTree to its leaves and (potentially) repeat the trailing leaf.
+
+    The PyTree 'tree' is flattened, but unlike the standard flattening, :data:`None` is
+    treated as a valid leaf and the trailing leaf (potentially) repeated such that
+    the length of the collection of leaves is given by the 'length' parameter.
+
+    :param tree: The PyTree to flatten and whose trailing leaf to (potentially) repeat
+    :param length: The length of the flattened PyTree after any repetition; values are
+        implicitly clipped by :code:`max(len(tree_leaves), length)`
+    :return: The PyTree leaves, with the trailing leaf repeated as many times as
+        required for the collection of leaves to have length 'repeated_length'
+    """
+    tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
+    num_repeats = length - len(tree_leaves)
+    return tree_leaves + tree_leaves[-1:] * num_repeats
+
+
 def apply_negative_precision_threshold(
-    x: float, precision_threshold: float = 1e-8
-) -> float:
+    x: ArrayLike, precision_threshold: float = 1e-8
+) -> Array:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -67,12 +90,8 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
-    if precision_threshold < 0.0:
-        raise ValueError("precision_threshold must not be negative.")
-    if -precision_threshold < x < 0.0:
-        return 0.0
-
-    return x
+    _x = jnp.asarray(x)
+    return jnp.where((-jnp.abs(precision_threshold) < _x) & (_x < 0.0), 0.0, _x)
 
 
 def pairwise(
