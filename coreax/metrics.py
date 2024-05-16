@@ -64,7 +64,7 @@ class MMD(Metric[_Data]):
     another dataset :math:`\mathcal{D}_2` of ``m`` points in ``d`` dimensions, the
     (weighted) maximum mean discrepancy is given by:
 
-    .. math:
+    .. math::
         \text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
         \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
         - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
@@ -97,7 +97,7 @@ class MMD(Metric[_Data]):
         r"""
         Compute the (weighted) maximum mean discrepancy.
 
-        .. math:
+        .. math::
             \text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
             \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
             - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
@@ -111,7 +111,7 @@ class MMD(Metric[_Data]):
             sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
             accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
             allows different sizes to be specified for ``B_x`` and ``B_y``; to reduce
-            overheads, it is often sensible to select the largest block size which does
+            overheads, it is often sensible to select the largest block size that does
             not exhaust the available memory resources
         :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
             calls, allows for trade-offs between compilation and runtime cost; consult

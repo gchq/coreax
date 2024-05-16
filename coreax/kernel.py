@@ -247,7 +247,7 @@ class Kernel(eqx.Module):
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
             sets :math:`B_x = n`, effectively disabling the block accumulation; an
             integer value ``B`` sets :math:`B_x = B`; to reduce overheads, it is often
-            sensible to select the largest block size which does not exhaust the
+            sensible to select the largest block size that does not exhaust the
             available memory resources
         :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
             calls, allows for trade-offs between compilation and runtime cost; consult
@@ -279,16 +279,16 @@ class Kernel(eqx.Module):
         If ``x`` and ``y`` are of type :class:`~coreax.data.Data`, their weights are
         used to compute the weighted mean as defined in :func:`jax.numpy.average`.
 
-        .. note:
-            Unlike the conventional 'mean', which is a scalar, the 'row-mean' is an
-            :math:`m`-vector, while the 'column-mean' is an :math:`n`-vector.
+        .. note::
+            The conventional 'mean' is a scalar, the 'row-mean' is an :math:`m`-vector,
+            while the 'column-mean' is an :math:`n`-vector.
 
-        To avoid materializing the entire matrix (memory cost :math:`\mathcal{O}(n m)),
+        To avoid materializing the entire matrix (memory cost :math:`\mathcal{O}(n m)`),
         we accumulate the mean over blocks (memory cost :math:`\mathcal{O}(B_x B_y)`,
         where ``B_x`` and ``B_y`` are user-specified block-sizes for blocking the ``x``
         and ``y`` parameters respectively.
 
-        .. note:
+        .. note::
             The data ``x`` and/or ``y`` are padded with zero-valued and zero-weighted
             data points, when ``B_x`` and/or ``B_y`` are non-integer divisors of ``n``
             and/or ``m``. Padding does not alter the result, but does provide the block
@@ -302,7 +302,7 @@ class Kernel(eqx.Module):
             sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
             accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
             allows different sizes to be specified for ``B_x`` and ``B_y``; to reduce
-            overheads, it is often sensible to select the largest block size which does
+            overheads, it is often sensible to select the largest block size that does
             not exhaust the available memory resources
         :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
             calls, allows for trade-offs between compilation and runtime cost; consult
