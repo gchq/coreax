@@ -119,13 +119,34 @@ class MMD(Metric[_Data]):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         del kwargs
+        bs_nn, bs_mm, bs_nm, _ = _permuted_block_sizes(block_size)
         # Variable rename allows for nicer automatic formatting
-        x, y, bs = reference_data, comparison_data, block_size
-        kernel_nn_mean = self.kernel.compute_mean(x, x, block_size=bs, unroll=unroll)
-        kernel_mm_mean = self.kernel.compute_mean(y, y, block_size=bs, unroll=unroll)
-        kernel_nm_mean = self.kernel.compute_mean(x, y, block_size=bs, unroll=unroll)
+        x, y = reference_data, comparison_data
+        kernel_nn_mean = self.kernel.compute_mean(x, x, block_size=bs_nn, unroll=unroll)
+        kernel_mm_mean = self.kernel.compute_mean(y, y, block_size=bs_mm, unroll=unroll)
+        kernel_nm_mean = self.kernel.compute_mean(x, y, block_size=bs_nm, unroll=unroll)
         squared_mmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             kernel_nn_mean + kernel_mm_mean - 2 * kernel_nm_mean,
             self.precision_threshold,
         )
         return jnp.sqrt(squared_mmd_threshold_applied)
+
+
+def _permuted_block_sizes(
+    block_size: int | None | tuple[int | None, int | None],
+) -> tuple[tuple[int | None, int | None], ...]:
+    """
+    Generate all permutations of the passed block sizes.
+
+    :param block_size: Size of matrix blocks to process; a value of :data:`None`
+        sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
+        accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
+        allows different sizes to be specified for ``B_x`` and ``B_y``
+    :return: Given a block size :math:`B`, returns the permutations :math:`(B_x, B_x)`,
+        :math:`(B_y, B_y)`, :math:`(B_x, B_y)` and :math:`(B_y, B_x)`
+    """
+    operand_count = 2
+    bs_nm = tuple(coreax.util.tree_leaves_repeat(block_size, operand_count))
+    bs_mn = bs_nm[::-1]
+    bs_nn, bs_mm = bs_nm[:1] * operand_count, bs_nm[1:] * operand_count
+    return bs_nn, bs_mm, bs_nm, bs_mn
