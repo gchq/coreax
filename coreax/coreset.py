@@ -82,7 +82,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     the reduced measure (the coreset), must be a subset of the support of the original
     measure (the original data), such that
 
-    .. math:
+    .. math::
         \hat{x}_i = x_i, \forall i \in I,
         I \subset \{1, \dots, n\}, text{card}(I) = \hat{n}.
 
