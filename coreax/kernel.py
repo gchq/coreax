@@ -65,7 +65,7 @@ from jax.typing import ArrayLike
 from typing_extensions import override
 
 from coreax.data import Data, is_data
-from coreax.util import pairwise, squared_distance
+from coreax.util import pairwise, squared_distance, tree_leaves_repeat
 
 T = TypeVar("T")
 
@@ -263,7 +263,7 @@ class Kernel(eqx.Module):
         axis: int | None = None,
         *,
         block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: tuple[int | bool, int | bool] = (1, 1),
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ) -> Array:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
@@ -309,17 +309,15 @@ class Kernel(eqx.Module):
             the JAX docs for further information
         :return: The (weighted) mean of the kernel matrix :math:`K_{ij}`
         """
-        inner_unroll, outer_unroll = unroll
         operands = x, y
-        # Handle scalar and tuple block size parameters
-        flat_block_size = jtu.tree_leaves(block_size, is_leaf=lambda x: x is None)
-        _block_size = tuple(flat_block_size) * (len(operands) // len(flat_block_size))
+        inner_unroll, outer_unroll = tree_leaves_repeat(unroll, len(operands))
+        _block_size = tree_leaves_repeat(block_size, len(operands))
         # Row-mean is the argument reversed column-mean due to symmetry k(x,y) = k(y,x)
         if axis == 0:
             operands = operands[::-1]
             _block_size = _block_size[::-1]
         (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
-            _block_data_convert, operands, _block_size, is_leaf=is_data
+            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
         )
 
         def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
