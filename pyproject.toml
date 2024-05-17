@@ -84,15 +84,19 @@ src = [".", "examples"]
 [tool.ruff.lint]
 preview = true
 select = [
-    "B",   # flake8-bugbear
-    "C90", # McCabe
-    "D",   # pydocstyle
-    "E",   # pycodestyle [error]
-    "F",   # pyflakes
-    "I",   # isort
-    "N",   # pep8-naming
-    "PL",  # pylint
-    "W",   # pycodestyle [warning]
+    "B",      # flake8-bugbear
+    "C90",    # McCabe
+    "D",      # pydocstyle
+    "E",      # pycodestyle [error]
+    "F",      # pyflakes
+    "G010",   # logging-warn
+    "I",      # isort
+    "N",      # pep8-naming
+    "PGH005", # invalid-mock-access
+    "PL",     # pylint
+    "S102",   # exec-builtin
+    "S307",   # suspicious-eval-usage
+    "W",      # pycodestyle [warning]
 ]
 
 ignore = [
@@ -122,7 +126,7 @@ ignore-init-module-imports = true
 [tool.ruff.lint.pylint]
 max-args = 10
 max-locals = 20
-allow-dunder-method-names = ["__check_init__"]
+allow-dunder-method-names = ["__check_init__", "__jax_array__"]
 
 [tool.coverage.run]
 command_line = "-m pytest tests/unit --cov"
