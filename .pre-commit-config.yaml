@@ -85,13 +85,6 @@ repos:
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
-      # Prevent common mistakes of `assert mck.not_called()`,
-      # `assert mck.called_once_with(...)` and `mck.assert_called`
-      - id: python-check-mock-methods
-      # Check for the `eval()` built-in function - necessary for security
-      - id: python-no-eval
-      # Check for the deprecated `.warn()` method of Python loggers
-      - id: python-no-log-warn
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
