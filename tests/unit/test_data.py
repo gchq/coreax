@@ -20,8 +20,10 @@ produce the expected results on simple examples.
 """
 
 import unittest
+from functools import partial
 from unittest.mock import MagicMock
 
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -31,81 +33,72 @@ from jax.typing import ArrayLike
 import coreax.data
 import coreax.reduction
 
+DATA_ARRAY = jnp.array([[1], [2], [3]])
+SUPERVISION = jnp.array([[4], [5], [6]])
 
+
+def test_is_data():
+    """Test functionality of `is_data` filter method."""
+    assert not coreax.data.is_data(123)
+    assert coreax.data.is_data(coreax.data.Data(1))
+
+
+@pytest.mark.parametrize(
+    "data_type",
+    [
+        partial(coreax.data.Data, DATA_ARRAY),
+        partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
+    ],
+)
 class TestData:
     """Test operation of Data class."""
 
-    def test_uniform_weights(self):
+    @pytest.mark.parametrize(
+        "weights, expected_weights",
+        (
+            (None, jnp.broadcast_to(1, DATA_ARRAY.shape[0])),
+            (3, jnp.broadcast_to(3, DATA_ARRAY.shape[0])),
+            (DATA_ARRAY.reshape(-1), DATA_ARRAY.reshape(-1)),
+        ),
+    )
+    def test_weights(self, data_type, weights, expected_weights):
         """Test that if no weights are given a uniform weight vector is made."""
-        original_data = jnp.array([1, 2, 3])
-        n = original_data.shape[0]
+        _data = data_type(weights)
+        assert eqx.tree_equal(_data.weights, expected_weights)
 
-        data = coreax.data.Data(data=original_data, weights=None)
-        np.testing.assert_array_almost_equal(
-            data.weights, jnp.broadcast_to(1 / n, (n,)), decimal=5
-        )
+    def test_invalid_weight_dimensions(self, data_type):
+        """Test that __init__ raises expected errors."""
+        with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+            invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
+            data_type(weights=invalid_weights)
 
-    def test_invalid_data_and_weight_dimensions(self):
-        """
-        Test that __check_init__ raises expected errors.
-        """
-        original_data = jnp.array([1, 2, 3])
-        with pytest.raises(
-            ValueError, match="Leading dimensions of 'weights' and 'data' must be equal"
-        ):
-            coreax.data.Data(
-                data=original_data, weights=jnp.ones(original_data.shape[0] + 1)
-            )
+    def test_len(self, data_type):
+        """Test length of data."""
+        _data = data_type()
+        assert len(_data) == len(_data.data)
+
+    @pytest.mark.parametrize("weights", (None, 3, DATA_ARRAY.reshape(-1)))
+    def test_normalize(self, data_type, weights):
+        """Test weight normalization."""
+        data = data_type(weights)
+        expected_weights = data.weights / jnp.sum(data.weights)
+        normalized_data = data.normalize()
+        assert eqx.tree_equal(normalized_data.weights, expected_weights)
 
 
 class TestSupervisedData:
     """Test operation of SupervisedData class."""
 
-    def test_uniform_weights(self):
-        """Test that if no weights are given a uniform weight vector is made."""
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5, 6])
-        n = original_data.shape[0]
-
-        data = coreax.data.SupervisedData(
-            data=original_data, supervision=original_supervision, weights=None
-        )
-        np.testing.assert_array_almost_equal(
-            data.weights, jnp.broadcast_to(1 / n, (n,)), decimal=5
-        )
-
-    def test_invalid_data_and_weight_dimensions(self):
-        """
-        Test that __check_init__ raises ValueError when weights array has bad dimension.
-        """
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5, 6])
-
-        with pytest.raises(
-            ValueError, match="Leading dimensions of 'weights' and 'data' must be equal"
-        ):
-            coreax.data.SupervisedData(
-                data=original_data,
-                supervision=original_supervision,
-                weights=jnp.ones(original_data.shape[0] + 1),
-            )
-
-    def test_invalid_data_and_supervision_dimensions(self):
+    def test_invalid_supervision_dimensions(self):
         """
         Test that __check_init__ raises ValueError when supervision has bad dimension.
         """
-        original_data = jnp.array([1, 2, 3])
-        original_supervision = jnp.array([4, 5])
-
         with pytest.raises(
             ValueError,
             match="Leading dimensions of 'supervision' and 'data' must be equal",
         ):
-            coreax.data.SupervisedData(
-                data=original_data,
-                supervision=original_supervision,
-                weights=jnp.ones(original_data.shape[0] + 1),
-            )
+            invalid_supervision = jnp.ones(DATA_ARRAY.shape[0])
+            coreax.data.SupervisedData(DATA_ARRAY, invalid_supervision)
 
 
 class DataReaderConcrete(coreax.data.DataReader):

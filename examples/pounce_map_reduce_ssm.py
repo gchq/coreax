@@ -89,7 +89,8 @@ def main(
         out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
-    raw_data = np.array(imageio.v2.mimread(in_path)[1:])
+    _, *image_data = imageio.v2.mimread(in_path)
+    raw_data = np.array(image_data)
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
     # Fix random behaviour
