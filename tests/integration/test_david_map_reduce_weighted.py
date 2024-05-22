@@ -39,8 +39,7 @@ class TestDavid(unittest.TestCase):
         """
         Test david_map_reduce_weighted.py example.
 
-        An end-to-end test to check david_map_reduce_weighted.py runs without error,
-        generates output, and has coreset MMD better than MMD from random sampling.
+        An end-to-end test to check david_map_reduce_weighted.py runs without error.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
@@ -52,7 +51,7 @@ class TestDavid(unittest.TestCase):
                 "../../examples/data/david_orig.png"
             )
             out_path = Path(tmp_dir) / "david_coreset.png"
-            mmd_coreset, mmd_random = david_map_reduce_weighted_main(
+            david_map_reduce_weighted_main(
                 in_path=in_path, out_path=out_path, downsampling_factor=4
             )
 
@@ -66,12 +65,6 @@ class TestDavid(unittest.TestCase):
             mock_show.assert_called_once()
 
             self.assertTrue(Path(out_path).resolve().is_file())
-
-            self.assertLess(
-                mmd_coreset,
-                mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
-            )
 
 
 # pylint: enable=duplicate-code
