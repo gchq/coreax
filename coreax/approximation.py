@@ -27,10 +27,9 @@ all functionality provided through composition with a ``base_kernel``, they can 
 freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expected.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from functools import partial
+from typing import Union
 
 import jax
 import jax.numpy as jnp
@@ -173,7 +172,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike | Data, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by Monte-Carlo sampling.
 
@@ -212,7 +211,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike | Data, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by random regression on ANNchor points.
 
@@ -267,7 +266,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike | Data, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by Nystrom approximation.
 
