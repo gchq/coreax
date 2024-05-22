@@ -234,8 +234,13 @@ class Data(eqx.Module):
         return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
 
 
-def is_data(x: Any | Data):
-    """Return 'True' if element is an instance of 'coreax.data.Data'."""
+def as_data(x: Any) -> Data:
+    """Cast 'x' to a data instance."""
+    return x if isinstance(x, Data) else Data(x)
+
+
+def is_data(x: Any) -> bool:
+    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
 
 

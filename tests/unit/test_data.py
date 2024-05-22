@@ -37,6 +37,13 @@ DATA_ARRAY = jnp.array([[1], [2], [3]])
 SUPERVISION = jnp.array([[4], [5], [6]])
 
 
+def test_as_data():
+    """Test functionality of `as_data` converter method."""
+    _array = jnp.array([1, 2, 3])
+    _data = coreax.data.Data(_array)
+    assert eqx.tree_equal(coreax.data.as_data(_array), _data)
+
+
 def test_is_data():
     """Test functionality of `is_data` filter method."""
     assert not coreax.data.is_data(123)
