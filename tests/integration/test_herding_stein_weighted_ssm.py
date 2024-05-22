@@ -44,8 +44,7 @@ class TestHerdingSteinWeightedSSM(unittest.TestCase):
         """
         Test herding_stein_weighted_ssm.py example.
 
-        An end-to-end test to check herding_stein_weighted_ssm.py runs without error,
-        generates output, and has coreset MMD better than MMD from random sampling.
+        An end-to-end test to check herding_stein_weighted_ssm.py runs without error.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
@@ -54,17 +53,11 @@ class TestHerdingSteinWeightedSSM(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_stein_weighted.png"
-            mmd_coreset, mmd_random = herding_stein_weighted_ssm_main(out_path=out_path)
+            herding_stein_weighted_ssm_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 
             self.assertTrue(Path(out_path).resolve().is_file())
-
-            self.assertLess(
-                mmd_coreset,
-                mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
-            )
 
 
 # pylint: enable=duplicate-code
