@@ -8,15 +8,9 @@ import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 
-from coreax.data import Data
+from coreax.data import Data, as_data
 
 _Data = TypeVar("_Data", bound=Data)
-
-
-def _convert_to_weighted(data: Data | Array):
-    if isinstance(data, Data):
-        return data
-    return Data(data)
 
 
 class Coreset(eqx.Module, Generic[_Data]):
@@ -61,7 +55,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    nodes: Data = eqx.field(converter=_convert_to_weighted)
+    nodes: Data = eqx.field(converter=as_data)
     pre_coreset_data: _Data
 
     def __len__(self):
