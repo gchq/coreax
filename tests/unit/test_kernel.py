@@ -377,7 +377,7 @@ class TestProductKernel(
         return _Problem(x, y, expected_distances, kernel)
 
     def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         x = np.atleast_2d(x)
         y = np.atleast_2d(y)
@@ -400,7 +400,7 @@ class TestProductKernel(
         return expected_gradient
 
     def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         x = np.atleast_2d(x)
         y = np.atleast_2d(y)
@@ -423,7 +423,7 @@ class TestProductKernel(
         return expected_gradient
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         expected_divergences = (
             kernel.first_kernel.grad_x_elementwise(x, y).dot(
