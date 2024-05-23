@@ -183,7 +183,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.asarray(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         key = self.random_key
         features_idx = _random_indices(key, num_data_points, self.num_kernel_points - 1)
@@ -223,7 +223,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.asarray(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         features = jnp.zeros((num_data_points, self.num_kernel_points))
         features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
@@ -279,7 +279,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.asarray(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         feature_idx = _random_indices(
             self.random_key, num_data_points, self.num_kernel_points
