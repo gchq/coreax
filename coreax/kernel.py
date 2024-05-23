@@ -518,8 +518,18 @@ class ProductKernel(Kernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
-        pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
-        return pseudo_hessian.trace()
+        return (
+            self.first_kernel.grad_x_elementwise(x, y).dot(
+                self.second_kernel.grad_y_elementwise(x, y)
+            )
+            + self.first_kernel.grad_y_elementwise(x, y).dot(
+                self.second_kernel.grad_x_elementwise(x, y)
+            )
+            + self.first_kernel.compute_elementwise(x, y)
+            * self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+            + self.second_kernel.compute_elementwise(x, y)
+            * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
 
 
 class LinearKernel(Kernel):
