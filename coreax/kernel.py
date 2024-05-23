@@ -129,7 +129,7 @@ class Kernel(eqx.Module):
         """
         Overload `**` operator.
 
-        I ensure the first and second kernels are symmetric for even powers to make use
+        Ensure the first and second kernels are symmetric for even powers to make use
         of reduced computation capabilities in ProductKernel.
         """
         min_power = 2
