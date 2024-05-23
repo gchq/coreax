@@ -207,18 +207,22 @@ class Data(eqx.Module):
         the ones vector (implies a scalar weight of one);
     """
 
-    data: Shaped[Array, " n d"]
+    data: Shaped[Array, " n *d"]
     weights: Shaped[Array, " n"]
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n d"],
+        data: Shaped[ArrayLike, " n *d"],
         weights: Shaped[ArrayLike, " n"] | None = None,
     ):
         """Initialise Data class."""
-        self.data = jnp.atleast_2d(data)
-        n = self.data.shape[0]
+        self.data = jnp.asarray(data)
+        n = self.data.shape[:1]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
+
+    def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
+        """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
+        return self.data
 
     def __len__(self):
         """Return data length."""
@@ -230,8 +234,13 @@ class Data(eqx.Module):
         return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
 
 
-def is_data(x: Any | Data):
-    """Return 'True' if element is an instance of 'coreax.data.Data'."""
+def as_data(x: Any) -> Data:
+    """Cast 'x' to a data instance."""
+    return x if isinstance(x, Data) else Data(x)
+
+
+def is_data(x: Any) -> bool:
+    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
 
 

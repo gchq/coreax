@@ -28,6 +28,8 @@ freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expe
 """
 
 from collections.abc import Callable
+from functools import partial
+from typing import Union
 
 import jax
 import jax.numpy as jnp
@@ -36,6 +38,7 @@ from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import TYPE_CHECKING, Literal, override
 
+from coreax.data import Data
 from coreax.kernel import CompositeKernel
 from coreax.util import KeyArrayLike
 
@@ -169,7 +172,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by Monte-Carlo sampling.
 
@@ -180,7 +183,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         key = self.random_key
         features_idx = _random_indices(key, num_data_points, self.num_kernel_points - 1)
@@ -190,7 +193,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
             data,
             features,
             self.num_train_points,
-            lambda x: self.base_kernel.compute(x, data).sum(axis=1) / num_data_points,
+            partial(self.base_kernel.compute_mean, data, axis=0),
         )
 
 
@@ -208,7 +211,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by random regression on ANNchor points.
 
@@ -220,7 +223,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         features = jnp.zeros((num_data_points, self.num_kernel_points))
         features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
@@ -245,7 +248,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
             data,
             features,
             self.num_train_points,
-            lambda x: self.base_kernel.compute(x, data).mean(axis=1),
+            partial(self.base_kernel.compute_mean, data, axis=0),
         )
 
 
@@ -263,7 +266,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: ArrayLike, **kwargs) -> Array:
+    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
         r"""
         Approximate the Gramian row-mean by Nystrom approximation.
 
@@ -276,7 +279,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(x)
+        data = jnp.atleast_2d(jnp.asarray(x))
         num_data_points = len(data)
         feature_idx = _random_indices(
             self.random_key, num_data_points, self.num_kernel_points
@@ -287,5 +290,5 @@ class NystromApproximateKernel(RandomRegressionKernel):
             data,
             features,
             self.num_train_points,
-            lambda x: self.base_kernel.compute(x, x).sum(axis=1) / num_data_points,
+            self.base_kernel.gramian_row_mean,
         )
