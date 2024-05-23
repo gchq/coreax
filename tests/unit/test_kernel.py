@@ -209,8 +209,6 @@ class TestLinearKernel(
 ):
     """Test ``coreax.kernel.LinearKernel``."""
 
-    @override
-    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -293,7 +291,6 @@ class TestSquaredExponentialKernel(
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
-    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -446,7 +443,6 @@ class TestLaplacianKernel(
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
 
-    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -572,7 +568,6 @@ class TestPCIMQKernel(
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
 
-    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -705,7 +700,6 @@ class TestPCIMQKernel(
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
-    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
