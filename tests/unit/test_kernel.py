@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Generic, Literal, NamedTuple, TypeVar
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -35,10 +36,12 @@ from typing_extensions import override
 
 from coreax.data import Data
 from coreax.kernel import (
+    AdditiveKernel,
     Kernel,
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    ProductKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
@@ -202,6 +205,238 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
+class TestAdditiveKernel(
+    BaseKernelTest[AdditiveKernel],
+    KernelMeanTest[AdditiveKernel],
+    KernelGradientTest[AdditiveKernel],
+):
+    """Test ``coreax.kernel.AdditiveKernel``."""
+
+    @override
+    @pytest.fixture
+    def kernel(self) -> _Kernel:
+        """Define an AdditiveKernel composed of mocked kernel functions."""
+        first_kernel = MagicMock(spec=Kernel)
+        first_kernel.compute_elementwise.return_value = jnp.array(1.0)
+        first_kernel.grad_x_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        first_kernel.grad_y_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        first_kernel.divergence_x_grad_y_elementwise.return_value = jnp.array(1.0)
+
+        second_kernel = MagicMock(spec=Kernel)
+        second_kernel.compute_elementwise.return_value = jnp.array(1.0)
+        second_kernel.grad_x_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        second_kernel.grad_y_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        second_kernel.divergence_x_grad_y_elementwise.return_value = jnp.array(1.0)
+
+        return AdditiveKernel(first_kernel=first_kernel, second_kernel=second_kernel)
+
+    @override
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(self, request) -> _Problem:
+        r"""
+        Test problems for the Additive kernel where we add two Linear kernels.
+
+        Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
+        product kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+        :math:`p(x,y) := k(x,y) + l(x,y)`
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 2.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 40.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[40, 88], [140, 348]])
+        else:
+            raise ValueError("Invalid problem mode")
+        kernel = AdditiveKernel(LinearKernel(1.0, 0.0), LinearKernel(1.0, 0.0))
+        return _Problem(x, y, expected_distances, kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+
+        first_elementwise_gradient = kernel.first_kernel.grad_x_elementwise(x, y)
+        second_elementwise_gradient = kernel.second_kernel.grad_x_elementwise(x, y)
+        expected_gradient = first_elementwise_gradient + second_elementwise_gradient
+
+        if dimension != 1:
+            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
+                num_points, num_points, first_elementwise_gradient.shape[0]
+            )
+
+        return expected_gradient
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+
+        first_elementwise_gradient = kernel.first_kernel.grad_y_elementwise(x, y)
+        second_elementwise_gradient = kernel.second_kernel.grad_y_elementwise(x, y)
+        expected_gradient = first_elementwise_gradient + second_elementwise_gradient
+
+        if dimension != 1:
+            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
+                num_points, num_points, first_elementwise_gradient.shape[0]
+            )
+
+        return expected_gradient
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        num_points = x.shape[0]
+        first_elementwise_divergence = (
+            kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
+        second_elementwise_divergence = (
+            kernel.second_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
+        expected_divergences = jnp.tile(
+            first_elementwise_divergence + second_elementwise_divergence, num_points**2
+        ).reshape(num_points, num_points)
+
+        return expected_divergences
+
+
+class TestProductKernel(
+    BaseKernelTest[ProductKernel],
+    KernelMeanTest[ProductKernel],
+    KernelGradientTest[ProductKernel],
+):
+    """Test ``coreax.kernel.ProductKernel``."""
+
+    @override
+    @pytest.fixture
+    def kernel(self) -> _Kernel:
+        """Define an ProductKernel composed of mocked kernel functions."""
+        first_kernel = MagicMock(spec=Kernel)
+        first_kernel.compute_elementwise.return_value = jnp.array(2.0)
+        first_kernel.grad_x_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        first_kernel.grad_y_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        first_kernel.divergence_x_grad_y_elementwise.return_value = jnp.array(2.0)
+
+        second_kernel = MagicMock(spec=Kernel)
+        second_kernel.compute_elementwise.return_value = jnp.array(2.0)
+        second_kernel.grad_x_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        second_kernel.grad_y_elementwise.return_value = jnp.arange(3, dtype=jnp.float32)
+        second_kernel.divergence_x_grad_y_elementwise.return_value = jnp.array(2.0)
+
+        return ProductKernel(first_kernel=first_kernel, second_kernel=second_kernel)
+
+    @override
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(self, request) -> _Problem:
+        r"""
+        Test problems for the Product kernel where we multiply two Linear kernels.
+
+        Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
+        product kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+        :math:`p(x,y) = k(x,y)l(x,y)`
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 1.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 9.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 400.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[400, 1936], [4900, 30276]])
+        else:
+            raise ValueError("Invalid problem mode")
+        kernel = ProductKernel(LinearKernel(1.0, 0.0), LinearKernel(1.0, 0.0))
+        return _Problem(x, y, expected_distances, kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+
+        first_elementwise_gradient = kernel.first_kernel.grad_x_elementwise(x, y)
+        first_elementwise_compute = kernel.first_kernel.compute_elementwise(x, y)
+        second_elementwise_gradient = kernel.second_kernel.grad_x_elementwise(x, y)
+        second_elementwise_compute = kernel.second_kernel.compute_elementwise(x, y)
+        expected_gradient = (
+            first_elementwise_gradient * first_elementwise_compute
+            + second_elementwise_gradient * second_elementwise_compute
+        )
+        if dimension != 1:
+            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
+                num_points, num_points, first_elementwise_gradient.shape[0]
+            )
+
+        return expected_gradient
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+
+        first_elementwise_gradient = kernel.first_kernel.grad_y_elementwise(x, y)
+        first_elementwise_compute = kernel.first_kernel.compute_elementwise(x, y)
+        second_elementwise_gradient = kernel.second_kernel.grad_y_elementwise(x, y)
+        second_elementwise_compute = kernel.second_kernel.compute_elementwise(x, y)
+        expected_gradient = (
+            first_elementwise_gradient * first_elementwise_compute
+            + second_elementwise_gradient * second_elementwise_compute
+        )
+        if dimension != 1:
+            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
+                num_points, num_points, first_elementwise_gradient.shape[0]
+            )
+
+        return expected_gradient
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        num_points = x.shape[0]
+        first_elementwise_divergence = (
+            kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
+        second_elementwise_divergence = (
+            kernel.second_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
+        expected_divergences = jnp.tile(
+            first_elementwise_divergence + second_elementwise_divergence, num_points**2
+        ).reshape(num_points, num_points)
+
+        return expected_divergences
+
+
 class TestLinearKernel(
     BaseKernelTest[LinearKernel],
     KernelMeanTest[LinearKernel],
@@ -209,6 +444,7 @@ class TestLinearKernel(
 ):
     """Test ``coreax.kernel.LinearKernel``."""
 
+    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -291,6 +527,7 @@ class TestSquaredExponentialKernel(
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
+    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -443,6 +680,7 @@ class TestLaplacianKernel(
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
 
+    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -568,6 +806,7 @@ class TestPCIMQKernel(
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
 
+    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
@@ -700,6 +939,7 @@ class TestPCIMQKernel(
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
+    @override
     @pytest.fixture
     def kernel(self) -> _Kernel:
         random_seed = 2_024
