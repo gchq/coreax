@@ -391,6 +391,7 @@ class TestProductKernel(
             first_elementwise_gradient * first_elementwise_compute
             + second_elementwise_gradient * second_elementwise_compute
         )
+
         if dimension != 1:
             expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
                 num_points, num_points, first_elementwise_gradient.shape[0]
@@ -413,6 +414,7 @@ class TestProductKernel(
             first_elementwise_gradient * first_elementwise_compute
             + second_elementwise_gradient * second_elementwise_compute
         )
+
         if dimension != 1:
             expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
                 num_points, num_points, first_elementwise_gradient.shape[0]
@@ -423,16 +425,18 @@ class TestProductKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
-        num_points = x.shape[0]
-        first_elementwise_divergence = (
-            kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        expected_divergences = (
+            kernel.first_kernel.grad_x_elementwise(x, y).dot(
+                kernel.second_kernel.grad_y_elementwise(x, y)
+            )
+            + kernel.first_kernel.grad_y_elementwise(x, y).dot(
+                kernel.second_kernel.grad_x_elementwise(x, y)
+            )
+            + kernel.first_kernel.compute_elementwise(x, y)
+            * kernel.second_kernel.divergence_x_grad_y_elementwise(x, y)
+            + kernel.second_kernel.compute_elementwise(x, y)
+            * kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
         )
-        second_elementwise_divergence = (
-            kernel.second_kernel.divergence_x_grad_y_elementwise(x, y)
-        )
-        expected_divergences = jnp.tile(
-            first_elementwise_divergence + second_elementwise_divergence, num_points**2
-        ).reshape(num_points, num_points)
 
         return expected_divergences
 
