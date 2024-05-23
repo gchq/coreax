@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, Literal, NamedTuple, TypeVar
 from unittest.mock import MagicMock
 
+import equinox as eqx
 import numpy as np
 import pytest
 from jax import Array
@@ -47,6 +48,8 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
+_AdditiveKernel = TypeVar("_AdditiveKernel", bound=AdditiveKernel)
+_ProductKernel = TypeVar("_ProductKernel", bound=ProductKernel)
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -65,7 +68,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _Kernel) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
     def test_compute(self, problem: _Problem):
@@ -214,7 +217,7 @@ class TestAdditiveKernel(
 
     @override
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> _AdditiveKernel:
         """Define an AdditiveKernel composed of mocked kernel functions."""
         first_kernel = MagicMock(spec=Kernel)
         first_kernel.compute_elementwise.return_value = jnp.array(1.0)
@@ -232,7 +235,7 @@ class TestAdditiveKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _AdditiveKernel) -> _Problem:
         r"""
         Test problems for the Additive kernel where we add two Linear kernels.
 
@@ -261,8 +264,12 @@ class TestAdditiveKernel(
             expected_distances = np.array([[40, 88], [140, 348]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = AdditiveKernel(LinearKernel(1.0, 0.0), LinearKernel(1.0, 0.0))
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.second_kernel,
+            eqx.tree_at(lambda x: x.first_kernel, kernel, LinearKernel(1.0, 0.0)),
+            LinearKernel(1.0, 0.0),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
@@ -326,7 +333,7 @@ class TestProductKernel(
 
     @override
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> _ProductKernel:
         """Define an ProductKernel composed of mocked kernel functions."""
         first_kernel = MagicMock(spec=Kernel)
         first_kernel.compute_elementwise.return_value = jnp.array(2.0)
@@ -344,7 +351,7 @@ class TestProductKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _ProductKernel) -> _Problem:
         r"""
         Test problems for the Product kernel where we multiply two Linear kernels.
 
@@ -373,8 +380,12 @@ class TestProductKernel(
             expected_distances = np.array([[400, 1936], [4900, 30276]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = ProductKernel(LinearKernel(1.0, 0.0), LinearKernel(1.0, 0.0))
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.second_kernel,
+            eqx.tree_at(lambda x: x.first_kernel, kernel, LinearKernel(1.0, 0.0)),
+            LinearKernel(1.0, 0.0),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
@@ -425,17 +436,12 @@ class TestProductKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
+        k1, k2 = kernel.first_kernel, kernel.second_kernel
         expected_divergences = (
-            kernel.first_kernel.grad_x_elementwise(x, y).dot(
-                kernel.second_kernel.grad_y_elementwise(x, y)
-            )
-            + kernel.first_kernel.grad_y_elementwise(x, y).dot(
-                kernel.second_kernel.grad_x_elementwise(x, y)
-            )
-            + kernel.first_kernel.compute_elementwise(x, y)
-            * kernel.second_kernel.divergence_x_grad_y_elementwise(x, y)
-            + kernel.second_kernel.compute_elementwise(x, y)
-            * kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            k1.grad_x_elementwise(x, y).dot(k2.grad_y_elementwise(x, y))
+            + k1.grad_y_elementwise(x, y).dot(k2.grad_x_elementwise(x, y))
+            + k1.compute_elementwise(x, y) * k2.divergence_x_grad_y_elementwise(x, y)
+            + k2.compute_elementwise(x, y) * k1.divergence_x_grad_y_elementwise(x, y)
         )
 
         return expected_divergences
@@ -457,7 +463,7 @@ class TestLinearKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the Linear kernel.
 
@@ -484,8 +490,10 @@ class TestLinearKernel(
             expected_distances = np.array([[20, 44], [70, 174]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = LinearKernel(1.0, 0.0)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale, eqx.tree_at(lambda x: x.constant, kernel, 0), 1.0
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
@@ -554,7 +562,7 @@ class TestSquaredExponentialKernel(
         ]
     )
     def problem(  # noqa: C901
-        self, request
+        self, request, kernel: _Kernel
     ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
@@ -626,8 +634,12 @@ class TestSquaredExponentialKernel(
             expected_distances = -0.324652467
         else:
             raise ValueError("Invalid problem mode")
-        kernel = SquaredExponentialKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
@@ -703,7 +715,7 @@ class TestLaplacianKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -754,8 +766,12 @@ class TestLaplacianKernel(
             expected_distances = -0.472366553
         else:
             raise ValueError("Invalid problem mode")
-        kernel = LaplacianKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
@@ -829,7 +845,7 @@ class TestPCIMQKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -880,8 +896,12 @@ class TestPCIMQKernel(
             expected_distances = -0.685994341
         else:
             raise ValueError("Invalid problem mode")
-        kernel = PCIMQKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
@@ -955,13 +975,13 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
-    def problem(self, request) -> _Problem:
+    def problem(self, request, kernel: _Kernel) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
-        kernel = SteinKernel(
-            base_kernel=PCIMQKernel(length_scale, 1), score_function=jnp.negative
+        modified_kernel = eqx.tree_at(
+            lambda x: x.base_kernel, kernel, PCIMQKernel(length_scale, 1)
         )
-        score_function = kernel.score_function
+        score_function = modified_kernel.score_function
         beta = 0.5
         num_points_x = 10
         num_points_y = 5
@@ -1019,4 +1039,4 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
                 # Compute via our hand-coded kernel evaluation
                 expected_output[x_idx, y_idx] = k_x_y(x[x_idx, :], y[y_idx, :])
 
-        return _Problem(x, y, expected_output, kernel)
+        return _Problem(x, y, expected_output, modified_kernel)
