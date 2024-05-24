@@ -1,3 +1,17 @@
+# © Crown Copyright GCHQ
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Test all solvers in :module:`coreax.solvers`."""
 
 import re
@@ -63,7 +77,9 @@ class SolverTest:
 
     @pytest.fixture
     def reduce_problem(
-        self, request, solver_factory: Union[type[Solver], jtu.Partial]
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
     ) -> _ReduceProblem:
         """
         Pytest fixture that returns a problem dataset and the expected coreset.
@@ -116,7 +132,9 @@ class RefinementSolverTest(SolverTest):
     """Test cases for coresubset solvers that provide a 'refine' method."""
 
     @pytest.fixture(params=["well-sized", "under-sized", "over-sized", "random"])
-    def refine_problem(self, request, reduce_problem: _ReduceProblem) -> _RefineProblem:
+    def refine_problem(
+        self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
+    ) -> _RefineProblem:
         """
         Pytest fixture that returns a problem dataset and the expected coreset.
 
@@ -247,7 +265,9 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
     @override
     @pytest.fixture(params=["random", "analytic"])
     def reduce_problem(
-        self, request, solver_factory: Union[type[Solver], jtu.Partial]
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
     ) -> _ReduceProblem:
         if request.param == "random":
             dataset = jr.uniform(self.random_key, self.shape)
