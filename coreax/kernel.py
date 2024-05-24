@@ -75,6 +75,10 @@ from coreax.util import (
 T = TypeVar("T")
 
 
+class NonDifferentiableError(Exception):
+    """Error to raise when user tries to take gradients of non-differentiable kernel."""
+
+
 @jit
 def median_heuristic(x: ArrayLike) -> Array:
     """
@@ -595,7 +599,7 @@ class PolynomialKernel(Kernel):
     """
 
     output_scale: float = 1.0
-    constant: float = 0
+    constant: float = 0.0
     degree: int = 2
 
     def __check_init__(self):
@@ -708,27 +712,27 @@ class ExponentialKernel(Kernel):
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
     @override
     def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
     @override
     def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
     @override
     def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError("The Exponential Kernel is non-differentiable")
+        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
 
 
 class RationalQuadraticKernel(Kernel):
@@ -847,19 +851,19 @@ class PeriodicKernel(Kernel):
 
     @override
     def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Periodic kernel function is infinite when `x`=`y`"
         )
 
     @override
     def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Periodic kernel function is infinite when `x`=`y`"
         )
 
     @override
     def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Periodic kernel function is infinite when `x`=`y`"
         )
 
@@ -893,19 +897,19 @@ class LocallyPeriodicKernel(ProductKernel):
 
     @override
     def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
         )
 
     @override
     def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
         )
 
     @override
     def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise ZeroDivisionError(
+        raise NonDifferentiableError(
             "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
         )
 
