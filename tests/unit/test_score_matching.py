@@ -54,6 +54,32 @@ class TestKernelDensityMatching(unittest.TestCase):
     Tests related to the class in ``score_matching.py``.
     """
 
+    def test_tree_flatten(self) -> None:
+        """
+        Test the pytree flattens as expected.
+        """
+        # Setup a matching object
+        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
+            length_scale=0.25
+        )
+
+        # Flatten the pytree
+        output_children, output_aux_data = kernel_density_matcher.tree_flatten()
+
+        # Verify outputs are as expected
+        self.assertEqual(len(output_children), 0)
+
+        # We expect the kernel to be a SquaredExponentialKernel with output scale
+        # defined such that it's a normalised (Gaussian) kernel
+        self.assertListEqual(list(output_aux_data.keys()), ["kernel"])
+        self.assertIsInstance(
+            output_aux_data["kernel"], coreax.kernel.SquaredExponentialKernel
+        )
+        self.assertEqual(output_aux_data["kernel"].length_scale, 0.25)
+        self.assertEqual(
+            output_aux_data["kernel"].output_scale, 1.0 / (np.sqrt(2 * np.pi) * 0.25)
+        )
+
     def test_univariate_gaussian_score(self) -> None:
         """
         Test a simple univariate Gaussian with a known score function.

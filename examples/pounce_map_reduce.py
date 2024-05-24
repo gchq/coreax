@@ -129,7 +129,9 @@ def main(
 
     # Learn a score function via kernel density estimation
     kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
-    score_function = kernel_density_score_matcher.match(principle_components_data)
+    score_function = kernel_density_score_matcher.match(
+        principle_components_data[idx, :]
+    )
 
     # Run kernel herding with a Stein kernel
     herding_key, sample_key = random.split(random.key(random_seed))

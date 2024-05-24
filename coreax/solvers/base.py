@@ -64,11 +64,18 @@ class RefinementSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
     A :class:`~coreax.solvers.CoresubsetSolver` which supports refinement.
 
     Some solvers assume implicitly/explicitly an initial coresubset on which the
-    solution is dependant. Such solvers can be interpreted as refining the initial
+    solution is dependent. Such solvers can be interpreted as refining the initial
     coresubset to produce another (solution) coresubset.
 
     By providing a 'refine' method, one can compose the results of different solvers
     together, and/or repeatedly apply/chain the result of a refinement based solve.
+
+    .. code-block:: python
+
+        # An example of repeated application/chaining of solutions/solvers.
+        result, state = solver.reduce(dataset)
+        refined_result, state = refine_solver.refine(result, state)
+        re_refined_result, state = refine_solver.refine(refined_result, state)
     """
 
     @abstractmethod
