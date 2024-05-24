@@ -576,7 +576,8 @@ class LinearKernel(Kernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.asarray(jnp.shape(x)[0])
+        d = len(jnp.asarray(x))
+        return self.output_scale * d
 
 
 class PolynomialKernel(Kernel):
@@ -623,6 +624,21 @@ class PolynomialKernel(Kernel):
             * self.degree
             * jnp.asarray(x)
             * (jnp.dot(x, y) + self.constant) ** (self.degree - 1)
+        )
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        dot = jnp.dot(x, y)
+        body = dot + self.constant
+        d = len(jnp.asarray(x))
+
+        return (
+            self.output_scale
+            * self.degree
+            * (
+                ((self.degree - 1) * dot * body ** (self.degree - 2))
+                + (d * body ** (self.degree - 1))
+            )
         )
 
 
@@ -767,13 +783,12 @@ class RationalQuadraticKernel(Kernel):
         d = len(jnp.asarray(x))
         sq_dist = squared_distance(x, y)
         power = self.relative_weighting + 1
-        body = 1 + sq_dist / (2 * self.relative_weighting * self.length_scale**2)
+        div = self.relative_weighting * self.length_scale**2
+        body = 1 + sq_dist / (2 * div)
         factor = self.output_scale / self.length_scale**2
 
         first_term = factor * body**-power
-        second_term = -(
-            factor * power * sq_dist / (self.relative_weighting * self.length_scale**2)
-        ) * body ** -(power + 1)
+        second_term = -(factor * power * sq_dist / div) * body ** -(power + 1)
         return d * first_term + second_term
 
 
