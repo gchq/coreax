@@ -36,11 +36,16 @@ from scipy.stats import norm as scipy_norm
 from coreax.data import Data
 from coreax.kernel import (
     AdditiveKernel,
+    ExponentialKernel,
     Kernel,
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    PeriodicKernel,
+    LocallyPeriodicKernel,
+    PolynomialKernel,
     ProductKernel,
+    RationalQuadraticKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
@@ -564,6 +569,132 @@ class TestLinearKernel(
         return expected_divergence
 
 
+class TestPolynomialKernel(
+    BaseKernelTest[PolynomialKernel],
+    KernelMeanTest[PolynomialKernel],
+    KernelGradientTest[PolynomialKernel],
+):
+    """Test ``coreax.kernel.PolynomialKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> PolynomialKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        return PolynomialKernel(
+            output_scale=parameters[0],
+            constant=parameters[1],
+            degree=int(jnp.ceil(jnp.abs(parameters[2]))) + 1,
+        )
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(self, request, kernel: PolynomialKernel) -> _Problem:
+        r"""
+        Test problems for the Polynomial kernel.
+
+        Given :math:`\rho =`'output_scale', :math:`c =`'constant', and
+        :math:`d=`'degree', the polynomial kernel is defined as
+        :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+        :math:`k(x, y) = \rho (x^Ty + c)^d`.
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 1.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(3)
+            y = x + 1.0
+            expected_distances = 64.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2], [3, 4, 5]))
+            y = np.array(([1, 2, 3], [4, 5, 6]))
+            expected_distances = np.array([[64, 289], [676, 3844]])
+        else:
+            raise ValueError("Invalid problem mode")
+        output_scale = 1.0
+        constant = 0.0
+        degree = 2
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(
+                lambda x: x.constant,
+                eqx.tree_at(lambda x: x.degree, kernel, degree),
+                constant,
+            ),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    kernel.output_scale
+                    * kernel.degree
+                    * y[y_idx]
+                    * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    ** (kernel.degree - 1)
+                )
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    kernel.output_scale
+                    * kernel.degree
+                    * x[x_idx]
+                    * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    ** (kernel.degree - 1)
+                )
+        return expected_gradients
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_divergence[x_idx, y_idx] = (
+                    kernel.output_scale
+                    * kernel.degree
+                    * (
+                        (
+                            (kernel.degree - 1)
+                            * jnp.dot(x[x_idx], y[y_idx])
+                            * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            ** (kernel.degree - 2)
+                        )
+                        + (
+                            dimension
+                            * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            ** (kernel.degree - 1)
+                        )
+                    )
+                )
+        return expected_divergence
+
+
 class TestSquaredExponentialKernel(
     BaseKernelTest[SquaredExponentialKernel],
     KernelMeanTest[SquaredExponentialKernel],
@@ -717,6 +848,399 @@ class TestSquaredExponentialKernel(
                     * (dimension - dot_product / kernel.length_scale**2)
                 )
         return expected_divergence
+
+
+class TestExponentialKernel(
+    BaseKernelTest[ExponentialKernel],
+    KernelMeanTest[ExponentialKernel],
+):
+    """Test ``coreax.kernel.ExponentialKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> ExponentialKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return ExponentialKernel(length_scale=parameters[0], output_scale=parameters[1])
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(  # noqa: C901
+        self, request, kernel: ExponentialKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Exponential kernel.
+
+        Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+        exponential kernel is defined as
+        :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+        :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
+        :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale or output scale is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        """
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.6203541
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.5290778
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[0.5290778, 0.04145699], [0.07835708, 1.0]])
+        elif mode == "negative_length_scale":
+            length_scale = -length_scale
+            expected_distances = 0.6203541
+        elif mode == "large_negative_length_scale":
+            length_scale = -10000.0
+            expected_distances = 1.0
+        elif mode == "near_zero_length_scale":
+            length_scale = -0.0000001
+            expected_distances = 0.0
+        elif mode == "negative_output_scale":
+            output_scale = -1
+            expected_distances = -0.6203541
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+
+class TestRationalQuadraticKernel(
+    BaseKernelTest[RationalQuadraticKernel],
+    KernelMeanTest[RationalQuadraticKernel],
+    KernelGradientTest[RationalQuadraticKernel],
+):
+    """Test ``coreax.kernel.RationalQuadraticKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> RationalQuadraticKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return RationalQuadraticKernel(
+            length_scale=parameters[0], output_scale=parameters[1]
+        )
+
+    @pytest.fixture(
+        params=[
+            "floats",
+            "vectors",
+            "arrays",
+            "negative_length_scale",
+            "large_negative_length_scale",
+            "near_zero_length_scale",
+            "negative_output_scale",
+            "relative_weighting_scale",
+        ]
+    )
+    def problem(  # noqa: C901
+        self, request, kernel: RationalQuadraticKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the RationalQuadratic kernel.
+
+        Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+        :math:`\alpha =`'relative_weighting', the rational
+        quadratic kernel is defined as
+        :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+        :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}`
+        where :math:`||\cdot||` is the usual :math:`L_2`-norm..
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale, output scale or relative weighting is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        - `relative_weighting_scale`: should approximately equal the equivalent
+            SquaredExponential Kernel
+        """
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
+        relative_weighting = 1.0
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.5826836
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.43990085
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[0.43990085, 0.03045903], [0.04679056, 1.0]])
+        elif mode == "negative_length_scale":
+            length_scale = -length_scale
+            expected_distances = 0.5826836
+        elif mode == "large_negative_length_scale":
+            length_scale = -10000.0
+            expected_distances = 1.0
+        elif mode == "near_zero_length_scale":
+            length_scale = -0.0000001
+            expected_distances = 0.0
+        elif mode == "negative_output_scale":
+            output_scale = -1
+            expected_distances = -0.5826836
+        elif mode == "relative_weighting_scale":
+            relative_weighting = 1000
+            expected_distances = 0.48860678
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(
+                lambda x: x.length_scale,
+                eqx.tree_at(lambda x: x.relative_weighting, kernel, relative_weighting),
+                length_scale,
+            ),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = jnp.subtract(x[x_idx], y[y_idx])
+                expected_gradients[x_idx, y_idx] = -(
+                    kernel.output_scale * sub / kernel.length_scale**2
+                ) * (
+                    1
+                    + jnp.dot(sub, sub)
+                    / (2 * kernel.relative_weighting * kernel.length_scale**2)
+                ) ** (-kernel.relative_weighting - 1)
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
+    ) -> np.ndarray:
+        return -self.expected_grad_x(x, y, kernel)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = jnp.subtract(x[x_idx], y[y_idx])
+                sq_dist = jnp.dot(sub, sub)
+                div = kernel.relative_weighting * kernel.length_scale**2
+                power = kernel.relative_weighting + 1
+                body = 1 + sq_dist / (2 * div)
+                factor = kernel.output_scale / kernel.length_scale**2
+
+                first_term = factor * body**-power
+                second_term = -(factor * power * sq_dist / div) * body ** -(power + 1)
+
+                expected_divergence[x_idx, y_idx] = dimension * first_term + second_term
+        return expected_divergence
+
+
+class TestPeriodicKernel(
+    BaseKernelTest[PeriodicKernel],
+    KernelMeanTest[PeriodicKernel],
+):
+    """Test ``coreax.kernel.PeriodicKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> PeriodicKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        return PeriodicKernel(
+            length_scale=parameters[0],
+            output_scale=parameters[1],
+            periodicity=parameters[2],
+        )
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(  # noqa: C901
+        self, request, kernel: PeriodicKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the PeriodicKernel kernel.
+
+        Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+        :math:`\p =`'periodicity', the periodic kernel is defined as
+        :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+        :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
+        :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale, output scale or periodicity is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        """
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
+        periodicity = 1.0
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.27992335
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = 1.0 * np.ones(4)
+            expected_distances = 0.2889656
+        elif mode == "arrays":
+            x = np.array(([1.5, 1, 1, 1], [5, 6, 7, 8]))
+            y = np.array(([1, 2.5, 3, 4], [2.5, 2, 2, 2]))
+            expected_distances = np.array([[0.95196974, 1.0], [0.5552613, 0.8318974]])
+        elif mode == "negative_length_scale":
+            length_scale = -length_scale
+            expected_distances = 0.27992335
+        elif mode == "large_negative_length_scale":
+            length_scale = -10000.0
+            expected_distances = 1.0
+        elif mode == "near_zero_length_scale":
+            length_scale = -0.0000001
+            expected_distances = 0.0
+        elif mode == "negative_output_scale":
+            output_scale = -1
+            expected_distances = -0.27992335
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(
+                lambda x: x.length_scale,
+                eqx.tree_at(lambda x: x.periodicity, kernel, periodicity),
+                length_scale,
+            ),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+
+class TestLocallyPeriodicKernel(
+    BaseKernelTest[LocallyPeriodicKernel],
+    KernelMeanTest[LocallyPeriodicKernel],
+):
+    """Test ``coreax.kernel.LocallyPeriodicKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> LocallyPeriodicKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        return LocallyPeriodicKernel(
+            length_scale=parameters[0],
+            output_scale=parameters[1],
+            periodicity=parameters[3],
+        )
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(  # noqa: C901
+        self, request, kernel: LocallyPeriodicKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the LocallyPeriodicKernel kernel.
+
+        Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
+        :math:`\p =`'periodicity', the periodic kernel is defined as
+        :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+        :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
+        :math:`l` is the squared exponential kernel.
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale, output scale or periodicity is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        """
+        length_scale = np.sqrt(np.float32(np.pi) / 2.0)
+        output_scale = 1.0
+        periodicity = 1.0
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.13677244
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = 1.0 * np.ones(4)
+            expected_distances = 0.04279616
+        elif mode == "arrays":
+            x = np.array(([1.5, 1, 1, 1], [5, 6, 7, 8]))
+            y = np.array(([1, 2.5, 3, 4], [2.5, 2, 2, 2]))
+            expected_distances = np.array(
+                [[6.8532992e-03, 2.7992335e-01], [2.6033020e-09, 2.5797108e-12]]
+            )
+        elif mode == "negative_length_scale":
+            length_scale = -length_scale
+            expected_distances = 0.13677244
+        elif mode == "large_negative_length_scale":
+            length_scale = -10000.0
+            expected_distances = 1.0
+        elif mode == "near_zero_length_scale":
+            length_scale = -0.0000001
+            expected_distances = 0.0
+        elif mode == "negative_output_scale":
+            output_scale = -1
+            expected_distances = -0.13677244
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.first_kernel,
+            eqx.tree_at(
+                lambda x: x.second_kernel,
+                kernel,
+                SquaredExponentialKernel(
+                    length_scale=length_scale, output_scale=output_scale
+                ),
+            ),
+            PeriodicKernel(
+                length_scale=length_scale,
+                output_scale=output_scale,
+                periodicity=periodicity,
+            ),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
 
 class TestLaplacianKernel(
