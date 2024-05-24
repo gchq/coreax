@@ -27,7 +27,6 @@ import jax.tree_util as jtu
 import pytest
 
 import coreax.data
-import coreax.reduction
 
 DATA_ARRAY = jnp.array([[1], [2], [3]])
 SUPERVISION = jnp.array([[4], [5], [6]])
