@@ -69,6 +69,5 @@ from coreax.kernel import (
     SteinKernel,
 )
 from coreax.metrics import MMD
-from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 # pylint: enable=unused-import
