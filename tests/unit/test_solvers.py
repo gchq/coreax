@@ -16,6 +16,7 @@
 
 import re
 from abc import abstractmethod
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
 from typing import NamedTuple, Union, cast
@@ -135,7 +136,10 @@ class SolverTest:
 
     @pytest.mark.parametrize("use_cached_state", (False, True))
     def test_reduce(
-        self, reduce_problem: _ReduceProblem, use_cached_state: bool
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        reduce_problem: _ReduceProblem,
+        use_cached_state: bool,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -147,7 +151,7 @@ class SolverTest:
         3. Check the two calls to 'refine' yield that same result.
         """
         dataset, solver, _ = reduce_problem
-        coreset, state = solver.reduce(dataset)
+        coreset, state = jit_variant(solver.reduce)(dataset)
         if use_cached_state:
             coreset_with_state, recycled_state = solver.reduce(dataset, state)
             assert eqx.tree_equal(recycled_state, state)
@@ -213,7 +217,10 @@ class RefinementSolverTest(SolverTest):
 
     @pytest.mark.parametrize("use_cached_state", (False, True))
     def test_refine(
-        self, refine_problem: _RefineProblem, use_cached_state: bool
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        refine_problem: _RefineProblem,
+        use_cached_state: bool,
     ) -> None:
         """
         Check 'refine' raises no errors and is resultant 'solver_state' invariant.
@@ -226,7 +233,7 @@ class RefinementSolverTest(SolverTest):
         4. Check the two calls to 'refine' yield that same result.
         """
         initial_coresubset, solver, _ = refine_problem
-        coresubset, state = solver.refine(initial_coresubset)
+        coresubset, state = jit_variant(solver.refine)(initial_coresubset)
         if use_cached_state:
             coresubset_cached_state, recycled_state = solver.refine(
                 initial_coresubset, state
