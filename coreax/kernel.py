@@ -343,7 +343,7 @@ def _block_data_convert(
     x: ArrayLike | Data, block_size: int | None
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
-    x = as_data(x).normalize()
+    x = as_data(x).normalize(preserve_zeros=True)
     block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
     unpadded_length = len(x)
 

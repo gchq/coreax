@@ -223,13 +223,21 @@ class Data(eqx.Module):
         """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
         return self.data
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return data length."""
         return len(self.data)
 
-    def normalize(self) -> Data:
-        """Return a copy of 'self' with 'weights' that sum to one."""
+    def normalize(self, *, preserve_zeros: bool = False) -> Data:
+        """
+        Return a copy of 'self' with 'weights' that sum to one.
+
+        :param preserve_zeros: If to preserve zero valued weights; when all weights are
+            zero valued, the 'normalized' copy will **sum to zero, not one**.
+        :return: A copy of 'self' with normalized 'weights'
+        """
         normalized_weights = self.weights / jnp.sum(self.weights)
+        if preserve_zeros:
+            normalized_weights = jnp.nan_to_num(normalized_weights)
         return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
 
 
