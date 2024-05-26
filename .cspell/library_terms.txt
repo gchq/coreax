@@ -34,12 +34,14 @@ fori_loop
 fracv
 furo
 genindex
+hstack
 imageio
 imread
 imshow
 inproceedings
 intercal
 intersphinx
+isin
 isort
 issubdtype
 jacfwd
@@ -64,6 +66,8 @@ mimsave
 modindex
 myst
 nabla
+nanargmax
+nanargmin
 ndarray
 ndim
 nonzero

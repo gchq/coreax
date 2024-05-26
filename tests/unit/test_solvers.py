@@ -46,7 +46,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     _convert_stein_kernel,  # noqa: PLC2701 - deliberate import/test of private method
 )
-from coreax.util import KeyArrayLike
+from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
 class _ReduceProblem(NamedTuple):
@@ -75,7 +75,7 @@ class SolverTest:
         Partial application allows us to modify the init kwargs/args inside the tests.
         """
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
@@ -96,17 +96,42 @@ class SolverTest:
     def check_solution_invariants(
         self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
-        """Check that a coreset obeys certain expected invariant properties."""
+        """
+        Check that a coreset obeys certain expected invariant properties.
+
+        1. Check 'coreset.pre_coreset_data' is equal to 'dataset'
+        2. Check 'coreset' is equal to 'expected_coreset' (if expected is not 'None')
+        3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset'
+        4. If 'not hasattr(solver, random_key))', check that the
+            addition of zero weighted data-points to the leading axis of the input
+            'dataset' does not modify the resulting coreset when the solver is
+            deterministic.
+        """
         dataset, _, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
             dataset = problem.initial_coresubset.pre_coreset_data
-        if isinstance(coreset, Coresubset):
-            assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
+        assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
         if expected_coreset is not None:
             assert isinstance(coreset, type(expected_coreset))
             assert eqx.tree_equal(coreset, expected_coreset)
+        if isinstance(coreset, Coresubset):
+            membership = jtu.tree_map(jnp.isin, coreset.coreset, dataset)
+            all_membership = jtu.tree_map(jnp.all, membership)
+            assert jtu.tree_all(all_membership)
+        if not hasattr(problem.solver, "random_key"):
+            padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
+            if isinstance(problem, _RefineProblem):
+                padded_initial_coreset = eqx.tree_at(
+                    lambda x: x.pre_coreset_data,
+                    problem.initial_coresubset,
+                    padded_dataset,
+                )
+                coreset_from_padded, _ = problem.solver.refine(padded_initial_coreset)
+            else:
+                coreset_from_padded, _ = problem.solver.reduce(padded_dataset)
+            assert eqx.tree_equal(coreset_from_padded.coreset, coreset.coreset)
 
-    @pytest.mark.parametrize("use_cached_state", [False, True])
+    @pytest.mark.parametrize("use_cached_state", (False, True))
     def test_reduce(
         self, reduce_problem: _ReduceProblem, use_cached_state: bool
     ) -> None:
@@ -131,7 +156,16 @@ class SolverTest:
 class RefinementSolverTest(SolverTest):
     """Test cases for coresubset solvers that provide a 'refine' method."""
 
-    @pytest.fixture(params=["well-sized", "under-sized", "over-sized", "random"])
+    @pytest.fixture(
+        params=[
+            "well-sized",
+            "under-sized",
+            "over-sized",
+            "random",
+            "random-zero-weights",
+        ],
+        scope="class",
+    )
     def refine_problem(
         self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
     ) -> _RefineProblem:
@@ -140,6 +174,10 @@ class RefinementSolverTest(SolverTest):
 
         An expected coreset of 'None' implies the expected coreset for this solver and
         dataset combination is unknown.
+
+        We expect the '{well,under,over}-sized' and the 'random-zero-weights' cases to
+        return the same result as a call to 'reduce'. The 'random' case we only expect
+        to pass without raising an error.
         """
         dataset, solver, expected_coreset = reduce_problem
         indices_key, weights_key = jr.split(self.random_key)
@@ -153,22 +191,25 @@ class RefinementSolverTest(SolverTest):
         elif isinstance(expected_coreset, Coresubset):
             expected_coresubset = expected_coreset
         if request.param == "well-sized":
-            indices = Data(jnp.zeros(coreset_size, jnp.int32))
+            indices = Data(jnp.zeros(coreset_size, jnp.int32), 0)
         elif request.param == "under-sized":
-            indices = Data(jnp.zeros(coreset_size - 1, jnp.int32))
+            indices = Data(jnp.zeros(coreset_size - 1, jnp.int32), 0)
         elif request.param == "over-sized":
-            indices = Data(jnp.zeros(coreset_size + 1, jnp.int32))
+            indices = Data(jnp.zeros(coreset_size + 1, jnp.int32), 0)
         elif request.param == "random":
             random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
             random_weights = jr.uniform(weights_key, (coreset_size,))
             indices = Data(random_indices, random_weights)
             expected_coresubset = None
+        elif request.param == "random-zero-weights":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            indices = Data(random_indices, 0)
         else:
             raise ValueError("Invalid fixture parametrization")
         initial_coresubset = Coresubset(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
-    @pytest.mark.parametrize("use_cached_state", [False, True])
+    @pytest.mark.parametrize("use_cached_state", (False, True))
     def test_refine(
         self, refine_problem: _RefineProblem, use_cached_state: bool
     ) -> None:
@@ -256,14 +297,14 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.KernelHerding`."""
 
     @override
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(KernelHerding, coreset_size=coreset_size, kernel=kernel)
 
     @override
-    @pytest.fixture(params=["random", "analytic"])
+    @pytest.fixture(params=["random", "analytic"], scope="class")
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
@@ -278,8 +319,13 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             # Set the kernel such that a simple analytic solution exists.
             kernel_matrix = jnp.asarray([[1, 1, 1], [1, 1, 1], [0.5, 0.5, 0.5]])
             kernel = MagicMock(Kernel)
-            kernel.compute = lambda _, y: kernel_matrix[:, y[0]]
-            kernel.gramian_row_mean.return_value = jnp.asarray([0.6, 0.75, 0.55])
+            kernel.compute = lambda x, y: jnp.hstack(
+                [kernel_matrix[:, y[0]], jnp.zeros((len(x) - 3,))]
+            )
+            kernel.compute_mean = lambda x, y, **kwargs: jnp.zeros(len(x))
+            kernel.gramian_row_mean = lambda x, **kwargs: jnp.hstack(
+                [jnp.asarray([0.6, 0.75, 0.55]), jnp.zeros((len(x) - 3,))]
+            )
             solver = KernelHerding(coreset_size=2, kernel=kernel, unique=True)
             expected_coreset = Coresubset(jnp.array([1, 2]), Data(dataset))
         else:
@@ -309,7 +355,7 @@ class TestRandomSample(ExplicitSizeSolverTest):
             assert max(counts) <= 1
 
     @override
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
         coreset_size = self.shape[0] // 10
         key = jr.fold_in(self.random_key, self.shape[0])
@@ -330,7 +376,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             assert max(counts) <= 1
 
     @override
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
@@ -356,7 +402,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.SteinThinning`."""
 
     @override
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
