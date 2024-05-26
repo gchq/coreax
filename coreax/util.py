@@ -29,6 +29,7 @@ from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from typing import Any, TypeVar
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
@@ -78,6 +79,27 @@ def tree_leaves_repeat(tree: PyTreeDef, length: int = 2) -> list[Leaf]:
     tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
     num_repeats = length - len(tree_leaves)
     return tree_leaves + tree_leaves[-1:] * num_repeats
+
+
+def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
+    """
+    Pad each array leaf of 'tree' with 'pad_width' trailing zeros.
+
+    :param tree: The PyTree whose array leaves to pad with trailing zeros
+    :param pad_width: The number of trailing zeros to pad with
+    :return A copy of the original PyTree with the array leaves padded
+    """
+    if int(pad_width) < 0:
+        raise ValueError("'pad_width' must be a positive integer")
+    leaves_to_pad, leaves_to_keep = eqx.partition(tree, eqx.is_array)
+
+    def _pad(x: ArrayLike) -> Array:
+        padding = (0, int(pad_width))
+        skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
+        return jnp.pad(x, (padding, *skip_padding))
+
+    padded_leaves = jtu.tree_map(_pad, leaves_to_pad)
+    return eqx.combine(padded_leaves, leaves_to_keep)
 
 
 def apply_negative_precision_threshold(
