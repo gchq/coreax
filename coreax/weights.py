@@ -31,8 +31,8 @@ weights such that a metric of interest is optimised when these weights are appli
 the dataset.
 """
 
-import warnings
 from abc import ABC, abstractmethod
+from typing import Union
 
 import jax.numpy as jnp
 from jax import Array
@@ -41,6 +41,34 @@ from typing_extensions import deprecated
 
 import coreax.kernel
 import coreax.util
+from coreax.data import Data
+
+
+def _prepare_kernel_system(
+    kernel: coreax.kernel.Kernel,
+    x: Union[ArrayLike, Data],
+    y: Union[ArrayLike, Data],
+    epsilon: float = 1e-10,
+    *,
+    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+) -> tuple[Array, Array]:
+    r"""
+    Return the row mean of k(y,x) and the Gramian k(y,y).
+
+    :param x: The original :math:`n \times d` data
+    :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
+    :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+        numerical solver computations
+    :param block_size: Block size passed to the ``self.kernel.compute_mean``
+    :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
+    :return: The row mean of k(y,x) and the epsilon perturbed Gramian k(y,y)
+    """
+    x = jnp.atleast_2d(jnp.asarray(x))
+    y = jnp.atleast_2d(jnp.asarray(y))
+    kernel_yx = kernel.compute_mean(y, x, axis=1, block_size=block_size, unroll=unroll)
+    kernel_yy = kernel.compute(y, y) + epsilon * jnp.identity(len(y))
+    return kernel_yx, kernel_yy
 
 
 class WeightsOptimiser(ABC):
@@ -55,7 +83,7 @@ class WeightsOptimiser(ABC):
         self.kernel = kernel
 
     @abstractmethod
-    def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def solve(self, x: Union[ArrayLike, Data], y: Union[ArrayLike, Data]) -> Array:
         r"""
         Calculate the weights.
 
@@ -63,21 +91,6 @@ class WeightsOptimiser(ABC):
         :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-
-    def solve_approximate(self, x: ArrayLike, y: ArrayLike) -> Array:
-        r"""
-        Calculate approximate weights.
-
-        :param x: The original :math:`n \times d` data
-        :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
-        :return: Approximately optimal weighting of points in ``y`` to represent ``x``
-        """
-        warnings.warn(
-            "solve_approximate() not yet implemented. "
-            "Calculating exact solution via solve()",
-            stacklevel=1,
-        )
-        return self.solve(x, y)
 
 
 class SBQWeightsOptimiser(WeightsOptimiser):
@@ -109,7 +122,15 @@ class SBQWeightsOptimiser(WeightsOptimiser):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def solve(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def solve(
+        self,
+        x: Union[ArrayLike, Data],
+        y: Union[ArrayLike, Data],
+        epsilon: float = 1e-10,
+        *,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Array:
         r"""
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
@@ -122,20 +143,16 @@ class SBQWeightsOptimiser(WeightsOptimiser):
 
         :param x: The original :math:`n \times d` data
         :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
+        :param epsilon: Small positive value to add to the kernel Gram matrix to aid
+            numerical solver computations
+        :param block_size: Block size passed to the ``self.kernel.compute_mean``
+        :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Format inputs
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-
-        # Compute the components of the kernel matrix. Note that to ensure the solver
-        # can numerically compute the result, we add a small perturbation to the kernel
-        # matrix.
-        kernel_nm = self.kernel.compute(y, x).sum(axis=1) / len(x)
-        kernel_mm = self.kernel.compute(y, y) + 1e-10 * jnp.identity(len(y))
-
-        # Solve for the optimal weights
-        return jnp.linalg.solve(kernel_mm, kernel_nm)
+        kernel_yx, kernel_yy = _prepare_kernel_system(
+            self.kernel, x, y, epsilon, block_size=block_size, unroll=unroll
+        )
+        return jnp.linalg.solve(kernel_yy, kernel_yx)
 
 
 class MMDWeightsOptimiser(WeightsOptimiser):
@@ -160,7 +177,15 @@ class MMDWeightsOptimiser(WeightsOptimiser):
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def solve(self, x: ArrayLike, y: ArrayLike, epsilon: float = 1e-10) -> Array:
+    def solve(
+        self,
+        x: Union[ArrayLike, Data],
+        y: Union[ArrayLike, Data],
+        epsilon: float = 1e-10,
+        *,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Array:
         r"""
         Compute optimal weights given the simplex constraint.
 
@@ -168,22 +193,14 @@ class MMDWeightsOptimiser(WeightsOptimiser):
         :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
             numerical solver computations
+        :param block_size: Block size passed to the ``self.kernel.compute_mean``
+        :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
-        # Format inputs
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
-
-        # Compute the components of the kernel matrix. Note that to ensure the solver
-        # can numerically compute the result, we add a small perturbation to the kernel
-        # matrix.
-        kernel_nm = self.kernel.compute(y, x).sum(axis=1) / len(x)
-        kernel_mm = self.kernel.compute(y, y) + epsilon * jnp.identity(len(y))
-
-        # Call the QP solver
-        sol = coreax.util.solve_qp(kernel_mm, kernel_nm)
-
-        return sol
+        kernel_yx, kernel_yy = _prepare_kernel_system(
+            self.kernel, x, y, epsilon, block_size=block_size, unroll=unroll
+        )
+        return coreax.util.solve_qp(kernel_yy, kernel_yx)
 
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
