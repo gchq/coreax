@@ -424,8 +424,8 @@ class AdditiveKernel(Kernel):
     Define a kernel which is a summation of two kernels.
 
     Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
-    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the product kernel
-    :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the additive
+    kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
     :math:`p(x,y) := k(x,y) + l(x,y)`
 
     :param first_kernel: Instance of class coreax.kernel.Kernel
