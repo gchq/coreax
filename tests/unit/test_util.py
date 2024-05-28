@@ -326,12 +326,12 @@ class TestUtil:
         Test randomised_eigendecomposition with random kernel matrix.
         """
         random_key = key(0)
-        dimension = 100
+        num_data_points = 100
         oversampling_parameter = 10
         power_iterations = 1
 
         # Make kernel matrix
-        x = normal(key(1), (dimension, 1))
+        x = normal(key(1), (num_data_points, 1))
         array = SquaredExponentialKernel().compute(x, x)
 
         (
@@ -350,11 +350,13 @@ class TestUtil:
                 @ jnp.diag(output_eigenvalues)
                 @ output_eigenvectors.T
             )
-        ) == pytest.approx(0.0, abs=1e-3)
+        ) == pytest.approx(0.0, abs=1e-4)
 
     def test_randomised_invert_regularised_array_negative_rcond(self) -> None:
         """
         Test randomised_invert_regularised_array with negative rcond not negative one.
+
+        Should be rejected by the function.
         """
         with pytest.raises(ValueError):
             randomised_invert_regularised_array(
@@ -386,15 +388,15 @@ class TestUtil:
         Test randomised_invert_regularised_array.
         """
         random_key = key(0)
-        dimension = 1000
+        num_data_points = 1000
         regularisation_parameter = 1e-6
-        identity = jnp.eye(dimension)
+        identity = jnp.eye(num_data_points)
         rcond = None
         oversampling_parameter = 25
         power_iterations = 1
 
         # Make kernel matrix
-        x = normal(key(1), (dimension, 1))
+        x = normal(key(1), (num_data_points, 1))
         array = SquaredExponentialKernel().compute(x, x)
 
         output = randomised_invert_regularised_array(

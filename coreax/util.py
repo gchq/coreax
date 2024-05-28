@@ -211,46 +211,6 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
     return sol.primal
 
 
-@partial(jit, static_argnames="rcond")
-def invert_regularised_array(
-    array: ArrayLike,
-    regularisation_parameter: float,
-    identity: ArrayLike,
-    rcond: float | None = None,
-) -> ArrayLike:
-    """
-    Regularise and array and then invert it using a least-squares solver.
-
-    The function is designed to invert square block arrays where only the top-left block
-    is non-zero. That is, we return a block array, the same size as the input array,
-    where each block consists of zeros except for the top-left block, which is the
-    inverse of the non-zero input block. The fastest way to compute this requires the
-    'identity' array to be a zero matrix except for ones on the diagonal up to the size
-    of the non-zero block.
-
-    :param array: Array to be inverted
-    :param regularisation_parameter: Regularisation parameter for stable inversion of
-        array, negative values will be converted to positive
-    :param identity: Block identity matrix
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
-        determination, singular values are treated as zero if they are smaller than
-        rcond times the largest singular value of a. The default value of None will use
-        the machine precision multiplied by the largest dimension of the array.
-        An alternate value of -1 will use machine precision.
-    :return: Inverse of regularised array
-    """
-    if rcond is not None:
-        if rcond < 0 and rcond != -1:
-            raise ValueError("rcond must be non-negative, except for value of -1")
-    if array.shape != identity.shape:
-        raise ValueError("Leading dimensions of array and identity must match")
-
-    regularisation_parameter = abs(regularisation_parameter)
-    return jnp.linalg.lstsq(
-        array + regularisation_parameter * identity, identity, rcond=rcond
-    )[0]
-
-
 def sample_batch_indices(
     random_key: KeyArrayLike,
     data_size: int,
@@ -286,6 +246,46 @@ def sample_batch_indices(
     )[:batch_size, :]
 
 
+@partial(jit, static_argnames="rcond")
+def invert_regularised_array(
+    array: ArrayLike,
+    regularisation_parameter: float,
+    identity: ArrayLike,
+    rcond: float | None = None,
+) -> ArrayLike:
+    """
+    Regularise an array and then invert it using a least-squares solver.
+
+    .. note::
+        The function is designed to invert square block arrays where only the top-left
+        block contains non-zero elements. We return a block array, the same size as the
+        input array, where each block has only zero elements except for the top-left
+        block, which is the inverse of the non-zero input block. The most efficient way
+        to compute this in JAX requires the 'identity' array to be a matrix of zeros
+        except for ones on the diagonal up to the size of the non-zero block.
+
+    :param array: Array to be inverted
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array, negative values will be converted to positive
+    :param identity: Block "identity" matrix
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 will use machine precision.
+    :return: Inverse of regularised array
+    """
+    if rcond is not None:
+        if rcond < 0 and rcond != -1:
+            raise ValueError("rcond must be non-negative, except for value of -1")
+    if array.shape != identity.shape:
+        raise ValueError("Leading dimensions of array and identity must match")
+
+    return jnp.linalg.lstsq(
+        array + abs(regularisation_parameter) * identity, identity, rcond=rcond
+    )[0]
+
+
 @partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
@@ -294,7 +294,7 @@ def randomised_eigendecomposition(
     power_iterations: int = 1,
 ):
     r"""
-    Approximate the eigendecomposition of kernel gramians.
+    Approximate the eigendecomposition of kernel gram matrices.
 
     Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
     eigendecomposition of a kernel gram matrix. The parameters 'oversampling_parameter'
@@ -307,10 +307,10 @@ def randomised_eigendecomposition(
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
-    :param oversampling_parameter: Number of random columns to sample, the larger the
-        oversampling_parameter gets the more accurate but slower the method will be
-    :param power_iterations: Number of power iterations to do, the larger
-        power_iterations gets the more accurate but slower the method will be
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
     :return: eigenvalues and eigenvectors that approximately decompose the target array
     """
     # Input handling
@@ -328,7 +328,7 @@ def randomised_eigendecomposition(
         random_key, shape=(array.shape[0], oversampling_parameter)
     )
 
-    # QR decomposition finding orthonormal array with range approximating range of array
+    # QR decomposition to find orthonormal array with range approximating range of array
     approximate_range = array @ standard_gaussian_draws
     q, _ = jnp.linalg.qr(approximate_range)
 
@@ -339,13 +339,13 @@ def randomised_eigendecomposition(
         approximate_range = array @ q_
         q, _ = jnp.linalg.qr(approximate_range)
 
-    # Form the low rank array and compute its exact eigendecomposition and correct
+    # Form the low rank array, compute its exact eigendecomposition and ortho-normalise
     # the eigenvectors.
     array_approximation = q.T @ array @ q
-    eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
-    array_approximate_eigenvectors = q @ eigenvectors
+    approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+    approximate_eigenvectors = q @ eigenvectors
 
-    return eigenvalues, array_approximate_eigenvectors
+    return approximate_eigenvalues, approximate_eigenvectors
 
 
 @partial(jit, static_argnames=("rcond", "oversampling_parameter", "power_iterations"))
@@ -359,28 +359,34 @@ def randomised_invert_regularised_array(
     power_iterations: int = 1,
 ) -> tuple[Array]:
     """
-    Invert a regularised array using its randomised eigendecomposition.
+    Invert a regularised kernel matrix using its randomised eigendecomposition.
 
     Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we regularise and then
-    approximate the eigendecomposition of the input array. The parameters
+    approximate the eigendecomposition of the input kernel matrix. The parameters
     'oversampling_parameter' and 'power_iterations' present a trade-off between speed
     and approximation quality.
 
-    The function is designed to invert square block arrays where only the top-left block
-    is non-zero. That is, we return a block array, the same size as the input array,
-    where each block consists of zeros except for the top-left block, which is the
-    inverse of the non-zero input block. The fastest way to compute this requires the
-    'identity' array to be a zero matrix except for ones on the diagonal up to the size
-    of the non-zero block.
+    .. note::
+        The function is designed to invert square block arrays where only the top-left
+        block contains non-zero elements. We return a block array, the same size as the
+        input array, where each block has only zero elements except for the top-left
+        block, which is the inverse of the non-zero input block. The most efficient way
+        to compute this in JAX requires the 'identity' array to be a matrix of zeros
+        except for ones on the diagonal up to the size of the non-zero block.
 
     :param array: Array to be inverted
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Block identity matrix
-    :param oversampling_parameter: Number of random columns to sample, the larger the
-        oversampling_parameter gets the more accurate but slower the method will be
-    :param power_iterations: Number of power iterations to do, the larger
-        power_iterations gets the more accurate but slower the method will be
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
+        determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 will use machine precision.
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
     :return: eigenvalues and eigenvectors that approximately decompose the target array
     """
     # Input validation
@@ -392,12 +398,13 @@ def randomised_invert_regularised_array(
 
     # Set rcond parameter if not given
     n, m = array.shape
+    machine_precision = jnp.finfo(array.dtype).eps
     if rcond is None:
-        rcond = jnp.finfo(array.dtype).eps * max(n, m)
+        rcond = machine_precision * max(n, m)
     elif rcond == -1:
-        rcond = jnp.finfo(array.dtype).eps
+        rcond = machine_precision
 
-    # Get approximate eigendecomposition
+    # Get randomised eigendecomposition
     approximate_eigenvalues, approximate_eigenvectors = randomised_eigendecomposition(
         random_key=random_key,
         array=array + abs(regularisation_parameter) * identity,
@@ -406,11 +413,8 @@ def randomised_invert_regularised_array(
     )
 
     # Mask the eigenvalues that are zero or almost zero according to value of rcond
-    mask = (
-        approximate_eigenvalues
-        >= jnp.array(rcond, dtype=approximate_eigenvalues.dtype)
-        * approximate_eigenvalues[-1]
-    )
+    # for safe inversion.
+    mask = approximate_eigenvalues >= jnp.array(rcond) * approximate_eigenvalues[-1]
     safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
 
     # Invert the eigenvalues and extend array ready for broadcasting
