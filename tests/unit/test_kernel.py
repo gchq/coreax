@@ -209,7 +209,7 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
 
 class KernelCompositionTest(ABC, Generic[_Kernel]):
-    """Helper function for Additive and Product Kernel tests."""
+    """Class of helper functions for Additive and Product Kernel tests."""
 
     def reset_mocked_sub_kernels(
         self, kernel: _AdditiveKernel | _ProductKernel
