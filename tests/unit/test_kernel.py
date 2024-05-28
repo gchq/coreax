@@ -270,7 +270,7 @@ class TestAdditiveKernel(
 
         Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
         and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
-        product kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+        additive kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
         :math:`p(x,y) := k(x,y) + l(x,y)`
 
         We consider the simplest possible example of adding two Linear kernels together
