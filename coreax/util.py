@@ -87,7 +87,7 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
 
     :param tree: The PyTree whose array leaves to pad with trailing zeros
     :param pad_width: The number of trailing zeros to pad with
-    :return A copy of the original PyTree with the array leaves padded
+    :return: A copy of the original PyTree with the array leaves padded
     """
     if int(pad_width) < 0:
         raise ValueError("'pad_width' must be a positive integer")
