@@ -39,12 +39,13 @@ copy of a coreset, call :meth:`format() <DataReader.format>` on a subclass to re
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jaxtyping import Array, ArrayLike, Shaped
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     import coreax.reduction
