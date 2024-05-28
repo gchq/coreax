@@ -21,7 +21,6 @@ written produce the expected results on simple examples.
 
 import cmath
 import unittest
-import warnings
 
 import jax.numpy as jnp
 
@@ -93,43 +92,6 @@ class TestBayesianQuadrature(unittest.TestCase):
         output = optimiser.solve(x, y)
 
         self.assertTrue(jnp.allclose(output, expected_output))
-
-    def test_calculate_bayesian_quadrature_weights_approximate(self) -> None:
-        """
-        Test the approximate calculation of weights via sequential Bayesian quadrature.
-
-        Since the approximate solution method currently just calls the exact solution
-        method, this test should give exactly the same output (with a warning raised)
-        as the test `test_calculate_bayesian_quadrature_weights` above.
-        """
-        # Setup data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        expected_output = jnp.asarray(
-            [
-                (1 - 2 * jnp.exp(-2) + jnp.exp(-4)) / (3 * (1 - jnp.exp(-2))),
-                (1 + jnp.exp(-1) - jnp.exp(-2) - jnp.exp(-5)) / (3 * (1 - jnp.exp(-2))),
-            ]
-        )
-
-        optimiser = coreax.weights.SBQWeightsOptimiser(
-            kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-
-        # Solve for the weights
-        with warnings.catch_warnings(record=True) as warning_result:
-            output = optimiser.solve_approximate(x, y)
-
-        self.assertTrue(jnp.allclose(output, expected_output))
-
-        # Check the expected warning was raised
-        self.assertEqual(len(warning_result), 1)
-        self.assertEqual(
-            str(warning_result[0].message),
-            "solve_approximate() not yet implemented. "
-            "Calculating exact solution via solve()",
-        )
 
 
 class TestMMD(unittest.TestCase):
@@ -218,53 +180,6 @@ class TestMMD(unittest.TestCase):
         output = optimiser.solve(x, y)
 
         self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
-
-    def test_calculate_simplex_weights_approximate(self) -> None:
-        """
-        Test the approximate calculation of weights via the simplex method.
-
-        Since the approximate solution method currently just calls the exact solution
-        method, this test should give exactly the same output (with a warning raised)
-        as the test `test_simplex_weights` above.
-        """
-        # Setup data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
-
-        w2 = (
-            -1
-            - 2 * jnp.exp(3)
-            + 3 * jnp.exp(4)
-            + cmath.sqrt(
-                1
-                + 4 * jnp.exp(3)
-                - 6 * jnp.exp(4)
-                + 28 * jnp.exp(6)
-                - 6 * jnp.exp(7)
-                - 21 * jnp.exp(8)
-            )
-        ) / (6 * (jnp.exp(4) - jnp.exp(3)))
-        w2 = jnp.real(w2)
-        w1 = 1 - w2
-        expected_output = jnp.asarray([w1, w2])
-
-        optimiser = coreax.weights.MMDWeightsOptimiser(
-            kernel=coreax.kernel.SquaredExponentialKernel()
-        )
-
-        # Solve for the weights
-        with warnings.catch_warnings(record=True) as warning_result:
-            output = optimiser.solve_approximate(x, y)
-
-        self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
-
-        # Check the expected warning was raised
-        self.assertEqual(len(warning_result), 1)
-        self.assertEqual(
-            str(warning_result[0].message),
-            "solve_approximate() not yet implemented. "
-            "Calculating exact solution via solve()",
-        )
 
     def test_simplex_weights_invalid_epsilon(self) -> None:
         """
