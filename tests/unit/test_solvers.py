@@ -26,6 +26,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
+import numpy as np
 import pytest
 from typing_extensions import override
 
@@ -35,6 +36,7 @@ from coreax.kernel import Kernel, LinearKernel, PCIMQKernel, SteinKernel
 from coreax.score_matching import KernelDensityMatching, ScoreMatching
 from coreax.solvers import (
     KernelHerding,
+    MapReduce,
     RandomSample,
     RPCholesky,
     Solver,
@@ -65,7 +67,7 @@ class SolverTest:
     """Base tests for all children of :class:`coreax.solvers.Solver`."""
 
     random_key: KeyArrayLike = jr.key(2024)
-    shape: tuple[int, int] = (100, 10)
+    shape: tuple[int, int] = (128, 10)
 
     @abstractmethod
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
@@ -261,7 +263,7 @@ class ExplicitSizeSolverTest(SolverTest):
     )
     def test_check_init(
         self,
-        solver_factory: Union[type[Solver], jtu.Partial],
+        solver_factory: jtu.Partial,
         coreset_size: Union[int, float, str],
         context: AbstractContextManager,
     ) -> None:
@@ -270,11 +272,10 @@ class ExplicitSizeSolverTest(SolverTest):
 
         A 'coreset_size' is infeasible if it can't be cast to a positive integer.
         """
-        modified_solver_factory = eqx.tree_at(
-            lambda x: x.keywords["coreset_size"], solver_factory, coreset_size
-        )
+        solver_factory.keywords["coreset_size"] = coreset_size
         with context:
-            modified_solver_factory()
+            solver = solver_factory()
+            assert solver.coreset_size == int(coreset_size)
 
     def test_reduce_oversized_coreset_size(
         self, reduce_problem: _ReduceProblem
@@ -369,6 +370,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
     def check_solution_invariants(
         self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
+        """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
         solver = cast(RPCholesky, problem.solver)
         if solver.unique:
@@ -415,9 +417,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
     def test_convert_stein_kernel(
         self, kernel: Kernel, score_matching: Union[ScoreMatching, None]
     ) -> None:
-        """
-        Check handling of Stein kernels and standard kernels is consistent.
-        """
+        """Check handling of Stein kernels and standard kernels is consistent."""
         dataset = jr.uniform(self.random_key, self.shape)
         converted_kernel = _convert_stein_kernel(dataset, kernel, score_matching)
 
@@ -440,3 +440,80 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
             converted_kernel.score_function(dataset),
             expected_kernel.score_function(dataset),
         )
+
+
+class TestMapReduce(SolverTest):
+    """Test cases for :class:`coreax.solvers.composite.MapReduce`."""
+
+    leaf_size: int = 32
+    coreset_size: int = 16
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+        base_solver = MagicMock(ExplicitSizeSolver)
+        base_solver.coreset_size = self.coreset_size
+
+        def mock_reduce(
+            dataset: Data, solver_state: None = None
+        ) -> tuple[Coreset[Data], None]:
+            indices = jnp.arange(base_solver.coreset_size)
+            return Coreset(dataset[indices], dataset), solver_state
+
+        base_solver.reduce = mock_reduce
+
+        class _MockTree:
+            def __init__(self, _data: np.ndarray, **kwargs):
+                del kwargs
+                self.data = _data
+
+            def get_arrays(self) -> tuple[Union[np.ndarray, None], ...]:
+                """Mock sklearn.neighbours.BinaryTree.get_arrays method."""
+                return None, np.arange(len(self.data)), None, None
+
+        return jtu.Partial(
+            MapReduce, base_solver, leaf_size=self.leaf_size, tree_type=_MockTree
+        )
+
+    @override
+    @pytest.fixture(scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _ReduceProblem:
+        del request
+        dataset = jnp.broadcast_to(jnp.arange(self.shape[0])[..., None], self.shape)
+        solver = solver_factory()
+        # Expected procedure:
+        # len(dataset) = 128; leaf_size=32
+        # (1): 128 -> Partition -> 4x32 -> Reduce -> 4x16 -> Reshape -> 64
+        # (2): 64  -> Partition -> 2x32 -> Reduce -> 2x16 -> Reshape -> 32
+        # (3): 32  -> Partition -> 1x32 -> Reduce -> 1x16 -> Reshape -> 16
+        # Expected sub-coreset values at each step.
+        # (1): [:16], [32:48], [64:80], [96:112]
+        # (2): [:16], [64:80]
+        # (3): [:16] <- 'coreset_size'
+        expected_coreset = Coreset(dataset[: self.coreset_size], Data(dataset))
+        return _ReduceProblem(Data(dataset), solver, expected_coreset)
+
+    @pytest.mark.parametrize(
+        "leaf_size,context",
+        [
+            (-1, pytest.raises(ValueError, match="must be larger")),
+            (0, pytest.raises(ValueError, match="must be larger")),
+            (coreset_size, pytest.raises(ValueError, match="must be larger")),
+            (coreset_size + 1, does_not_raise()),
+            ("str", pytest.raises(ValueError)),
+        ],
+    )
+    def test_leaf_sizes(
+        self,
+        solver_factory: jtu.Partial,
+        leaf_size: int,
+        context: AbstractContextManager,
+    ) -> None:
+        """Check that invalid 'leaf_size' raises a suitable error."""
+        with context:
+            solver_factory.keywords["leaf_size"] = leaf_size
+            solver_factory()
