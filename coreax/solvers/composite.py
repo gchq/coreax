@@ -37,18 +37,18 @@ class MapReduce(
     r"""
     Calculate coreset of a given number of points using scalable reduction on blocks.
 
-    It uses a :class:`~sklearn.neighbors.BinaryTree` to partition the original data into
-    patches. Upon each of these a coreset of size :attr:`base_solver.coreset_size` is
-    calculated. These coresets are concatenated to produce a larger coreset covering
-    the whole of the original data, which has size greater than :attr:`coreset_size`.
-    This coreset is now treated as the original data and reduced recursively until its
-    size is equal to :attr:`base_solver.coreset_size`.
+    Uses a :class:`~sklearn.neighbors.KDTree` or :class:`~sklearn.neighbors.BallTree` to
+    partition the original data into patches. Upon each of these a coreset of size
+    ``base_solver.coreset_size`` is calculated. These coresets are concatenated to
+    produce a larger coreset covering the whole of the original data, which has size
+    greater than ``coreset_size``. This coreset is now treated as the original data and
+    reduced recursively until its size is equal to ``base_solver.coreset_size``.
 
     There is some intricate set-up:
 
-    #.  :attr:`base_solver.coreset_size` must be less than :attr:`leaf_size`.
+    #.  ``base_solver.coreset_size`` must be less than ``leaf_size``.
     #.  Zero weighted and valued padding will be used to ensure each partition has the
-        same size if :code:`len(dataset)` is not an integer multiple of `leaf_size`
+        same size if ``len(dataset)`` is not an integer multiple of ``leaf_size``
 
     Let :math:`n_k` be the number of points after each recursion with :math:`n_0` equal
     to the size of the original data. Then, each recursion reduces the size of the
@@ -65,7 +65,7 @@ class MapReduce(
         n_k <= \left( \frac{\texttt{coreset_size}}{\texttt{leaf_size}} \right)^k n_0.
 
     Thus, the number of iterations required is roughly (find :math:`k` when
-    :math:`n_k =` :attr:`coreset_size`)
+    :math:`n_k =` ``base_solver.coreset_size``)
 
     .. math::
 
@@ -76,11 +76,11 @@ class MapReduce(
         } .
 
     :param base_solver: Solver to compose with; full support is currently provided for
-        :class:`coreax.solvers.KernelHerding` and :class:`coreax.solver.SteinThinning`;
+        :class:`coreax.solvers.KernelHerding` and :class:`coreax.solvers.SteinThinning`;
         the solver's result must be ignorant of/invariant to zero weighted padding.
     :param leaf_size: Number of points to include in each partition; corresponds to
-        :code:`2*leaf_size` in :class:`~sklearn.neighbors.BinaryTree`; must be greater
-        than :attr:`base_solver.coreset_size`
+        :code:`2*leaf_size` in ``sklearn.neighbors.BinaryTree``; must be greater
+        than ``base_solver.coreset_size``
     :param tree_type: The type of binary tree based partitioning to use when
         splitting the dataset into smaller blocks.
     """
