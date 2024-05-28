@@ -1,7 +1,7 @@
 """Solvers that compose with other solvers."""
 
 import math
-from typing import Generic, TypeAlias, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
 from sklearn.neighbors import BallTree, KDTree
-from typing_extensions import override
+from typing_extensions import TypeAlias, override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
