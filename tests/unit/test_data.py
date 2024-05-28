@@ -25,6 +25,7 @@ from unittest.mock import MagicMock
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.tree_util as jtu
 import numpy as np
 import pytest
 from jax import Array
@@ -78,6 +79,13 @@ class TestData:
         with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
             invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
             data_type(weights=invalid_weights)
+
+    @pytest.mark.parametrize("index", (0, -1, slice(0, DATA_ARRAY.shape[0])))
+    def test_getitem(self, data_type, index):
+        """Test indexing data as a JAX array."""
+        _data = data_type()
+        _expected_indexed_data = jtu.tree_map(lambda x: x[index], _data)
+        assert eqx.tree_equal(_data[index], _expected_indexed_data)
 
     def test_arraylike(self, data_type):
         """Test interpreting data as a JAX array."""
