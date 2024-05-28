@@ -39,10 +39,11 @@ copy of a coreset, call :meth:`format() <DataReader.format>` on a subclass to re
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jaxtyping import Array, ArrayLike, Shaped
 
 if TYPE_CHECKING:
@@ -218,6 +219,10 @@ class Data(eqx.Module):
         self.data = jnp.asarray(data)
         n = self.data.shape[:1]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
+
+    def __getitem__(self, key) -> Self:
+        """Support Array style indexing of 'Data' objects."""
+        return jtu.tree_map(lambda x: x[key], self)
 
     def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
         """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
