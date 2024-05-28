@@ -20,6 +20,7 @@ from coreax.solvers.base import (
     RefinementSolver,
     Solver,
 )
+from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
     HerdingState,
     KernelHerding,
@@ -30,6 +31,7 @@ from coreax.solvers.coresubset import (
 )
 
 __all__ = [
+    "CompositeSolver",
     "CoresubsetSolver",
     "Solver",
     "RefinementSolver",
@@ -40,4 +42,5 @@ __all__ = [
     "RPCholesky",
     "RPCholeskyState",
     "SteinThinning",
+    "MapReduce",
 ]
