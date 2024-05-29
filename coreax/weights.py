@@ -130,6 +130,7 @@ class SBQWeightsOptimiser(WeightsOptimiser):
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        **solver_kwargs,
     ) -> Array:
         r"""
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
@@ -147,12 +148,13 @@ class SBQWeightsOptimiser(WeightsOptimiser):
             numerical solver computations
         :param block_size: Block size passed to the ``self.kernel.compute_mean``
         :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
+        :param solver_kwargs: Additional kwargs passed to ``jnp.linalg.solve``
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel, x, y, epsilon, block_size=block_size, unroll=unroll
         )
-        return jnp.linalg.solve(kernel_yy, kernel_yx)
+        return jnp.linalg.solve(kernel_yy, kernel_yx, **solver_kwargs)
 
 
 class MMDWeightsOptimiser(WeightsOptimiser):
@@ -185,6 +187,7 @@ class MMDWeightsOptimiser(WeightsOptimiser):
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        **solver_kwargs,
     ) -> Array:
         r"""
         Compute optimal weights given the simplex constraint.
@@ -195,12 +198,13 @@ class MMDWeightsOptimiser(WeightsOptimiser):
             numerical solver computations
         :param block_size: Block size passed to the ``self.kernel.compute_mean``
         :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
+        :param solver_kwargs: Additional kwargs passed to ``jnp.linalg.solve``
         :return: Optimal weighting of points in ``y`` to represent ``x``
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel, x, y, epsilon, block_size=block_size, unroll=unroll
         )
-        return coreax.util.solve_qp(kernel_yy, kernel_yx)
+        return coreax.util.solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
 
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
