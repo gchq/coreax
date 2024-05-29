@@ -225,7 +225,6 @@ class Kernel(eqx.Module):
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        print("base called")
         return grad(self.compute_elementwise, 0)(x, y)
 
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
