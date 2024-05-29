@@ -518,6 +518,14 @@ class ProductKernel(Kernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+        if self.first_kernel == self.second_kernel:
+            return 2 * (
+                self.first_kernel.grad_x_elementwise(x, y).dot(
+                    self.first_kernel.grad_y_elementwise(x, y)
+                )
+                + self.first_kernel.compute_elementwise(x, y)
+                * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            )
         return (
             self.first_kernel.grad_x_elementwise(x, y).dot(
                 self.second_kernel.grad_y_elementwise(x, y)
