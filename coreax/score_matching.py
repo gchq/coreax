@@ -554,7 +554,6 @@ class KernelDensityMatching(ScoreMatching):
 
         return children, aux_data
 
-
     def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
