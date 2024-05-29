@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from coreax.coresubset import KernelHerding
 from coreax.kernel import SquaredExponentialKernel
-from coreax.reduction import MapReduce
+from coreax.solvers import KernelHerding, MapReduce
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
-herding_object = KernelHerding(
-    herding_key,
+herding_solver = KernelHerding(
+    coreset_size,
     kernel=SquaredExponentialKernel(length_scale=length_scale),
 )
-herding_object.fit(
-    original_data=data, strategy=MapReduce(coreset_size=coreset_size, leaf_size=200)
-)
+mapped_herding_solver = MapReduce(herding_solver, leaf_size=200)
+mapped_herding_coreset, _ = mapped_herding_solver.reduce(data)
