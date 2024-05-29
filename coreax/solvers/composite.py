@@ -89,7 +89,7 @@ class MapReduce(
     tree_type: type[BinaryTree] = KDTree
 
     def __check_init__(self):
-        """Check that 'leaf_size' is feasible."""
+        """Check 'leaf_size' is an integer larger than 'base_solver.coreset_size'."""
         if not isinstance(self.base_solver, ExplicitSizeSolver):
             raise ValueError("'base_solver' must be an 'ExplicitSizeSolver'")
         if self.leaf_size <= self.base_solver.coreset_size:
