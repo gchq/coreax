@@ -30,7 +30,7 @@ and then differentiating a kernel density estimate to the data.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import partial
 from typing import Union
 
@@ -109,7 +109,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
     :param batch_size: Size of mini-batch. Defaults to 64.
-    :param hidden_dims: List of ScoreNetwork hidden layer sizes. Defaults to
+    :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
     :param optimiser: The optax optimiser to use. Defaults to optax.adam.
     :param num_noise_models: Number of noise models to use in noise
@@ -156,7 +156,7 @@ class SlicedScoreMatching(ScoreMatching):
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dims: Union[list, None] = None,
+        hidden_dims: Union[Sequence, None] = None,
         optimiser: Callable = optax.adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
