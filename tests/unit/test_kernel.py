@@ -181,12 +181,14 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
 
     @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
     @pytest.mark.parametrize("elementwise", [False, True])
+    @pytest.mark.parametrize("auto_diff", [False, True])
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],
         kernel: _Kernel,
         mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
         elementwise: bool,
+        auto_diff: bool,
     ):
         """Test computation of the kernel gradients."""
         x, y = gradient_problem
@@ -198,6 +200,13 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         expected_output = getattr(self, reference_mode)(x, y, kernel)
         if elementwise:
             expected_output = expected_output.squeeze()
+        if auto_diff:
+            if isinstance(kernel, (AdditiveKernel, ProductKernel)):
+                pytest.skip(
+                    "Autodiff of Additive and Product kernels is tested implicitly."
+                )
+            # Access overridden parent methods that use auto-differentiation.
+            kernel = super(type(kernel), kernel)
         output = getattr(kernel, test_mode)(x, y)
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
@@ -392,7 +401,7 @@ class TestProductKernel(
     @pytest.fixture(params=["floats", "vectors", "arrays"])
     def problem(self, request, kernel: ProductKernel) -> _Problem:
         r"""
-        Test problems for the Product kernel where we multiply two Linear kernels.
+        Test problems for the Product kernel.
 
         Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
         and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
