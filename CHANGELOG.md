@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 distinction between supervised and unsupervised datasets, and handle weighted data.
 - Additional kernel classes `coreax.kernel.AdditiveKernel` and
 `coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
-semi-definite kernels to produce new positive semi-definite kernel.
+semi-definite kernels to produce new positive semi-definite kernels.
 
 ### Fixed
 
