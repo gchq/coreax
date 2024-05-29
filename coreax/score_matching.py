@@ -29,12 +29,10 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
+from typing import Union
 
 import jax
 import numpy as np
@@ -158,7 +156,7 @@ class SlicedScoreMatching(ScoreMatching):
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dims: list | None = None,
+        hidden_dims: Union[list, None] = None,
         optimiser: Callable = optax.adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
@@ -567,7 +565,7 @@ class KernelDensityMatching(ScoreMatching):
 
         return children, aux_data
 
-    def match(self, x: ArrayLike | None = None) -> Callable:
+    def match(self, x: Union[ArrayLike, None] = None) -> Callable:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
