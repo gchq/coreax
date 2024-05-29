@@ -1,11 +1,14 @@
 """Tests for coreset data-structures."""
 
+from unittest.mock import MagicMock
+
 import equinox as eqx
 import jax.numpy as jnp
 import pytest
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
+from coreax.weights import WeightsOptimiser
 
 NODES = Data(jnp.arange(5, dtype=jnp.int32)[..., None])
 PRE_CORESET_DATA = Data(jnp.arange(10)[..., None])
@@ -40,6 +43,21 @@ class TestCoresetCommon:
         """Test the coreset length."""
         coreset = coreset_type(NODES, PRE_CORESET_DATA)
         assert len(coreset) == len(NODES.data)
+
+    def test_solve_weights(self, coreset_type):
+        """Test the weights solving convenience interface."""
+        solver = MagicMock(WeightsOptimiser)
+        solved_weights = jnp.full_like(jnp.asarray(NODES), 123)
+        solver.solve.return_value = solved_weights
+        re_weighted_nodes = eqx.tree_at(lambda x: x.weights, NODES, solved_weights)
+        coreset = coreset_type(NODES, PRE_CORESET_DATA)
+        coreset_expected = coreset_type(re_weighted_nodes, PRE_CORESET_DATA)
+        kwargs = {"test": None}
+        coreset_solved_weights = coreset.solve_weights(solver, **kwargs)
+        assert eqx.tree_equal(coreset_solved_weights, coreset_expected)
+        solver.solve.assert_called_with(
+            coreset.pre_coreset_data, coreset.coreset, **kwargs
+        )
 
 
 class TestCoresubset:
