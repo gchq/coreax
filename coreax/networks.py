@@ -18,7 +18,7 @@ Classes and associated functionality to define neural networks.
 Neural networks are used throughout the codebase as functional approximators.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from flax import linen as nn
 from flax.linen import Module
@@ -35,9 +35,13 @@ class ScoreNetwork(nn.Module):
 
     See :class:`~coreax.score_matching.SlicedScoreMatching` for an example usage of this
     class.
+
+    :param hidden_dims: Sequence of hidden dimension layer sizes. Each element of the
+        sequence corresponds to one hidden layer.
+    :param output_dim: Number of output layer nodes.
     """
 
-    hidden_dim: int
+    hidden_dims: Sequence
     output_dim: int
 
     @nn.compact
@@ -48,14 +52,11 @@ class ScoreNetwork(nn.Module):
         :param x: Batch input data :math:`b \times m \times n`
         :return: Network output on batch :math:`b \times` ``self.output_dim``
         """
-        x = nn.Dense(self.hidden_dim)(x)
-        x = nn.softplus(x)
-        x = nn.Dense(self.hidden_dim)(x)
-        x = nn.softplus(x)
-        x = nn.Dense(self.hidden_dim)(x)
-        x = nn.softplus(x)
-        x = nn.Dense(self.output_dim)(x)
-        return x
+        for dim in self.hidden_dims:
+            x = nn.Dense(dim)(x)
+            x = nn.softplus(x)
+
+        return nn.Dense(self.output_dim)(x)
 
 
 def create_train_state(
