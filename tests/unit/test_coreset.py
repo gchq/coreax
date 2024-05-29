@@ -8,6 +8,7 @@ import pytest
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
+from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
 
 NODES = Data(jnp.arange(5, dtype=jnp.int32)[..., None])
@@ -56,6 +57,19 @@ class TestCoresetCommon:
         coreset_solved_weights = coreset.solve_weights(solver, **kwargs)
         assert eqx.tree_equal(coreset_solved_weights, coreset_expected)
         solver.solve.assert_called_with(
+            coreset.pre_coreset_data, coreset.coreset, **kwargs
+        )
+
+    def test_compute_metric(self, coreset_type):
+        """Test the metric computation convenience interface."""
+        metric = MagicMock(Metric)
+        expected_metric = jnp.asarray(123)
+        metric.compute.return_value = expected_metric
+        coreset = coreset_type(NODES, PRE_CORESET_DATA)
+        kwargs = {"test": None}
+        coreset_metric = coreset.compute_metric(metric, **kwargs)
+        assert eqx.tree_equal(coreset_metric, expected_metric)
+        metric.compute.assert_called_with(
             coreset.pre_coreset_data, coreset.coreset, **kwargs
         )
 
