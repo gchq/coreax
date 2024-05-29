@@ -69,7 +69,7 @@ class TestTrainState(unittest.TestCase):
         """
         Test create_train_state with a zero size hidden dimension.
         """
-        score_network = coreax.networks.ScoreNetwork([0, 0, 0], self.data_dimension)
+        score_network = coreax.networks.ScoreNetwork([2, 0, 2], self.data_dimension)
 
         # Create a train state with this network - we expect optax to try and do a
         # division by hidden dimension size - which should give rise to a division error
