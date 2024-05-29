@@ -581,8 +581,8 @@ class TestPolynomialKernel(
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
         return PolynomialKernel(
-            output_scale=parameters[0],
-            constant=parameters[1],
+            output_scale=parameters[0].item(),
+            constant=parameters[1].item(),
             degree=int(jnp.ceil(jnp.abs(parameters[2]))) + 1,
         )
 
@@ -643,7 +643,7 @@ class TestPolynomialKernel(
                     kernel.output_scale
                     * kernel.degree
                     * y[y_idx]
-                    * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
                     ** (kernel.degree - 1)
                 )
         return expected_gradients
@@ -661,7 +661,7 @@ class TestPolynomialKernel(
                     kernel.output_scale
                     * kernel.degree
                     * x[x_idx]
-                    * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
                     ** (kernel.degree - 1)
                 )
         return expected_gradients
@@ -681,13 +681,13 @@ class TestPolynomialKernel(
                     * (
                         (
                             (kernel.degree - 1)
-                            * jnp.dot(x[x_idx], y[y_idx])
-                            * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            * np.dot(x[x_idx], y[y_idx])
+                            * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
                             ** (kernel.degree - 2)
                         )
                         + (
                             dimension
-                            * (jnp.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
                             ** (kernel.degree - 1)
                         )
                     )
@@ -853,6 +853,7 @@ class TestSquaredExponentialKernel(
 class TestExponentialKernel(
     BaseKernelTest[ExponentialKernel],
     KernelMeanTest[ExponentialKernel],
+    KernelGradientTest[ExponentialKernel],
 ):
     """Test ``coreax.kernel.ExponentialKernel``."""
 
@@ -860,7 +861,9 @@ class TestExponentialKernel(
     def kernel(self) -> ExponentialKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return ExponentialKernel(length_scale=parameters[0], output_scale=parameters[1])
+        return ExponentialKernel(
+            length_scale=parameters[0].item(), output_scale=parameters[1].item()
+        )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
     def problem(  # noqa: C901
@@ -923,6 +926,53 @@ class TestExponentialKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = x[x_idx, :] - y[y_idx, :]
+                dist = np.linalg.norm(sub)
+                expected_gradients[x_idx, y_idx] = (
+                    -kernel.output_scale
+                    * sub
+                    / (2 * kernel.length_scale**2 * dist)
+                    * np.exp(-dist / (2 * kernel.length_scale**2))
+                )
+
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
+    ) -> np.ndarray:
+        return -self.expected_grad_x(x, y, kernel)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = np.subtract(x[x_idx], y[y_idx])
+                dist = np.linalg.norm(sub)
+                factor = 2 * kernel.length_scale**2
+                exp = np.exp(-dist / factor)
+
+                first_term = (-exp * sub / dist**2) * ((1 / dist) + 1 / factor)
+                second_term = exp / dist
+
+                expected_divergence[x_idx, y_idx] = (kernel.output_scale / factor) * (
+                    np.dot(first_term, sub) + dimension * second_term
+                )
+        return expected_divergence
+
 
 class TestRationalQuadraticKernel(
     BaseKernelTest[RationalQuadraticKernel],
@@ -936,7 +986,7 @@ class TestRationalQuadraticKernel(
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
         return RationalQuadraticKernel(
-            length_scale=parameters[0], output_scale=parameters[1]
+            length_scale=parameters[0].item(), output_scale=parameters[1].item()
         )
 
     @pytest.fixture(
@@ -1031,12 +1081,12 @@ class TestRationalQuadraticKernel(
         expected_gradients = np.zeros((num_points, num_points, dimension))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                sub = jnp.subtract(x[x_idx], y[y_idx])
+                sub = np.subtract(x[x_idx], y[y_idx])
                 expected_gradients[x_idx, y_idx] = -(
                     kernel.output_scale * sub / kernel.length_scale**2
                 ) * (
                     1
-                    + jnp.dot(sub, sub)
+                    + np.dot(sub, sub)
                     / (2 * kernel.relative_weighting * kernel.length_scale**2)
                 ) ** (-kernel.relative_weighting - 1)
         return expected_gradients
@@ -1055,8 +1105,8 @@ class TestRationalQuadraticKernel(
         expected_divergence = np.zeros((num_points, num_points))
         for x_idx in range(x.shape[0]):
             for y_idx in range(y.shape[0]):
-                sub = jnp.subtract(x[x_idx], y[y_idx])
-                sq_dist = jnp.dot(sub, sub)
+                sub = np.subtract(x[x_idx], y[y_idx])
+                sq_dist = np.dot(sub, sub)
                 div = kernel.relative_weighting * kernel.length_scale**2
                 power = kernel.relative_weighting + 1
                 body = 1 + sq_dist / (2 * div)
@@ -1072,6 +1122,7 @@ class TestRationalQuadraticKernel(
 class TestPeriodicKernel(
     BaseKernelTest[PeriodicKernel],
     KernelMeanTest[PeriodicKernel],
+    KernelGradientTest[PeriodicKernel],
 ):
     """Test ``coreax.kernel.PeriodicKernel``."""
 
@@ -1080,9 +1131,9 @@ class TestPeriodicKernel(
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
         return PeriodicKernel(
-            length_scale=parameters[0],
-            output_scale=parameters[1],
-            periodicity=parameters[2],
+            length_scale=parameters[0].item(),
+            output_scale=parameters[1].item(),
+            periodicity=parameters[2].item(),
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
@@ -1151,6 +1202,84 @@ class TestPeriodicKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = np.subtract(x[x_idx], y[y_idx])
+                dist = np.linalg.norm(sub)
+                body = np.pi * dist / kernel.periodicity
+
+                expected_gradients[x_idx, y_idx] = (
+                    (
+                        4
+                        * sub
+                        * kernel.output_scale
+                        * np.pi
+                        / (dist * kernel.periodicity * kernel.length_scale**2)
+                    )
+                    * np.sin(body)
+                    * np.cos(body)
+                    * np.exp(-(2 / kernel.length_scale**2) * np.sin(body) ** 2)
+                )
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
+    ) -> np.ndarray:
+        return -self.expected_grad_x(x, y, kernel)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
+    ) -> np.ndarray:
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                sub = np.subtract(x[x_idx], y[y_idx])
+                dist = np.linalg.norm(sub)
+                factor = np.pi / kernel.periodicity
+
+                func_1 = 1 / dist
+                func_2 = np.sin(factor * dist)
+                func_3 = np.cos(factor * dist)
+                func_4 = np.exp(
+                    -(2 / kernel.length_scale**2) * np.sin(factor * dist) ** 2
+                )
+
+                first_term = func_1 * func_2 * func_3 * func_4
+                second_term = (
+                    -sub / dist * func_1**2 * func_2 * func_3 * func_4
+                    - sub / dist * factor * func_1 * func_2**2 * func_4
+                    + sub / dist * factor * func_1 * func_3**2 * func_4
+                    - (
+                        4
+                        * factor
+                        * kernel.output_scale
+                        / kernel.length_scale**2
+                        * sub
+                        * func_1**2
+                        * func_2**2
+                        * func_3**2
+                        * func_4
+                    )
+                )
+                expected_divergence[x_idx, y_idx] = (
+                    4
+                    * factor
+                    * kernel.output_scale
+                    / kernel.length_scale**2
+                    * (dimension * first_term + np.dot(second_term, sub))
+                )
+        return expected_divergence
+
 
 class TestLocallyPeriodicKernel(
     BaseKernelTest[LocallyPeriodicKernel],
@@ -1163,9 +1292,9 @@ class TestLocallyPeriodicKernel(
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
         return LocallyPeriodicKernel(
-            length_scale=parameters[0],
-            output_scale=parameters[1],
-            periodicity=parameters[3],
+            length_scale=parameters[0].item(),
+            output_scale=parameters[1].item(),
+            periodicity=parameters[2].item(),
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])

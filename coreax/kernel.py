@@ -75,10 +75,6 @@ from coreax.util import (
 T = TypeVar("T")
 
 
-class NonDifferentiableError(Exception):
-    """Error to raise when user tries to take gradients of non-differentiable kernel."""
-
-
 @jit
 def median_heuristic(x: ArrayLike) -> Array:
     """
@@ -581,7 +577,7 @@ class LinearKernel(Kernel):
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         d = len(jnp.asarray(x))
-        return self.output_scale * d
+        return jnp.array(self.output_scale * d)
 
 
 class PolynomialKernel(Kernel):
@@ -712,27 +708,29 @@ class ExponentialKernel(Kernel):
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
+        return -self.grad_y_elementwise(x, y)
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
+        sub = jnp.subtract(x, y)
+        dist = jnp.linalg.norm(sub)
+        factor = 2 * self.length_scale**2
+        return self.output_scale * sub * jnp.exp(-dist / factor) / (factor * dist)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
+        d = len(jnp.asarray(x))
+        sub = jnp.subtract(x, y)
+        dist = jnp.linalg.norm(sub)
+        factor = 2 * self.length_scale**2
+        exp = jnp.exp(-dist / factor)
 
-    @override
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
+        first_term = (-exp * sub / dist**2) * ((1 / dist) + 1 / factor)
+        second_term = exp / dist
 
-    @override
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
-
-    @override
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError("The Exponential Kernel is non-differentiable")
+        return (self.output_scale / factor) * (
+            jnp.dot(first_term, sub) + d * second_term
+        )
 
 
 class RationalQuadraticKernel(Kernel):
@@ -839,7 +837,7 @@ class PeriodicKernel(Kernel):
         return (
             (
                 4
-                * (x - y)
+                * jnp.subtract(x, y)
                 * self.output_scale
                 * jnp.pi
                 / (dist * self.periodicity * self.length_scale**2)
@@ -850,22 +848,29 @@ class PeriodicKernel(Kernel):
         )
 
     @override
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Periodic kernel function is infinite when `x`=`y`"
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        d = len(jnp.asarray(x))
+        sub = jnp.subtract(x, y)
+        dist = jnp.linalg.norm(sub)
+        factor = jnp.pi / self.periodicity
+        func_body = factor * dist
+        grad_factor = sub / dist
+        output_factor = 4 * factor * self.output_scale / self.length_scale**2
+
+        func_1 = 1 / dist
+        func_2 = jnp.sin(func_body)
+        func_3 = jnp.cos(func_body)
+        func_4 = jnp.exp(-(2 / self.length_scale**2) * func_2**2)
+
+        first_term = func_1 * func_2 * func_3 * func_4
+        second_term = (
+            -grad_factor * func_1**2 * func_2 * func_3 * func_4
+            - grad_factor * factor * func_1 * func_2**2 * func_4
+            + grad_factor * factor * func_1 * func_3**2 * func_4
+            - (output_factor * sub * func_1**2 * func_2**2 * func_3**2 * func_4)
         )
 
-    @override
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Periodic kernel function is infinite when `x`=`y`"
-        )
-
-    @override
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Periodic kernel function is infinite when `x`=`y`"
-        )
+        return output_factor * (d * first_term + jnp.dot(second_term, sub))
 
 
 class LocallyPeriodicKernel(ProductKernel):
@@ -883,7 +888,12 @@ class LocallyPeriodicKernel(ProductKernel):
     :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
     """
 
-    def __init__(self, length_scale, output_scale, periodicity):
+    def __init__(
+        self,
+        length_scale: float = 1.0,
+        output_scale: float = 1.0,
+        periodicity: float = 1.0,
+    ):
         """Initialise LocallyPeriodicKernel with ProductKernel attributes."""
         self.first_kernel = PeriodicKernel(
             length_scale=length_scale,
@@ -893,24 +903,6 @@ class LocallyPeriodicKernel(ProductKernel):
 
         self.second_kernel = SquaredExponentialKernel(
             length_scale=length_scale, output_scale=output_scale
-        )
-
-    @override
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
-        )
-
-    @override
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
-        )
-
-    @override
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
-        raise NonDifferentiableError(
-            "Gradient of Locally Periodic kernel function is infinite when `x`=`y`"
         )
 
 
