@@ -201,7 +201,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     return pairwise(difference)(x, y)
 
 
-def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike) -> Array:
+def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -> Array:
     r"""
     Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
@@ -237,7 +237,7 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike) -> Array:
     h = jnp.zeros(num_points)
 
     # Define solver object and run solver
-    qp = OSQP()
+    qp = OSQP(**osqp_kwargs)
     sol = qp.run(
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
