@@ -20,27 +20,43 @@ tests within this file verify that these approximations produce the expected res
 simple examples.
 """
 
+from abc import ABC, abstractmethod
+from typing import Generic, NamedTuple, TypeVar, Union
+
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
+from jax.typing import ArrayLike
+from typing_extensions import override
 
-import coreax.approximation
 import coreax.kernel
 import coreax.util
+from coreax.approximation import (
+    ANNchorApproximator,
+    KernelInverseApproximator,
+    KernelMeanApproximator,
+    NystromApproximator,
+    RandomApproximator,
+    RandomisedEigendecompositionApproximator,
+    randomised_eigendecomposition,
+)
+
+_KernelMeanApproximator = TypeVar(
+    "_KernelMeanApproximator", bound=KernelMeanApproximator
+)
+_KernelInverseApproximator = TypeVar(
+    "_KernelInverseApproximator", bound=KernelInverseApproximator
+)
 
 
 @pytest.mark.parametrize(
     "approximator",
-    [
-        coreax.approximation.RandomApproximator,
-        coreax.approximation.ANNchorApproximator,
-        coreax.approximation.NystromApproximator,
-    ],
+    [RandomApproximator, ANNchorApproximator, NystromApproximator],
 )
-class TestApproximations:
+class TestKernelMeanApproximations:
     """
-    Tests related to approximation.py classes & functions.
+    Tests related to kernel mean approximations in approximation.py.
     """
 
     @pytest.fixture
@@ -112,7 +128,7 @@ class TestApproximations:
         )
 
     def test_approximation_accuracy(
-        self, problem, approximator: type[coreax.approximation.KernelMeanApproximator]
+        self, problem, approximator: _KernelMeanApproximator
     ) -> None:
         """
         Verify approximator performance on toy problem.
@@ -131,7 +147,7 @@ class TestApproximations:
             true_distances,
         ) = problem
         # Define the approximator - full dataset used to fit the approximation
-        if issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, NystromApproximator):
             full_kwargs = {"num_kernel_points": data.shape[0]}
             partial_kwargs = {"num_kernel_points": num_kernel_points}
         else:
@@ -184,7 +200,7 @@ class TestApproximations:
             num_train_points,
             true_distances,
         ) = problem
-        if issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, NystromApproximator):
             kwargs = {
                 "num_kernel_points": num_kernel_points * num_kernel_points_multiplier
             }
@@ -199,7 +215,7 @@ class TestApproximations:
             with pytest.raises(ValueError, match="num_kernel_points must be positive"):
                 test_approximator.approximate(data)
         elif num_kernel_points_multiplier == 0:
-            if isinstance(test_approximator, coreax.approximation.ANNchorApproximator):
+            if isinstance(test_approximator, ANNchorApproximator):
                 with pytest.raises(
                     ValueError, match="num_kernel_points must be positive and non-zero"
                 ):
@@ -209,8 +225,8 @@ class TestApproximations:
                     test_approximator.approximate(data),
                     jnp.zeros_like(true_distances),
                 )
-        elif isinstance(test_approximator, coreax.approximation.ANNchorApproximator):
-            approximator_exact_num_data = coreax.approximation.ANNchorApproximator(
+        elif isinstance(test_approximator, ANNchorApproximator):
+            approximator_exact_num_data = ANNchorApproximator(
                 random_key,
                 kernel,
                 num_kernel_points=data.shape[0],
@@ -244,8 +260,8 @@ class TestApproximations:
         """
         Test approximators correctly handle degenerate cases of num_train_points.
         """
-        if issubclass(approximator, coreax.approximation.NystromApproximator):
-            pytest.skip("Incompatible with coreax.approximation.NystromApproximator")
+        if issubclass(approximator, NystromApproximator):
+            pytest.skip("Incompatible with NystromApproximator")
         (
             random_key,
             data,
@@ -287,7 +303,7 @@ class TestApproximations:
             num_train_points,
             _,
         ) = problem
-        if issubclass(approximator, coreax.approximation.NystromApproximator):
+        if issubclass(approximator, NystromApproximator):
             kwargs = {"num_kernel_points": num_kernel_points}
         else:
             kwargs = {
@@ -300,3 +316,167 @@ class TestApproximations:
             match="'InvalidKernel' object has no attribute 'compute'",
         ):
             approximator.approximate(data)
+
+
+# Once we support only python 3.11+ this should be generic on _KernelInverseApproximator
+class _Problem(NamedTuple):
+    random_key: coreax.util.KeyArrayLike
+    kernel_gramian: ArrayLike
+    regularisation_parameter: float
+    identity: ArrayLike
+    expected_inverse: ArrayLike
+
+
+class InverseApproximationTest(ABC, Generic[_KernelInverseApproximator]):
+    """Tests related to kernel inverse approximations in approximation.py."""
+
+    @abstractmethod
+    def approximator(self) -> _KernelInverseApproximator:
+        """Abstract pytest fixture which initialises an inverse approximator."""
+
+    @abstractmethod
+    def problem(self) -> _Problem:
+        """Abstract pytest fixture which returns a problem for inverse approximation."""
+
+    def test_approximation_accuracy(
+        self, problem, approximator: _KernelInverseApproximator
+    ) -> None:
+        """Verify approximator performance on toy problem."""
+        # Extract problem settings
+        _, kernel_gramian, regularisation_parameter, identity, expected_inverse = (
+            problem
+        )
+
+        # Approximate the kernel inverse
+        approximate_inverse = approximator.approximate(
+            kernel_gramian=kernel_gramian,
+            regularisation_parameter=regularisation_parameter,
+            identity=identity,
+        )
+
+        # Check the approximation is close to the true value
+        assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
+            0.0, abs=1
+        )
+
+
+class TestRandomisedEigendecompositionApproximator(
+    InverseApproximationTest[RandomisedEigendecompositionApproximator],
+):
+    """Test RandomisedEigendecompositionApproximator."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def approximator(self) -> _KernelInverseApproximator:
+        """Abstract pytest fixture returns an initialised inverse approximator."""
+        random_seed = 2_024
+        return RandomisedEigendecompositionApproximator(
+            random_key=jr.key(random_seed),
+            oversampling_parameter=100,
+            power_iterations=1,
+            rcond=None,
+        )
+
+    @override
+    @pytest.fixture(scope="class")
+    def problem(self):
+        r"""Define data shared across tests."""
+        random_key = jr.key(2_024)
+        num_data_points = 1000
+        dimension = 2
+        identity = jnp.eye(num_data_points)
+        regularisation_parameter = 1e-6
+
+        # Compute kernel matrix from standard normal data
+        x = jr.normal(random_key, (num_data_points, dimension))
+        kernel_gramian = coreax.kernel.SquaredExponentialKernel().compute(x, x)
+
+        # Compute "exact" inverse
+        expected_inverse = coreax.util.invert_regularised_array(
+            kernel_gramian, regularisation_parameter, identity, rcond=None
+        )
+
+        return (
+            random_key,
+            kernel_gramian,
+            regularisation_parameter,
+            identity,
+            expected_inverse,
+        )
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [(jnp.eye((2)), jnp.eye((2)), -10), (jnp.eye((2)), jnp.eye((3)), None)],
+        ids=["rcond_negative_not_negative_one", "unequal_array_dimensions"],
+    )
+    def test_approximator_invalid_inputs(
+        self,
+        kernel_gramian: ArrayLike,
+        identity: ArrayLike,
+        rcond: Union[float, None],
+    ) -> None:
+        """Test that `randomised_eigendecomposition` handles invalid inputs."""
+        with pytest.raises(ValueError):
+            approximator = RandomisedEigendecompositionApproximator(
+                random_key=jr.key(0),
+                oversampling_parameter=1,
+                power_iterations=1,
+                rcond=rcond,
+            )
+
+            approximator.approximate(
+                kernel_gramian=kernel_gramian,
+                regularisation_parameter=1e-6,
+                identity=identity,
+            )
+
+    def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
+        """Test that the `randomised_eigendecomposition` is accurate."""
+        # Unpack problem data
+        random_key, kernel_gramian, _, _, _ = problem
+        oversampling_parameter = 100
+        power_iterations = 1
+
+        eigenvalues, eigenvectors = randomised_eigendecomposition(
+            random_key=random_key,
+            array=kernel_gramian,
+            oversampling_parameter=oversampling_parameter,
+            power_iterations=power_iterations,
+        )
+        assert jnp.linalg.norm(
+            kernel_gramian - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
+        ) == pytest.approx(0.0, abs=1e-3)
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, oversampling_parameter, power_iterations",
+        [
+            (jnp.zeros((2, 2, 2)), 1, 1),
+            (jnp.zeros((2, 3)), 1, 1),
+            (jnp.eye((2)), 1.0, 1),
+            (jnp.eye((2)), -1, 1),
+            (jnp.eye((2)), 1, 1.0),
+            (jnp.eye((2)), 1, -1),
+        ],
+        ids=[
+            "larger_than_two_d_array",
+            "non_square_array",
+            "float_oversampling_parameter",
+            "negative_oversampling_parameter",
+            "float_power_iterations",
+            "negative_power_iterations",
+        ],
+    )
+    def test_randomised_eigendecomposition_invalid_inputs(
+        self,
+        kernel_gramian: ArrayLike,
+        oversampling_parameter: int,
+        power_iterations: int,
+    ) -> None:
+        """Test that `randomised_eigendecomposition` handles invalid inputs."""
+        with pytest.raises(ValueError):
+            randomised_eigendecomposition(
+                random_key=jr.key(0),
+                array=kernel_gramian,
+                oversampling_parameter=oversampling_parameter,
+                power_iterations=power_iterations,
+            )

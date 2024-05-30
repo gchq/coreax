@@ -23,10 +23,9 @@ from unittest.mock import Mock
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax.random import key, normal
+from jax.random import key
 from scipy.stats import ortho_group
 
-from coreax.kernel import SquaredExponentialKernel
 from coreax.util import (
     SilentTQDM,
     apply_negative_precision_threshold,
@@ -34,14 +33,10 @@ from coreax.util import (
     invert_regularised_array,
     jit_test,
     pairwise,
-    randomised_eigendecomposition,
-    randomised_invert_regularised_array,
     sample_batch_indices,
     solve_qp,
     squared_distance,
 )
-
-# pylint: disable=too-many-public-methods
 
 
 class TestUtil:
@@ -247,172 +242,6 @@ class TestUtil:
                 num_batches=num_batches,
             )
 
-    def test_randomised_eigendecomposition_larger_than_two_dimension_array(
-        self,
-    ) -> None:
-        """
-        Test randomised_eigendecomposition with larger than two-dimensional array.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.zeros(((2, 2, 2))),
-                oversampling_parameter=1.0,
-                power_iterations=1,
-            )
-
-    def test_randomised_eigendecomposition_non_square_array(self) -> None:
-        """
-        Test randomised_eigendecomposition with a non-square array.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.zeros(((2, 3))),
-                oversampling_parameter=1.0,
-                power_iterations=1,
-            )
-
-    def test_randomised_eigendecomposition_float_oversampling_parameter(self) -> None:
-        """
-        Test randomised_eigendecomposition with float oversampling_parameter.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.eye(2),
-                oversampling_parameter=1.0,
-                power_iterations=1,
-            )
-
-    def test_randomised_eigendecomposition_neg_oversampling_parameter(self) -> None:
-        """
-        Test randomised_eigendecomposition with negative oversampling_parameter.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.eye(2),
-                oversampling_parameter=-1,
-                power_iterations=1,
-            )
-
-    def test_randomised_eigendecomposition_float_power_iterations(self) -> None:
-        """
-        Test randomised_eigendecomposition with float power_iterations.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.eye(2),
-                oversampling_parameter=10,
-                power_iterations=1.0,
-            )
-
-    def test_randomised_eigendecomposition_negative_power_iterations(self) -> None:
-        """
-        Test randomised_eigendecomposition with negative power_iterations.
-        """
-        with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=key(0),
-                array=jnp.eye(2),
-                oversampling_parameter=10,
-                power_iterations=-1,
-            )
-
-    def test_randomised_eigendecomposition(self) -> None:
-        """
-        Test randomised_eigendecomposition with random kernel matrix.
-        """
-        random_key = key(0)
-        num_data_points = 100
-        oversampling_parameter = 10
-        power_iterations = 1
-
-        # Make kernel matrix
-        x = normal(key(1), (num_data_points, 1))
-        array = SquaredExponentialKernel().compute(x, x)
-
-        (
-            output_eigenvalues,
-            output_eigenvectors,
-        ) = randomised_eigendecomposition(
-            random_key=random_key,
-            array=array,
-            oversampling_parameter=oversampling_parameter,
-            power_iterations=power_iterations,
-        )
-        assert jnp.linalg.norm(
-            array
-            - (
-                output_eigenvectors
-                @ jnp.diag(output_eigenvalues)
-                @ output_eigenvectors.T
-            )
-        ) == pytest.approx(0.0, abs=1e-4)
-
-    def test_randomised_invert_regularised_array_negative_rcond(self) -> None:
-        """
-        Test randomised_invert_regularised_array with negative rcond not negative one.
-
-        Should be rejected by the function.
-        """
-        with pytest.raises(ValueError):
-            randomised_invert_regularised_array(
-                key(0),
-                array=jnp.eye(2),
-                regularisation_parameter=1e-6,
-                identity=jnp.eye(2),
-                rcond=-10,
-            )
-
-    def test_randomised_invert_regularised_array_unequal_array_dimensions(self) -> None:
-        """
-        Test randomised_invert_regularised_array with invalid array dimensions.
-
-        An array and identity with unequal dimensions are given, which should be
-        rejected by the function.
-        """
-        with pytest.raises(ValueError):
-            randomised_invert_regularised_array(
-                key(0),
-                array=jnp.eye(2),
-                regularisation_parameter=1e-6,
-                identity=jnp.eye(3),
-                rcond=None,
-            )
-
-    def test_randomised_invert_regularised_array(self) -> None:
-        """
-        Test randomised_invert_regularised_array.
-        """
-        random_key = key(0)
-        num_data_points = 1000
-        regularisation_parameter = 1e-6
-        identity = jnp.eye(num_data_points)
-        rcond = None
-        oversampling_parameter = 25
-        power_iterations = 1
-
-        # Make kernel matrix
-        x = normal(key(1), (num_data_points, 1))
-        array = SquaredExponentialKernel().compute(x, x)
-
-        output = randomised_invert_regularised_array(
-            random_key,
-            array,
-            regularisation_parameter,
-            identity,
-            rcond,
-            oversampling_parameter,
-            power_iterations,
-        )
-        expected_output = invert_regularised_array(
-            array, regularisation_parameter, identity, rcond
-        )
-        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
-
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
         "args, kwargs, jit_kwargs",
@@ -452,9 +281,6 @@ class TestUtil:
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
         assert post_time < (pre_time - wait_time)
-
-
-# pylint: enable=too-many-public-methods
 
 
 class TestSilentTQDM:

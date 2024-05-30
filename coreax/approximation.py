@@ -78,6 +78,7 @@ from functools import partial
 
 import jax.numpy as jnp
 from jax import Array, jit, lax, random
+from jax.random import normal
 from jax.typing import ArrayLike
 
 import coreax.kernel
@@ -469,6 +470,68 @@ class KernelInverseApproximator(ABC):
         """
 
 
+@partial(jit, static_argnames=("oversampling_parameter", "power_iterations"))
+def randomised_eigendecomposition(
+    random_key: coreax.util.KeyArrayLike,
+    array: ArrayLike,
+    oversampling_parameter: int = 10,
+    power_iterations: int = 1,
+):
+    r"""
+    Approximate the eigendecomposition of kernel gram matrices.
+
+    Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
+    eigendecomposition of a kernel gram matrix. The parameters 'oversampling_parameter'
+    and 'power_iterations' present a trade-off between speed and approximation quality.
+
+    Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
+    :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
+    :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
+    :math:`U\in\mathbb{R}^{n\times p}` such that we have :math:`K \approx U\Lambda U^T`.
+
+    :param random_key: Key for random number generation
+    :param array: Array to be decomposed
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
+    :return: eigenvalues and eigenvectors that approximately decompose the target array
+    """
+    # Input handling
+    supported_array_shape = 2
+    if len(array.shape) != supported_array_shape:
+        raise ValueError("array must be two-dimensional")
+    if array.shape[0] != array.shape[1]:
+        raise ValueError("array must be square")
+    if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
+        raise ValueError("oversampling_parameter must be a positive integer")
+    if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
+        raise ValueError("power_iterations must be a positive integer")
+
+    standard_gaussian_draws = normal(
+        random_key, shape=(array.shape[0], oversampling_parameter)
+    )
+
+    # QR decomposition to find orthonormal array with range approximating range of array
+    approximate_range = array @ standard_gaussian_draws
+    q, _ = jnp.linalg.qr(approximate_range)
+
+    # Power iterations for improved accuracy
+    for _ in range(power_iterations):
+        approximate_range_ = array.T @ q
+        q_, _ = jnp.linalg.qr(approximate_range_)
+        approximate_range = array @ q_
+        q, _ = jnp.linalg.qr(approximate_range)
+
+    # Form the low rank array, compute its exact eigendecomposition and ortho-normalise
+    # the eigenvectors.
+    array_approximation = q.T @ array @ q
+    approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+    approximate_eigenvectors = q @ eigenvectors
+
+    return approximate_eigenvalues, approximate_eigenvectors
+
+
 class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
     """
      Approximate regularised kernel matrix inverse using randomised eigendecomposition.
@@ -538,6 +601,10 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
         :param identity: Identity matrix
         :return: Approximation of the kernel matrix inverse
         """
+        # Validate inputs
+        if kernel_gramian.shape != identity.shape:
+            raise ValueError("Leading dimensions of array and identity must match")
+
         # Set rcond parameter if not given
         n = kernel_gramian.shape[0]
         machine_precision = jnp.finfo(kernel_gramian.dtype).eps
@@ -550,7 +617,7 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
 
         # Get randomised eigendecomposition of regularised kernel matrix
         approximate_eigenvalues, approximate_eigenvectors = (
-            coreax.util.randomised_eigendecomposition(
+            randomised_eigendecomposition(
                 random_key=self.random_key,
                 array=kernel_gramian + abs(regularisation_parameter) * identity,
                 oversampling_parameter=self.oversampling_parameter,
