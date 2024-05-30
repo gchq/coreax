@@ -197,7 +197,7 @@ class TestUtil:
         [(jnp.eye((2)), jnp.eye((2)), -10), (jnp.eye((2)), jnp.eye((3)), None)],
         ids=["rcond_negative_not_negative_one", "unequal_array_dimensions"],
     )
-    def test_approximator_invalid_inputs(
+    def test_invert_regularised_invalid_inputs(
         self,
         array: ArrayLike,
         identity: ArrayLike,
