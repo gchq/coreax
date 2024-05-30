@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from coreax import KernelHerding, SizeReduce, SquaredExponentialKernel
+from coreax import SquaredExponentialKernel
+from coreax.solvers import KernelHerding
 from coreax.weights import MMDWeightsOptimiser
 
 # Define a kernel
@@ -22,10 +23,8 @@ kernel = SquaredExponentialKernel(length_scale=length_scale)
 weights_optimiser = MMDWeightsOptimiser(kernel=kernel)
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
-herding_object = KernelHerding(
-    herding_key, kernel=kernel, weights_optimiser=weights_optimiser
-)
-herding_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
+herding_solver = KernelHerding(coreset_size, kernel=kernel)
+herding_coreset, _ = herding_solver.reduce(data)
 
 # Determine optimal weights for the coreset
-herding_weights = herding_object.solve_weights()
+re_weighted_herding_coreset = herding_coreset.solve_weights(weights_optimiser)

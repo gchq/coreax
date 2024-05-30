@@ -1,4 +1,0 @@
-Reduction
-=========
-
-.. automodule:: coreax.reduction

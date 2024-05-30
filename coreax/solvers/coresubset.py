@@ -30,7 +30,12 @@ from coreax.coreset import Coresubset
 from coreax.data import Data, as_data
 from coreax.kernel import Kernel, SteinKernel
 from coreax.score_matching import KernelDensityMatching, ScoreMatching
-from coreax.solvers.base import CoresubsetSolver, ExplicitSizeSolver, RefinementSolver
+from coreax.solvers.base import (
+    CoresubsetSolver,
+    ExplicitSizeSolver,
+    PaddingInvariantSolver,
+    RefinementSolver,
+)
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
@@ -131,7 +136,9 @@ def _greedy_kernel_selection(
     return eqx.tree_at(lambda x: x.nodes, coresubset, as_data(updated_coreset_indices))
 
 
-class KernelHerding(RefinementSolver[_Data, HerdingState], ExplicitSizeSolver):
+class KernelHerding(
+    RefinementSolver[_Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
+):
     r"""
     Kernel Herding - an explicitly sized coresubset refinement solver.
 
@@ -373,7 +380,9 @@ def _convert_stein_kernel(
     return _kernel
 
 
-class SteinThinning(RefinementSolver[_Data, None], ExplicitSizeSolver):
+class SteinThinning(
+    RefinementSolver[_Data, None], ExplicitSizeSolver, PaddingInvariantSolver
+):
     r"""
     Stein Thinning - an explicitly sized coresubset refinement solver.
 

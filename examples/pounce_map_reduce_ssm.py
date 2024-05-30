@@ -28,11 +28,10 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 (MMD).
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from pathlib import Path
+from typing import Union
 
+import equinox as eqx
 import imageio
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -42,16 +41,13 @@ from sklearn.decomposition import PCA
 
 from coreax import (
     MMD,
-    ArrayData,
-    KernelHerding,
-    MapReduce,
-    RandomSample,
-    SizeReduce,
+    Data,
     SlicedScoreMatching,
     SquaredExponentialKernel,
     SteinKernel,
 )
 from coreax.kernel import median_heuristic
+from coreax.solvers import KernelHerding, MapReduce, RandomSample
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
@@ -61,7 +57,7 @@ from coreax.kernel import median_heuristic
 # pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
-    out_path: Path | None = None,
+    out_path: Union[Path, None] = None,
 ) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with score matching.
@@ -104,7 +100,7 @@ def main(
     principle_components_data = pca.fit_transform(raw_data_reshaped)
 
     # Setup the original data object
-    data = ArrayData.load(principle_components_data)
+    data = Data(principle_components_data)
 
     # Request a 10 frame summary of the video
     coreset_size = 10
@@ -120,7 +116,7 @@ def main(
     length_scale = median_heuristic(principle_components_data[idx])
 
     # Learn a score function
-    score_key, herding_key, sample_key = random.split(random.key(random_seed), 3)
+    score_key, sample_key = random.split(random.key(random_seed), 2)
     sliced_score_matcher = SlicedScoreMatching(
         score_key,
         random_generator=random.rademacher,
@@ -133,27 +129,22 @@ def main(
     score_function = sliced_score_matcher.match(principle_components_data)
 
     # Run kernel herding with a Stein kernel
-    herding_object = KernelHerding(
-        herding_key,
+    herding_solver = KernelHerding(
+        coreset_size,
         kernel=SteinKernel(
             SquaredExponentialKernel(length_scale=length_scale),
             score_function=score_function,
         ),
     )
-    herding_object.fit(
-        original_data=data,
-        strategy=MapReduce(coreset_size=coreset_size, leaf_size=20),
-    )
+    mapped_herding_solver = MapReduce(herding_solver, leaf_size=20)
+    herding_coreset, _ = eqx.filter_jit(mapped_herding_solver.reduce)(data)
 
     # Get and sort the coreset indices ready for producing the output video
-    coreset_indices_herding = jnp.sort(herding_object.coreset_indices)
+    coreset_indices_herding = jnp.sort(herding_coreset.unweighted_indices)
 
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(sample_key, unique=True)
-    random_sample_object.fit(
-        original_data=data,
-        strategy=SizeReduce(coreset_size=coreset_size),
-    )
+    random_solver = RandomSample(coreset_size, sample_key, unique=True)
+    random_coreset, _ = eqx.filter_jit(random_solver.reduce)(data)
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
@@ -164,16 +155,16 @@ def main(
     )
 
     # Compute the MMD between the original data and the coreset generated via herding
-    metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_object.compute_metric(metric_object)
+    mmd_metric = MMD(kernel=mmd_kernel)
+    herding_mmd = herding_coreset.compute_metric(mmd_metric)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = random_sample_object.compute_metric(metric_object)
+    random_mmd = random_coreset.compute_metric(mmd_metric)
 
     # Print the MMD values
-    print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
-    print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
+    print(f"Random sampling coreset MMD: {random_mmd}")
+    print(f"Herding coreset MMD: {herding_mmd}")
 
     # Save a new video. Y_ is the original sequence with dimensions preserved
     coreset_images = raw_data[coreset_indices_herding]
@@ -202,8 +193,8 @@ def main(
     plt.close()
 
     return (
-        float(maximum_mean_discrepancy_herding),
-        float(maximum_mean_discrepancy_random),
+        float(herding_mmd),
+        float(random_mmd),
     )
 
 

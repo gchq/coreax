@@ -174,7 +174,3 @@ class TestTrainState(unittest.TestCase):
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
             )
-
-
-if __name__ == "__main__":
-    unittest.main()
