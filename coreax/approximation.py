@@ -348,7 +348,7 @@ def randomised_eigendecomposition(
     Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
     :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
     :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
-    :math:`U\in\mathbb{R}^{n\times p}` such that we have :math:`K \approx U\Lambda U^T`.
+    :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`K \approx U\Lambda U^T`.
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
@@ -395,24 +395,25 @@ def randomised_eigendecomposition(
 
 class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
     """
-     Approximate regularised kernel matrix inverse using randomised eigendecomposition.
+    Approximate regularised kernel matrix inverse using randomised eigendecomposition.
 
-     When a dataset is very large, computing the inverse of the kernel gram matrix
-     can be very time-consuming. Instead, this property can be approximated by various
-     methods. :class:`RandomisedEigendecompositionApproximator` is a class that does
-     such an approximation using a randomised eigendecomposition. Further details can be
+    When a dataset is very large, computing the inverse of the kernel gram matrix
+    can be very time-consuming. Instead, this property can be approximated by various
+    methods. :class:`RandomisedEigendecompositionApproximator` is a class that does
+    such an approximation using a randomised eigendecomposition. Further details can be
     found in (:cite:`halko2011randomness` Algorithm 4.4. and 5.3).
 
-     :param random_key: Key for random number generation
-     :param rcond: Cut-off ratio for small singular values of a. For the purposes of
-        rank determination, singular values are treated as zero if they are smaller than
-        rcond times the largest singular value of a. The default value of None will use
-        the machine precision multiplied by the largest dimension of the array.
-        An alternate value of -1 will use machine precision.
+    :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
+    :param rcond: Cut-off ratio for small singular values of a. For the purposes of
+        rank determination, singular values are treated as zero if they are smaller than
+        rcond times the largest singular value of a. The default value of None will use
+        the machine precision multiplied by the largest dimension of the array.
+        An alternate value of -1 will use machine precision.
+
     """
 
     def __init__(
