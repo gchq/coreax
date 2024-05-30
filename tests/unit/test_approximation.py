@@ -380,7 +380,7 @@ class TestRandomisedEigendecompositionApproximator(
         self,
         kernel_gramian: ArrayLike,
         identity: ArrayLike,
-        rcond: Union[float, None],
+        rcond: Union[int, float, None],
     ) -> None:
         """Test that `randomised_eigendecomposition` handles invalid inputs."""
         with pytest.raises(ValueError):

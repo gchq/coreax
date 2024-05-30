@@ -20,6 +20,7 @@ expected results on simple examples.
 import time
 from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
+from typing import Union
 from unittest.mock import Mock
 
 import equinox as eqx
@@ -27,6 +28,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax.random import key
+from jax.typing import ArrayLike
 from scipy.stats import ortho_group
 
 from coreax.util import (
@@ -190,31 +192,24 @@ class TestUtil:
                 gramian_row_mean="invalid_gramian_row_mean",
             )
 
-    def test_invert_regularised_array_negative_rcond_not_negative_one(self) -> None:
-        """
-        Test invert_regularised_array with negative rcond not negative one.
-        """
+    @pytest.mark.parametrize(
+        "array, identity, rcond",
+        [(jnp.eye((2)), jnp.eye((2)), -10), (jnp.eye((2)), jnp.eye((3)), None)],
+        ids=["rcond_negative_not_negative_one", "unequal_array_dimensions"],
+    )
+    def test_approximator_invalid_inputs(
+        self,
+        array: ArrayLike,
+        identity: ArrayLike,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """Test that `invert_regularised_array` handles invalid inputs."""
         with pytest.raises(ValueError):
             invert_regularised_array(
-                array=jnp.eye(2),
+                array=array,
                 regularisation_parameter=1e-6,
-                identity=jnp.eye(2),
-                rcond=-10,
-            )
-
-    def test_invert_regularised_array_unequal_array_dimensions(self) -> None:
-        """
-        Test invert_regularised_array with invalid array dimensions.
-
-        An array and identity with unequal dimensions are given, which should be
-        rejected by the function.
-        """
-        with pytest.raises(ValueError):
-            invert_regularised_array(
-                array=jnp.eye(2),
-                regularisation_parameter=1e-6,
-                identity=jnp.eye(3),
-                rcond=None,
+                identity=identity,
+                rcond=rcond,
             )
 
     def test_invert_regularised_array(self) -> None:
