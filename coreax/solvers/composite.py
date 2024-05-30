@@ -1,6 +1,7 @@
 """Solvers that compose with other solvers."""
 
 import math
+import warnings
 from typing import Generic, TypeVar, Union
 
 import equinox as eqx
@@ -13,7 +14,7 @@ from typing_extensions import TypeAlias, override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
-from coreax.solvers.base import ExplicitSizeSolver, Solver
+from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
 from coreax.util import tree_zero_pad_leading_axis
 
 BinaryTree: TypeAlias = Union[KDTree, BallTree]
@@ -96,6 +97,12 @@ class MapReduce(
             raise ValueError(
                 "'leaf_size' must be larger than 'base_solver.coreset_size'"
             )
+        if not isinstance(self.base_solver, PaddingInvariantSolver):
+            warnings.warn(
+                "'base_solver' is not a 'PaddingInvariantSolver'; Zero-weighted padding"
+                + " applied in 'MapReduce' may lead to undefined results.",
+                stacklevel=2,
+            )
 
     @override
     def reduce(
@@ -155,11 +162,11 @@ def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _D
     shape = (n_leaves, len(padded_dataset) // n_leaves)
     result_shape = jax.ShapeDtypeStruct(shape, jnp.int32)
 
-    def _kdtree(_input_data: Data) -> np.ndarray:
+    def _binary_tree(_input_data: Data) -> np.ndarray:
         _, node_indices, _, _ = tree_type(
             _input_data.data, leaf_size=_leaf_size, sample_weight=_input_data.weights
         ).get_arrays()
         return node_indices.reshape(n_leaves, -1).astype(np.int32)
 
-    indices = jax.pure_callback(_kdtree, result_shape, padded_dataset)
+    indices = jax.pure_callback(_binary_tree, result_shape, padded_dataset)
     return dataset[indices]
