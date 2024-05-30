@@ -26,6 +26,7 @@ dispname
 dollarmath
 dtype
 dtypes
+dunder
 eigh
 emibcn
 eprint
@@ -45,14 +46,17 @@ intersphinx
 isin
 isort
 issubdtype
+jacfwd
 jacrev
 jax
 jaxlib
 jaxopt
+jaxtyping
 jumanjihouse
 linalg
 linkcheck
 literalinclude
+logpdf
 lstsq
 mathbb
 mathbf
@@ -64,6 +68,9 @@ mimsave
 modindex
 myst
 nabla
+nanargmax
+nanargmin
+ndarray
 ndim
 newaxis
 nonzero
@@ -89,6 +96,7 @@ pytree
 pytrees
 quickstart
 rcfile
+rcond
 rect
 rerunfailures
 rightarrow

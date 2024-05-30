@@ -73,7 +73,7 @@ class TestCoreset(unittest.TestCase):
         original_data = MagicMock()
         coreset = MagicMock()
         coreset_indices = MagicMock()
-        kernel_matrix_row_sum_mean = MagicMock()
+        gramian_row_mean = MagicMock()
         original = CoresetMock(
             weights_optimiser=weights_optimiser,
             kernel=kernel,
@@ -82,7 +82,7 @@ class TestCoreset(unittest.TestCase):
         original.original_data = original_data
         original.coreset = coreset
         original.coreset_indices = coreset_indices
-        original.kernel_matrix_row_sum_mean = kernel_matrix_row_sum_mean
+        original.gramian_row_mean = gramian_row_mean
 
         # Create copy
         duplicate = original.clone_empty()
@@ -100,8 +100,8 @@ class TestCoreset(unittest.TestCase):
         self.assertIsNone(duplicate.coreset)
         self.assertIs(original.coreset_indices, coreset_indices)
         self.assertIsNone(duplicate.coreset_indices)
-        self.assertIs(original.kernel_matrix_row_sum_mean, kernel_matrix_row_sum_mean)
-        self.assertIsNone(duplicate.kernel_matrix_row_sum_mean)
+        self.assertIs(original.gramian_row_mean, gramian_row_mean)
+        self.assertIsNone(duplicate.gramian_row_mean)
 
     def test_fit(self):
         """Test that original data is saved and reduction strategy called."""
@@ -110,6 +110,8 @@ class TestCoreset(unittest.TestCase):
         strategy = MagicMock(spec=coreax.reduction.ReductionStrategy)
         coreset.fit(original_data, strategy)
         self.assertIs(coreset.original_data, original_data)
+        # Spurious pylint error; will be removed in #632
+        # pylint: disable-next=no-member
         strategy.reduce.assert_called_once_with(coreset)
 
     def test_solve_weights(self):
@@ -134,23 +136,36 @@ class TestCoreset(unittest.TestCase):
         """Check that compute_metric is called correctly."""
         coreset = CoresetMock()
         coreset.original_data = MagicMock(spec=coreax.data.DataReader)
-        coreset.original_data.pre_coreset_array = MagicMock(spec=Array)
+        coreset.original_data.pre_coreset_array = jnp.array([[1], [2]])
+        weights_x = jnp.array([1 / 2, 1 / 2])
+
         metric = MagicMock(spec=coreax.metrics.Metric)
         block_size = 10
 
         # First try prior to fitting a coreset
         with self.assertRaises(coreax.util.NotCalculatedError):
-            coreset.compute_metric(metric, block_size)
+            coreset.compute_metric(
+                metric,
+                block_size,
+            )
 
         # Now test with a calculated coreset
-        coreset.coreset = MagicMock(spec=Array)
-        coreset.compute_metric(metric, block_size)
-        metric.compute.assert_called_once_with(
-            coreset.original_data.pre_coreset_array,
-            coreset.coreset,
+        coreset.coreset = jnp.array([[1]])
+        weights_y = jnp.array([1])
+        coreset.compute_metric(
+            metric=metric,
             block_size=block_size,
-            weights_x=None,
-            weights_y=None,
+            weights_x=weights_x,
+            weights_y=weights_y,
+        )
+        # Spurious pylint error; will be removed in #632
+        # pylint: disable-next=no-member
+        metric.compute.assert_called_once_with(
+            coreax.data.Data(
+                data=coreset.original_data.pre_coreset_array, weights=weights_x
+            ),
+            coreax.data.Data(data=coreset.coreset, weights=weights_y),
+            block_size=block_size,
         )
 
     def test_refine(self):

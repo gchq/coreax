@@ -24,55 +24,55 @@ In this library, we often use kernels as a smoothing tool: given a dataset of di
 points, we can reconstruct the underlying data generating distribution through smoothing
 of the data with kernels.
 
-All kernels in this module implement the base class :class:`Kernel`. They therefore must
-define some ``length_scale`` and ``output_scale``, with the former controlling the
-amount of smoothing applied, and the latter acting as a normalisation constant. A common
-kernel used across disciplines is the :class:`SquaredExponentialKernel`, defined as
+Some kernels are parameterizable and may represent other well known kernels when given
+appropriate parameter values. For example, the :class:`SquaredExponentialKernel`,
 
 .. math::
 
-    k(x,y) = \text{output_scale} * \exp (-||x-y||^2/2 * \text{length_scale}^2).
+    k(x,y) = \text{output_scale} * \exp (-||x-y||^2/2 * \text{length_scale}^2),
 
-One can see that, if ``output_scale`` takes the value
-:math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, then the
-:class:`~coreax.kernel.SquaredExponentialKernel` becomes the well known Gaussian kernel.
+which if parameterized with an ``output_scale`` of
+:math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, yields the well known
+Gaussian kernel.
 
-There are only two mandatory methods to implement when defining a new kernel. The first
-is :meth:`~coreax.kernel.Kernel.compute_elementwise`, which returns the floating point
-value after evaluating the kernel on two floats, ``x`` and ``y``. Performance
-improvements can be gained when kernels are used in other areas of the codebase by also
-implementing :meth:`~coreax.kernel.Kernel.grad_x_elementwise` and
-:meth:`~coreax.kernel.Kernel.grad_y_elementwise` which are
-simply the gradients of the kernel with respect to ``x`` and ``y`` respectively.
-Finally, :meth:`~coreax.kernel.Kernel.divergence_x_grad_y_elementwise`, the divergence
-with respect to ``x`` of the gradient of the kernel with respect to ``y`` can allow
-analytical computation of the :class:`~coreax.kernel.SteinKernel`, which itself requires
-a base kernel. However, if this property is not known, one can turn to the approaches in
-:class:`~coreax.score_matching.ScoreMatching` to side-step this requirement.
+A :class:`~coreax.kernel.Kernel` must implement a
+:meth:`~coreax.kernel.Kernel.compute_elementwise` method, which returns the floating
+point value after evaluating the kernel on two floats, ``x`` and ``y``. Additional
+methods, such as :meth:`Kernel.grad_x_elementwise`, can optionally be overridden to
+improve performance. The canonical example is when a suitable closed-form representation
+of a higher-order gradient can be used to avoid the expense of performing automatic
+differentiation.
 
-The other mandatory method to implement when defining a new kernel is
-:meth:`~coreax.kernel.Kernel.tree_flatten`. To improve performance, kernel computation
-is JIT compiled. As a result, definitions of dynamic and static values inside
-:meth:`~coreax.kernel.Kernel.tree_flatten` ensure the kernel object can be mutated and
-the corresponding JIT compilation does not yield unexpected results.
+Such an example can be seen in :class:`SteinKernel`, where the analytic forms of
+:meth:`Kernel.divergence_x_grad_y` are significantly cheaper to compute that the
+automatic differentiated default.
 """
 
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
-import warnings
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from math import ceil
+from typing import TypeVar
 
+import equinox as eqx
+import jax
 import jax.numpy as jnp
-from jax import Array, grad, jacrev, jit, tree_util
+import jax.tree_util as jtu
+from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
+from typing_extensions import override
 
-from coreax.util import KernelComputeType, pairwise, squared_distance
+from coreax.data import Data, as_data, is_data
+from coreax.util import (
+    pairwise,
+    squared_distance,
+    tree_leaves_repeat,
+    tree_zero_pad_leading_axis,
+)
 
-if TYPE_CHECKING:
-    import coreax.approximation
+T = TypeVar("T")
 
 
 @jit
@@ -99,47 +99,9 @@ def median_heuristic(x: ArrayLike) -> Array:
     return jnp.sqrt(median_square_distance / 2.0)
 
 
-class Kernel(ABC):
-    """
-    Base class for kernels.
+class Kernel(eqx.Module):
+    """Abstract base class for kernels."""
 
-    :param length_scale: Kernel ``length_scale`` to use
-    :param output_scale: Output scale to use
-    """
-
-    def __init__(self, length_scale: float = 1.0, output_scale: float = 1.0):
-        """Define a kernel."""
-        self.length_scale = length_scale
-        self.output_scale = output_scale
-
-    @abstractmethod
-    def tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-
-        :return: Tuple containing two elements. The first is a tuple holding the arrays
-            and dynamic values that are present in the class. The second is a dictionary
-            holding the static auxiliary data for the class, with keys being the names
-            of class attributes, and values being the values of the corresponding class
-            attributes.
-        """
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable JIT decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
-
-    @jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
@@ -204,16 +166,11 @@ class Kernel(ABC):
         """
         return pairwise(self.grad_y_elementwise)(x, y)
 
-    def grad_x_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
-        The gradient (Jacobian) of the kernel function w.r.t. ``x`` is computed using
-        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`.
+        The gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
         :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this method
@@ -226,16 +183,11 @@ class Kernel(ABC):
         """
         return grad(self.compute_elementwise, 0)(x, y)
 
-    def grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
-        The gradient (Jacobian) of the kernel function is computed using
-        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
+        The gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
         :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this method
@@ -248,11 +200,7 @@ class Kernel(ABC):
         """
         return grad(self.compute_elementwise, 1)(x, y)
 
-    def divergence_x_grad_y(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
+    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -268,16 +216,9 @@ class Kernel(ABC):
         """
         return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
 
-    def divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
-
-        The evaluation is done via
-        :doc:`Autodiff <jax:notebooks/autodiff_cookbook>`..
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
@@ -293,495 +234,292 @@ class Kernel(ABC):
         pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
         return pseudo_hessian.trace()
 
-    @staticmethod
-    def update_kernel_matrix_row_sum(
-        x: ArrayLike,
-        kernel_row_sum: ArrayLike,
-        i: int,
-        j: int,
-        kernel_pairwise: KernelComputeType,
-        max_size: int = 10_000,
-    ) -> Array:
+    def gramian_row_mean(
+        self,
+        x: ArrayLike | Data,
+        *,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+    ):
         r"""
-        Update the row sum of the kernel matrix with a single block of values.
+        Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
-        The row sum of the kernel matrix may involve a large number of pairwise
-        computations, so this can be done in blocks to reduce memory requirements.
-
-        The kernel matrix block ``i``:``i`` + ``max_size`` :math:`\times`
-        ``j``:``j`` + ``max_size`` is used to update the row sum. Symmetry of the kernel
-        matrix is exploited to reduced repeated calculation.
+        A convenience method for calling meth:`compute_mean`. Equivalent to the call
+        :code:`compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)`.
 
         :param x: Data matrix, :math:`n \times d`
-        :param kernel_row_sum: Full data structure for Gram matrix row sum,
-            :math:`1 \times n`
-        :param i: Kernel matrix block start
-        :param j: Kernel matrix block end
-        :param kernel_pairwise: Pairwise kernel evaluation function
-        :param max_size: Size of matrix block to process
-        :return: Gram matrix row sum, with elements ``i``:``i`` + ``max_size`` and
-            ``j``:``j`` + ``max_size`` populated
+        :param block_size: Block size parameter passed to :meth:`compute_mean`
+        :param unroll: Unroll parameter passed to :meth:`compute_mean`
+        :return: Gramian 'row/column-mean', :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`.
         """
-        x = jnp.atleast_2d(x)
-        kernel_row_sum = jnp.asarray(kernel_row_sum)
+        return self.compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)
 
-        # Compute the kernel row sum for this particular chunk of data
-        try:
-            kernel_row_sum_part = kernel_pairwise(
-                x[i : i + max_size], x[j : j + max_size]
-            )
-        except AttributeError as exception:
-            if isinstance(max_size, float):
-                raise ValueError("max_size must be an integer") from exception
-            if isinstance(i, float):
-                raise ValueError("index i must be an integer") from exception
-            if isinstance(j, float):
-                raise ValueError("index j must be an integer") from exception
-            raise
+    def compute_mean(
+        self,
+        x: ArrayLike | Data,
+        y: ArrayLike | Data,
+        axis: int | None = None,
+        *,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+    ) -> Array:
+        r"""
+        Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
-        if max_size <= 0:
-            warnings.warn(
-                "max_size is not positive - this may give unexpected results",
-                UserWarning,
-                stacklevel=1,
-            )
+        The :math:`n \times m` kernel matrix :math:`K_{ij} = k(x_i, y_j)`, where
+        ``x`` and ``y`` are respectively :math:`n \times d` and :math:`m \times d`
+        (weighted) data matrices, has the following (weighted) means:
 
-        # Assign the kernel row sum to the relevant part of this full matrix
-        kernel_row_sum = kernel_row_sum.at[i : i + max_size].set(
-            kernel_row_sum[i : i + max_size] + kernel_row_sum_part.sum(axis=1)
+        - mean (:code:`axis=None`) :math:`\frac{1}{n m}\sum_{i,j=1}^{n, m} K_{ij}`
+        - row-mean (:code:`axis=0`) :math:`\frac{1}{n}\sum_{i=1}^{n} K_{ij}`
+        - column-mean (:code:`axis=1`) :math:`\frac{1}{m}\sum_{j=1}^{m} K_{ij}`
+
+        If ``x`` and ``y`` are of type :class:`~coreax.data.Data`, their weights are
+        used to compute the weighted mean as defined in :func:`jax.numpy.average`.
+
+        .. note::
+            The conventional 'mean' is a scalar, the 'row-mean' is an :math:`m`-vector,
+            while the 'column-mean' is an :math:`n`-vector.
+
+        To avoid materializing the entire matrix (memory cost :math:`\mathcal{O}(n m)`),
+        we accumulate the mean over blocks (memory cost :math:`\mathcal{O}(B_x B_y)`,
+        where ``B_x`` and ``B_y`` are user-specified block-sizes for blocking the ``x``
+        and ``y`` parameters respectively.
+
+        .. note::
+            The data ``x`` and/or ``y`` are padded with zero-valued and zero-weighted
+            data points, when ``B_x`` and/or ``B_y`` are non-integer divisors of ``n``
+            and/or ``m``. Padding does not alter the result, but does provide the block
+            shape stability required by :func:`jax.lax.scan` (used for block iteration).
+
+        :param x: Data matrix, :math:`n \times d`
+        :param y: Data matrix, :math:`m \times d`
+        :param axis: Which axis of the kernel matrix to compute the mean over; a value
+            of `None` computes the mean over both axes
+        :param block_size: Size of matrix blocks to process; a value of :data:`None`
+            sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
+            accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
+            allows different sizes to be specified for ``B_x`` and ``B_y``; to reduce
+            overheads, it is often sensible to select the largest block size that does
+            not exhaust the available memory resources
+        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
+            calls, allows for trade-offs between compilation and runtime cost; consult
+            the JAX docs for further information
+        :return: The (weighted) mean of the kernel matrix :math:`K_{ij}`
+        """
+        operands = x, y
+        inner_unroll, outer_unroll = tree_leaves_repeat(unroll, len(operands))
+        _block_size = tree_leaves_repeat(block_size, len(operands))
+        # Row-mean is the argument reversed column-mean due to symmetry k(x,y) = k(y,x)
+        if axis == 0:
+            operands = operands[::-1]
+            _block_size = _block_size[::-1]
+        (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
+            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
         )
 
-        if i != j:
-            kernel_row_sum = kernel_row_sum.at[j : j + max_size].set(
-                kernel_row_sum[j : j + max_size] + kernel_row_sum_part.sum(axis=0)
+        def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
+            """Block reduce/accumulate over ``x``."""
+
+            def slice_sum(accumulated_sum: Array, y_block: Data) -> tuple[Array, Array]:
+                """Block reduce/accumulate over ``y``."""
+                x_, w_x = x_block.data, x_block.weights
+                y_, w_y = y_block.data, y_block.weights
+                column_sum_slice = jnp.dot(self.compute(x_, y_), w_y)
+                accumulated_sum += jnp.dot(w_x, column_sum_slice)
+                return accumulated_sum, column_sum_slice
+
+            accumulated_sum, column_sum_slices = jax.lax.scan(
+                slice_sum, accumulated_sum, block_y, unroll=inner_unroll
             )
+            return accumulated_sum, jnp.sum(column_sum_slices, axis=0)
 
-        return kernel_row_sum
+        accumulated_sum, column_sum_blocks = jax.lax.scan(
+            block_sum, jnp.asarray(0.0), block_x, unroll=outer_unroll
+        )
+        if axis is None:
+            return accumulated_sum
+        num_rows_padded = block_x.data.shape[0] * block_x.data.shape[1]
+        column_sum_padded = column_sum_blocks.reshape(num_rows_padded, -1).sum(axis=1)
+        return column_sum_padded[:unpadded_len_x]
 
-    def calculate_kernel_matrix_row_sum(
-        self,
-        x: ArrayLike,
-        max_size: int = 10_000,
-    ) -> Array:
-        r"""
-        Compute the row sum of the kernel matrix.
 
-        The row sum of the kernel matrix is the sum of distances between a given point
-        and all possible pairs of points that contain this given point. The row sum is
-        calculated block-wise to limit memory overhead.
+def _block_data_convert(
+    x: ArrayLike | Data, block_size: int | None
+) -> tuple[Array, int]:
+    """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
+    x = as_data(x).normalize(preserve_zeros=True)
+    block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
+    padding = ceil(len(x) / block_size) * block_size - len(x)
+    padded_x = tree_zero_pad_leading_axis(x, padding)
 
-        :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        :return: Kernel matrix row sum
-        """
-        x = jnp.atleast_2d(x)
-
-        # Ensure data format is as required
-        num_data_points = len(x)
-        kernel_row_sum = jnp.zeros(num_data_points)
-
-        # Validate sensible inputs have been given
-        max_size = max(0, max_size)
+    def _reshape(x: Array) -> Array:
+        _, *remaining_shape = jnp.shape(x)
         try:
-            row_index_range = range(0, num_data_points, max_size)
-        except ValueError as exception:
-            if max_size == 0:
-                raise ValueError("max_size must be a positive integer") from exception
+            return x.reshape(-1, block_size, *remaining_shape)
+        except ZeroDivisionError as err:
+            if 0 in x.shape:
+                raise ValueError("'x' must not be empty") from err
             raise
 
-        # Iterate over upper triangular blocks
-        for i in row_index_range:
-            for j in range(i, num_data_points, max_size):
-                kernel_row_sum = self.update_kernel_matrix_row_sum(
-                    x,
-                    kernel_row_sum,
-                    i,
-                    j,
-                    self.compute,
-                    max_size,
-                )
-        return kernel_row_sum
+    return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
-    def calculate_kernel_matrix_row_sum_mean(
-        self,
-        x: ArrayLike,
-        max_size: int = 10_000,
-    ) -> Array:
-        r"""
-        Compute the mean of the row sum of the kernel matrix.
 
-        The mean of the row sum of the kernel matrix is the mean of the sum of distances
-        between a given point and all possible pairs of points that contain this given
-        point.
+class LinearKernel(Kernel):
+    r"""
+    Define a linear kernel.
 
-        :param x: Data matrix, :math:`n \times d`
-        :param max_size: Size of matrix block to process
-        """
-        x = jnp.atleast_2d(x)
-        return self.calculate_kernel_matrix_row_sum(x, max_size) / (1.0 * x.shape[0])
+    Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
+    defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho x^Ty + c`.
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param constant: Additive constant, :math:`c`
+    """
 
-    @staticmethod
-    def approximate_kernel_matrix_row_sum_mean(
-        x: ArrayLike,
-        approximator: coreax.approximation.KernelMeanApproximator,
-    ) -> Array:
-        r"""
-        Approximate the mean of the row sum of the kernel matrix.
+    output_scale: float = 1.0
+    constant: float = 0.0
 
-        The mean of the row sum of the kernel matrix is the mean of the sum of distances
-        between a given point and all possible pairs of points that contain this given
-        point. This can involve a large number of pairwise computations, so an
-        approximation can be used in place of the true value.
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.dot(x, y) + self.constant
 
-        :param x: Data matrix, :math:`n \times d`
-        :param approximator: Instantiated
-            :class:`~coreax.approximation.KernelMeanApproximator` object that has been
-            created using the same kernel one wishes to use
-        :return: Approximation to the kernel matrix row sum
-        """
-        return approximator.approximate(x)
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.asarray(y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.asarray(x)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.asarray(jnp.shape(x)[0])
 
 
 class SquaredExponentialKernel(Kernel):
-    """
+    r"""
     Define a squared exponential kernel.
 
-    :param length_scale: Kernel ``length_scale`` to use
-    :param output_scale: Output scale to use
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
+    exponential kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(\frac{||x-y||^2}{2 \lambda^2})` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    def tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
+    length_scale: float = 1.0
+    output_scale: float = 1.0
 
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-
-        :return: Tuple containing two elements. The first is a tuple holding the arrays
-            and dynamic values that are present in the class. The second is a dictionary
-            holding the static auxiliary data for the class, with keys being the names
-            of class attributes, and values being the values of the corresponding class
-            attributes.
-        """
-        children = (self.length_scale, self.output_scale)
-        aux_data = {}
-        return children, aux_data
-
-    def compute_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the squared exponential kernel on input vectors ``x`` and ``y``.
-
-        We assume ``x`` and ``y`` are two vectors of the same dimension.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Kernel evaluated at (``x``, ``y``)
-        """
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
             -squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
-    def grad_x_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise grad of the squared exponential kernel w.r.t. ``x``.
-
-        The gradient (Jacobian) is computed using the analytical form.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return -self.grad_y_elementwise(x, y)
 
-    def grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise grad of the squared exponential kernel w.r.t. ``y``.
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            jnp.subtract(x, y) / self.length_scale**2 * self.compute_elementwise(x, y)
+        )
 
-        The gradient (Jacobian) is computed using the analytical form.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
-        return (x - y) / self.length_scale**2 * self.compute_elementwise(x, y)
-
-    def divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
-
-        The computations are done using the analytical form of Jacobian and divergence
-        of the squared exponential kernel.
-
-        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
-
-        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
-        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-
-        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Trace of the Laplace-style operator; a real number
-        """
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
-        d = len(x)
+        d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
 
 
 class LaplacianKernel(Kernel):
-    """
+    r"""
     Define a Laplacian kernel.
 
-    :param length_scale: Kernel ``length_scale`` to use
-    :param output_scale: Output scale to use
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Laplacian kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
+    :math:`||\cdot||_1` is the :math:`L_1`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    def tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
+    length_scale: float = 1.0
+    output_scale: float = 1.0
 
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-
-        :return: Tuple containing two elements. The first is a tuple holding the arrays
-            and dynamic values that are present in the class. The second is a dictionary
-            holding the static auxiliary data for the class, with keys being the names
-            of class attributes, and values being the values of the corresponding class
-            attributes.
-        """
-        children = (self.length_scale, self.output_scale)
-        aux_data = {}
-        return children, aux_data
-
-    def compute_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the Laplacian kernel on input vectors ``x`` and ``y``.
-
-        We assume ``x`` and ``y`` are two vectors of the same dimension.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Kernel evaluated at (``x``, ``y``)
-        """
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
-            -jnp.linalg.norm(x - y, ord=1) / (2 * self.length_scale**2)
+            -jnp.linalg.norm(jnp.subtract(x, y), ord=1) / (2 * self.length_scale**2)
         )
 
-    def grad_x_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise grad of the Laplacian kernel w.r.t. ``x``.
-
-        The gradient (Jacobian) is computed using the analytical form.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return -self.grad_y_elementwise(x, y)
 
-    def grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise grad of the Laplacian kernel w.r.t. ``y``.
-
-        The gradient (Jacobian) is computed using the analytical form.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return (
-            jnp.sign(x - y)
+            jnp.sign(jnp.subtract(x, y))
             / (2 * self.length_scale**2)
             * self.compute_elementwise(x, y)
         )
 
-    def divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
-
-        The computations are done using the analytical form of Jacobian and divergence
-        of the Laplacian kernel.
-
-        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
-
-        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
-        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-
-        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Trace of the Laplace-style operator; a real number
-        """
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
-        d = len(x)
+        d = len(jnp.asarray(x))
         return -d * k / (4 * self.length_scale**4)
 
 
 class PCIMQKernel(Kernel):
-    """
+    r"""
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
-    :param length_scale: Kernel ``length_scale`` to use
-    :param output_scale: Output scale to use
+    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    PCIMQ kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
+    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
+    :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    def tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
+    length_scale: float = 1.0
+    output_scale: float = 1.0
 
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-
-        :return: Tuple containing two elements. The first is a tuple holding the arrays
-            and dynamic values that are present in the class. The second is a dictionary
-            holding the static auxiliary data for the class, with keys being the names
-            of class attributes, and values being the values of the corresponding class
-            attributes.
-        """
-        children = (self.length_scale, self.output_scale)
-        aux_data = {}
-        return children, aux_data
-
-    def compute_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the PCIMQ kernel on input vectors ``x`` and ``y``.
-
-        We assume ``x`` and ``y`` are two vectors of the same dimension.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Kernel evaluated at (``x``, ``y``)
-        """
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         scaling = 2 * self.length_scale**2
         mq_array = squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
-    def grad_x_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``x``.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return -self.grad_y_elementwise(x, y)
 
-    def grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Element-wise gradient (Jacobian) of the PCIMQ kernel function w.r.t. ``y``.
-
-        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this
-        method for arrays.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Jacobian
-            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
-        """
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return (
             self.output_scale
-            * (x - y)
+            * jnp.subtract(x, y)
             / (2 * self.length_scale**2)
             * (self.compute_elementwise(x, y) / self.output_scale) ** 3
         )
 
-    def divergence_x_grad_y_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Elementwise divergence w.r.t. ``x`` of Jacobian of PCIMQ w.r.t. ``y``.
-
-        :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-        Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
-
-        This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
-        :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
-
-        :param x: First vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Trace of the Laplace-style operator; a real number
-        """
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y) / self.output_scale
         scale = 2 * self.length_scale**2
-        d = len(x)
+        d = len(jnp.asarray(x))
         return (
             self.output_scale
             / scale
@@ -789,7 +527,25 @@ class PCIMQKernel(Kernel):
         )
 
 
-class SteinKernel(Kernel):
+class CompositeKernel(Kernel):
+    """
+    Abstract base class for kernels that compose/wrap another kernel.
+
+    :param base_kernel: kernel to be wrapped/used in composition
+    """
+
+    base_kernel: Kernel
+
+    def __check_init__(self):
+        """Check that 'base_kernel' is of the required type."""
+        if not isinstance(self.base_kernel, Kernel):
+            raise ValueError(
+                "'base_kernel' must be an instance of "
+                + f"'{Kernel.__module__}.{Kernel.__qualname__}'"
+            )
+
+
+class SteinKernel(CompositeKernel):
     r"""
     Define the Stein kernel, i.e. the application of the Stein operator.
 
@@ -838,101 +594,16 @@ class SteinKernel(Kernel):
         the Stein kernel
     :param score_function: A vector-valued callable defining a score function
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
-    :param output_scale: Output scale to use
     """
 
-    def __init__(
-        self,
-        base_kernel: Kernel,
-        score_function: Callable[[ArrayLike], Array],
-        output_scale: float = 1.0,
-    ):
-        """Define the Stein kernel, i.e. the application of the Stein operator."""
-        # Check that the base_kernel provided has the relevant JAX pytree methods to
-        # allow functionality within this kernel
-        if not hasattr(base_kernel, "tree_flatten"):
-            raise AttributeError(
-                "base_kernel must have the method tree_flatten implemented"
-            )
+    score_function: Callable[[ArrayLike], Array]
 
-        if not hasattr(base_kernel, "tree_unflatten"):
-            raise AttributeError(
-                "base_kernel must have the method tree_unflatten implemented"
-            )
-
-        self.base_kernel = base_kernel
-        self.score_function = score_function
-        self.output_scale = output_scale
-
-        # Initialise parent
-        super().__init__(output_scale=output_scale)
-
-    def tree_flatten(self) -> tuple[tuple, dict]:
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-
-        :return: Tuple containing two elements. The first is a tuple holding the arrays
-            and dynamic values that are present in the class. The second is a dictionary
-            holding the static auxiliary data for the class, with keys being the names
-            of class attributes, and values being the values of the corresponding class
-            attributes.
-        """
-        # The score function is assumed to not change here - but it might if the kernel
-        # changes - but this does not work when kernel is specified in children
-        children = (self.base_kernel, self.output_scale)
-        aux_data = {
-            "score_function": self.score_function,
-        }
-        return children, aux_data
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable JIT decoration of methods inside this class.
-        """
-        base_kernel, output_scale = children
-        return cls(base_kernel, output_scale=output_scale, **aux_data)
-
-    def compute_elementwise(
-        self,
-        x: ArrayLike,
-        y: ArrayLike,
-    ) -> Array:
-        r"""
-        Evaluate the Stein kernel on input vectors ``x`` and ``y``.
-
-        We assume ``x`` and ``y`` are two vectors of the same dimension.
-
-        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
-        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
-        :return: Kernel evaluated at (``x``, ``y``)
-        """
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.base_kernel.compute_elementwise(x, y)
         div = self.base_kernel.divergence_x_grad_y_elementwise(x, y)
         gkx = self.base_kernel.grad_x_elementwise(x, y)
         gky = self.base_kernel.grad_y_elementwise(x, y)
         score_x = self.score_function(x)
         score_y = self.score_function(y)
-        return (
-            div
-            + jnp.dot(gkx, score_y)
-            + jnp.dot(gky, score_x)
-            + k * jnp.dot(score_x, score_y)
-        )
-
-
-# Define the pytree node for the added class to ensure methods with JIT decorators
-# are able to run. This tuple must be updated when a new class object is defined.
-kernel_classes = (SquaredExponentialKernel, PCIMQKernel, SteinKernel, LaplacianKernel)
-for _current_class in kernel_classes:
-    tree_util.register_pytree_node(
-        _current_class, _current_class.tree_flatten, _current_class.tree_unflatten
-    )
+        return div + gkx @ score_y + gky @ score_x + k * score_x @ score_y

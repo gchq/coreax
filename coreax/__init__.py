@@ -52,11 +52,24 @@ included in the codebase.
 __version__ = "0.1.0"
 
 # pylint: disable=unused-import
-from coreax.coresubset import KernelHerding, RandomSample, RPCholesky
-from coreax.data import ArrayData
-from coreax.kernel import SquaredExponentialKernel, SteinKernel
+from coreax.approximation import (
+    ANNchorApproximateKernel,
+    ApproximateKernel,
+    MonteCarloApproximateKernel,
+    NystromApproximateKernel,
+)
+from coreax.coreset import Coreset, Coresubset
+from coreax.coresubset import KernelHerding, RandomSample, RPCholesky, SteinThinning
+from coreax.data import ArrayData, Data, SupervisedData
+from coreax.kernel import (
+    CompositeKernel,
+    Kernel,
+    LaplacianKernel,
+    PCIMQKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
+)
 from coreax.metrics import MMD
 from coreax.reduction import MapReduce, SizeReduce
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
-
 # pylint: enable=unused-import

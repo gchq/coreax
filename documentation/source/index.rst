@@ -2,7 +2,7 @@ Coreax (|version|)
 ==================
 
 Coreax is a library for **coreset algorithms**, written in
-:doc:`JAX <jax:notebooks/quickstart>` for fast execution and GPU support.
+:doc:`JAX <jax:quickstart>` for fast execution and GPU support.
 
 
 Setup
@@ -59,6 +59,7 @@ Contents
     :caption: API Reference
 
     coreax/approximations
+    coreax/coresets
     coreax/coresubset
     coreax/data
     coreax/kernel
@@ -67,6 +68,7 @@ Contents
     coreax/reduction
     coreax/refine
     coreax/score_matching
+    coreax/solvers
     coreax/utils
     coreax/weights
 

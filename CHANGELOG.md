@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
+- Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
+distinction between supervised and unsupervised datasets, and handle weighted data.
 
 ### Fixed
 
@@ -26,14 +28,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `coreax.weights.SBQ` to `coreax.weights.SBQWeightsOptimiser` and added deprecation warning.
 - `requirements-*.txt` will no longer be updated frequently, thereby providing stable versions.
 - Single requirements files covering all supported Python versions.
+- All references to `kernel_matrix_row_{sum,mean}` have been replaced with `Gramian row-mean`.
 
 ### Removed
 - Bash script to run integration tests has been removed. `pytest tests/integration` should now work as expected.
+- Tests for `coreax.kernels.Kernel.{calculate, update}_kernel_matrix_row_sum`.
+- `coreax.util.KernelComputeType`; use `Callable[[ArrayLike, ArrayLike], Array]` instead.
+- `coreax.kernels.Kernel.calculate_kernel_matrix_row_{sum,mean}`; use `coreax.kernels.Kernel.gramian_row_mean`.
+- `coreax.kernels.Kernel.updated_kernel_matrix_row_sum`; use `coreax.kernels.Kernel.gramian_row_mean` if possible.
+
 
 ### Deprecated
 
 - All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
 - All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
+
 
 ## [0.1.0] - 2024-02-16
 

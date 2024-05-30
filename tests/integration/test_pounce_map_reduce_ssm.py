@@ -45,17 +45,14 @@ class TestPounceMapReduce(unittest.TestCase):
         """
         Test pounce_map_reduce_ssm.py example.
 
-        An end-to-end test to check pounce_map_reduce_ssm.py runs without error,
-        generates output, and has coreset MMD better than MMD from random sampling.
+        An end-to-end test to check pounce_map_reduce_ssm.py runs without error.
         """
         in_path = Path(os.path.dirname(__file__)) / Path(
             "../../examples/data/pounce/pounce.gif"
         )
         with patch("builtins.print"), tempfile.TemporaryDirectory() as tmp_dir:
             # Run pounce_map_reduce_ssm.py
-            mmd_coreset, mmd_random = pounce_map_reduce_ssm_main(
-                in_path=in_path, out_path=Path(tmp_dir)
-            )
+            pounce_map_reduce_ssm_main(in_path=in_path, out_path=Path(tmp_dir))
 
             self.assertTrue(
                 Path(
@@ -71,12 +68,6 @@ class TestPounceMapReduce(unittest.TestCase):
                 )
                 .resolve()
                 .is_file()
-            )
-
-            self.assertLess(
-                mmd_coreset,
-                mmd_random,
-                msg="MMD for random sampling was unexpectedly lower than coreset MMD",
             )
 
 

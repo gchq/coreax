@@ -88,7 +88,8 @@ def main(
         out_path.mkdir(exist_ok=True)
 
     # Read in the data as a video. Frame 0 is missing A from RGBA.
-    raw_data = np.array(imageio.v2.mimread(in_path)[1:])
+    _, *image_data = imageio.v2.mimread(in_path)
+    raw_data = np.asarray(image_data)
     raw_data_reshaped = raw_data.reshape(raw_data.shape[0], -1)
 
     # Fix random behaviour
@@ -118,10 +119,10 @@ def main(
     length_scale = median_heuristic(principle_components_data[idx])
 
     # Learn a score function via kernel density estimation
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=principle_components_data[idx, :]
+    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    score_function = kernel_density_score_matcher.match(
+        principle_components_data[idx, :]
     )
-    score_function = kernel_density_score_matcher.match()
 
     # Run kernel herding with a Stein kernel
     herding_key, sample_key = random.split(random.key(random_seed))

@@ -30,16 +30,19 @@ The abstract base class is :class:`~coreax.reduction.Coreset`.
 # Support annotations with | in Python < 3.10
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
 
+import equinox as eqx
 import jax.numpy as jnp
-from jax import Array, jit, lax, random, vmap
+from jax import Array, jacfwd, lax, random, vmap
+from jax.scipy.stats import gaussian_kde
 from jax.typing import ArrayLike
 
-import coreax.approximation
 import coreax.kernel
 import coreax.reduction
 import coreax.refine
+import coreax.score_matching
 import coreax.util
 import coreax.weights
 
@@ -52,7 +55,8 @@ class KernelHerding(coreax.reduction.Coreset):
     compressed representation.
 
     Given one has selected :math:`T` data points for their compressed representation of
-    the original dataset, kernel herding selects the next point as:
+    the original dataset, by equation 8 of :cite:`chen2012herding`, kernel herding
+    selects the next point as:
 
     .. math::
 
@@ -73,16 +77,12 @@ class KernelHerding(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel
-        matrix row sum mean. Larger blocks will require more memory in the system.
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
         (default) if no refinement is required
-    :param approximator: :class:`~coreax.approximation.KernelMeanApproximator` object
-        that has been created using the same kernel one wishes to use for herding. If
-        :data:`None` (default) then calculation is exact, but can be computationally
-        intensive.
     """
 
     def __init__(
@@ -94,13 +94,11 @@ class KernelHerding(coreax.reduction.Coreset):
         block_size: int = 10_000,
         unique: bool = True,
         refine_method: coreax.refine.Refine | None = None,
-        approximator: coreax.approximation.KernelMeanApproximator | None = None,
     ):
         """Initialise a KernelHerding class."""
         # Assign herding-specific attributes
         self.block_size = block_size
         self.unique = unique
-        self.approximator = approximator
         self.random_key = random_key
 
         # Initialise parent
@@ -127,7 +125,7 @@ class KernelHerding(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -136,7 +134,6 @@ class KernelHerding(coreax.reduction.Coreset):
             "unique": self.unique,
             "refine_method": self.refine_method,
             "weights_optimiser": self.weights_optimiser,
-            "approximator": self.approximator,
         }
         return children, aux_data
 
@@ -144,32 +141,20 @@ class KernelHerding(coreax.reduction.Coreset):
         r"""
         Execute kernel herding algorithm with Jax.
 
-        We first compute the kernel matrix row sum mean (either exactly, or
-        approximately) if it is not given, and then iterative add points to the coreset
-        balancing  selecting points in high density regions with selecting points far
-        from those already in the coreset.
+        We first compute the kernel's Gramian row-mean if it is not given, and then
+        iteratively add points to the coreset, balancing selecting points in high
+        density regions with selecting points far from those already in the coreset.
 
         :param coreset_size: The size of the of coreset to generate
         """
         # Record the size of the original dataset
         num_data_points = len(self.original_data.pre_coreset_array)
 
-        # If needed, compute the kernel matrix row sum mean - with or without an
-        # approximator as specified by the inputs to this method
-        if self.kernel_matrix_row_sum_mean is None:
-            if self.approximator is not None:
-                self.kernel_matrix_row_sum_mean = (
-                    self.kernel.approximate_kernel_matrix_row_sum_mean(
-                        x=self.original_data.pre_coreset_array,
-                        approximator=self.approximator,
-                    )
-                )
-            else:
-                self.kernel_matrix_row_sum_mean = (
-                    self.kernel.calculate_kernel_matrix_row_sum_mean(
-                        x=self.original_data.pre_coreset_array, max_size=self.block_size
-                    )
-                )
+        # If needed, compute the kernel's Gramian row-mean
+        if self.gramian_row_mean is None:
+            self.gramian_row_mean = self.kernel.gramian_row_mean(
+                x=self.original_data.pre_coreset_array, block_size=self.block_size
+            )
 
         # Initialise variables that will be updated throughout the loop. These are
         # initially local variables, with the coreset indices being assigned to self
@@ -179,9 +164,7 @@ class KernelHerding(coreax.reduction.Coreset):
             # Note that a TypeError is raised if the size input to jnp.zeros is negative
             coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
         except TypeError as exception:
-            if coreset_size < 0:
-                raise ValueError("coreset_size must not be negative") from exception
-            if isinstance(coreset_size, float):
+            if coreset_size <= 0 or isinstance(coreset_size, float):
                 raise ValueError(
                     "coreset_size must be a positive integer"
                 ) from exception
@@ -192,7 +175,7 @@ class KernelHerding(coreax.reduction.Coreset):
             self._greedy_body,
             x=self.original_data.pre_coreset_array,
             kernel_vectorised=self.kernel.compute,
-            kernel_matrix_row_sum_mean=self.kernel_matrix_row_sum_mean,
+            gramian_row_mean=self.gramian_row_mean,
             unique=self.unique,
         )
         try:
@@ -212,20 +195,19 @@ class KernelHerding(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
     def _greedy_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelComputeType,
-        kernel_matrix_row_sum_mean: ArrayLike,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
+        gramian_row_mean: ArrayLike,
         unique: bool,
     ) -> tuple[Array, Array]:
         r"""
         Execute main loop of greedy kernel herding.
 
         This function carries out one iteration of kernel herding. Recall that kernel
-        herding is defined as
+        herding is defined, by equation 8 of :cite:`chen2012herding`, as
 
         .. math::
 
@@ -235,7 +217,7 @@ class KernelHerding(coreax.reduction.Coreset):
         where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken
         over the entire dataset, and the search is over the entire dataset.
 
-        The kernel matrix row sum mean, :math:`\mathbb{E}[k(x, x')]` does not change
+        The kernel's Gramian row-mean, :math:`\mathbb{E}[k(x, x')]` does not change
         across iterations. Each iteration, the set of coreset points updates with the
         newly selected point :math:`x_{T+1}`. Additionally, the penalties one applies,
         :math:`k(x, x_t)` update as these coreset points are updated.
@@ -252,7 +234,7 @@ class KernelHerding(coreax.reduction.Coreset):
         :param kernel_vectorised: Vectorised kernel computation function. This should be
             the :meth:`~coreax.kernel.Kernel.compute` method of a
             :class:`~coreax.kernel.Kernel` object
-        :param kernel_matrix_row_sum_mean: A :math:`1 \times n` array holding the mean
+        :param gramian_row_mean: A :math:`1 \times n` array holding the mean
             over rows for the kernel Gram matrix
         :param unique: Flag for enforcing unique elements
         :returns: Updated loop variables ``current_coreset_indices`` and
@@ -269,18 +251,16 @@ class KernelHerding(coreax.reduction.Coreset):
         # Evaluate the kernel herding formula at this iteration - that is, select which
         # point in the data-set, when added to the coreset, will minimise maximum mean
         # discrepancy. This is essentially a balance between a point lying in a high
-        # density region (the corresponding entry in kernel_matrix_row_sum_mean is
+        # density region (the corresponding entry in gramian_row_mean is
         # large) whilst being far away from points already in the coreset
         # (current_kernel_similarity_penalty being small).
         index_to_include_in_coreset = (
-            kernel_matrix_row_sum_mean - current_kernel_similarity_penalty / (i + 1)
+            gramian_row_mean - current_kernel_similarity_penalty / (i + 1)
         ).argmax()
 
         # Update all the penalties we apply, because we now have additional points
         # in the coreset
-        penalty_update = kernel_vectorised(
-            x, jnp.atleast_2d(x[index_to_include_in_coreset])
-        )[:, 0]
+        penalty_update = kernel_vectorised(x, x[index_to_include_in_coreset]).flatten()
         current_kernel_similarity_penalty += penalty_update
 
         # Update the coreset indices to include the selected point
@@ -358,7 +338,7 @@ class RandomSample(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -434,8 +414,8 @@ class RPCholesky(coreax.reduction.Coreset):
     :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
         determine weights for coreset points to optimise some quality metric, or
         :data:`None` (default) if unweighted
-    :param block_size: Size of matrix blocks to process when computing the kernel matrix
-        row sum mean. Larger blocks will require more memory in the system.
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
     :param unique: Boolean that enforces the resulting coreset will only contain unique
         elements
     :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
@@ -482,7 +462,7 @@ class RPCholesky(coreax.reduction.Coreset):
         children = (
             self.random_key,
             self.kernel,
-            self.kernel_matrix_row_sum_mean,
+            self.gramian_row_mean,
             self.coreset_indices,
             self.coreset,
         )
@@ -534,13 +514,16 @@ class RPCholesky(coreax.reduction.Coreset):
                 self.original_data.pre_coreset_array,
             )
 
-            residual_diagonal, approximation_matrix, coreset_indices, key = (
-                lax.fori_loop(
-                    0,
-                    coreset_size,
-                    body,
-                    (residual_diagonal, approximation_matrix, coreset_indices, key),
-                )
+            (
+                residual_diagonal,
+                approximation_matrix,
+                coreset_indices,
+                key,
+            ) = lax.fori_loop(
+                0,
+                coreset_size,
+                body,
+                (residual_diagonal, approximation_matrix, coreset_indices, key),
             )
 
         except IndexError as exception:
@@ -552,12 +535,11 @@ class RPCholesky(coreax.reduction.Coreset):
         self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
 
     @staticmethod
-    @partial(jit, static_argnames=["kernel_vectorised", "unique"])
     def _loop_body(
         i: int,
         val: tuple[ArrayLike, ArrayLike, ArrayLike, coreax.util.KeyArrayLike],
         x: ArrayLike,
-        kernel_vectorised: coreax.util.KernelComputeType,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
         unique: bool,
     ) -> tuple[Array, Array, Array, Array]:
         r"""
@@ -611,9 +593,289 @@ class RPCholesky(coreax.reduction.Coreset):
         # Track diagonal of residual matrix
         residual_diagonal -= jnp.square(approximation_matrix[:, i])
 
-        # Ensure diagonal remains nonnegative
+        # Ensure diagonal remains non-negative
         residual_diagonal = residual_diagonal.clip(min=0)
         if unique:
             # ensures that index selected_pivot_point can't be drawn again in future
             residual_diagonal = residual_diagonal.at[selected_pivot_point].set(0.0)
         return residual_diagonal, approximation_matrix, current_coreset_indices, key
+
+
+# pylint: disable=too-many-instance-attributes
+class SteinThinning(coreax.reduction.Coreset):
+    r"""
+    Apply regularised Stein thinning to a dataset.
+
+    Stein thinning is a deterministic, iterative and greedy approach to determine this
+    compressed representation.
+
+    Given one has selected :math:`T` data points for their compressed representation of
+    the original dataset, (regularised) Stein thinning selects the next point as:
+
+    .. math::
+
+        x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
+            \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
+
+    where :math:`k` is the Stein kernel induced by the supplied base kernel,
+    :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
+    regularisation parameter, and the search is over the entire dataset.
+
+    This class works with all children of :class:`~coreax.kernel.Kernel`, including
+    Stein kernels.
+
+    :param random_key: Key for random number generation
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param weights_optimiser: :class:`~coreax.weights.WeightsOptimiser` object to
+        determine weights for coreset points to optimise some quality metric, or
+        :data:`None` (default) if unweighted
+    :param block_size: Size of matrix blocks to process when computing the kernel's
+        Gramian row-mean. Larger blocks will require more memory in the system.
+    :param unique: Boolean that enforces the resulting coreset will only contain unique
+        elements
+    :param refine_method: :class:`~coreax.refine.Refine` object to use, or :data:`None`
+        (default) if no refinement is required
+    :param score_method: :class:`~coreax.score_matching.ScoreMatching` object to use, or
+        :data:`None` (default), which will use kernel density matching
+    :param regularise: Boolean that enforces regularisation, as in
+        :cite:`benard2023kernel`.
+    """
+
+    def __init__(
+        self,
+        random_key: coreax.util.KeyArrayLike,
+        *,
+        kernel: coreax.kernel.Kernel,
+        weights_optimiser: coreax.weights.WeightsOptimiser | None = None,
+        block_size: int = 10_000,
+        unique: bool = True,
+        refine_method: coreax.refine.Refine | None = None,
+        score_method: coreax.score_matching.ScoreMatching | None = None,
+        regularise: bool = True,
+    ):
+        """Initialise a KernelHerding class."""
+        # Assign herding-specific attributes
+        self.block_size = block_size
+        self.unique = unique
+        self.random_key = random_key
+        self.regularise = regularise
+        self.score_method = score_method
+        self.stein_kernel = None
+
+        # Initialise parent
+        super().__init__(
+            weights_optimiser=weights_optimiser,
+            kernel=kernel,
+            refine_method=refine_method,
+        )
+
+    def tree_flatten(self) -> tuple[tuple, dict]:
+        """
+        Flatten a pytree.
+
+        Define arrays & dynamic values (children) and auxiliary data (static values).
+        A method to flatten the pytree needs to be specified to enable JIT decoration
+        of methods inside this class.
+
+        :return: Tuple containing two elements. The first is a tuple holding the arrays
+            and dynamic values that are present in the class. The second is a dictionary
+            holding the static auxiliary data for the class, with keys being the names
+            of class attributes, and values being the values of the corresponding class
+            attributes.
+        """
+        children = (
+            self.random_key,
+            self.kernel,
+            self.stein_kernel,
+            self.coreset_indices,
+            self.coreset,
+        )
+        aux_data = {
+            "block_size": self.block_size,
+            "unique": self.unique,
+            "refine_method": self.refine_method,
+            "weights_optimiser": self.weights_optimiser,
+            "regularise": self.regularise,
+            "score_method": self.score_method,
+        }
+        return children, aux_data
+
+    def fit_to_size(self, coreset_size: int) -> None:
+        r"""
+        Execute Stein thinning algorithm with Jax.
+
+        We first compute a score function, and then the Stein kernel. This is used to
+        greedily choose points in the coreset to minimise kernel Stein discrepancy
+        (KSD).
+
+        :param coreset_size: The size of the of coreset to generate
+        """
+        # Check if coreset size is viable
+        if coreset_size <= 0 or isinstance(coreset_size, float):
+            raise ValueError("coreset_size must be a positive integer")
+        # Record the size of the original dataset
+        num_data_points = len(self.original_data.pre_coreset_array)
+
+        # Choose a score function
+        if self.score_method is None:
+            score_function = coreax.score_matching.KernelDensityMatching(
+                self.kernel.length_scale,
+            ).match(self.original_data.pre_coreset_array)
+        else:
+            score_function = self.score_method.match(
+                self.original_data.pre_coreset_array
+            )
+
+        # Create a Stein kernel
+        if isinstance(self.kernel, coreax.kernel.SteinKernel):
+            self.stein_kernel = eqx.tree_at(
+                lambda x: x.score_function, self.kernel, score_function
+            )
+        else:
+            self.stein_kernel = coreax.kernel.SteinKernel(self.kernel, score_function)
+
+        # Initialise variables that will be updated throughout the loop. These are
+        # initially local variables, with the coreset indices being assigned to self
+        # when the entire set is created
+        kernel_similarity_penalty = jnp.zeros(num_data_points)
+        # Note that a TypeError is raised if the size input to jnp.zeros is negative
+        coreset_indices = jnp.zeros(coreset_size, dtype=jnp.int32)
+
+        # Evaluate the diagonal of the Gram matrix
+        stein_kernel_diagonal = vmap(
+            self.stein_kernel.compute_elementwise, in_axes=(0, 0), out_axes=0
+        )(
+            self.original_data.pre_coreset_array,
+            self.original_data.pre_coreset_array,
+        )
+
+        regularised_log_pdf = 0.0
+
+        if self.regularise:
+            # Compute positive Laplace operator
+            def laplace_positive(x_):
+                hessian = jacfwd(score_function)(x_)
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
+
+            laplace_positive_vector = vmap(laplace_positive, in_axes=(0,), out_axes=0)(
+                self.original_data.pre_coreset_array
+            )
+            # Add to kernel diagonal
+            stein_kernel_diagonal += laplace_positive_vector
+
+            # Fit a KDE to estimate log PDF: note the transpose
+            kde = gaussian_kde(
+                self.original_data.pre_coreset_array.T,
+                bw_method=float(self.kernel.length_scale),
+            )
+
+            # Use suggested regularisation parameter
+            regulariser_lambda = 1 / coreset_size
+            regularised_log_pdf = regulariser_lambda * kde.logpdf(
+                self.original_data.pre_coreset_array.T
+            )
+
+        # Greedily select coreset points
+        body = partial(
+            self._greedy_body,
+            x=self.original_data.pre_coreset_array,
+            kernel_vectorised=self.stein_kernel.compute,
+            kernel_diagonal=stein_kernel_diagonal,
+            regularised_log_pdf=regularised_log_pdf,
+            unique=self.unique,
+        )
+        coreset_indices, kernel_similarity_penalty = lax.fori_loop(
+            lower=0,
+            upper=coreset_size,
+            body_fun=body,
+            init_val=(coreset_indices, kernel_similarity_penalty),
+        )
+
+        # Assign coreset indices & coreset to original data object
+        self.coreset_indices = coreset_indices
+        self.coreset = self.original_data.pre_coreset_array[self.coreset_indices, :]
+
+    @staticmethod
+    def _greedy_body(
+        i: int,
+        val: tuple[ArrayLike, ArrayLike],
+        x: ArrayLike,
+        kernel_vectorised: Callable[[ArrayLike, ArrayLike], Array],
+        kernel_diagonal: ArrayLike,
+        regularised_log_pdf: ArrayLike,
+        unique: bool,
+    ) -> tuple[Array, Array]:
+        r"""
+        Execute main loop of greedy regularised Stein thinning.
+
+        This function carries out one iteration of regularised Stein thinning. Recall
+        that this is defined as
+
+        .. math::
+
+            x_{T+1} = \arg\min_{x} \left( k_P(x, x) + \Delta^+ \log p(x) -
+                \lambda T \log p(x) + \frac{2}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
+
+        where :math:`k_P` is the Stein kernel induced by the supplied base kernel,
+        :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
+        regularisation parameter, and the search is over the entire dataset.
+
+        The kernel matrix diagonal :math:`k_P(x, x)` and Laplace operator
+        :math:`\Delta^+ \log p(x)` do not change across iterations. Each iteration, the
+        set of coreset points updates with the newly selected point :math:`x_{T+1}`.
+        Additionally, the penalties one applies, :math:`k(x, x_t)` update as these
+        coreset points are updated.
+
+        :param i: Loop counter, counting how many points are in the coreset on call of
+            this method
+        :param val: Tuple containing a :math:`1 \times m` array with the current coreset
+            indices in and a :math:`1 \times n` array holding current kernel similarity
+            penalties. Note that the array holding current coreset indices should always
+            be the same length (however many coreset points are desired). The ``i``-th
+            element of this gets updated to the index of the selected coreset point in
+            iteration ``i``.
+        :param x: :math:`n \times d` data matrix
+        :param kernel_vectorised: Vectorised kernel computation function. This should be
+            the :meth:`~coreax.kernel.Kernel.compute` method of a
+            :class:`~coreax.kernel.Kernel` object
+        :param kernel_diagonal: Vector of Stein kernel diagonal.
+        :param regularised_log_pdf: Vector of log PDF evaluations at test points
+        :param unique: Flag for enforcing unique elements
+        :returns: Updated loop variables ``current_coreset_indices`` and
+            ``current_kernel_similarity_penalty``
+        """
+        # Unpack the components of the loop variables
+        current_coreset_indices, current_kernel_similarity_penalty = val
+        x = jnp.atleast_2d(x)
+        current_coreset_indices = jnp.asarray(current_coreset_indices)
+        current_kernel_similarity_penalty = jnp.asarray(
+            current_kernel_similarity_penalty
+        )
+
+        # Evaluate the Stein thinning formula at this iteration - that is, select which
+        # point in the data-set, when added to the coreset, will minimise KSD.
+        index_to_include_in_coreset = (
+            kernel_diagonal
+            + 2.0 * current_kernel_similarity_penalty
+            - i * regularised_log_pdf
+        ).argmin()
+
+        # Update all the penalties we apply, because we now have additional points
+        # in the coreset
+        penalty_update = kernel_vectorised(x, x[index_to_include_in_coreset]).flatten()
+        current_kernel_similarity_penalty += penalty_update
+
+        # Update the coreset indices to include the selected point
+        current_coreset_indices = current_coreset_indices.at[i].set(
+            index_to_include_in_coreset
+        )
+
+        # If we wish to force all points in a coreset to be unique, set the penalty term
+        # to infinite at the newly selected point, so it can't be selected again
+        if unique:
+            current_kernel_similarity_penalty = current_kernel_similarity_penalty.at[
+                index_to_include_in_coreset
+            ].set(jnp.inf)
+
+        return current_coreset_indices, current_kernel_similarity_penalty

@@ -27,17 +27,19 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import TypeVar
+from typing import Any, TypeVar
 
+import equinox as eqx
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.random import permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
 
-#: Kernel evaluation function.
-KernelComputeType = Callable[[ArrayLike, ArrayLike], Array]
+PyTreeDef: TypeAlias = Any
+Leaf: TypeAlias = Any
 
 #: JAX random key type annotations.
 KeyArray: TypeAlias = Array
@@ -48,7 +50,6 @@ class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
 
 
-# pylint: disable=too-few-public-methods
 class InvalidKernel:
     """
     Simple class that does not have a compute method on to test kernel.
@@ -62,12 +63,49 @@ class InvalidKernel:
         self.x = x
 
 
-# pylint: enable=too-few-public-methods
+def tree_leaves_repeat(tree: PyTreeDef, length: int = 2) -> list[Leaf]:
+    """
+    Flatten a PyTree to its leaves and (potentially) repeat the trailing leaf.
+
+    The PyTree 'tree' is flattened, but unlike the standard flattening, :data:`None` is
+    treated as a valid leaf and the trailing leaf (potentially) repeated such that
+    the length of the collection of leaves is given by the 'length' parameter.
+
+    :param tree: The PyTree to flatten and whose trailing leaf to (potentially) repeat
+    :param length: The length of the flattened PyTree after any repetition; values are
+        implicitly clipped by :code:`max(len(tree_leaves), length)`
+    :return: The PyTree leaves, with the trailing leaf repeated as many times as
+        required for the collection of leaves to have length 'repeated_length'
+    """
+    tree_leaves = jtu.tree_leaves(tree, is_leaf=lambda x: x is None)
+    num_repeats = length - len(tree_leaves)
+    return tree_leaves + tree_leaves[-1:] * num_repeats
+
+
+def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
+    """
+    Pad each array leaf of 'tree' with 'pad_width' trailing zeros.
+
+    :param tree: The PyTree whose array leaves to pad with trailing zeros
+    :param pad_width: The number of trailing zeros to pad with
+    :return: A copy of the original PyTree with the array leaves padded
+    """
+    if int(pad_width) < 0:
+        raise ValueError("'pad_width' must be a positive integer")
+    leaves_to_pad, leaves_to_keep = eqx.partition(tree, eqx.is_array)
+
+    def _pad(x: ArrayLike) -> Array:
+        padding = (0, int(pad_width))
+        skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
+        return jnp.pad(x, (padding, *skip_padding))
+
+    padded_leaves = jtu.tree_map(_pad, leaves_to_pad)
+    return eqx.combine(padded_leaves, leaves_to_keep)
 
 
 def apply_negative_precision_threshold(
-    x: float, precision_threshold: float = 1e-8
-) -> float:
+    x: ArrayLike, precision_threshold: float = 1e-8
+) -> Array:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -75,12 +113,8 @@ def apply_negative_precision_threshold(
     :param precision_threshold: Positive threshold we compare against for precision
     :return: ``x``, rounded to 0.0 if it is between ``-precision_threshold`` and 0.0
     """
-    if precision_threshold < 0.0:
-        raise ValueError("precision_threshold must not be negative.")
-    if -precision_threshold < x < 0.0:
-        return 0.0
-
-    return x
+    _x = jnp.asarray(x)
+    return jnp.where((-jnp.abs(precision_threshold) < _x) & (_x < 0.0), 0.0, _x)
 
 
 def pairwise(
@@ -168,7 +202,7 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     return pairwise(difference)(x, y)
 
 
-def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Array:
+def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike) -> Array:
     r"""
     Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
@@ -186,13 +220,13 @@ def solve_qp(kernel_mm: ArrayLike, kernel_matrix_row_sum_mean: ArrayLike) -> Arr
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param kernel_matrix_row_sum_mean: :math:`m \times 1` array of Gram matrix means
+    :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP
     # terminology. Begin with the objective parameters.
     q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(kernel_matrix_row_sum_mean)
+    c = -jnp.asarray(gramian_row_mean)
 
     # Define the equality constraint parameters
     num_points = q_array.shape[0]

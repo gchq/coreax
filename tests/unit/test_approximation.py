@@ -30,37 +30,60 @@ import pytest
 from jax.typing import ArrayLike
 from typing_extensions import override
 
-import coreax.kernel
-import coreax.util
 from coreax.approximation import (
-    ANNchorApproximator,
+    ANNchorApproximateKernel,
     KernelInverseApproximator,
-    KernelMeanApproximator,
-    NystromApproximator,
-    RandomApproximator,
+    MonteCarloApproximateKernel,
+    NystromApproximateKernel,
     RandomisedEigendecompositionApproximator,
+    RandomRegressionKernel,
     randomised_eigendecomposition,
 )
+from coreax.kernel import Kernel, SquaredExponentialKernel
+from coreax.util import InvalidKernel, KeyArrayLike, invert_regularised_array
 
-_KernelMeanApproximator = TypeVar(
-    "_KernelMeanApproximator", bound=KernelMeanApproximator
+_RandomRegressionKernel = TypeVar(
+    "_RandomRegressionKernel", bound=RandomRegressionKernel
 )
+
+
+class _MeanProblem(NamedTuple):
+    random_key: KeyArrayLike
+    data: ArrayLike
+    kernel: Kernel
+    num_kernel_points: int
+    num_train_points: int
+    true_distances: ArrayLike
+
+
 _KernelInverseApproximator = TypeVar(
     "_KernelInverseApproximator", bound=KernelInverseApproximator
 )
 
 
+class _InversionProblem(NamedTuple):
+    random_key: KeyArrayLike
+    kernel_gramian: ArrayLike
+    regularisation_parameter: float
+    identity: ArrayLike
+    expected_inverse: ArrayLike
+
+
 @pytest.mark.parametrize(
     "approximator",
-    [RandomApproximator, ANNchorApproximator, NystromApproximator],
+    [
+        MonteCarloApproximateKernel,
+        ANNchorApproximateKernel,
+        NystromApproximateKernel,
+    ],
 )
-class TestKernelMeanApproximations:
+class TestRandomRegressionApproximations(Generic[_RandomRegressionKernel]):
     """
-    Tests related to kernel mean approximations in approximation.py.
+    Tests related to ``RandomRegressionKernels`` in approximation.py .
     """
 
     @pytest.fixture
-    def problem(self):
+    def problem(self) -> _MeanProblem:
         r"""
         Define data shared across tests.
 
@@ -75,8 +98,8 @@ class TestKernelMeanApproximations:
         For simplicity, we set ``length_scale`` to :math:`1.0/np.sqrt(2)`
         and ``output_scale`` to 1.0.
 
-        The tests here ensure that approximations to the kernel matrix row sum mean are
-        valid. For a single row (data record), kernel matrix row sum mean is computed by
+        The tests here ensure that approximations to the kernel's Gramian row-mean are
+        valid. For a single row (data record), kernel's Gramian row-mean is computed by
         applying the kernel to this data record and all other data records. We then sum
         the results and divide by the number of data records. The first
         data-record ``[0, 0]`` in the data considered here therefore gives a result of:
@@ -103,7 +126,7 @@ class TestKernelMeanApproximations:
         num_train_points = 3
 
         # Define a kernel object
-        kernel = coreax.kernel.SquaredExponentialKernel(
+        kernel = SquaredExponentialKernel(
             length_scale=1.0 / np.sqrt(2),
             output_scale=1.0,
         )
@@ -118,7 +141,7 @@ class TestKernelMeanApproximations:
                 0.3670700196710188,
             ]
         )
-        return (
+        return _MeanProblem(
             random_key,
             data,
             kernel,
@@ -128,7 +151,7 @@ class TestKernelMeanApproximations:
         )
 
     def test_approximation_accuracy(
-        self, problem, approximator: _KernelMeanApproximator
+        self, problem: _MeanProblem, approximator: _RandomRegressionKernel
     ) -> None:
         """
         Verify approximator performance on toy problem.
@@ -138,35 +161,25 @@ class TestKernelMeanApproximations:
         subset of the data is used for training, that the approximation is still close
         to the true value, but less so than when using a larger training set.
         """
-        (
-            random_key,
-            data,
-            kernel,
-            num_kernel_points,
-            num_train_points,
-            true_distances,
-        ) = problem
         # Define the approximator - full dataset used to fit the approximation
-        if issubclass(approximator, NystromApproximator):
-            full_kwargs = {"num_kernel_points": data.shape[0]}
-            partial_kwargs = {"num_kernel_points": num_kernel_points}
-        else:
-            full_kwargs = {
-                "num_kernel_points": data.shape[0],
-                "num_train_points": data.shape[0],
-            }
-            partial_kwargs = {
-                "num_kernel_points": num_kernel_points,
-                "num_train_points": num_train_points,
-            }
-        approximator_full = approximator(random_key, kernel, **full_kwargs)
-        approximator_partial = approximator(random_key, kernel, **partial_kwargs)
+        random_key, data, kernel = problem.random_key, problem.data, problem.kernel
+        true_distances = problem.true_distances
+        full_kwargs = {
+            "num_kernel_points": jnp.shape(data)[0],
+            "num_train_points": jnp.shape(data)[0],
+        }
+        partial_kwargs = {
+            "num_kernel_points": problem.num_kernel_points,
+            "num_train_points": problem.num_train_points,
+        }
+        approximator_full = approximator(kernel, random_key, **full_kwargs)
+        approximator_partial = approximator(kernel, random_key, **partial_kwargs)
 
-        # Approximate the kernel row mean using the full training set (so the
+        # Approximate the kernel row-mean using the full training set (so the
         # approximation should be very close to the true) and only part of the data for
         # training (so the error should grow)
-        approximate_kernel_mean_full = approximator_full.approximate(data)
-        approximate_kernel_mean_partial = approximator_partial.approximate(data)
+        approximate_kernel_mean_full = approximator_full.gramian_row_mean(data)
+        approximate_kernel_mean_partial = approximator_partial.gramian_row_mean(data)
 
         # Check the approximation is close to the true value
         np.testing.assert_array_almost_equal(
@@ -177,154 +190,108 @@ class TestKernelMeanApproximations:
         )
 
         # Compute the approximation error and check if is better if we use more data
-        approx_error_full = np.sum(
-            np.square(true_distances - approximate_kernel_mean_full)
-        )
-        approx_error_partial = np.sum(
-            np.square(true_distances - approximate_kernel_mean_partial)
-        )
+        full_delta = true_distances - approximate_kernel_mean_full
+        approx_error_full = np.sum(np.square(full_delta))
+        partial_delta = true_distances - approximate_kernel_mean_partial
+        approx_error_partial = np.sum(np.square(partial_delta))
         assert approx_error_full <= approx_error_partial
 
     @pytest.mark.parametrize("num_kernel_points_multiplier", [-1, 0, 100])
     def test_degenerate_num_kernel_points(
-        self, problem, approximator, num_kernel_points_multiplier
+        self,
+        problem: _MeanProblem,
+        approximator: _RandomRegressionKernel,
+        num_kernel_points_multiplier: int,
     ) -> None:
         """
         Test approximators correctly handle degenerate cases of num_kernel_points.
         """
-        (
-            random_key,
-            data,
-            kernel,
-            num_kernel_points,
-            num_train_points,
-            true_distances,
-        ) = problem
-        if issubclass(approximator, NystromApproximator):
-            kwargs = {
-                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier
-            }
-        else:
-            kwargs = {
-                "num_kernel_points": num_kernel_points * num_kernel_points_multiplier,
-                "num_train_points": num_train_points,
-            }
-        test_approximator = approximator(random_key, kernel, **kwargs)
+        random_key, data, kernel = problem.random_key, problem.data, problem.kernel
+        true_distances = problem.true_distances
+        num_kernel_points = problem.num_kernel_points
+        num_train_points = problem.num_train_points
+        kwargs = {
+            "num_kernel_points": num_kernel_points * num_kernel_points_multiplier,
+            "num_train_points": num_train_points,
+        }
+        if num_kernel_points_multiplier <= 0:
+            expected_msg = "'num_kernel_points' must be a positive integer"
+            with pytest.raises(ValueError, match=expected_msg):
+                approximator(kernel, random_key, **kwargs)
 
-        if num_kernel_points_multiplier < 0:
-            with pytest.raises(ValueError, match="num_kernel_points must be positive"):
-                test_approximator.approximate(data)
-        elif num_kernel_points_multiplier == 0:
-            if isinstance(test_approximator, ANNchorApproximator):
-                with pytest.raises(
-                    ValueError, match="num_kernel_points must be positive and non-zero"
-                ):
-                    test_approximator.approximate(data)
-            else:
-                np.testing.assert_array_equal(
-                    test_approximator.approximate(data),
-                    jnp.zeros_like(true_distances),
-                )
-        elif isinstance(test_approximator, ANNchorApproximator):
-            approximator_exact_num_data = ANNchorApproximator(
-                random_key,
+        elif issubclass(approximator, ANNchorApproximateKernel):
+            test_approximator = approximator(kernel, random_key, **kwargs)
+            approximator_exact_num_data = ANNchorApproximateKernel(
                 kernel,
-                num_kernel_points=data.shape[0],
-                num_train_points=data.shape[0],
+                random_key,
+                num_kernel_points=jnp.shape(data)[0],
+                num_train_points=jnp.shape(data)[0],
             )
-            result_exactly_num_data = approximator_exact_num_data.approximate(data)
-            result_more_than_num_data = test_approximator.approximate(data)
-
+            result_exactly_num_data = approximator_exact_num_data.gramian_row_mean(data)
+            result_more_than_num_data = test_approximator.gramian_row_mean(data)
             # Check the output is very close if we use all the data provided, or ask for
             # more than the number of points we have
-            approx_error_exact_num_data = np.sum(
-                np.square(true_distances - result_exactly_num_data)
-            )
-            approx_error_more_than_num_data = np.sum(
-                np.square(true_distances - result_more_than_num_data)
-            )
+            exact_delta = true_distances - result_exactly_num_data
+            approx_error_exact_num_data = np.sum(np.square(exact_delta))
+            more_than_delta = true_distances - result_more_than_num_data
+            approx_error_more_than_num_data = np.sum(np.square(more_than_delta))
             assert approx_error_exact_num_data == pytest.approx(0, abs=1e-2)
             assert approx_error_more_than_num_data == pytest.approx(0, abs=1e-2)
         else:
-            with pytest.raises(
-                ValueError,
-                match="num_kernel_points must be no larger than the number of points"
-                + " in the provided data",
-            ):
-                test_approximator.approximate(data)
+            expected_msg = (
+                "'num_kernel_points' must be no larger than the number of points in the"
+                + " provided data"
+            )
+            with pytest.raises(ValueError, match=expected_msg):
+                test_approximator = approximator(kernel, random_key, **kwargs)
+                test_approximator.gramian_row_mean(data)
 
     @pytest.mark.parametrize("num_train_points_multiplier", [-1, 0, 100])
     def test_degenerate_num_train_points(
-        self, problem, approximator, num_train_points_multiplier
+        self,
+        problem: _MeanProblem,
+        approximator: type[RandomRegressionKernel],
+        num_train_points_multiplier: int,
     ) -> None:
         """
         Test approximators correctly handle degenerate cases of num_train_points.
         """
-        if issubclass(approximator, NystromApproximator):
-            pytest.skip("Incompatible with NystromApproximator")
-        (
-            random_key,
-            data,
-            kernel,
-            num_kernel_points,
-            num_train_points,
-            true_distances,
-        ) = problem
+        random_key, data, kernel = problem.random_key, problem.data, problem.kernel
         kwargs = {
-            "num_kernel_points": num_kernel_points,
-            "num_train_points": num_train_points * num_train_points_multiplier,
+            "num_kernel_points": problem.num_kernel_points,
+            "num_train_points": problem.num_train_points * num_train_points_multiplier,
         }
-        approximator = approximator(random_key, kernel, **kwargs)
 
-        if num_train_points_multiplier < 0:
-            with pytest.raises(ValueError, match="num_train_points must be positive"):
-                approximator.approximate(data)
-        elif num_train_points_multiplier == 0:
-            np.testing.assert_array_equal(
-                approximator.approximate(data), jnp.zeros_like(true_distances)
-            )
+        if num_train_points_multiplier <= 0:
+            expected_msg = "'num_train_points' must be a positive integer"
+            with pytest.raises(ValueError, match=expected_msg):
+                approximator(kernel, random_key, **kwargs)
         else:
-            with pytest.raises(
-                ValueError,
-                match="num_train_points must be no larger than the number of points in"
-                + " the provided data",
-            ):
-                approximator.approximate(data)
+            expected_msg = (
+                "'num_train_points' must be no larger than the number of points in the"
+                + " provided data"
+            )
+            with pytest.raises(ValueError, match=expected_msg):
+                test_approximator = approximator(kernel, random_key, **kwargs)
+                test_approximator.gramian_row_mean(data)
 
-    def test_invalid_kernel(self, problem, approximator) -> None:
+    def test_invalid_kernel(
+        self, problem: _MeanProblem, approximator: type[RandomRegressionKernel]
+    ) -> None:
         """
         Test approximators correctly handle invalid kernels.
         """
-        (
-            random_key,
-            data,
-            _,
-            num_kernel_points,
-            num_train_points,
-            _,
-        ) = problem
-        if issubclass(approximator, NystromApproximator):
-            kwargs = {"num_kernel_points": num_kernel_points}
-        else:
-            kwargs = {
-                "num_kernel_points": num_kernel_points,
-                "num_train_points": num_train_points,
-            }
-        approximator = approximator(random_key, coreax.util.InvalidKernel(0), **kwargs)
-        with pytest.raises(
-            AttributeError,
-            match="'InvalidKernel' object has no attribute 'compute'",
-        ):
-            approximator.approximate(data)
-
-
-# Once we support only python 3.11+ this should be generic on _KernelInverseApproximator
-class _Problem(NamedTuple):
-    random_key: coreax.util.KeyArrayLike
-    kernel_gramian: ArrayLike
-    regularisation_parameter: float
-    identity: ArrayLike
-    expected_inverse: ArrayLike
+        random_key = problem.random_key
+        kwargs = {
+            "num_kernel_points": problem.num_kernel_points,
+            "num_train_points": problem.num_train_points,
+        }
+        expected_msg = (
+            "'base_kernel' must be an instance of "
+            + f"'{Kernel.__module__}.{Kernel.__qualname__}'"
+        )
+        with pytest.raises(ValueError, match=expected_msg):
+            approximator(InvalidKernel(0), random_key, **kwargs)
 
 
 class InverseApproximationTest(ABC, Generic[_KernelInverseApproximator]):
@@ -335,7 +302,7 @@ class InverseApproximationTest(ABC, Generic[_KernelInverseApproximator]):
         """Abstract pytest fixture which initialises an inverse approximator."""
 
     @abstractmethod
-    def problem(self) -> _Problem:
+    def problem(self) -> _InversionProblem:
         """Abstract pytest fixture which returns a problem for inverse approximation."""
 
     def test_approximation_accuracy(
@@ -389,14 +356,14 @@ class TestRandomisedEigendecompositionApproximator(
 
         # Compute kernel matrix from standard normal data
         x = jr.normal(random_key, (num_data_points, dimension))
-        kernel_gramian = coreax.kernel.SquaredExponentialKernel().compute(x, x)
+        kernel_gramian = SquaredExponentialKernel().compute(x, x)
 
         # Compute "exact" inverse
-        expected_inverse = coreax.util.invert_regularised_array(
+        expected_inverse = invert_regularised_array(
             kernel_gramian, regularisation_parameter, identity, rcond=None
         )
 
-        return (
+        return _InversionProblem(
             random_key,
             kernel_gramian,
             regularisation_parameter,

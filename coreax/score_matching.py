@@ -29,12 +29,10 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import partial
+from typing import Union
 
 import jax
 import numpy as np
@@ -48,6 +46,7 @@ from tqdm import tqdm
 
 import coreax.kernel
 import coreax.networks
+import coreax.util
 
 
 class ScoreMatching(ABC):
@@ -72,7 +71,7 @@ class ScoreMatching(ABC):
         return cls(*children, **aux_data)
 
     @abstractmethod
-    def match(self, x):
+    def match(self, x: ArrayLike) -> Callable:
         r"""
         Match some model score function to that of a dataset ``x``.
 
@@ -111,7 +110,8 @@ class SlicedScoreMatching(ScoreMatching):
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
     :param batch_size: Size of mini-batch. Defaults to 64.
-    :param hidden_dim: The ScoreNetwork hidden dimension. Defaults to 128.
+    :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
+        [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
     :param optimiser: The optax optimiser to use. Defaults to optax.adam.
     :param num_noise_models: Number of noise models to use in noise
         conditional score matching. Defaults to 100.
@@ -137,7 +137,7 @@ class SlicedScoreMatching(ScoreMatching):
             "learning_rate": self.learning_rate,
             "num_epochs": self.num_epochs,
             "batch_size": self.batch_size,
-            "hidden_dim": self.hidden_dim,
+            "hidden_dims": self.hidden_dims,
             "optimiser": self.optimiser,
             "num_noise_models": self.num_noise_models,
             "sigma": self.sigma,
@@ -157,7 +157,7 @@ class SlicedScoreMatching(ScoreMatching):
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dim: int = 128,
+        hidden_dims: Union[Sequence, None] = None,
         optimiser: Callable = optax.adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
@@ -171,6 +171,10 @@ class SlicedScoreMatching(ScoreMatching):
         num_random_vectors = max(num_random_vectors, 1)
         num_noise_models = max(num_noise_models, 1)
 
+        # Handle default behaviour without mutable default value
+        if hidden_dims is None:
+            hidden_dims = [128, 128, 128]
+
         # Assign all inputs
         self.random_key = random_key
         self.random_generator = random_generator
@@ -180,7 +184,7 @@ class SlicedScoreMatching(ScoreMatching):
         self.learning_rate = learning_rate
         self.num_epochs = num_epochs
         self.batch_size = batch_size
-        self.hidden_dim = hidden_dim
+        self.hidden_dims = hidden_dims
         self.optimiser = optimiser
         self.num_noise_models = num_noise_models
         self.sigma = sigma
@@ -208,7 +212,7 @@ class SlicedScoreMatching(ScoreMatching):
             "learning_rate": self.learning_rate,
             "num_epochs": self.num_epochs,
             "batch_size": self.batch_size,
-            "hidden_dim": self.hidden_dim,
+            "hidden_dims": self.hidden_dims,
             "optimiser": self.optimiser,
             "num_noise_models": self.num_noise_models,
             "sigma": self.sigma,
@@ -441,10 +445,10 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = coreax.networks.ScoreNetwork(self.hidden_dim, data_dimension)
+        score_network = coreax.networks.ScoreNetwork(self.hidden_dims, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
-        #  noise perturbations
+        # noise perturbations
         if self.noise_conditioning:
             gammas = self.gamma ** jnp.arange(self.num_noise_models)
             sigmas = self.sigma * gammas
@@ -525,28 +529,16 @@ class KernelDensityMatching(ScoreMatching):
 
     :param length_scale: Kernel ``length_scale`` to use when fitting the kernel density
         estimate
-    :param kde_data: Set of :math:`n \times d` samples from the underlying distribution
-        that are used to build the kernel density estimate
     """
 
-    def __init__(self, length_scale: float, kde_data: ArrayLike):
+    def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
-        # Validate inputs (note that the kernel length_scale is validated upon kernel
-        # creation)
-        kde_data = jnp.atleast_2d(kde_data)
-
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
         self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
-
-        # Hold the data the kernel density estimate will be built from, which will be
-        # needed for any call of the score function.
-        self.kde_data = kde_data
-
-        # Initialise parent
         super().__init__()
 
     def tree_flatten(self):
@@ -557,12 +549,12 @@ class KernelDensityMatching(ScoreMatching):
         A method to flatten the pytree needs to be specified to enable JIT decoration
         of methods inside this class.
         """
-        children = (self.kde_data,)
+        children = ()
         aux_data = {"kernel": self.kernel}
 
         return children, aux_data
 
-    def match(self, x: ArrayLike | None = None) -> Callable:
+    def match(self, x: ArrayLike) -> Callable:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -573,9 +565,11 @@ class KernelDensityMatching(ScoreMatching):
         samples we wish to evaluate the score function at, and the data used to build
         the kernel density estimate.
 
-        :param x: The :math:`n \times d` data vectors. Unused in this implementation.
+        :param x: Set of :math:`n \times d` samples from the underlying distribution
+            that are used to build the kernel density estimate
         :return: A function that applies the learned score function to input ``x``
         """
+        kde_data = x
 
         def score_function(x_):
             r"""
@@ -592,11 +586,11 @@ class KernelDensityMatching(ScoreMatching):
             original_number_of_dimensions = x_.ndim
             x_ = jnp.atleast_2d(x_)
 
-            # Get the gram matrix row means
-            gram_matrix_row_means = self.kernel.compute(x_, self.kde_data).mean(axis=1)
+            # Get the gram matrix row-mean
+            gram_matrix_row_means = self.kernel.compute_mean(x_, kde_data, axis=1)
 
             # Compute gradients with respect to x
-            gradients = self.kernel.grad_x(x_, self.kde_data).mean(axis=1)
+            gradients = self.kernel.grad_x(x_, kde_data).mean(axis=1)
 
             # Compute final evaluation of the score function
             score_result = gradients / gram_matrix_row_means[:, None]

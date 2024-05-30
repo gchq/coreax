@@ -157,6 +157,20 @@ intersphinx_mapping = {  # linking to external documentation
 nitpick_ignore = [
     ("py:class", "flax.core.scope.Scope"),
     ("py:class", "flax.linen.module._Sentinel"),
+    ("py:class", "coreax.solvers.coresubset._Data"),
+    ("py:class", "coreax.solvers.composite._Coreset"),
+    ("py:class", "coreax.solvers.composite._Data"),
+    ("py:class", "coreax.solvers.composite._State"),
+    ("py:class", "Array"),
+    ("py:class", "jaxtyping.Shaped"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
+    ("py:class", "jaxtyping.Shaped[ndarray, 'n *d']"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
+    ("py:class", "jaxtyping.Shaped[ndarray, 'n d']"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n *p']"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
+    ("py:class", "jaxtyping.Shaped[Array, 'n']"),
+    ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
 ]
 
 # Quotes are required with UnionType for Python < 3.10
@@ -168,7 +182,6 @@ except TypeError:
 
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
-    coreax.util.KernelComputeType: ":obj:`~coreax.util.KernelComputeType`",  # no expand
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
     OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
 }

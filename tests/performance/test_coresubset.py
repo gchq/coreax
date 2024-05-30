@@ -80,7 +80,7 @@ class TestCoreSubset(unittest.TestCase):
         post = []
         for i in range(self.num_samples_to_generate):
             # pylint: disable=protected-access
-            kernel_matrix_rsm = kernel.calculate_kernel_matrix_row_sum_mean(x[i])
+            kernel_matrix_rsm = kernel.gramian_row_mean(x[i])
             deltas = coreax.util.jit_test(
                 herding_object._greedy_body,
                 fn_kwargs={
@@ -88,7 +88,7 @@ class TestCoreSubset(unittest.TestCase):
                     "val": (coreset_indices_0, kernel_similarity_penalty_0),
                     "x": x[i],
                     "kernel_vectorised": kernel.compute,
-                    "kernel_matrix_row_sum_mean": kernel_matrix_rsm,
+                    "gramian_row_mean": kernel_matrix_rsm,
                     "unique": True,
                 },
                 jit_kwargs={"static_argnames": ["kernel_vectorised", "unique"]},
@@ -144,6 +144,56 @@ class TestCoreSubset(unittest.TestCase):
                     ),
                     "x": x[i],
                     "kernel_vectorised": kernel.compute,
+                    "unique": True,
+                },
+                jit_kwargs={"static_argnames": ["kernel_vectorised", "unique"]},
+            )
+            # pylint: enable=protected-access
+            pre.append(deltas[0])
+            post.append(deltas[1])
+        p_value = ks_2samp(pre, post).pvalue
+        self.assertLessEqual(p_value, self.threshold)
+
+    def test_loop_body_stein_thinning(self) -> None:
+        """
+        Test the performance of the loop body method for Stein thinning.
+
+        Runs a Kolmogorov-Smirnov two-sample test on the empirical CDFs of two
+        sequential function calls, in order to catch suboptimal JIT tracing.
+        """
+        # Predefine the variables that are passed to the method
+        coreset_indices_0 = jnp.zeros(self.coreset_size, dtype=jnp.int32)
+        kernel_similarity_penalty_0 = jnp.zeros(self.num_data_points_per_observation)
+        x = np.random.random(
+            (
+                self.num_samples_to_generate,
+                self.num_data_points_per_observation,
+                self.dimension,
+            )
+        )
+        kernel = coreax.kernel.SquaredExponentialKernel()
+
+        # Create a kernel herding object
+        stein_object = coreax.coresubset.SteinThinning(self.random_key, kernel=kernel)
+
+        # Test performance
+        pre = []
+        post = []
+        for i in range(self.num_samples_to_generate):
+            # pylint: disable=protected-access
+            kernel_diagonal = vmap(
+                kernel.compute_elementwise, in_axes=(0, 0), out_axes=0
+            )(x[i], x[i])
+
+            deltas = coreax.util.jit_test(
+                stein_object._greedy_body,
+                fn_kwargs={
+                    "i": 0,
+                    "val": (coreset_indices_0, kernel_similarity_penalty_0),
+                    "x": x[i],
+                    "kernel_vectorised": kernel.compute,
+                    "kernel_diagonal": kernel_diagonal,
+                    "regularised_log_pdf": 0.0,
                     "unique": True,
                 },
                 jit_kwargs={"static_argnames": ["kernel_vectorised", "unique"]},

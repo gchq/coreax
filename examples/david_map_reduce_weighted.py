@@ -110,7 +110,7 @@ def main(
 
     # Path to original image
     original_data = cv2.imread(str(in_path))
-    image_data = cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY)
+    image_data = np.asarray(cv2.cvtColor(original_data, cv2.COLOR_BGR2GRAY))
     # Pool/downsample the image
     window_shape = (downsampling_factor, downsampling_factor)
     pooled_image_data = linen.avg_pool(
@@ -142,10 +142,8 @@ def main(
 
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=pre_coreset_data[idx, :]
-    )
-    score_function = kernel_density_score_matcher.match()
+    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    score_function = kernel_density_score_matcher.match(pre_coreset_data[idx, :])
 
     # Define a kernel to use for herding
     herding_kernel = SteinKernel(
@@ -261,6 +259,7 @@ def main(
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-statements
 # pylint: enable=duplicate-code
+
 
 if __name__ == "__main__":
     main()
