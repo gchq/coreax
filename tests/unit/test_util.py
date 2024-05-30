@@ -18,8 +18,11 @@ expected results on simple examples.
 """
 
 import time
+from contextlib import AbstractContextManager
+from contextlib import nullcontext as does_not_raise
 from unittest.mock import Mock
 
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -34,6 +37,7 @@ from coreax.util import (
     solve_qp,
     squared_distance,
     tree_leaves_repeat,
+    tree_zero_pad_leading_axis,
 )
 
 
@@ -96,6 +100,32 @@ class TestUtil:
         repeated_tree_leaves = tree_leaves_repeat(tree, length)
         expected_leaves = tree + [1] * (length - len(tree))
         assert repeated_tree_leaves == expected_leaves
+
+    @pytest.mark.parametrize(
+        "padding, context",
+        [
+            (0, does_not_raise()),
+            (1, does_not_raise()),
+            (-1, pytest.raises(ValueError, match="positive integer")),
+            ("not_cast-able_to_int", pytest.raises(ValueError)),
+        ],
+    )
+    def test_tree_zero_pad_leading_axis(
+        self, padding: int, context: AbstractContextManager
+    ) -> None:
+        """Test tree_zero_pad_leading_axis for various padding widths."""
+        tree = ("Test", jnp.array([[1, 2], [3, 4]]), jnp.array([5, 6]))
+        if padding == 1:
+            expected_tree = (
+                "Test",
+                jnp.array([[1, 2], [3, 4], [0, 0]]),
+                jnp.array([5, 6, 0]),
+            )
+        else:
+            expected_tree = tree
+        with context:
+            padded_tree = tree_zero_pad_leading_axis(tree, padding)
+            assert eqx.tree_equal(padded_tree, expected_tree)
 
     @pytest.mark.parametrize(
         "value, threshold, expected",

@@ -64,8 +64,13 @@ from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
 from typing_extensions import override
 
-from coreax.data import Data, is_data
-from coreax.util import pairwise, squared_distance, tree_leaves_repeat
+from coreax.data import Data, as_data, is_data
+from coreax.util import (
+    pairwise,
+    squared_distance,
+    tree_leaves_repeat,
+    tree_zero_pad_leading_axis,
+)
 
 T = TypeVar("T")
 
@@ -146,7 +151,6 @@ class Kernel(eqx.Module):
 
         return ProductKernel(first_kernel, second_kernel)
 
-    @eqx.filter_jit
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
@@ -283,8 +287,8 @@ class Kernel(eqx.Module):
         self,
         x: ArrayLike | Data,
         *,
-        block_size: int | None = None,
-        unroll: tuple[int | bool, int | bool] = (1, 1),
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ):
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
@@ -293,14 +297,8 @@ class Kernel(eqx.Module):
         :code:`compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)`.
 
         :param x: Data matrix, :math:`n \times d`
-        :param block_size: Size of matrix blocks to process; a value of :data:`None`
-            sets :math:`B_x = n`, effectively disabling the block accumulation; an
-            integer value ``B`` sets :math:`B_x = B`; to reduce overheads, it is often
-            sensible to select the largest block size that does not exhaust the
-            available memory resources
-        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
-            calls, allows for trade-offs between compilation and runtime cost; consult
-            the JAX docs for further information
+        :param block_size: Block size parameter passed to :meth:`compute_mean`
+        :param unroll: Unroll parameter passed to :meth:`compute_mean`
         :return: Gramian 'row/column-mean', :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`.
         """
         return self.compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)
@@ -399,24 +397,21 @@ def _block_data_convert(
     x: ArrayLike | Data, block_size: int | None
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
-    x = x if isinstance(x, Data) else Data(jnp.asarray(x))
-    x = x.normalize()
+    x = as_data(x).normalize(preserve_zeros=True)
     block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
-    unpadded_length = len(x)
+    padding = ceil(len(x) / block_size) * block_size - len(x)
+    padded_x = tree_zero_pad_leading_axis(x, padding)
 
-    def _pad_reshape(x: Array) -> Array:
-        n, *remaining_shape = jnp.shape(x)
-        padding = (0, ceil(n / block_size) * block_size - n)
-        skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
-        x_padded = jnp.pad(x, (padding, *skip_padding))
+    def _reshape(x: Array) -> Array:
+        _, *remaining_shape = jnp.shape(x)
         try:
-            return x_padded.reshape(-1, block_size, *remaining_shape)
+            return x.reshape(-1, block_size, *remaining_shape)
         except ZeroDivisionError as err:
             if 0 in x.shape:
                 raise ValueError("'x' must not be empty") from err
             raise
 
-    return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
+    return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
 
 class MultiCompositeKernel(Kernel):

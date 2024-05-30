@@ -43,8 +43,9 @@ from typing import TYPE_CHECKING, Any
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax.typing import ArrayLike
-from jaxtyping import Array, Shaped
+import jax.tree_util as jtu
+from jaxtyping import Array, ArrayLike, Shaped
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -207,31 +208,52 @@ class Data(eqx.Module):
         the ones vector (implies a scalar weight of one);
     """
 
-    data: Shaped[Array, " n d"]
+    data: Shaped[Array, " n *d"]
     weights: Shaped[Array, " n"]
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n d"],
+        data: Shaped[ArrayLike, " n *d"],
         weights: Shaped[ArrayLike, " n"] | None = None,
     ):
         """Initialise Data class."""
-        self.data = jnp.atleast_2d(data)
-        n = self.data.shape[0]
+        self.data = jnp.asarray(data)
+        n = self.data.shape[:1]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
-    def __len__(self):
+    def __getitem__(self, key) -> Self:
+        """Support Array style indexing of 'Data' objects."""
+        return jtu.tree_map(lambda x: x[key], self)
+
+    def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
+        """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
+        return self.data
+
+    def __len__(self) -> int:
         """Return data length."""
         return len(self.data)
 
-    def normalize(self) -> Data:
-        """Return a copy of 'self' with 'weights' that sum to one."""
+    def normalize(self, *, preserve_zeros: bool = False) -> Data:
+        """
+        Return a copy of 'self' with 'weights' that sum to one.
+
+        :param preserve_zeros: If to preserve zero valued weights; when all weights are
+            zero valued, the 'normalized' copy will **sum to zero, not one**.
+        :return: A copy of 'self' with normalized 'weights'
+        """
         normalized_weights = self.weights / jnp.sum(self.weights)
+        if preserve_zeros:
+            normalized_weights = jnp.nan_to_num(normalized_weights)
         return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
 
 
-def is_data(x: Any | Data):
-    """Return 'True' if element is an instance of 'coreax.data.Data'."""
+def as_data(x: Any) -> Data:
+    """Cast 'x' to a data instance."""
+    return x if isinstance(x, Data) else Data(x)
+
+
+def is_data(x: Any) -> bool:
+    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
 
 

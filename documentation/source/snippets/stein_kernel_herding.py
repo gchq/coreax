@@ -29,10 +29,8 @@ data_subset = data[idx, :]
 
 # Learn a score function from the subset of the data, through a kernel density
 # estimation applied to a subset of the data.
-kernel_density_score_matcher = KernelDensityMatching(
-    length_scale=length_scale, kde_data=data_subset
-)
-score_function = kernel_density_score_matcher.match()
+kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+score_function = kernel_density_score_matcher.match(data_subset)
 
 # Define a kernel to use for herding
 herding_kernel = SteinKernel(
