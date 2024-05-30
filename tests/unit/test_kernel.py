@@ -19,16 +19,15 @@ The tests within this file verify that the implementations of kernels used throu
 the codebase produce the expected results on simple examples.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, NamedTuple, TypeVar
+from collections.abc import Callable
+from typing import Generic, Literal, NamedTuple, TypeVar, Union
 
+import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import pytest
 from jax import Array
-from jax import numpy as jnp
-from jax import random as jr
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
 from typing_extensions import override
@@ -65,10 +64,12 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     def problem(self, request: pytest.FixtureRequest) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
-    def test_compute(self, problem: _Problem):
+    def test_compute(
+        self, jit_variant: Callable[[Callable], Callable], problem: _Problem
+    ) -> None:
         """Test ``compute`` method of ``coreax.kernel.Kernel``."""
         x, y, expected_output, kernel = problem
-        output = kernel.compute(x, y)
+        output = jit_variant(kernel.compute)(x, y)
         np.testing.assert_array_almost_equal(output, expected_output)
 
 
@@ -92,8 +93,12 @@ class KernelMeanTest(Generic[_Kernel]):
     )
     @pytest.mark.parametrize("axis", [None, 0, 1])
     def test_compute_mean(
-        self, kernel: _Kernel, block_size: int | float | None, axis: int | None
-    ):
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: _Kernel,
+        block_size: Union[int, float, None],
+        axis: Union[int, None],
+    ) -> None:
         """
         Test the `compute_mean` methods.
 
@@ -123,10 +128,13 @@ class KernelMeanTest(Generic[_Kernel]):
         else:
             weights = x_weights[..., None] * y_weights[None, ...]
         expected = jnp.average(kernel_matrix, axis, weights)
-        mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
+        test_fn = jit_variant(kernel.compute_mean)
+        mean_output = test_fn(x_data, y_data, axis, block_size=block_size)
         np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
-    def test_gramian_row_mean(self, kernel: _Kernel):
+    def test_gramian_row_mean(
+        self, jit_variant: Callable[[Callable], Callable], kernel: _Kernel
+    ) -> None:
         """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
         bs = None
         unroll = (1, 1)
@@ -142,8 +150,10 @@ class KernelMeanTest(Generic[_Kernel]):
                 [7.0, 8.0],
             ]
         )
-        expected = kernel.compute_mean(x, x, axis=0, block_size=bs, unroll=unroll)
-        output = kernel.gramian_row_mean(x, block_size=bs, unroll=unroll)
+        expected_fn = jit_variant(kernel.compute_mean)
+        output_fn = jit_variant(kernel.gramian_row_mean)
+        expected = expected_fn(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = output_fn(x, block_size=bs, unroll=unroll)
         np.testing.assert_array_equal(output, expected)
 
 
@@ -186,19 +196,19 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
     @abstractmethod
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
@@ -210,10 +220,10 @@ class TestLinearKernel(
     """Test ``coreax.kernel.LinearKernel``."""
 
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> LinearKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return LinearKernel(output_scale=parameters[0], constant=parameters[1])
+        output_scale, constant = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return LinearKernel(output_scale, constant)
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
@@ -292,12 +302,12 @@ class TestSquaredExponentialKernel(
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> SquaredExponentialKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return SquaredExponentialKernel(
-            length_scale=parameters[0], output_scale=parameters[1]
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
         )
+        return SquaredExponentialKernel(length_scale, output_scale)
 
     @override
     @pytest.fixture(
@@ -442,10 +452,12 @@ class TestLaplacianKernel(
     """Test ``coreax.kernel.LaplacianKernel``."""
 
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> LaplacianKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return LaplacianKernel(length_scale=parameters[0], output_scale=parameters[1])
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
+        )
+        return LaplacianKernel(length_scale, output_scale)
 
     @override
     @pytest.fixture(
@@ -567,10 +579,12 @@ class TestPCIMQKernel(
     """Test ``coreax.kernel.PCIMQKernel``."""
 
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> PCIMQKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return PCIMQKernel(length_scale=parameters[0], output_scale=parameters[1])
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
+        )
+        return PCIMQKernel(length_scale, output_scale)
 
     @override
     @pytest.fixture(
@@ -699,13 +713,12 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
     @pytest.fixture
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> SteinKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        base_kernel = PCIMQKernel(
-            length_scale=parameters[0], output_scale=parameters[1]
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
         )
-
+        base_kernel = PCIMQKernel(length_scale, output_scale)
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture

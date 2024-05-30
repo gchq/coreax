@@ -1,4 +1,0 @@
-Refine
-======
-
-.. automodule:: coreax.refine
