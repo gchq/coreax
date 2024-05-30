@@ -209,7 +209,3 @@ class TestMMD(unittest.TestCase):
         # Solve for the weights with an integer valued epsilon - this would be an
         # unusually large choice but should not raise any errors
         optimiser.solve(x, y, epsilon=2)
-
-
-if __name__ == "__main__":
-    unittest.main()

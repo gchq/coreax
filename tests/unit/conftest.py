@@ -21,7 +21,7 @@ import pytest
 
 
 @pytest.fixture(params=["with_jit", "without_jit"], scope="class")
-def jit_variant(request) -> Callable[[Callable], Callable]:
+def jit_variant(request: pytest.FixtureRequest) -> Callable[[Callable], Callable]:
     """Return a callable that (may) JIT compile a passed callable."""
     if request.param == "without_jit":
         return lambda x: x
