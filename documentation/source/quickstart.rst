@@ -90,3 +90,20 @@ to a Stein kernel, removing any requirement for analytical derivation. More deta
 score matching methods implemented are found in :mod:`coreax.score_matching`.
 
 .. literalinclude:: snippets/score_matching.py
+
+
+JIT compilation
+---------------
+JAX enables us to perform just-in-time (JIT) compilation of our code (providing certain
+mild conditions are met), with the potential to significantly improve runtime
+performance. It is for this reason that in all the examples, we always call
+:code:`eqx.filter_jit(...)` on the reduction method. Because we already have equinox as
+a dependency, it makes sense to use this nicer variant of the JIT transformation, over
+:meth:`jax.jit`.
+`See here <https://docs.kidger.site/equinox/api/transformations/#equinox.filter_jit>`
+for more information.
+
+We can apply the JIT transformation to most methods within Coreax, but we do not apply
+these transformation by default. This is because we typically want to apply the JIT
+transformation at the highest possible level/scope to give the compiler the best chance
+of performing all the possible optimisations, at the cost of high compile times.
