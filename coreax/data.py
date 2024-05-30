@@ -31,7 +31,7 @@ class Data(eqx.Module):
     where :math`x_i` are the features or inputs and :math:`w_i` are weights.
 
     :param data: An :math:`n \times d` array defining the features of the unsupervised
-        dataset; d-vectors are converted to :math:`1 \times d` arrays
+        dataset
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is paired with the corresponding index of the data array, forming the
         pair :math:`(x_i, w_i)`; if passed a scalar weight, it will be broadcast to an
@@ -88,11 +88,9 @@ class SupervisedData(Data):
     correspond to the pairs :math:`(x_i, y_i)`.
 
     :param data: An :math:`n \times d` array defining the features of the supervised
-        dataset paired with the corresponding index of the supervision;  d-vectors are
-        converted to :math:`1 \times d` arrays
+        dataset paired with the corresponding index of the supervision
     :param supervision: An :math:`n \times p` array defining the responses of the
-        supervised paired with the corresponding index of the data; d-vectors are
-        converted to :math:`1 \times d` arrays
+        supervised dataset paired with the corresponding index of the data
     :param weights: An :math:`n`-vector of weights where each element of the weights
         vector is is paired with the corresponding index of the data and supervision
         array, forming the triple :math:`(x_i, y_i, w_i)`; if passed a scalar weight,

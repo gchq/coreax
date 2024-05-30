@@ -54,8 +54,9 @@ def _prepare_kernel_system(
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
 ) -> tuple[Array, Array]:
     r"""
-    Return the row mean of k(y,x) and the Gramian k(y,y).
+    Return the row mean of :math`k(y, x)` and the Gramian :math:`k(y, y)`.
 
+    :param kernel: The kernel :math:`k` to evaluate
     :param x: The original :math:`n \times d` data
     :param y: :math:`m \times d` representation of ``x``, e.g. a coreset
     :param epsilon: Small positive value to add to the kernel Gram matrix to aid
