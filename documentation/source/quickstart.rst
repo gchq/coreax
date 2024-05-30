@@ -99,7 +99,7 @@ mild conditions are met), with the potential to significantly improve runtime
 performance. It is for this reason that in all the examples, we always call
 :code:`eqx.filter_jit(...)` on the reduction method. Because we already have equinox as
 a dependency, it makes sense to use this nicer variant of the JIT transformation, over
-:meth:`jax.jit`.
+:func:`jax.jit`.
 `See here <https://docs.kidger.site/equinox/api/transformations/#equinox.filter_jit>`
 for more information.
 
