@@ -280,7 +280,7 @@ def sample_batch_indices(
     )[:batch_size, :]
 
 
-@partial(jit, static_argnames="rcond")
+@eqx.filter_jit
 def invert_regularised_array(
     array: ArrayLike,
     regularisation_parameter: float,
