@@ -43,7 +43,11 @@ from coreax.solvers import (
     Solver,
     SteinThinning,
 )
-from coreax.solvers.base import ExplicitSizeSolver, RefinementSolver
+from coreax.solvers.base import (
+    ExplicitSizeSolver,
+    PaddingInvariantSolver,
+    RefinementSolver,
+)
 from coreax.solvers.coresubset import (
     HerdingState,
     RPCholeskyState,
@@ -107,8 +111,8 @@ class SolverTest:
         3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset'
         4. If 'not hasattr(solver, random_key))', check that the
             addition of zero weighted data-points to the leading axis of the input
-            'dataset' does not modify the resulting coreset when the solver is
-            deterministic.
+            'dataset' does not modify the resulting coreset when the solver is a
+            'PaddingInvariantSolver'.
         """
         dataset, _, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
@@ -121,7 +125,7 @@ class SolverTest:
             membership = jtu.tree_map(jnp.isin, coreset.coreset, dataset)
             all_membership = jtu.tree_map(jnp.all, membership)
             assert jtu.tree_all(all_membership)
-        if not hasattr(problem.solver, "random_key"):
+        if isinstance(problem.solver, PaddingInvariantSolver):
             padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
             if isinstance(problem, _RefineProblem):
                 padded_initial_coreset = eqx.tree_at(
@@ -460,6 +464,10 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         )
 
 
+class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
+    """Required for mocking with multiple inheritance."""
+
+
 class TestMapReduce(SolverTest):
     """Test cases for :class:`coreax.solvers.composite.MapReduce`."""
 
@@ -469,7 +477,7 @@ class TestMapReduce(SolverTest):
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
-        base_solver = MagicMock(ExplicitSizeSolver)
+        base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
         base_solver.coreset_size = self.coreset_size
 
         def mock_reduce(
@@ -490,7 +498,10 @@ class TestMapReduce(SolverTest):
                 return None, np.arange(len(self.data)), None, None
 
         return jtu.Partial(
-            MapReduce, base_solver, leaf_size=self.leaf_size, tree_type=_MockTree
+            MapReduce,
+            base_solver=base_solver,
+            leaf_size=self.leaf_size,
+            tree_type=_MockTree,
         )
 
     @override
@@ -534,4 +545,30 @@ class TestMapReduce(SolverTest):
         """Check that invalid 'leaf_size' raises a suitable error."""
         with context:
             solver_factory.keywords["leaf_size"] = leaf_size
+            solver_factory()
+
+    @pytest.mark.parametrize(
+        "base_solver, context",
+        (
+            (MagicMock(_ExplicitPaddingInvariantSolver), does_not_raise()),
+            (
+                MagicMock(ExplicitSizeSolver),
+                pytest.warns(UserWarning, match="PaddingInvariantSolver"),
+            ),
+            (MagicMock(Solver), pytest.raises(ValueError, match="ExplicitSizeSolver")),
+        ),
+    )
+    @pytest.mark.filterwarnings("error")
+    def test_base_solver(
+        self,
+        solver_factory: jtu.Partial,
+        base_solver: Solver,
+        context: AbstractContextManager,
+    ):
+        """Check that invalid 'base_solver' raises an error or warns."""
+        with context:
+            if isinstance(base_solver, ExplicitSizeSolver):
+                base_solver.coreset_size = self.leaf_size - 1
+            solver_factory.keywords["leaf_size"] = self.leaf_size
+            solver_factory.keywords["base_solver"] = base_solver
             solver_factory()
