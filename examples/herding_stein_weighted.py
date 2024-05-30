@@ -76,7 +76,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     num_features = 2
     num_cluster_centers = 6
     random_seed = 1_989
-    x, _, _centers = make_blobs(
+    x, *_ = make_blobs(
         num_data_points,
         n_features=num_features,
         centers=num_cluster_centers,
@@ -100,10 +100,8 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     # Find a coreset using kernel herding with a stein kernel.
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=x[idx, :]
-    )
-    score_function = kernel_density_score_matcher.match()
+    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    score_function = kernel_density_score_matcher.match(x[idx, :])
 
     # Define a kernel to use for herding
     herding_kernel = SteinKernel(

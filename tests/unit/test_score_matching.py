@@ -32,6 +32,7 @@ from optax import sgd
 import coreax.kernel
 import coreax.networks
 import coreax.score_matching
+from coreax.score_matching import KernelDensityMatching
 
 
 class SimpleNetwork(nn.Module):
@@ -59,15 +60,14 @@ class TestKernelDensityMatching(unittest.TestCase):
         """
         # Setup a matching object
         kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=0.25, kde_data=jnp.ones([2, 3])
+            length_scale=0.25
         )
 
         # Flatten the pytree
         output_children, output_aux_data = kernel_density_matcher.tree_flatten()
 
         # Verify outputs are as expected
-        self.assertEqual(len(output_children), 1)
-        np.testing.assert_array_equal(output_children[0], jnp.ones([2, 3]))
+        self.assertEqual(len(output_children), 0)
 
         # We expect the kernel to be a SquaredExponentialKernel with output scale
         # defined such that it's a normalised (Gaussian) kernel
@@ -99,13 +99,13 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        learned_score = kernel_density_matcher.match(samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -131,13 +131,13 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x[test_index, 0])
 
         # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        learned_score = kernel_density_matcher.match(samples)
         score_result = learned_score(x[test_index, 0])
 
         # Check learned score and true score align
@@ -165,13 +165,13 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        learned_score = kernel_density_matcher.match(samples)
         score_result = learned_score(data_stacked)
 
         # Check learned score and true score align
@@ -210,13 +210,13 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples), kde_data=samples
+        kernel_density_matcher = KernelDensityMatching(
+            length_scale=coreax.kernel.median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        learned_score = kernel_density_matcher.match(samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -267,13 +267,11 @@ class TestKernelDensityMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a kernel density matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=10.0, kde_data=samples
-        )
+        kernel_density_matcher = KernelDensityMatching(length_scale=10.0)
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match()
+        learned_score = kernel_density_matcher.match(samples)
         score_result = learned_score(x_stacked)
 
         # Check learned score and true score align
@@ -387,6 +385,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Mutate the objective, and check that the result changes
         sliced_score_matcher.use_analytic = False
+
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
         # pylint: disable=protected-access
@@ -539,6 +538,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Call the loss element with a different objective function, and check that the
         # JIT compilation recognises this change
         sliced_score_matcher.use_analytic = False
+
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
         # pylint: disable=protected-access

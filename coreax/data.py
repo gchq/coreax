@@ -43,8 +43,9 @@ from typing import TYPE_CHECKING, Any
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax.typing import ArrayLike
-from jaxtyping import Array, Shaped
+import jax.tree_util as jtu
+from jaxtyping import Array, ArrayLike, Shaped
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     import coreax.reduction
@@ -220,17 +221,29 @@ class Data(eqx.Module):
         n = self.data.shape[:1]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
+    def __getitem__(self, key) -> Self:
+        """Support Array style indexing of 'Data' objects."""
+        return jtu.tree_map(lambda x: x[key], self)
+
     def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
         """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
         return self.data
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return data length."""
         return len(self.data)
 
-    def normalize(self) -> Data:
-        """Return a copy of 'self' with 'weights' that sum to one."""
+    def normalize(self, *, preserve_zeros: bool = False) -> Data:
+        """
+        Return a copy of 'self' with 'weights' that sum to one.
+
+        :param preserve_zeros: If to preserve zero valued weights; when all weights are
+            zero valued, the 'normalized' copy will **sum to zero, not one**.
+        :return: A copy of 'self' with normalized 'weights'
+        """
         normalized_weights = self.weights / jnp.sum(self.weights)
+        if preserve_zeros:
+            normalized_weights = jnp.nan_to_num(normalized_weights)
         return eqx.tree_at(lambda x: x.weights, self, normalized_weights)
 
 
