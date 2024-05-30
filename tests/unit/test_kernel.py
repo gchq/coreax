@@ -68,7 +68,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
-    def problem(self, request, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
     def test_compute(self, problem: _Problem):
@@ -576,7 +576,7 @@ class TestLinearKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the Linear kernel.
 
@@ -675,7 +675,7 @@ class TestSquaredExponentialKernel(
         ]
     )
     def problem(  # noqa: C901
-        self, request, kernel: _Kernel
+        self, request: pytest.FixtureRequest, kernel: _Kernel
     ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
@@ -828,7 +828,7 @@ class TestLaplacianKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -958,7 +958,7 @@ class TestPCIMQKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -1088,7 +1088,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
-    def problem(self, request, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
         modified_kernel = eqx.tree_at(

@@ -59,6 +59,7 @@ Contents
     :caption: API Reference
 
     coreax/approximations
+    coreax/coresets
     coreax/coresubset
     coreax/data
     coreax/kernel
@@ -67,6 +68,7 @@ Contents
     coreax/reduction
     coreax/refine
     coreax/score_matching
+    coreax/solvers
     coreax/utils
     coreax/weights
 

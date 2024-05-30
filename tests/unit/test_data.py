@@ -25,6 +25,7 @@ from unittest.mock import MagicMock
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.tree_util as jtu
 import numpy as np
 import pytest
 from jax import Array
@@ -35,6 +36,13 @@ import coreax.reduction
 
 DATA_ARRAY = jnp.array([[1], [2], [3]])
 SUPERVISION = jnp.array([[4], [5], [6]])
+
+
+def test_as_data():
+    """Test functionality of `as_data` converter method."""
+    _array = jnp.array([1, 2, 3])
+    _data = coreax.data.Data(_array)
+    assert eqx.tree_equal(coreax.data.as_data(_array), _data)
 
 
 def test_is_data():
@@ -72,18 +80,35 @@ class TestData:
             invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
             data_type(weights=invalid_weights)
 
+    @pytest.mark.parametrize("index", (0, -1, slice(0, DATA_ARRAY.shape[0])))
+    def test_getitem(self, data_type, index):
+        """Test indexing data as a JAX array."""
+        _data = data_type()
+        _expected_indexed_data = jtu.tree_map(lambda x: x[index], _data)
+        assert eqx.tree_equal(_data[index], _expected_indexed_data)
+
+    def test_arraylike(self, data_type):
+        """Test interpreting data as a JAX array."""
+        _data = data_type()
+        assert eqx.tree_equal(jnp.asarray(_data), _data.data)
+
     def test_len(self, data_type):
         """Test length of data."""
         _data = data_type()
         assert len(_data) == len(_data.data)
 
-    @pytest.mark.parametrize("weights", (None, 3, DATA_ARRAY.reshape(-1)))
+    @pytest.mark.parametrize("weights", (None, 0, 3, DATA_ARRAY.reshape(-1)))
     def test_normalize(self, data_type, weights):
         """Test weight normalization."""
         data = data_type(weights)
         expected_weights = data.weights / jnp.sum(data.weights)
-        normalized_data = data.normalize()
-        assert eqx.tree_equal(normalized_data.weights, expected_weights)
+        if jnp.all(weights != 0):
+            normalized_data = data.normalize()
+            assert eqx.tree_equal(normalized_data.weights, expected_weights)
+        normalized_with_zeros = data.normalize(preserve_zeros=True)
+        assert eqx.tree_equal(
+            normalized_with_zeros.weights, jnp.nan_to_num(expected_weights)
+        )
 
 
 class TestSupervisedData:

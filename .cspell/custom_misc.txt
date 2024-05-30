@@ -8,6 +8,7 @@ coreset
 coresets
 coresubset
 coresubsets
+cubature
 diag
 docstrings
 elementwise

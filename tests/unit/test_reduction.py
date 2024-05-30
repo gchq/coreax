@@ -110,6 +110,8 @@ class TestCoreset(unittest.TestCase):
         strategy = MagicMock(spec=coreax.reduction.ReductionStrategy)
         coreset.fit(original_data, strategy)
         self.assertIs(coreset.original_data, original_data)
+        # Spurious pylint error; will be removed in #632
+        # pylint: disable-next=no-member
         strategy.reduce.assert_called_once_with(coreset)
 
     def test_solve_weights(self):
@@ -156,7 +158,8 @@ class TestCoreset(unittest.TestCase):
             weights_x=weights_x,
             weights_y=weights_y,
         )
-
+        # Spurious pylint error; will be removed in #632
+        # pylint: disable-next=no-member
         metric.compute.assert_called_once_with(
             coreax.data.Data(
                 data=coreset.original_data.pre_coreset_array, weights=weights_x

@@ -42,7 +42,7 @@ class TestTrainState(unittest.TestCase):
         """
         Generate data for use across unit tests.
         """
-        self.hidden_dimension = 2
+        self.hidden_dimensions = [2, 2, 2]
         self.data_dimension = 5
         self.state_key = random.key(1989)
         self.learning_rate = 0.1
@@ -52,9 +52,7 @@ class TestTrainState(unittest.TestCase):
         """
         Test create_train_state with a negative hidden dimension size.
         """
-        score_network = coreax.networks.ScoreNetwork(
-            -self.hidden_dimension, self.data_dimension
-        )
+        score_network = coreax.networks.ScoreNetwork([2, -2, 2], self.data_dimension)
 
         # Create a train state with this network - we expect optax to catch the invalid
         # hidden dimension argument and raise an appropriate error
@@ -71,7 +69,7 @@ class TestTrainState(unittest.TestCase):
         """
         Test create_train_state with a zero size hidden dimension.
         """
-        score_network = coreax.networks.ScoreNetwork(0, self.data_dimension)
+        score_network = coreax.networks.ScoreNetwork([2, 0, 2], self.data_dimension)
 
         # Create a train state with this network - we expect optax to try and do a
         # division by hidden dimension size - which should give rise to a division error
@@ -88,9 +86,7 @@ class TestTrainState(unittest.TestCase):
         """
         Test create_train_state with a float valued hidden dimension.
         """
-        score_network = coreax.networks.ScoreNetwork(
-            1.0 * self.hidden_dimension, self.data_dimension
-        )
+        score_network = coreax.networks.ScoreNetwork([2, 2.0, 2], self.data_dimension)
 
         # Create a train state with this network - we expect optax to catch the invalid
         # hidden dimension argument and raise an appropriate error
@@ -108,7 +104,7 @@ class TestTrainState(unittest.TestCase):
         Test create_train_state with a negative output dimension size.
         """
         score_network = coreax.networks.ScoreNetwork(
-            self.hidden_dimension, -self.data_dimension
+            self.hidden_dimensions, -self.data_dimension
         )
 
         # Create a train state with this network - we expect optax to catch the invalid
@@ -128,7 +124,7 @@ class TestTrainState(unittest.TestCase):
         """
         Test create_train_state with a zero size output dimension.
         """
-        score_network = coreax.networks.ScoreNetwork(self.hidden_dimension, 0)
+        score_network = coreax.networks.ScoreNetwork(self.hidden_dimensions, 0)
 
         # Create a train state with this network - we expect optax to try and do a
         # division by data dimension size - which should give rise to a division error
@@ -146,7 +142,7 @@ class TestTrainState(unittest.TestCase):
         Test create_train_state with a float valued output dimension.
         """
         score_network = coreax.networks.ScoreNetwork(
-            self.hidden_dimension, 1.0 * self.data_dimension
+            self.hidden_dimensions, 1.0 * self.data_dimension
         )
 
         # Create a train state with this network - we expect optax to catch the invalid
