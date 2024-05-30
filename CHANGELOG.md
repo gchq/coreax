@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Python 3.12.
 - Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
 distinction between supervised and unsupervised datasets, and handle weighted data.
+- Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
 
 ### Fixed
 
