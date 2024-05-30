@@ -26,6 +26,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
@@ -34,6 +35,7 @@ from coreax.util import (
     difference,
     jit_test,
     pairwise,
+    sample_batch_indices,
     solve_qp,
     squared_distance,
     tree_leaves_repeat,
@@ -185,6 +187,50 @@ class TestUtil:
             solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
                 gramian_row_mean="invalid_gramian_row_mean",
+            )
+
+    @pytest.mark.parametrize(
+        "data_size, batch_size, num_batches",
+        [
+            (1.0, 1, 1),
+            (1, 1.0, 1),
+            (1, 1, 1.0),
+            (-1, 1, 1),
+            (1, -1, 1),
+            (1, 1, -1),
+            (0, 1, 1),
+            (1, 0, 1),
+            (1, 1, 0),
+            (1, 2, 1),
+        ],
+        ids=[
+            "float_data_size",
+            "float_batch_size",
+            "float_num_batches",
+            "negative_data_size",
+            "negative_batch_size",
+            "negative_num_batches",
+            "zero_data_size",
+            "zero_batch_size",
+            "zero_num_batches",
+            "data_size_smaller_than_batch_size",
+        ],
+    )
+    def test_sample_batch_indices(
+        self,
+        data_size: int,
+        batch_size: int,
+        num_batches: int,
+    ) -> None:
+        """
+        Test sample_batch_indices for valid input parameters.
+        """
+        with pytest.raises(ValueError):
+            sample_batch_indices(
+                random_key=key(0),
+                data_size=data_size,
+                batch_size=batch_size,
+                num_batches=num_batches,
             )
 
     @pytest.mark.flaky(reruns=3)

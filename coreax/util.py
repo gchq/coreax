@@ -33,6 +33,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
+from jax.random import permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
@@ -242,6 +243,41 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike) -> Array:
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
     return sol.primal
+
+
+def sample_batch_indices(
+    random_key: KeyArrayLike,
+    data_size: int,
+    batch_size: int,
+    num_batches: int,
+) -> ArrayLike:
+    """
+    Sample an array of indices of size batch_size x num_batches.
+
+    Each column of the sampled array will contain unique elements. The largest possible
+    index is dictated by data_size.
+
+    :param random_key: Key for random number generation
+    :param data_size: Size of the data we wish to sample from
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+    :return: Array of batch indices of size `batch_size` x `num_batches`
+    """
+    if data_size < batch_size:
+        raise ValueError("data_size must be greater than or equal to batch_size")
+    if (data_size <= 0.0) or not isinstance(data_size, int):
+        raise ValueError("data_size must be a positive integer")
+    if (batch_size <= 0.0) or not isinstance(batch_size, int):
+        raise ValueError("batch_size must be a positive integer")
+    if (num_batches <= 0.0) or not isinstance(num_batches, int):
+        raise ValueError("num_batches must be a positive integer")
+
+    return permutation(
+        key=random_key,
+        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1)).T,
+        axis=0,
+        independent=True,
+    )[:batch_size, :]
 
 
 def jit_test(
