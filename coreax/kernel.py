@@ -419,7 +419,30 @@ def _block_data_convert(
     return jtu.tree_map(_pad_reshape, x, is_leaf=eqx.is_array_like), unpadded_length
 
 
-class AdditiveKernel(Kernel):
+class MultiCompositeKernel(Kernel):
+    """
+    Abstract base class for kernels that compose/wrap two kernels.
+
+    :param first_kernel: Instance of class coreax.kernel.Kernel
+    :param second_kernel: Instance of class coreax.kernel.Kernel
+    """
+
+    first_kernel: Kernel
+    second_kernel: Kernel
+
+    def __check_init__(self):
+        """Ensure attributes are instances of Kernel class."""
+        if not (
+            isinstance(self.first_kernel, Kernel)
+            and isinstance(self.second_kernel, Kernel)
+        ):
+            raise ValueError(
+                "'first_kernel'and `second_kernel` must be an instance of "
+                + f"'{Kernel.__module__}.{Kernel.__qualname__}'"
+            )
+
+
+class AdditiveKernel(MultiCompositeKernel):
     r"""
     Define a kernel which is a summation of two kernels.
 
@@ -431,9 +454,6 @@ class AdditiveKernel(Kernel):
     :param first_kernel: Instance of class coreax.kernel.Kernel
     :param second_kernel: Instance of class coreax.kernel.Kernel
     """
-
-    first_kernel: Kernel
-    second_kernel: Kernel
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
@@ -460,7 +480,7 @@ class AdditiveKernel(Kernel):
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
 
 
-class ProductKernel(Kernel):
+class ProductKernel(MultiCompositeKernel):
     r"""
     Define a kernel which is a product of two kernels.
 
@@ -472,9 +492,6 @@ class ProductKernel(Kernel):
     :param first_kernel: Instance of class coreax.kernel.Kernel
     :param second_kernel: Instance of class coreax.kernel.Kernel
     """
-
-    first_kernel: Kernel
-    second_kernel: Kernel
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
@@ -552,8 +569,8 @@ class LinearKernel(Kernel):
     :param constant: Additive constant, :math:`c`
     """
 
-    output_scale: float = 1.0
-    constant: float = 0.0
+    output_scale: float = eqx.field(default=1.0, converter=float)
+    constant: float = eqx.field(default=0.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -586,8 +603,8 @@ class SquaredExponentialKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -627,8 +644,8 @@ class LaplacianKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -669,8 +686,8 @@ class PCIMQKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -705,7 +722,7 @@ class PCIMQKernel(Kernel):
 
 class CompositeKernel(Kernel):
     """
-    Abstract base class for kernels that compose/wrap another kernel.
+    Abstract base class for kernels that compose/wrap one kernel.
 
     :param base_kernel: kernel to be wrapped/used in composition
     """

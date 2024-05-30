@@ -41,6 +41,7 @@ from coreax.kernel import (
     Kernel,
     LaplacianKernel,
     LinearKernel,
+    MultiCompositeKernel,
     PCIMQKernel,
     ProductKernel,
     SquaredExponentialKernel,
@@ -48,8 +49,7 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
-_AdditiveKernel = TypeVar("_AdditiveKernel", bound=AdditiveKernel)
-_ProductKernel = TypeVar("_ProductKernel", bound=ProductKernel)
+_MultiCompositeKernel = TypeVar("_MultiCompositeKernel", bound=MultiCompositeKernel)
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -208,12 +208,12 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
-class KernelCompositionTest(ABC, Generic[_Kernel]):
+class KernelCompositionTest(ABC, Generic[_MultiCompositeKernel]):
     """Class of helper functions for Additive and Product Kernel tests."""
 
     def reset_mocked_sub_kernels(
-        self, kernel: _AdditiveKernel | _ProductKernel
-    ) -> _AdditiveKernel | _ProductKernel:
+        self, kernel: _MultiCompositeKernel
+    ) -> _MultiCompositeKernel:
         """Reset the mocked sub kernels in the Additive and Product Kernels."""
         kernel.first_kernel.reset_mock()
         kernel.second_kernel.reset_mock()
@@ -235,7 +235,7 @@ class TestAdditiveKernel(
 
     @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _AdditiveKernel:
+    def kernel(self) -> _MultiCompositeKernel:
         """Define an AdditiveKernel composed of mocked kernel functions."""
         # Variable rename allows for nicer automatic formatting
         num_points, dimension = self.mock_num_points, self.mock_dimension
@@ -264,7 +264,7 @@ class TestAdditiveKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _AdditiveKernel) -> _Problem:
+    def problem(self, request, kernel: _MultiCompositeKernel) -> _Problem:
         r"""
         Test problems for the Additive kernel.
 
@@ -350,7 +350,9 @@ class TestAdditiveKernel(
 
         return expected_divergences
 
-    def test_kernel_calls_sub_kernels_correctly(self, kernel: _AdditiveKernel) -> None:
+    def test_kernel_calls_sub_kernels_correctly(
+        self, kernel: _MultiCompositeKernel
+    ) -> None:
         """Ensure AdditiveKernel calls sub kernel methods correctly."""
         x = jnp.array(1.0)
         y = jnp.array(1.0)
@@ -394,7 +396,7 @@ class TestProductKernel(
 
     @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _ProductKernel:
+    def kernel(self) -> _MultiCompositeKernel:
         """Define an ProductKernel composed of mocked kernel functions."""
         # Variable rename allows for nicer automatic formatting
         num_points, dimension = self.mock_num_points, self.mock_dimension
@@ -423,7 +425,7 @@ class TestProductKernel(
 
     @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _ProductKernel) -> _Problem:
+    def problem(self, request, kernel: _MultiCompositeKernel) -> _Problem:
         r"""
         Test problems for the Product kernel where we multiply two Linear kernels.
 
@@ -518,7 +520,9 @@ class TestProductKernel(
 
         return expected_divergences
 
-    def test_kernel_calls_sub_kernels_correctly(self, kernel: _ProductKernel) -> None:
+    def test_kernel_calls_sub_kernels_correctly(
+        self, kernel: _MultiCompositeKernel
+    ) -> None:
         """Ensure ProductKernel calls sub kernel methods correctly."""
         x = jnp.array(1.0)
         y = jnp.array(1.0)
