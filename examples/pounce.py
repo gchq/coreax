@@ -119,10 +119,10 @@ def main(
     length_scale = median_heuristic(principle_components_data[idx])
 
     # Learn a score function via kernel density estimation
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=principle_components_data[idx, :]
+    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    score_function = kernel_density_score_matcher.match(
+        principle_components_data[idx, :]
     )
-    score_function = kernel_density_score_matcher.match()
 
     # Run kernel herding with a Stein kernel
     herding_key, sample_key = random.split(random.key(random_seed))

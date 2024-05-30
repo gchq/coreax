@@ -720,8 +720,8 @@ class SteinThinning(coreax.reduction.Coreset):
         # Choose a score function
         if self.score_method is None:
             score_function = coreax.score_matching.KernelDensityMatching(
-                self.kernel.length_scale, self.original_data.pre_coreset_array
-            ).match(None)
+                self.kernel.length_scale,
+            ).match(self.original_data.pre_coreset_array)
         else:
             score_function = self.score_method.match(
                 self.original_data.pre_coreset_array
@@ -756,7 +756,7 @@ class SteinThinning(coreax.reduction.Coreset):
             # Compute positive Laplace operator
             def laplace_positive(x_):
                 hessian = jacfwd(score_function)(x_)
-                return jnp.clip(jnp.diag(hessian), a_min=0.0).sum()
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
 
             laplace_positive_vector = vmap(laplace_positive, in_axes=(0,), out_axes=0)(
                 self.original_data.pre_coreset_array

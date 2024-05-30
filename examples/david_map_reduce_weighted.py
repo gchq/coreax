@@ -142,10 +142,8 @@ def main(
 
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
-    kernel_density_score_matcher = KernelDensityMatching(
-        length_scale=length_scale, kde_data=pre_coreset_data[idx, :]
-    )
-    score_function = kernel_density_score_matcher.match()
+    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    score_function = kernel_density_score_matcher.match(pre_coreset_data[idx, :])
 
     # Define a kernel to use for herding
     herding_kernel = SteinKernel(
