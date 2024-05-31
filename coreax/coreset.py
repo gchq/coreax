@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
+from typing_extensions import Self
 
 from coreax.data import Data, as_data
+from coreax.metrics import Metric
+from coreax.weights import WeightsOptimiser
 
 if TYPE_CHECKING:
     from typing import Any  # noqa: F401
@@ -75,6 +78,15 @@ class Coreset(eqx.Module, Generic[_Data]):
     def coreset(self) -> Data:
         """Materialised coreset."""
         return self.nodes
+
+    def solve_weights(self, solver: WeightsOptimiser, **solver_kwargs) -> Self:
+        """Return a copy of 'self' with weights solved by 'solver'."""
+        weights = solver.solve(self.pre_coreset_data, self.coreset, **solver_kwargs)
+        return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
+
+    def compute_metric(self, metric: Metric, **metric_kwargs) -> Array:
+        """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
+        return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 
 
 class Coresubset(Coreset[_Data], Generic[_Data]):

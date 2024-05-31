@@ -17,6 +17,7 @@
 from coreax.solvers.base import (
     CoresubsetSolver,
     ExplicitSizeSolver,
+    PaddingInvariantSolver,
     RefinementSolver,
     Solver,
 )
@@ -43,4 +44,5 @@ __all__ = [
     "RPCholeskyState",
     "SteinThinning",
     "MapReduce",
+    "PaddingInvariantSolver",
 ]

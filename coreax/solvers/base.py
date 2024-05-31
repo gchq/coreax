@@ -105,3 +105,18 @@ class ExplicitSizeSolver(Solver):
         """Check that 'coreset_size' is feasible."""
         if self.coreset_size <= 0:
             raise ValueError("'coreset_size' must be a positive integer")
+
+
+class PaddingInvariantSolver(Solver):
+    """
+    A :class:`Solver` whose results are invariant to zero weighted data.
+
+    In some cases, such as in :class:`coreax.solvers.MapReduce`, there is a need to pad
+    data to ensure shape stability. In some cases, we may assign zero weight to the
+    padded data points, which allows certain 'padding invariant' solvers to return the
+    same values on a call to :meth:`~coreax.solvers.Solver.reduce` as would have been
+    returned if no padding were present.
+
+    Inheriting from this class is only a promise by the solver to obey the invariance
+    property. Conformity with the property is not checked at runtime.
+    """

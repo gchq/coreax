@@ -16,11 +16,10 @@ import numpy as np
 
 from coreax import (
     KernelDensityMatching,
-    KernelHerding,
-    SizeReduce,
     SquaredExponentialKernel,
     SteinKernel,
 )
+from coreax.solvers import KernelHerding
 
 # Select a subset of data from which to learn score function
 generator = np.random.default_rng(random_seed)
@@ -39,5 +38,5 @@ herding_kernel = SteinKernel(
 )
 
 # Compute a coreset using kernel herding with a Stein kernel
-herding_object = KernelHerding(herding_key, kernel=herding_kernel)
-herding_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
+herding_solver = KernelHerding(coreset_size, kernel=herding_kernel)
+herding_coreset, _ = herding_solver.reduce(data)
