@@ -60,13 +60,10 @@ Contents
 
     coreax/approximations
     coreax/coresets
-    coreax/coresubset
     coreax/data
     coreax/kernel
     coreax/metrics
     coreax/networks
-    coreax/reduction
-    coreax/refine
     coreax/score_matching
     coreax/solvers
     coreax/utils

@@ -376,8 +376,8 @@ class LinearKernel(Kernel):
     :param constant: Additive constant, :math:`c`
     """
 
-    output_scale: float = 1.0
-    constant: float = 0.0
+    output_scale: float = eqx.field(default=1.0, converter=float)
+    constant: float = eqx.field(default=0.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -410,8 +410,8 @@ class SquaredExponentialKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -451,8 +451,8 @@ class LaplacianKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -493,8 +493,8 @@ class PCIMQKernel(Kernel):
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
 
-    length_scale: float = 1.0
-    output_scale: float = 1.0
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:

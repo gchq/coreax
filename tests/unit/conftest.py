@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from coreax.kernel import SquaredExponentialKernel
-from coreax.solvers import KernelHerding, MapReduce
+"""Fixtures used across multiple unit tests modules."""
 
-# Compute a coreset using kernel herding with a squared exponential kernel.
-herding_solver = KernelHerding(
-    coreset_size,
-    kernel=SquaredExponentialKernel(length_scale=length_scale),
-)
-mapped_herding_solver = MapReduce(herding_solver, leaf_size=200)
-mapped_herding_coreset, _ = mapped_herding_solver.reduce(data)
+from collections.abc import Callable
+
+import equinox as eqx
+import pytest
+
+
+@pytest.fixture(params=["with_jit", "without_jit"], scope="class")
+def jit_variant(request: pytest.FixtureRequest) -> Callable[[Callable], Callable]:
+    """Return a callable that (may) JIT compile a passed callable."""
+    if request.param == "without_jit":
+        return lambda x: x
+    if request.param == "with_jit":
+        return eqx.filter_jit
+    raise ValueError("Invalid fixture parametrization.")
