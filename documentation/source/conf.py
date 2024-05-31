@@ -55,7 +55,6 @@ for module_name in ("jaxopt",):
 from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
 
 import coreax  # Cannot import until after package has been added to path
-import coreax.reduction
 import coreax.util
 
 # pylint: enable=wrong-import-position
