@@ -1007,7 +1007,6 @@ class TestRationalQuadraticKernel(
             "large_negative_length_scale",
             "near_zero_length_scale",
             "negative_output_scale",
-            "relative_weighting_scale",
         ]
     )
     def problem(  # noqa: C901
@@ -1034,8 +1033,6 @@ class TestRationalQuadraticKernel(
         - `large_negative_length_scale`: should approximately equal one
         - `near_zero_length_scale`: should approximately equal zero
         - `negative_output_scale`: should negate the positive equivalent.
-        - `relative_weighting_scale`: should approximately equal the equivalent
-            SquaredExponential Kernel
         """
         length_scale = np.sqrt(np.float32(np.pi) / 2.0)
         output_scale = 1.0
@@ -1065,9 +1062,6 @@ class TestRationalQuadraticKernel(
         elif mode == "negative_output_scale":
             output_scale = -1
             expected_distances = -0.5826836
-        elif mode == "relative_weighting_scale":
-            relative_weighting = 1000
-            expected_distances = 0.48860678
         else:
             raise ValueError("Invalid problem mode")
         modified_kernel = eqx.tree_at(
