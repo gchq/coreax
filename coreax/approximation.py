@@ -296,13 +296,13 @@ class NystromApproximateKernel(RandomRegressionKernel):
         )
 
 
-class KernelInverseApproximator(ABC):
+class RegularisedInverseApproximator(ABC):
     """
-    Base class for approximation methods to invert regularised kernel matrices.
+    Base class for approximation methods to invert regularised kernel gram matrices.
 
-    When a dataset is very large, computing the inverse of the kernel gram matrix
-    can be very time-consuming. Instead, this property can be approximated by various
-    methods. :class:`KernelInverseApproximator` is the base class
+    When a dataset is very large, computing the regularised inverse of the kernel gram
+    matrix can be very time-consuming. Instead, this property can be approximated by
+    various methods. :class:`RegularisedInverseApproximator` is the base class
     for implementing these approximation methods.
 
     :param random_key: Key for random number generation
@@ -321,7 +321,16 @@ class KernelInverseApproximator(ABC):
         identity: ArrayLike,
     ) -> Array:
         r"""
-        Approximate kernel matrix inverse.
+        Approximate regularised kernel matrix inverse.
+
+        .. note::
+            The function is designed to invert blocked "kernel matrices" where only the
+            top-left block contains non-zero elements. We return a block array, the same
+            size as the input array, where each block has only zero elements except
+            for the top-left block, which is the inverse of the non-zero input block.
+            The most efficient way to compute this in JAX requires the 'identity' array
+            to be a matrix of zeros except for ones on the diagonal up to the dimension
+            of the non-zero block.
 
         :param kernel_gramian: Original :math:`n \times n` kernel gram matrix
         :param regularisation_parameter: Regularisation parameter for stable inversion
@@ -339,10 +348,10 @@ def randomised_eigendecomposition(
     power_iterations: int = 1,
 ):
     r"""
-    Approximate the eigendecomposition of kernel gram matrices.
+    Approximate the eigendecomposition of square matrices.
 
     Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
-    eigendecomposition of a kernel gram matrix. The parameters 'oversampling_parameter'
+    eigendecomposition of a matrix. The parameters 'oversampling_parameter'
     and 'power_iterations' present a trade-off between speed and approximation quality.
 
     Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
@@ -393,15 +402,15 @@ def randomised_eigendecomposition(
     return approximate_eigenvalues, approximate_eigenvectors
 
 
-class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
+class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
-    Approximate regularised kernel matrix inverse using randomised eigendecomposition.
+    Approximate inverse of regularised gramian using its randomised eigendecomposition.
 
-    When a dataset is very large, computing the inverse of the kernel gram matrix
-    can be very time-consuming. Instead, this property can be approximated by various
-    methods. :class:`RandomisedEigendecompositionApproximator` is a class that does
-    such an approximation using a randomised eigendecomposition. Further details can be
-    found in (:cite:`halko2009randomness` Algorithm 4.4. and 5.3).
+    When a dataset is very large, computing the regularised inverse of the kernel gram
+    matrix can be very time-consuming. Instead, this property can be approximated by
+    various methods. :class:`RandomisedEigendecompositionApproximator` is a class that
+    does such an approximation using a randomised eigendecomposition. Further details
+    can be found in (:cite:`halko2009randomness` Algorithm 4.4. and 5.3).
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
@@ -423,7 +432,7 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
         power_iterations: int = 1,
         rcond: Union[float, None] = None,
     ):
-        """Randomised eigendecomposition approximator to the kernel matrix inverse."""
+        """Initialise RandomisedEigendecompositionApproximator and validate input."""
         # Initialise parent
         super().__init__(random_key=random_key)
         self.oversampling_parameter = oversampling_parameter
@@ -444,18 +453,9 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
         r"""
         Compute approximate kernel matrix inverse using randomised eigendecomposition.
 
-        We consider a :math:`n \times n` kernel matrix, and use
-        (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) to approximate the
-        eigendecomposition, and using this, the inverse.
-
-        .. note::
-            The function is designed to invert "kernel matrices" where only the top-left
-            block contains non-zero elements. We return a block array, the same size as
-            the input array, where each block has only zero elements except for the
-            top-left block, which is the inverse of the non-zero input block. The most
-            efficient way to compute this in JAX requires the 'identity' array to be a
-            matrix of zeros except for ones on the diagonal up to the size of the
-            non-zero block.
+        We consider a :math:`n \times n` regularised kernel matrix, and use
+        (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) to approximate its
+        eigendecomposition, and using this, its inverse.
 
         :param kernel_gramian: Original :math:`n \times n` kernel gram matrix
         :param regularisation_parameter: Regularisation parameter for stable inversion
