@@ -1088,7 +1088,3 @@ class TestSlicedScoreMatching(unittest.TestCase):
             "int32 and float32",
         )
         # cSpell:enable
-
-
-if __name__ == "__main__":
-    unittest.main()

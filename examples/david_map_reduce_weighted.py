@@ -36,12 +36,11 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 (MMD).
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from pathlib import Path
+from typing import Union
 
 import cv2
+import equinox as eqx
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -50,16 +49,13 @@ from jax import random
 
 from coreax import (
     MMD,
-    ArrayData,
+    Data,
     KernelDensityMatching,
-    KernelHerding,
-    MapReduce,
-    RandomSample,
-    SizeReduce,
     SquaredExponentialKernel,
     SteinKernel,
 )
 from coreax.kernel import PCIMQKernel, median_heuristic
+from coreax.solvers import KernelHerding, MapReduce, RandomSample
 from coreax.weights import MMDWeightsOptimiser
 
 MAX_8BIT = 255
@@ -74,7 +70,7 @@ MIN_LENGTH_SCALE = 1e-6
 # pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
-    out_path: Path | None = None,
+    out_path: Union[Path, None] = None,
     downsampling_factor: int = 1,
 ) -> tuple[float, float]:
     """
@@ -116,6 +112,7 @@ def main(
     pooled_image_data = linen.avg_pool(
         image_data[..., None], window_shape, strides=window_shape
     )[..., 0]
+    block_size = 1_000 // downsampling_factor
 
     print(f"Image dimensions: {pooled_image_data.shape}")
     pre_coreset_data = np.column_stack(np.nonzero(pooled_image_data < MAX_8BIT))
@@ -129,14 +126,14 @@ def main(
     coreset_size = 8_000 // downsampling_factor
 
     # Setup the original data object
-    data = ArrayData.load(pre_coreset_data)
+    data = Data(pre_coreset_data)
 
     # Set the length_scale parameter of the kernel from at most 1000 samples
     num_samples_length_scale = min(num_data_points, 1000 // downsampling_factor)
     random_seed = 1_989
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(pre_coreset_data[idx].astype(float))
+    length_scale = float(median_heuristic(pre_coreset_data[idx]))
     if length_scale < MIN_LENGTH_SCALE:
         length_scale = 100.0
 
@@ -158,52 +155,42 @@ def main(
     # Compute a coreset using kernel herding with a Stein kernel. To reduce compute
     # time, we apply MapReduce, which partitions the input into blocks for independent
     # coreset solving. We also reduce memory requirements by specifying block size
-    herding_key, sample_key = random.split(random.key(random_seed))
-    herding_object = KernelHerding(
-        herding_key,
+    _, sample_key = random.split(random.key(random_seed))
+    herding_solver = KernelHerding(
+        coreset_size,
         kernel=herding_kernel,
-        weights_optimiser=weights_optimiser,
         block_size=1_000 // downsampling_factor,
     )
-    herding_object.fit(
-        original_data=data,
-        strategy=MapReduce(
-            coreset_size=coreset_size, leaf_size=10_000 // downsampling_factor
-        ),
+    mapped_herding_solver = MapReduce(
+        herding_solver, leaf_size=10_000 // downsampling_factor
     )
-    herding_weights = herding_object.solve_weights()
+    herding_coreset, _ = eqx.filter_jit(mapped_herding_solver.reduce)(data)
+    herding_weights = weights_optimiser.solve(data, herding_coreset.coreset)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
-    random_sample_object = RandomSample(sample_key, unique=True)
-    random_sample_object.fit(
-        original_data=data,
-        strategy=SizeReduce(coreset_size=coreset_size),
-    )
+    random_solver = RandomSample(coreset_size, sample_key, unique=True)
+    random_coreset, _ = eqx.filter_jit(random_solver.reduce)(data)
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
     print("Computing MMD...")
     mmd_kernel = SquaredExponentialKernel(
         length_scale=length_scale,
-        output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
+        output_scale=1.0 / (length_scale * float(jnp.sqrt(2.0 * jnp.pi))),
     )
 
     # Compute the MMD between the original data and the coreset generated via herding
-    metric_object = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_object.compute_metric(
-        metric_object, block_size=1_000 // downsampling_factor
-    )
+    mmd_metric = MMD(kernel=mmd_kernel)
+    herding_mmd = herding_coreset.compute_metric(mmd_metric, block_size=block_size)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = random_sample_object.compute_metric(
-        metric_object, block_size=1_000 // downsampling_factor
-    )
+    random_mmd = random_coreset.compute_metric(mmd_metric, block_size=block_size)
 
     # Print the MMD values
-    print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")
-    print(f"Herding coreset MMD: {maximum_mean_discrepancy_herding}")
+    print(f"Random sampling coreset MMD: {random_mmd}")
+    print(f"Herding coreset MMD: {herding_mmd}")
 
     print("Plotting")
     # Plot the pre-coreset image
@@ -217,9 +204,9 @@ def main(
     # weights
     plt.subplot(1, 3, 2)
     plt.scatter(
-        herding_object.coreset[:, 1],
-        -herding_object.coreset[:, 0],
-        c=herding_object.coreset[:, 2],
+        herding_coreset.coreset.data[:, 1],
+        -herding_coreset.coreset.data[:, 0],
+        c=herding_coreset.coreset.data[:, 2],
         cmap="gray",
         s=np.exp(2.0 * coreset_size * herding_weights).reshape(1, -1),
         marker="h",
@@ -232,9 +219,9 @@ def main(
     # Plot the image of randomly sampled points
     plt.subplot(1, 3, 3)
     plt.scatter(
-        random_sample_object.coreset[:, 1],
-        -random_sample_object.coreset[:, 0],
-        c=random_sample_object.coreset[:, 2],
+        random_coreset.coreset.data[:, 1],
+        -random_coreset.coreset.data[:, 0],
+        c=random_coreset.coreset.data[:, 2],
         s=1.0,
         cmap="gray",
         marker="h",
@@ -250,12 +237,11 @@ def main(
     plt.show()
 
     return (
-        float(maximum_mean_discrepancy_herding),
-        float(maximum_mean_discrepancy_random),
+        float(herding_mmd),
+        float(random_mmd),
     )
 
 
-# pylint: enable=no-member
 # pylint: enable=too-many-locals
 # pylint: enable=too-many-statements
 # pylint: enable=duplicate-code

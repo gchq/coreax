@@ -57,7 +57,3 @@ class TestPounce(unittest.TestCase):
 
 
 # pylint: enable=duplicate-code
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -54,7 +54,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
-from typing import TypeVar
+from typing import TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -102,47 +102,43 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
-    def __add__(self, addition: Kernel | int | float):
+    def __add__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
         """Overload `+` operator."""
-        if not isinstance(addition, (Kernel, int, float)):
-            return NotImplemented
-        if isinstance(addition, Kernel):
-            return AdditiveKernel(self, addition)
         if isinstance(addition, (int, float)):
             return AdditiveKernel(self, LinearKernel(0, addition))
-        return None
+        if isinstance(addition, Kernel):
+            return AdditiveKernel(self, addition)
+        return NotImplemented
 
-    def __radd__(self, addition: Kernel | int | float):
+    def __radd__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
         """Overload right `+` operator, order is mathematically irrelevant."""
         return self.__add__(addition)
 
-    def __mul__(self, product: Kernel | int | float):
+    def __mul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
         """Overload `*` operator."""
-        if not isinstance(product, (Kernel, int, float)):
-            return NotImplemented
-        if isinstance(product, Kernel):
-            return ProductKernel(self, product)
         if isinstance(product, (int, float)):
             return ProductKernel(self, LinearKernel(0, product))
-        return None
+        if isinstance(product, Kernel):
+            return ProductKernel(self, product)
+        return NotImplemented
 
-    def __rmul__(self, product: Kernel | int | float):
+    def __rmul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 
-    def __pow__(self, power: int):
-        """
-        Overload `**` operator.
-
-        Ensure the first and second kernels are symmetric for even powers to make use
-        of reduced computation capabilities in ProductKernel.
-        """
+    # pylint error
+    # pylint: disable=unexpected-special-method-signature
+    def __pow__(self, power: int = eqx.field(converter=int)) -> ProductKernel:
+        """Overload `**` operator."""
         min_power = 2
-        if not isinstance(power, int) or power < min_power:
-            raise ValueError("'power' must be an integer greater than 1.")
+        if power < min_power:
+            raise ValueError("'power' must be an integer greater than or equal to 2.")
 
         first_kernel = self
         second_kernel = self
+
+        # Ensure the first and second kernels are symmetric for even powers to make use
+        # of reduced computation capabilities in ProductKernel.
         for i in range(min_power, power):
             if i % 2 == 0:
                 first_kernel = ProductKernel(first_kernel, self)
@@ -150,6 +146,8 @@ class Kernel(eqx.Module):
                 second_kernel = ProductKernel(second_kernel, self)
 
         return ProductKernel(first_kernel, second_kernel)
+
+    # pylint: enable=unexpected-special-method-signature
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -285,10 +283,10 @@ class Kernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: ArrayLike | Data,
+        x: Union[ArrayLike, Data],
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ):
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
@@ -305,12 +303,12 @@ class Kernel(eqx.Module):
 
     def compute_mean(
         self,
-        x: ArrayLike | Data,
-        y: ArrayLike | Data,
-        axis: int | None = None,
+        x: Union[ArrayLike, Data],
+        y: Union[ArrayLike, Data],
+        axis: Union[int, None] = None,
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Array:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
@@ -394,7 +392,7 @@ class Kernel(eqx.Module):
 
 
 def _block_data_convert(
-    x: ArrayLike | Data, block_size: int | None
+    x: Union[ArrayLike, Data], block_size: Union[int, None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
@@ -414,7 +412,7 @@ def _block_data_convert(
     return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
 
-class MultiCompositeKernel(Kernel):
+class PairedKernel(Kernel):
     """
     Abstract base class for kernels that compose/wrap two kernels.
 
@@ -437,7 +435,7 @@ class MultiCompositeKernel(Kernel):
             )
 
 
-class AdditiveKernel(MultiCompositeKernel):
+class AdditiveKernel(PairedKernel):
     r"""
     Define a kernel which is a summation of two kernels.
 
@@ -475,7 +473,7 @@ class AdditiveKernel(MultiCompositeKernel):
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
 
 
-class ProductKernel(MultiCompositeKernel):
+class ProductKernel(PairedKernel):
     r"""
     Define a kernel which is a product of two kernels.
 
