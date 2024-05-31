@@ -315,32 +315,30 @@ class TestAdditiveKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
-        expected_gradient = kernel.first_kernel.grad_x_elementwise(
-            x, y
-        ) + kernel.second_kernel.grad_x_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
+        expected_grad = grad_1 + grad_2
 
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
-            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
-                num_points, num_points, self.mock_dimension
-            )
+            expected_grad = jnp.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_gradient
+        return expected_grad
 
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
-        expected_gradient = kernel.first_kernel.grad_y_elementwise(
-            x, y
-        ) + kernel.second_kernel.grad_y_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
+        expected_grad = grad_1 + grad_2
 
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
-            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
-                num_points, num_points, self.mock_dimension
-            )
+            expected_grad = jnp.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_gradient
+        return expected_grad
 
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
@@ -472,40 +470,34 @@ class TestProductKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
-        expected_gradient = kernel.first_kernel.grad_x_elementwise(
-            x, y
-        ) * kernel.second_kernel.compute_elementwise(
-            x, y
-        ) + kernel.second_kernel.grad_x_elementwise(
-            x, y
-        ) * kernel.first_kernel.compute_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
+        compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+        expected_grad = grad_1 * compute_2 + grad_2 * compute_1
 
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
-            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
-                num_points, num_points, self.mock_dimension
-            )
+            expected_grad = jnp.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_gradient
+        return expected_grad
 
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
-        expected_gradient = kernel.first_kernel.grad_y_elementwise(
-            x, y
-        ) * kernel.second_kernel.compute_elementwise(
-            x, y
-        ) + kernel.second_kernel.grad_y_elementwise(
-            x, y
-        ) * kernel.first_kernel.compute_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
+        compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+        expected_grad = grad_1 * compute_2 + grad_2 * compute_1
 
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
-            expected_gradient = jnp.tile(expected_gradient, num_points**2).reshape(
-                num_points, num_points, self.mock_dimension
-            )
+            expected_grad = jnp.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_gradient
+        return expected_grad
 
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
