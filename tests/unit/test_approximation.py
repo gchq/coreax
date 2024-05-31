@@ -32,11 +32,11 @@ from typing_extensions import override
 
 from coreax.approximation import (
     ANNchorApproximateKernel,
-    KernelInverseApproximator,
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
     RandomisedEigendecompositionApproximator,
     RandomRegressionKernel,
+    RegularisedInverseApproximator,
     randomised_eigendecomposition,
 )
 from coreax.kernel import Kernel, SquaredExponentialKernel
@@ -56,8 +56,8 @@ class _MeanProblem(NamedTuple):
     true_distances: ArrayLike
 
 
-_KernelInverseApproximator = TypeVar(
-    "_KernelInverseApproximator", bound=KernelInverseApproximator
+_RegularisedInverseApproximator = TypeVar(
+    "_RegularisedInverseApproximator", bound=RegularisedInverseApproximator
 )
 
 
@@ -294,11 +294,11 @@ class TestRandomRegressionApproximations(Generic[_RandomRegressionKernel]):
             approximator(InvalidKernel(0), random_key, **kwargs)
 
 
-class InverseApproximationTest(ABC, Generic[_KernelInverseApproximator]):
+class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
     """Tests related to kernel inverse approximations in approximation.py."""
 
     @abstractmethod
-    def approximator(self) -> _KernelInverseApproximator:
+    def approximator(self) -> _RegularisedInverseApproximator:
         """Abstract pytest fixture which initialises an inverse approximator."""
 
     @abstractmethod
@@ -306,7 +306,7 @@ class InverseApproximationTest(ABC, Generic[_KernelInverseApproximator]):
         """Abstract pytest fixture which returns a problem for inverse approximation."""
 
     def test_approximation_accuracy(
-        self, problem, approximator: _KernelInverseApproximator
+        self, problem, approximator: _RegularisedInverseApproximator
     ) -> None:
         """Verify approximator performance on toy problem."""
         # Extract problem settings
@@ -334,7 +334,7 @@ class TestRandomisedEigendecompositionApproximator(
 
     @override
     @pytest.fixture(scope="class")
-    def approximator(self) -> _KernelInverseApproximator:
+    def approximator(self) -> _RegularisedInverseApproximator:
         """Abstract pytest fixture returns an initialised inverse approximator."""
         random_seed = 2_024
         return RandomisedEigendecompositionApproximator(
