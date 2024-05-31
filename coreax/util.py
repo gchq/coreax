@@ -254,8 +254,8 @@ def sample_batch_indices(
     """
     Sample an array of indices of size batch_size x num_batches.
 
-    Each column of the sampled array will contain unique elements. The largest possible
-    index is dictated by data_size.
+    Each column (batch) of the sampled array will contain unique elements. The largest
+    possible index sampled is dictated by data_size.
 
     :param random_key: Key for random number generation
     :param data_size: Size of the data we wish to sample from
