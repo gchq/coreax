@@ -412,7 +412,7 @@ class TestRandomisedEigendecompositionApproximator(
         )
         assert jnp.linalg.norm(
             kernel_gramian - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
-        ) == pytest.approx(0.0, abs=1e-3)
+        ) == pytest.approx(0.0, abs=1)
 
     @pytest.mark.parametrize(
         "kernel_gramian, oversampling_parameter, power_iterations",

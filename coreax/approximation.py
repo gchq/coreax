@@ -341,7 +341,7 @@ def randomised_eigendecomposition(
     r"""
     Approximate the eigendecomposition of kernel gram matrices.
 
-    Using (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) we approximate the
+    Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
     eigendecomposition of a kernel gram matrix. The parameters 'oversampling_parameter'
     and 'power_iterations' present a trade-off between speed and approximation quality.
 
@@ -401,7 +401,7 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
     can be very time-consuming. Instead, this property can be approximated by various
     methods. :class:`RandomisedEigendecompositionApproximator` is a class that does
     such an approximation using a randomised eigendecomposition. Further details can be
-    found in (:cite:`halko2011randomness` Algorithm 4.4. and 5.3).
+    found in (:cite:`halko2009randomness` Algorithm 4.4. and 5.3).
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
@@ -445,7 +445,7 @@ class RandomisedEigendecompositionApproximator(KernelInverseApproximator):
         Compute approximate kernel matrix inverse using randomised eigendecomposition.
 
         We consider a :math:`n \times n` kernel matrix, and use
-        (:cite:`halko2011randomness` Algorithm 4.4. and 5.3) to approximate the
+        (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) to approximate the
         eigendecomposition, and using this, the inverse.
 
         .. note::
