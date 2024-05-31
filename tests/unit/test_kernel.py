@@ -19,21 +19,19 @@ The tests within this file verify that the implementations of kernels used throu
 the codebase produce the expected results on simple examples.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, NamedTuple, TypeVar
+from collections.abc import Callable
+from typing import Generic, Literal, NamedTuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import equinox as eqx
+import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import pytest
 from jax import Array
-from jax import numpy as jnp
-from jax import random as jr
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
-from typing_extensions import override
 
 from coreax.data import Data
 from coreax.kernel import (
@@ -41,7 +39,7 @@ from coreax.kernel import (
     Kernel,
     LaplacianKernel,
     LinearKernel,
-    MultiCompositeKernel,
+    PairedKernel,
     PCIMQKernel,
     ProductKernel,
     SquaredExponentialKernel,
@@ -49,7 +47,7 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
-_MultiCompositeKernel = TypeVar("_MultiCompositeKernel", bound=MultiCompositeKernel)
+_PairedKernel = TypeVar("_PairedKernel", bound=PairedKernel)
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -71,10 +69,12 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
     def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
-    def test_compute(self, problem: _Problem):
+    def test_compute(
+        self, jit_variant: Callable[[Callable], Callable], problem: _Problem
+    ) -> None:
         """Test ``compute`` method of ``coreax.kernel.Kernel``."""
         x, y, expected_output, kernel = problem
-        output = kernel.compute(x, y)
+        output = jit_variant(kernel.compute)(x, y)
         np.testing.assert_array_almost_equal(output, expected_output)
 
 
@@ -98,8 +98,12 @@ class KernelMeanTest(Generic[_Kernel]):
     )
     @pytest.mark.parametrize("axis", [None, 0, 1])
     def test_compute_mean(
-        self, kernel: _Kernel, block_size: int | float | None, axis: int | None
-    ):
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: _Kernel,
+        block_size: Union[int, float, None],
+        axis: Union[int, None],
+    ) -> None:
         """
         Test the `compute_mean` methods.
 
@@ -129,10 +133,13 @@ class KernelMeanTest(Generic[_Kernel]):
         else:
             weights = x_weights[..., None] * y_weights[None, ...]
         expected = jnp.average(kernel_matrix, axis, weights)
-        mean_output = kernel.compute_mean(x_data, y_data, axis, block_size=block_size)
+        test_fn = jit_variant(kernel.compute_mean)
+        mean_output = test_fn(x_data, y_data, axis, block_size=block_size)
         np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
-    def test_gramian_row_mean(self, kernel: _Kernel):
+    def test_gramian_row_mean(
+        self, jit_variant: Callable[[Callable], Callable], kernel: _Kernel
+    ) -> None:
         """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
         bs = None
         unroll = (1, 1)
@@ -148,8 +155,10 @@ class KernelMeanTest(Generic[_Kernel]):
                 [7.0, 8.0],
             ]
         )
-        expected = kernel.compute_mean(x, x, axis=0, block_size=bs, unroll=unroll)
-        output = kernel.gramian_row_mean(x, block_size=bs, unroll=unroll)
+        expected_fn = jit_variant(kernel.compute_mean)
+        output_fn = jit_variant(kernel.gramian_row_mean)
+        expected = expected_fn(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = output_fn(x, block_size=bs, unroll=unroll)
         np.testing.assert_array_equal(output, expected)
 
 
@@ -192,28 +201,26 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
     @abstractmethod
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: _Kernel
-    ) -> Array | np.ndarray:
+    ) -> Union[Array, np.ndarray]:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
-class KernelCompositionTest(ABC, Generic[_MultiCompositeKernel]):
+class PairedKernelTest(Generic[_PairedKernel]):
     """Class of helper functions for Additive and Product Kernel tests."""
 
-    def reset_mocked_sub_kernels(
-        self, kernel: _MultiCompositeKernel
-    ) -> _MultiCompositeKernel:
+    def reset_mocked_sub_kernels(self, kernel: _PairedKernel) -> _PairedKernel:
         """Reset the mocked sub kernels in the Additive and Product Kernels."""
         kernel.first_kernel.reset_mock()
         kernel.second_kernel.reset_mock()
@@ -224,7 +231,7 @@ class TestAdditiveKernel(
     BaseKernelTest[AdditiveKernel],
     KernelMeanTest[AdditiveKernel],
     KernelGradientTest[AdditiveKernel],
-    KernelCompositionTest[AdditiveKernel],
+    PairedKernelTest[AdditiveKernel],
 ):
     """Test ``coreax.kernel.AdditiveKernel``."""
 
@@ -233,38 +240,36 @@ class TestAdditiveKernel(
     mock_num_points: int = 5
     mock_dimension: int = 3
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _MultiCompositeKernel:
+    def kernel(self) -> AdditiveKernel:
         """Define an AdditiveKernel composed of mocked kernel functions."""
         # Variable rename allows for nicer automatic formatting
         num_points, dimension = self.mock_num_points, self.mock_dimension
 
         k1 = MagicMock(spec=Kernel)
         k1.compute_elementwise.return_value = jnp.array(1.0)
-        k1.compute.return_value = 1.0 * jnp.ones((num_points, num_points))
-        k1.grad_x_elementwise.return_value = 1.0 * jnp.ones(dimension)
-        k1.grad_x.return_value = 1.0 * jnp.ones((num_points, num_points, dimension))
-        k1.grad_y_elementwise.return_value = 1.0 * jnp.ones(dimension)
-        k1.grad_y.return_value = 1.0 * jnp.ones((num_points, num_points, dimension))
+        k1.compute.return_value = jnp.full((num_points, num_points), 1.0)
+        k1.grad_x_elementwise.return_value = jnp.full(dimension, 1.0)
+        k1.grad_x.return_value = jnp.full((num_points, num_points, dimension), 1.0)
+        k1.grad_y_elementwise.return_value = jnp.full(dimension, 1.0)
+        k1.grad_y.return_value = jnp.full((num_points, num_points, dimension), 1.0)
         k1.divergence_x_grad_y_elementwise.return_value = jnp.array(1.0)
-        k1.divergence_x_grad_y.return_value = 1.0 * jnp.ones((num_points, num_points))
+        k1.divergence_x_grad_y.return_value = jnp.full((num_points, num_points), 1.0)
 
         k2 = MagicMock(spec=Kernel)
         k2.compute_elementwise.return_value = jnp.array(2.0)
-        k2.compute.return_value = 2.0 * jnp.ones((num_points, num_points))
-        k2.grad_x_elementwise.return_value = 2.0 * jnp.ones(dimension)
-        k2.grad_x.return_value = 2.0 * jnp.ones((num_points, num_points, dimension))
-        k2.grad_y_elementwise.return_value = 2.0 * jnp.ones(dimension)
-        k2.grad_y.return_value = 2.0 * jnp.ones((num_points, num_points, dimension))
+        k2.compute.return_value = jnp.full((num_points, num_points), 2.0)
+        k2.grad_x_elementwise.return_value = jnp.full(dimension, 2.0)
+        k2.grad_x.return_value = jnp.full((num_points, num_points, dimension), 2.0)
+        k2.grad_y_elementwise.return_value = jnp.full(dimension, 2.0)
+        k2.grad_y.return_value = jnp.full((num_points, num_points, dimension), 2.0)
         k2.divergence_x_grad_y_elementwise.return_value = jnp.array(2.0)
-        k2.divergence_x_grad_y.return_value = 2.0 * jnp.ones((num_points, num_points))
+        k2.divergence_x_grad_y.return_value = jnp.full((num_points, num_points), 2.0)
 
         return AdditiveKernel(first_kernel=k1, second_kernel=k2)
 
-    @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _MultiCompositeKernel) -> _Problem:
+    def problem(self, request, kernel: AdditiveKernel) -> _Problem:
         r"""
         Test problems for the Additive kernel.
 
@@ -350,9 +355,7 @@ class TestAdditiveKernel(
 
         return expected_divergences
 
-    def test_kernel_calls_sub_kernels_correctly(
-        self, kernel: _MultiCompositeKernel
-    ) -> None:
+    def test_kernel_calls_sub_kernels_correctly(self, kernel: AdditiveKernel) -> None:
         """Ensure AdditiveKernel calls sub kernel methods correctly."""
         x = jnp.array(1.0)
         y = jnp.array(1.0)
@@ -385,7 +388,7 @@ class TestProductKernel(
     BaseKernelTest[ProductKernel],
     KernelMeanTest[ProductKernel],
     KernelGradientTest[ProductKernel],
-    KernelCompositionTest[ProductKernel],
+    PairedKernelTest[ProductKernel],
 ):
     """Test ``coreax.kernel.ProductKernel``."""
 
@@ -394,38 +397,36 @@ class TestProductKernel(
     mock_num_points: int = 5
     mock_dimension: int = 3
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _MultiCompositeKernel:
+    def kernel(self) -> ProductKernel:
         """Define an ProductKernel composed of mocked kernel functions."""
         # Variable rename allows for nicer automatic formatting
         num_points, dimension = self.mock_num_points, self.mock_dimension
 
         k1 = MagicMock(spec=Kernel)
         k1.compute_elementwise.return_value = jnp.array(1.0)
-        k1.compute.return_value = 1.0 * jnp.ones((num_points, num_points))
-        k1.grad_x_elementwise.return_value = 1.0 * jnp.ones(dimension)
-        k1.grad_x.return_value = 1.0 * jnp.ones((num_points, num_points, dimension))
-        k1.grad_y_elementwise.return_value = 1.0 * jnp.ones(dimension)
-        k1.grad_y.return_value = 1.0 * jnp.ones((num_points, num_points, dimension))
+        k1.compute.return_value = jnp.full((num_points, num_points), 1.0)
+        k1.grad_x_elementwise.return_value = jnp.full(dimension, 1.0)
+        k1.grad_x.return_value = jnp.full((num_points, num_points, dimension), 1.0)
+        k1.grad_y_elementwise.return_value = jnp.full(dimension, 1.0)
+        k1.grad_y.return_value = jnp.full((num_points, num_points, dimension), 1.0)
         k1.divergence_x_grad_y_elementwise.return_value = jnp.array(1.0)
-        k1.divergence_x_grad_y.return_value = 1.0 * jnp.ones((num_points, num_points))
+        k1.divergence_x_grad_y.return_value = jnp.full((num_points, num_points), 1.0)
 
         k2 = MagicMock(spec=Kernel)
         k2.compute_elementwise.return_value = jnp.array(2.0)
-        k2.compute.return_value = 2.0 * jnp.ones((num_points, num_points))
-        k2.grad_x_elementwise.return_value = 2.0 * jnp.ones(dimension)
-        k2.grad_x.return_value = 2.0 * jnp.ones((num_points, num_points, dimension))
-        k2.grad_y_elementwise.return_value = 2.0 * jnp.ones(dimension)
-        k2.grad_y.return_value = 2.0 * jnp.ones((num_points, num_points, dimension))
+        k2.compute.return_value = jnp.full((num_points, num_points), 2.0)
+        k2.grad_x_elementwise.return_value = jnp.full(dimension, 2.0)
+        k2.grad_x.return_value = jnp.full((num_points, num_points, dimension), 2.0)
+        k2.grad_y_elementwise.return_value = jnp.full(dimension, 2.0)
+        k2.grad_y.return_value = jnp.full((num_points, num_points, dimension), 2.0)
         k2.divergence_x_grad_y_elementwise.return_value = jnp.array(2.0)
-        k2.divergence_x_grad_y.return_value = 2.0 * jnp.ones((num_points, num_points))
+        k2.divergence_x_grad_y.return_value = jnp.full((num_points, num_points), 2.0)
 
         return ProductKernel(first_kernel=k1, second_kernel=k2)
 
-    @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _MultiCompositeKernel) -> _Problem:
+    def problem(self, request, kernel: ProductKernel) -> _Problem:
         r"""
         Test problems for the Product kernel where we multiply two Linear kernels.
 
@@ -520,9 +521,7 @@ class TestProductKernel(
 
         return expected_divergences
 
-    def test_kernel_calls_sub_kernels_correctly(
-        self, kernel: _MultiCompositeKernel
-    ) -> None:
+    def test_kernel_calls_sub_kernels_correctly(self, kernel: ProductKernel) -> None:
         """Ensure ProductKernel calls sub kernel methods correctly."""
         x = jnp.array(1.0)
         y = jnp.array(1.0)
@@ -567,16 +566,14 @@ class TestLinearKernel(
 ):
     """Test ``coreax.kernel.LinearKernel``."""
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> LinearKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return LinearKernel(output_scale=parameters[0], constant=parameters[1])
+        output_scale, constant = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
+        return LinearKernel(output_scale, constant)
 
-    @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: LinearKernel) -> _Problem:
         r"""
         Test problems for the Linear kernel.
 
@@ -652,16 +649,14 @@ class TestSquaredExponentialKernel(
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> SquaredExponentialKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return SquaredExponentialKernel(
-            length_scale=parameters[0], output_scale=parameters[1]
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
         )
+        return SquaredExponentialKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -675,7 +670,7 @@ class TestSquaredExponentialKernel(
         ]
     )
     def problem(  # noqa: C901
-        self, request: pytest.FixtureRequest, kernel: _Kernel
+        self, request: pytest.FixtureRequest, kernel: SquaredExponentialKernel
     ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
@@ -809,14 +804,14 @@ class TestLaplacianKernel(
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> LaplacianKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return LaplacianKernel(length_scale=parameters[0], output_scale=parameters[1])
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
+        )
+        return LaplacianKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -828,7 +823,9 @@ class TestLaplacianKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: LaplacianKernel
+    ) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -939,14 +936,14 @@ class TestPCIMQKernel(
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> PCIMQKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        return PCIMQKernel(length_scale=parameters[0], output_scale=parameters[1])
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
+        )
+        return PCIMQKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -958,7 +955,7 @@ class TestPCIMQKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: PCIMQKernel) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -1076,19 +1073,17 @@ class TestPCIMQKernel(
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
-    @override
     @pytest.fixture(scope="class")
-    def kernel(self) -> _Kernel:
+    def kernel(self) -> SteinKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
-        base_kernel = PCIMQKernel(
-            length_scale=parameters[0], output_scale=parameters[1]
+        length_scale, output_scale = jnp.abs(
+            jr.normal(key=jr.key(random_seed), shape=(2,))
         )
-
+        base_kernel = PCIMQKernel(length_scale, output_scale)
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
-    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: SteinKernel) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
         modified_kernel = eqx.tree_at(

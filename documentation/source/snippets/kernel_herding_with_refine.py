@@ -12,24 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from coreax import KernelHerding, SizeReduce, SquaredExponentialKernel
-from coreax.refine import RefineRegular
-
-# Define a refinement object
-refiner = RefineRegular()
+from coreax import SquaredExponentialKernel
+from coreax.solvers import KernelHerding
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
-herding_object = KernelHerding(
-    herding_key,
+herding_solver = KernelHerding(
+    coreset_size,
     kernel=SquaredExponentialKernel(length_scale=length_scale),
-    refine_method=refiner,
 )
-herding_object.fit(original_data=data, strategy=SizeReduce(coreset_size=coreset_size))
+herding_coreset, _ = herding_solver.reduce(data)
 
 # Refine the coreset to improve quality
-herding_object.refine()
+refined_herding_coreset = herding_solver.refine(herding_coreset)
 
-# The herding object now has the refined coreset, and the indices of the original
-# data that makeup the refined coreset as populated attributes
-print(herding_object.coreset)
-print(herding_object.coreset_indices)
+# We can now print the selected coresubset indices and the materialized coresubset
+print(refined_herding_coreset.coreset)
+print(refined_herding_coreset.coreset_indices)
