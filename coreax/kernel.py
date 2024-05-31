@@ -126,11 +126,10 @@ class Kernel(eqx.Module):
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 
-    # pylint error
-    # pylint: disable=unexpected-special-method-signature
-    def __pow__(self, power: int = eqx.field(converter=int)) -> ProductKernel:
+    def __pow__(self, power: int) -> ProductKernel:
         """Overload `**` operator."""
         min_power = 2
+        power = int(power)
         if power < min_power:
             raise ValueError("'power' must be an integer greater than or equal to 2.")
 
@@ -146,8 +145,6 @@ class Kernel(eqx.Module):
                 second_kernel = ProductKernel(second_kernel, self)
 
         return ProductKernel(first_kernel, second_kernel)
-
-    # pylint: enable=unexpected-special-method-signature
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
