@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Python 3.12.
 - Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
 distinction between supervised and unsupervised datasets, and handle weighted data.
-- Added capability to sample indices for batching with `coreax.util.sample_batch_indices`
 - Added capability to approximate inverses of kernel matrices `coreax.approximation.KernelInverseApproximator`
 
 ### Fixed
