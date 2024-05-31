@@ -318,7 +318,7 @@ class RegularisedInverseApproximator(ABC):
         self,
         kernel_gramian: Array,
         regularisation_parameter: float,
-        identity: ArrayLike,
+        identity: Array,
     ) -> Array:
         r"""
         Approximate regularised kernel matrix inverse.
@@ -343,10 +343,10 @@ class RegularisedInverseApproximator(ABC):
 @eqx.filter_jit
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
-    array: ArrayLike,
+    array: Array,
     oversampling_parameter: int = 10,
     power_iterations: int = 1,
-):
+) -> tuple[Array, Array]:
     r"""
     Approximate the eigendecomposition of square matrices.
 
@@ -446,9 +446,9 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
 
     def approximate(
         self,
-        kernel_gramian: ArrayLike,
+        kernel_gramian: Array,
         regularisation_parameter: float,
-        identity: ArrayLike,
+        identity: Array,
     ) -> Array:
         r"""
         Compute approximate kernel matrix inverse using randomised eigendecomposition.

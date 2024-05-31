@@ -27,6 +27,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
+from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import override
 
@@ -54,19 +55,6 @@ class _MeanProblem(NamedTuple):
     num_kernel_points: int
     num_train_points: int
     true_distances: ArrayLike
-
-
-_RegularisedInverseApproximator = TypeVar(
-    "_RegularisedInverseApproximator", bound=RegularisedInverseApproximator
-)
-
-
-class _InversionProblem(NamedTuple):
-    random_key: KeyArrayLike
-    kernel_gramian: ArrayLike
-    regularisation_parameter: float
-    identity: ArrayLike
-    expected_inverse: ArrayLike
 
 
 @pytest.mark.parametrize(
@@ -294,6 +282,19 @@ class TestRandomRegressionApproximations(Generic[_RandomRegressionKernel]):
             approximator(InvalidKernel(0), random_key, **kwargs)
 
 
+_RegularisedInverseApproximator = TypeVar(
+    "_RegularisedInverseApproximator", bound=RegularisedInverseApproximator
+)
+
+
+class _InversionProblem(NamedTuple):
+    random_key: KeyArrayLike
+    kernel_gramian: Array
+    regularisation_parameter: float
+    identity: Array
+    expected_inv: Array
+
+
 class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
     """Tests related to kernel inverse approximations in approximation.py."""
 
@@ -334,7 +335,7 @@ class TestRandomisedEigendecompositionApproximator(
 
     @override
     @pytest.fixture(scope="class")
-    def approximator(self) -> _RegularisedInverseApproximator:
+    def approximator(self) -> RandomisedEigendecompositionApproximator:
         """Abstract pytest fixture returns an initialised inverse approximator."""
         random_seed = 2_024
         return RandomisedEigendecompositionApproximator(
@@ -378,8 +379,8 @@ class TestRandomisedEigendecompositionApproximator(
     )
     def test_approximator_invalid_inputs(
         self,
-        kernel_gramian: ArrayLike,
-        identity: ArrayLike,
+        kernel_gramian: Array,
+        identity: Array,
         rcond: Union[int, float, None],
     ) -> None:
         """Test that `randomised_eigendecomposition` handles invalid inputs."""
@@ -435,7 +436,7 @@ class TestRandomisedEigendecompositionApproximator(
     )
     def test_randomised_eigendecomposition_invalid_inputs(
         self,
-        kernel_gramian: ArrayLike,
+        kernel_gramian: Array,
         oversampling_parameter: int,
         power_iterations: int,
     ) -> None:

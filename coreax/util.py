@@ -246,11 +246,11 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
 
 @eqx.filter_jit
 def invert_regularised_array(
-    array: ArrayLike,
+    array: Array,
     regularisation_parameter: float,
-    identity: ArrayLike,
+    identity: Array,
     rcond: float | None = None,
-) -> ArrayLike:
+) -> Array:
     """
     Regularise an array and then invert it using a least-squares solver.
 

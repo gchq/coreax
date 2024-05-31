@@ -27,7 +27,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax.typing import ArrayLike
+from jax import Array
 from scipy.stats import ortho_group
 
 from coreax.util import (
@@ -197,8 +197,8 @@ class TestUtil:
     )
     def test_invert_regularised_invalid_inputs(
         self,
-        array: ArrayLike,
-        identity: ArrayLike,
+        array: Array,
+        identity: Array,
         rcond: Union[int, float, None],
     ) -> None:
         """Test that `invert_regularised_array` handles invalid inputs."""
