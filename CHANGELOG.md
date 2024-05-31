@@ -13,14 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Python 3.12.
 - Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
 distinction between supervised and unsupervised datasets, and handle weighted data.
-<<<<<<< HEAD
 - Additional kernel classes `coreax.kernel.AdditiveKernel` and
 `coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
 semi-definite kernels to produce new positive semi-definite kernels.
-=======
 - Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
 `coreax.kernel.Polynomial`, `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
->>>>>>> fabebb3 (updated changelog)
 
 ### Fixed
 

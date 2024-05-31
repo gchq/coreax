@@ -40,9 +40,9 @@ from coreax.kernel import (
     Kernel,
     LaplacianKernel,
     LinearKernel,
+    LocallyPeriodicKernel,
     PCIMQKernel,
     PeriodicKernel,
-    LocallyPeriodicKernel,
     PolynomialKernel,
     ProductKernel,
     RationalQuadraticKernel,
@@ -203,7 +203,7 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         if auto_diff:
             if isinstance(kernel, (AdditiveKernel, ProductKernel)):
                 pytest.skip(
-                    "Autodiff of Additive and Product kernels is tested implicitly."
+                    "Autodiff functionality of Additive and Product kernels is tested implicitly."
                 )
             # Access overridden parent methods that use auto-differentiation.
             kernel = super(type(kernel), kernel)
