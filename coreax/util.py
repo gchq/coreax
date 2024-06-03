@@ -31,9 +31,9 @@ from typing import Any, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
-from jax.random import permutation
 from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
@@ -250,34 +250,28 @@ def sample_batch_indices(
     data_size: int,
     batch_size: int,
     num_batches: int,
-) -> ArrayLike:
+) -> Array:
     """
-    Sample an array of indices of size batch_size x num_batches.
+    Sample an array of indices of size `num_batches` x `batch_size`.
 
-    Each column (batch) of the sampled array will contain unique elements. The largest
+    Each row (batch) of the sampled array will contain unique elements. The largest
     possible index sampled is dictated by data_size.
 
     :param random_key: Key for random number generation
     :param data_size: Size of the data we wish to sample from
     :param batch_size: Size of the batch we wish to sample
     :param num_batches: Number of batches to sample
-    :return: Array of batch indices of size `batch_size` x `num_batches`
+    :return: Array of batch indices of size `num_batches` x `batch_size`
     """
     if data_size < batch_size:
         raise ValueError("data_size must be greater than or equal to batch_size")
-    if (data_size <= 0.0) or not isinstance(data_size, int):
-        raise ValueError("data_size must be a positive integer")
-    if (batch_size <= 0.0) or not isinstance(batch_size, int):
-        raise ValueError("batch_size must be a positive integer")
-    if (num_batches <= 0.0) or not isinstance(num_batches, int):
-        raise ValueError("num_batches must be a positive integer")
+    if batch_size <= 0.0:
+        raise ValueError("batch_size must be positive")
 
-    return permutation(
-        key=random_key,
-        x=jnp.tile(jnp.arange(data_size, dtype=jnp.int32), (num_batches, 1)).T,
-        axis=0,
-        independent=True,
-    )[:batch_size, :]
+    batch_keys = jr.split(random_key, num_batches)
+
+    batch_permutation = vmap(jr.permutation, in_axes=(0, None))
+    return batch_permutation(batch_keys, data_size)[:, :batch_size]
 
 
 def jit_test(

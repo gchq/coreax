@@ -192,31 +192,15 @@ class TestUtil:
     @pytest.mark.parametrize(
         "data_size, batch_size, num_batches",
         [
-            (1.0, 1, 1),
-            (1, 1.0, 1),
-            (1, 1, 1.0),
-            (-1, 1, 1),
             (1, -1, 1),
-            (1, 1, -1),
-            (0, 1, 1),
-            (1, 0, 1),
-            (1, 1, 0),
             (1, 2, 1),
         ],
         ids=[
-            "float_data_size",
-            "float_batch_size",
-            "float_num_batches",
-            "negative_data_size",
             "negative_batch_size",
-            "negative_num_batches",
-            "zero_data_size",
-            "zero_batch_size",
-            "zero_num_batches",
             "data_size_smaller_than_batch_size",
         ],
     )
-    def test_sample_batch_indices(
+    def test_sample_batch_indices_invalid_inputs(
         self,
         data_size: int,
         batch_size: int,
@@ -232,6 +216,22 @@ class TestUtil:
                 batch_size=batch_size,
                 num_batches=num_batches,
             )
+
+    def test_sample_batch_indices_uniqueness(self) -> None:
+        """
+        Test that sample_batch_indices produces row-unique indices.
+        """
+        data_size = 100
+        batch_size = 50
+        num_batches = 10
+        batch_indices = sample_batch_indices(
+            random_key=key(0),
+            data_size=data_size,
+            batch_size=batch_size,
+            num_batches=num_batches,
+        )
+        for row in batch_indices:
+            assert jnp.unique(row).shape[0] == batch_size
 
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
