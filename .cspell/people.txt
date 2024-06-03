@@ -1,4 +1,5 @@
 Benard
+Caratheodory
 Chatalic
 Duvenaud
 Epperly
@@ -11,6 +12,8 @@ Huszar
 Jiaxin
 Jitkrittum
 Kanagawa
+Litterer
+Lyons
 Motonobu
 Nystr
 Nystrom
@@ -25,6 +28,8 @@ Smola
 Staber
 Tropp
 Veiga
+Tchakaloff
+Tchernychova
 Wittawat
 Yifan
 Yutian

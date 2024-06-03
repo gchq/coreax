@@ -22,14 +22,17 @@ kernelized
 ml.p3.8xlarge
 parsable
 PCIMQ
+phdthesis
 PMLR
 primaryclass
 PRNG
+rcond
 refs
 regulariser
 RKHS
 RPCHOLESKY
 sigmas
+subseteq
 supp
 TLDR
 WMMD
