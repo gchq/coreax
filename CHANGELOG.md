@@ -18,6 +18,7 @@ distinction between supervised and unsupervised datasets, and handle weighted da
 semi-definite kernels to produce new positive semi-definite kernels.
 - Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
 `coreax.kernel.Polynomial`, `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
+- Added capability to approximate inverses of kernel matrices `coreax.approximation.RegularisedInverseApproximator`
 
 ### Fixed
 
