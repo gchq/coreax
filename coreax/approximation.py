@@ -27,6 +27,7 @@ all functionality provided through composition with a ``base_kernel``, they can 
 freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expected.
 """
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
 from typing import Union
@@ -291,4 +292,210 @@ class NystromApproximateKernel(RandomRegressionKernel):
             features,
             self.num_train_points,
             self.base_kernel.gramian_row_mean,
+        )
+
+
+class RegularisedInverseApproximator(ABC):
+    """
+    Base class for approximation methods to invert regularised kernel gram matrices.
+
+    When a dataset is very large, computing the regularised inverse of the kernel gram
+    matrix can be very time-consuming. Instead, this property can be approximated by
+    various methods. :class:`RegularisedInverseApproximator` is the base class
+    for implementing these approximation methods.
+
+    :param random_key: Key for random number generation
+    """
+
+    def __init__(self, random_key: KeyArrayLike):
+        """Define approximator to the kernel matrix inverse."""
+        # Assign inputs
+        self.random_key = random_key
+
+    @abstractmethod
+    def approximate(
+        self,
+        kernel_gramian: Array,
+        regularisation_parameter: float,
+        identity: Array,
+    ) -> Array:
+        r"""
+        Approximate regularised kernel matrix inverse.
+
+        .. note::
+            The function is designed to invert blocked "kernel matrices" where only the
+            top-left block contains non-zero elements. We return a block array, the same
+            size as the input array, where each block has only zero elements except
+            for the top-left block, which is the inverse of the non-zero input block.
+            The most efficient way to compute this in JAX requires the 'identity' array
+            to be a matrix of zeros except for ones on the diagonal up to the dimension
+            of the non-zero block.
+
+        :param kernel_gramian: Original :math:`n \times n` kernel gram matrix
+        :param regularisation_parameter: Regularisation parameter for stable inversion
+            of array, negative values will be converted to positive
+        :param identity: Block identity matrix
+        :return: Approximation of the kernel matrix inverse
+        """
+
+
+def randomised_eigendecomposition(
+    random_key: KeyArrayLike,
+    array: Array,
+    oversampling_parameter: int = 10,
+    power_iterations: int = 1,
+) -> tuple[Array, Array]:
+    r"""
+    Approximate the eigendecomposition of square matrices.
+
+    Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
+    eigendecomposition of a matrix. The parameters 'oversampling_parameter'
+    and 'power_iterations' present a trade-off between speed and approximation quality.
+
+    Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
+    :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
+    :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
+    :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`K \approx U\Lambda U^T`.
+
+    :param random_key: Key for random number generation
+    :param array: Array to be decomposed
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
+    :return: Eigenvalues and eigenvectors that approximately decompose the target array
+    """
+    # Input handling
+    supported_array_shape = 2
+    if len(array.shape) != supported_array_shape:
+        raise ValueError("'array' must be two-dimensional")
+    if array.shape[0] != array.shape[1]:
+        raise ValueError("'array' must be square")
+    if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
+        raise ValueError("'oversampling_parameter' must be a positive integer")
+    if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
+        raise ValueError("'power_iterations' must be a positive integer")
+
+    standard_gaussian_draws = jr.normal(
+        random_key, shape=(array.shape[0], oversampling_parameter)
+    )
+
+    # QR decomposition to find orthonormal array with range approximating range of array
+    approximate_range = array @ standard_gaussian_draws
+    q, _ = jnp.linalg.qr(approximate_range)
+
+    # Power iterations for improved accuracy
+    for _ in range(power_iterations):
+        approximate_range_ = array.T @ q
+        q_, _ = jnp.linalg.qr(approximate_range_)
+        approximate_range = array @ q_
+        q, _ = jnp.linalg.qr(approximate_range)
+
+    # Form the low rank array, compute its exact eigendecomposition and ortho-normalise
+    # the eigenvectors.
+    array_approximation = q.T @ array @ q
+    approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+    approximate_eigenvectors = q @ eigenvectors
+
+    return approximate_eigenvalues, approximate_eigenvectors
+
+
+class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
+    """
+    Approximate inverse of regularised gramian using its randomised eigendecomposition.
+
+    When a dataset is very large, computing the regularised inverse of the kernel gram
+    matrix can be very time-consuming. Instead, this property can be approximated by
+    various methods. :class:`RandomisedEigendecompositionApproximator` is a class that
+    does such an approximation using a randomised eigendecomposition. Further details
+    can be found in (:cite:`halko2009randomness` Algorithm 4.4. and 5.3).
+
+    :param random_key: Key for random number generation
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
+    :param rcond: Cut-off ratio for small singular values of the kernel gramian. For the
+        purposes of rank determination, singular values are treated as zero if they are
+        smaller than rcond times the largest singular value of a. The default value of
+        None will use the machine precision multiplied by the largest dimension of
+        the array. An alternate value of -1 will use machine precision.
+
+    """
+
+    def __init__(
+        self,
+        random_key: KeyArrayLike,
+        oversampling_parameter: int = 10,
+        power_iterations: int = 1,
+        rcond: Union[float, None] = None,
+    ):
+        """Initialise RandomisedEigendecompositionApproximator and validate input."""
+        # Initialise parent
+        super().__init__(random_key=random_key)
+        self.oversampling_parameter = oversampling_parameter
+        self.power_iterations = power_iterations
+        self.rcond = rcond
+
+        # Check attributes are valid
+        if self.rcond is not None:
+            if self.rcond < 0 and self.rcond != -1:
+                raise ValueError("'rcond' must be non-negative, except for value of -1")
+
+    def approximate(
+        self,
+        kernel_gramian: Array,
+        regularisation_parameter: float,
+        identity: Array,
+    ) -> Array:
+        r"""
+        Compute approximate kernel matrix inverse using randomised eigendecomposition.
+
+        We consider a :math:`n \times n` regularised kernel matrix, and use
+        (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) to approximate its
+        eigendecomposition, and using this, its inverse.
+
+        :param kernel_gramian: Original :math:`n \times n` kernel gram matrix
+        :param regularisation_parameter: Regularisation parameter for stable inversion
+            of array, negative values will be converted to positive
+        :param identity: Identity matrix
+        :return: Approximation of the kernel matrix inverse
+        """
+        # Validate inputs
+        if kernel_gramian.shape != identity.shape:
+            raise ValueError("Leading dimensions of 'array' and 'identity' must match")
+
+        # Set rcond parameter if not given
+        num_rows = kernel_gramian.shape[0]
+        machine_precision = jnp.finfo(kernel_gramian.dtype).eps
+        if self.rcond is None:
+            rcond = machine_precision * num_rows
+        elif self.rcond == -1:
+            rcond = machine_precision
+        else:
+            rcond = self.rcond
+
+        # Get randomised eigendecomposition of regularised kernel matrix
+        approximate_eigenvalues, approximate_eigenvectors = (
+            randomised_eigendecomposition(
+                random_key=self.random_key,
+                array=kernel_gramian + abs(regularisation_parameter) * identity,
+                oversampling_parameter=self.oversampling_parameter,
+                power_iterations=self.power_iterations,
+            )
+        )
+
+        # Mask the eigenvalues that are zero or almost zero according to value of rcond
+        # for safe inversion.
+        mask = approximate_eigenvalues >= jnp.array(rcond) * approximate_eigenvalues[-1]
+        safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
+
+        # Invert the eigenvalues and extend array ready for broadcasting
+        approximate_inverse_eigenvalues = jnp.where(
+            mask, 1 / safe_approximate_eigenvalues, 0
+        )[:, jnp.newaxis]
+
+        # Solve Ax = I, x = A^-1 = UL^-1U^T
+        return approximate_eigenvectors.dot(
+            (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
         )
