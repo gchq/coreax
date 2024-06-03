@@ -32,7 +32,6 @@ import pytest
 from jax import Array
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
-from typing_extensions import override
 
 from coreax.data import Data
 from coreax.kernel import (
@@ -40,7 +39,6 @@ from coreax.kernel import (
     Kernel,
     LaplacianKernel,
     LinearKernel,
-    PairedKernel,
     PCIMQKernel,
     ProductKernel,
     SquaredExponentialKernel,
@@ -48,7 +46,6 @@ from coreax.kernel import (
 )
 
 _Kernel = TypeVar("_Kernel", bound=Kernel)
-_PairedKernel = TypeVar("_PairedKernel", bound=PairedKernel)
 
 
 # Once we support only python 3.11+ this should be generic on _Kernel
@@ -218,7 +215,7 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
-class _MockedPairedKernel(Kernel):
+class _MockedPairedKernel:
     """
     Mock PairedKernel class.
 
@@ -226,51 +223,52 @@ class _MockedPairedKernel(Kernel):
     :param dimension: Dimension of the mock dataset the kernel will act on
     """
 
-    num_points: int = 5
-    dimension: int = 5
+    def __init__(self, num_points: int = 3, dimension: int = 3):
+        k1 = MagicMock(spec=Kernel)
+        k1.compute_elementwise.return_value = np.array(1.0)
+        k1.compute.return_value = np.full((num_points, num_points), 1.0)
+        k1.grad_x_elementwise.return_value = np.full(dimension, 1.0)
+        k1.grad_x.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k1.grad_y_elementwise.return_value = np.full(dimension, 1.0)
+        k1.grad_y.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k1.divergence_x_grad_y_elementwise.return_value = np.array(1.0)
+        k1.divergence_x_grad_y.return_value = np.full((num_points, num_points), 1.0)
 
-    first_kernel = MagicMock(spec=Kernel)
-    first_kernel.compute_elementwise.return_value = np.array(1.0)
-    first_kernel.compute.return_value = np.full((num_points, num_points), 1.0)
-    first_kernel.grad_x_elementwise.return_value = np.full(dimension, 1.0)
-    first_kernel.grad_x.return_value = np.full((num_points, num_points, dimension), 1.0)
-    first_kernel.grad_y_elementwise.return_value = np.full(dimension, 1.0)
-    first_kernel.grad_y.return_value = np.full((num_points, num_points, dimension), 1.0)
-    first_kernel.divergence_x_grad_y_elementwise.return_value = np.array(1.0)
-    first_kernel.divergence_x_grad_y.return_value = np.full(
-        (num_points, num_points), 1.0
-    )
+        k2 = MagicMock(spec=Kernel)
+        k2.compute_elementwise.return_value = np.array(2.0)
+        k2.compute.return_value = np.full((num_points, num_points), 2.0)
+        k2.grad_x_elementwise.return_value = np.full(dimension, 2.0)
+        k2.grad_x.return_value = np.full((num_points, num_points, dimension), 2.0)
+        k2.grad_y_elementwise.return_value = np.full(dimension, 2.0)
+        k2.grad_y.return_value = np.full((num_points, num_points, dimension), 2.0)
+        k2.divergence_x_grad_y_elementwise.return_value = np.array(2.0)
+        k2.divergence_x_grad_y.return_value = np.full((num_points, num_points), 2.0)
 
-    second_kernel = MagicMock(spec=Kernel)
-    second_kernel.compute_elementwise.return_value = np.array(2.0)
-    second_kernel.compute.return_value = np.full((num_points, num_points), 2.0)
-    second_kernel.grad_x_elementwise.return_value = np.full(dimension, 2.0)
-    second_kernel.grad_x.return_value = np.full(
-        (num_points, num_points, dimension), 2.0
-    )
-    second_kernel.grad_y_elementwise.return_value = np.full(dimension, 2.0)
-    second_kernel.grad_y.return_value = np.full(
-        (num_points, num_points, dimension), 2.0
-    )
-    second_kernel.divergence_x_grad_y_elementwise.return_value = np.array(2.0)
-    second_kernel.divergence_x_grad_y.return_value = np.full(
-        (num_points, num_points), 2.0
-    )
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.array([])
+        self.num_points = num_points
+        self.dimension = dimension
+        self.first_kernel = k1
+        self.second_kernel = k2
 
     def reset_mocked_sub_kernels(self) -> None:
         """Reset the mocked sub-kernels."""
         self.first_kernel.reset_mock()
         self.second_kernel.reset_mock()
 
+    def to_additive_kernel(self) -> AdditiveKernel:
+        """Reset the sub kernels and construct an Additive kernel."""
+        self.reset_mocked_sub_kernels()
+        return AdditiveKernel(self.first_kernel, self.second_kernel)
+
+    def to_product_kernel(self) -> ProductKernel:
+        """Reset the sub kernels and construct a Product kernel."""
+        self.reset_mocked_sub_kernels()
+        return ProductKernel(self.first_kernel, self.second_kernel)
+
 
 class TestAdditiveKernel(
-    BaseKernelTest[_MockedPairedKernel],
-    KernelMeanTest[_MockedPairedKernel],
-    KernelGradientTest[_MockedPairedKernel],
+    BaseKernelTest[AdditiveKernel],
+    KernelMeanTest[AdditiveKernel],
+    KernelGradientTest[AdditiveKernel],
 ):
     """Test ``coreax.kernel.AdditiveKernel``."""
 
@@ -278,22 +276,15 @@ class TestAdditiveKernel(
     mock_num_points = 5
     mock_dimension = 2
 
-    @pytest.fixture(scope="class")
-    def kernel(self) -> _MockedPairedKernel:
+    @pytest.fixture(scope="function")
+    def kernel(self) -> AdditiveKernel:
         """Return a mocked paired kernel function."""
         return _MockedPairedKernel(
             num_points=self.mock_num_points, dimension=self.mock_dimension
-        )
-
-    def to_additive_kernel(
-        self, kernel: _MockedPairedKernel
-    ) -> tuple[_MockedPairedKernel, AdditiveKernel]:
-        """Construct an Additive kernel using reset mocked sub kernels."""
-        kernel.reset_mocked_sub_kernels()
-        return kernel, AdditiveKernel(kernel.first_kernel, kernel.second_kernel)
+        ).to_additive_kernel()
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _MockedPairedKernel) -> _Problem:
+    def problem(self, request, kernel: AdditiveKernel) -> _Problem:
         r"""
         Test problems for the Additive kernel.
 
@@ -327,12 +318,11 @@ class TestAdditiveKernel(
         constant = 0.0
 
         # Extract additive kernel and replace mocked kernels with actual kernels
-        _, additive_kernel = self.to_additive_kernel(kernel)
         modified_kernel = eqx.tree_at(
             lambda x: x.second_kernel,
             eqx.tree_at(
                 lambda x: x.first_kernel,
-                additive_kernel,
+                kernel,
                 LinearKernel(output_scale, constant),
             ),
             LinearKernel(output_scale, constant),
@@ -340,109 +330,109 @@ class TestAdditiveKernel(
         return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
-        _, additive_kernel = self.to_additive_kernel(kernel)
         num_points, dimension = np.atleast_2d(x).shape
 
-        grad_1 = additive_kernel.first_kernel.grad_x_elementwise(x, y)
-        grad_2 = additive_kernel.second_kernel.grad_x_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
         expected_grad = grad_1 + grad_2
 
-        shape = num_points, num_points, kernel.dimension
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
             expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_grad
+        return np.array(expected_grad)
 
     def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
-        _, additive_kernel = self.to_additive_kernel(kernel)
         num_points, dimension = np.atleast_2d(x).shape
 
-        grad_1 = additive_kernel.first_kernel.grad_y_elementwise(x, y)
-        grad_2 = additive_kernel.second_kernel.grad_y_elementwise(x, y)
+        grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
         expected_grad = grad_1 + grad_2
 
-        shape = num_points, num_points, kernel.dimension
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
             expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_grad
+        return np.array(expected_grad)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
-        _, additive_kernel = self.to_additive_kernel(kernel)
         num_points, _ = np.atleast_2d(x).shape
 
         expected_divergences = np.tile(
-            additive_kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
-            + additive_kernel.second_kernel.divergence_x_grad_y_elementwise(x, y),
+            kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            + kernel.second_kernel.divergence_x_grad_y_elementwise(x, y),
             num_points**2,
         ).reshape(num_points, num_points)
 
         return expected_divergences
 
-    def test_kernel_calls_sub_kernels_correctly(
-        self, kernel: _MockedPairedKernel
-    ) -> None:
+    def test_compute_calls_sub_kernels_correctly(self, kernel: AdditiveKernel) -> None:
         """Ensure AdditiveKernel calls sub kernel methods correctly."""
         x = np.array(1.0)
         y = np.array(1.0)
 
         # Reset the mocked kernels and build an additive kernel using them; variable
         # rename allows for nicer automatic formatting.
-        k, additive_kernel = self.to_additive_kernel(kernel)
+        kernel.compute_elementwise(x, y)
+        kernel.first_kernel.compute_elementwise.assert_called_once_with(x, y)
+        kernel.second_kernel.compute_elementwise.assert_called_once_with(x, y)
 
-        additive_kernel.compute_elementwise(x, y)
-        k.first_kernel.compute_elementwise.assert_called_once_with(x, y)
-        k.second_kernel.compute_elementwise.assert_called_once_with(x, y)
+    def test_grad_x_calls_sub_kernels_correctly(self, kernel: AdditiveKernel) -> None:
+        """Ensure AdditiveKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
 
-        k, additive_kernel = self.to_additive_kernel(k)
-        additive_kernel.grad_x_elementwise(x=x, y=x)
-        k.first_kernel.grad_x_elementwise.assert_called_once_with(x, y)
-        k.second_kernel.grad_x_elementwise.assert_called_once_with(x, y)
+        kernel.grad_x_elementwise(x=x, y=x)
+        kernel.first_kernel.grad_x_elementwise.assert_called_once_with(x, y)
+        kernel.second_kernel.grad_x_elementwise.assert_called_once_with(x, y)
 
-        k, additive_kernel = self.to_additive_kernel(k)
-        additive_kernel.grad_y_elementwise(x=x, y=x)
-        k.first_kernel.grad_y_elementwise.assert_called_once_with(x, y)
-        k.second_kernel.grad_y_elementwise.assert_called_once_with(x, y)
+    def test_grad_y_calls_sub_kernels_correctly(self, kernel: AdditiveKernel) -> None:
+        """Ensure AdditiveKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
 
-        k, additive_kernel = self.to_additive_kernel(k)
-        additive_kernel.divergence_x_grad_y_elementwise(x, y)
+        kernel.grad_y_elementwise(x=x, y=x)
+        kernel.first_kernel.grad_y_elementwise.assert_called_once_with(x, y)
+        kernel.second_kernel.grad_y_elementwise.assert_called_once_with(x, y)
+
+    def test_diverge_calls_sub_kernels_correctly(self, kernel: AdditiveKernel) -> None:
+        """Ensure AdditiveKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
+
+        # Variable rename allows for nicer automatic formatting.
+        k = kernel
+        k.divergence_x_grad_y_elementwise(x, y)
         k.first_kernel.divergence_x_grad_y_elementwise.assert_called_once_with(x, y)
         k.second_kernel.divergence_x_grad_y_elementwise.assert_called_once_with(x, y)
 
 
 class TestProductKernel(
-    BaseKernelTest[_MockedPairedKernel],
-    KernelMeanTest[_MockedPairedKernel],
-    KernelGradientTest[_MockedPairedKernel],
+    BaseKernelTest[ProductKernel],
+    KernelMeanTest[ProductKernel],
+    KernelGradientTest[ProductKernel],
 ):
     """Test ``coreax.kernel.ProductKernel``."""
 
     # Set size and dimension of mock "dataset" that the mocked kernel will act on
     mock_num_points = 5
-    mock_dimension = 2
+    mock_dimension = 3
 
-    @pytest.fixture(scope="class")
-    def kernel(self) -> _MockedPairedKernel:
+    @pytest.fixture(scope="function")
+    def kernel(self) -> ProductKernel:
         """Return a mocked paired kernel function."""
         return _MockedPairedKernel(
             num_points=self.mock_num_points, dimension=self.mock_dimension
-        )
-
-    def to_product_kernel(
-        self, kernel: _MockedPairedKernel
-    ) -> tuple[_MockedPairedKernel, ProductKernel]:
-        """Construct a Product kernel using reset mocked sub kernels."""
-        kernel.reset_mocked_sub_kernels()
-        return kernel, ProductKernel(kernel.first_kernel, kernel.second_kernel)
+        ).to_product_kernel()
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: _MockedPairedKernel) -> _Problem:
+    def problem(self, request, kernel: ProductKernel) -> _Problem:
         r"""
         Test problems for the Product kernel where we multiply two Linear kernels.
 
@@ -476,12 +466,11 @@ class TestProductKernel(
         constant = 0.0
 
         # Extract product kernel and replace mocked kernels with actual kernels
-        _, product_kernel = self.to_product_kernel(kernel)
         modified_kernel = eqx.tree_at(
             lambda x: x.second_kernel,
             eqx.tree_at(
                 lambda x: x.first_kernel,
-                product_kernel,
+                kernel,
                 LinearKernel(output_scale, constant),
             ),
             LinearKernel(output_scale, constant),
@@ -489,41 +478,43 @@ class TestProductKernel(
         return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
-        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
         compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+
         expected_grad = grad_1 * compute_2 + grad_2 * compute_1
 
-        shape = num_points, num_points, kernel.dimension
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
             expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_grad
+        return np.array(expected_grad)
 
     def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
-        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
         compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+
         expected_grad = grad_1 * compute_2 + grad_2 * compute_1
 
-        shape = num_points, num_points, kernel.dimension
+        shape = num_points, num_points, self.mock_dimension
         if dimension != 1:
             expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
 
-        return expected_grad
+        return np.array(expected_grad)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _MockedPairedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
         # Variable rename allows for nicer automatic formatting
         k1, k2 = kernel.first_kernel, kernel.second_kernel
@@ -534,39 +525,53 @@ class TestProductKernel(
             + k2.compute_elementwise(x, y) * k1.divergence_x_grad_y_elementwise(x, y)
         )
 
-        return expected_divergences
+        return np.array(expected_divergences)
 
-    def test_kernel_calls_sub_kernels_correctly(
-        self, kernel: _MockedPairedKernel
-    ) -> None:
+    def test_compute_calls_sub_kernels_correctly(self, kernel: ProductKernel) -> None:
         """Ensure ProductKernel calls sub kernel methods correctly."""
         x = np.array(1.0)
         y = np.array(1.0)
 
-        # Reset the mocked kernels and build an product kernel using them; variable
-        # rename allows for nicer automatic formatting
-        k, product_kernel = self.to_product_kernel(kernel)
+        kernel.compute_elementwise(x, y)
+        kernel.first_kernel.compute_elementwise.assert_called_once_with(x, y)
+        kernel.second_kernel.compute_elementwise.assert_called_once_with(x, y)
 
-        product_kernel.compute_elementwise(x, y)
-        k.first_kernel.compute_elementwise.assert_called_once_with(x, y)
-        k.second_kernel.compute_elementwise.assert_called_once_with(x, y)
+    def test_grad_x_calls_sub_kernels_correctly(self, kernel: ProductKernel) -> None:
+        """Ensure ProductKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
 
-        k, product_kernel = self.to_product_kernel(kernel)
-        product_kernel.grad_x_elementwise(x=x, y=x)
+        # Variable rename allows for nicer automatic formatting.
+        k = kernel
+        k.grad_x_elementwise(x=x, y=x)
         k.first_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.second_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.first_kernel.grad_x_elementwise.assert_called_once_with(x, y)
         k.second_kernel.grad_x_elementwise.assert_called_once_with(x, y)
 
-        k, product_kernel = self.to_product_kernel(kernel)
-        product_kernel.grad_y_elementwise(x=x, y=x)
+    def test_grad_y_calls_sub_kernels_correctly(self, kernel: ProductKernel) -> None:
+        """Ensure ProductKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
+
+        # Variable rename allows for nicer automatic formatting.
+        k = kernel
+        k.grad_y_elementwise(x=x, y=x)
         k.first_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.second_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.first_kernel.grad_y_elementwise.assert_called_once_with(x, y)
         k.second_kernel.grad_y_elementwise.assert_called_once_with(x, y)
 
-        k, product_kernel = self.to_product_kernel(kernel)
-        product_kernel.divergence_x_grad_y_elementwise(x, y)
+    def test_divergence_calls_sub_kernels_correctly(
+        self, kernel: ProductKernel
+    ) -> None:
+        """Ensure ProductKernel calls sub kernel methods correctly."""
+        x = np.array(1.0)
+        y = np.array(1.0)
+
+        # Variable rename allows for nicer automatic formatting.
+        k = kernel
+        k.divergence_x_grad_y_elementwise(x, y)
         k.first_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.second_kernel.compute_elementwise.assert_called_once_with(x, y)
         k.first_kernel.grad_x_elementwise.assert_called_once_with(x, y)
