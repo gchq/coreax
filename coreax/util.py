@@ -265,18 +265,18 @@ def invert_regularised_array(
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of rank
-        determination, singular values are treated as zero if they are smaller than
-        rcond times the largest singular value of a. The default value of None will use
-        the machine precision multiplied by the largest dimension of the array.
-        An alternate value of -1 will use machine precision.
+    :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes
+        of rank determination, singular values are treated as zero if they are smaller
+        than rcond times the largest singular value of 'array'. The default value of
+        None will use the machine precision multiplied by the largest dimension of the
+        array. An alternate value of -1 will use machine precision.
     :return: Inverse of regularised array
     """
     if rcond is not None:
         if rcond < 0 and rcond != -1:
-            raise ValueError("rcond must be non-negative, except for value of -1")
+            raise ValueError("'rcond' must be non-negative, except for value of -1")
     if array.shape != identity.shape:
-        raise ValueError("Leading dimensions of array and identity must match")
+        raise ValueError("Leading dimensions of 'array' and 'identity' must match")
 
     return jnp.linalg.lstsq(
         array + abs(regularisation_parameter) * identity, identity, rcond=rcond

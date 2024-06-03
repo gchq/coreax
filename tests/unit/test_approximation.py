@@ -305,7 +305,7 @@ class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
         """Abstract pytest fixture which returns a problem for inverse approximation."""
 
     def test_approximation_accuracy(
-        self, problem, approximator: _RegularisedInverseApproximator
+        self, problem: _InversionProblem, approximator: _RegularisedInverseApproximator
     ) -> None:
         """Verify approximator performance on toy problem."""
         # Extract problem settings
@@ -346,7 +346,7 @@ class TestRandomisedEigendecompositionApproximator(
     @override
     @pytest.fixture(scope="class")
     def problem(self):
-        r"""Define data shared across tests."""
+        """Define data shared across tests."""
         random_key = jr.key(2_024)
         num_data_points = 1000
         dimension = 2
@@ -372,8 +372,14 @@ class TestRandomisedEigendecompositionApproximator(
 
     @pytest.mark.parametrize(
         "kernel_gramian, identity, rcond",
-        [(jnp.eye((2)), jnp.eye((2)), -10), (jnp.eye((2)), jnp.eye((3)), None)],
-        ids=["rcond_negative_not_negative_one", "unequal_array_dimensions"],
+        [
+            (jnp.eye((2)), jnp.eye((2)), -10),
+            (jnp.eye((2)), jnp.eye((3)), None),
+        ],
+        ids=[
+            "rcond_negative_not_negative_one",
+            "unequal_array_dimensions",
+        ],
     )
     def test_approximator_invalid_inputs(
         self,
@@ -381,7 +387,7 @@ class TestRandomisedEigendecompositionApproximator(
         identity: Array,
         rcond: Union[int, float, None],
     ) -> None:
-        """Test that `randomised_eigendecomposition` handles invalid inputs."""
+        """Test `RandomisedEigendecompositionApproximator` handles invalid inputs."""
         with pytest.raises(ValueError):
             approximator = RandomisedEigendecompositionApproximator(
                 random_key=jr.key(0),
@@ -395,6 +401,41 @@ class TestRandomisedEigendecompositionApproximator(
                 regularisation_parameter=1e-6,
                 identity=identity,
             )
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [
+            (jnp.eye((2)), jnp.eye((2)), 1e-6),
+            (jnp.eye((2)), jnp.eye((2)), -1),
+        ],
+        ids=[
+            "valid_rcond_not_negative_one_or_none",
+            "valid_rcond_negative_one",
+        ],
+    )
+    def test_approximator_valid_inputs(
+        self,
+        kernel_gramian: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """
+        Test `RandomisedEigendecompositionApproximator` handles valid `rcond`.
+
+        Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
+        """
+        approximator = RandomisedEigendecompositionApproximator(
+            random_key=jr.key(0),
+            oversampling_parameter=1,
+            power_iterations=1,
+            rcond=rcond,
+        )
+
+        approximator.approximate(
+            kernel_gramian=kernel_gramian,
+            regularisation_parameter=1e-6,
+            identity=identity,
+        )
 
     def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
         """Test that the `randomised_eigendecomposition` is accurate."""

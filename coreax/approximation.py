@@ -363,18 +363,18 @@ def randomised_eigendecomposition(
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
-    :return: eigenvalues and eigenvectors that approximately decompose the target array
+    :return: Eigenvalues and eigenvectors that approximately decompose the target array
     """
     # Input handling
     supported_array_shape = 2
     if len(array.shape) != supported_array_shape:
-        raise ValueError("array must be two-dimensional")
+        raise ValueError("'array' must be two-dimensional")
     if array.shape[0] != array.shape[1]:
-        raise ValueError("array must be square")
+        raise ValueError("'array' must be square")
     if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
-        raise ValueError("oversampling_parameter must be a positive integer")
+        raise ValueError("'oversampling_parameter' must be a positive integer")
     if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
-        raise ValueError("power_iterations must be a positive integer")
+        raise ValueError("'power_iterations' must be a positive integer")
 
     standard_gaussian_draws = jr.normal(
         random_key, shape=(array.shape[0], oversampling_parameter)
@@ -415,18 +415,19 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
-    :param rcond: Cut-off ratio for small singular values of a. For the purposes of
-        rank determination, singular values are treated as zero if they are smaller than
-        rcond times the largest singular value of a. The default value of None will use
-        the machine precision multiplied by the largest dimension of the array.
-        An alternate value of -1 will use machine precision.
+    :param rcond: Cut-off ratio for small singular values of the kernel gramian. For the
+     purposes of
+        rank determination, singular values are treated as zero if they are
+        smaller than rcond times the largest singular value of a. The default value of
+        None will use the machine precision multiplied by the largest dimension of
+        the array. An alternate value of -1 will use machine precision.
 
     """
 
     def __init__(
         self,
         random_key: KeyArrayLike,
-        oversampling_parameter: int = 25,
+        oversampling_parameter: int = 10,
         power_iterations: int = 1,
         rcond: Union[float, None] = None,
     ):
@@ -440,7 +441,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         # Check attributes are valid
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
-                raise ValueError("rcond must be non-negative, except for value of -1")
+                raise ValueError("'rcond' must be non-negative, except for value of -1")
 
     def approximate(
         self,
@@ -463,13 +464,13 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         """
         # Validate inputs
         if kernel_gramian.shape != identity.shape:
-            raise ValueError("Leading dimensions of array and identity must match")
+            raise ValueError("Leading dimensions of 'array' and 'identity' must match")
 
         # Set rcond parameter if not given
-        n = kernel_gramian.shape[0]
+        num_rows = kernel_gramian.shape[0]
         machine_precision = jnp.finfo(kernel_gramian.dtype).eps
         if self.rcond is None:
-            rcond = machine_precision * n
+            rcond = machine_precision * num_rows
         elif self.rcond == -1:
             rcond = machine_precision
         else:
