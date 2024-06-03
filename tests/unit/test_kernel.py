@@ -203,11 +203,13 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         if auto_diff:
             if isinstance(kernel, (AdditiveKernel, ProductKernel)):
                 pytest.skip(
-                    "Autodiff functionality of Additive and Product kernels is tested implicitly."
+                    "Autodiff of Additive and Product kernels is tested implicitly."
                 )
-            # Access overridden parent methods that use auto-differentiation.
-            kernel = super(type(kernel), kernel)
-        output = getattr(kernel, test_mode)(x, y)
+            # Access overridden parent methods that use auto-differentiation
+            autodiff_kernel = super(type(kernel), kernel)
+            output = getattr(autodiff_kernel, test_mode)(x, y)
+        else:
+            output = getattr(kernel, test_mode)(x, y)
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
     @abstractmethod
@@ -875,9 +877,7 @@ class TestExponentialKernel(
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(  # noqa: C901
-        self, request, kernel: ExponentialKernel
-    ) -> _Problem:
+    def problem(self, request, kernel: ExponentialKernel) -> _Problem:  # noqa: C901
         r"""
         Test problems for the Exponential kernel.
 
@@ -1140,9 +1140,7 @@ class TestPeriodicKernel(
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(  # noqa: C901
-        self, request, kernel: PeriodicKernel
-    ) -> _Problem:
+    def problem(self, request, kernel: PeriodicKernel) -> _Problem:  # noqa: C901
         r"""
         Test problems for the PeriodicKernel kernel.
 
@@ -1301,9 +1299,7 @@ class TestLocallyPeriodicKernel(
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(  # noqa: C901
-        self, request, kernel: LocallyPeriodicKernel
-    ) -> _Problem:
+    def problem(self, request, kernel: LocallyPeriodicKernel) -> _Problem:  # noqa: C901
         r"""
         Test problems for the LocallyPeriodicKernel kernel.
 
