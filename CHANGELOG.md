@@ -16,6 +16,7 @@ distinction between supervised and unsupervised datasets, and handle weighted da
 - Additional kernel classes `coreax.kernel.AdditiveKernel` and
 `coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
 semi-definite kernels to produce new positive semi-definite kernels.
+- Added capability to approximate inverses of kernel matrices `coreax.approximation.RegularisedInverseApproximator`
 
 ### Fixed
 
