@@ -43,9 +43,7 @@ from coreax.approximation import (
 from coreax.kernel import Kernel, SquaredExponentialKernel
 from coreax.util import InvalidKernel, KeyArrayLike, invert_regularised_array
 
-_RandomRegressionKernel = TypeVar(
-    "_RandomRegressionKernel", bound=RandomRegressionKernel
-)
+_RandomRegressionKernel = type[RandomRegressionKernel]
 
 
 class _MeanProblem(NamedTuple):
@@ -65,7 +63,7 @@ class _MeanProblem(NamedTuple):
         NystromApproximateKernel,
     ],
 )
-class TestRandomRegressionApproximations(Generic[_RandomRegressionKernel]):
+class TestRandomRegressionApproximations:
     """
     Tests related to ``RandomRegressionKernels`` in approximation.py .
     """
