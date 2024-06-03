@@ -244,24 +244,15 @@ class _MockedPairedKernel:
         k2.divergence_x_grad_y_elementwise.return_value = np.array(2.0)
         k2.divergence_x_grad_y.return_value = np.full((num_points, num_points), 2.0)
 
-        self.num_points = num_points
-        self.dimension = dimension
         self.first_kernel = k1
         self.second_kernel = k2
 
-    def reset_mocked_sub_kernels(self) -> None:
-        """Reset the mocked sub-kernels."""
-        self.first_kernel.reset_mock()
-        self.second_kernel.reset_mock()
-
     def to_additive_kernel(self) -> AdditiveKernel:
-        """Reset the sub kernels and construct an Additive kernel."""
-        self.reset_mocked_sub_kernels()
+        """Construct an Additive kernel."""
         return AdditiveKernel(self.first_kernel, self.second_kernel)
 
     def to_product_kernel(self) -> ProductKernel:
-        """Reset the sub kernels and construct a Product kernel."""
-        self.reset_mocked_sub_kernels()
+        """Construct a Product kernel."""
         return ProductKernel(self.first_kernel, self.second_kernel)
 
 
