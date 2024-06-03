@@ -244,7 +244,6 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
     return sol.primal
 
 
-@eqx.filter_jit
 def invert_regularised_array(
     array: Array,
     regularisation_parameter: float,

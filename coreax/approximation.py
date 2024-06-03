@@ -32,7 +32,6 @@ from collections.abc import Callable
 from functools import partial
 from typing import Union
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -340,7 +339,6 @@ class RegularisedInverseApproximator(ABC):
         """
 
 
-@eqx.filter_jit
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
     array: Array,
