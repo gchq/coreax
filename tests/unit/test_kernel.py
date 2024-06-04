@@ -21,7 +21,7 @@ the codebase produce the expected results on simple examples.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -97,7 +97,7 @@ class KernelMeanTest(Generic[_Kernel]):
         jit_variant: Callable[[Callable], Callable],
         kernel: _Kernel,
         block_size: Union[int, float, None],
-        axis: Union[int, None],
+        axis: Optional[int],
     ) -> None:
         """
         Test the `compute_mean` methods.

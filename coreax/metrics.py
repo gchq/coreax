@@ -24,7 +24,7 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -88,7 +88,7 @@ class MMD(Metric[_Data]):
         reference_data: _Data,
         comparison_data: _Data,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: tuple[Union[int, bool], Union[int, bool]] = (1, 1),
         **kwargs,
     ) -> Array:

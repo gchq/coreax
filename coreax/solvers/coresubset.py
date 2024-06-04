@@ -15,7 +15,7 @@
 """Solvers for constructing coresubsets."""
 
 from collections.abc import Callable
-from typing import TypeVar, Union
+from typing import Optional, TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -81,7 +81,7 @@ def _greedy_kernel_selection(
     output_size: int,
     kernel: Kernel,
     unique: bool,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
+    block_size: Union[int, None, tuple[Optional[int], Optional[int]]],
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
 ) -> Coresubset[_Data]:
     """
@@ -171,14 +171,14 @@ class KernelHerding(
 
     kernel: Kernel
     unique: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
     def reduce(
         self,
         dataset: _Data,
-        solver_state: Union[HerdingState, None] = None,
+        solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
@@ -186,7 +186,7 @@ class KernelHerding(
     def refine(
         self,
         coresubset: Coresubset[_Data],
-        solver_state: Union[HerdingState, None] = None,
+        solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
@@ -278,7 +278,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: _Data, solver_state: Union[RPCholeskyState, None] = None
+        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
     ) -> tuple[Coresubset[_Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
@@ -348,7 +348,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
 
 
 def _convert_stein_kernel(
-    x: ArrayLike, kernel: Kernel, score_matching: Union[ScoreMatching, None]
+    x: ArrayLike, kernel: Kernel, score_matching: Optional[ScoreMatching]
 ) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernel.SteinKernel`.
@@ -423,10 +423,10 @@ class SteinThinning(
     """
 
     kernel: Kernel
-    score_matching: Union[ScoreMatching, None] = None
+    score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
