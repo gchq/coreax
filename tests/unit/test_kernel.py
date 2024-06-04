@@ -22,7 +22,9 @@ the codebase produce the expected results on simple examples.
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union
+from unittest.mock import MagicMock
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
@@ -30,14 +32,15 @@ import pytest
 from jax import Array
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
-from typing_extensions import override
 
 from coreax.data import Data
 from coreax.kernel import (
+    AdditiveKernel,
     Kernel,
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    ProductKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
@@ -61,7 +64,7 @@ class BaseKernelTest(ABC, Generic[_Kernel]):
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: _Kernel) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
     def test_compute(
@@ -160,7 +163,7 @@ class KernelMeanTest(Generic[_Kernel]):
 class KernelGradientTest(ABC, Generic[_Kernel]):
     """Test the gradient and divergence methods of a ``coreax.kernel.Kernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def gradient_problem(self):
         """Return a problem for testing kernel gradients and divergence."""
         num_points = 10
@@ -212,6 +215,276 @@ class KernelGradientTest(ABC, Generic[_Kernel]):
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
+class _MockedPairedKernel:
+    """
+    Mock PairedKernel class ready for construction of an Additive or Product kernel.
+
+    :param num_points: Size of the mock dataset the kernel will act on
+    :param dimension: Dimension of the mock dataset the kernel will act on
+    """
+
+    def __init__(self, num_points: int = 5, dimension: int = 3):
+        k1 = MagicMock(spec=Kernel)
+        k1.compute_elementwise.return_value = np.array(1.0)
+        k1.compute.return_value = np.full((num_points, num_points), 1.0)
+        k1.grad_x_elementwise.return_value = np.full(dimension, 1.0)
+        k1.grad_x.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k1.grad_y_elementwise.return_value = np.full(dimension, 1.0)
+        k1.grad_y.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k1.divergence_x_grad_y_elementwise.return_value = np.array(1.0)
+        k1.divergence_x_grad_y.return_value = np.full((num_points, num_points), 1.0)
+
+        k2 = MagicMock(spec=Kernel)
+        k2.compute_elementwise.return_value = np.array(2.0)
+        k2.compute.return_value = np.full((num_points, num_points), 2.0)
+        k2.grad_x_elementwise.return_value = np.full(dimension, 2.0)
+        k2.grad_x.return_value = np.full((num_points, num_points, dimension), 2.0)
+        k2.grad_y_elementwise.return_value = np.full(dimension, 2.0)
+        k2.grad_y.return_value = np.full((num_points, num_points, dimension), 2.0)
+        k2.divergence_x_grad_y_elementwise.return_value = np.array(2.0)
+        k2.divergence_x_grad_y.return_value = np.full((num_points, num_points), 2.0)
+
+        self.first_kernel = k1
+        self.second_kernel = k2
+
+    def to_additive_kernel(self) -> AdditiveKernel:
+        """Construct an Additive kernel."""
+        return AdditiveKernel(self.first_kernel, self.second_kernel)
+
+    def to_product_kernel(self) -> ProductKernel:
+        """Construct a Product kernel."""
+        return ProductKernel(self.first_kernel, self.second_kernel)
+
+
+class TestAdditiveKernel(
+    BaseKernelTest[AdditiveKernel],
+    KernelMeanTest[AdditiveKernel],
+    KernelGradientTest[AdditiveKernel],
+):
+    """Test ``coreax.kernel.AdditiveKernel``."""
+
+    # Set size and dimension of mock "dataset" that the mocked kernel will act on
+    mock_num_points = 5
+    mock_dimension = 3
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> AdditiveKernel:
+        """Return a mocked paired kernel function."""
+        return _MockedPairedKernel(
+            num_points=self.mock_num_points, dimension=self.mock_dimension
+        ).to_additive_kernel()
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: AdditiveKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Additive kernel.
+
+        Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
+        additive kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+        :math:`p(x,y) := k(x,y) + l(x,y)`
+
+        We consider the simplest possible example of adding two Linear kernels together
+        with the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 2.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 40.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[40, 88], [140, 348]])
+        else:
+            raise ValueError("Invalid problem mode")
+        output_scale = 1.0
+        constant = 0.0
+
+        # Replace mocked kernels with actual kernels
+        modified_kernel = eqx.tree_at(
+            lambda x: x.second_kernel,
+            eqx.tree_at(
+                lambda x: x.first_kernel,
+                kernel,
+                LinearKernel(output_scale, constant),
+            ),
+            LinearKernel(output_scale, constant),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        # Variable rename allows for nicer automatic formatting
+        grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
+        expected_grad = grad_1 + grad_2
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        # Variable rename allows for nicer automatic formatting
+        grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
+        expected_grad = grad_1 + grad_2
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+    ) -> np.ndarray:
+        num_points, _ = np.atleast_2d(x).shape
+
+        expected_divergences = np.tile(
+            kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            + kernel.second_kernel.divergence_x_grad_y_elementwise(x, y),
+            num_points**2,
+        ).reshape(num_points, num_points)
+
+        return expected_divergences
+
+
+class TestProductKernel(
+    BaseKernelTest[ProductKernel],
+    KernelMeanTest[ProductKernel],
+    KernelGradientTest[ProductKernel],
+):
+    """Test ``coreax.kernel.ProductKernel``."""
+
+    # Set size and dimension of mock "dataset" that the mocked kernel will act on
+    mock_num_points = 5
+    mock_dimension = 3
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> ProductKernel:
+        """Return a mocked paired kernel function."""
+        return _MockedPairedKernel(
+            num_points=self.mock_num_points, dimension=self.mock_dimension
+        ).to_product_kernel()
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: ProductKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Product kernel where we multiply two Linear kernels.
+
+        Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        and :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the
+        product kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+        :math:`p(x,y) = k(x,y)l(x,y)`
+
+        We consider the simplest possible example of adding two Linear kernels together
+        with the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 1.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 9.0
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 400.0
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[400, 1936], [4900, 30276]])
+        else:
+            raise ValueError("Invalid problem mode")
+        output_scale = 1.0
+        constant = 0.0
+
+        # Replace mocked kernels with actual kernels
+        modified_kernel = eqx.tree_at(
+            lambda x: x.second_kernel,
+            eqx.tree_at(
+                lambda x: x.first_kernel,
+                kernel,
+                LinearKernel(output_scale, constant),
+            ),
+            LinearKernel(output_scale, constant),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        # Variable rename allows for nicer automatic formatting
+        grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
+        compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+        expected_grad = grad_1 * compute_2 + grad_2 * compute_1
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        # Variable rename allows for nicer automatic formatting
+        grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
+        grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
+        compute_1 = kernel.first_kernel.compute_elementwise(x, y)
+        compute_2 = kernel.second_kernel.compute_elementwise(x, y)
+        expected_grad = grad_1 * compute_2 + grad_2 * compute_1
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
+    ) -> np.ndarray:
+        # Variable rename allows for nicer automatic formatting
+        k1, k2 = kernel.first_kernel, kernel.second_kernel
+        expected_divergences = (
+            k1.grad_x_elementwise(x, y).dot(k2.grad_y_elementwise(x, y))
+            + k1.grad_y_elementwise(x, y).dot(k2.grad_x_elementwise(x, y))
+            + k1.compute_elementwise(x, y) * k2.divergence_x_grad_y_elementwise(x, y)
+            + k2.compute_elementwise(x, y) * k1.divergence_x_grad_y_elementwise(x, y)
+        )
+
+        return np.array(expected_divergences)
+
+
 class TestLinearKernel(
     BaseKernelTest[LinearKernel],
     KernelMeanTest[LinearKernel],
@@ -219,15 +492,14 @@ class TestLinearKernel(
 ):
     """Test ``coreax.kernel.LinearKernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def kernel(self) -> LinearKernel:
         random_seed = 2_024
         output_scale, constant = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
         return LinearKernel(output_scale, constant)
 
-    @override
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: LinearKernel) -> _Problem:
         r"""
         Test problems for the Linear kernel.
 
@@ -254,8 +526,10 @@ class TestLinearKernel(
             expected_distances = np.array([[20, 44], [70, 174]])
         else:
             raise ValueError("Invalid problem mode")
-        kernel = LinearKernel(1.0, 0.0)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale, eqx.tree_at(lambda x: x.constant, kernel, 0), 1.0
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
@@ -301,7 +575,7 @@ class TestSquaredExponentialKernel(
 ):
     """Test ``coreax.kernel.SquaredExponentialKernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def kernel(self) -> SquaredExponentialKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -309,7 +583,6 @@ class TestSquaredExponentialKernel(
         )
         return SquaredExponentialKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -322,7 +595,9 @@ class TestSquaredExponentialKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:  # noqa: C901
+    def problem(  # noqa: C901
+        self, request: pytest.FixtureRequest, kernel: SquaredExponentialKernel
+    ) -> _Problem:
         r"""
         Test problems for the SquaredExponential kernel.
 
@@ -393,8 +668,12 @@ class TestSquaredExponentialKernel(
             expected_distances = -0.324652467
         else:
             raise ValueError("Invalid problem mode")
-        kernel = SquaredExponentialKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
@@ -451,7 +730,7 @@ class TestLaplacianKernel(
 ):
     """Test ``coreax.kernel.LaplacianKernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def kernel(self) -> LaplacianKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -459,7 +738,6 @@ class TestLaplacianKernel(
         )
         return LaplacianKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -471,7 +749,9 @@ class TestLaplacianKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: LaplacianKernel
+    ) -> _Problem:
         r"""
         Test problems for the Laplacian kernel.
 
@@ -522,8 +802,12 @@ class TestLaplacianKernel(
             expected_distances = -0.472366553
         else:
             raise ValueError("Invalid problem mode")
-        kernel = LaplacianKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
@@ -564,7 +848,7 @@ class TestLaplacianKernel(
                     * dimension
                     / (4 * kernel.length_scale**4)
                     * np.exp(
-                        -jnp.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
                         / (2 * kernel.length_scale**2)
                     )
                 )
@@ -578,7 +862,7 @@ class TestPCIMQKernel(
 ):
     """Test ``coreax.kernel.PCIMQKernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def kernel(self) -> PCIMQKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -586,7 +870,6 @@ class TestPCIMQKernel(
         )
         return PCIMQKernel(length_scale, output_scale)
 
-    @override
     @pytest.fixture(
         params=[
             "floats",
@@ -598,7 +881,7 @@ class TestPCIMQKernel(
             "negative_output_scale",
         ]
     )
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: PCIMQKernel) -> _Problem:
         r"""
         Test problems for the PCIMQ kernel.
 
@@ -649,8 +932,12 @@ class TestPCIMQKernel(
             expected_distances = -0.685994341
         else:
             raise ValueError("Invalid problem mode")
-        kernel = PCIMQKernel(length_scale, output_scale)
-        return _Problem(x, y, expected_distances, kernel)
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.length_scale, kernel, length_scale),
+            output_scale,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
 
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
@@ -712,7 +999,7 @@ class TestPCIMQKernel(
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernel.SteinKernel``."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def kernel(self) -> SteinKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -722,13 +1009,13 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
         return SteinKernel(base_kernel=base_kernel, score_function=jnp.negative)
 
     @pytest.fixture
-    def problem(self, request: pytest.FixtureRequest) -> _Problem:
+    def problem(self, request: pytest.FixtureRequest, kernel: SteinKernel) -> _Problem:
         """Test problem for the Stein kernel."""
         length_scale = 1 / np.sqrt(2)
-        kernel = SteinKernel(
-            base_kernel=PCIMQKernel(length_scale, 1), score_function=jnp.negative
+        modified_kernel = eqx.tree_at(
+            lambda x: x.base_kernel, kernel, PCIMQKernel(length_scale, 1)
         )
-        score_function = kernel.score_function
+        score_function = modified_kernel.score_function
         beta = 0.5
         num_points_x = 10
         num_points_y = 5
@@ -786,4 +1073,4 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
                 # Compute via our hand-coded kernel evaluation
                 expected_output[x_idx, y_idx] = k_x_y(x[x_idx, :], y[y_idx, :])
 
-        return _Problem(x, y, expected_output, kernel)
+        return _Problem(x, y, expected_output, modified_kernel)
