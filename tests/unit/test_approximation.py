@@ -20,25 +20,33 @@ tests within this file verify that these approximations produce the expected res
 simple examples.
 """
 
-from typing import NamedTuple
+from abc import ABC, abstractmethod
+from typing import Generic, NamedTuple, TypeVar, Union
 
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
+from jax import Array
 from jax.typing import ArrayLike
+from typing_extensions import override
 
 from coreax.approximation import (
     ANNchorApproximateKernel,
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
+    RandomisedEigendecompositionApproximator,
     RandomRegressionKernel,
+    RegularisedInverseApproximator,
+    randomised_eigendecomposition,
 )
 from coreax.kernel import Kernel, SquaredExponentialKernel
-from coreax.util import InvalidKernel, KeyArrayLike
+from coreax.util import InvalidKernel, KeyArrayLike, invert_regularised_array
+
+_RandomRegressionKernel = type[RandomRegressionKernel]
 
 
-class _Problem(NamedTuple):
+class _MeanProblem(NamedTuple):
     random_key: KeyArrayLike
     data: ArrayLike
     kernel: Kernel
@@ -61,7 +69,7 @@ class TestRandomRegressionApproximations:
     """
 
     @pytest.fixture
-    def problem(self):
+    def problem(self) -> _MeanProblem:
         r"""
         Define data shared across tests.
 
@@ -119,7 +127,7 @@ class TestRandomRegressionApproximations:
                 0.3670700196710188,
             ]
         )
-        return _Problem(
+        return _MeanProblem(
             random_key,
             data,
             kernel,
@@ -129,7 +137,7 @@ class TestRandomRegressionApproximations:
         )
 
     def test_approximation_accuracy(
-        self, problem: _Problem, approximator: type[RandomRegressionKernel]
+        self, problem: _MeanProblem, approximator: _RandomRegressionKernel
     ) -> None:
         """
         Verify approximator performance on toy problem.
@@ -177,8 +185,8 @@ class TestRandomRegressionApproximations:
     @pytest.mark.parametrize("num_kernel_points_multiplier", [-1, 0, 100])
     def test_degenerate_num_kernel_points(
         self,
-        problem: _Problem,
-        approximator: type[RandomRegressionKernel],
+        problem: _MeanProblem,
+        approximator: _RandomRegressionKernel,
         num_kernel_points_multiplier: int,
     ) -> None:
         """
@@ -227,7 +235,7 @@ class TestRandomRegressionApproximations:
     @pytest.mark.parametrize("num_train_points_multiplier", [-1, 0, 100])
     def test_degenerate_num_train_points(
         self,
-        problem: _Problem,
+        problem: _MeanProblem,
         approximator: type[RandomRegressionKernel],
         num_train_points_multiplier: int,
     ) -> None:
@@ -254,7 +262,7 @@ class TestRandomRegressionApproximations:
                 test_approximator.gramian_row_mean(data)
 
     def test_invalid_kernel(
-        self, problem: _Problem, approximator: type[RandomRegressionKernel]
+        self, problem: _MeanProblem, approximator: type[RandomRegressionKernel]
     ) -> None:
         """
         Test approximators correctly handle invalid kernels.
@@ -270,3 +278,212 @@ class TestRandomRegressionApproximations:
         )
         with pytest.raises(ValueError, match=expected_msg):
             approximator(InvalidKernel(0), random_key, **kwargs)
+
+
+_RegularisedInverseApproximator = TypeVar(
+    "_RegularisedInverseApproximator", bound=RegularisedInverseApproximator
+)
+
+
+class _InversionProblem(NamedTuple):
+    random_key: KeyArrayLike
+    kernel_gramian: Array
+    regularisation_parameter: float
+    identity: Array
+    expected_inv: Array
+
+
+class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
+    """Tests related to kernel inverse approximations in approximation.py."""
+
+    @abstractmethod
+    def approximator(self) -> _RegularisedInverseApproximator:
+        """Abstract pytest fixture which initialises an inverse approximator."""
+
+    @abstractmethod
+    def problem(self) -> _InversionProblem:
+        """Abstract pytest fixture which returns a problem for inverse approximation."""
+
+    def test_approximation_accuracy(
+        self, problem: _InversionProblem, approximator: _RegularisedInverseApproximator
+    ) -> None:
+        """Verify approximator performance on toy problem."""
+        # Extract problem settings
+        _, kernel_gramian, regularisation_parameter, identity, expected_inverse = (
+            problem
+        )
+
+        # Approximate the kernel inverse
+        approximate_inverse = approximator.approximate(
+            kernel_gramian=kernel_gramian,
+            regularisation_parameter=regularisation_parameter,
+            identity=identity,
+        )
+
+        # Check the approximation is close to the true value
+        assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
+            0.0, abs=1
+        )
+
+
+class TestRandomisedEigendecompositionApproximator(
+    InverseApproximationTest[RandomisedEigendecompositionApproximator],
+):
+    """Test RandomisedEigendecompositionApproximator."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def approximator(self) -> RandomisedEigendecompositionApproximator:
+        """Abstract pytest fixture returns an initialised inverse approximator."""
+        random_seed = 2_024
+        return RandomisedEigendecompositionApproximator(
+            random_key=jr.key(random_seed),
+            oversampling_parameter=100,
+            power_iterations=1,
+            rcond=None,
+        )
+
+    @override
+    @pytest.fixture(scope="class")
+    def problem(self):
+        """Define data shared across tests."""
+        random_key = jr.key(2_024)
+        num_data_points = 1000
+        dimension = 2
+        identity = jnp.eye(num_data_points)
+        regularisation_parameter = 1e-6
+
+        # Compute kernel matrix from standard normal data
+        x = jr.normal(random_key, (num_data_points, dimension))
+        kernel_gramian = SquaredExponentialKernel().compute(x, x)
+
+        # Compute "exact" inverse
+        expected_inverse = invert_regularised_array(
+            kernel_gramian, regularisation_parameter, identity, rcond=None
+        )
+
+        return _InversionProblem(
+            random_key,
+            kernel_gramian,
+            regularisation_parameter,
+            identity,
+            expected_inverse,
+        )
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [
+            (jnp.eye((2)), jnp.eye((2)), -10),
+            (jnp.eye((2)), jnp.eye((3)), None),
+        ],
+        ids=[
+            "rcond_negative_not_negative_one",
+            "unequal_array_dimensions",
+        ],
+    )
+    def test_approximator_invalid_inputs(
+        self,
+        kernel_gramian: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """Test `RandomisedEigendecompositionApproximator` handles invalid inputs."""
+        with pytest.raises(ValueError):
+            approximator = RandomisedEigendecompositionApproximator(
+                random_key=jr.key(0),
+                oversampling_parameter=1,
+                power_iterations=1,
+                rcond=rcond,
+            )
+
+            approximator.approximate(
+                kernel_gramian=kernel_gramian,
+                regularisation_parameter=1e-6,
+                identity=identity,
+            )
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [
+            (jnp.eye((2)), jnp.eye((2)), 1e-6),
+            (jnp.eye((2)), jnp.eye((2)), -1),
+        ],
+        ids=[
+            "valid_rcond_not_negative_one_or_none",
+            "valid_rcond_negative_one",
+        ],
+    )
+    def test_approximator_valid_inputs(
+        self,
+        kernel_gramian: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """
+        Test `RandomisedEigendecompositionApproximator` handles valid `rcond`.
+
+        Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
+        """
+        approximator = RandomisedEigendecompositionApproximator(
+            random_key=jr.key(0),
+            oversampling_parameter=1,
+            power_iterations=1,
+            rcond=rcond,
+        )
+
+        approximator.approximate(
+            kernel_gramian=kernel_gramian,
+            regularisation_parameter=1e-6,
+            identity=identity,
+        )
+
+    def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
+        """Test that the `randomised_eigendecomposition` is accurate."""
+        # Unpack problem data
+        random_key, kernel_gramian, _, _, _ = problem
+        oversampling_parameter = 100
+        power_iterations = 1
+
+        eigenvalues, eigenvectors = randomised_eigendecomposition(
+            random_key=random_key,
+            array=kernel_gramian,
+            oversampling_parameter=oversampling_parameter,
+            power_iterations=power_iterations,
+        )
+        assert jnp.linalg.norm(
+            kernel_gramian - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
+        ) == pytest.approx(0.0, abs=1)
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, oversampling_parameter, power_iterations",
+        [
+            (jnp.zeros((2, 2, 2)), 1, 1),
+            (jnp.zeros((2, 3)), 1, 1),
+            (jnp.eye((2)), 1.0, 1),
+            (jnp.eye((2)), -1, 1),
+            (jnp.eye((2)), 1, 1.0),
+            (jnp.eye((2)), 1, -1),
+        ],
+        ids=[
+            "larger_than_two_d_array",
+            "non_square_array",
+            "float_oversampling_parameter",
+            "negative_oversampling_parameter",
+            "float_power_iterations",
+            "negative_power_iterations",
+        ],
+    )
+    def test_randomised_eigendecomposition_invalid_inputs(
+        self,
+        kernel_gramian: Array,
+        oversampling_parameter: int,
+        power_iterations: int,
+    ) -> None:
+        """Test that `randomised_eigendecomposition` handles invalid inputs."""
+        with pytest.raises(ValueError):
+            randomised_eigendecomposition(
+                random_key=jr.key(0),
+                array=kernel_gramian,
+                oversampling_parameter=oversampling_parameter,
+                power_iterations=power_iterations,
+            )

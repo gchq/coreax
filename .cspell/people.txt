@@ -7,10 +7,12 @@ Ferenc
 Frobenius
 Garg
 Garreau
+Halko
 Huszar
 Jiaxin
 Jitkrittum
 Kanagawa
+Martinsson
 Motonobu
 Nystr
 Nystrom
