@@ -21,13 +21,10 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -248,7 +245,7 @@ def invert_regularised_array(
     array: Array,
     regularisation_parameter: float,
     identity: Array,
-    rcond: float | None = None,
+    rcond: Union[float, None] = None,
 ) -> Array:
     """
     Regularise an array and then invert it using a least-squares solver.
@@ -286,8 +283,8 @@ def invert_regularised_array(
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
-    fn_kwargs: dict | None = None,
-    jit_kwargs: dict | None = None,
+    fn_kwargs: Union[dict, None] = None,
+    jit_kwargs: Union[dict, None] = None,
 ) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.

@@ -18,13 +18,11 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 """Configuration details for Sphinx documentation."""
 
-from __future__ import annotations  # Support annotations with | in Python < 3.10
-
 import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, TypeAlias, TypeVar
+from typing import Any, TypeVar, Union
 from unittest import mock
 
 import sphinx.config
@@ -172,17 +170,12 @@ nitpick_ignore = [
     ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
 ]
 
-# Quotes are required with UnionType for Python < 3.10
-try:
-    # pylint: disable=unsupported-binary-operation
-    OptionalArrayLike = ArrayLike | None
-except TypeError:
-    OptionalArrayLike: TypeAlias = "ArrayLike | None"
+OptionalArrayLike = Union[ArrayLike, None]
 
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
-    OptionalArrayLike: ":data:`~jax.typing.ArrayLike` | :data:`None`",
+    OptionalArrayLike: ":data:`Union[~jax.typing.ArrayLike`, :data:`None`]",
 }
 
 # custom references for tqdm, which does not support intersphinx
@@ -193,7 +186,9 @@ tqdm_refs: dict[str, dict[str, str]] = {
 }
 
 
-def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> str | None:
+def typehints_formatter(
+    annotation: Any, config: sphinx.config.Config
+) -> Union[str, None]:
     """
     Properly replace custom type aliases.
 
@@ -266,7 +261,7 @@ html_theme_options = {
 def create_custom_inv_file(
     module: ModuleType,
     custom_refs: dict[str, dict[str, str]],
-    file_name: str | None = None,
+    file_name: Union[str, None] = None,
 ) -> None:
     """
     Create an objects.inv file containing custom routes.

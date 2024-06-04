@@ -22,12 +22,9 @@ representation using some appropriate metric. Such metrics are implemented withi
 module, all of which implement :class:`Metric`.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -91,8 +88,8 @@ class MMD(Metric[_Data]):
         reference_data: _Data,
         comparison_data: _Data,
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: tuple[int | bool, int | bool] = (1, 1),
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: tuple[Union[int, bool], Union[int, bool]] = (1, 1),
         **kwargs,
     ) -> Array:
         r"""

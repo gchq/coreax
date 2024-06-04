@@ -48,13 +48,10 @@ Such an example can be seen in :class:`SteinKernel`, where the analytic forms of
 automatic differentiated default.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
-from typing import TypeVar
+from typing import TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -236,10 +233,10 @@ class Kernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: ArrayLike | Data,
+        x: Union[ArrayLike, Data],
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+        block_size: Union[int, None, tuple[Union[int, None, int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ):
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
@@ -256,12 +253,12 @@ class Kernel(eqx.Module):
 
     def compute_mean(
         self,
-        x: ArrayLike | Data,
-        y: ArrayLike | Data,
-        axis: int | None = None,
+        x: Union[ArrayLike, Data],
+        y: Union[ArrayLike, Data],
+        axis: Union[int, None] = None,
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+        block_size: Union[int, None, tuple[Union[int, None, int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Array:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
@@ -345,7 +342,7 @@ class Kernel(eqx.Module):
 
 
 def _block_data_convert(
-    x: ArrayLike | Data, block_size: int | None
+    x: Union[ArrayLike, Data], block_size: Union[int, None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
