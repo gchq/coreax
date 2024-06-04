@@ -695,6 +695,9 @@ class ExponentialKernel(Kernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
+    .. note::
+        Note that the Exponential kernel is not differentiable when :math:`x=y`.
+
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     """
@@ -806,6 +809,9 @@ class PeriodicKernel(Kernel):
     :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
+    .. note::
+        Note that the Periodic kernel is not differentiable when :math:`x=y`.
+
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
@@ -884,6 +890,9 @@ class LocallyPeriodicKernel(ProductKernel):
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
+
+    .. note::
+        Note that the Periodic kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
     :param output_scale: Kernel normalisation constant, :math:`\rho`
