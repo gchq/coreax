@@ -22,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar
 from unittest import mock
 
 import sphinx.config
@@ -185,9 +185,7 @@ tqdm_refs: dict[str, dict[str, str]] = {
 }
 
 
-def typehints_formatter(
-    annotation: Any, config: sphinx.config.Config
-) -> Union[str, None]:
+def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> Optional[str]:
     """
     Properly replace custom type aliases.
 
