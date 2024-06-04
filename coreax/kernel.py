@@ -137,7 +137,9 @@ class Kernel(eqx.Module):
         second_kernel = self
 
         # Ensure the first and second kernels are symmetric for even powers to make use
-        # of reduced computation capabilities in ProductKernel.
+        # of reduced computation capabilities in ProductKernel. For example,
+        # :meth:`~divergence_x_grad_y_elementwise` can be computed more efficiently if
+        # the first and second kernels are recognised as the same.
         for i in range(min_power, power):
             if i % 2 == 0:
                 first_kernel = ProductKernel(first_kernel, self)
@@ -284,7 +286,7 @@ class Kernel(eqx.Module):
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ):
+    ) -> Array:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
@@ -413,8 +415,8 @@ class PairedKernel(Kernel):
     """
     Abstract base class for kernels that compose/wrap two kernels.
 
-    :param first_kernel: Instance of class coreax.kernel.Kernel
-    :param second_kernel: Instance of class coreax.kernel.Kernel
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
     """
 
     first_kernel: Kernel
@@ -441,30 +443,30 @@ class AdditiveKernel(PairedKernel):
     kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
     :math:`p(x,y) := k(x,y) + l(x,y)`
 
-    :param first_kernel: Instance of class coreax.kernel.Kernel
-    :param second_kernel: Instance of class coreax.kernel.Kernel
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -479,12 +481,12 @@ class ProductKernel(PairedKernel):
     :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
     :math:`p(x,y) = k(x,y)l(x,y)`
 
-    :param first_kernel: Instance of class coreax.kernel.Kernel
-    :param second_kernel: Instance of class coreax.kernel.Kernel
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         if self.first_kernel == self.second_kernel:
             return self.first_kernel.compute_elementwise(x, y) ** 2
         return self.first_kernel.compute_elementwise(
@@ -492,7 +494,7 @@ class ProductKernel(PairedKernel):
         ) * self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -508,7 +510,7 @@ class ProductKernel(PairedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -524,7 +526,7 @@ class ProductKernel(PairedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike):
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         if self.first_kernel == self.second_kernel:
             return 2 * (
                 self.first_kernel.grad_x_elementwise(x, y).dot(
