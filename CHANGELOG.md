@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
 distinction between supervised and unsupervised datasets, and handle weighted data.
 - Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
+- Additional kernel classes `coreax.kernel.AdditiveKernel` and
+`coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
+semi-definite kernels to produce new positive semi-definite kernels.
 - Added capability to approximate inverses of kernel matrices `coreax.approximation.RegularisedInverseApproximator`
 
 ### Fixed

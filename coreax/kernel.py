@@ -54,7 +54,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
-from typing import TypeVar
+from typing import TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -101,6 +101,52 @@ def median_heuristic(x: ArrayLike) -> Array:
 
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
+
+    def __add__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
+        """Overload `+` operator."""
+        if isinstance(addition, (int, float)):
+            return AdditiveKernel(self, LinearKernel(0, addition))
+        if isinstance(addition, Kernel):
+            return AdditiveKernel(self, addition)
+        return NotImplemented
+
+    def __radd__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
+        """Overload right `+` operator, order is mathematically irrelevant."""
+        return self.__add__(addition)
+
+    def __mul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
+        """Overload `*` operator."""
+        if isinstance(product, (int, float)):
+            return ProductKernel(self, LinearKernel(0, product))
+        if isinstance(product, Kernel):
+            return ProductKernel(self, product)
+        return NotImplemented
+
+    def __rmul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
+        """Overload right `*` operator, order is mathematically irrelevant."""
+        return self.__mul__(product)
+
+    def __pow__(self, power: int) -> ProductKernel:
+        """Overload `**` operator."""
+        min_power = 2
+        power = int(power)
+        if power < min_power:
+            raise ValueError("'power' must be an integer greater than or equal to 2.")
+
+        first_kernel = self
+        second_kernel = self
+
+        # Ensure the first and second kernels are symmetric for even powers to make use
+        # of reduced computation capabilities in ProductKernel. For example,
+        # :meth:`~divergence_x_grad_y_elementwise` can be computed more efficiently if
+        # the first and second kernels are recognised as the same.
+        for i in range(min_power, power):
+            if i % 2 == 0:
+                first_kernel = ProductKernel(first_kernel, self)
+            else:
+                second_kernel = ProductKernel(second_kernel, self)
+
+        return ProductKernel(first_kernel, second_kernel)
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -236,11 +282,11 @@ class Kernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: ArrayLike | Data,
+        x: Union[ArrayLike, Data],
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
-    ):
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Array:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
@@ -256,12 +302,12 @@ class Kernel(eqx.Module):
 
     def compute_mean(
         self,
-        x: ArrayLike | Data,
-        y: ArrayLike | Data,
-        axis: int | None = None,
+        x: Union[ArrayLike, Data],
+        y: Union[ArrayLike, Data],
+        axis: Union[int, None] = None,
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Array:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
@@ -345,7 +391,7 @@ class Kernel(eqx.Module):
 
 
 def _block_data_convert(
-    x: ArrayLike | Data, block_size: int | None
+    x: Union[ArrayLike, Data], block_size: Union[int, None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
@@ -365,6 +411,144 @@ def _block_data_convert(
     return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
 
+class PairedKernel(Kernel):
+    """
+    Abstract base class for kernels that compose/wrap two kernels.
+
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
+    """
+
+    first_kernel: Kernel
+    second_kernel: Kernel
+
+    def __check_init__(self):
+        """Ensure attributes are instances of Kernel class."""
+        if not (
+            isinstance(self.first_kernel, Kernel)
+            and isinstance(self.second_kernel, Kernel)
+        ):
+            raise ValueError(
+                "'first_kernel'and `second_kernel` must be an instance of "
+                + f"'{Kernel.__module__}.{Kernel.__qualname__}'"
+            )
+
+
+class AdditiveKernel(PairedKernel):
+    r"""
+    Define a kernel which is a summation of two kernels.
+
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the additive
+    kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`p(x,y) := k(x,y) + l(x,y)`
+
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
+    """
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.divergence_x_grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+
+
+class ProductKernel(PairedKernel):
+    r"""
+    Define a kernel which is a product of two kernels.
+
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the product kernel
+    :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`p(x,y) = k(x,y)l(x,y)`
+
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
+    """
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return self.first_kernel.compute_elementwise(x, y) ** 2
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_x_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_y_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return 2 * (
+                self.first_kernel.grad_x_elementwise(x, y).dot(
+                    self.first_kernel.grad_y_elementwise(x, y)
+                )
+                + self.first_kernel.compute_elementwise(x, y)
+                * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            )
+        return (
+            self.first_kernel.grad_x_elementwise(x, y).dot(
+                self.second_kernel.grad_y_elementwise(x, y)
+            )
+            + self.first_kernel.grad_y_elementwise(x, y).dot(
+                self.second_kernel.grad_x_elementwise(x, y)
+            )
+            + self.first_kernel.compute_elementwise(x, y)
+            * self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+            + self.second_kernel.compute_elementwise(x, y)
+            * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        )
+
+
 class LinearKernel(Kernel):
     r"""
     Define a linear kernel.
@@ -372,6 +556,7 @@ class LinearKernel(Kernel):
     Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
     defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho x^Ty + c`.
+
     :param output_scale: Kernel normalisation constant, :math:`\rho`
     :param constant: Additive constant, :math:`c`
     """
@@ -529,7 +714,7 @@ class PCIMQKernel(Kernel):
 
 class CompositeKernel(Kernel):
     """
-    Abstract base class for kernels that compose/wrap another kernel.
+    Abstract base class for kernels that compose/wrap one kernel.
 
     :param base_kernel: kernel to be wrapped/used in composition
     """
