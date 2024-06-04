@@ -174,7 +174,7 @@ OptionalArrayLike = Optional[ArrayLike]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
-    OptionalArrayLike: ":data:`Union[~jax.typing.ArrayLike`, :data:`None`]",
+    OptionalArrayLike: ":data:`Optional[~jax.typing.ArrayLike`]",
 }
 
 # custom references for tqdm, which does not support intersphinx
