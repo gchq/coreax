@@ -67,6 +67,7 @@ from typing_extensions import override
 from coreax.data import Data, as_data, is_data
 from coreax.util import (
     pairwise,
+    pairwise_tuple,
     squared_distance,
     tree_leaves_repeat,
     tree_zero_pad_leading_axis,
@@ -547,6 +548,71 @@ class ProductKernel(PairedKernel):
             + self.second_kernel.compute_elementwise(x, y)
             * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
         )
+
+
+class TensorProductKernel:
+    r"""
+    Define a kernel which is a tensor product of two kernels.
+
+    Given kernel functions :math:`k:\mathcal{X} \times \mathcal{X} \to \mathbb{R}` and
+    :math:`l:\mathcal{Y} \times \mathcal{Y} \to \mathbb{R}`, define the tensor product
+    kernel :math:`p:(\mathcal{X} \times \mathcal{Y}) \otimes
+    (\mathcal{X} \times \mathcal{Y}) \to \mathbb{R}` where
+    :math:`p((x_1, y_1),(x_2, y_2)) := k(x_1,x_2)l(y_1,y_2)`
+
+    :param feature_kernel: Instance of :class:`Kernel` acting on data :math:`x`
+    :param response_kernel: Instance of :class:`Kernel` acting on supervision :math:`y`
+    """
+
+    def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
+        """Initialise TensorProductKernel, renaming variables for clarity."""
+        self.first_kernel = feature_kernel
+        self.second_kernel = response_kernel
+
+    def compute_elementwise(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the kernel on pairs of individual input vectors.
+
+        Vectorisation only becomes relevant in terms of computational speed when we
+        have multiple pairs ``(x_1, y_1)``, or ``(x_2, y_2)``.
+
+        :param x: Tuple of vectors :math:`\mathbf{x} \in \mathbb{R}^d` ``(x_1, y_1)``
+        :param y: Tuple of  :math:`\mathbf{y} \in \mathbb{R}^d` ``(x_2, y_2)``
+        :return: Kernel evaluated at (``(x_1, y_1)``, ``(x_2, y_2)``)
+        """
+        return self.first_kernel.compute_elementwise(
+            x[0], y[0]
+        ) * self.second_kernel.compute_elementwise(x[1], y[1])
+
+    def compute(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the kernel on input data ``(x_1, y_1)`` and ``(x_2, y_2)``.
+
+        The 'data' can be any of:
+            * tuples of floating numbers (so a single data-point in 1-dimension)
+            * tuples of zero-dimensional arrays (so a single data-point in 1-dimension)
+            * tuples of vectors (a single-point in multiple dimensions)
+            * tuples of arrays (multiple vectors).
+
+        Evaluation is always vectorised.
+
+        :param x_1: An :math:`n \times d` dataset (array) or a single value (point)
+            paired with ``y_1`
+        :param y_1: An :math:`n \times d` dataset (array) or a single value (point)
+            paired with ``x_1`
+        :param x_2: An :math:`n \times d` dataset (array) or a single value (point)
+            paired with ``y_2`
+        :param y_2: An :math:`m \times d` dataset (array) or a single value (point)
+            paired with ``x_2`
+        :return: Kernel evaluations between points in ``(x_1, y_1)`` and ``(x_2, y_2)``.
+             If ``(x_1, y_1)`` = ``(x_2, y_2)``, then this is the Gram matrix
+            corresponding to the RKHS inner product.
+        """
+        return pairwise_tuple(self.compute_elementwise)(x, y)
 
 
 class LinearKernel(Kernel):
