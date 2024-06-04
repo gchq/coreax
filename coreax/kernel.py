@@ -600,19 +600,87 @@ class TensorProductKernel:
 
         Evaluation is always vectorised.
 
-        :param x_1: An :math:`n \times d` dataset (array) or a single value (point)
-            paired with ``y_1`
-        :param y_1: An :math:`n \times d` dataset (array) or a single value (point)
-            paired with ``x_1`
-        :param x_2: An :math:`n \times d` dataset (array) or a single value (point)
-            paired with ``y_2`
-        :param y_2: An :math:`m \times d` dataset (array) or a single value (point)
-            paired with ``x_2`
+        :param x: Tuple of vectors :math:`\mathbf{x} \in \mathbb{R}^d` ``(x_1, y_1)``
+        :param y: Tuple of  :math:`\mathbf{y} \in \mathbb{R}^d` ``(x_2, y_2)``
         :return: Kernel evaluations between points in ``(x_1, y_1)`` and ``(x_2, y_2)``.
              If ``(x_1, y_1)`` = ``(x_2, y_2)``, then this is the Gram matrix
             corresponding to the RKHS inner product.
         """
         return pairwise_tuple(self.compute_elementwise)(x, y)
+
+    def grad_x(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
+
+        The function is vectorised, so ``x`` or ``y`` can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * array (multiple vectors).
+
+        :param x: An :math:`n \times d` dataset (array) or a single value (point)
+        :param y: An :math:`m \times d` dataset (array) or a single value (point)
+        :return: An :math:`n \times m \times d` array of pairwise Jacobians
+        """
+        return pairwise_tuple(self.grad_x_elementwise)(x, y)
+
+    def grad_y(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
+
+        The function is vectorised, so ``x`` or ``y`` can be any of:
+            * floating numbers (so a single data-point in 1-dimension)
+            * zero-dimensional arrays (so a single data-point in 1-dimension)
+            * a vector (a single-point in multiple dimensions)
+            * array (multiple vectors).
+
+        :param x: An :math:`n \times d` dataset (array) or a single value (point)
+        :param y: An :math:`m \times d` dataset (array) or a single value (point)
+        :return: An :math:`m \times n \times d` array of pairwise Jacobians
+        """
+        return pairwise_tuple(self.grad_y_elementwise)(x, y)
+
+    def grad_x_elementwise(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
+
+        The gradient (Jacobian) of the kernel function w.r.t. ``x``.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this method
+        for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
+        :return: Jacobian
+            :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return grad(self.compute_elementwise, 0)(x, y)
+
+    def grad_y_elementwise(
+        self, x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        r"""
+        Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
+
+        The gradient (Jacobian) of the kernel function w.r.t. ``y``.
+
+        Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
+        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this method
+        for arrays.
+
+        :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
+        :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`.
+        :return: Jacobian
+            :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
+        """
+        return grad(self.compute_elementwise, 1)(x, y)
 
 
 class LinearKernel(Kernel):
