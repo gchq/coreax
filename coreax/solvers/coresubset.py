@@ -27,7 +27,7 @@ from jaxtyping import Array, ArrayLike
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, as_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.kernel import Kernel, SteinKernel
 from coreax.score_matching import KernelDensityMatching, ScoreMatching
 from coreax.solvers.base import (
@@ -36,9 +36,14 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
+from coreax.util import (
+    KeyArrayLike,
+    invert_regularised_array,
+    tree_zero_pad_leading_axis,
+)
 
 _Data = TypeVar("_Data", bound=Data)
+_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
 class HerdingState(eqx.Module):
@@ -64,9 +69,13 @@ class RPCholeskyState(eqx.Module):
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
-def _initial_coresubset(coreset_size: int, dataset: _Data) -> Coresubset[_Data]:
+def _initial_coresubset(
+    fill_value: int, coreset_size: int, dataset: _Data
+) -> Coresubset[_Data]:
     """Generate a coresubset with zero valued and weighted indices."""
-    initial_coresubset_indices = Data(jnp.zeros(coreset_size, dtype=jnp.int32), 0)
+    initial_coresubset_indices = Data(
+        jnp.full((coreset_size,), fill_value, dtype=jnp.int32), 0
+    )
     try:
         return Coresubset(initial_coresubset_indices, dataset)
     except ValueError as err:
@@ -180,7 +189,7 @@ class KernelHerding(
         dataset: _Data,
         solver_state: Union[HerdingState, None] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
@@ -252,7 +261,7 @@ class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 p=selection_weights,
                 replace=not self.unique,
             )
-            return Coresubset(random_indices, dataset), solver_state
+            return Coresubset(random_indices, dataset), solver_state  # pyright: ignore
         except ValueError as err:
             if self.coreset_size > len(dataset) and self.unique:
                 raise ValueError(MSG) from err
@@ -302,7 +311,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
             gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
             gramian_diagonal = solver_state.gramian_diagonal
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         coreset_indices = initial_coresubset.unweighted_indices
         num_data_points = len(x)
 
@@ -433,7 +442,7 @@ class SteinThinning(
     def reduce(
         self, dataset: _Data, solver_state: None = None
     ) -> tuple[Coresubset[_Data], None]:
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
@@ -491,3 +500,158 @@ class SteinThinning(
             self.unroll,
         )
         return refined_coreset, solver_state
+
+
+# Helper function to invert column stacked square arrays
+_invert_stacked_regularised_arrays = jax.vmap(
+    invert_regularised_array, in_axes=(0, None, None, None)
+)
+
+
+def _greedy_cmmd_loss(
+    candidate_coresets: Array,
+    feature_gramian: Array,
+    response_gramian: Array,
+    training_cme: Array,
+    regularisation_parameter: float,
+    identity: Array,
+) -> Array:
+    """
+    Iterative-greedy coresubset point selection loop.
+
+    Primarily intended for use with :class`GreedyCMMD.
+
+    :param candidate_coresets: Array of indices representing all possible "next"
+        coresets
+    :param feature_gramian: Feature kernel gramian
+    :param response_gramian: Response kernel gramian
+    :param training_cme: CME evaluated at all possible pairs of data
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array, negative values will be converted to positive
+    :param identity: Block "identity" matrix
+    :return: GreedyCMMD loss for each candidate coreset
+    """
+    # Extract all the possible "next" coreset arrays
+    extract_indices = (
+        candidate_coresets[:, :, None],
+        candidate_coresets[:, None, :],
+    )
+    coreset_feature_gramians = feature_gramian[extract_indices]
+    coreset_response_gramians = response_gramian[extract_indices]
+    coreset_cmes = training_cme[extract_indices]
+
+    # Invert the coreset feature gramians
+    inverse_coreset_feature_gramians = _invert_stacked_regularised_arrays(
+        coreset_feature_gramians,
+        regularisation_parameter,
+        identity,
+        None,
+    )
+
+    # Compute the loss function
+    term_2s = jnp.trace(
+        inverse_coreset_feature_gramians
+        @ coreset_response_gramians
+        @ inverse_coreset_feature_gramians
+        @ coreset_feature_gramians,
+        axis1=1,
+        axis2=2,
+    )
+    term_3s = jnp.trace(
+        coreset_cmes @ inverse_coreset_feature_gramians, axis1=1, axis2=2
+    )
+    return term_2s - 2 * term_3s
+
+
+class GreedyCMMDState(eqx.Module):
+    """
+    Intermediate :class:`GreedyCMMD` solver state information.
+
+    :param feature_gramian: Cached feature kernel gramian
+    :param response_gramian: Cached response kernel gramian
+    :param training_cme: Cached array of CME evaluated at all possible pairs of data
+    :param batch_indices: Indices to be considered
+    """
+
+    feature_gramian: Array
+    response_gramian: Array
+    training_cme: Array
+    batch_indices: Array
+
+
+class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
+    r"""
+    Apply GreedyCMMD to a supervised dataset.
+
+    GreedyCMMD is a deterministic, iterative and greedy approach to determine this
+    compressed representation.
+
+    Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
+    of ``n`` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and one
+    has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+    \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
+    dataset, GreedyCMMD selects the next point to minimise the conditional maximum mean
+    discrepancy (CMMD):
+
+    .. math::
+
+        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} -
+        \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+
+    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean embeddings
+    estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}` respectively,
+    and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding to the kernel
+    functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
+    :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
+    The search is performed over the entire dataset, or optionally over random batches
+    at each iteration.
+
+    This class works with all children of :class:`~coreax.kernel.Kernel`, including
+    Stein kernels.
+
+    :param random_key: Key for random number generation
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+        on the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param num_feature_dimensions: An integer representing the dimensionality of the
+        features :math:`x`
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        feature gram matrix
+    :param unique: Boolean that enforces the resulting coreset will only contain
+        unique elements
+    :param batch_size: An integer representing the size of the batches of data pairs
+        sampled at each iteration for consideration for adding to the coreset
+    """
+
+    random_key: KeyArrayLike
+    feature_kernel: Kernel
+    response_kernel: Kernel
+    regularisation_parameter: float = 1e-6
+    unique: bool = True
+    batch_size: Union[int, None] = None
+
+    @override
+    def reduce(
+        self,
+        dataset: _SupervisedData,
+        solver_state: Union[GreedyCMMDState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
+        initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
+        return self.refine(initial_coresubset, solver_state)
+
+    def refine(
+        self,
+        coresubset: Coresubset[_SupervisedData],
+        solver_state: Union[GreedyCMMDState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
+        """
+        Refine a coresubset with 'GreedyCMMD'.
+
+        :param coresubset: The coresubset to refine
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: A refined coresubset and relevant intermediate solver state information
+        """

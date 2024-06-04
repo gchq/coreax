@@ -3,6 +3,8 @@ approximator
 approximators
 archiveprefix
 cand
+cmes
+CMMD
 coreax
 coreset
 coresets
@@ -16,6 +18,7 @@ elementwise
 forall
 GCHQ
 Gramian
+gramians
 kbar
 kdtree
 kernelised
