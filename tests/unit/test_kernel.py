@@ -256,25 +256,25 @@ class TestKernelMagicMethods:
         kernel = LinearKernel()
         if mode == "add_int":
             assert kernel + 1 == AdditiveKernel(kernel, LinearKernel(0, 1))
-        if mode == "add_float":
+        elif mode == "add_float":
             assert kernel + 1.0 == AdditiveKernel(kernel, LinearKernel(0, 1.0))
-        if mode == "add_self":
+        elif mode == "add_self":
             assert kernel + kernel == AdditiveKernel(kernel, kernel)
-        if mode == "right_add":
+        elif mode == "right_add":
             assert 1 + kernel == AdditiveKernel(kernel, LinearKernel(0, 1.0))
-        if mode == "mul_int":
+        elif mode == "mul_int":
             assert kernel * 1 == ProductKernel(kernel, LinearKernel(0, 1))
-        if mode == "mul_float":
+        elif mode == "mul_float":
             assert kernel * 1.0 == ProductKernel(kernel, LinearKernel(0, 1.0))
-        if mode == "mul_self":
+        elif mode == "mul_self":
             assert kernel * kernel == ProductKernel(kernel, kernel)
-        if mode == "right_mul":
+        elif mode == "right_mul":
             assert 1 * kernel == ProductKernel(kernel, LinearKernel(0, 1.0))
-        if mode == "int_pow":
+        elif mode == "int_pow":
             assert kernel**4 == ProductKernel(
                 ProductKernel(kernel, kernel), ProductKernel(kernel, kernel)
             )
-        if mode == "float_pow":
+        elif mode == "float_pow":
             assert kernel**2.6 == ProductKernel(kernel, kernel)
         else:
             raise ValueError("Invalid problem mode")
