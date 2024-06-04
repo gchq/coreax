@@ -569,7 +569,7 @@ class TestProductKernel(
         # Form two simple mocked kernels and force any == operation to return True
         first_kernel = MagicMock(spec=Kernel)
         first_kernel.compute_elementwise.return_value = np.array(1.0)
-        first_kernel.__eq__.return_value = True
+        first_kernel.__eq__.return_value = True  # pyright: ignore
         second_kernel = MagicMock(spec=Kernel)
 
         # Build Product kernel from mocks and check the second kernel is never called
