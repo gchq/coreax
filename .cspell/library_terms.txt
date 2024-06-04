@@ -27,9 +27,11 @@ dollarmath
 dtype
 dtypes
 dunder
+eigh
 emibcn
 eprint
 figsize
+finfo
 fori_loop
 fracv
 furo
@@ -70,6 +72,7 @@ nanargmax
 nanargmin
 ndarray
 ndim
+newaxis
 nonzero
 numpy
 opencv
@@ -93,6 +96,7 @@ pytree
 pytrees
 quickstart
 rcfile
+rcond
 rect
 rerunfailures
 rightarrow
