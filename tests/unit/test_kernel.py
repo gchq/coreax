@@ -291,7 +291,9 @@ class TestAdditiveKernel(
         ).to_additive_kernel()
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: AdditiveKernel) -> _Problem:
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: AdditiveKernel
+    ) -> _Problem:
         r"""
         Test problems for the Additive kernel.
 
@@ -401,7 +403,9 @@ class TestProductKernel(
         ).to_product_kernel()
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
-    def problem(self, request, kernel: ProductKernel) -> _Problem:
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: ProductKernel
+    ) -> _Problem:
         r"""
         Test problems for the Product kernel.
 
