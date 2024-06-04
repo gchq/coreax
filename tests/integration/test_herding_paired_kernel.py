@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for basic herding example.
+Integration test for kernel herding example with a paired kernel.
 """
 
 import tempfile

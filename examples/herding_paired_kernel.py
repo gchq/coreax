@@ -18,9 +18,10 @@ Example coreset generation using randomly generated point clouds.
 This example showcases how a coreset can be generated from a dataset containing ``n``
 points sampled from ``k`` clusters in space.
 
-A coreset is generated using kernel herding, with a Squared Exponential kernel. This
-coreset is compared to a coreset generated via uniform random sampling. Coreset quality
-is measured using maximum mean discrepancy (MMD).
+A coreset is generated using kernel herding, with a kernel that is created by adding and
+taking products of Squared exponential, PCIMQ and Laplace kernels. This coreset is
+compared to a coreset generated via uniform random sampling. Coreset quality is measured
+using maximum mean discrepancy (MMD).
 """
 
 from pathlib import Path
@@ -38,12 +39,10 @@ from coreax import (
     Data,
     LaplacianKernel,
     PCIMQKernel,
-    SlicedScoreMatching,
     SquaredExponentialKernel,
-    SteinKernel,
 )
 from coreax.kernel import median_heuristic
-from coreax.solvers import KernelHerding, RandomSample, RPCholesky, SteinThinning
+from coreax.solvers import KernelHerding, RandomSample
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
@@ -97,31 +96,9 @@ def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float
 
     print("Computing herding coreset...")
     # Compute a coreset using kernel herding
-    sample_key, rpc_key, stein_key = random.split(random.key(random_seed), num=3)
+    sample_key, _ = random.split(random.key(random_seed))
     herding_solver = KernelHerding(coreset_size, kernel)
     herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(data)
-
-    print("Computing Stein thinning coreset...")
-    # Compute a coreset using Stein thinning
-    sliced_score_matcher = SlicedScoreMatching(
-        stein_key,
-        random.rademacher,
-        use_analytic=True,
-        num_random_vectors=100,
-        learning_rate=0.001,
-        num_epochs=50,
-    )
-    stein_kernel = SteinKernel(
-        kernel,
-        sliced_score_matcher.match(jnp.asarray(data)),
-    )
-    stein_solver = SteinThinning(coreset_size, kernel=stein_kernel)
-    stein_coreset, _ = eqx.filter_jit(stein_solver.reduce)(data)
-
-    print("Computing RPC coreset...")
-    # Compute a coreset using RPC with a squared exponential kernel
-    rpc_solver = RPCholesky(coreset_size, rpc_key, kernel)
-    rpc_coreset, _ = eqx.filter_jit(rpc_solver.reduce)(data)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -140,12 +117,6 @@ def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float
     mmd_metric = MMD(kernel=mmd_kernel)
     herding_mmd = herding_coreset.compute_metric(mmd_metric)
 
-    # Compute the MMD between the original data and the coreset generated via ST
-    stein_mmd = stein_coreset.compute_metric(mmd_metric)
-
-    # Compute the MMD between the original data and the coreset generated via RPC
-    rpc_mmd = rpc_coreset.compute_metric(mmd_metric)
-
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
     random_mmd = random_coreset.compute_metric(mmd_metric)
@@ -153,8 +124,6 @@ def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float
     # Print the MMD values
     print(f"Random sampling coreset MMD: {random_mmd}")
     print(f"Herding coreset MMD: {herding_mmd}")
-    print(f"Stein thinning coreset MMD: {stein_mmd}")
-    print(f"RPC coreset MMD: {rpc_mmd}")
 
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
@@ -168,28 +137,6 @@ def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float
     plt.title(
         f"Kernel herding, m={coreset_size}, " f"MMD={round(float(herding_mmd), 6)}"
     )
-    plt.show()
-
-    plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
-    plt.scatter(
-        rpc_coreset.coreset.data[:, 0],
-        rpc_coreset.coreset.data[:, 1],
-        s=10,
-        color="red",
-    )
-    plt.axis("off")
-    plt.title(f"RP Cholesky, m={coreset_size}, " f"MMD={round(float(rpc_mmd), 6)}")
-    plt.show()
-
-    plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
-    plt.scatter(
-        stein_coreset.coreset.data[:, 0],
-        stein_coreset.coreset.data[:, 1],
-        s=10,
-        color="red",
-    )
-    plt.axis("off")
-    plt.title(f"Stein thinning, m={coreset_size}, " f"MMD={round(float(stein_mmd), 6)}")
     plt.show()
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
@@ -211,8 +158,6 @@ def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float
 
     return (
         float(herding_mmd),
-        float(rpc_mmd),
-        float(stein_mmd),
         float(random_mmd),
     )
 
