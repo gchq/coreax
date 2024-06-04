@@ -32,13 +32,13 @@ and then differentiating a kernel density estimate to the data.
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Union
+from typing import Optional
 
 import jax
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from jax import jit, jvp, random, tree_util, vmap
+from jax import Array, jit, jvp, random, tree_util, vmap
 from jax import numpy as jnp
 from jax.lax import cond, fori_loop
 from jax.typing import ArrayLike
@@ -157,7 +157,7 @@ class SlicedScoreMatching(ScoreMatching):
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dims: Union[Sequence, None] = None,
+        hidden_dims: Optional[Sequence] = None,
         optimiser: Callable = optax.adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
@@ -253,10 +253,10 @@ class SlicedScoreMatching(ScoreMatching):
 
     @staticmethod
     def _analytic_objective(
-        random_direction_vector: ArrayLike,
-        grad_score_times_random_direction_matrix: ArrayLike,
-        score_matrix: ArrayLike,
-    ) -> ArrayLike:
+        random_direction_vector: Array,
+        grad_score_times_random_direction_matrix: Array,
+        score_matrix: Array,
+    ) -> Array:
         """
         Compute reduced variance score matching loss function.
 
@@ -278,10 +278,10 @@ class SlicedScoreMatching(ScoreMatching):
 
     @staticmethod
     def _general_objective(
-        random_direction_vector: ArrayLike,
-        grad_score_times_random_direction_matrix: ArrayLike,
-        score_matrix: ArrayLike,
-    ) -> ArrayLike:
+        random_direction_vector: Array,
+        grad_score_times_random_direction_matrix: Array,
+        score_matrix: Array,
+    ) -> Array:
         """
         Compute general score matching loss function.
 
@@ -364,9 +364,9 @@ class SlicedScoreMatching(ScoreMatching):
         obj: float,
         state: TrainState,
         params: dict,
-        x: ArrayLike,
+        x: Array,
         random_vectors: ArrayLike,
-        sigmas: ArrayLike,
+        sigmas: Array,
     ) -> float:
         r"""
         Sum objective function with noise perturbations.
@@ -400,9 +400,9 @@ class SlicedScoreMatching(ScoreMatching):
     def _noise_conditional_train_step(
         self,
         state: TrainState,
-        x: ArrayLike,
-        random_vectors: ArrayLike,
-        sigmas: ArrayLike,
+        x: Array,
+        random_vectors: Array,
+        sigmas: Array,
     ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.

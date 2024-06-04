@@ -22,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 from unittest import mock
 
 import sphinx.config
@@ -170,8 +170,7 @@ nitpick_ignore = [
     ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
 ]
 
-OptionalArrayLike = Union[ArrayLike, None]
-
+OptionalArrayLike = Optional[ArrayLike]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
@@ -261,7 +260,7 @@ html_theme_options = {
 def create_custom_inv_file(
     module: ModuleType,
     custom_refs: dict[str, dict[str, str]],
-    file_name: Union[str, None] = None,
+    file_name: Optional[str] = None,
 ) -> None:
     """
     Create an objects.inv file containing custom routes.

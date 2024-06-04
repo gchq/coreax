@@ -30,7 +30,7 @@ freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expe
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import Union
+from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp
@@ -428,7 +428,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         random_key: KeyArrayLike,
         oversampling_parameter: int = 10,
         power_iterations: int = 1,
-        rcond: Union[float, None] = None,
+        rcond: Optional[float] = None,
     ):
         """Initialise RandomisedEigendecompositionApproximator and validate input."""
         # Initialise parent

@@ -24,7 +24,7 @@ class factories and checks for numerical precision.
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, TypeVar, Union
+from typing import Any, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -245,7 +245,7 @@ def invert_regularised_array(
     array: Array,
     regularisation_parameter: float,
     identity: Array,
-    rcond: Union[float, None] = None,
+    rcond: Optional[float] = None,
 ) -> Array:
     """
     Regularise an array and then invert it using a least-squares solver.
@@ -283,8 +283,8 @@ def invert_regularised_array(
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
-    fn_kwargs: Union[dict, None] = None,
-    jit_kwargs: Union[dict, None] = None,
+    fn_kwargs: Optional[dict] = None,
+    jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.

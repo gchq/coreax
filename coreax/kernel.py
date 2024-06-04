@@ -51,7 +51,7 @@ automatic differentiated default.
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
-from typing import TypeVar, Union
+from typing import Optional, TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -235,7 +235,7 @@ class Kernel(eqx.Module):
         self,
         x: Union[ArrayLike, Data],
         *,
-        block_size: Union[int, None, tuple[Union[int, None, int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ):
         r"""
@@ -255,9 +255,9 @@ class Kernel(eqx.Module):
         self,
         x: Union[ArrayLike, Data],
         y: Union[ArrayLike, Data],
-        axis: Union[int, None] = None,
+        axis: Optional[int] = None,
         *,
-        block_size: Union[int, None, tuple[Union[int, None, int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Array:
         r"""
@@ -342,7 +342,7 @@ class Kernel(eqx.Module):
 
 
 def _block_data_convert(
-    x: Union[ArrayLike, Data], block_size: Union[int, None]
+    x: Union[ArrayLike, Data], block_size: Optional[int]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
