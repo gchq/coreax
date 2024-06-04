@@ -553,7 +553,7 @@ class LinearKernel(Kernel):
     r"""
     Define a linear kernel.
 
-    Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
+    Given :math:`\rho`=`'output_scale` and :math:`c =`'constant',  the linear kernel is
     defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho x^Ty + c`.
 
@@ -586,7 +586,7 @@ class PolynomialKernel(Kernel):
     r"""
     Define a polynomial kernel.
 
-    Given :math:`\rho =`'output_scale', :math:`c =`'constant', and :math:`d=`'degree',
+    Given :math:`\rho =``output_scale`, :math:`c =`'constant', and :math:`d=`'degree',
     the polynomial kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho (x^Ty + c)^d`.
@@ -648,7 +648,7 @@ class SquaredExponentialKernel(Kernel):
     r"""
     Define a squared exponential kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the squared
     exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
@@ -689,7 +689,7 @@ class ExponentialKernel(Kernel):
     r"""
     Define an exponential kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
     exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
@@ -742,9 +742,8 @@ class RationalQuadraticKernel(Kernel):
     r"""
     Define a rational quadratic kernel.
 
-    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
-    :math:`\alpha =`'relative_weighting', the rational
-    quadratic kernel is defined as
+    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
+    :math:`\alpha =``relative_weighting`, the rational quadratic kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
@@ -803,8 +802,8 @@ class PeriodicKernel(Kernel):
     r"""
     Define a periodic kernel.
 
-    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
-    :math:`\p =`'periodicity', the periodic kernel is defined as
+    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
+    :math:`\p =``periodicity`, the periodic kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
@@ -885,8 +884,8 @@ class LocallyPeriodicKernel(ProductKernel):
     r"""
     Define a locally periodic kernel.
 
-    Given :math:`\lambda =`'length_scale',  :math:`\rho =`'output_scale', and
-    :math:`\p =`'periodicity', the periodic kernel is defined as
+    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
+    :math:`\p =``periodicity`, the periodic kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
@@ -894,26 +893,35 @@ class LocallyPeriodicKernel(ProductKernel):
     .. note::
         Note that the Periodic kernel is not differentiable when :math:`x=y`.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
+    :param periodic_length_scale: Periodic kernel smoothing/bandwidth parameter,
+        :math:`\lambda`
+    :param periodic_output_scale: Periodic kernel normalisation constant, :math:`\rho`
+    :param periodicity: Parameter controlling the periodicity of the Periodic kernel,
+        :\math: `p`
+    :param squared_exponential_length_scale: SquaredExponential kernel
+        smoothing/bandwidth parameter, :math:`\lambda`
+    :param squared_exponential_output_scale: SquaredExponential Kernel
+        smoothing/bandwidth parameter, :math:`\lambda`
     """
 
     def __init__(
         self,
-        length_scale: float = 1.0,
-        output_scale: float = 1.0,
+        periodic_length_scale: float = 1.0,
+        periodic_output_scale: float = 1.0,
         periodicity: float = 1.0,
+        squared_exponential_length_scale: float = 1.0,
+        squared_exponential_output_scale: float = 1.0,
     ):
         """Initialise LocallyPeriodicKernel with ProductKernel attributes."""
         self.first_kernel = PeriodicKernel(
-            length_scale=length_scale,
-            output_scale=output_scale,
+            length_scale=periodic_length_scale,
+            output_scale=periodic_output_scale,
             periodicity=periodicity,
         )
 
         self.second_kernel = SquaredExponentialKernel(
-            length_scale=length_scale, output_scale=output_scale
+            length_scale=squared_exponential_length_scale,
+            output_scale=squared_exponential_output_scale,
         )
 
 
@@ -921,7 +929,7 @@ class LaplacianKernel(Kernel):
     r"""
     Define a Laplacian kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
     Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
@@ -963,7 +971,7 @@ class PCIMQKernel(Kernel):
     r"""
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
     PCIMQ kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}

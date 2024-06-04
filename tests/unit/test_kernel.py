@@ -247,6 +247,8 @@ class TestKernelMagicMethods:
             "right_mul",
             "int_pow",
             "float_pow",
+            "invalid_pow",
+            "invalid_paired_kernel_inputs",
         ],
     )
     def test_magic_methods(  # noqa: C901
@@ -275,9 +277,15 @@ class TestKernelMagicMethods:
                 ProductKernel(kernel, kernel), ProductKernel(kernel, kernel)
             )
         elif mode == "float_pow":
-            assert kernel**2.6 == ProductKernel(kernel, kernel)
-        else:
-            raise ValueError("Invalid problem mode")
+            assert kernel**2.6 == ProductKernel(kernel, kernel)  # pyright: ignore
+        elif mode == "invalid_pow":
+            with pytest.raises(ValueError):
+                # pylint: disable=pointless-statement
+                kernel**0.5  # pyright: ignore
+                # pylint: enable=pointless-statement
+        elif mode == "invalid_paired_kernel_inputs":
+            with pytest.raises(ValueError):
+                AdditiveKernel(1, "string")  # pyright: ignore
 
 
 class _MockedPairedKernel:
@@ -548,6 +556,33 @@ class TestProductKernel(
         )
 
         return np.array(expected_divergences)
+
+    def test_symmetric_product_kernel(self):
+        """
+        Test reduced computation capacity of ProductKernel.
+
+        We consider a product kernel with equal input kernels and check that
+        the second kernel is never called.
+        """
+        x = np.array([1])
+
+        # Form two simple mocked kernels and force any == operation to return True
+        first_kernel = MagicMock(spec=Kernel)
+        first_kernel.compute_elementwise.return_value = np.array(1.0)
+        first_kernel.__eq__.return_value = True
+        second_kernel = MagicMock(spec=Kernel)
+
+        # Build Product kernel from mocks and check the second kernel is never called
+        symmetric_kernel = ProductKernel(first_kernel, second_kernel)
+
+        symmetric_kernel.compute_elementwise(x, x)
+        second_kernel.compute_elementwise.assert_not_called()
+        symmetric_kernel.grad_x_elementwise(x, x)
+        second_kernel.compute_elementwise.assert_not_called()
+        symmetric_kernel.grad_y_elementwise(x, x)
+        second_kernel.compute_elementwise.assert_not_called()
+        symmetric_kernel.divergence_x_grad_y_elementwise(x, x)
+        second_kernel.compute_elementwise.assert_not_called()
 
 
 class TestLinearKernel(
@@ -1344,11 +1379,13 @@ class TestLocallyPeriodicKernel(
     @pytest.fixture(scope="class")
     def kernel(self) -> LocallyPeriodicKernel:
         random_seed = 2_024
-        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(5,)))
         return LocallyPeriodicKernel(
-            length_scale=parameters[0].item(),
-            output_scale=parameters[1].item(),
+            periodic_length_scale=parameters[0].item(),
+            periodic_output_scale=parameters[1].item(),
             periodicity=parameters[2].item(),
+            squared_exponential_length_scale=parameters[3].item(),
+            squared_exponential_output_scale=parameters[4].item(),
         )
 
     @pytest.fixture(params=["floats", "vectors", "arrays"])
