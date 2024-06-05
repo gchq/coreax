@@ -28,6 +28,7 @@ from typing import Any, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
@@ -278,6 +279,34 @@ def invert_regularised_array(
     return jnp.linalg.lstsq(
         array + abs(regularisation_parameter) * identity, identity, rcond=rcond
     )[0]
+
+
+def sample_batch_indices(
+    random_key: KeyArrayLike,
+    max_index: int,
+    batch_size: int,
+    num_batches: int,
+) -> Array:
+    """
+    Sample an array of indices of size `num_batches` x `batch_size`.
+
+    Each row (batch) of the sampled array will contain unique elements.
+
+    :param random_key: Key for random number generation
+    :param max_index: Largest index we wish to sample
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+
+    :return: Array of batch indices of size `num_batches` x `batch_size`
+    """
+    if max_index < batch_size:
+        raise ValueError("'max_index' must be greater than or equal to 'batch_size'")
+    if batch_size < 0.0:
+        raise ValueError("'batch_size' must be non-negative")
+
+    batch_keys = jr.split(random_key, num_batches)
+    batch_permutation = vmap(jr.permutation, in_axes=(0, None))
+    return batch_permutation(batch_keys, max_index)[:, :batch_size]
 
 
 def jit_test(
