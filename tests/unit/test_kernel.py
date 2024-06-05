@@ -99,7 +99,7 @@ class KernelMeanTest(Generic[_Kernel]):
         self,
         jit_variant: Callable[[Callable], Callable],
         kernel: _Kernel,
-        block_size: Union[int, float, None],
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
         axis: Optional[int],
     ) -> None:
         """
