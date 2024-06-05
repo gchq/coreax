@@ -171,7 +171,7 @@ class KernelHerding(
 
     kernel: Kernel
     unique: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = (None,)
+    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
@@ -426,7 +426,7 @@ class SteinThinning(
     score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = (None,)
+    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
