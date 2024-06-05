@@ -33,6 +33,7 @@ from typing_extensions import override
 
 from coreax.approximation import (
     ANNchorApproximateKernel,
+    LeastSquareApproximator,
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
     RandomisedEigendecompositionApproximator,
@@ -41,7 +42,7 @@ from coreax.approximation import (
     randomised_eigendecomposition,
 )
 from coreax.kernel import Kernel, SquaredExponentialKernel
-from coreax.util import InvalidKernel, KeyArrayLike, invert_regularised_array
+from coreax.util import InvalidKernel, KeyArrayLike
 
 _RandomRegressionKernel = type[RandomRegressionKernel]
 
@@ -339,6 +340,94 @@ class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
         ) == pytest.approx(0.0, abs=1)
 
 
+class TestLeastSquareApproximator:
+    """Test LeastSquareApproximator."""
+
+    @pytest.fixture(scope="class")
+    def approximator(self) -> LeastSquareApproximator:
+        """Abstract pytest fixture returns an initialised inverse approximator."""
+        random_seed = 2_024
+        return LeastSquareApproximator(random_key=jr.key(random_seed), rcond=None)
+
+    def test_approximator_accuracy(self, approximator: LeastSquareApproximator) -> None:
+        """Test LeastSquareApproximator produces with an analytical example."""
+        regularisation_parameter = 1
+        identity = jnp.eye(2)
+        array = jnp.ones((2, 2))
+
+        expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
+
+        output = approximator.approximate(
+            kernel_gramian=array,
+            regularisation_parameter=regularisation_parameter,
+            identity=identity,
+        )
+        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [
+            (jnp.eye((2)), jnp.eye((2)), -10),
+            (jnp.eye((2)), jnp.eye((3)), None),
+        ],
+        ids=[
+            "rcond_negative_not_negative_one",
+            "unequal_array_dimensions",
+        ],
+    )
+    def test_approximator_invalid_inputs(
+        self,
+        kernel_gramian: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """Test `LeastSquareApproximator` handles invalid inputs."""
+        with pytest.raises(ValueError):
+            approximator = LeastSquareApproximator(
+                random_key=jr.key(0),
+                rcond=rcond,
+            )
+
+            approximator.approximate(
+                kernel_gramian=kernel_gramian,
+                regularisation_parameter=1e-6,
+                identity=identity,
+            )
+
+    @pytest.mark.parametrize(
+        "kernel_gramian, identity, rcond",
+        [
+            (jnp.eye((2)), jnp.eye((2)), 1e-6),
+            (jnp.eye((2)), jnp.eye((2)), -1),
+        ],
+        ids=[
+            "valid_rcond_not_negative_one_or_none",
+            "valid_rcond_negative_one",
+        ],
+    )
+    def test_approximator_valid_inputs(
+        self,
+        kernel_gramian: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+    ) -> None:
+        """
+        Test `LeastSquareApproximator` handles valid `rcond`.
+
+        Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
+        """
+        approximator = LeastSquareApproximator(
+            random_key=jr.key(0),
+            rcond=rcond,
+        )
+
+        approximator.approximate(
+            kernel_gramian=kernel_gramian,
+            regularisation_parameter=1e-6,
+            identity=identity,
+        )
+
+
 class TestRandomisedEigendecompositionApproximator(
     InverseApproximationTest[RandomisedEigendecompositionApproximator],
 ):
@@ -371,8 +460,9 @@ class TestRandomisedEigendecompositionApproximator(
         kernel_gramian = SquaredExponentialKernel().compute(x, x)
 
         # Compute "exact" inverse
-        expected_inverse = invert_regularised_array(
-            kernel_gramian, regularisation_parameter, identity, rcond=None
+        exact_inverter = LeastSquareApproximator(random_key, rcond=None)
+        expected_inverse = exact_inverter.approximate(
+            kernel_gramian, regularisation_parameter, identity
         )
 
         return _InversionProblem(
