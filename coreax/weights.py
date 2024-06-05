@@ -32,7 +32,7 @@ the dataset.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Union
 
 import jax.numpy as jnp
 from jax import Array
@@ -50,7 +50,7 @@ def _prepare_kernel_system(
     y: Union[ArrayLike, Data],
     epsilon: float = 1e-10,
     *,
-    block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
 ) -> tuple[Array, Array]:
     r"""
@@ -129,7 +129,7 @@ class SBQWeightsOptimiser(WeightsOptimiser):
         y: Union[ArrayLike, Data],
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
     ) -> Array:
@@ -186,7 +186,7 @@ class MMDWeightsOptimiser(WeightsOptimiser):
         y: Union[ArrayLike, Data],
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
     ) -> Array:

@@ -48,6 +48,9 @@ Such an example can be seen in :class:`SteinKernel`, where the analytic forms of
 automatic differentiated default.
 """
 
+# Support annotations with | in Python < 3.10
+from __future__ import annotations
+
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
@@ -59,7 +62,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
-from typing_extensions import Self, override
+from typing_extensions import override
 
 from coreax.data import Data, as_data, is_data
 from coreax.util import (
@@ -99,7 +102,7 @@ def median_heuristic(x: ArrayLike) -> Array:
 class Kernel(eqx.Module):
     """Abstract base class for kernels."""
 
-    def __add__(self, addition: Union[Self, int, float]) -> "AdditiveKernel":
+    def __add__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
         """Overload `+` operator."""
         if isinstance(addition, (int, float)):
             return AdditiveKernel(self, LinearKernel(0, addition))
@@ -107,11 +110,11 @@ class Kernel(eqx.Module):
             return AdditiveKernel(self, addition)
         return NotImplemented
 
-    def __radd__(self, addition: Union[Self, int, float]) -> "AdditiveKernel":
+    def __radd__(self, addition: Union[Kernel, int, float]) -> AdditiveKernel:
         """Overload right `+` operator, order is mathematically irrelevant."""
         return self.__add__(addition)
 
-    def __mul__(self, product: Union[Self, int, float]) -> "ProductKernel":
+    def __mul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
         """Overload `*` operator."""
         if isinstance(product, (int, float)):
             return ProductKernel(self, LinearKernel(0, product))
@@ -119,11 +122,11 @@ class Kernel(eqx.Module):
             return ProductKernel(self, product)
         return NotImplemented
 
-    def __rmul__(self, product: Union[Self, int, float]) -> "ProductKernel":
+    def __rmul__(self, product: Union[Kernel, int, float]) -> ProductKernel:
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 
-    def __pow__(self, power: int) -> "ProductKernel":
+    def __pow__(self, power: int) -> ProductKernel:
         """Overload `**` operator."""
         min_power = 2
         power = int(power)
@@ -281,13 +284,12 @@ class Kernel(eqx.Module):
         self,
         x: Union[ArrayLike, Data],
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ):
+    ) -> Array:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
-        A convenience method for calling meth:`compute_mean`. Equivalent to the call
         :code:`compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)`.
 
         :param x: Data matrix, :math:`n \times d`
@@ -301,9 +303,9 @@ class Kernel(eqx.Module):
         self,
         x: Union[ArrayLike, Data],
         y: Union[ArrayLike, Data],
-        axis: Optional[int] = None,
+        axis: Union[int, None] = None,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Array:
         r"""
@@ -550,7 +552,7 @@ class LinearKernel(Kernel):
     r"""
     Define a linear kernel.
 
-    Given :math:`\rho =`'output_scale' and :math:`c =`'constant',  the linear kernel is
+    Given :math:`\rho`=`'output_scale` and :math:`c =`'constant',  the linear kernel is
     defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho x^Ty + c`.
 
@@ -575,17 +577,18 @@ class LinearKernel(Kernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.asarray(jnp.shape(x)[0])
+        d = len(jnp.asarray(x))
+        return jnp.array(self.output_scale * d)
 
 
 class SquaredExponentialKernel(Kernel):
     r"""
     Define a squared exponential kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the squared
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the squared
     exponential kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(\frac{||x-y||^2}{2 \lambda^2})` where
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
@@ -623,10 +626,10 @@ class LaplacianKernel(Kernel):
     r"""
     Define a Laplacian kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
     Laplacian kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(\frac{||x-y||_1}{2 \lambda^2})`  where
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
@@ -665,7 +668,7 @@ class PCIMQKernel(Kernel):
     r"""
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
-    Given :math:`\lambda =`'length_scale' and :math:`\rho =`'output_scale', the
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
     PCIMQ kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
