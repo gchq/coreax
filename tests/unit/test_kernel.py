@@ -793,6 +793,14 @@ class TestPolynomialKernel(
                 )
         return expected_divergence
 
+    @pytest.mark.parametrize(
+        "degree", [2.6, 1], ids=["float_degree", "degree_less_than_min"]
+    )
+    def test_invalid_inputs(self, degree):
+        """Test that polynomial kernel rejects bad degree inputs."""
+        with pytest.raises(ValueError):
+            PolynomialKernel(degree=degree)
+
 
 class TestSquaredExponentialKernel(
     BaseKernelTest[SquaredExponentialKernel],

@@ -884,8 +884,7 @@ class LocallyPeriodicKernel(ProductKernel):
     r"""
     Define a locally periodic kernel.
 
-    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
-    :math:`\p =``periodicity`, the periodic kernel is defined as
+    The periodic kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
@@ -893,15 +892,13 @@ class LocallyPeriodicKernel(ProductKernel):
     .. note::
         Note that the Periodic kernel is not differentiable when :math:`x=y`.
 
-    :param periodic_length_scale: Periodic kernel smoothing/bandwidth parameter,
-        :math:`\lambda`
-    :param periodic_output_scale: Periodic kernel normalisation constant, :math:`\rho`
-    :param periodicity: Parameter controlling the periodicity of the Periodic kernel,
-        :\math: `p`
+    :param periodic_length_scale: Periodic kernel smoothing/bandwidth parameter
+    :param periodic_output_scale: Periodic kernel normalisation constant
+    :param periodicity: Parameter controlling the periodicity of the Periodic kernel
     :param squared_exponential_length_scale: SquaredExponential kernel
-        smoothing/bandwidth parameter, :math:`\lambda`
+        smoothing/bandwidth parameter]
     :param squared_exponential_output_scale: SquaredExponential Kernel
-        smoothing/bandwidth parameter, :math:`\lambda`
+        smoothing/bandwidth parameter
     """
 
     def __init__(
