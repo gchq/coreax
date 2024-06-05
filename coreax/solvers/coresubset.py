@@ -67,6 +67,22 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
+class GreedyCMMDState(eqx.Module):
+    """
+    Intermediate :class:`GreedyCMMD` solver state information.
+
+    :param feature_gramian: Cached feature kernel gramian
+    :param response_gramian: Cached response kernel gramian
+    :param training_cme: Cached array of CME evaluated at all possible pairs of data
+    :param batch_indices: Indices to be considered
+    """
+
+    feature_gramian: Array
+    response_gramian: Array
+    training_cme: Array
+    batch_indices: Array
+
+
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
@@ -504,6 +520,7 @@ class SteinThinning(
 
 
 def _coreset_cmmd_loss(
+    random_key: KeyArrayLike,
     candidate_coresets: Array,
     feature_gramian: Array,
     response_gramian: Array,
@@ -513,10 +530,11 @@ def _coreset_cmmd_loss(
     inverse_approximator: Optional[RegularisedInverseApproximator] = None,
 ) -> Array:
     """
-    Given an array of candidate coreset indices, compute the GreedyCMMD loss.
+    Given an array of candidate coreset indices, compute the CMMD loss for each.
 
     Primarily intended for use with :class`GreedyCMMD.
 
+    :param random_key: Key for random number generation
     :param candidate_coresets: Array of indices representing all possible "next"
         coresets
     :param feature_gramian: Feature kernel gramian
@@ -526,7 +544,9 @@ def _coreset_cmmd_loss(
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
     :param inverse_approximator: Instance of
-        :class:`coreax.approximation.RegularisedInverseApproximator`
+        :class:`coreax.approximation.RegularisedInverseApproximator`, default value of
+        :data:`None` uses :class:`coreax.approximation.LeastSquareApproximator`
+
     :return: GreedyCMMD loss for each candidate coreset
     """
     # Extract all the possible "next" coreset arrays
@@ -537,7 +557,7 @@ def _coreset_cmmd_loss(
 
     # Invert the coreset feature gramians
     if inverse_approximator is None:
-        inverse_approximator = LeastSquareApproximator(jr.key(2_024))
+        inverse_approximator = LeastSquareApproximator(random_key)
     inverse_coreset_feature_gramians = inverse_approximator.approximate_stack(
         coreset_feature_gramians,
         regularisation_parameter,
@@ -559,24 +579,8 @@ def _coreset_cmmd_loss(
     return term_2s - 2 * term_3s
 
 
-class GreedyCMMDState(eqx.Module):
-    """
-    Intermediate :class:`GreedyCMMD` solver state information.
-
-    :param feature_gramian: Cached feature kernel gramian
-    :param response_gramian: Cached response kernel gramian
-    :param training_cme: Cached array of CME evaluated at all possible pairs of data
-    :param batch_indices: Indices to be considered
-    """
-
-    feature_gramian: Array
-    response_gramian: Array
-    training_cme: Array
-    batch_indices: Array
-
-
 class GreedyCMMD(
-    RefinementSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
+    CoresubsetSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
 ):
     r"""
     Apply GreedyCMMD to a supervised dataset.
@@ -632,6 +636,11 @@ class GreedyCMMD(
     batch_size: Union[int, None] = None
     inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
+    def __post_init__(self):
+        """Set 'inverse_approximator' to LeastSquareApproximator if None is passed."""
+        if self.inverse_approximator is None:
+            self.inverse_approximator = LeastSquareApproximator(self.random_key)
+
     @override
     def reduce(
         self,
@@ -648,11 +657,7 @@ class GreedyCMMD(
             feature_gramian = self.feature_kernel.compute(x, x)
             response_gramian = self.response_kernel.compute(y, y)
 
-            if self.inverse_approximator is None:
-                inverse_approximator = LeastSquareApproximator(self.random_key)
-            else:
-                inverse_approximator = self.inverse_approximator
-            inverse_feature_gramian = inverse_approximator.approximate(
+            inverse_feature_gramian = self.inverse_approximator.approximate(
                 kernel_gramian=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(num_data_pairs),
@@ -684,8 +689,8 @@ class GreedyCMMD(
         # arrays which correspond to every possible candidate coreset.
         initial_candidate_coresets = jnp.hstack(
             (
-                batch_indices[[0], :],
-                jnp.tile(-1, (batch_indices.shape[0], self.coreset_size - 1)),
+                batch_indices[[0], :].T,
+                jnp.tile(-1, (batch_indices.shape[1], self.coreset_size - 1)),
             )
         )
 
@@ -704,6 +709,7 @@ class GreedyCMMD(
 
             # Compute the loss corresponding to each candidate coreset
             loss = _coreset_cmmd_loss(
+                self.random_key,
                 candidate_coresets,
                 feature_gramian,
                 response_gramian,
@@ -727,8 +733,8 @@ class GreedyCMMD(
             # batch of possible coreset indices.
             updated_candidate_coresets = jnp.hstack(
                 (
-                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[0], 1)),
-                    batch_indices[:, [i + 1]],
+                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[1], 1)),
+                    batch_indices[[i + 1], :].T,
                 )
             )
             candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
