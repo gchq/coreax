@@ -897,8 +897,8 @@ class LocallyPeriodicKernel(ProductKernel):
     :param periodicity: Parameter controlling the periodicity of the Periodic kernel
     :param squared_exponential_length_scale: SquaredExponential kernel
         smoothing/bandwidth parameter]
-    :param squared_exponential_output_scale: SquaredExponential Kernel
-        smoothing/bandwidth parameter
+    :param squared_exponential_output_scale: SquaredExponential Kernel normalisation
+        constant
     """
 
     def __init__(
