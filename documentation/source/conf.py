@@ -187,7 +187,7 @@ tqdm_refs: dict[str, dict[str, str]] = {
 
 def typehints_formatter(
     annotation: Any, config: sphinx.config.Config
-) -> Union[str | None]:
+) -> Union[str, None]:
     """
     Properly replace custom type aliases.
 
