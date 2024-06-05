@@ -39,6 +39,7 @@ from coreax.solvers.base import (
 from coreax.util import (
     KeyArrayLike,
     invert_regularised_array,
+    sample_batch_indices,
     tree_zero_pad_leading_axis,
 )
 
@@ -261,7 +262,7 @@ class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 p=selection_weights,
                 replace=not self.unique,
             )
-            return Coresubset(random_indices, dataset), solver_state  # pyright: ignore
+            return Coresubset(random_indices, dataset), solver_state
         except ValueError as err:
             if self.coreset_size > len(dataset) and self.unique:
                 raise ValueError(MSG) from err
@@ -508,7 +509,7 @@ _invert_stacked_regularised_arrays = jax.vmap(
 )
 
 
-def _greedy_cmmd_loss(
+def _coreset_cmmd_loss(
     candidate_coresets: Array,
     feature_gramian: Array,
     response_gramian: Array,
@@ -517,7 +518,7 @@ def _greedy_cmmd_loss(
     identity: Array,
 ) -> Array:
     """
-    Iterative-greedy coresubset point selection loop.
+    Given an array of candidate coreset indices, compute the GreedyCMMD loss.
 
     Primarily intended for use with :class`GreedyCMMD.
 
@@ -532,10 +533,7 @@ def _greedy_cmmd_loss(
     :return: GreedyCMMD loss for each candidate coreset
     """
     # Extract all the possible "next" coreset arrays
-    extract_indices = (
-        candidate_coresets[:, :, None],
-        candidate_coresets[:, None, :],
-    )
+    extract_indices = (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
     coreset_feature_gramians = feature_gramian[extract_indices]
     coreset_response_gramians = response_gramian[extract_indices]
     coreset_cmes = training_cme[extract_indices]
@@ -561,6 +559,12 @@ def _greedy_cmmd_loss(
         coreset_cmes @ inverse_coreset_feature_gramians, axis1=1, axis2=2
     )
     return term_2s - 2 * term_3s
+
+
+# Helper function to invert horizontally stacked square arrays
+invert_stacked_regularised_arrays = jax.vmap(
+    invert_regularised_array, in_axes=(0, None, None, None)
+)
 
 
 class GreedyCMMDState(eqx.Module):
@@ -640,18 +644,114 @@ class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
         solver_state: Union[GreedyCMMDState, None] = None,
     ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
-        return self.refine(initial_coresubset, solver_state)
+        initial_coreset_indices = initial_coresubset.unweighted_indices
+        if solver_state is None:
+            x, y = dataset.data, dataset.supervision
+            num_data_pairs = len(dataset)
 
-    def refine(
-        self,
-        coresubset: Coresubset[_SupervisedData],
-        solver_state: Union[GreedyCMMDState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
-        """
-        Refine a coresubset with 'GreedyCMMD'.
+            feature_gramian = self.feature_kernel.compute(x, x)
+            response_gramian = self.response_kernel.compute(y, y)
 
-        :param coresubset: The coresubset to refine
-        :param solver_state: Solution state information, primarily used to cache
-            expensive intermediate solution step values.
-        :return: A refined coresubset and relevant intermediate solver state information
-        """
+            inverse_feature_gramian = invert_regularised_array(
+                array=feature_gramian,
+                regularisation_parameter=self.regularisation_parameter,
+                identity=jnp.eye(num_data_pairs),
+            )
+
+            # Evaluate conditional mean embedding (CME) at all possible pairs of the
+            # available training data.
+            training_cme = feature_gramian @ inverse_feature_gramian @ response_gramian
+
+            # Sample the indices to be considered at each iteration ahead of time.
+            if (self.batch_size is not None) and self.batch_size < num_data_pairs:
+                batch_size = self.batch_size
+            else:
+                batch_size = num_data_pairs
+            batch_indices = sample_batch_indices(
+                random_key=self.random_key,
+                max_index=num_data_pairs,
+                batch_size=batch_size,
+                num_batches=self.coreset_size,
+            )
+        else:
+            feature_gramian = solver_state.feature_gramian
+            response_gramian = solver_state.response_gramian
+            training_cme = solver_state.training_cme
+            batch_indices = solver_state.batch_indices
+
+        # Initialise an array consisting of -1 apart from the first column which
+        # contains all the possible first coreset indices. This will let us extract
+        # arrays which correspond to every possible candidate coreset.
+        initial_candidate_coresets = jnp.hstack(
+            (
+                batch_indices[[0], :],
+                jnp.tile(-1, (batch_indices.shape[0], self.coreset_size - 1)),
+            )
+        )
+
+        # Initialise a zeros matrix that will eventually become a coreset_size x
+        # coreset_size identity matrix as we iterate to the full coreset size.
+        coreset_identity = jnp.zeros((self.coreset_size, self.coreset_size))
+
+        def _greedy_body(
+            i: int, val: tuple[Array, Array, Array]
+        ) -> tuple[Array, Array, Array]:
+            r"""Execute main loop of GreedyCMMD."""
+            coreset_indices, identity, candidate_coresets = val
+
+            # Update the "identity" matrix to allow for sub-array inversion
+            updated_identity = identity.at[i, i].set(1)
+
+            # Compute the loss corresponding to each candidate coreset
+            loss = _coreset_cmmd_loss(
+                candidate_coresets,
+                feature_gramian,
+                response_gramian,
+                training_cme,
+                self.regularisation_parameter,
+                updated_identity,
+            )
+
+            # Find the optimal next coreset index, ensuring we don't pick an already
+            # chosen point if we want the indices to be unique.
+            if self.unique:
+                already_chosen_indices_mask = jnp.isin(
+                    candidate_coresets[:, i], coreset_indices
+                )
+                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+            index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
+
+            # Repeat the chosen coreset index into the ith column of the array of
+            # possible next coreset indices and replace the (i+1)th column with the next
+            # batch of possible coreset indices.
+            updated_candidate_coresets = jnp.hstack(
+                (
+                    jnp.tile(index_to_include_in_coreset, (batch_indices.shape[0], 1)),
+                    batch_indices[:, [i + 1]],
+                )
+            )
+            candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
+                updated_candidate_coresets
+            )
+
+            # Add the chosen coreset index to the current coreset indices
+            updated_coreset_indices = coreset_indices.at[i].set(
+                index_to_include_in_coreset
+            )
+            return updated_coreset_indices, updated_identity, candidate_coresets
+
+        # Greedily select coreset points
+        updated_coreset_indices, _, _ = jax.lax.fori_loop(
+            lower=0,
+            upper=self.coreset_size,
+            body_fun=_greedy_body,
+            init_val=(
+                initial_coreset_indices,
+                coreset_identity,
+                initial_candidate_coresets,
+            ),
+        )
+
+        return Coresubset(updated_coreset_indices, dataset), GreedyCMMDState(
+            feature_gramian, response_gramian, training_cme, batch_indices
+        )

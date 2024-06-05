@@ -19,6 +19,7 @@ forall
 GCHQ
 Gramian
 gramians
+infty
 kbar
 kdtree
 kernelised
