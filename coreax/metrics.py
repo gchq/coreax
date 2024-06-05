@@ -28,7 +28,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from itertools import product
 from typing import Generic, Optional, TypeVar
-from warnings import warn
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -165,33 +164,18 @@ class CMMD(Metric):
     :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
         kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
         \mathbb{R}` on the response space
-    :param num_feature_dimensions: An integer representing the dimensionality of the
+    :param num_feature_dimension: An integer representing the dimensionality of the
         features :math:`x`
-    :param regularisation_parameters: A  :math:`1 \times 2` array of regularisation
-        parameters corresponding to the first dataset :math:`\mathcal{D}^{(1)}` and
-        second datasets :math:`\mathcal{D}^{(2)}` respectively
+    :param regularisation_parameter: Regularisation parameter for stable inversion
+            of arrays, negative values will be converted to positive
     :param precision_threshold: Positive threshold we compare against for precision
     """
 
-    def __init__(
-        self,
-        feature_kernel: coreax.kernel.Kernel,
-        response_kernel: coreax.kernel.Kernel,
-        num_feature_dimensions: int,
-        regularisation_parameters: float,
-        precision_threshold: float = 1e-6,
-        inverse_approximator: Optional[RegularisedInverseApproximator] = None,
-    ):
-        """Initialise CMMD class."""
-        self.feature_kernel = feature_kernel
-        self.response_kernel = response_kernel
-        self.num_feature_dimensions = num_feature_dimensions
-        self.regularisation_parameters = regularisation_parameters
-        self.precision_threshold = precision_threshold
-        self.inverse_approximator = inverse_approximator
-
-        # Initialise parent
-        super().__init__()
+    feature_kernel: coreax.kernel.Kernel
+    response_kernel: coreax.kernel.Kernel
+    regularisation_parameter: float
+    precision_threshold: float = 1e-2
+    inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
     def compute(
         self,
@@ -246,24 +230,24 @@ class CMMD(Metric):
         if self.inverse_approximator is not None:
             inverse_feature_gramian_1 = self.inverse_approximator.approximate(
                 kernel_gramian=feature_gramian_1,
-                regularisation_parameter=self.regularisation_parameters,
+                regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(feature_gramian_1.shape[0]),
             )
 
             inverse_feature_gramian_2 = self.inverse_approximator.approximate(
                 kernel_gramian=feature_gramian_2,
-                regularisation_parameter=self.regularisation_parameters,
+                regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(feature_gramian_2.shape[0]),
             )
         else:
             inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
                 array=feature_gramian_1,
-                regularisation_parameter=self.regularisation_parameters,
+                regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(feature_gramian_1.shape[0]),
             )
             inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
                 array=feature_gramian_2,
-                regularisation_parameter=self.regularisation_parameters,
+                regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(feature_gramian_2.shape[0]),
             )
 
@@ -287,21 +271,10 @@ class CMMD(Metric):
             @ self.feature_kernel.compute(x2, x1)
         )
 
-        # Compute CMMD, warn if numerical instability has resulted in a spurious value
-        squared_result = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
-        if squared_result < 0:
-            warn(
-                f"Squared CMMD ({round(squared_result.item(), 4)}) is negative,"
-                + " increase precision threshold or regularisation strength, "
-                + "returning zero..",
-                Warning,
-                stacklevel=2,
-            )
-            return jnp.array([0])
-        result = jnp.sqrt(
-            coreax.util.apply_negative_precision_threshold(
-                squared_result,
-                self.precision_threshold,
-            )
+        # Compute CMMD
+        squared_cmmd = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
+        squared_cmmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
+            squared_cmmd,
+            self.precision_threshold,
         )
-        return result
+        return jnp.sqrt(squared_cmmd_threshold_applied)
