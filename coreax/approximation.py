@@ -338,6 +338,27 @@ class RegularisedInverseApproximator(ABC):
         :return: Approximation of the kernel matrix inverse
         """
 
+    def _map_approximate(self) -> Callable[[Array, float, Array], Array]:
+        """Define helper function to map approximate over horizontal array stack."""
+        return jax.vmap(self.approximate, in_axes=(0, None, None))
+
+    def approximate_stack(
+        self, kernel_gramians: Array, regularisation_parameter: float, identity: Array
+    ) -> Array:
+        r"""
+        Approximate the regularised inverses of a horizontal stack of kernel matrices.
+
+        :param kernel_gramian: Horizontal Stack of :math:`n \times n` kernel gram
+            matrices
+        :param regularisation_parameter: Regularisation parameter for stable inversion
+            of array, negative values will be converted to positive
+        :param identity: Block identity matrix
+        :return: Approximation of the kernel matrix inverses
+        """
+        return self._map_approximate()(
+            kernel_gramians, regularisation_parameter, identity
+        )
+
 
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,

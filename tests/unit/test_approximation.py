@@ -325,6 +325,19 @@ class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
             0.0, abs=1
         )
 
+        # Approximate stack of kernel inverses
+        approximate_inverses = approximator.approximate_stack(
+            kernel_gramians=jnp.array((kernel_gramian, kernel_gramian)),
+            regularisation_parameter=regularisation_parameter,
+            identity=identity,
+        )
+
+        # Check the approximation is close to the true value
+        expected_inverses = jnp.array((expected_inverse, expected_inverse))
+        assert jnp.linalg.norm(
+            expected_inverses - approximate_inverses
+        ) == pytest.approx(0.0, abs=1)
+
 
 class TestRandomisedEigendecompositionApproximator(
     InverseApproximationTest[RandomisedEigendecompositionApproximator],
