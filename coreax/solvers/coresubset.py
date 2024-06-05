@@ -15,7 +15,7 @@
 """Solvers for constructing coresubsets."""
 
 from collections.abc import Callable
-from typing import TypeVar, Union
+from typing import Optional, TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -26,6 +26,7 @@ import jax.tree_util as jtu
 from jaxtyping import Array, ArrayLike
 from typing_extensions import override
 
+from coreax.approximation import LeastSquareApproximator, RegularisedInverseApproximator
 from coreax.coreset import Coresubset
 from coreax.data import Data, SupervisedData, as_data
 from coreax.kernel import Kernel, SteinKernel
@@ -38,7 +39,6 @@ from coreax.solvers.base import (
 )
 from coreax.util import (
     KeyArrayLike,
-    invert_regularised_array,
     sample_batch_indices,
     tree_zero_pad_leading_axis,
 )
@@ -503,12 +503,6 @@ class SteinThinning(
         return refined_coreset, solver_state
 
 
-# Helper function to invert column stacked square arrays
-_invert_stacked_regularised_arrays = jax.vmap(
-    invert_regularised_array, in_axes=(0, None, None, None)
-)
-
-
 def _coreset_cmmd_loss(
     candidate_coresets: Array,
     feature_gramian: Array,
@@ -516,6 +510,7 @@ def _coreset_cmmd_loss(
     training_cme: Array,
     regularisation_parameter: float,
     identity: Array,
+    inverse_approximator: Optional[RegularisedInverseApproximator] = None,
 ) -> Array:
     """
     Given an array of candidate coreset indices, compute the GreedyCMMD loss.
@@ -530,6 +525,8 @@ def _coreset_cmmd_loss(
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
+    :param inverse_approximator: Instance of
+        :class:`coreax.approximation.RegularisedInverseApproximator`
     :return: GreedyCMMD loss for each candidate coreset
     """
     # Extract all the possible "next" coreset arrays
@@ -539,11 +536,12 @@ def _coreset_cmmd_loss(
     coreset_cmes = training_cme[extract_indices]
 
     # Invert the coreset feature gramians
-    inverse_coreset_feature_gramians = _invert_stacked_regularised_arrays(
+    if inverse_approximator is None:
+        inverse_approximator = LeastSquareApproximator(jr.key(2_024))
+    inverse_coreset_feature_gramians = inverse_approximator.approximate_stack(
         coreset_feature_gramians,
         regularisation_parameter,
         identity,
-        None,
     )
 
     # Compute the loss function
@@ -559,12 +557,6 @@ def _coreset_cmmd_loss(
         coreset_cmes @ inverse_coreset_feature_gramians, axis1=1, axis2=2
     )
     return term_2s - 2 * term_3s
-
-
-# Helper function to invert horizontally stacked square arrays
-invert_stacked_regularised_arrays = jax.vmap(
-    invert_regularised_array, in_axes=(0, None, None, None)
-)
 
 
 class GreedyCMMDState(eqx.Module):
@@ -583,7 +575,9 @@ class GreedyCMMDState(eqx.Module):
     batch_indices: Array
 
 
-class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
+class GreedyCMMD(
+    RefinementSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
+):
     r"""
     Apply GreedyCMMD to a supervised dataset.
 
@@ -636,6 +630,7 @@ class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
     regularisation_parameter: float = 1e-6
     unique: bool = True
     batch_size: Union[int, None] = None
+    inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
     @override
     def reduce(
@@ -645,6 +640,7 @@ class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
     ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         initial_coreset_indices = initial_coresubset.unweighted_indices
+
         if solver_state is None:
             x, y = dataset.data, dataset.supervision
             num_data_pairs = len(dataset)
@@ -652,8 +648,12 @@ class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
             feature_gramian = self.feature_kernel.compute(x, x)
             response_gramian = self.response_kernel.compute(y, y)
 
-            inverse_feature_gramian = invert_regularised_array(
-                array=feature_gramian,
+            if self.inverse_approximator is None:
+                inverse_approximator = LeastSquareApproximator(self.random_key)
+            else:
+                inverse_approximator = self.inverse_approximator
+            inverse_feature_gramian = inverse_approximator.approximate(
+                kernel_gramian=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(num_data_pairs),
             )
@@ -710,6 +710,7 @@ class GreedyCMMD(RefinementSolver[_Data, GreedyCMMDState], ExplicitSizeSolver):
                 training_cme,
                 self.regularisation_parameter,
                 updated_identity,
+                self.inverse_approximator,
             )
 
             # Find the optimal next coreset index, ensuring we don't pick an already
