@@ -21,7 +21,7 @@ the codebase produce the expected results on simple examples.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, TypeVar, Union
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -105,7 +105,7 @@ class KernelMeanTest(Generic[_Kernel]):
         jit_variant: Callable[[Callable], Callable],
         kernel: _Kernel,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Optional[int],
+        axis: Union[int | None],
     ) -> None:
         """
         Test the `compute_mean` methods.
