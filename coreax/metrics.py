@@ -27,16 +27,17 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 from jax import Array
 
 import coreax.data
 import coreax.kernel
 import coreax.util
-from coreax.approximation import RegularisedInverseApproximator
+from coreax.approximation import LeastSquareApproximator, RegularisedInverseApproximator
 
 _Data = TypeVar("_Data", bound=coreax.data.Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=coreax.data.SupervisedData)
@@ -169,13 +170,19 @@ class CMMD(Metric):
     :param regularisation_parameter: Regularisation parameter for stable inversion
             of arrays, negative values will be converted to positive
     :param precision_threshold: Positive threshold we compare against for precision
+    :param inverse_approximator: Instance of
+        :class:`coreax.approximation.RegularisedInverseApproximator`, defaults to
+        :class:`coreax.approximation.LeastSquareApproximator` which solves a linear
+        system at cost :math:`\mathcal{O}(n^3)`
     """
 
     feature_kernel: coreax.kernel.Kernel
     response_kernel: coreax.kernel.Kernel
     regularisation_parameter: float
     precision_threshold: float = 1e-2
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None
+    inverse_approximator: RegularisedInverseApproximator = LeastSquareApproximator(
+        jr.key(2_024)
+    )
 
     def compute(
         self,
@@ -226,30 +233,18 @@ class CMMD(Metric):
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
 
-        # Invert feature kernel gramians, approximating if required
-        if self.inverse_approximator is not None:
-            inverse_feature_gramian_1 = self.inverse_approximator.approximate(
-                kernel_gramian=feature_gramian_1,
-                regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(feature_gramian_1.shape[0]),
-            )
+        # Invert feature kernel gramian
+        inverse_feature_gramian_1 = self.inverse_approximator.approximate(
+            kernel_gramian=feature_gramian_1,
+            regularisation_parameter=self.regularisation_parameter,
+            identity=jnp.eye(feature_gramian_1.shape[0]),
+        )
 
-            inverse_feature_gramian_2 = self.inverse_approximator.approximate(
-                kernel_gramian=feature_gramian_2,
-                regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(feature_gramian_2.shape[0]),
-            )
-        else:
-            inverse_feature_gramian_1 = coreax.util.invert_regularised_array(
-                array=feature_gramian_1,
-                regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(feature_gramian_1.shape[0]),
-            )
-            inverse_feature_gramian_2 = coreax.util.invert_regularised_array(
-                array=feature_gramian_2,
-                regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(feature_gramian_2.shape[0]),
-            )
+        inverse_feature_gramian_2 = self.inverse_approximator.approximate(
+            kernel_gramian=feature_gramian_2,
+            regularisation_parameter=self.regularisation_parameter,
+            identity=jnp.eye(feature_gramian_2.shape[0]),
+        )
 
         # Compute each term in the CMMD
         term_1 = (

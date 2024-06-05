@@ -364,10 +364,8 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
     """
     Approximate inverse of regularised gramian by solving a least-squares problem.
 
-    When a dataset is very large, computing the regularised inverse of the kernel gram
-    matrix can be very time-consuming. Instead, this property can be approximated by
-    various methods. :class:`RegularisedInverseApproximator` is a class that
-    does such an approximation by solving a least-squares problem.
+    Note that this approximator does not give time savings and instead acts as a
+    default option useful for comparing other approximators to.
 
     :param random_key: Key for random number generation
     :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes

@@ -28,13 +28,13 @@ import pytest
 from jax import Array
 
 from coreax.approximation import (
+    LeastSquareApproximator,
     RandomisedEigendecompositionApproximator,
     RegularisedInverseApproximator,
 )
 from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, LaplacianKernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.metrics import CMMD, MMD
-from coreax.util import invert_regularised_array
 
 
 class _MetricProblem(NamedTuple):
@@ -400,6 +400,7 @@ class TestCMMD:
 
         assert output == pytest.approx(expected_output)
 
+    # pylint: disable=too-many-locals
     def test_cmmd_random_data(self, problem: _SupervisedMetricProblem):
         r"""
         Test CMMD computed from randomly generated test data agrees with method result.
@@ -418,13 +419,14 @@ class TestCMMD:
         feature_gramian_1 = kernel.compute(x1, x1)
         feature_gramian_2 = kernel.compute(x2, x2)
 
-        inverse_feature_gramian_1 = invert_regularised_array(
-            array=feature_gramian_1,
+        inverse_approximator = LeastSquareApproximator(jr.key(2_024))
+        inverse_feature_gramian_1 = inverse_approximator.approximate(
+            kernel_gramian=feature_gramian_1,
             regularisation_parameter=regularisation_parameter,
             identity=jnp.eye(feature_gramian_1.shape[0]),
         )
-        inverse_feature_gramian_2 = invert_regularised_array(
-            array=feature_gramian_2,
+        inverse_feature_gramian_2 = inverse_approximator.approximate(
+            kernel_gramian=feature_gramian_2,
             regularisation_parameter=regularisation_parameter,
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )
@@ -460,6 +462,8 @@ class TestCMMD:
         )
         output = metric.compute(reference_data, comparison_data)
         assert output == pytest.approx(expected_cmmd, abs=1e-6)
+
+    # pylint: enable=too-many-locals
 
     @pytest.mark.parametrize(
         "approximator",
