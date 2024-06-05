@@ -296,9 +296,10 @@ def sample_batch_indices(
     Each row (batch) of the sampled array will contain unique elements.
 
     :param random_key: Key for random number generation
-    :param num_batches: Number of batches to sample
-    :param batch_size: Size of the batch we wish to sample
     :param max_index: Largest index we wish to sample
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+
     :return: Array of batch indices of size `num_batches` x `batch_size`
     """
     if max_index < batch_size:
