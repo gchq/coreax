@@ -22,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, Union
 from unittest import mock
 
 import sphinx.config
@@ -170,11 +170,11 @@ nitpick_ignore = [
     ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
 ]
 
-OptionalArrayLike = Optional[ArrayLike]
+OptionalArrayLike = Union[ArrayLike, None]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
-    OptionalArrayLike: ":data:`Optional[~jax.typing.ArrayLike`]",
+    OptionalArrayLike: "Union[:data:`~jax.typing.ArrayLike`| :data:`None`]",
 }
 
 # custom references for tqdm, which does not support intersphinx
@@ -185,7 +185,9 @@ tqdm_refs: dict[str, dict[str, str]] = {
 }
 
 
-def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> Optional[str]:
+def typehints_formatter(
+    annotation: Any, config: sphinx.config.Config
+) -> Union[str | None]:
     """
     Properly replace custom type aliases.
 

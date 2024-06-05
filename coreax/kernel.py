@@ -54,7 +54,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from math import ceil
-from typing import Optional, TypeVar, Union
+from typing import TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -390,7 +390,7 @@ class Kernel(eqx.Module):
 
 
 def _block_data_convert(
-    x: Union[ArrayLike, Data], block_size: Optional[int]
+    x: Union[ArrayLike, Data], block_size: Union[int | None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)

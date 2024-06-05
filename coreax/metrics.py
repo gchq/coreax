@@ -89,7 +89,7 @@ class MMD(Metric[_Data]):
         comparison_data: _Data,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: tuple[Union[int, bool], Union[int, bool]] = (1, 1),
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,
     ) -> Array:
         r"""
