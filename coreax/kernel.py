@@ -290,6 +290,7 @@ class Kernel(eqx.Module):
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
+        A convenience method for calling meth:`compute_mean`. Equivalent to the call
         :code:`compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)`.
 
         :param x: Data matrix, :math:`n \times d`
