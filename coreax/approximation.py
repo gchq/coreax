@@ -406,7 +406,7 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
     array: Array,
-    oversampling_parameter: int = 10,
+    oversampling_parameter: int = 25,
     power_iterations: int = 1,
 ) -> tuple[Array, Array]:
     r"""
@@ -490,7 +490,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     def __init__(
         self,
         random_key: KeyArrayLike,
-        oversampling_parameter: int = 10,
+        oversampling_parameter: int = 25,
         power_iterations: int = 1,
         rcond: Union[float, None] = None,
     ):

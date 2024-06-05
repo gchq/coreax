@@ -20,8 +20,8 @@ semi-definite kernels to produce new positive semi-definite kernels.
 - Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
  `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
 - Added capability to approximate inverses of kernel matrices `coreax.approximation.RegularisedInverseApproximator`
-- Added `coreax.solvers.coresubset.GreedyCMMD` to build coresets targeting the CMMD.
-- Added `coreax.metrics.CMMD` to evaluate CMMD.
+- Added `coreax.solvers.coresubset.GreedyCMMD` to build coresets targeting CMMD metric.
+- Added `coreax.metrics.CMMD` class to evaluate CMMD metric.
 
 ### Fixed
 
