@@ -286,31 +286,29 @@ def invert_regularised_array(
 
 def sample_batch_indices(
     random_key: KeyArrayLike,
-    data_size: int,
+    max_index: int,
     batch_size: int,
     num_batches: int,
 ) -> Array:
     """
     Sample an array of indices of size `num_batches` x `batch_size`.
 
-    Each row (batch) of the sampled array will contain unique elements. The largest
-    possible index sampled is dictated by data_size.
+    Each row (batch) of the sampled array will contain unique elements.
 
     :param random_key: Key for random number generation
-    :param data_size: Size of the data we wish to sample from
-    :param batch_size: Size of the batch we wish to sample
     :param num_batches: Number of batches to sample
+    :param batch_size: Size of the batch we wish to sample
+    :param max_index: Largest index we wish to sample
     :return: Array of batch indices of size `num_batches` x `batch_size`
     """
-    if data_size < batch_size:
-        raise ValueError("data_size must be greater than or equal to batch_size")
-    if batch_size <= 0.0:
-        raise ValueError("batch_size must be positive")
+    if max_index < batch_size:
+        raise ValueError("'max_index' must be greater than or equal to 'batch_size'")
+    if batch_size < 0.0:
+        raise ValueError("'batch_size' must be non-negative")
 
     batch_keys = jr.split(random_key, num_batches)
-
     batch_permutation = vmap(jr.permutation, in_axes=(0, None))
-    return batch_permutation(batch_keys, data_size)[:, :batch_size]
+    return batch_permutation(batch_keys, max_index)[:, :batch_size]
 
 
 def jit_test(
