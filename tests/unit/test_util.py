@@ -213,9 +213,7 @@ class TestUtil:
             )
 
     def test_invert_regularised_array(self) -> None:
-        """
-        Test invert_regularised_array.
-        """
+        """Test invert_regularised_array produces the expected inverse."""
         regularisation_parameter = 1
         identity = jnp.eye(2)
         rcond = -1
@@ -232,48 +230,74 @@ class TestUtil:
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     @pytest.mark.parametrize(
-        "data_size, batch_size, num_batches",
+        "max_index, batch_size, num_batches",
         [
             (1, -1, 1),
             (1, 2, 1),
         ],
         ids=[
             "negative_batch_size",
-            "data_size_smaller_than_batch_size",
+            "max_index_smaller_than_batch_size",
         ],
     )
     def test_sample_batch_indices_invalid_inputs(
         self,
-        data_size: int,
+        max_index: int,
         batch_size: int,
         num_batches: int,
     ) -> None:
-        """
-        Test sample_batch_indices for valid input parameters.
-        """
+        """Test sample_batch_indices for valid input parameters."""
         with pytest.raises(ValueError):
             sample_batch_indices(
                 random_key=key(0),
-                data_size=data_size,
+                max_index=max_index,
                 batch_size=batch_size,
                 num_batches=num_batches,
             )
 
-    def test_sample_batch_indices_uniqueness(self) -> None:
-        """
-        Test that sample_batch_indices produces row-unique indices.
-        """
-        data_size = 100
+    def test_sample_batch_shape(self) -> None:
+        """Test that sample_batch_indices produces an array with the expected shape."""
         batch_size = 50
         num_batches = 10
         batch_indices = sample_batch_indices(
             random_key=key(0),
-            data_size=data_size,
+            max_index=100,
+            batch_size=batch_size,
+            num_batches=num_batches,
+        )
+        assert batch_indices.shape == (num_batches, batch_size)
+
+    def test_sample_batch_indices_intra_row_uniqueness(self) -> None:
+        """Test that sample_batch_indices obeys intra-row uniqueness."""
+        max_index = 100
+        batch_size = 50
+        num_batches = 10
+        batch_indices = sample_batch_indices(
+            random_key=key(0),
+            max_index=max_index,
             batch_size=batch_size,
             num_batches=num_batches,
         )
         for row in batch_indices:
             assert jnp.unique(row).shape[0] == batch_size
+
+    def test_sample_batch_indices_inter_row_uniqueness(self) -> None:
+        """
+        Test that sample_batch_indices obeys inter-row uniqueness.
+
+        For large enough `max_index` and small enough `batch_size` we expect inter-row
+        uniqueness as the probability of the converse is vanishingly small.
+        """
+        max_index = 1000
+        batch_size = 200
+        num_batches = 100
+        batch_indices = sample_batch_indices(
+            random_key=key(0),
+            max_index=max_index,
+            batch_size=batch_size,
+            num_batches=num_batches,
+        )
+        assert jnp.unique(batch_indices, axis=0).shape[0] == num_batches
 
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
