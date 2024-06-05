@@ -105,7 +105,7 @@ class KernelMeanTest(Generic[_Kernel]):
         jit_variant: Callable[[Callable], Callable],
         kernel: _Kernel,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int | None],
+        axis: Union[int, None],
     ) -> None:
         """
         Test the `compute_mean` methods.

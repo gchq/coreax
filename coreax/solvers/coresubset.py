@@ -348,7 +348,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
 
 
 def _convert_stein_kernel(
-    x: ArrayLike, kernel: Kernel, score_matching: Union[ScoreMatching | None]
+    x: ArrayLike, kernel: Kernel, score_matching: Union[ScoreMatching, None]
 ) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernel.SteinKernel`.

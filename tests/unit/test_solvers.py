@@ -493,7 +493,7 @@ class TestMapReduce(SolverTest):
                 del kwargs
                 self.data = _data
 
-            def get_arrays(self) -> tuple[Union[np.ndarray | None], ...]:
+            def get_arrays(self) -> tuple[Union[np.ndarray, None], ...]:
                 """Mock sklearn.neighbours.BinaryTree.get_arrays method."""
                 return None, np.arange(len(self.data)), None, None
 
