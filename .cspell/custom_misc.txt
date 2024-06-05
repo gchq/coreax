@@ -16,6 +16,7 @@ elementwise
 forall
 GCHQ
 Gramian
+infty
 kbar
 kdtree
 kernelised
