@@ -355,7 +355,8 @@ class RegularisedInverseApproximator(ABC):
         :param identity: Block identity matrix
         :return: Approximation of the kernel matrix inverses
         """
-        return self._map_approximate()(
+        _map_approximate = jax.vmap(self.approximate, in_axes=(0, None, None))
+        return _map_approximate(
             kernel_gramians, regularisation_parameter, identity
         )
 
