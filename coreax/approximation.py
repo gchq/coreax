@@ -386,7 +386,7 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
         except Exception as err:
             if kernel_gramian.shape != identity.shape:
                 raise ValueError(
-                    "Leading dimensions of 'array' and 'identity' must match"
+                    "Leading dimensions of 'kernel_gramian' and 'identity' must match"
                 ) from err
             raise
 

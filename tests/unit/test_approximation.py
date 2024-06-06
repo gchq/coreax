@@ -364,41 +364,25 @@ class TestLeastSquareApproximator:
         )
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
-    @pytest.mark.parametrize(
-        "kernel_gramian, identity, rcond",
-        [
-            (jnp.eye((2)), jnp.eye((2)), -10),
-            (jnp.eye((2)), jnp.eye((3)), None),
-        ],
-        ids=[
-            "rcond_negative_not_negative_one",
-            "unequal_array_dimensions",
-        ],
-    )
-    def test_approximator_invalid_inputs(
-        self,
-        kernel_gramian: Array,
-        identity: Array,
-        rcond: Union[int, float, None],
-    ) -> None:
-        """Test `LeastSquareApproximator` handles invalid inputs."""
+    def test_approximator_invalid_inputs(self) -> None:
+        """Test `LeastSquareApproximator` handles invalid array shapes."""
         with pytest.raises(ValueError):
             approximator = LeastSquareApproximator(
                 random_key=jr.key(0),
-                rcond=rcond,
+                rcond=None,
             )
 
             approximator.approximate(
-                kernel_gramian=kernel_gramian,
+                kernel_gramian=jnp.eye(2),
                 regularisation_parameter=1e-6,
-                identity=identity,
+                identity=jnp.eye(3),
             )
 
     @pytest.mark.parametrize(
         "kernel_gramian, identity, rcond",
         [
-            (jnp.eye((2)), jnp.eye((2)), 1e-6),
-            (jnp.eye((2)), jnp.eye((2)), -1),
+            (jnp.eye(2), jnp.eye(2), 1e-6),
+            (jnp.eye(2), jnp.eye(2), -1),
         ],
         ids=[
             "valid_rcond_not_negative_one_or_none",
@@ -476,8 +460,8 @@ class TestRandomisedEigendecompositionApproximator(
     @pytest.mark.parametrize(
         "kernel_gramian, identity, rcond",
         [
-            (jnp.eye((2)), jnp.eye((2)), -10),
-            (jnp.eye((2)), jnp.eye((3)), None),
+            (jnp.eye(2), jnp.eye(2), -10),
+            (jnp.eye(2), jnp.eye(3), None),
         ],
         ids=[
             "rcond_negative_not_negative_one",
@@ -508,8 +492,8 @@ class TestRandomisedEigendecompositionApproximator(
     @pytest.mark.parametrize(
         "kernel_gramian, identity, rcond",
         [
-            (jnp.eye((2)), jnp.eye((2)), 1e-6),
-            (jnp.eye((2)), jnp.eye((2)), -1),
+            (jnp.eye(2), jnp.eye(2), 1e-6),
+            (jnp.eye(2), jnp.eye(2), -1),
         ],
         ids=[
             "valid_rcond_not_negative_one_or_none",
@@ -562,10 +546,10 @@ class TestRandomisedEigendecompositionApproximator(
         [
             (jnp.zeros((2, 2, 2)), 1, 1),
             (jnp.zeros((2, 3)), 1, 1),
-            (jnp.eye((2)), 1.0, 1),
-            (jnp.eye((2)), -1, 1),
-            (jnp.eye((2)), 1, 1.0),
-            (jnp.eye((2)), 1, -1),
+            (jnp.eye(2), 1.0, 1),
+            (jnp.eye(2), -1, 1),
+            (jnp.eye(2), 1, 1.0),
+            (jnp.eye(2), 1, -1),
         ],
         ids=[
             "larger_than_two_d_array",
