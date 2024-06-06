@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, TypeVar
+from typing import Generic, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -165,8 +165,6 @@ class CMMD(Metric):
     :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
         kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
         \mathbb{R}` on the response space
-    :param num_feature_dimension: An integer representing the dimensionality of the
-        features :math:`x`
     :param regularisation_parameter: Regularisation parameter for stable inversion
             of arrays, negative values will be converted to positive
     :param precision_threshold: Positive threshold we compare against for precision
@@ -180,9 +178,7 @@ class CMMD(Metric):
     response_kernel: coreax.kernel.Kernel
     regularisation_parameter: float
     precision_threshold: float = 1e-2
-    inverse_approximator: RegularisedInverseApproximator = LeastSquareApproximator(
-        jr.key(2_024)
-    )
+    inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
     def compute(
         self,
@@ -233,14 +229,18 @@ class CMMD(Metric):
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
 
-        # Invert feature kernel gramian
-        inverse_feature_gramian_1 = self.inverse_approximator.approximate(
+        # Invert feature kernel gramians
+        if self.inverse_approximator is None:
+            inverse_approximator = LeastSquareApproximator(jr.key(2_024))
+        else:
+            inverse_approximator = self.inverse_approximator
+        inverse_feature_gramian_1 = inverse_approximator.approximate(
             kernel_gramian=feature_gramian_1,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_1.shape[0]),
         )
 
-        inverse_feature_gramian_2 = self.inverse_approximator.approximate(
+        inverse_feature_gramian_2 = inverse_approximator.approximate(
             kernel_gramian=feature_gramian_2,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_2.shape[0]),
