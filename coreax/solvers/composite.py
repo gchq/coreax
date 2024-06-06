@@ -2,7 +2,7 @@
 
 import math
 import warnings
-from typing import Generic, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax
@@ -106,7 +106,7 @@ class MapReduce(
 
     @override
     def reduce(
-        self, dataset: _Data, solver_state: Union[_State, None] = None
+        self, dataset: _Data, solver_state: Optional[_State] = None
     ) -> tuple[_Coreset, _State]:
         # There is no obvious way to use state information here.
         del solver_state

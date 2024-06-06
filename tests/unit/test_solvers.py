@@ -19,7 +19,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
-from typing import NamedTuple, Union, cast
+from typing import NamedTuple, Optional, Union, cast
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -59,13 +59,13 @@ from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 class _ReduceProblem(NamedTuple):
     dataset: Data
     solver: Solver
-    expected_coreset: Union[Coreset, None] = None
+    expected_coreset: Optional[Coreset] = None
 
 
 class _RefineProblem(NamedTuple):
     initial_coresubset: Coresubset
     solver: RefinementSolver
-    expected_coresubset: Union[Coresubset, None] = None
+    expected_coresubset: Optional[Coresubset] = None
 
 
 class SolverTest:
