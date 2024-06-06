@@ -30,7 +30,7 @@ freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expe
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import Union
+from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp
@@ -338,11 +338,75 @@ class RegularisedInverseApproximator(ABC):
         :return: Approximation of the kernel matrix inverse
         """
 
+    def _map_approximate(self) -> Callable[[Array, float, Array], Array]:
+        """Define helper function to map approximate over horizontal array stack."""
+        return jax.vmap(self.approximate, in_axes=(0, None, None))
+
+    def approximate_stack(
+        self, kernel_gramians: Array, regularisation_parameter: float, identity: Array
+    ) -> Array:
+        r"""
+        Approximate the regularised inverses of a horizontal stack of kernel matrices.
+
+        :param kernel_gramian: Horizontal Stack of :math:`n \times n` kernel gram
+            matrices
+        :param regularisation_parameter: Regularisation parameter for stable inversion
+            of array, negative values will be converted to positive
+        :param identity: Block identity matrix
+        :return: Approximation of the kernel matrix inverses
+        """
+        return self._map_approximate()(
+            kernel_gramians, regularisation_parameter, identity
+        )
+
+
+class LeastSquareApproximator(RegularisedInverseApproximator):
+    """
+    Approximate inverse of regularised gramian by solving a least-squares problem.
+
+    Note that this approximator does not give time savings and instead acts as a
+    default option useful for comparing other approximators to.
+
+    :param random_key: Key for random number generation
+    :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes
+        of rank determination, singular values are treated as zero if they are smaller
+        than rcond times the largest singular value of 'array'. The default value of
+        None will use the machine precision multiplied by the largest dimension of the
+        array. An alternate value of -1 will use machine precision.
+    """
+
+    def __init__(self, random_key: KeyArrayLike, rcond: Optional[float] = None):
+        """Initialise LeastSquareApproximator class and validate input."""
+        # Initialise parent
+        super().__init__(random_key=random_key)
+        self.rcond = rcond
+
+        # Validate input
+        if self.rcond is not None:
+            if self.rcond < 0 and self.rcond != -1:
+                raise ValueError("'rcond' must be non-negative, except for value of -1")
+
+    @override
+    def approximate(
+        self,
+        kernel_gramian: Array,
+        regularisation_parameter: float,
+        identity: Array,
+    ) -> Array:
+        if kernel_gramian.shape != identity.shape:
+            raise ValueError("Leading dimensions of 'array' and 'identity' must match")
+
+        return jnp.linalg.lstsq(
+            kernel_gramian + abs(regularisation_parameter) * identity,
+            identity,
+            rcond=self.rcond,
+        )[0]
+
 
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
     array: Array,
-    oversampling_parameter: int = 10,
+    oversampling_parameter: int = 25,
     power_iterations: int = 1,
 ) -> tuple[Array, Array]:
     r"""
@@ -426,7 +490,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     def __init__(
         self,
         random_key: KeyArrayLike,
-        oversampling_parameter: int = 10,
+        oversampling_parameter: int = 25,
         power_iterations: int = 1,
         rcond: Union[float, None] = None,
     ):
@@ -437,30 +501,17 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         self.power_iterations = power_iterations
         self.rcond = rcond
 
-        # Check attributes are valid
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
 
+    @override
     def approximate(
         self,
         kernel_gramian: Array,
         regularisation_parameter: float,
         identity: Array,
     ) -> Array:
-        r"""
-        Compute approximate kernel matrix inverse using randomised eigendecomposition.
-
-        We consider a :math:`n \times n` regularised kernel matrix, and use
-        (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) to approximate its
-        eigendecomposition, and using this, its inverse.
-
-        :param kernel_gramian: Original :math:`n \times n` kernel gram matrix
-        :param regularisation_parameter: Regularisation parameter for stable inversion
-            of array, negative values will be converted to positive
-        :param identity: Identity matrix
-        :return: Approximation of the kernel matrix inverse
-        """
         # Validate inputs
         if kernel_gramian.shape != identity.shape:
             raise ValueError("Leading dimensions of 'array' and 'identity' must match")
