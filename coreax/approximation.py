@@ -354,9 +354,7 @@ class RegularisedInverseApproximator(eqx.Module):
         :return: Approximation of the kernel matrix inverses
         """
         _map_approximate = jax.vmap(self.approximate, in_axes=(0, None, None))
-        return _map_approximate(
-            kernel_gramians, regularisation_parameter, identity
-        )
+        return _map_approximate(kernel_gramians, regularisation_parameter, identity)
 
 
 class LeastSquareApproximator(RegularisedInverseApproximator):
