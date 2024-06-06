@@ -376,7 +376,7 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
     """
 
     def __init__(self, random_key: KeyArrayLike, rcond: Optional[float] = None):
-        """Initialise LeastSquareApproximator class and validate inputs."""
+        """Initialise LeastSquareApproximator class and validate input."""
         # Initialise parent
         super().__init__(random_key=random_key)
         self.rcond = rcond
@@ -494,7 +494,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         power_iterations: int = 1,
         rcond: Union[float, None] = None,
     ):
-        """Initialise RandomisedEigendecompositionApproximator."""
+        """Initialise RandomisedEigendecompositionApproximator and validate input."""
         # Initialise parent
         super().__init__(random_key=random_key)
         self.oversampling_parameter = oversampling_parameter

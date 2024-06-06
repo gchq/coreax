@@ -350,7 +350,7 @@ class TestLeastSquareApproximator:
         return LeastSquareApproximator(random_key=jr.key(random_seed), rcond=None)
 
     def test_approximator_accuracy(self, approximator: LeastSquareApproximator) -> None:
-        """Test LeastSquareApproximator produces with an analytical example."""
+        """Test LeastSquareApproximator is accurate with an analytical example."""
         regularisation_parameter = 1
         identity = jnp.eye(2)
         array = jnp.ones((2, 2))
@@ -412,7 +412,7 @@ class TestLeastSquareApproximator:
         rcond: Union[int, float, None],
     ) -> None:
         """
-        Test `LeastSquareApproximator` handles valid `rcond`.
+        Test LeastSquareApproximator handles valid `rcond`.
 
         Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
         """
