@@ -21,13 +21,10 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -276,8 +273,8 @@ def sample_batch_indices(
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
-    fn_kwargs: dict | None = None,
-    jit_kwargs: dict | None = None,
+    fn_kwargs: Optional[dict] = None,
+    jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.
