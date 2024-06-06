@@ -24,7 +24,7 @@ is measured using maximum mean discrepancy (MMD).
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -50,7 +50,7 @@ from coreax.weights import MMDWeightsOptimiser
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Union[Path, None] = None) -> tuple[float, float, float, float]:
+def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
     """
     Run the basic herding on tabular data example.
 

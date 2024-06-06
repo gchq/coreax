@@ -14,7 +14,7 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Union
+from typing import Any, Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -45,7 +45,7 @@ class Data(eqx.Module):
     def __init__(
         self,
         data: Shaped[ArrayLike, " n *d"],
-        weights: Union[Shaped[ArrayLike, " n"], None] = None,
+        weights: Optional[Shaped[ArrayLike, " n"]] = None,
     ):
         """Initialise Data class."""
         self.data = jnp.asarray(data)
@@ -104,7 +104,7 @@ class SupervisedData(Data):
         self,
         data: Shaped[Array, " n d"],
         supervision: Shaped[Array, " n *p"],
-        weights: Union[Shaped[Array, " n"], None] = None,
+        weights: Optional[Shaped[Array, " n"]] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
