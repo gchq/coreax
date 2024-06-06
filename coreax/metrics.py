@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, TypeVar
+from typing import Generic, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -180,9 +180,12 @@ class CMMD(Metric):
     response_kernel: coreax.kernel.Kernel
     regularisation_parameter: float
     precision_threshold: float = 1e-2
-    inverse_approximator: RegularisedInverseApproximator = LeastSquareApproximator(
-        jr.key(2_024)
-    )
+    inverse_approximator: Optional[RegularisedInverseApproximator] = None
+
+    def __post_init__(self):
+        """Set 'inverse_approximator' to LeastSquareApproximator if None is passed."""
+        if self.inverse_approximator is None:
+            self.inverse_approximator = LeastSquareApproximator(jr.key(2_024))
 
     def compute(
         self,
