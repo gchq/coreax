@@ -74,13 +74,11 @@ class GreedyCMMDState(eqx.Module):
     :param feature_gramian: Cached feature kernel gramian
     :param response_gramian: Cached response kernel gramian
     :param training_cme: Cached array of CME evaluated at all possible pairs of data
-    :param batch_indices: Indices to be considered
     """
 
     feature_gramian: Array
     response_gramian: Array
     training_cme: Array
-    batch_indices: Array
 
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
@@ -693,29 +691,27 @@ class GreedyCMMD(
             response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
             training_cme = jnp.pad(training_cme, [(0, 1)], mode="constant")
 
-            # Sample the indices to be considered at each iteration ahead of time.
-            if self.batch_size is not None and self.batch_size < num_data_pairs:
-                batch_size = self.batch_size
-            else:
-                batch_size = num_data_pairs
-            batch_indices = sample_batch_indices(
-                random_key=self.random_key,
-                max_index=num_data_pairs,
-                batch_size=batch_size,
-                num_batches=self.coreset_size,
-            )
-
-            # Insert coreset indices into the batch indices to avoid degrading the CMMD
-            # (only has an effect when refining)
-            if self.batch_size is not None:
-                batch_indices = batch_indices.at[:, -1].set(coreset_indices)
-
         else:
             feature_gramian = solver_state.feature_gramian
             response_gramian = solver_state.response_gramian
             training_cme = solver_state.training_cme
-            batch_indices = solver_state.batch_indices
-            batch_size = batch_indices.shape[1]
+
+        # Sample the indices to be considered at each iteration ahead of time.
+        if self.batch_size is not None and self.batch_size < num_data_pairs:
+            batch_size = self.batch_size
+        else:
+            batch_size = num_data_pairs
+        batch_indices = sample_batch_indices(
+            random_key=self.random_key,
+            max_index=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=self.coreset_size,
+        )
+
+        # Insert coreset indices into the batch indices to avoid degrading the CMMD
+        # (only has an effect when refining)
+        if self.batch_size is not None:
+            batch_indices = batch_indices.at[:, -1].set(coreset_indices)
 
         # Initialise an array that will let us extract and build rectangular arrays
         # which will correspond to every possible candidate coreset.
@@ -792,5 +788,5 @@ class GreedyCMMD(
         )
 
         return Coresubset(updated_coreset_indices, dataset), GreedyCMMDState(
-            feature_gramian, response_gramian, training_cme, batch_indices
+            feature_gramian, response_gramian, training_cme
         )
