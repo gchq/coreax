@@ -27,11 +27,12 @@ all functionality provided through composition with a ``base_kernel``, they can 
 freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expected.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
 from typing import Optional, Union
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -295,7 +296,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
         )
 
 
-class RegularisedInverseApproximator(ABC):
+class RegularisedInverseApproximator(eqx.Module):
     """
     Base class for approximation methods to invert regularised kernel gram matrices.
 
@@ -307,10 +308,7 @@ class RegularisedInverseApproximator(ABC):
     :param random_key: Key for random number generation
     """
 
-    def __init__(self, random_key: KeyArrayLike):
-        """Define approximator to the kernel matrix inverse."""
-        # Assign inputs
-        self.random_key = random_key
+    random_key: KeyArrayLike
 
     @abstractmethod
     def approximate(
@@ -376,16 +374,7 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
         array. An alternate value of -1 will use machine precision.
     """
 
-    def __init__(self, random_key: KeyArrayLike, rcond: Optional[float] = None):
-        """Initialise LeastSquareApproximator class and validate input."""
-        # Initialise parent
-        super().__init__(random_key=random_key)
-        self.rcond = rcond
-
-        # Validate input
-        if self.rcond is not None:
-            if self.rcond < 0 and self.rcond != -1:
-                raise ValueError("'rcond' must be non-negative, except for value of -1")
+    rcond: Optional[float] = None
 
     @override
     def approximate(
@@ -394,14 +383,18 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
         regularisation_parameter: float,
         identity: Array,
     ) -> Array:
-        if kernel_gramian.shape != identity.shape:
-            raise ValueError("Leading dimensions of 'array' and 'identity' must match")
-
-        return jnp.linalg.lstsq(
-            kernel_gramian + abs(regularisation_parameter) * identity,
-            identity,
-            rcond=self.rcond,
-        )[0]
+        try:
+            return jnp.linalg.lstsq(
+                kernel_gramian + abs(regularisation_parameter) * identity,
+                identity,
+                rcond=self.rcond,
+            )[0]
+        except Exception as err:
+            if kernel_gramian.shape != identity.shape:
+                raise ValueError(
+                    "Leading dimensions of 'array' and 'identity' must match"
+                ) from err
+            raise
 
 
 def randomised_eigendecomposition(
@@ -488,20 +481,12 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
 
     """
 
-    def __init__(
-        self,
-        random_key: KeyArrayLike,
-        oversampling_parameter: int = 25,
-        power_iterations: int = 1,
-        rcond: Union[float, None] = None,
-    ):
-        """Initialise RandomisedEigendecompositionApproximator and validate input."""
-        # Initialise parent
-        super().__init__(random_key=random_key)
-        self.oversampling_parameter = oversampling_parameter
-        self.power_iterations = power_iterations
-        self.rcond = rcond
+    oversampling_parameter: int = 25
+    power_iterations: int = 1
+    rcond: Optional[float] = None
 
+    def __check_init__(self):
+        """Validate rcond input."""
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
