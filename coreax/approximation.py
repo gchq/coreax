@@ -336,10 +336,6 @@ class RegularisedInverseApproximator(eqx.Module):
         :return: Approximation of the kernel matrix inverse
         """
 
-    def _map_approximate(self) -> Callable[[Array, float, Array], Array]:
-        """Define helper function to map approximate over horizontal array stack."""
-        return jax.vmap(self.approximate, in_axes=(0, None, None))
-
     def approximate_stack(
         self, kernel_gramians: Array, regularisation_parameter: float, identity: Array
     ) -> Array:
