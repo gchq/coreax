@@ -152,7 +152,7 @@ class SolverTest:
         1. Call 'reduce' with the default 'solver_state' to get the resultant state
         2. Call 'reduce' again, this time passing the 'solver_state' from the previous
             run, and keeping all other arguments the same.
-        3. Check the two calls to 'refine' yield that same result.
+        3. Check the two calls to 'reduce' yield that same result.
         """
         dataset, solver, _ = reduce_problem
         coreset, state = jit_variant(solver.reduce)(dataset)

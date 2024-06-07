@@ -173,7 +173,7 @@ class CMMD(Metric):
 
     feature_kernel: coreax.kernel.Kernel
     response_kernel: coreax.kernel.Kernel
-    regularisation_parameter: float
+    regularisation_parameter: float = 1e-6
     precision_threshold: float = 1e-2
     inverse_approximator: Optional[RegularisedInverseApproximator] = None
 

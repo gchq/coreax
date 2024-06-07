@@ -578,7 +578,7 @@ def _greedy_cmmd_loss(
 
 
 class GreedyCMMD(
-    CoresubsetSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
+    RefinementSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
 ):
     r"""
     Apply GreedyCMMD to a supervised dataset.
