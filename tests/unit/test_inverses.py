@@ -121,52 +121,37 @@ class TestLeastSquareApproximator:
         )
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
-    def test_approximator_invalid_inputs(self) -> None:
-        """Test `LeastSquareApproximator` handles invalid array shapes."""
-        with pytest.raises(ValueError):
-            approximator = LeastSquareApproximator(
-                random_key=jr.key(0),
-                rcond=None,
-            )
-
-            approximator.approximate(
-                array=jnp.eye(2),
-                regularisation_parameter=1e-6,
-                identity=jnp.eye(3),
-            )
-
     @pytest.mark.parametrize(
-        "array, identity, rcond",
+        "array, identity, rcond, context",
         [
-            (jnp.eye(2), jnp.eye(2), 1e-6),
-            (jnp.eye(2), jnp.eye(2), -1),
+            (jnp.eye(2), jnp.eye(2), 1e-6, does_not_raise()),
+            (jnp.eye(2), jnp.eye(2), -1, does_not_raise()),
+            (jnp.eye(2), jnp.eye(3), None, pytest.raises(ValueError)),
         ],
         ids=[
             "valid_rcond_not_negative_one_or_none",
             "valid_rcond_negative_one",
+            "invalid_array_shapes",
         ],
     )
-    def test_approximator_valid_inputs(
+    def test_approximator_inputs(
         self,
         array: Array,
         identity: Array,
         rcond: Union[int, float, None],
+        context: AbstractContextManager,
     ) -> None:
-        """
-        Test LeastSquareApproximator handles valid `rcond`.
-
-        Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
-        """
-        approximator = LeastSquareApproximator(
-            random_key=jr.key(0),
-            rcond=rcond,
-        )
-
-        approximator.approximate(
-            array=array,
-            regularisation_parameter=1e-6,
-            identity=identity,
-        )
+        """Test LeastSquareApproximator handles inputs as expected."""
+        with context:
+            approximator = LeastSquareApproximator(
+                random_key=jr.key(0),
+                rcond=rcond,
+            )
+            approximator.approximate(
+                array=array,
+                regularisation_parameter=1e-6,
+                identity=identity,
+            )
 
 
 class TestRandomisedEigendecompositionApproximator(
