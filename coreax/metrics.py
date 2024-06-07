@@ -166,8 +166,8 @@ class CMMD(Metric):
             of arrays, negative values will be converted to positive
     :param precision_threshold: Positive threshold we compare against for precision
     :param inverse_approximator: Instance of
-        :class:`coreax.approximation.RegularisedInverseApproximator`, defaults to
-        :class:`coreax.approximation.LeastSquareApproximator` which solves a linear
+        :class:`coreax.inverses.RegularisedInverseApproximator`, defaults to
+        :class:`coreax.inverses.LeastSquareApproximator` which solves a linear
         system at cost :math:`\mathcal{O}(n^3)`
     """
 
