@@ -21,6 +21,8 @@ simple examples.
 """
 
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
+from contextlib import nullcontext as does_not_raise
 from typing import Generic, NamedTuple, TypeVar, Union
 
 import jax.numpy as jnp
@@ -213,71 +215,40 @@ class TestRandomisedEigendecompositionApproximator(
         )
 
     @pytest.mark.parametrize(
-        "array, identity, rcond",
+        "array, identity, rcond, context",
         [
-            (jnp.eye(2), jnp.eye(2), -10),
-            (jnp.eye(2), jnp.eye(3), None),
+            (jnp.eye(2), jnp.eye(2), -10, pytest.raises(ValueError)),
+            (jnp.eye(2), jnp.eye(3), None, pytest.raises(ValueError)),
+            (jnp.eye(2), jnp.eye(2), 1e-6, does_not_raise()),
+            (jnp.eye(2), jnp.eye(2), -1, does_not_raise()),
         ],
         ids=[
             "rcond_negative_not_negative_one",
             "unequal_array_dimensions",
+            "valid_rcond_not_negative_one_or_none",
+            "valid_rcond_negative_one",
         ],
     )
-    def test_approximator_invalid_inputs(
+    def test_approximator_inputs(
         self,
         array: Array,
         identity: Array,
         rcond: Union[int, float, None],
+        context: AbstractContextManager,
     ) -> None:
         """Test `RandomisedEigendecompositionApproximator` handles invalid inputs."""
-        with pytest.raises(ValueError):
+        with context:
             approximator = RandomisedEigendecompositionApproximator(
                 random_key=jr.key(0),
                 oversampling_parameter=1,
                 power_iterations=1,
                 rcond=rcond,
             )
-
             approximator.approximate(
                 array=array,
                 regularisation_parameter=1e-6,
                 identity=identity,
             )
-
-    @pytest.mark.parametrize(
-        "array, identity, rcond",
-        [
-            (jnp.eye(2), jnp.eye(2), 1e-6),
-            (jnp.eye(2), jnp.eye(2), -1),
-        ],
-        ids=[
-            "valid_rcond_not_negative_one_or_none",
-            "valid_rcond_negative_one",
-        ],
-    )
-    def test_approximator_valid_inputs(
-        self,
-        array: Array,
-        identity: Array,
-        rcond: Union[int, float, None],
-    ) -> None:
-        """
-        Test `RandomisedEigendecompositionApproximator` handles valid `rcond`.
-
-        Ensure that if we pass a valid `rcond` that is not None, no error is thrown.
-        """
-        approximator = RandomisedEigendecompositionApproximator(
-            random_key=jr.key(0),
-            oversampling_parameter=1,
-            power_iterations=1,
-            rcond=rcond,
-        )
-
-        approximator.approximate(
-            array=array,
-            regularisation_parameter=1e-6,
-            identity=identity,
-        )
 
     def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
         """Test that the `randomised_eigendecomposition` is accurate."""
