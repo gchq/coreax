@@ -542,8 +542,8 @@ def _greedy_cmmd_loss(
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
     :param inverse_approximator: Instance of
-        :class:`coreax.approximation.RegularisedInverseApproximator`, default value of
-        :data:`None` uses :class:`coreax.approximation.LeastSquareApproximator`
+        :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
+        :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
 
     :return: GreedyCMMD loss for each candidate coreset
     """
