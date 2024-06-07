@@ -15,6 +15,11 @@
 r"""
 Classes and associated functionality to approximate regularised inverses of matrices.
 
+Given a matrix :math:`A\in\mathbb{R}^{n\times n}` and some regularisation parameter
+:math:`\lambda\in\mathbb{R}_{\ge 0}`, the regularised inverse of :math:`A` is
+:math:`(A + \lambda I_n)^{-1}` where :math:`I_n` is the :math:`n\times n` identity
+matrix.
+
 When a dataset is very large, methods which have to invert regularised kernel matrices
 evaluated on all of the data can become prohibitively expensive. To reduce this
 computational cost, such methods can instead be approximated (providing suitable
@@ -46,7 +51,7 @@ where only the top-left block contains non-zero elements can be "inverted" to gi
 This functionality allows iterative coreset algorithms which require inverting growing
 arrays to have fully static array shapes and thus be JIT-compilable in JAX.
 
-The most efficient way to compute these "inverses" in JAX requires the 'identity' array
+The most efficient way to compute these "inverses" in JAX requires the `identity` array
 passed in :meth:`~coreax.inverses.RegularisedInverseApproximator.approximate to be a
 matrix of zeros except for ones on the diagonal up to the dimension of the non-zero
 block.
