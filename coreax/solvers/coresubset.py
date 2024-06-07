@@ -26,9 +26,9 @@ import jax.tree_util as jtu
 from jaxtyping import Array, ArrayLike
 from typing_extensions import override
 
-from coreax.approximation import LeastSquareApproximator, RegularisedInverseApproximator
 from coreax.coreset import Coresubset
 from coreax.data import Data, SupervisedData, as_data
+from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 from coreax.kernel import Kernel, SteinKernel
 from coreax.score_matching import KernelDensityMatching, ScoreMatching
 from coreax.solvers.base import (
@@ -202,7 +202,7 @@ class KernelHerding(
     def reduce(
         self,
         dataset: _Data,
-        solver_state: Union[HerdingState, None] = None,
+        solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
@@ -210,7 +210,7 @@ class KernelHerding(
     def refine(
         self,
         coresubset: Coresubset[_Data],
-        solver_state: Union[HerdingState, None] = None,
+        solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
@@ -302,7 +302,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: _Data, solver_state: Union[RPCholeskyState, None] = None
+        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
     ) -> tuple[Coresubset[_Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
@@ -447,7 +447,7 @@ class SteinThinning(
     """
 
     kernel: Kernel
-    score_matching: Union[ScoreMatching, None] = None
+    score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
     block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
@@ -675,7 +675,7 @@ class GreedyCMMD(
             response_gramian = self.response_kernel.compute(y, y)
 
             inverse_feature_gramian = self.inverse_approximator.approximate(
-                kernel_gramian=feature_gramian,
+                array=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(num_data_pairs),
             )
