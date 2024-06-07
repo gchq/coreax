@@ -229,7 +229,7 @@ def randomised_eigendecomposition(
 
 class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
-    Approximate inverse of a regularised array using its randomised eigendecomposition.
+    Approximate regularised inverse of a Hermitan array via random eigendecomposition.
 
     When a dataset is very large, computing the regularised inverse of an array
     can be very time-consuming. Instead, this property can be approximated by
