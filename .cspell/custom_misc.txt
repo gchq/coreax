@@ -17,6 +17,7 @@ forall
 GCHQ
 Gramian
 gramians
+Hermitan
 infty
 kbar
 kdtree
