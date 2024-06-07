@@ -103,7 +103,7 @@ class RegularisedInverseApproximator(eqx.Module):
             to be a matrix of zeros except for ones on the diagonal up to the dimension
             of the non-zero block.
 
-        :param array: Original :math:`n \times n` kernel gram matrix
+        :param array: :math:`n \times n` array
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of array, negative values will be converted to positive
         :param identity: Block identity matrix
@@ -116,8 +116,7 @@ class RegularisedInverseApproximator(eqx.Module):
         r"""
         Approximate the regularised inverses of a horizontal stack of kernel matrices.
 
-        :param array: Horizontal Stack of :math:`n \times n` kernel gram
-            matrices
+        :param array: Horizontal stack of :math:`n \times n` arrays
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of array, negative values will be converted to positive
         :param identity: Block identity matrix
@@ -129,7 +128,7 @@ class RegularisedInverseApproximator(eqx.Module):
 
 class LeastSquareApproximator(RegularisedInverseApproximator):
     """
-    Approximate inverse of regularised gramian by solving a least-squares problem.
+    Approximate inverse of regularised array by solving a least-squares problem.
 
     Note that this approximator does not give time savings and instead acts as a
     default option useful for comparing other approximators to.
@@ -180,10 +179,10 @@ def randomised_eigendecomposition(
     See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
     defaults chosen here are cautious.
 
-    Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
+    Given the matrix :math:`A \in \mathbb{R}^{n\times n} and
     :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
     :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
-    :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`K \approx U\Lambda U^T`.
+    :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`A \approx U\Lambda U^T`.
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
@@ -230,7 +229,7 @@ def randomised_eigendecomposition(
 
 class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
-    Approximate inverse of regularised gramian using its randomised eigendecomposition.
+    Approximate inverse of a regularised array using its randomised eigendecomposition.
 
     When a dataset is very large, computing the regularised inverse of an array
     can be very time-consuming. Instead, this property can be approximated by
@@ -248,7 +247,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
-    :param rcond: Cut-off ratio for small singular values of the kernel gramian. For the
+    :param rcond: Cut-off ratio for small singular values of the `array`. For the
         purposes of rank determination, singular values are treated as zero if they are
         smaller than rcond times the largest singular value of a. The default value of
         None will use the machine precision multiplied by the largest dimension of
