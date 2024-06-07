@@ -88,7 +88,7 @@ class TestCoresubset:
         """Test the coresubset 'unweighted_indices' is reversed by 'reverse' method."""
         coresubset = Coresubset(NODES, PRE_CORESET_DATA)
         expected_indices = jnp.flip(NODES.data.squeeze())
-        assert eqx.tree_equal(expected_indices, coresubset.flip().unweighted_indices)
+        assert eqx.tree_equal(expected_indices, coresubset.reverse().unweighted_indices)
 
     def test_permute(self):
         """Test the coresubset 'unweighted_indices' is permuted by 'permuted' method."""
