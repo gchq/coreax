@@ -37,7 +37,7 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional
 
 import cv2
 import equinox as eqx
@@ -70,7 +70,7 @@ MIN_LENGTH_SCALE = 1e-6
 # pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
-    out_path: Union[Path, None] = None,
+    out_path: Optional[Path] = None,
     downsampling_factor: int = 1,
 ) -> tuple[float, float]:
     """

@@ -27,12 +27,12 @@ import jax.tree_util as jtu
 import pytest
 from jax import Array
 
-from coreax.approximation import (
+from coreax.data import Data, SupervisedData
+from coreax.inverses import (
     LeastSquareApproximator,
     RandomisedEigendecompositionApproximator,
     RegularisedInverseApproximator,
 )
-from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, LaplacianKernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.metrics import CMMD, MMD
 
@@ -421,12 +421,12 @@ class TestCMMD:
 
         inverse_approximator = LeastSquareApproximator(jr.key(2_024))
         inverse_feature_gramian_1 = inverse_approximator.approximate(
-            kernel_gramian=feature_gramian_1,
+            array=feature_gramian_1,
             regularisation_parameter=regularisation_parameter,
             identity=jnp.eye(feature_gramian_1.shape[0]),
         )
         inverse_feature_gramian_2 = inverse_approximator.approximate(
-            kernel_gramian=feature_gramian_2,
+            array=feature_gramian_2,
             regularisation_parameter=regularisation_parameter,
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )

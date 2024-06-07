@@ -22,12 +22,9 @@ representation using some appropriate metric. Such metrics are implemented withi
 module, all of which implement :class:`Metric`.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -37,7 +34,7 @@ from jax import Array
 import coreax.data
 import coreax.kernel
 import coreax.util
-from coreax.approximation import LeastSquareApproximator, RegularisedInverseApproximator
+from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 
 _Data = TypeVar("_Data", bound=coreax.data.Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=coreax.data.SupervisedData)
@@ -94,8 +91,8 @@ class MMD(Metric[_Data]):
         reference_data: _Data,
         comparison_data: _Data,
         *,
-        block_size: int | None | tuple[int | None, int | None] = None,
-        unroll: tuple[int | bool, int | bool] = (1, 1),
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,
     ) -> Array:
         r"""
@@ -235,13 +232,13 @@ class CMMD(Metric):
         else:
             inverse_approximator = self.inverse_approximator
         inverse_feature_gramian_1 = inverse_approximator.approximate(
-            kernel_gramian=feature_gramian_1,
+            array=feature_gramian_1,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_1.shape[0]),
         )
 
         inverse_feature_gramian_2 = inverse_approximator.approximate(
-            kernel_gramian=feature_gramian_2,
+            array=feature_gramian_2,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )
