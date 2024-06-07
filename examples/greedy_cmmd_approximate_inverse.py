@@ -20,9 +20,10 @@ pairs of features sampled from a Gaussian distribution with corresponding respon
 generated with a non-linear relationship to the features.
 
 A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for both the
-features and the response. This coreset is compared to a coreset generated via uniform
-random sampling. Coreset quality is measured using conditional maximum mean discrepancy
-(CMMD).
+features and the response. To reduce computational demand, we approximate the feature
+kernel gram matrix's regularised inverse. This coreset is compared to a coreset
+generated via uniform random sampling. Coreset quality is measured using conditional
+maximum mean discrepancy (CMMD).
 """
 
 from pathlib import Path
@@ -36,6 +37,7 @@ from jax import random
 from sklearn.preprocessing import StandardScaler
 
 from coreax import CMMD, SquaredExponentialKernel, SupervisedData
+from coreax.inverses import RandomisedEigendecompositionApproximator
 from coreax.kernel import median_heuristic
 from coreax.solvers import GreedyCMMD, RandomSample
 
@@ -51,8 +53,10 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     Generate a set of features from a Gaussian distribution, generate response with a
     non-linear relationship to the features and Gaussian errors. Generate a coreset via
-    GreedyCMMD. Compare results to coresets generated via uniform random sampling.
-    Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
+    GreedyCMMD, where computation time is reduce by approximating the feature kernel
+    matrix's regularised inverse. Compare results to coresets generated via uniform
+    random sampling. Coreset quality is measured using conditional maximum mean
+    discrepancy (CMMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
@@ -61,7 +65,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response
     # with non-linear relationship to the features with normal errors.
-    num_data_points = 1_000
+    num_data_points = 5_000
     feature_sd = 1
     response_sd = 0.1
     random_seed = 2_024
@@ -99,7 +103,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     print("Computing GreedyCMMD coreset...")
     # Compute a coreset using GreedyCMMD with squared exponential kernels
     regularisation_parameter = 1e-6
-    cmmd_key, sample_key = random.split(random.key(random_seed), num=2)
+    cmmd_key, sample_key, invert_key = random.split(random.key(random_seed), num=3)
     cmmd_solver = GreedyCMMD(
         coreset_size=coreset_size,
         random_key=cmmd_key,
@@ -107,6 +111,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         response_kernel=response_kernel,
         regularisation_parameter=regularisation_parameter,
         unique=True,
+        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
     )
     cmmd_coreset, _ = eqx.filter_jit(cmmd_solver.reduce)(supervised_data)
 
@@ -132,6 +137,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         feature_kernel=feature_cmmd_kernel,
         response_kernel=response_cmmd_kernel,
         regularisation_parameter=regularisation_parameter,
+        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
     )
     greedy_cmmd = eqx.filter_jit(cmmd_coreset.compute_metric)(cmmd_metric)
 
