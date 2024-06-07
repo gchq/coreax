@@ -8,7 +8,7 @@ import jax.random as jr
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
-from coreax.data import Data, as_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
 from coreax.util import KeyArrayLike
 from coreax.weights import WeightsOptimiser
@@ -124,8 +124,18 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     @property
     def coreset(self) -> Data:
         """Materialise the coresubset from the indices and original data."""
-        coreset_nodes = self.pre_coreset_data.data[self.unweighted_indices]
-        return Data(coreset_nodes, self.nodes.weights)
+        if isinstance(self.pre_coreset_data, SupervisedData):
+            coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
+            coreset_supervision = self.pre_coreset_data.supervision[
+                self.unweighted_indices
+            ]
+            return SupervisedData(
+                data=coreset_data,
+                supervision=coreset_supervision,
+                weights=self.nodes.weights,
+            )
+        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
+        return Data(data=coreset_data, weights=self.nodes.weights)
 
     @property
     def unweighted_indices(self) -> Shaped[Array, " n"]:
