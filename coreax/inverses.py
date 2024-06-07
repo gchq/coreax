@@ -170,8 +170,10 @@ def randomised_eigendecomposition(
     Approximate the eigendecomposition of Hermitan matrices.
 
     Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
-    eigendecomposition of a matrix. The parameters 'oversampling_parameter'
-    and 'power_iterations' present a trade-off between speed and approximation quality.
+    eigendecomposition of a matrix. The parameters `oversampling_parameter`
+    and `power_iterations` present a trade-off between speed and approximation quality.
+    See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
+    defaults chosen here are cautious.
 
     Given the gram matrix :math:`K \in \mathbb{R}^{n\times n} and
     :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
@@ -228,8 +230,13 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     When a dataset is very large, computing the regularised inverse of an array
     can be very time-consuming. Instead, this property can be approximated by
     various methods. :class:`RandomisedEigendecompositionApproximator` is a class that
-    does such an approximation using a randomised eigendecomposition. Further details
-    can be found in (:cite:`halko2009randomness` Algorithm 4.4. and 5.3).
+    does such an approximation using a randomised eigendecomposition.
+
+    Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
+    eigendecomposition of a matrix. The parameters `oversampling_parameter`
+    and `power_iterations` present a trade-off between speed and approximation quality.
+    See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
+    defaults chosen here are cautious.
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
