@@ -68,29 +68,25 @@ class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
         self, problem: _Problem, approximator: _RegularisedInverseApproximator
     ) -> None:
         """Verify approximator performance on toy problem."""
-        # Extract problem settings
         _, array, regularisation_parameter, identity, expected_inverse = problem
 
-        # Approximate the kernel inverse
         approximate_inverse = approximator.approximate(
             array=array,
             regularisation_parameter=regularisation_parameter,
             identity=identity,
         )
 
-        # Check the approximation is close to the true value
         assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
             0.0, abs=1
         )
 
-        # Approximate stack of kernel inverses
+        # Approximate stacks of kernel inverses
         approximate_inverses = approximator.approximate_stack(
             arrays=jnp.array((array, array)),
             regularisation_parameter=regularisation_parameter,
             identity=identity,
         )
 
-        # Check the approximation is close to the true value
         expected_inverses = jnp.array((expected_inverse, expected_inverse))
         assert jnp.linalg.norm(
             expected_inverses - approximate_inverses
