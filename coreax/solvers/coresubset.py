@@ -16,6 +16,7 @@
 
 from collections.abc import Callable
 from typing import Optional, TypeVar, Union
+from warnings import warn
 
 import equinox as eqx
 import jax
@@ -577,6 +578,7 @@ def _greedy_cmmd_loss(
     return term_2s - 2 * term_3s
 
 
+# pylint: disable=too-many-locals
 class GreedyCMMD(
     RefinementSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
 ):
@@ -606,7 +608,9 @@ class GreedyCMMD(
     The search is performed over the entire dataset, or optionally over random batches
     at each iteration.
 
-    This class works with all children of :class:`~coreax.kernel.Kernel`.
+    This class works with all children of :class:`~coreax.kernel.Kernel`. Note that
+    GreedyCMMD does not support non-uniform weights and will only return coresubsets
+    with uniform weights.
 
     :param random_key: Key for random number generation
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
@@ -664,10 +668,26 @@ class GreedyCMMD(
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information
         """
-        coreset_indices = coresubset.unweighted_indices
+        # If the initialisation coresubset is too small, pad its nodes up to
+        # 'output_size' with -1 valued indices. If it is too large, raise a warning and
+        # clip off the indices at the end.
+        if self.coreset_size > len(coresubset):
+            pad_size = max(0, self.coreset_size - len(coresubset))
+            pad_indices = -1 * jnp.ones(pad_size, dtype=jnp.int32)
+            coreset_indices = jnp.hstack((coresubset.unweighted_indices, pad_indices))
+        elif self.coreset_size < len(coresubset):
+            warn(
+                "Requested coreset size is smaller than input 'coresubset', clipping"
+                + " to the correct size and proceeding...",
+                Warning,
+                stacklevel=2,
+            )
+            coreset_indices = coresubset.unweighted_indices[: self.coreset_size]
+        else:
+            coreset_indices = coresubset.unweighted_indices
+
         dataset = coresubset.pre_coreset_data
         num_data_pairs = len(dataset)
-
         if solver_state is None:
             x, y = dataset.data, dataset.supervision
 
@@ -720,7 +740,7 @@ class GreedyCMMD(
         )
 
         # Adaptively initialise an "identity matrix" for reduction (zeros matrix) or
-        # refinement (identity matrix)
+        # an actual identity matrix for refinement.
         identity_helper = jnp.hstack((jnp.ones(num_data_pairs), jnp.array([0])))
         identity = jnp.diag(identity_helper[coreset_indices])
 
@@ -790,3 +810,6 @@ class GreedyCMMD(
         return Coresubset(updated_coreset_indices, dataset), GreedyCMMDState(
             feature_gramian, response_gramian, training_cme
         )
+
+
+# pylint: enable=too-many-locals
