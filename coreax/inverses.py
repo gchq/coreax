@@ -165,14 +165,14 @@ def randomised_eigendecomposition(
     r"""
     Approximate the eigendecomposition of Hermitian matrices.
 
-    Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
+    Using Algorithm 4.4. and 5.3 from(:cite:`halko2009randomness` we approximate the
     eigendecomposition of a matrix. The parameters `oversampling_parameter`
     and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
+    See :cite:`halko2009randomness` for discussion on choosing sensible parameters, the
     defaults chosen here are cautious.
 
     Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
-    :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
+    :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
     :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
     :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`A \approx U\Lambda U^T`.
 
@@ -228,10 +228,10 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     various methods. :class:`RandomisedEigendecompositionApproximator` is a class that
     does such an approximation using a randomised eigendecomposition.
 
-    Using (:cite:`halko2009randomness` Algorithm 4.4. and 5.3) we approximate the
+    Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
     eigendecomposition of a matrix. The parameters `oversampling_parameter`
     and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
+    See :cite:`halko2009randomness` for discussion on choosing sensible parameters, the
     defaults chosen here are cautious.
 
     :param random_key: Key for random number generation
