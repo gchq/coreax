@@ -734,13 +734,14 @@ class GreedyCMMD(
             batch_indices = batch_indices.at[:, -1].set(coreset_indices)
 
         # Initialise an array that will let us extract and build rectangular arrays
-        # which will correspond to every possible candidate coreset.
+        # which stack arrays corresponding to every possible candidate coreset.
         initial_candidate_coresets = (
             jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[0, :])
         )
 
-        # Adaptively initialise an "identity matrix" for reduction (zeros matrix) or
-        # an actual identity matrix for refinement.
+        # Adaptively initialise an "identity matrix". For reduction we need this to
+        # be a zeros matrix which we will iteratively add ones to on the diagonal. While
+        # for refinement we need an actual identity matrix.
         identity_helper = jnp.hstack((jnp.ones(num_data_pairs), jnp.array([0])))
         identity = jnp.diag(identity_helper[coreset_indices])
 
@@ -754,7 +755,7 @@ class GreedyCMMD(
             # case of reduction (no effect when refining)
             updated_identity = identity.at[i, i].set(1)
 
-            # Compute the loss corresponding to each candidate coreset
+            # Compute the loss (CMMD) corresponding to each candidate coreset
             loss = _greedy_cmmd_loss(
                 self.random_key,
                 candidate_coresets,
@@ -779,21 +780,21 @@ class GreedyCMMD(
             # Repeat the chosen coreset index into the ith column of the array of
             # candidate coreset indices and replace the (i+1)th column with the next
             # batch of possible coreset indices.
-            updated_candidate_coresets = jnp.hstack(
+            next_candidate_coresets = jnp.hstack(
                 (
                     jnp.tile(index_to_include_in_coreset, (batch_size, 1)),
                     batch_indices[[i + 1], :].T,
                 )
             )
-            candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
-                updated_candidate_coresets
+            updated_candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
+                next_candidate_coresets
             )
 
             # Add the chosen coreset index to the current coreset indices
             updated_coreset_indices = coreset_indices.at[i].set(
                 index_to_include_in_coreset
             )
-            return updated_coreset_indices, updated_identity, candidate_coresets
+            return updated_coreset_indices, updated_identity, updated_candidate_coresets
 
         # Greedily refine coreset points
         updated_coreset_indices, _, _ = jax.lax.fori_loop(
