@@ -20,6 +20,7 @@ semi-definite kernels to produce new positive semi-definite kernels.
 - Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
  `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
 - Added capability to approximate regularised inverses of arrays `coreax.inverses.RegularisedInverseApproximator`
+- Added coresubset algorithm to target the CMMD `coreax.solver.coresubset.GreedyCMMD`
 
 ### Fixed
 
