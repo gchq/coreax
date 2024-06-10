@@ -31,28 +31,20 @@ allows for "block-inversion" where given an invertible matrix :math:`B`, the blo
 array
 
 .. math::
-    A = \begin{bmatrix}
-        B & 0 & \dots & 0 \\
-        0 & 0 & \dots & 0 \\
-        \vdots & \ddots & \dots & \vdots \\
-        0 & 0 & \dots & 0
-    \end{bmatrix}
+    A = \begin{bmatrix}B & 0 & \dots & 0 \\ 0 & 0 & \dots & 0 \\
+         \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix},
 
 where only the top-left block contains non-zero elements can be "inverted" to give
 
 .. math::
-    A^{-1} := \begin{bmatrix}
-        B^{-1} & 0 & \dots & 0 \\
-        0 & 0 & \dots & 0 \\
-        \vdots & \ddots & \dots & \vdots \\
-        0 & 0 & \dots & 0
-    \end{bmatrix}.
+    A^{-1} := \begin{bmatrix}B^{-1} & 0 & \dots & 0 \\ 0 & 0 & \dots & 0 \\
+         \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix}.
 
 This functionality allows iterative coreset algorithms which require inverting growing
 arrays to have fully static array shapes and thus be JIT-compilable in JAX.
 
 To compute these "inverses" in JAX, we require the `identity` array
-passed in :meth:`~coreax.inverses.RegularisedInverseApproximator.approximate to be a
+passed in :meth:`~coreax.inverses.RegularisedInverseApproximator.approximate` to be a
 matrix of zeros except for ones on the diagonal up to the dimension of the non-zero
 block.
 """
@@ -179,7 +171,7 @@ def randomised_eigendecomposition(
     See :cite:`halko2009randomness`for discussion on choosing sensible parameters, the
     defaults chosen here are cautious.
 
-    Given the matrix :math:`A \in \mathbb{R}^{n\times n} and
+    Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
     :math:`r=`oversampling_parameter we return a diagonal array of eigenvalues
     :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
     :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`A \approx U\Lambda U^T`.
