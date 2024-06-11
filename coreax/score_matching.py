@@ -32,24 +32,25 @@ and then differentiating a kernel density estimate to the data.
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Optional
 
-import jax
+import equinox as eqx
 import numpy as np
-import optax
 from flax.training.train_state import TrainState
-from jax import Array, jit, jvp, random, tree_util, vmap
+from jax import Array, jvp, random, value_and_grad, vmap
 from jax import numpy as jnp
 from jax.lax import cond, fori_loop
-from jax.typing import ArrayLike
+from jax.typing import ArrayLike, DTypeLike
+from optax import adamw
 from tqdm import tqdm
 
-import coreax.kernel
-import coreax.networks
-import coreax.util
+from coreax.kernel import Kernel, SquaredExponentialKernel
+from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
+from coreax.util import KeyArrayLike
+
+_RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
 
 
-class ScoreMatching(ABC):
+class ScoreMatching(ABC, eqx.Module):
     """
     Base class for score matching algorithms.
 
@@ -59,19 +60,8 @@ class ScoreMatching(ABC):
     child class of this base class.
     """
 
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        """
-        Reconstruct a pytree from the tree definition and the leaves.
-
-        Arrays & dynamic values (children) and auxiliary data (static values) are
-        reconstructed. A method to reconstruct the pytree needs to be specified to
-        enable JIT decoration of methods inside this class.
-        """
-        return cls(*children, **aux_data)
-
     @abstractmethod
-    def match(self, x: ArrayLike) -> Callable:
+    def match(self, x: ArrayLike) -> Callable[[Array], Array]:
         r"""
         Match some model score function to that of a dataset ``x``.
 
@@ -120,50 +110,38 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
-    def _tree_flatten(self):
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable jit decoration
-        of methods inside this class.
-        """
-        children = (self.random_key,)
-        aux_data = {
-            "random_generator": self.random_generator,
-            "noise_conditioning": self.noise_conditioning,
-            "use_analytic": self.use_analytic,
-            "num_random_vectors": self.num_random_vectors,
-            "learning_rate": self.learning_rate,
-            "num_epochs": self.num_epochs,
-            "batch_size": self.batch_size,
-            "hidden_dims": self.hidden_dims,
-            "optimiser": self.optimiser,
-            "num_noise_models": self.num_noise_models,
-            "sigma": self.sigma,
-            "gamma": self.gamma,
-        }
-
-        return children, aux_data
+    random_key: KeyArrayLike
+    random_generator: _RandomGenerator
+    noise_conditioning: bool
+    use_analytic: bool
+    num_random_vectors: int
+    learning_rate: float
+    num_epochs: int
+    batch_size: int
+    hidden_dims: Sequence
+    optimiser: _LearningRateOptimiser
+    num_noise_models: int
+    sigma: float
+    gamma: float
 
     # pylint: disable=too-many-arguments
     def __init__(  # noqa: PLR0913, PLR0917
         self,
-        random_key: coreax.util.KeyArrayLike,
-        random_generator: Callable,
+        random_key: KeyArrayLike,
+        random_generator: _RandomGenerator,
         noise_conditioning: bool = True,
         use_analytic: bool = False,
         num_random_vectors: int = 1,
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dims: Optional[Sequence] = None,
-        optimiser: Callable = optax.adamw,
+        hidden_dims: Sequence = (128, 128, 128),
+        optimiser: _LearningRateOptimiser = adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
     ):
-        """Define a sliced score matching class."""
+        """Define a sliced score matching class and update invalid inputs."""
         # JAX will not error if we have num_random_vectors set to 0, but this approach
         # is fundamentally about projecting along random vectors, so we cap the lower
         # value for this at 1. Similarly, there must be at-least one noise model for
@@ -190,36 +168,7 @@ class SlicedScoreMatching(ScoreMatching):
         self.sigma = sigma
         self.gamma = gamma
 
-        # Initialise parent
-        super().__init__()
-
     # pylint: enable=too-many-arguments
-
-    def tree_flatten(self):
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-        """
-        children = (self.random_key,)
-        aux_data = {
-            "random_generator": self.random_generator,
-            "noise_conditioning": self.noise_conditioning,
-            "use_analytic": self.use_analytic,
-            "num_random_vectors": self.num_random_vectors,
-            "learning_rate": self.learning_rate,
-            "num_epochs": self.num_epochs,
-            "batch_size": self.batch_size,
-            "hidden_dims": self.hidden_dims,
-            "optimiser": self.optimiser,
-            "num_noise_models": self.num_noise_models,
-            "sigma": self.sigma,
-            "gamma": self.gamma,
-        }
-
-        return children, aux_data
 
     def _objective_function(
         self,
@@ -336,7 +285,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
         return vmap(inner, (0, 0), 0)
 
-    @jit
+    @eqx.filter_jit
     def _train_step(
         self, state: TrainState, x: ArrayLike, random_vectors: ArrayLike
     ) -> tuple[TrainState, float]:
@@ -354,7 +303,7 @@ class SlicedScoreMatching(ScoreMatching):
                 x, random_vectors
             ).mean()
 
-        val, grads = jax.value_and_grad(loss)(state.params)
+        val, grads = value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
         return state, val
 
@@ -396,7 +345,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
         return obj
 
-    @jit
+    @eqx.filter_jit
     def _noise_conditional_train_step(
         self,
         state: TrainState,
@@ -425,7 +374,7 @@ class SlicedScoreMatching(ScoreMatching):
             )
             return fori_loop(0, self.num_noise_models, body, 0.0)
 
-        val, grads = jax.value_and_grad(loss)(state.params)
+        val, grads = value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
         return state, val
 
@@ -445,7 +394,7 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = coreax.networks.ScoreNetwork(self.hidden_dims, data_dimension)
+        score_network = ScoreNetwork(self.hidden_dims, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
         # noise perturbations
@@ -463,7 +412,7 @@ class SlicedScoreMatching(ScoreMatching):
             random_vectors = self.random_generator(
                 generator_key,
                 (num_points, self.num_random_vectors, data_dimension),
-                dtype=float,
+                float,
             )
         except TypeError as exception:
             if isinstance(self.num_random_vectors, float):
@@ -471,7 +420,7 @@ class SlicedScoreMatching(ScoreMatching):
             raise
 
         # Define a training state
-        state = coreax.networks.create_train_state(
+        state = create_train_state(
             state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
 
@@ -531,30 +480,19 @@ class KernelDensityMatching(ScoreMatching):
         estimate
     """
 
+    kernel: Kernel
+
     def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
-        self.kernel = coreax.kernel.SquaredExponentialKernel(
+        self.kernel = SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
         super().__init__()
 
-    def tree_flatten(self):
-        """
-        Flatten a pytree.
-
-        Define arrays & dynamic values (children) and auxiliary data (static values).
-        A method to flatten the pytree needs to be specified to enable JIT decoration
-        of methods inside this class.
-        """
-        children = ()
-        aux_data = {"kernel": self.kernel}
-
-        return children, aux_data
-
-    def match(self, x: ArrayLike) -> Callable:
+    def match(self, x: ArrayLike) -> Callable[[Array], Array]:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -571,7 +509,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         kde_data = x
 
-        def score_function(x_):
+        def score_function(x_: Array) -> Array:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -603,12 +541,3 @@ class KernelDensityMatching(ScoreMatching):
             return score_result
 
         return score_function
-
-
-# Define the pytree node for the added class to ensure methods with JIT decorators
-# are able to run. This tuple must be updated when a new class object is defined.
-score_matching_classes = (SlicedScoreMatching, KernelDensityMatching)
-for _current_class in score_matching_classes:
-    tree_util.register_pytree_node(
-        _current_class, _current_class.tree_flatten, _current_class.tree_unflatten
-    )
