@@ -160,6 +160,13 @@ class KSD(Metric[_Data]):
     original dataset, comparing different original datasets to one another, or
     comparing reduced representations of different original datasets to one another.
 
+    .. note::
+        The kernel stein discrepancy is not a metric like :class:`coreax.metrics.MMD`.
+        It is instead a divergence, which is a kind of statistical distance that differs
+        from a metric in a few ways. In particular, they are not symmetric. i.e.
+        :math:`KSD_{\lambda}(\mathbb{P}, \mathbb{Q})
+        \neq KSD_{\lambda}(\mathbb{Q}, \mathbb{P})`.
+
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
         if 'kernel' is a :class:`~coreax.kernel.SteinKernel` and :code:`score_matching
