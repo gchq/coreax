@@ -35,7 +35,7 @@ from jax import Array, jacfwd, vmap
 import coreax.data
 import coreax.kernel
 import coreax.util
-from coreax.score_matching import convert_stein_kernel
+from coreax.score_matching import ScoreMatching, convert_stein_kernel
 
 _Data = TypeVar("_Data", bound=coreax.data.Data)
 
@@ -175,7 +175,7 @@ class KSD(Metric[_Data]):
     """
 
     kernel: coreax.kernel.Kernel
-    score_matching: Optional[coreax.score_matching.ScoreMatching] = None
+    score_matching: Optional[ScoreMatching] = None
     precision_threshold: float = 1e-12
 
     def compute(
@@ -183,8 +183,8 @@ class KSD(Metric[_Data]):
         reference_data: _Data,
         comparison_data: _Data,
         *,
-        laplace_correct: bool = True,
-        regularisation: Optional[float] = None,
+        laplace_correct: bool = False,
+        regularisation: float = 0.0,
         block_size: Optional[int] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,

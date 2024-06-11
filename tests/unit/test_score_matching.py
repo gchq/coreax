@@ -1096,10 +1096,12 @@ class TestConvertSteinKernel(unittest.TestCase):
                 else:
                     if score_matching is None:
                         length_scale = getattr(kernel, "length_scale", 1.0)
-                        score_matcher = KernelDensityMatching(length_scale)
-                    expected_kernel = SteinKernel(
-                        kernel, score_function=score_matcher.match(dataset)
-                    )
+                        score_function = KernelDensityMatching(length_scale).match(
+                            dataset
+                        )
+                    else:
+                        score_function = score_matching.match(dataset)
+                    expected_kernel = SteinKernel(kernel, score_function=score_function)
                 assert eqx.tree_equal(
                     converted_kernel.base_kernel, expected_kernel.base_kernel
                 )
