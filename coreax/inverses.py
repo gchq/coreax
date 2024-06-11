@@ -41,7 +41,7 @@ where only the top-left block contains non-zero elements can be "inverted" to gi
          \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix}.
 
 This functionality allows iterative coreset algorithms which require inverting growing
-arrays to have fully static array shapes and thus be JIT-compilable in JAX.
+arrays to have fully static array shapes and thus be JIT-compatible in JAX.
 
 To compute these "inverses" in JAX, we require the `identity` array
 passed in :meth:`~coreax.inverses.RegularisedInverseApproximator.approximate` to be a
