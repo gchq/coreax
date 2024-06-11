@@ -168,6 +168,7 @@ nitpick_ignore = [
     ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
     ("py:class", "jaxtyping.Shaped[Array, 'n']"),
     ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
+    ("py:class", "jaxtyping.SupportsDType"),
 ]
 
 
