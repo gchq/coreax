@@ -62,7 +62,7 @@ class ScoreMatching(ABC, eqx.Module):
     """
 
     @abstractmethod
-    def match(self, x: ArrayLike) -> Callable[[Array], Array]:
+    def match(self, x: ArrayLike) -> Callable[[ArrayLike], Array]:
         r"""
         Match some model score function to that of a dataset ``x``.
 
@@ -149,10 +149,6 @@ class SlicedScoreMatching(ScoreMatching):
         # the code to do the projections.
         num_random_vectors = max(num_random_vectors, 1)
         num_noise_models = max(num_noise_models, 1)
-
-        # Handle default behaviour without mutable default value
-        if hidden_dims is None:
-            hidden_dims = [128, 128, 128]
 
         # Assign all inputs
         self.random_key = random_key
@@ -493,7 +489,7 @@ class KernelDensityMatching(ScoreMatching):
         )
         super().__init__()
 
-    def match(self, x: ArrayLike) -> Callable[[Array], Array]:
+    def match(self, x: ArrayLike) -> Callable[[ArrayLike], Array]:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -510,7 +506,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         kde_data = x
 
-        def score_function(x_: Array) -> Array:
+        def score_function(x_: ArrayLike) -> Array:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -522,7 +518,7 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format
-            original_number_of_dimensions = x_.ndim
+            original_number_of_dimensions = jnp.asarray(x_).ndim
             x_ = jnp.atleast_2d(x_)
 
             # Get the gram matrix row-mean
