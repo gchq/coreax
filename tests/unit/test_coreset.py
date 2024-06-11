@@ -93,7 +93,7 @@ class TestCoresubset:
         assert eqx.tree_equal(expected_indices, coresubset.reverse().unweighted_indices)
 
     def test_permute(self):
-        """Test the coresubset 'unweighted_indices' is permuted by 'permuted' method."""
+        """Test the coresubset 'unweighted_indices' is permuted by 'permute' method."""
         random_key = jr.key(2_024)
         coresubset = Coresubset(NODES, PRE_CORESET_DATA)
         expected_indices = jr.permutation(random_key, NODES.data.squeeze())
