@@ -32,6 +32,7 @@ and then differentiating a kernel density estimate to the data.
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
+from typing import Union
 
 import equinox as eqx
 import numpy as np
@@ -541,3 +542,40 @@ class KernelDensityMatching(ScoreMatching):
             return score_result
 
         return score_function
+
+
+def convert_stein_kernel(
+    x: ArrayLike,
+    kernel: coreax.kernel.Kernel,
+    score_matching: Union[ScoreMatching, None],
+) -> coreax.kernel.SteinKernel:
+    r"""
+    Convert the kernel to a :class:`~coreax.kernel.SteinKernel`.
+
+    :param x: The data used to call `score_matching.match(x)`
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
+        if 'kernel' is a :class:`~coreax.kernel.SteinKernel` and :code:`score_matching
+        is not None`, a new instance of the kernel will be generated where the score
+        function is given by :code:`score_matching.match(x)`
+    :param score_matching: Specifies/overwrite the score function of the implied/passed
+       :class:`~coreax.kernel.SteinKernel`; if :data:`None`, default to
+       :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
+       :class:`~coreax.kernel.SteinKernel`, in which case the kernel's existing score
+       function is used.
+    :return: The (potentially) converted/updated :class:`~coreax.kernel.SteinKernel`.
+    """
+    if isinstance(kernel, coreax.kernel.SteinKernel):
+        if score_matching is not None:
+            _kernel = eqx.tree_at(
+                lambda x: x.score_function, kernel, score_matching.match(x)
+            )
+        _kernel = kernel
+    else:
+        if score_matching is None:
+            length_scale = getattr(kernel, "length_scale", 1.0)
+            score_matching = KernelDensityMatching(length_scale)
+        _kernel = coreax.kernel.SteinKernel(
+            kernel, score_function=score_matching.match(x)
+        )
+    return _kernel
