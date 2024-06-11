@@ -21,6 +21,7 @@ kbar
 kdtree
 kernelised
 kernelized
+KSD
 ml.p3.8xlarge
 parsable
 PCIMQ
@@ -30,6 +31,7 @@ PRNG
 refs
 regulariser
 RKHS
+RKSD
 RPCHOLESKY
 sigmas
 supp
