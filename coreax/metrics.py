@@ -35,8 +35,7 @@ from jax import Array, jacfwd, vmap
 import coreax.data
 import coreax.kernel
 import coreax.util
-from coreax.score_matching import ScoreMatching
-from coreax.solvers.coresubset import _convert_stein_kernel
+from coreax.score_matching import convert_stein_kernel
 
 _Data = TypeVar("_Data", bound=coreax.data.Data)
 
@@ -176,7 +175,7 @@ class KSD(Metric[_Data]):
     """
 
     kernel: coreax.kernel.Kernel
-    score_matching: Optional[ScoreMatching] = None
+    score_matching: Optional[coreax.score_matching.ScoreMatching] = None
     precision_threshold: float = 1e-12
 
     def compute(
@@ -227,7 +226,7 @@ class KSD(Metric[_Data]):
         del kwargs
         # Train Stein kernel with data from P (no way to use weights here)
         x, w_x = jtu.tree_leaves(reference_data)
-        kernel = _convert_stein_kernel(x, self.kernel, self.score_matching)
+        kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
 
         # Variable rename allows for nicer automatic formatting, make sure we pass 'y'
         # as an instance of Data class to apply weights to mean computation.

@@ -20,12 +20,14 @@ approaches used produce the expected results on simple examples.
 
 import unittest
 from collections.abc import Callable
+from unittest.mock import MagicMock
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 from flax import linen as nn
-from jax import Array, random, vjp
+from jax import Array, vjp
 from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
@@ -33,7 +35,8 @@ from optax import sgd
 import coreax.kernel
 import coreax.networks
 import coreax.score_matching
-from coreax.score_matching import KernelDensityMatching
+from coreax.kernel import LinearKernel, PCIMQKernel, SteinKernel
+from coreax.score_matching import KernelDensityMatching, convert_stein_kernel
 
 
 class SimpleNetwork(nn.Module):
@@ -259,7 +262,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
     """
 
     def setUp(self):
-        self.random_key = random.key(0)
+        self.random_key = jr.key(0)
 
     def test_analytic_objective_orthogonal(self) -> None:
         r"""
@@ -291,7 +294,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=True
+            self.random_key, random_generator=jr.rademacher, use_analytic=True
         )
 
         # Evaluate the analytic objective function
@@ -345,7 +348,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=True
+            self.random_key, random_generator=jr.rademacher, use_analytic=True
         )
 
         # Evaluate the analytic objective function
@@ -407,7 +410,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the non-analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=False
+            self.random_key, random_generator=jr.rademacher, use_analytic=False
         )
 
         # Evaluate the analytic objective function
@@ -452,7 +455,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object - with the non-analytic objective
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=False
+            self.random_key, random_generator=jr.rademacher, use_analytic=False
         )
 
         # Evaluate the analytic objective function
@@ -493,7 +496,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=True
+            self.random_key, random_generator=jr.rademacher, use_analytic=True
         )
 
         # Determine the expected output - using the analytic objective function tested
@@ -555,7 +558,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=False
+            self.random_key, random_generator=jr.rademacher, use_analytic=False
         )
 
         # Determine the expected output
@@ -598,7 +601,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=random.rademacher, use_analytic=True
+            self.random_key, random_generator=jr.rademacher, use_analytic=True
         )
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
@@ -615,12 +618,12 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         # Define a simple linear model that we can compute the gradients for by hand
         score_network = SimpleNetwork(2, 2)
-        score_key, state_key = random.split(self.random_key)
+        score_key, state_key = jr.split(self.random_key)
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             use_analytic=True,
         )
 
@@ -689,10 +692,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             use_analytic=True,
         )
 
@@ -725,10 +728,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(data_stacked)
 
         # Define a sliced score matching object
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             use_analytic=True,
         )
 
@@ -772,10 +775,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             use_analytic=True,
             num_epochs=50,
         )
@@ -832,10 +835,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         true_score_result = true_score(x_stacked)
 
         # Define a sliced score matching object
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             use_analytic=True,
             num_epochs=50,
         )
@@ -860,10 +863,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_random_vectors set to 0. This
         # should get capped to a minimum of 1
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_random_vectors=0,
             num_epochs=1,
             num_noise_models=1,
@@ -872,10 +875,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_random_vectors set to -4. This
         # should get capped to a minimum of 1
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_random_vectors=-4,
             num_epochs=1,
             num_noise_models=1,
@@ -884,10 +887,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_random_vectors set to a float.
         # This should give rise to an error when indexing arrays with a float.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_random_vectors=1.0,  # pyright:ignore
             num_epochs=1,
             num_noise_models=1,
@@ -913,10 +916,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_epochs set to 0. This should
         # just give a randomly initialised neural network.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=0,
         )
         learned_score = sliced_score_matcher.match(samples)
@@ -924,10 +927,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_epochs set to -5. This should
         # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=-5,
         )
         with self.assertRaises(ValueError) as error_raised:
@@ -941,10 +944,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define a sliced score matching object with num_epochs set to a float. This
         # should raise an error as we try to create an array with a non-integer
         # dimension.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
@@ -968,10 +971,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with batch_size set to 0. This should
         # just give a randomly initialised neural network that has not been updated.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             batch_size=0,
         )
@@ -980,10 +983,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with batch_size set to -5. This should
         # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             batch_size=-5,
         )
@@ -998,10 +1001,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define a sliced score matching object with batch_size set to a float. This
         # should raise an error as we try to create an array with a non-integer
         # dimension.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             batch_size=5.0,  # pyright:ignore
         )
@@ -1026,10 +1029,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_noise_models set to 0. This
         # should get capped at 1 to allow the code to function.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             num_noise_models=0,
         )
@@ -1037,10 +1040,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define a sliced score matching object with num_noise_models set to -5. This
         # should get capped at 1 to allow the code to function.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             num_noise_models=-5,
         )
@@ -1050,10 +1053,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # This should raise an error as we try to create an array with a non-integer
         # dimension - but hte internal JAX error is human-readable and the full text
         # highlights the variable in question.
-        score_key, _ = random.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
-            random_generator=random.rademacher,
+            random_generator=jr.rademacher,
             num_epochs=1,
             num_noise_models=5.0,  # pyright:ignore
         )
@@ -1067,3 +1070,42 @@ class TestSlicedScoreMatching(unittest.TestCase):
             "int32 and float32",
         )
         # cSpell:enable
+
+
+class TestConvertSteinKernel(unittest.TestCase):
+    """Tests related to the function convert_stein_kernel in score_matching.py."""
+
+    def test_convert_stein_kernel(self) -> None:
+        """Check handling of Stein kernels and standard kernels is consistent."""
+        random_key = jr.key(2_024)
+        dataset_shape = (100, 2)
+
+        dataset = jr.uniform(random_key, dataset_shape)
+        for score_matching in [None, MagicMock()]:
+            for kernel in [PCIMQKernel(), SteinKernel(LinearKernel(), MagicMock())]:
+                converted_kernel = convert_stein_kernel(dataset, kernel, score_matching)
+
+                if isinstance(kernel, SteinKernel):
+                    if score_matching is not None:
+                        expected_kernel = eqx.tree_at(
+                            lambda x: x.score_function,
+                            kernel,
+                            score_matching.match(dataset),
+                        )
+                    expected_kernel = kernel
+                else:
+                    if score_matching is None:
+                        length_scale = getattr(kernel, "length_scale", 1.0)
+                        score_matcher = KernelDensityMatching(length_scale)
+                    expected_kernel = SteinKernel(
+                        kernel, score_function=score_matcher.match(dataset)
+                    )
+                assert eqx.tree_equal(
+                    converted_kernel.base_kernel, expected_kernel.base_kernel
+                )
+                # Score function hashes won't match; resort to checking identical
+                # evaluation.
+                assert eqx.tree_equal(
+                    converted_kernel.score_function(dataset),
+                    expected_kernel.score_function(dataset),
+                )
