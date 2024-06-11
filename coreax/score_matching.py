@@ -43,11 +43,11 @@ from jax.typing import ArrayLike, DTypeLike
 from optax import adamw
 from tqdm import tqdm
 
-from coreax.kernel import Kernel, SquaredExponentialKernel
-from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
-from coreax.util import KeyArrayLike
+import coreax.kernel
+import coreax.networks
+import coreax.util
 
-_RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
+_RandomGenerator = Callable[[coreax.util.KeyArrayLike, Sequence[int], DTypeLike], Array]
 
 
 class ScoreMatching(ABC, eqx.Module):
@@ -110,7 +110,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
-    random_key: KeyArrayLike
+    random_key: coreax.util.KeyArrayLike
     random_generator: _RandomGenerator
     noise_conditioning: bool
     use_analytic: bool
@@ -119,7 +119,7 @@ class SlicedScoreMatching(ScoreMatching):
     num_epochs: int
     batch_size: int
     hidden_dims: Sequence
-    optimiser: _LearningRateOptimiser
+    optimiser: coreax.networks._LearningRateOptimiser
     num_noise_models: int
     sigma: float
     gamma: float
@@ -127,7 +127,7 @@ class SlicedScoreMatching(ScoreMatching):
     # pylint: disable=too-many-arguments
     def __init__(  # noqa: PLR0913, PLR0917
         self,
-        random_key: KeyArrayLike,
+        random_key: coreax.util.KeyArrayLike,
         random_generator: _RandomGenerator,
         noise_conditioning: bool = True,
         use_analytic: bool = False,
@@ -136,7 +136,7 @@ class SlicedScoreMatching(ScoreMatching):
         num_epochs: int = 10,
         batch_size: int = 64,
         hidden_dims: Sequence = (128, 128, 128),
-        optimiser: _LearningRateOptimiser = adamw,
+        optimiser: coreax.networks._LearningRateOptimiser = adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
@@ -394,7 +394,7 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = ScoreNetwork(self.hidden_dims, data_dimension)
+        score_network = coreax.networks.ScoreNetwork(self.hidden_dims, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
         # noise perturbations
@@ -420,7 +420,7 @@ class SlicedScoreMatching(ScoreMatching):
             raise
 
         # Define a training state
-        state = create_train_state(
+        state = coreax.networks.create_train_state(
             state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
 
@@ -480,13 +480,13 @@ class KernelDensityMatching(ScoreMatching):
         estimate
     """
 
-    kernel: Kernel
+    kernel: coreax.kernel.Kernel
 
     def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
-        self.kernel = SquaredExponentialKernel(
+        self.kernel = coreax.kernel.SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
