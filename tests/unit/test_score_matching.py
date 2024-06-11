@@ -21,10 +21,11 @@ approaches used produce the expected results on simple examples.
 import unittest
 from collections.abc import Callable
 
+import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 from flax import linen as nn
-from jax import random, vjp
+from jax import Array, random, vjp
 from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
@@ -54,32 +55,6 @@ class TestKernelDensityMatching(unittest.TestCase):
     Tests related to the class in ``score_matching.py``.
     """
 
-    def test_tree_flatten(self) -> None:
-        """
-        Test the pytree flattens as expected.
-        """
-        # Setup a matching object
-        kernel_density_matcher = coreax.score_matching.KernelDensityMatching(
-            length_scale=0.25
-        )
-
-        # Flatten the pytree
-        output_children, output_aux_data = kernel_density_matcher.tree_flatten()
-
-        # Verify outputs are as expected
-        self.assertEqual(len(output_children), 0)
-
-        # We expect the kernel to be a SquaredExponentialKernel with output scale
-        # defined such that it's a normalised (Gaussian) kernel
-        self.assertListEqual(list(output_aux_data.keys()), ["kernel"])
-        self.assertIsInstance(
-            output_aux_data["kernel"], coreax.kernel.SquaredExponentialKernel
-        )
-        self.assertEqual(output_aux_data["kernel"].length_scale, 0.25)
-        self.assertEqual(
-            output_aux_data["kernel"].output_scale, 1.0 / (np.sqrt(2 * np.pi) * 0.25)
-        )
-
     def test_univariate_gaussian_score(self) -> None:
         """
         Test a simple univariate Gaussian with a known score function.
@@ -87,7 +62,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
@@ -95,7 +70,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             return -(x_ - mu) / std_dev**2
 
         # Define data
-        x = np.linspace(-2, 2).reshape(-1, 1)
+        x = jnp.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
@@ -127,7 +102,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define data and select a specific single point to test
         test_index = 20
-        x = np.linspace(-2, 2).reshape(-1, 1)
+        x = jnp.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x[test_index, 0])
 
         # Define a kernel density matching object
@@ -152,16 +127,16 @@ class TestKernelDensityMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
-        def true_score(x_: ArrayLike) -> ArrayLike:
-            return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
+        def true_score(x_: Array) -> ArrayLike:
+            return jnp.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
-        x, y = np.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
-        data_stacked = np.vstack([x.ravel(), y.ravel()]).T
+        x, y = jnp.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
+        data_stacked = jnp.vstack([x.ravel(), y.ravel()]).T
         true_score_result = true_score(data_stacked)
 
         # Define a kernel density matching object
@@ -186,7 +161,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_data_points = 1000
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         comp = generator.binomial(1, p, size=num_data_points)
         samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
@@ -206,7 +181,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             return e_grad(log_pdf)(x_)
 
         # Define data
-        x = np.linspace(-5, 5).reshape(-1, 1)
+        x = jnp.linspace(-5, 5).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a kernel density matching object
@@ -230,7 +205,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         # higher than dimension=2)
         dimension = 2
         k = 10
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(0)
         mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
@@ -262,8 +237,8 @@ class TestKernelDensityMatching(unittest.TestCase):
             return e_grad(log_pdf)(x_)
 
         # Define data
-        coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
-        x_stacked = np.vstack([c.ravel() for c in coords]).T
+        coords = jnp.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
+        x_stacked = jnp.vstack([c.ravel() for c in coords]).T
         true_score_result = true_score(x_stacked)
 
         # Define a kernel density matching object
@@ -384,7 +359,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         self.assertAlmostEqual(output, expected_output_analytic, places=3)
 
         # Mutate the objective, and check that the result changes
-        sliced_score_matcher.use_analytic = False
+        sliced_score_matcher = eqx.tree_at(
+            lambda x: x.use_analytic, sliced_score_matcher, False
+        )
 
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
@@ -537,7 +514,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Call the loss element with a different objective function, and check that the
         # JIT compilation recognises this change
-        sliced_score_matcher.use_analytic = False
+        sliced_score_matcher = eqx.tree_at(
+            lambda x: x.use_analytic, sliced_score_matcher, False
+        )
 
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
@@ -660,13 +639,13 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=unsubscriptable-object
 
         # Define input data
-        x = np.array([2.0, 7.0])
-        v = np.ones((1, 2), dtype=float)
+        x = jnp.array([2.0, 7.0])
+        v = jnp.ones((1, 2), dtype=float)
         s = weights @ x.T + bias
 
         # Reformat for the vector mapped input to loss
-        x_to_vector_map = np.array([x])
-        v_to_vector_map = np.ones((1, 1, 2), dtype=float)
+        x_to_vector_map = jnp.array([x])
+        v_to_vector_map = jnp.ones((1, 1, 2), dtype=float)
 
         # Compute these gradients by hand
         grad_weights = jnp.outer(v, v) + jnp.outer(s, x)
@@ -698,15 +677,15 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
-        def true_score(x_: ArrayLike) -> ArrayLike:
+        def true_score(x_: Array) -> Array:
             return -(x_ - mu) / std_dev**2
 
         # Define data
-        x = np.linspace(-2, 2).reshape(-1, 1)
+        x = jnp.linspace(-2, 2).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
@@ -733,16 +712,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
 
-        def true_score(x_: ArrayLike) -> ArrayLike:
-            return np.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
+        def true_score(x_: Array) -> Array:
+            return jnp.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
-        x, y = np.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
-        data_stacked = np.vstack([x.ravel(), y.ravel()]).T
+        x, y = jnp.meshgrid(np.linspace(-2, 2), np.linspace(-2, 2))
+        data_stacked = jnp.vstack([x.ravel(), y.ravel()]).T
         true_score_result = true_score(data_stacked)
 
         # Define a sliced score matching object
@@ -769,7 +748,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_data_points = 1000
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         comp = generator.binomial(1, p, size=num_data_points)
         samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
@@ -816,7 +795,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # higher than dimension=2)
         dimension = 2
         k = 10
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(0)
         mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
@@ -875,7 +854,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define example data
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
@@ -909,7 +888,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
             random_generator=random.rademacher,
-            num_random_vectors=1.0,
+            num_random_vectors=1.0,  # pyright:ignore
             num_epochs=1,
             num_noise_models=1,
         )
@@ -928,7 +907,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define example data
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
@@ -966,7 +945,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key,
             random_generator=random.rademacher,
-            num_epochs=5.0,
+            num_epochs=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
             sliced_score_matcher.match(samples)
@@ -983,7 +962,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define example data
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
@@ -1024,7 +1003,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=random.rademacher,
             num_epochs=1,
-            batch_size=5.0,
+            batch_size=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
             sliced_score_matcher.match(samples)
@@ -1041,7 +1020,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Define example data
         mu = 0.0
         std_dev = 1.0
-        num_data_points = 500
+        num_data_points = 250
         generator = np.random.default_rng(1_989)
         samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
@@ -1076,7 +1055,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=random.rademacher,
             num_epochs=1,
-            num_noise_models=5.0,
+            num_noise_models=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
             sliced_score_matcher.match(samples)

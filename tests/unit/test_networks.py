@@ -142,7 +142,8 @@ class TestTrainState(unittest.TestCase):
         Test create_train_state with a float valued output dimension.
         """
         score_network = coreax.networks.ScoreNetwork(
-            self.hidden_dimensions, 1.0 * self.data_dimension
+            self.hidden_dimensions,
+            1.0 * self.data_dimension,  # pyright:ignore
         )
 
         # Create a train state with this network - we expect optax to catch the invalid
@@ -152,7 +153,7 @@ class TestTrainState(unittest.TestCase):
                 random_key=self.state_key,
                 module=score_network,
                 learning_rate=self.learning_rate,
-                data_dimension=1.0 * self.data_dimension,
+                data_dimension=1.0 * self.data_dimension,  # pyright:ignore
                 optimiser=self.optimiser,
             )
 
@@ -169,7 +170,7 @@ class TestTrainState(unittest.TestCase):
         ):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
-                module=score_network,
+                module=score_network,  # pyright:ignore
                 learning_rate=self.learning_rate,
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,
