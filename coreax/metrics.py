@@ -32,13 +32,13 @@ import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
 
-from coreax.data import Data
-from coreax.kernel import Kernel
+import coreax.data
+import coreax.kernel
+import coreax.util
 from coreax.score_matching import ScoreMatching
 from coreax.solvers.coresubset import _convert_stein_kernel
-from coreax.util import apply_negative_precision_threshold, tree_leaves_repeat
 
-_Data = TypeVar("_Data", bound=Data)
+_Data = TypeVar("_Data", bound=coreax.data.Data)
 
 
 class Metric(eqx.Module, Generic[_Data]):
@@ -84,7 +84,7 @@ class MMD(Metric[_Data]):
         are rounded to zero (accommodates precision loss)
     """
 
-    kernel: Kernel
+    kernel: coreax.kernel.Kernel
     precision_threshold: float = 1e-12
 
     def compute(
@@ -121,14 +121,14 @@ class MMD(Metric[_Data]):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         del kwargs
-        _block_size = tree_leaves_repeat(block_size, 2)
+        _block_size = coreax.util.tree_leaves_repeat(block_size, 2)
         bs_xx, bs_xy, _, bs_yy = tuple(product(_block_size, repeat=len(_block_size)))
         # Variable rename allows for nicer automatic formatting
         x, y = reference_data, comparison_data
         kernel_xx_mean = self.kernel.compute_mean(x, x, block_size=bs_xx, unroll=unroll)
         kernel_yy_mean = self.kernel.compute_mean(y, y, block_size=bs_yy, unroll=unroll)
         kernel_xy_mean = self.kernel.compute_mean(x, y, block_size=bs_xy, unroll=unroll)
-        squared_mmd_threshold_applied = apply_negative_precision_threshold(
+        squared_mmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             kernel_xx_mean + kernel_yy_mean - 2 * kernel_xy_mean,
             self.precision_threshold,
         )
@@ -175,7 +175,7 @@ class KSD(Metric[_Data]):
         are rounded to zero (accommodates precision loss)
     """
 
-    kernel: Kernel
+    kernel: coreax.kernel.Kernel
     score_matching: Optional[ScoreMatching] = None
     precision_threshold: float = 1e-12
 
@@ -261,7 +261,7 @@ class KSD(Metric[_Data]):
 
             laplace_correction = _laplace_positive(y.data)
 
-        squared_ksd_threshold_applied = apply_negative_precision_threshold(
+        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             squared_ksd + laplace_correction - entropic_regularisation,
             self.precision_threshold,
         )
