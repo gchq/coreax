@@ -16,6 +16,7 @@ elementwise
 forall
 GCHQ
 Gramian
+gramians
 infty
 kbar
 kdtree
