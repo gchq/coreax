@@ -23,9 +23,10 @@ from typing import Literal, NamedTuple
 
 import jax.numpy as jnp
 import jax.random as jr
+import jax.scipy as jsp
 import jax.tree_util as jtu
 import pytest
-from jax import Array
+from jax import Array, jacfwd
 
 import coreax.metrics
 from coreax.data import Data
@@ -35,6 +36,7 @@ from coreax.kernel import (
     PCIMQKernel,
     SquaredExponentialKernel,
 )
+from coreax.score_matching import convert_stein_kernel
 
 
 class _MetricProblem(NamedTuple):
@@ -218,89 +220,91 @@ class TestMMD:
         assert output == pytest.approx(expected_mmd, abs=1e-6)
 
 
-# class TestKSD:
-#     """
-#     Tests related to the kernel Stein discrepancy (KSD) class in metrics.py.
-#     """
+class TestKSD:
+    """
+    Tests related to the kernel Stein discrepancy (KSD) class in metrics.py.
+    """
 
-#     @pytest.fixture
-#     def problem(self) -> _MetricProblem:
-#         """Generate an example problem for testing KSD."""
-#         dimension = 2
-#         num_points = 1000, 1000
-#         keys = tuple(jr.split(jr.key(0), 2))
+    @pytest.fixture
+    def problem(self) -> _MetricProblem:
+        """Generate an example problem for testing KSD."""
+        dimension = 2
+        num_points = 100, 100
+        keys = tuple(jr.split(jr.key(0), 2))
 
-#         def _generate_data(_num_points: int, _key: Array) -> Data:
-#             point_key, weight_key = jr.split(_key, 2)
-#             points = jr.uniform(point_key, (_num_points, dimension))
-#             weights = jr.uniform(weight_key, (_num_points,))
-#             return Data(points, weights)
+        def _generate_data(_num_points: int, _key: Array) -> Data:
+            point_key, weight_key = jr.split(_key, 2)
+            points = jr.uniform(point_key, (_num_points, dimension))
+            weights = jr.uniform(weight_key, (_num_points,))
+            return Data(points, weights)
 
-#         reference_data, comparison_data = jtu.tree_map(_generate_data, num_points,
-#  keys)
-#         return _MetricProblem(reference_data, comparison_data)
+        reference_data, comparison_data = jtu.tree_map(_generate_data, num_points, keys)
+        return _MetricProblem(reference_data, comparison_data)
 
-#     @pytest.mark.parametrize(
-#         "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
-#     )
-#     def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
-#         """Check KSD of a dataset with itself is approximately zero."""
-#         x = problem.reference_data
-#         metric = coreax.metrics.KSD(kernel)
-#         assert metric.compute(x, x) == pytest.approx(0.0)
+    @pytest.mark.parametrize(
+        "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
+        """Check KSD of a dataset with itself is approximately zero."""
+        x = problem.reference_data
+        metric = coreax.metrics.KSD(kernel)
+        assert metric.compute(
+            x, x, laplace_correct=False, regularise=False
+        ) == pytest.approx(0.0)
 
-#     @pytest.mark.parametrize(
-#         "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
-#     )
-#     def test_ksd_random_data(
-#         self,
-#         problem: _MetricProblem,
-#         mode: Literal["unweighted", "weighted", "laplace-corrected", "regularised"],
-#     ):
-#         r"""
-#         Test KSD computed from randomly generated test data agrees with method result.
+    @pytest.mark.parametrize(
+        "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
+    )
+    def test_ksd_random_data(
+        self,
+        problem: _MetricProblem,
+        mode: Literal["unweighted", "weighted", "laplace-corrected", "regularised"],
+    ):
+        r"""
+        Test KSD computed from randomly generated test data agrees with method result.
 
-#         - "unweighted" parameterization checks that if the 'reference_data' and the
-#             'comparison_data' have the default 'None' weights, that the computed KSD
-#               is
-#             given by the means of the unweighted kernel matrices.
-#         - "weighted" parameterization checks that for arbitrarily weighted data, the
-#             computed MMD is given by the weighted average of the kernel matrices.
-#         """
-#         x, y = problem
-#         base_kernel = SquaredExponentialKernel()
-#         kernel = convert_stein_kernel(x.data, base_kernel, None)
+        - "unweighted" parameterization checks that if the 'reference_data' and the
+            'comparison_data' have the default 'None' weights, that the computed KSD
+              is
+            given by the means of the unweighted kernel matrices.
+        - "weighted" parameterization checks that for arbitrarily weighted data, the
+            computed MMD is given by the weighted average of the kernel matrices.
+        """
+        x, y = problem
 
-#         metric = coreax.metrics.KSD(kernel=kernel)
-#         # Compute each term in the KSD formula to obtain an expected MMD.
-#         kernel_mm = kernel.compute_mean(y.data, y.data)
-#         if mode == "weighted":
-#             weights_mm = y.weights[..., None] * y.weights[None, ...]
-#             expected_ksd = jnp.sqrt(jnp.average(kernel_mm, weights=weights_mm))
-#             output = metric.compute(x, y)
-#         elif mode == "unweighted":
-#             expected_ksd = jnp.sqrt(jnp.mean(kernel_mm))
-#             output = metric.compute(Data(x.data), Data(y.data))
-#         elif mode == "laplace-corrected":
+        base_kernel = SquaredExponentialKernel()
+        kernel = convert_stein_kernel(x.data, base_kernel, None)
+        metric = coreax.metrics.KSD(kernel=kernel, score_matching=None)
 
-#             @vmap
-#             def _laplace_positive(x_: Array) -> Array:
-#                 r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
-#                 hessian = jacfwd(kernel.score_function)(x_)
-#                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()
-
-#             laplace_correction = _laplace_positive(y.data)
-#             expected_ksd = jnp.sqrt(jnp.mean(kernel_mm)) + laplace_correction
-#             output = metric.compute(Data(x.data), Data(y.data), laplace_correct=True)
-#         elif mode == "regularised":
-#             kde = jsp.stats.gaussian_kde(
-#                 x.data.T, weights=x.weights, bw_method=base_kernel.length_scale
-#             )
-#             # Evaluate entropic regularisation term with data from Q
-#             entropic_regularisation = 1.0 * kde.logpdf(y.data.T).sum()
-#             expected_ksd = jnp.sqrt(jnp.mean(kernel_mm)) + entropic_regularisation
-#             output = metric.compute(Data(x.data), Data(y.data), regularisation=1.0)
-#         else:
-#             raise ValueError("Invalid mode parameterization")
-#         # Compute the KSD using the metric object
-#         assert output == pytest.approx(expected_ksd, abs=1e-6)
+        # Compute each term in the KSD formula to obtain an expected KSD.
+        kernel_mm = kernel.compute(y.data, y.data)
+        if mode == "weighted":
+            weights_mm = y.weights[..., None] * y.weights[None, ...]
+            expected_ksd = jnp.average(kernel_mm, weights=weights_mm)
+            output = metric.compute(x, y, laplace_correct=False, regularise=False)
+        elif mode == "unweighted":
+            expected_ksd = jnp.mean(kernel_mm)
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=False, regularise=False
+            )
+        elif mode == "laplace-corrected":
+            laplace_correction = 0
+            for i in range(len(y)):
+                laplace_correction += jnp.clip(
+                    jnp.diag(jacfwd(kernel.score_function)(y.data[i, :])), min=0.0
+                ).sum()
+            expected_ksd = jnp.mean(kernel_mm) + laplace_correction
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=True, regularise=False
+            )
+        elif mode == "regularised":
+            kde = jsp.stats.gaussian_kde(x.data.T, bw_method=base_kernel.length_scale)
+            entropic_regularisation = kde.logpdf(y.data.T).sum() / len(y)
+            expected_ksd = jnp.mean(kernel_mm) - entropic_regularisation
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=False, regularise=True
+            )
+        else:
+            raise ValueError("Invalid mode parameterization")
+        # Compute the KSD using the metric object
+        assert output == pytest.approx(expected_ksd, abs=1e-6, rel=1e-3)

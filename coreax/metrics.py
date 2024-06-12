@@ -165,7 +165,8 @@ class KSD(Metric[_Data]):
         It is instead a divergence, which is a kind of statistical distance that differs
         from a metric in a few ways. In particular, they are not symmetric. i.e.
         :math:`KSD_{\lambda}(\mathbb{P}, \mathbb{Q})
-        \neq KSD_{\lambda}(\mathbb{Q}, \mathbb{P})`.
+        \neq KSD_{\lambda}(\mathbb{Q}, \mathbb{P})`, and they generalise the concept
+        of squared distance and so do not satisfy the triangle inequality.
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
@@ -191,7 +192,7 @@ class KSD(Metric[_Data]):
         comparison_data: _Data,
         *,
         laplace_correct: bool = False,
-        regularisation: float = 0.0,
+        regularise: bool = False,
         block_size: Optional[int] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,
@@ -215,11 +216,9 @@ class KSD(Metric[_Data]):
             data sampled from :math:`\mathbb{Q}`
         :param laplace_correct: Boolean that enforces Laplace correction, see Section
             3.1 of :cite:`benard2023kernel`.
-        :param regularisation: Regularisation parameter, denoted :math:`lambda`
-            above, which controls the strength of the entropic regularisation. If
-            :data:`None`, defaults to value suggested in :cite:`benard2023kernel`.
-            :math:`\lambda = frac{1}{m}. Negative values are converted to positive
-            values.
+        :param regularise: Boolean that enforces entropic regularisation. :data:`True`,
+            uses value suggested in :cite:`benard2023kernel`.
+            :math:`\lambda = frac{1}{m}.
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
             sets `block_size`:math:`=n` effectively disabling the block accumulation; an
             integer value ``B`` sets `block_size`:math:`=B``, it is often sensible to
@@ -231,11 +230,11 @@ class KSD(Metric[_Data]):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         del kwargs
-        # Train Stein kernel with data from P (no way to use weights here)
+        # Train Stein kernel with data from P (weights not used here)
         x, w_x = jtu.tree_leaves(reference_data)
         kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
 
-        # Variable rename allows for nicer automatic formatting, make sure we pass 'y'
+        # Variable rename allows for nicer automatic formatting. Make sure we pass 'y'
         # as an instance of Data class to apply weights to mean computation.
         bs = block_size
         y = comparison_data
@@ -245,11 +244,10 @@ class KSD(Metric[_Data]):
         entropic_regularisation = 0.0
 
         # Estimate entropic regularisation term (if regularisation strength is non-zero)
-        if regularisation != 0:
-            if regularisation is None:
-                # Use regularisation parameter suggested in :cite:`benard2023kernel`
-                regularisation = 1 / len(y)
-            # Train logpdf with data from P, noticing we cannot guarantee that
+        if regularise:
+            # Use regularisation parameter suggested in :cite:`benard2023kernel`
+            regularisation = 1 / len(y)
+            # Train weighted kde with data from P, noticing we cannot guarantee that
             # kernel.base_kernel has a 'length_scale' attribute
             bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
             kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
@@ -265,10 +263,6 @@ class KSD(Metric[_Data]):
                 hessian = jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()
 
-            laplace_correction = _laplace_positive(y.data)
+            laplace_correction = _laplace_positive(y.data).sum()
 
-        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
-            squared_ksd + laplace_correction - entropic_regularisation,
-            self.precision_threshold,
-        )
-        return jnp.sqrt(squared_ksd_threshold_applied)
+        return squared_ksd + laplace_correction - entropic_regularisation
