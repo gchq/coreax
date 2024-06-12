@@ -29,7 +29,7 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 from pathlib import Path
-from typing import Union
+from typing import Optional
 
 import equinox as eqx
 import imageio
@@ -57,7 +57,7 @@ from coreax.solvers import KernelHerding, MapReduce, RandomSample
 # pylint: disable=duplicate-code
 def main(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
-    out_path: Union[Path, None] = None,
+    out_path: Optional[Path] = None,
 ) -> tuple[float, float]:
     """
     Run the 'pounce' example for video sampling with score matching.

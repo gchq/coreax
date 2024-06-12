@@ -21,16 +21,14 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
@@ -274,7 +272,7 @@ def invert_regularised_array(
     array: Array,
     regularisation_parameter: float,
     identity: Array,
-    rcond: float | None = None,
+    rcond: Optional[float] = None,
 ) -> Array:
     """
     Regularise an array and then invert it using a least-squares solver.
@@ -309,11 +307,39 @@ def invert_regularised_array(
     )[0]
 
 
+def sample_batch_indices(
+    random_key: KeyArrayLike,
+    max_index: int,
+    batch_size: int,
+    num_batches: int,
+) -> Array:
+    """
+    Sample an array of indices of size `num_batches` x `batch_size`.
+
+    Each row (batch) of the sampled array will contain unique elements.
+
+    :param random_key: Key for random number generation
+    :param max_index: Largest index we wish to sample
+    :param batch_size: Size of the batch we wish to sample
+    :param num_batches: Number of batches to sample
+
+    :return: Array of batch indices of size `num_batches` x `batch_size`
+    """
+    if max_index < batch_size:
+        raise ValueError("'max_index' must be greater than or equal to 'batch_size'")
+    if batch_size < 0.0:
+        raise ValueError("'batch_size' must be non-negative")
+
+    batch_keys = jr.split(random_key, num_batches)
+    batch_permutation = vmap(jr.permutation, in_axes=(0, None))
+    return batch_permutation(batch_keys, max_index)[:, :batch_size]
+
+
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
-    fn_kwargs: dict | None = None,
-    jit_kwargs: dict | None = None,
+    fn_kwargs: Optional[dict] = None,
+    jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.
