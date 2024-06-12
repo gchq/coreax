@@ -22,8 +22,8 @@ matrix.
 
 Coreset algorithms which use the regularised inverse of large kernel matrices can become
 prohibitively expensive as the data size increases. To reduce this computational cost,
-the regularised inverse of arrays can be approximated, depending on the acceptable
-levels of error.
+this regularised inverse can be approximated by various methods, depending on the
+acceptable levels of error.
 
 The :class:`RegularisedInverseApproximator` in this module provides the functionality
 required to approximate the regularised inverse of matrices. Furthermore, this class
@@ -64,7 +64,7 @@ from coreax.util import KeyArrayLike
 
 class RegularisedInverseApproximator(eqx.Module):
     """
-    Base class or methods which approximate the regularised inverse of an array.
+    Base class for methods which approximate the regularised inverse of an array.
 
     Computing the regularised inverse of large arrays can become prohibitively expensive
     as size increases. To reduce this computational cost, this quantity can be
