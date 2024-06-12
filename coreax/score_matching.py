@@ -44,11 +44,11 @@ from jax.typing import ArrayLike, DTypeLike
 from optax import adamw
 from tqdm import tqdm
 
-import coreax.kernel
-import coreax.networks
-import coreax.util
+from coreax.kernel import Kernel, SquaredExponentialKernel, SteinKernel
+from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
+from coreax.util import KeyArrayLike
 
-_RandomGenerator = Callable[[coreax.util.KeyArrayLike, Sequence[int], DTypeLike], Array]
+_RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
 
 
 class ScoreMatching(ABC, eqx.Module):
@@ -111,7 +111,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param gamma: Geometric progression ratio. Defaults to 0.95.
     """
 
-    random_key: coreax.util.KeyArrayLike
+    random_key: KeyArrayLike
     random_generator: _RandomGenerator
     noise_conditioning: bool
     use_analytic: bool
@@ -120,7 +120,7 @@ class SlicedScoreMatching(ScoreMatching):
     num_epochs: int
     batch_size: int
     hidden_dims: Sequence
-    optimiser: coreax.networks._LearningRateOptimiser
+    optimiser: _LearningRateOptimiser
     num_noise_models: int
     sigma: float
     gamma: float
@@ -128,7 +128,7 @@ class SlicedScoreMatching(ScoreMatching):
     # pylint: disable=too-many-arguments
     def __init__(  # noqa: PLR0913, PLR0917
         self,
-        random_key: coreax.util.KeyArrayLike,
+        random_key: KeyArrayLike,
         random_generator: _RandomGenerator,
         noise_conditioning: bool = True,
         use_analytic: bool = False,
@@ -137,7 +137,7 @@ class SlicedScoreMatching(ScoreMatching):
         num_epochs: int = 10,
         batch_size: int = 64,
         hidden_dims: Sequence = (128, 128, 128),
-        optimiser: coreax.networks._LearningRateOptimiser = adamw,
+        optimiser: _LearningRateOptimiser = adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
@@ -391,7 +391,7 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
-        score_network = coreax.networks.ScoreNetwork(self.hidden_dims, data_dimension)
+        score_network = ScoreNetwork(self.hidden_dims, data_dimension)
 
         # Define what a training step consists of - dependent on if we want to include
         # noise perturbations
@@ -417,7 +417,7 @@ class SlicedScoreMatching(ScoreMatching):
             raise
 
         # Define a training state
-        state = coreax.networks.create_train_state(
+        state = create_train_state(
             state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
 
@@ -477,13 +477,13 @@ class KernelDensityMatching(ScoreMatching):
         estimate
     """
 
-    kernel: coreax.kernel.Kernel
+    kernel: Kernel
 
     def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
         # Define a normalised Gaussian kernel (which is a special cases of the squared
         # exponential kernel) to construct the kernel density estimate
-        self.kernel = coreax.kernel.SquaredExponentialKernel(
+        self.kernel = SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (np.sqrt(2 * np.pi) * length_scale),
         )
@@ -542,9 +542,9 @@ class KernelDensityMatching(ScoreMatching):
 
 def convert_stein_kernel(
     x: ArrayLike,
-    kernel: coreax.kernel.Kernel,
+    kernel: Kernel,
     score_matching: Union[ScoreMatching, None],
-) -> coreax.kernel.SteinKernel:
+) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernel.SteinKernel`.
 
@@ -561,7 +561,7 @@ def convert_stein_kernel(
        function is used.
     :return: The (potentially) converted/updated :class:`~coreax.kernel.SteinKernel`.
     """
-    if isinstance(kernel, coreax.kernel.SteinKernel):
+    if isinstance(kernel, SteinKernel):
         if score_matching is not None:
             _kernel = eqx.tree_at(
                 lambda x: x.score_function, kernel, score_matching.match(x)
@@ -571,7 +571,5 @@ def convert_stein_kernel(
         if score_matching is None:
             length_scale = getattr(kernel, "length_scale", 1.0)
             score_matching = KernelDensityMatching(length_scale)
-        _kernel = coreax.kernel.SteinKernel(
-            kernel, score_function=score_matching.match(x)
-        )
+        _kernel = SteinKernel(kernel, score_function=score_matching.match(x))
     return _kernel
