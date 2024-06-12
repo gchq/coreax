@@ -98,7 +98,7 @@ class SupervisedData(Data):
         sets the weights to the ones vector (implies a scalar weight of one);
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
+    supervision: Shaped[Array, " n *p"]
 
     def __init__(
         self,
