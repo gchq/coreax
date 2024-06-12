@@ -96,9 +96,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Setup univariate Gaussian
         mu = 0.0
         std_dev = 1.0
-        num_points = 500
+        num_data_points = 250
         np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_points, 1))
+        samples = np.random.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
             return -(x_ - mu) / std_dev**2
@@ -263,6 +263,13 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def setUp(self):
         self.random_key = jr.key(0)
+        self.mu = 0.0
+        self.std_dev = 1.0
+        self.num_data_points = 250
+        generator = np.random.default_rng(1_989)
+        self.samples = generator.normal(
+            self.mu, self.std_dev, size=(self.num_data_points, 1)
+        )
 
     def test_analytic_objective_orthogonal(self) -> None:
         r"""
@@ -677,15 +684,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         Test a simple univariate Gaussian with a known score function.
         """
-        # Setup univariate Gaussian
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: Array) -> Array:
-            return -(x_ - mu) / std_dev**2
+            return -(x_ - self.mu) / self.std_dev**2
 
         # Define data
         x = jnp.linspace(-2, 2).reshape(-1, 1)
@@ -700,7 +701,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         )
 
         # Extract the score function
-        learned_score = sliced_score_matcher.match(samples)
+        learned_score = sliced_score_matcher.match(self.samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -850,17 +851,22 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
+    def test_sliced_score_matching_no_noise_conditioning(self):
+        """
+        Test  SlicedScoreMatching does not raise an error with no 'noise_conditioning'.
+        """
+        # Define a sliced score matching object with num_random_vectors set to 0. This
+        # should get capped to a minimum of 1
+        score_key, _ = jr.split(self.random_key)
+        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
+            score_key, random_generator=jr.rademacher, noise_conditioning=False
+        )
+        sliced_score_matcher.match(self.samples)
+
     def test_sliced_score_matching_unexpected_num_random_vectors(self):
         """
         Test how SlicedScoreMatching handles unexpected inputs for num_random_vectors.
         """
-        # Define example data
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
-
         # Define a sliced score matching object with num_random_vectors set to 0. This
         # should get capped to a minimum of 1
         score_key, _ = jr.split(self.random_key)
@@ -896,7 +902,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             num_noise_models=1,
         )
         with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -907,13 +913,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         Test how SlicedScoreMatching handles unexpected inputs for num_epochs.
         """
-        # Define example data
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
-
         # Define a sliced score matching object with num_epochs set to 0. This should
         # just give a randomly initialised neural network.
         score_key, _ = jr.split(self.random_key)
@@ -922,8 +921,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
             random_generator=jr.rademacher,
             num_epochs=0,
         )
-        learned_score = sliced_score_matcher.match(samples)
-        self.assertEqual(len(learned_score(samples)), num_data_points)
+        learned_score = sliced_score_matcher.match(self.samples)
+        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
 
         # Define a sliced score matching object with num_epochs set to -5. This should
         # raise an error as we try to create an array with a negative dimension.
@@ -934,7 +933,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             num_epochs=-5,
         )
         with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -951,7 +950,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             num_epochs=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -962,13 +961,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         Test how SlicedScoreMatching handles unexpected inputs for batch_size.
         """
-        # Define example data
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
-
         # Define a sliced score matching object with batch_size set to 0. This should
         # just give a randomly initialised neural network that has not been updated.
         score_key, _ = jr.split(self.random_key)
@@ -978,8 +970,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
             num_epochs=1,
             batch_size=0,
         )
-        learned_score = sliced_score_matcher.match(samples)
-        self.assertEqual(len(learned_score(samples)), num_data_points)
+        learned_score = sliced_score_matcher.match(self.samples)
+        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
 
         # Define a sliced score matching object with batch_size set to -5. This should
         # raise an error as we try to create an array with a negative dimension.
@@ -991,7 +983,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             batch_size=-5,
         )
         with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -1009,7 +1001,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             batch_size=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         self.assertEqual(
             error_raised.exception.args[0],
@@ -1020,13 +1012,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         Test how SlicedScoreMatching handles unexpected inputs for num_noise_models.
         """
-        # Define example data
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
-
         # Define a sliced score matching object with num_noise_models set to 0. This
         # should get capped at 1 to allow the code to function.
         score_key, _ = jr.split(self.random_key)
@@ -1061,7 +1046,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             num_noise_models=5.0,  # pyright:ignore
         )
         with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(samples)
+            sliced_score_matcher.match(self.samples)
 
         # cSpell:disable
         self.assertEqual(
@@ -1101,7 +1086,7 @@ class TestConvertSteinKernel(unittest.TestCase):
                         )
                     else:
                         score_function = score_matching.match(dataset)
-                    expected_kernel = SteinKernel(kernel, score_function=score_function)
+                    expected_kernel = SteinKernel(kernel, score_function)
                 assert eqx.tree_equal(
                     converted_kernel.base_kernel, expected_kernel.base_kernel
                 )
