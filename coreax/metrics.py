@@ -217,11 +217,8 @@ class CMMD(Metric):
         """
         del kwargs
         # Extract features and responses from reference and comparison datasets
-        x1 = reference_data.data
-        y1 = reference_data.supervision
-        x2 = comparison_data.data
-        y2 = comparison_data.supervision
-
+        x1, y1 = reference_data.data, reference_data.supervision
+        x2, y2 = comparison_data.data, comparison_data.supervision
         # Compute feature kernel gramians
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
