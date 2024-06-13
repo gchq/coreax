@@ -33,7 +33,13 @@ from coreax.inverses import (
     RandomisedEigendecompositionApproximator,
     RegularisedInverseApproximator,
 )
-from coreax.kernel import Kernel, LaplacianKernel, PCIMQKernel, SquaredExponentialKernel
+from coreax.kernel import (
+    Kernel,
+    LaplacianKernel,
+    LinearKernel,
+    PCIMQKernel,
+    SquaredExponentialKernel,
+)
 from coreax.metrics import CMMD, MMD
 
 
@@ -231,9 +237,9 @@ class TestCMMD:
     @pytest.fixture
     def problem(self) -> _SupervisedMetricProblem:
         """Generate an example problem for testing CMMD."""
-        feature_dimension = 2
+        feature_dimension = 1
         response_dimension = 1
-        num_points = 1000, 1000
+        num_points = 500, 500
         keys = tuple(jr.split(jr.key(0), 2))
 
         def _generate_data(_num_points: int, _key: Array) -> Data:
@@ -250,7 +256,7 @@ class TestCMMD:
         return _SupervisedMetricProblem(reference_data, comparison_data)
 
     @pytest.mark.parametrize(
-        "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+        "kernel", [SquaredExponentialKernel(), LinearKernel(), PCIMQKernel()]
     )
     def test_cmmd_compare_same_data(
         self, problem: _SupervisedMetricProblem, kernel: Kernel
@@ -450,6 +456,8 @@ class TestCMMD:
             @ inverse_feature_gramian_2
             @ kernel.compute(x2, x1)
         )
+
+        # Compute CMMD
         expected_cmmd = jnp.sqrt(
             jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
         )

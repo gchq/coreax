@@ -245,23 +245,23 @@ class CMMD(Metric[_SupervisedData]):
             inverse_feature_gramian_1
             @ self.response_kernel.compute(y1, y1)
             @ inverse_feature_gramian_1
-            * feature_gramian_1
-        ).sum()
+            @ feature_gramian_1
+        )
         term_2 = (
             inverse_feature_gramian_2
             @ self.response_kernel.compute(y2, y2)
             @ inverse_feature_gramian_2
-            * feature_gramian_2
-        ).sum()
+            @ feature_gramian_2
+        )
         term_3 = (
             inverse_feature_gramian_1
             @ self.response_kernel.compute(y1, y2)
             @ inverse_feature_gramian_2
-            * self.feature_kernel.compute(x2, x1)
-        ).sum()
+            @ self.feature_kernel.compute(x2, x1)
+        )
 
         # Compute CMMD
-        squared_cmmd = term_1 + term_2 - 2 * term_3
+        squared_cmmd = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
         squared_cmmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             squared_cmmd,
             self.precision_threshold,

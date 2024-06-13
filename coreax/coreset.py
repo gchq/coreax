@@ -150,7 +150,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
         """
         return Coresubset(jtu.tree_map(jnp.flip, self.nodes), self.pre_coreset_data)
 
-    def permute(self, random_key: KeyArrayLike) -> "Coresubset":
+    def permute(self, random_key: KeyArrayLike) -> Self:
         """
         Return the coresubset with the order of its coreset indices permuted.
 
