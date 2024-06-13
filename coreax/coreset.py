@@ -4,14 +4,11 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
-import jax.random as jr
-import jax.tree_util as jtu
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
 from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
-from coreax.util import KeyArrayLike
 from coreax.weights import WeightsOptimiser
 
 if TYPE_CHECKING:
@@ -141,25 +138,5 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     def unweighted_indices(self) -> Shaped[Array, " n"]:
         """Unweighted Coresubset indices - attribute access helper."""
         return jnp.squeeze(self.nodes.data)
-
-    def reverse(self) -> "Coresubset":
-        """
-        Return the coresubset with the order of its coreset indices reversed.
-
-        Convenience method for changing the order of coreset index refinement.
-        """
-        return Coresubset(jtu.tree_map(jnp.flip, self.nodes), self.pre_coreset_data)
-
-    def permute(self, random_key: KeyArrayLike) -> Self:
-        """
-        Return the coresubset with the order of its coreset indices permuted.
-
-        Convenience method for changing the order of coreset index refinement.
-        """
-
-        def permute(x: Array) -> Array:
-            return jr.permutation(random_key, x)
-
-        return Coresubset(jtu.tree_map(permute, self.nodes), self.pre_coreset_data)
 
     # pylint: enable=no-member

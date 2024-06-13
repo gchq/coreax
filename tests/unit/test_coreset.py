@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import equinox as eqx
 import jax.numpy as jnp
-import jax.random as jr
 import pytest
 
 from coreax.coreset import Coreset, Coresubset
@@ -85,18 +84,3 @@ class TestCoresubset:
         coresubset = Coresubset(NODES, PRE_CORESET_DATA)
         expected_indices = NODES.data.squeeze()
         assert eqx.tree_equal(expected_indices, coresubset.unweighted_indices)
-
-    def test_reverse(self):
-        """Test the coresubset 'unweighted_indices' is reversed by 'reverse' method."""
-        coresubset = Coresubset(NODES, PRE_CORESET_DATA)
-        expected_indices = jnp.flip(NODES.data.squeeze())
-        assert eqx.tree_equal(expected_indices, coresubset.reverse().unweighted_indices)
-
-    def test_permute(self):
-        """Test the coresubset 'unweighted_indices' is permuted by 'permuted' method."""
-        random_key = jr.key(2_024)
-        coresubset = Coresubset(NODES, PRE_CORESET_DATA)
-        expected_indices = jr.permutation(random_key, NODES.data.squeeze())
-        assert eqx.tree_equal(
-            expected_indices, coresubset.permute(random_key).unweighted_indices
-        )
