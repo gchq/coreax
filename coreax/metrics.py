@@ -37,7 +37,6 @@ from coreax.data import Data, SupervisedData
 from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 
 _Data = TypeVar("_Data", bound=Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
 class Metric(eqx.Module, Generic[_Data]):
@@ -57,7 +56,7 @@ class Metric(eqx.Module, Generic[_Data]):
         """
 
 
-class MMD(Metric[_Data]):
+class MMD(Metric[Data]):
     r"""
     Definition and calculation of the (weighted) maximum mean discrepancy metric.
 
@@ -134,7 +133,7 @@ class MMD(Metric[_Data]):
         return jnp.sqrt(squared_mmd_threshold_applied)
 
 
-class CMMD(Metric[_SupervisedData]):
+class CMMD(Metric[SupervisedData]):
     r"""
     Definition and calculation of the conditional maximum mean discrepancy metric.
 
