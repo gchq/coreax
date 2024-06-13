@@ -31,13 +31,13 @@ import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
 
-import coreax.data
 import coreax.kernel
 import coreax.util
+from coreax.data import Data, SupervisedData
 from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 
-_Data = TypeVar("_Data", bound=coreax.data.Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=coreax.data.SupervisedData)
+_Data = TypeVar("_Data", bound=Data)
+_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
 class Metric(eqx.Module, Generic[_Data]):
@@ -88,8 +88,8 @@ class MMD(Metric[_Data]):
 
     def compute(
         self,
-        reference_data: _Data,
-        comparison_data: _Data,
+        reference_data: Data,
+        comparison_data: Data,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -134,7 +134,7 @@ class MMD(Metric[_Data]):
         return jnp.sqrt(squared_mmd_threshold_applied)
 
 
-class CMMD(Metric):
+class CMMD(Metric[_SupervisedData]):
     r"""
     Definition and calculation of the conditional maximum mean discrepancy metric.
 
@@ -179,8 +179,8 @@ class CMMD(Metric):
 
     def compute(
         self,
-        reference_data: _SupervisedData,
-        comparison_data: _SupervisedData,
+        reference_data: SupervisedData,
+        comparison_data: SupervisedData,
         **kwargs,
     ) -> Array:
         r"""
@@ -240,28 +240,28 @@ class CMMD(Metric):
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )
 
-        # Compute each term in the CMMD
+        # # Compute each term in the CMMD
         term_1 = (
             inverse_feature_gramian_1
             @ self.response_kernel.compute(y1, y1)
             @ inverse_feature_gramian_1
-            @ feature_gramian_1
-        )
+            * feature_gramian_1
+        ).sum()
         term_2 = (
             inverse_feature_gramian_2
             @ self.response_kernel.compute(y2, y2)
             @ inverse_feature_gramian_2
-            @ feature_gramian_2
-        )
+            * feature_gramian_2
+        ).sum()
         term_3 = (
             inverse_feature_gramian_1
             @ self.response_kernel.compute(y1, y2)
             @ inverse_feature_gramian_2
-            @ self.feature_kernel.compute(x2, x1)
-        )
+            * self.feature_kernel.compute(x2, x1)
+        ).sum()
 
         # Compute CMMD
-        squared_cmmd = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
+        squared_cmmd = term_1 + term_2 - 2 * term_3
         squared_cmmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             squared_cmmd,
             self.precision_threshold,

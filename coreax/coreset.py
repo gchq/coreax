@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
+import jax.tree_util as jtu
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
@@ -124,8 +125,8 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     @property
     def coreset(self) -> Data:
         """Materialise the coresubset from the indices and original data."""
+        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
         if isinstance(self.pre_coreset_data, SupervisedData):
-            coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
             coreset_supervision = self.pre_coreset_data.supervision[
                 self.unweighted_indices
             ]
@@ -134,7 +135,6 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
                 supervision=coreset_supervision,
                 weights=self.nodes.weights,
             )
-        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
         return Data(data=coreset_data, weights=self.nodes.weights)
 
     @property
@@ -148,9 +148,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
 
         Convenience method for changing the order of coreset index refinement.
         """
-        return Coresubset(
-            Data(jnp.flip(self.unweighted_indices)), self.pre_coreset_data
-        )
+        return Coresubset(jtu.tree_map(jnp.flip, self.nodes), self.pre_coreset_data)
 
     def permute(self, random_key: KeyArrayLike) -> "Coresubset":
         """
@@ -158,9 +156,10 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
 
         Convenience method for changing the order of coreset index refinement.
         """
-        return Coresubset(
-            Data(jr.permutation(random_key, self.unweighted_indices)),
-            self.pre_coreset_data,
-        )
+
+        def permute(x: Array) -> Array:
+            return jr.permutation(random_key, x)
+
+        return Coresubset(jtu.tree_map(permute, self.nodes), self.pre_coreset_data)
 
     # pylint: enable=no-member
