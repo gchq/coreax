@@ -158,6 +158,7 @@ nitpick_ignore = [
     ("py:class", "coreax.solvers.composite._Coreset"),
     ("py:class", "coreax.solvers.composite._Data"),
     ("py:class", "coreax.solvers.composite._State"),
+    ("py:class", "coreax.solvers.coresubset.GreedyCMMDState"),
     ("py:class", "Array"),
     ("py:class", "jaxtyping.Shaped"),
     ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
