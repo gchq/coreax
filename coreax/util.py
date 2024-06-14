@@ -266,45 +266,6 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
     return sol.primal
 
 
-def invert_regularised_array(
-    array: Array,
-    regularisation_parameter: float,
-    identity: Array,
-    rcond: Optional[float] = None,
-) -> Array:
-    """
-    Regularise an array and then invert it using a least-squares solver.
-
-    .. note::
-        The function is designed to invert square block arrays where only the top-left
-        block contains non-zero elements. We return a block array, the same size as the
-        input array, where each block has only zero elements except for the top-left
-        block, which is the inverse of the non-zero input block. The most efficient way
-        to compute this in JAX requires the 'identity' array to be a matrix of zeros
-        except for ones on the diagonal up to the size of the non-zero block.
-
-    :param array: Array to be inverted
-    :param regularisation_parameter: Regularisation parameter for stable inversion of
-        array, negative values will be converted to positive
-    :param identity: Block "identity" matrix
-    :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes
-        of rank determination, singular values are treated as zero if they are smaller
-        than rcond times the largest singular value of 'array'. The default value of
-        None will use the machine precision multiplied by the largest dimension of the
-        array. An alternate value of -1 will use machine precision.
-    :return: Inverse of regularised array
-    """
-    if rcond is not None:
-        if rcond < 0 and rcond != -1:
-            raise ValueError("'rcond' must be non-negative, except for value of -1")
-    if array.shape != identity.shape:
-        raise ValueError("Leading dimensions of 'array' and 'identity' must match")
-
-    return jnp.linalg.lstsq(
-        array + abs(regularisation_parameter) * identity, identity, rcond=rcond
-    )[0]
-
-
 def sample_batch_indices(
     random_key: KeyArrayLike,
     max_index: int,

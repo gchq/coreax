@@ -20,7 +20,6 @@ expected results on simple examples.
 import time
 from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
-from typing import Union
 from unittest.mock import Mock
 
 import equinox as eqx
@@ -35,7 +34,6 @@ from coreax.util import (
     SilentTQDM,
     apply_negative_precision_threshold,
     difference,
-    invert_regularised_array,
     jit_test,
     pairwise,
     pairwise_tuple,
@@ -214,43 +212,6 @@ class TestUtil:
                 kernel_mm=np.array([1, 2, 3]),
                 gramian_row_mean="invalid_gramian_row_mean",  # pyright: ignore
             )
-
-    @pytest.mark.parametrize(
-        "array, identity, rcond",
-        [(jnp.eye((2)), jnp.eye((2)), -10), (jnp.eye((2)), jnp.eye((3)), None)],
-        ids=["rcond_negative_not_negative_one", "unequal_array_dimensions"],
-    )
-    def test_invert_regularised_invalid_inputs(
-        self,
-        array: Array,
-        identity: Array,
-        rcond: Union[int, float, None],
-    ) -> None:
-        """Test that `invert_regularised_array` handles invalid inputs."""
-        with pytest.raises(ValueError):
-            invert_regularised_array(
-                array=array,
-                regularisation_parameter=1e-6,
-                identity=identity,
-                rcond=rcond,
-            )
-
-    def test_invert_regularised_array(self) -> None:
-        """Test invert_regularised_array produces the expected inverse."""
-        regularisation_parameter = 1
-        identity = jnp.eye(2)
-        rcond = -1
-        array = jnp.ones((2, 2))
-
-        expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
-
-        output = invert_regularised_array(
-            array,
-            regularisation_parameter,
-            identity=identity,
-            rcond=rcond,
-        )
-        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     @pytest.mark.parametrize(
         "max_index, batch_size, num_batches",
