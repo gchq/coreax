@@ -92,8 +92,8 @@ class TestUtil:
         num_points = 10
         dimension = 3
         gen = np.random.default_rng(1_989)
-        data = gen.random((num_points, dimension))
-        supervision = gen.random((num_points, dimension))
+        data = jnp.array(gen.random((num_points, dimension)))
+        supervision = jnp.array(gen.random((num_points, dimension)))
         a = (data, supervision)
         b = (data[::-1], supervision[::-1])
 
