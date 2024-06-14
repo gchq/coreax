@@ -35,12 +35,9 @@ from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
 from coreax.kernel import (
     Kernel,
-    LinearKernel,
     PCIMQKernel,
     SquaredExponentialKernel,
-    SteinKernel,
 )
-from coreax.score_matching import KernelDensityMatching, ScoreMatching
 from coreax.solvers import (
     GreedyCMMD,
     KernelHerding,
@@ -55,12 +52,7 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.solvers.coresubset import (
-    GreedyCMMDState,
-    HerdingState,
-    RPCholeskyState,
-    _convert_stein_kernel,  # noqa: PLC2701 - deliberate import/test of private method
-)
+from coreax.solvers.coresubset import GreedyCMMDState, HerdingState, RPCholeskyState
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
@@ -439,37 +431,6 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
-
-    @pytest.mark.parametrize(
-        "kernel", (PCIMQKernel(), SteinKernel(LinearKernel(), MagicMock()))
-    )
-    @pytest.mark.parametrize("score_matching", (None, MagicMock()))
-    def test_convert_stein_kernel(
-        self, kernel: Kernel, score_matching: Union[ScoreMatching, None]
-    ) -> None:
-        """Check handling of Stein kernels and standard kernels is consistent."""
-        dataset = jr.uniform(self.random_key, self.shape)
-        converted_kernel = _convert_stein_kernel(dataset, kernel, score_matching)
-
-        if isinstance(kernel, SteinKernel):
-            if score_matching is not None:
-                expected_kernel = eqx.tree_at(
-                    lambda x: x.score_function, kernel, score_matching.match(dataset)
-                )
-            expected_kernel = kernel
-        else:
-            if score_matching is None:
-                length_scale = getattr(kernel, "length_scale", 1.0)
-                score_matching = KernelDensityMatching(length_scale)
-            expected_kernel = SteinKernel(
-                kernel, score_function=score_matching.match(dataset)
-            )
-        assert eqx.tree_equal(converted_kernel.base_kernel, expected_kernel.base_kernel)
-        # Score function hashes won't match; resort to checking identical evaluation.
-        assert eqx.tree_equal(
-            converted_kernel.score_function(dataset),
-            expected_kernel.score_function(dataset),
-        )
 
 
 class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):

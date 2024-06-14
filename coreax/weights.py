@@ -34,18 +34,19 @@ the dataset.
 from abc import ABC, abstractmethod
 from typing import Union
 
+import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import deprecated
 
-import coreax.kernel
-import coreax.util
 from coreax.data import Data
+from coreax.kernel import Kernel
+from coreax.util import solve_qp
 
 
 def _prepare_kernel_system(
-    kernel: coreax.kernel.Kernel,
+    kernel: Kernel,
     x: Union[ArrayLike, Data],
     y: Union[ArrayLike, Data],
     epsilon: float = 1e-10,
@@ -72,16 +73,14 @@ def _prepare_kernel_system(
     return kernel_yx, kernel_yy
 
 
-class WeightsOptimiser(ABC):
+class WeightsOptimiser(ABC, eqx.Module):
     """
     Base class for calculating weights.
 
     :param kernel: :class:`~coreax.kernel.Kernel` object
     """
 
-    def __init__(self, kernel: coreax.kernel.Kernel) -> None:
-        """Initialise a weights optimiser class."""
-        self.kernel = kernel
+    kernel: Kernel
 
     @abstractmethod
     def solve(self, x: Union[ArrayLike, Data], y: Union[ArrayLike, Data]) -> Array:
@@ -205,7 +204,7 @@ class MMDWeightsOptimiser(WeightsOptimiser):
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel, x, y, epsilon, block_size=block_size, unroll=unroll
         )
-        return coreax.util.solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
+        return solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
 
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
