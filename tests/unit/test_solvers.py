@@ -32,9 +32,10 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
+from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel
 from coreax.solvers import (
+    JointKernelHerding,
     KernelHerding,
     MapReduce,
     RandomSample,
@@ -354,6 +355,50 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
         solver = cast(KernelHerding, solver)
+        _, state = solver.reduce(dataset)
+        expected_state = HerdingState(solver.kernel.gramian_row_mean(dataset))
+        assert eqx.tree_equal(state, expected_state)
+
+
+class TestJointKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.JointKernelHerding`."""
+
+    additional_key = jr.key(0)
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        kernel = PCIMQKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            JointKernelHerding,
+            coreset_size=coreset_size,
+            feature_kernel=kernel,
+            response_kernel=kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _ReduceProblem:
+        if request.param == "random":
+            features = jr.uniform(self.random_key, self.shape)
+            responses = jr.uniform(self.additional_key, self.shape)
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _ReduceProblem(
+            SupervisedData(features, responses), solver, expected_coreset
+        )
+
+    def test_herding_state(self, reduce_problem: _ReduceProblem) -> None:
+        """Check that the cached herding state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(JointKernelHerding, solver)
         _, state = solver.reduce(dataset)
         expected_state = HerdingState(solver.kernel.gramian_row_mean(dataset))
         assert eqx.tree_equal(state, expected_state)

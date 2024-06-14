@@ -243,7 +243,7 @@ def _supervised_greedy_kernel_selection(
     :param coresubset: The initialisation
     :param selection_function: Greedy selection function/objective
     :param output_size: The size of the resultant coresubset
-    :param kernel: The kernel used to compute the penalty
+    :param kernel: The tensor-product kernel used to compute the penalty
     :param unique: If each index in the resulting coresubset should be unique
     :param block_size: Block size passed to :meth:`~coreax.kernel.Kernel.compute_mean`
     :param unroll: Unroll parameter passed to :meth:`~coreax.kernel.Kernel.compute_mean`
@@ -302,17 +302,19 @@ class JointKernelHerding(
     r"""
     Joint Kernel Herding - an explicitly sized coresubset refinement solver.
 
-    Solves the coresubset problem by taking a deterministic, iterative, and greedy
-    approach to minimizing the (weighted) Joint Maximum Mean Discrepancy (JMMD) between
-    the coresubset (the solution) and the problem dataset.
+    Given a supervised dataset consisting of pairs of features
+    :math:`x \in \mathbb{R}^d`and responses :math:`x \in \mathbb{R}^p` we solve the
+    coresubset problem by taking a deterministic, iterative, and greedy approach to
+    minimizing the (weighted) Joint Maximum Mean Discrepancy (JMMD) between the
+    coresubset (the solution) and the problem supervised dataset.
 
     Given one has selected :math:`T` data pairs for their compressed representation of
-    the original dataset, kernel herding selects the next pair using:
+    the original dataset, joint kernel herding selects the next pair using:
 
     .. math::
 
         (x, y)_{T+1} = \arg\max_{(x, y)} \left(
-            \mathbb{E}_{\mathbb{P}(X, Y)[k((x, y), (x', y'))] -
+            \mathbb{E}_{(x', y') \sim \mathbb{P}(X, Y)}[k((x, y), (x', y'))] -
             \frac{1}{T+1}\sum_{t=1}^T k((x, y), (x, y)_t) \right)
 
     where :math:`k` is the tensor-product kernel used, the expectation
@@ -339,6 +341,7 @@ class JointKernelHerding(
 
     def __init__(
         self,
+        coreset_size: int,
         feature_kernel: Kernel,
         response_kernel: Kernel,
         unique: bool = True,
@@ -346,6 +349,7 @@ class JointKernelHerding(
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ):
         """Initialise JointKernelHerding class and build tensor-product kernel."""
+        ExplicitSizeSolver.__init__(self, coreset_size)
         self.kernel = TensorProductKernel(
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
@@ -382,8 +386,8 @@ class JointKernelHerding(
         :return: A refined coresubset and relevant intermediate solver state information
         """
         if solver_state is None:
-            x, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
-            gramian_row_mean = self.kernel.gramian_row_mean(x, block_size=bs, unroll=un)
+            d, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
+            gramian_row_mean = self.kernel.gramian_row_mean(d, block_size=bs, unroll=un)
         else:
             gramian_row_mean = solver_state.gramian_row_mean
 
