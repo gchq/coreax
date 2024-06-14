@@ -31,13 +31,12 @@ import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
 
-import coreax.data
 import coreax.kernel
 import coreax.util
+from coreax.data import Data, SupervisedData
 from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 
-_Data = TypeVar("_Data", bound=coreax.data.Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=coreax.data.SupervisedData)
+_Data = TypeVar("_Data", bound=Data)
 
 
 class Metric(eqx.Module, Generic[_Data]):
@@ -57,7 +56,7 @@ class Metric(eqx.Module, Generic[_Data]):
         """
 
 
-class MMD(Metric[_Data]):
+class MMD(Metric[Data]):
     r"""
     Definition and calculation of the (weighted) maximum mean discrepancy metric.
 
@@ -88,8 +87,8 @@ class MMD(Metric[_Data]):
 
     def compute(
         self,
-        reference_data: _Data,
-        comparison_data: _Data,
+        reference_data: Data,
+        comparison_data: Data,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -134,7 +133,7 @@ class MMD(Metric[_Data]):
         return jnp.sqrt(squared_mmd_threshold_applied)
 
 
-class CMMD(Metric):
+class CMMD(Metric[SupervisedData]):
     r"""
     Definition and calculation of the conditional maximum mean discrepancy metric.
 
@@ -179,8 +178,8 @@ class CMMD(Metric):
 
     def compute(
         self,
-        reference_data: _SupervisedData,
-        comparison_data: _SupervisedData,
+        reference_data: SupervisedData,
+        comparison_data: SupervisedData,
         **kwargs,
     ) -> Array:
         r"""
@@ -217,11 +216,8 @@ class CMMD(Metric):
         """
         del kwargs
         # Extract features and responses from reference and comparison datasets
-        x1 = reference_data.data
-        y1 = reference_data.supervision
-        x2 = comparison_data.data
-        y2 = comparison_data.supervision
-
+        x1, y1 = reference_data.data, reference_data.supervision
+        x2, y2 = comparison_data.data, comparison_data.supervision
         # Compute feature kernel gramians
         feature_gramian_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
@@ -243,7 +239,7 @@ class CMMD(Metric):
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )
 
-        # Compute each term in the CMMD
+        # # Compute each term in the CMMD
         term_1 = (
             inverse_feature_gramian_1
             @ self.response_kernel.compute(y1, y1)

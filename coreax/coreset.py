@@ -4,13 +4,11 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
-import jax.random as jr
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
 from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
-from coreax.util import KeyArrayLike
 from coreax.weights import WeightsOptimiser
 
 if TYPE_CHECKING:
@@ -124,41 +122,19 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     @property
     def coreset(self) -> Data:
         """Materialise the coresubset from the indices and original data."""
+        data = self.pre_coreset_data.data[self.unweighted_indices]
         if isinstance(self.pre_coreset_data, SupervisedData):
-            data = self.pre_coreset_data.data[self.unweighted_indices]
             supervision = self.pre_coreset_data.supervision[self.unweighted_indices]
             return SupervisedData(
                 data=data,
                 supervision=supervision,
                 weights=self.nodes.weights,
             )
-        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
-        return Data(data=coreset_data, weights=self.nodes.weights)
+        return Data(data=data, weights=self.nodes.weights)
 
     @property
     def unweighted_indices(self) -> Shaped[Array, " n"]:
         """Unweighted Coresubset indices - attribute access helper."""
         return jnp.squeeze(self.nodes.data)
-
-    def reverse(self) -> "Coresubset":
-        """
-        Return the coresubset with the order of its coreset indices reversed.
-
-        Convenience method for changing the order of coreset index refinement.
-        """
-        return Coresubset(
-            Data(jnp.flip(self.unweighted_indices)), self.pre_coreset_data
-        )
-
-    def permute(self, random_key: KeyArrayLike) -> "Coresubset":
-        """
-        Return the coresubset with the order of its coreset indices permuted.
-
-        Convenience method for changing the order of coreset index refinement.
-        """
-        return Coresubset(
-            Data(jr.permutation(random_key, self.unweighted_indices)),
-            self.pre_coreset_data,
-        )
 
     # pylint: enable=no-member

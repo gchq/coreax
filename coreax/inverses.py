@@ -20,13 +20,13 @@ Given a matrix :math:`A\in\mathbb{R}^{n\times n}` and some regularisation parame
 :math:`(A + \lambda I_n)^{-1}` where :math:`I_n` is the :math:`n\times n` identity
 matrix.
 
-When a dataset is very large, methods which have to invert regularised kernel matrices
-evaluated on all of the data can become prohibitively expensive. To reduce this
-computational cost, such methods can instead be approximated (providing suitable
-approximation error can be achieved).
+Coreset algorithms which use the regularised inverse of large kernel matrices can become
+prohibitively expensive as the data size increases. To reduce this computational cost,
+this regularised inverse can be approximated by various methods, depending on the
+acceptable levels of error.
 
 The :class:`RegularisedInverseApproximator` in this module provides the functionality
-required to approximate the inverse of regularised matrices. Furthermore, this class
+required to approximate the regularised inverse of matrices. Furthermore, this class
 allows for "block-inversion" where given an invertible matrix :math:`B`, the block
 array
 
@@ -41,7 +41,7 @@ where only the top-left block contains non-zero elements can be "inverted" to gi
          \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix}.
 
 This functionality allows iterative coreset algorithms which require inverting growing
-arrays to have fully static array shapes and thus be JIT-compilable in JAX.
+arrays to have fully static array shapes and thus be JIT-compatible.
 
 To compute these "inverses" in JAX, we require the `identity` array
 passed in :meth:`~coreax.inverses.RegularisedInverseApproximator.approximate` to be a
@@ -64,12 +64,11 @@ from coreax.util import KeyArrayLike
 
 class RegularisedInverseApproximator(eqx.Module):
     """
-    Base class for approximation methods to invert regularised arrays.
+    Base class for methods which approximate the regularised inverse of an array.
 
-    When a dataset is very large, computing the regularised inverse of an array can be
-    very time-consuming. Instead, this property can be approximated by various methods.
-    :class:`RegularisedInverseApproximator` is the base class for implementing these
-    approximation methods.
+    Computing the regularised inverse of large arrays can become prohibitively expensive
+    as size increases. To reduce this computational cost, this quantity can be
+    approximated, depending on the acceptable levels of error.
 
     :param random_key: Key for random number generation
     """
@@ -84,7 +83,7 @@ class RegularisedInverseApproximator(eqx.Module):
         identity: Array,
     ) -> Array:
         r"""
-        Approximate the inverse of a regularised array.
+        Approximate the regularised inverse of an array.
 
         .. note::
             The function is designed to invert blocked arrays where only the
@@ -120,7 +119,7 @@ class RegularisedInverseApproximator(eqx.Module):
 
 class LeastSquareApproximator(RegularisedInverseApproximator):
     """
-    Approximate inverse of regularised array by solving a least-squares problem.
+    Approximate the regularised inverse of an array by solving a least-squares problem.
 
     Note that this approximator does not give time savings and instead acts as a
     default option useful for comparing other approximators to.
@@ -165,7 +164,7 @@ def randomised_eigendecomposition(
     r"""
     Approximate the eigendecomposition of Hermitian matrices.
 
-    Using Algorithm 4.4. and 5.3 from(:cite:`halko2009randomness` we approximate the
+    Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
     eigendecomposition of a matrix. The parameters `oversampling_parameter`
     and `power_iterations` present a trade-off between speed and approximation quality.
     See :cite:`halko2009randomness` for discussion on choosing sensible parameters, the
@@ -223,10 +222,11 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
     Approximate regularised inverse of a Hermitian array via random eigendecomposition.
 
-    When a dataset is very large, computing the regularised inverse of an array
-    can be very time-consuming. Instead, this property can be approximated by
-    various methods. :class:`RandomisedEigendecompositionApproximator` is a class that
-    does such an approximation using a randomised eigendecomposition.
+    Computing the regularised inverse of large arrays can become prohibitively expensive
+    as size increases. To reduce this computational cost, this quantity can be
+    approximated by various methods. :class:`RandomisedEigendecompositionApproximator`
+    is a class that does such an approximation using the randomised eigendecomposition
+    of the input array.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
     eigendecomposition of a matrix. The parameters `oversampling_parameter`
