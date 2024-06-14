@@ -28,7 +28,7 @@ from typing_extensions import override
 
 from coreax.coreset import Coresubset
 from coreax.data import Data, SupervisedData, as_data
-from coreax.kernel import Kernel
+from coreax.kernel import Kernel, TensorProductKernel
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 from coreax.solvers.base import (
     CoresubsetSolver,
@@ -36,7 +36,6 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.tensor_kernel import TensorProductKernel
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
@@ -304,26 +303,29 @@ class JointKernelHerding(
     Joint Kernel Herding - an explicitly sized coresubset refinement solver.
 
     Solves the coresubset problem by taking a deterministic, iterative, and greedy
-    approach to minimizing the (weighted) Maximum Mean Discrepancy (MMD) between the
-    coresubset (the solution) and the problem dataset.
+    approach to minimizing the (weighted) Joint Maximum Mean Discrepancy (JMMD) between
+    the coresubset (the solution) and the problem dataset.
 
-    Given one has selected :math:`T` data points for their compressed representation of
-    the original dataset, kernel herding selects the next point using Equation 8 of
-    :cite:`chen2012herding`:
+    Given one has selected :math:`T` data pairs for their compressed representation of
+    the original dataset, kernel herding selects the next pair using:
 
     .. math::
 
-        x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] -
-            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)
+        (x, y)_{T+1} = \arg\max_{(x, y)} \left(
+            \mathbb{E}_{\mathbb{P}(X, Y)[k((x, y), (x', y'))] -
+            \frac{1}{T+1}\sum_{t=1}^T k((x, y), (x, y)_t) \right)
 
-    where :math:`k` is the kernel used, the expectation :math:`\mathbb{E}` is taken over
-    the entire dataset, and the search is over the entire dataset. This can informally
-    be seen as a balance between using points at which the underlying density is high
-    (the first term) and exploration of distinct regions of the space (the second term).
+    where :math:`k` is the tensor-product kernel used, the expectation
+    :math:`\mathbb{E}` is taken over the entire dataset, and the search is over the
+    entire dataset. This can informally be seen as a balance between using points at
+    which the underlying joint density is high (the first term) and exploration of
+    distinct regions of the space (the second term).
 
     :param coreset_size: The desired size of the solved coreset
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: :class:`~coreax.kernel.TensorProductKernel` instance implementing a
+        tensor-product kernel function
+        :math:`k: (\mathbb{R}^d \times \mathbb{R}^p) \times
+        (\mathbb{R}^d \times \mathbb{R}^p) \rightarrow \mathbb{R}`
     :param unique: Boolean that ensures the resulting coresubset will only contain
         unique elements
     :param block_size: Block size passed to :meth:`~coreax.kernel.Kernel.compute_mean`

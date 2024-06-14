@@ -18,6 +18,7 @@ GCHQ
 Gramian
 gramians
 infty
+JMMD
 kbar
 kdtree
 kernelised
