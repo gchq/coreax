@@ -119,7 +119,7 @@ class SlicedScoreMatching(ScoreMatching):
     learning_rate: float
     num_epochs: int
     batch_size: int
-    hidden_dims: Sequence
+    hidden_dims: Sequence[int]
     optimiser: _LearningRateOptimiser
     num_noise_models: int
     sigma: float
@@ -136,7 +136,7 @@ class SlicedScoreMatching(ScoreMatching):
         learning_rate: float = 1e-3,
         num_epochs: int = 10,
         batch_size: int = 64,
-        hidden_dims: Sequence = (128, 128, 128),
+        hidden_dims: Sequence[int] = (128, 128, 128),
         optimiser: _LearningRateOptimiser = adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
@@ -566,7 +566,8 @@ def convert_stein_kernel(
             _kernel = eqx.tree_at(
                 lambda x: x.score_function, kernel, score_matching.match(x)
             )
-        _kernel = kernel
+        else:
+            _kernel = kernel
     else:
         if score_matching is None:
             length_scale = getattr(kernel, "length_scale", 1.0)
