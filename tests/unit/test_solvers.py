@@ -33,7 +33,7 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.kernel import Kernel, PCIMQKernel
+from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.solvers import (
     JointKernelHerding,
     KernelHerding,
@@ -368,7 +368,7 @@ class TestJointKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
-        kernel = PCIMQKernel()
+        kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
             JointKernelHerding,
