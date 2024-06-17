@@ -627,7 +627,7 @@ class GreedyCMMD(
         solver_state: Union[GreedyCMMDState, None] = None,
     ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
         """
-        Refine a coresubset with 'Greedy CMMD'.
+        Refine a coresubset with 'GreedyCMMD'.
 
         We first compute the various factors if they are not given in the
         'solver_state', and then iteratively swap points with the initial coreset,
