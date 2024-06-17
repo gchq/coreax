@@ -633,8 +633,7 @@ class ConditionalKernelHerding(
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information
         """
-        # Set 'inverse_approximator' to :class:`~LeastSquareApproximator` if data:`None`
-        # is passed.
+        # Handle default value of None
         if self.inverse_approximator is None:
             inverse_approximator = LeastSquareApproximator(self.random_key)
         else:
