@@ -22,8 +22,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-import pytest
-
 from examples.david_map_reduce_weighted import main as david_map_reduce_weighted_main
 
 # Integration tests are split across several files, to allow serial calls and avoid
@@ -32,12 +30,12 @@ from examples.david_map_reduce_weighted import main as david_map_reduce_weighted
 # pylint: disable=duplicate-code
 
 
-@pytest.mark.skip(reason="Issue with cv2 import breaks test collection")
 class TestDavid(unittest.TestCase):
     """
     Test end-to-end code run with an image example.
     """
 
+    @unittest.skip("Issue with cv2 import breaks test collection")
     def test_david_map_reduce_weighted(self) -> None:
         """
         Test david_map_reduce_weighted.py example.
