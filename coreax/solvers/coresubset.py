@@ -508,7 +508,7 @@ def _greedy_cmmd_loss(
         coresets
     :param feature_gramian: Feature kernel gramian
     :param response_gramian: Response kernel gramian
-    :param training_cme: CME evaluated at all possible pairs of data
+    :param training_cme: CME evaluated at all possible pairs of training data
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix

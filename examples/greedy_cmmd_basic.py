@@ -61,7 +61,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     print("Generating data...")
     # Generate features from normal distribution and produce response
     # with non-linear relationship to the features with normal errors.
-    num_data_points = 1_000
+    num_data_points = 500
     feature_sd = 1
     response_sd = 0.1
     random_seed = 2_024
@@ -82,8 +82,8 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     y = jnp.array(response_scaler.transform(y))
     supervised_data = SupervisedData(data=x, supervision=y)
 
-    # Request 100 coreset points
-    coreset_size = 100
+    # Request 50 coreset points
+    coreset_size = 50
 
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.

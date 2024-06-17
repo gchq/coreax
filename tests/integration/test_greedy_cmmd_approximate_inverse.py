@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for basic herding example.
+Integration test for GreedyCMMD example with approximate inversion.
 """
 
 import tempfile
@@ -33,7 +33,7 @@ from examples.greedy_cmmd_approximate_inverse import (
 
 class TestGreedyCMMDApproximateInverse(unittest.TestCase):
     """
-    Test end-to-end code run with a basic tabular data example.
+    Test end-to-end code run with a tabular data example with approximate inverses.
     """
 
     def test_greedy_cmmd_approximate_inverse(self) -> None:
@@ -48,7 +48,7 @@ class TestGreedyCMMDApproximateInverse(unittest.TestCase):
             patch("builtins.print"),
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # Run weighted herding example
+            # Run approximate GreedyCMMD example
             out_path = Path(tmp_dir) / "greedy_cmmd_approximate_inverse.png"
             greedy_cmmd_approximate_inverse_main(out_path=out_path)
 

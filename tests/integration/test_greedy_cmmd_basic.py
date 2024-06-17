@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for basic herding example.
+Integration test for basic GreedyCMMD example.
 """
 
 import tempfile
@@ -45,7 +45,7 @@ class TestGreedyCMMDBasic(unittest.TestCase):
             patch("builtins.print"),
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # Run weighted herding example
+            # Run basic GreedyCMMD example.
             out_path = Path(tmp_dir) / "greedy_cmmd_basic.png"
             greedy_cmmd_basic_main(out_path=out_path)
 
