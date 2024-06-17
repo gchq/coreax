@@ -53,6 +53,7 @@ Contents
    examples/pounce
    examples/pounce_map_reduce
    examples/david_map_reduce_weighted
+   examples/conditional_herding_basic
 
 .. toctree::
     :maxdepth: 2

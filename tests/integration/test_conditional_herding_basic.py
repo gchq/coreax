@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for basic GreedyCMMD example.
+Integration test for basic ConditionalKernelHerding example.
 """
 
 import tempfile
@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.greedy_cmmd_basic import main as greedy_cmmd_basic_main
+from examples.conditional_herding_basic import main as conditional_herding_basic_main
 
 # Integration tests are split across several files, to allow serial calls and avoid
 # sharing of JIT caches between tests. As a result, ignore the pylint warnings for
@@ -29,14 +29,14 @@ from examples.greedy_cmmd_basic import main as greedy_cmmd_basic_main
 # pylint: disable=duplicate-code
 
 
-class TestGreedyCMMDBasic(unittest.TestCase):
+class TestConditionalKernelHerdingBasic(unittest.TestCase):
     """
     Test end-to-end code run with a basic tabular data example.
     """
 
-    def test_greedy_cmmd_basic(self) -> None:
+    def test_conditional_herding_basic(self) -> None:
         """
-        Test greedy_cmmd_basic.py example.
+        Test conditional_herding_basic.py example.
 
         An end-to-end test to check greedy_cmmd_basic.py runs without error.
         """
@@ -45,9 +45,9 @@ class TestGreedyCMMDBasic(unittest.TestCase):
             patch("builtins.print"),
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # Run basic GreedyCMMD example.
-            out_path = Path(tmp_dir) / "greedy_cmmd_basic.png"
-            greedy_cmmd_basic_main(out_path=out_path)
+            # Run basic ConditionalKernelHerding example.
+            out_path = Path(tmp_dir) / "conditional_herding_basic.png"
+            conditional_herding_basic_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 

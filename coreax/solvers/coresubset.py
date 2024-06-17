@@ -71,13 +71,14 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
-class GreedyCMMDState(eqx.Module):
+class ConditionalKernelHerdingState(eqx.Module):
     """
-    Intermediate :class:`GreedyCMMD` solver state information.
+    Intermediate :class:`ConditionalKernelHerding` solver state information.
 
     :param feature_gramian: Cached feature kernel gramian
     :param response_gramian: Cached response kernel gramian
-    :param training_cme: Cached array of CME evaluated at all possible pairs of data
+    :param training_cme: Cached array of the  Conditional Mean Embedding evaluated at
+        all possible pairs of data.
     """
 
     feature_gramian: Array
@@ -488,22 +489,20 @@ class SteinThinning(
         return refined_coreset, solver_state
 
 
-def _greedy_cmmd_loss(
-    random_key: KeyArrayLike,
+def _conditional_herding_loss(
     candidate_coresets: Array,
     feature_gramian: Array,
     response_gramian: Array,
     training_cme: Array,
     regularisation_parameter: float,
     identity: Array,
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None,
+    inverse_approximator: RegularisedInverseApproximator,
 ) -> Array:
     """
     Given an array of candidate coreset indices, compute the CMMD loss for each.
 
-    Primarily intended for use with :class`GreedyCMMD.
+    Primarily intended for use with :class`ConditionalKernelHerding.
 
-    :param random_key: Key for random number generation
     :param candidate_coresets: Array of indices representing all possible "next"
         coresets
     :param feature_gramian: Feature kernel gramian
@@ -513,10 +512,9 @@ def _greedy_cmmd_loss(
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
     :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
-        :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
+        :class:`coreax.inverses.RegularisedInverseApproximator`
 
-    :return: GreedyCMMD loss for each candidate coreset
+    :return: ConditionalKernelHerding loss for each candidate coreset
     """
     # Extract all the possible "next" coreset arrays
     extract_indices = (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
@@ -525,15 +523,16 @@ def _greedy_cmmd_loss(
     coreset_cmes = training_cme[extract_indices]
 
     # Invert the coreset feature gramians
-    if inverse_approximator is None:
-        inverse_approximator = LeastSquareApproximator(random_key)
     inverse_coreset_feature_gramians = inverse_approximator.approximate_stack(
         coreset_feature_gramians,
         regularisation_parameter,
         identity,
     )
 
-    # Compute the loss function
+    # Compute the loss function. As the trace is a cyclic operation i.e. Tr(ABC) =
+    # Tr(CAB) = Tr(BCA), the order of the matrix multiplications is chosen to reduce
+    # numerical instability by avoiding taking a product of a matrix with its
+    # own regularised inverse.
     term_2s = jnp.trace(
         inverse_coreset_feature_gramians
         @ coreset_response_gramians
@@ -549,21 +548,21 @@ def _greedy_cmmd_loss(
 
 
 # pylint: disable=too-many-locals
-class GreedyCMMD(
-    RefinementSolver[_SupervisedData, GreedyCMMDState], ExplicitSizeSolver
+class ConditionalKernelHerding(
+    RefinementSolver[_SupervisedData, ConditionalKernelHerdingState], ExplicitSizeSolver
 ):
     r"""
-    Apply GreedyCMMD to a supervised dataset.
+    Apply ConditionalKernelHerding to a supervised dataset.
 
-    GreedyCMMD is a deterministic, iterative and greedy approach to determine this
-    compressed representation.
+    ConditionalKernelHerding is a deterministic, iterative and greedy approach to build
+    a coreset.
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
     of ``n`` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and one
     has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
     \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
-    dataset, GreedyCMMD selects the next point to minimise the conditional maximum mean
-    discrepancy (CMMD):
+    dataset, ConditionalKernelHerding selects the next point to minimise the conditional
+    maximum mean discrepancy (CMMD):
 
     .. math::
 
@@ -579,8 +578,8 @@ class GreedyCMMD(
     at each iteration.
 
     This class works with all children of :class:`~coreax.kernel.Kernel`. Note that
-    GreedyCMMD does not support non-uniform weights and will only return coresubsets
-    with uniform weights.
+    ConditionalKernelHerding does not support non-uniform weights and will only return
+    coresubsets with uniform weights.
 
     :param random_key: Key for random number generation
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
@@ -589,14 +588,15 @@ class GreedyCMMD(
     :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
         kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
         \mathbb{R}` on the response space
-    :param num_feature_dimensions: An integer representing the dimensionality of the
-        features :math:`x`
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         feature gram matrix
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
+    :param inverse_approximator: Instance of
+        :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
+        :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
     """
 
     random_key: KeyArrayLike
@@ -607,27 +607,22 @@ class GreedyCMMD(
     batch_size: Union[int, None] = None
     inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
-    def __post_init__(self):
-        """Set 'inverse_approximator' to LeastSquareApproximator if None is passed."""
-        if self.inverse_approximator is None:
-            self.inverse_approximator = LeastSquareApproximator(self.random_key)
-
     @override
     def reduce(
         self,
         dataset: _SupervisedData,
-        solver_state: Union[GreedyCMMDState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
+        solver_state: Union[ConditionalKernelHerdingState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], ConditionalKernelHerdingState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
-    def refine(
+    def refine(  # noqa: PLR0915
         self,
         coresubset: Coresubset[_SupervisedData],
-        solver_state: Union[GreedyCMMDState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyCMMDState]:
+        solver_state: Union[ConditionalKernelHerdingState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], ConditionalKernelHerdingState]:
         """
-        Refine a coresubset with 'GreedyCMMD'.
+        Refine a coresubset with 'ConditionalKernelHerding'.
 
         We first compute the various factors if they are not given in the
         'solver_state', and then iteratively swap points with the initial coreset,
@@ -638,6 +633,13 @@ class GreedyCMMD(
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information
         """
+        # Set 'inverse_approximator' to :class:`~LeastSquareApproximator` if data:`None`
+        # is passed.
+        if self.inverse_approximator is None:
+            inverse_approximator = LeastSquareApproximator(self.random_key)
+        else:
+            inverse_approximator = self.inverse_approximator
+
         # If the initialisation coresubset is too small, pad its nodes up to
         # 'output_size' with -1 valued indices. If it is too large, raise a warning and
         # clip off the indices at the end.
@@ -664,7 +666,7 @@ class GreedyCMMD(
             feature_gramian = self.feature_kernel.compute(x, x)
             response_gramian = self.response_kernel.compute(y, y)
 
-            inverse_feature_gramian = self.inverse_approximator.approximate(
+            inverse_feature_gramian = inverse_approximator.approximate(
                 array=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
                 identity=jnp.eye(num_data_pairs),
@@ -718,23 +720,24 @@ class GreedyCMMD(
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
         ) -> tuple[Array, Array, Array]:
-            r"""Execute main loop of GreedyCMMD."""
+            """Execute main loop of ConditionalKernelHerding."""
             coreset_indices, identity, candidate_coresets = val
 
             # Update the identity matrix to allow for sub-array inversion in the
             # case of reduction (no effect when refining)
             updated_identity = identity.at[i, i].set(1)
 
-            # Compute the loss (CMMD) corresponding to each candidate coreset
-            loss = _greedy_cmmd_loss(
-                self.random_key,
+            # Compute the loss corresponding to each candidate coreset. Note that we do
+            # not compute the first term of the CMMD as is an invariant quantity wrt
+            # the coreset.
+            loss = _conditional_herding_loss(
                 candidate_coresets,
                 feature_gramian,
                 response_gramian,
                 training_cme,
                 self.regularisation_parameter,
                 updated_identity,
-                self.inverse_approximator,
+                inverse_approximator,
             )
 
             # Find the optimal replacement coreset index, ensuring we don't pick an
@@ -778,7 +781,9 @@ class GreedyCMMD(
             ),
         )
 
-        return Coresubset(updated_coreset_indices, dataset), GreedyCMMDState(
+        return Coresubset(
+            updated_coreset_indices, dataset
+        ), ConditionalKernelHerdingState(
             feature_gramian, response_gramian, training_cme
         )
 

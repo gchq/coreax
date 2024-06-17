@@ -33,13 +33,17 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
+from coreax.inverses import (
+    LeastSquareApproximator,
+    RandomisedEigendecompositionApproximator,
+)
 from coreax.kernel import (
     Kernel,
     PCIMQKernel,
     SquaredExponentialKernel,
 )
 from coreax.solvers import (
-    GreedyCMMD,
+    ConditionalKernelHerding,
     KernelHerding,
     MapReduce,
     RandomSample,
@@ -52,7 +56,11 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.solvers.coresubset import GreedyCMMDState, HerdingState, RPCholeskyState
+from coreax.solvers.coresubset import (
+    ConditionalKernelHerdingState,
+    HerdingState,
+    RPCholeskyState,
+)
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
@@ -433,21 +441,22 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
 
 
-class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
-    """Test cases for :class:`coreax.solvers.coresubset.GreedyCMMD`."""
+class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.ConditionalKernelHerding`."""
+
+    feature_kernel = SquaredExponentialKernel()
+    response_kernel = SquaredExponentialKernel()
 
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
-        feature_kernel = SquaredExponentialKernel()
-        response_kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
-            GreedyCMMD,
+            ConditionalKernelHerding,
             random_key=self.random_key,
             coreset_size=coreset_size,
-            feature_kernel=feature_kernel,
-            response_kernel=response_kernel,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
         )
 
     @override
@@ -494,7 +503,7 @@ class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
         """
         dataset, solver, expected_coreset = reduce_problem
         indices_key, weights_key = jr.split(self.random_key)
-        solver = cast(GreedyCMMD, solver)
+        solver = cast(ConditionalKernelHerding, solver)
         coreset_size = min(len(dataset), solver.coreset_size)
         # We expect 'refine' to produce the same result as 'reduce' when the initial
         # coresubset has all its indices equal to negative one.
@@ -525,9 +534,9 @@ class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
 
     # pylint: disable=duplicate-code
     def test_greedy_cmmd_state(self, reduce_problem: _ReduceProblem) -> None:
-        """Check that the cached GreedyCMMD state is as expected."""
+        """Check that the cached ConditionalKernelHerding state is as expected."""
         dataset, solver, _ = reduce_problem
-        solver = cast(GreedyCMMD, solver)
+        solver = cast(ConditionalKernelHerding, solver)
         _, state = solver.reduce(dataset)
 
         x = dataset.data
@@ -537,7 +546,11 @@ class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
         feature_gramian = solver.feature_kernel.compute(x, x)
         response_gramian = solver.response_kernel.compute(y, y)
 
-        inverse_feature_gramian = solver.inverse_approximator.approximate(
+        if solver.inverse_approximator is None:
+            inverse_approximator = LeastSquareApproximator(self.random_key)
+        else:
+            inverse_approximator = solver.inverse_approximator
+        inverse_feature_gramian = inverse_approximator.approximate(
             array=feature_gramian,
             regularisation_parameter=solver.regularisation_parameter,
             identity=jnp.eye(num_data_pairs),
@@ -550,7 +563,7 @@ class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
         feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
         response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
 
-        expected_state = GreedyCMMDState(
+        expected_state = ConditionalKernelHerdingState(
             feature_gramian=feature_gramian,
             response_gramian=response_gramian,
             training_cme=training_cme,
@@ -558,6 +571,44 @@ class TestGreedyCMMD(RefinementSolverTest, ExplicitSizeSolverTest):
         assert eqx.tree_equal(state, expected_state)
 
     # pylint: enable=duplicate-code
+
+    def test_batching(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that batching produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            batch_size=2,
+        )
+        solver.reduce(dataset)
+
+    def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting 'unique' to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            unique=False,
+        )
+        solver.reduce(dataset)
+
+    def test_approximate_inverse(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that using an inverse approximator produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            inverse_approximator=RandomisedEigendecompositionApproximator(
+                self.random_key
+            ),
+        )
+        solver.reduce(dataset)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):

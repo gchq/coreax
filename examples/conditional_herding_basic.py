@@ -15,14 +15,14 @@
 """
 Example coreset generation using Gaussian features and a non-linear response.
 
-This example showcases how a coreset can be generated from a dataset containing ``n``
-pairs of features sampled from a Gaussian distribution with corresponding responses
-generated with a non-linear relationship to the features.
+This example showcases how a coreset can be generated from a supervised dataset
+containing ``n`` data pairs consisting of features sampled from a Gaussian distribution
+with corresponding responses generated with a non-linear relationship to the features.
 
-A coreset is generated using GreedyCMMD, with a Squared Exponential kernel for both the
-features and the response. This coreset is compared to a coreset generated via uniform
-random sampling. Coreset quality is measured using conditional maximum mean discrepancy
-(CMMD).
+A coreset is generated using ConditionalKernelHerding, with a Squared Exponential kernel
+for both the features and the response. This coreset is compared to a coreset generated
+via uniform random sampling. Coreset quality is measured using conditional maximum
+mean discrepancy (CMMD).
 """
 
 from pathlib import Path
@@ -37,7 +37,7 @@ from sklearn.preprocessing import StandardScaler
 
 from coreax import CMMD, SquaredExponentialKernel, SupervisedData
 from coreax.kernel import median_heuristic
-from coreax.solvers import GreedyCMMD, RandomSample
+from coreax.solvers import ConditionalKernelHerding, RandomSample
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
@@ -47,12 +47,13 @@ from coreax.solvers import GreedyCMMD, RandomSample
 # pylint: disable=duplicate-code
 def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     """
-    Run the basic GreedyCMMD on tabular data example.
+    Run the basic ConditionalKernelHerding on tabular data example.
 
-    Generate a set of features from a Gaussian distribution, generate response with a
-    non-linear relationship to the features and Gaussian errors. Generate a coreset via
-    GreedyCMMD. Compare results to coresets generated via uniform random sampling.
-    Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
+    Generate a set of features from a Gaussian distribution, generate the response with
+    a non-linear relationship to the features with Gaussian errors. Generate a coreset
+    via ConditionalKernelHerding. Compare results to coresets generated via uniform
+    random sampling. Coreset quality is measured using conditional maximum mean
+    discrepancy  (CMMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
@@ -96,11 +97,11 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     response_length_scale = median_heuristic(y[idx])
     response_kernel = SquaredExponentialKernel(length_scale=response_length_scale)
 
-    print("Computing GreedyCMMD coreset...")
-    # Compute a coreset using GreedyCMMD with squared exponential kernels
+    print("Computing ConditionalKernelHerding coreset...")
+    # Compute a coreset using ConditionalKernelHerding with squared exponential kernels
     regularisation_parameter = 1e-6
     cmmd_key, sample_key = random.split(random.key(random_seed), num=2)
-    cmmd_solver = GreedyCMMD(
+    cmmd_solver = ConditionalKernelHerding(
         coreset_size=coreset_size,
         random_key=cmmd_key,
         feature_kernel=feature_kernel,
@@ -127,7 +128,8 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         output_scale=1.0 / (response_length_scale * jnp.sqrt(2.0 * jnp.pi)),
     )
 
-    # Compute CMMD between the original data and the coreset generated via GreedyCMMD
+    # Compute CMMD between the original data and the coreset generated via
+    # ConditionalKernelHerding
     cmmd_metric = CMMD(
         feature_kernel=feature_cmmd_kernel,
         response_kernel=response_cmmd_kernel,
@@ -141,7 +143,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     # Print the CMMD values
     print(f"Random sampling coreset CMMD: {random_cmmd}")
-    print(f"GreedyCMMD coreset CMMD: {greedy_cmmd}")
+    print(f"ConditionalKernelHerding coreset CMMD: {greedy_cmmd}")
 
     # Produce some scatter plots (assume 1-dimensional features and response)
     plt.scatter(x[:, 0], y[:, 1], s=2.0, alpha=0.1)
@@ -152,7 +154,10 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         color="red",
     )
     plt.axis("off")
-    plt.title(f"GreedyCMMD, m={coreset_size}, " f"CMMD={round(float(greedy_cmmd), 6)}")
+    plt.title(
+        f"ConditionalKernelHerding, m={coreset_size}, "
+        f"CMMD={round(float(greedy_cmmd), 6)}"
+    )
     plt.show()
 
     plt.scatter(x[:, 0], y[:, 1], s=2.0, alpha=0.1)

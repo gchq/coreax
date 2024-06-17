@@ -21,7 +21,7 @@ semi-definite kernels to produce new positive semi-definite kernels.
  `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
 - Added capability to approximate regularised inverses of arrays `coreax.inverses.RegularisedInverseApproximator`
 - Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
-- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.GreedyCMMD`
+- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
 
 ### Fixed
 

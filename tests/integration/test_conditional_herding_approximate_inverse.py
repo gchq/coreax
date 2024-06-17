@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for GreedyCMMD example with approximate inversion.
+Integration test for ConditionalKernelHerding example with approximate inversion.
 """
 
 import tempfile
@@ -21,8 +21,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.greedy_cmmd_approximate_inverse import (
-    main as greedy_cmmd_approximate_inverse_main,
+from examples.conditional_herding_approximate_inverse import (
+    main as conditional_herding_approximate_inverse_main,
 )
 
 # Integration tests are split across several files, to allow serial calls and avoid
@@ -31,26 +31,26 @@ from examples.greedy_cmmd_approximate_inverse import (
 # pylint: disable=duplicate-code
 
 
-class TestGreedyCMMDApproximateInverse(unittest.TestCase):
+class TestConditionalKernelHerdingApproximateInverse(unittest.TestCase):
     """
     Test end-to-end code run with a tabular data example with approximate inverses.
     """
 
-    def test_greedy_cmmd_approximate_inverse(self) -> None:
+    def test_conditional_herding_approximate_inverse(self) -> None:
         """
-        Test greedy_cmmd_approximate_inverse.py example.
+        Test conditional_herding_approximate_inverse.py example.
 
-        An end-to-end test to check greedy_cmmd_approximate_inverse.py runs without
-        error.
+        An end-to-end test to check conditional_herding_approximate_inverse.py runs
+        without error.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
             patch("builtins.print"),
             patch("matplotlib.pyplot.show") as mock_show,
         ):
-            # Run approximate GreedyCMMD example
-            out_path = Path(tmp_dir) / "greedy_cmmd_approximate_inverse.png"
-            greedy_cmmd_approximate_inverse_main(out_path=out_path)
+            # Run approximate ConditionalKernelHerding example
+            out_path = Path(tmp_dir) / "conditional_herding_approximate_inverse.png"
+            conditional_herding_approximate_inverse_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 
