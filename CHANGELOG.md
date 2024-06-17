@@ -20,6 +20,10 @@ semi-definite kernels to produce new positive semi-definite kernels.
 - Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
  `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
 - Added capability to approximate regularised inverses of arrays `coreax.inverses.RegularisedInverseApproximator`
+- Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
+- Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
+- Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
+- Added coresubset algorithm targeting the joint density in `coreax.solvers.coresubset.JointKernelHerding`
 
 ### Fixed
 
