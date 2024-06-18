@@ -54,7 +54,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - Single requirements files covering all supported Python versions.
 - All references to `kernel_matrix_row_{sum,mean}` have been replaced with `Gramian row-mean`.
 - `coreax.networks.ScoreNetwork` now allows the user to specify number of hidden layers.
-- All classes now inherit from
+- Classes in `weights.py` and `score_matching.py` now inherit from `equinox.Module`.
 
 
 ### Removed
