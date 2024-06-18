@@ -31,8 +31,6 @@ from coreax.util import KeyArrayLike
 
 _LearningRateOptimiser = Callable[[float], GradientTransformation]
 
-_LearningRateOptimiser = Callable[[float], GradientTransformation]
-
 
 class ScoreNetwork(nn.Module):
     """
