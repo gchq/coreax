@@ -155,69 +155,6 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
             raise
 
 
-def randomised_eigendecomposition(
-    random_key: KeyArrayLike,
-    array: Array,
-    oversampling_parameter: int = 25,
-    power_iterations: int = 1,
-) -> tuple[Array, Array]:
-    r"""
-    Approximate the eigendecomposition of Hermitian matrices.
-
-    Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
-    eigendecomposition of a matrix. The parameters `oversampling_parameter`
-    and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness` for discussion on choosing sensible parameters, the
-    defaults chosen here are cautious.
-
-    Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
-    :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
-    :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
-    :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`A \approx U\Lambda U^T`.
-
-    :param random_key: Key for random number generation
-    :param array: Array to be decomposed
-    :param oversampling_parameter: Number of random columns to sample; the larger the
-        oversampling_parameter, the more accurate, but slower the method will be
-    :param power_iterations: Number of power iterations to do; the larger the
-        power_iterations, the more accurate, but slower the method will be
-    :return: Eigenvalues and eigenvectors that approximately decompose the target array
-    """
-    # Input handling
-    supported_array_shape = 2
-    if len(array.shape) != supported_array_shape:
-        raise ValueError("'array' must be two-dimensional")
-    if array.shape[0] != array.shape[1]:
-        raise ValueError("'array' must be square")
-    if (oversampling_parameter <= 0.0) or not isinstance(oversampling_parameter, int):
-        raise ValueError("'oversampling_parameter' must be a positive integer")
-    if (power_iterations <= 0.0) or not isinstance(power_iterations, int):
-        raise ValueError("'power_iterations' must be a positive integer")
-
-    standard_gaussian_draws = jr.normal(
-        random_key, shape=(array.shape[0], oversampling_parameter)
-    )
-
-    # QR decomposition to find orthonormal array with range approximating range of array
-    approximate_range = array @ standard_gaussian_draws
-    q, _ = jnp.linalg.qr(approximate_range)
-
-    # Power iterations for improved accuracy
-    for _ in range(power_iterations):
-        approximate_range_ = array.T @ q
-        q_, _ = jnp.linalg.qr(approximate_range_)
-        approximate_range = array @ q_
-        q, _ = jnp.linalg.qr(approximate_range)
-
-    # Form the low rank array, compute its exact eigendecomposition and ortho-normalise
-    # the eigenvectors.
-    array_approximation = q.T @ array @ q
-    approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
-    approximate_eigenvectors = q @ eigenvectors
-
-    return approximate_eigenvalues, approximate_eigenvectors
-
-
 class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
     Approximate regularised inverse of a Hermitian array via random eigendecomposition.
@@ -252,10 +189,66 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     rcond: Optional[float] = None
 
     def __check_init__(self):
-        """Validate rcond input."""
+        """Validate inputs."""
+        if (self.oversampling_parameter <= 0.0) or not isinstance(
+            self.oversampling_parameter, int
+        ):
+            raise ValueError("'oversampling_parameter' must be a positive integer")
+        if (self.power_iterations <= 0.0) or not isinstance(self.power_iterations, int):
+            raise ValueError("'power_iterations' must be a positive integer")
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
+
+    def randomised_eigendecomposition(self, array: Array) -> tuple[Array, Array]:
+        r"""
+        Approximate the eigendecomposition of Hermitian matrices.
+
+        Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
+        eigendecomposition of a matrix. The parameters `oversampling_parameter` and
+        `power_iterations` present a trade-off between speed and approximation quality.
+        See :cite:`halko2009randomness` for discussion on choosing sensible parameters,
+        the defaults chosen here are cautious.
+
+        Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
+        :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
+        :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of
+        eigenvectors :math:`U\in\mathbb{R}^{n\times r}` such that we have
+        :math:`A \approx U\Lambda U^T`.
+
+        :param array: Array to be decomposed
+        :return: Eigenvalues and eigenvectors that approximately decompose the array
+        """
+        # Input handling
+        supported_array_shape = 2
+        if len(array.shape) != supported_array_shape:
+            raise ValueError("'array' must be two-dimensional")
+        if array.shape[0] != array.shape[1]:
+            raise ValueError("'array' must be square")
+
+        standard_gaussian_draws = jr.normal(
+            self.random_key, shape=(array.shape[0], self.oversampling_parameter)
+        )
+
+        # QR decomposition to find orthonormal array with range approximating range of
+        # array
+        approximate_range = array @ standard_gaussian_draws
+        q, _ = jnp.linalg.qr(approximate_range)
+
+        # Power iterations for improved accuracy
+        for _ in range(self.power_iterations):
+            approximate_range_ = array.T @ q
+            q_, _ = jnp.linalg.qr(approximate_range_)
+            approximate_range = array @ q_
+            q, _ = jnp.linalg.qr(approximate_range)
+
+        # Form the low rank array, compute its exact eigendecomposition and
+        # ortho-normalise the eigenvectors.
+        array_approximation = q.T @ array @ q
+        approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
+        approximate_eigenvectors = q @ eigenvectors
+
+        return approximate_eigenvalues, approximate_eigenvectors
 
     @override
     def approximate(
@@ -280,11 +273,140 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
 
         # Get randomised eigendecomposition of regularised kernel matrix
         approximate_eigenvalues, approximate_eigenvectors = (
-            randomised_eigendecomposition(
-                random_key=self.random_key,
+            self.randomised_eigendecomposition(
                 array=array + abs(regularisation_parameter) * identity,
-                oversampling_parameter=self.oversampling_parameter,
-                power_iterations=self.power_iterations,
+            )
+        )
+
+        # Mask the eigenvalues that are zero or almost zero according to value of rcond
+        # for safe inversion.
+        mask = approximate_eigenvalues >= jnp.array(rcond) * approximate_eigenvalues[-1]
+        safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
+
+        # Invert the eigenvalues and extend array ready for broadcasting
+        approximate_inverse_eigenvalues = jnp.where(
+            mask, 1 / safe_approximate_eigenvalues, 0
+        )[:, jnp.newaxis]
+
+        # Solve Ax = I, x = A^-1 = UL^-1U^T
+        return approximate_eigenvectors.dot(
+            (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
+        )
+
+
+class NystromApproximator(RegularisedInverseApproximator):
+    """
+    Approximate regularised inverse of a positive semidefinite array via Nystrom method.
+
+    Computing the regularised inverse of large arrays can become prohibitively expensive
+    as size increases. To reduce this computational cost, this quantity can be
+    approximated by various methods. :class:`NystromApproximator` is a class that does
+    such an approximation using Algorithm 4.4. and 5.5 from :cite:`halko2009randomness`.
+
+    :param random_key: Key for random number generation
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
+    :param rcond: Cut-off ratio for small singular values of the `array`. For the
+        purposes of rank determination, singular values are treated as zero if they are
+        smaller than rcond times the largest singular value of a. The default value of
+        None will use the machine precision multiplied by the largest dimension of
+        the array. An alternate value of -1 will use machine precision.
+    """
+
+    oversampling_parameter: int = 25
+    power_iterations: int = 1
+    rcond: Optional[float] = None
+
+    def __check_init__(self):
+        """Validate inputs."""
+        if (self.oversampling_parameter <= 0.0) or not isinstance(
+            self.oversampling_parameter, int
+        ):
+            raise ValueError("'oversampling_parameter' must be a positive integer")
+        if (self.power_iterations <= 0.0) or not isinstance(self.power_iterations, int):
+            raise ValueError("'power_iterations' must be a positive integer")
+        if self.rcond is not None:
+            if self.rcond < 0 and self.rcond != -1:
+                raise ValueError("'rcond' must be non-negative, except for value of -1")
+
+    def nystrom_eigendecomposition(self, array: Array) -> tuple[Array, Array]:
+        r"""
+        Approximate the eigendecomposition of positive semidefinite matrices.
+
+        Using Algorithm 4.4. and 5.5 from :cite:`halko2009randomness` we approximate the
+        eigendecomposition of a matrix. The parameters `oversampling_parameter` and
+        `power_iterations` present a trade-off between speed and approximation quality.
+        See :cite:`halko2009randomness` for discussion on choosing sensible parameters,
+        the defaults chosen here are cautious.
+
+        Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
+        :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
+        :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of
+        eigenvectors :math:`U\in\mathbb{R}^{n\times r}` such that we have
+        :math:`A \approx U\Lambda U^T`.
+
+        :param array: Array to be decomposed
+        :return: Eigenvalues and eigenvectors that approximately decompose the array
+        """
+        # Input handling
+        supported_array_shape = 2
+        if len(array.shape) != supported_array_shape:
+            raise ValueError("'array' must be two-dimensional")
+        if array.shape[0] != array.shape[1]:
+            raise ValueError("'array' must be square")
+
+        standard_gaussian_draws = jr.normal(
+            self.random_key, shape=(array.shape[0], self.oversampling_parameter)
+        )
+
+        # QR decomposition to find orthonormal array with range approximating range of
+        # array
+        approximate_range = array @ standard_gaussian_draws
+        q, _ = jnp.linalg.qr(approximate_range)
+
+        # Power iterations for improved accuracy
+        for _ in range(self.power_iterations):
+            approximate_range_ = array.T @ q
+            q_, _ = jnp.linalg.qr(approximate_range_)
+            approximate_range = array @ q_
+            q, _ = jnp.linalg.qr(approximate_range)
+
+        # Parameter names follow convention taken in Algorithm 5.5
+        b1 = jnp.dot(array, q)
+        b2 = jnp.dot(q.T, b1)
+        c = jnp.linalg.cholesky(b2, upper=False)
+        f = jax.lax.linalg.triangular_solve(c, b1, lower=True)
+        approx_vectors, approx_values, _ = jnp.linalg.svd(f, full_matrices=False)
+
+        return approx_values**2, approx_vectors
+
+    @override
+    def approximate(
+        self,
+        array: Array,
+        regularisation_parameter: float,
+        identity: Array,
+    ) -> Array:
+        # Validate inputs
+        if array.shape != identity.shape:
+            raise ValueError("Leading dimensions of 'array' and 'identity' must match")
+
+        # Set rcond parameter if not given
+        num_rows = array.shape[0]
+        machine_precision = jnp.finfo(array.dtype).eps
+        if self.rcond is None:
+            rcond = machine_precision * num_rows
+        elif self.rcond == -1:
+            rcond = machine_precision
+        else:
+            rcond = self.rcond
+
+        # Get nystrom eigendecomposition of regularised kernel matrix
+        approximate_eigenvalues, approximate_eigenvectors = (
+            self.nystrom_eigendecomposition(
+                array=array + abs(regularisation_parameter) * identity,
             )
         )
 

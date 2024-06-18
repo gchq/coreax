@@ -35,7 +35,6 @@ from coreax.inverses import (
     LeastSquareApproximator,
     RandomisedEigendecompositionApproximator,
     RegularisedInverseApproximator,
-    randomised_eigendecomposition,
 )
 from coreax.kernel import SquaredExponentialKernel
 from coreax.util import KeyArrayLike
@@ -155,13 +154,14 @@ class TestRandomisedEigendecompositionApproximator(
 ):
     """Test RandomisedEigendecompositionApproximator."""
 
+    random_seed = 2_024
+
     @override
     @pytest.fixture(scope="class")
     def approximator(self) -> RandomisedEigendecompositionApproximator:
         """Abstract pytest fixture returns an initialised inverse approximator."""
-        random_seed = 2_024
         return RandomisedEigendecompositionApproximator(
-            random_key=jr.key(random_seed),
+            random_key=jr.key(self.random_seed),
             oversampling_parameter=100,
             power_iterations=1,
             rcond=None,
@@ -169,7 +169,7 @@ class TestRandomisedEigendecompositionApproximator(
 
     @override
     @pytest.fixture(scope="class")
-    def problem(self):
+    def problem(self) -> _Problem:
         """Define data shared across tests."""
         random_key = jr.key(2_024)
         num_data_points = 1000
@@ -231,18 +231,15 @@ class TestRandomisedEigendecompositionApproximator(
                 identity=identity,
             )
 
-    def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
-        """Test that the `randomised_eigendecomposition` is accurate."""
+    def test_randomised_eigendecomposition_accuracy(
+        self, problem: _Problem, approximator: RandomisedEigendecompositionApproximator
+    ) -> None:
+        """Test that the `randomised_eigendecomposition` method is accurate."""
         # Unpack problem data
-        random_key, array, _, _, _ = problem
-        oversampling_parameter = 100
-        power_iterations = 1
+        _, array, _, _, _ = problem
 
-        eigenvalues, eigenvectors = randomised_eigendecomposition(
-            random_key=random_key,
-            array=array,
-            oversampling_parameter=oversampling_parameter,
-            power_iterations=power_iterations,
+        eigenvalues, eigenvectors = approximator.randomised_eigendecomposition(
+            array=array
         )
         assert jnp.linalg.norm(
             array - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
@@ -267,17 +264,18 @@ class TestRandomisedEigendecompositionApproximator(
             "negative_power_iterations",
         ],
     )
-    def test_randomised_eigendecomposition_invalid_inputs(
+    def test_invalid_inputs(
         self,
         array: Array,
         oversampling_parameter: int,
         power_iterations: int,
     ) -> None:
-        """Test that `randomised_eigendecomposition` handles invalid inputs."""
+        """Test that invalid inputs raise errors correctly."""
         with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=jr.key(0),
-                array=array,
+            approximator = RandomisedEigendecompositionApproximator(
+                random_key=jr.key(self.random_seed),
                 oversampling_parameter=oversampling_parameter,
                 power_iterations=power_iterations,
+                rcond=None,
             )
+            approximator.randomised_eigendecomposition(array=array)
