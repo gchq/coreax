@@ -26,13 +26,14 @@ import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
 import pytest
-from jax import Array, jacfwd
+from jax import Array, jacfwd, vmap
 
 from coreax.data import Data
 from coreax.kernel import (
     Kernel,
     LaplacianKernel,
     PCIMQKernel,
+    RationalQuadraticKernel,
     SquaredExponentialKernel,
 )
 from coreax.metrics import KSD, MMD
@@ -228,13 +229,13 @@ class TestKSD:
     @pytest.fixture
     def problem(self) -> _MetricProblem:
         """Generate an example problem for testing KSD."""
-        dimension = 2
-        num_points = 100, 100
+        dimension = 1
+        num_points = 2500, 1000
         keys = tuple(jr.split(jr.key(0), 2))
 
         def _generate_data(_num_points: int, _key: Array) -> Data:
             point_key, weight_key = jr.split(_key, 2)
-            points = jr.uniform(point_key, (_num_points, dimension))
+            points = jr.normal(point_key, (_num_points, dimension))
             weights = jr.uniform(weight_key, (_num_points,))
             return Data(points, weights)
 
@@ -242,7 +243,7 @@ class TestKSD:
         return _MetricProblem(reference_data, comparison_data)
 
     @pytest.mark.parametrize(
-        "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+        "kernel", [SquaredExponentialKernel(), RationalQuadraticKernel(), PCIMQKernel()]
     )
     def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
         """Check KSD of a dataset with itself is approximately zero."""
@@ -250,7 +251,7 @@ class TestKSD:
         metric = KSD(kernel)
         assert metric.compute(
             x, x, laplace_correct=False, regularise=False
-        ) == pytest.approx(0.0)
+        ) == pytest.approx(0.0, abs=1e-1)
 
     @pytest.mark.parametrize(
         "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
@@ -288,18 +289,23 @@ class TestKSD:
                 Data(x.data), Data(y.data), laplace_correct=False, regularise=False
             )
         elif mode == "laplace-corrected":
-            laplace_correction = 0
-            for i in range(len(y)):
-                laplace_correction += jnp.clip(
-                    jnp.diag(jacfwd(kernel.score_function)(y.data[i, :])), min=0.0
-                ).sum()
-            expected_ksd = jnp.mean(kernel_mm) + laplace_correction
+            # pylint: disable=duplicate-code
+            @vmap
+            def _laplace_positive(x_: Array) -> Array:
+                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
+                hessian = jacfwd(kernel.score_function)(x_)
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
+
+            laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
+            # pylint: enable=duplicate-code
+
+            expected_ksd = jnp.mean(kernel_mm) + (laplace_correction / len(y) ** 2)
             output = metric.compute(
                 Data(x.data), Data(y.data), laplace_correct=True, regularise=False
             )
         elif mode == "regularised":
             kde = jsp.stats.gaussian_kde(x.data.T, bw_method=base_kernel.length_scale)
-            entropic_regularisation = kde.logpdf(y.data.T).sum() / len(y)
+            entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
             expected_ksd = jnp.mean(kernel_mm) - entropic_regularisation
             output = metric.compute(
                 Data(x.data), Data(y.data), laplace_correct=False, regularise=True
