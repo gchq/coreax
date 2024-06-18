@@ -37,8 +37,6 @@ from `coreax.inverses.RegularisedInverseApproximator`,
   - Moved all coresubset algorithms in `coreax.coresubset.py` to `coreax.solvers.coresubset.py`.
   - All coreset algorithms now return a `coreax.coreset.Coreset` rather than modifying a `coreax.reduction.Coreset` in-place.
 
-
-
 ### Fixed
 
 - Wording improvements in README.
@@ -56,7 +54,6 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - `coreax.networks.ScoreNetwork` now allows the user to specify number of hidden layers.
 - Classes in `weights.py` and `score_matching.py` now inherit from `equinox.Module`.
 
-
 ### Removed
 
 - Bash script to run integration tests has been removed. `pytest tests/integration` should now work as expected.
@@ -71,12 +68,10 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 `coreax.solvers.composite.MapReduce` in place of `coreax.reduction.MapReduce`. Use `coreax.coreset.Coreset` and
 `coreax.coreset.Coresubset` in place of `coreax.reduction.Coreset`.
 
-
 ### Deprecated
 
 - All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
 - All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
-
 
 ## [0.1.0] - 2024-02-16
 
