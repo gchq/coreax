@@ -32,12 +32,12 @@ import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
 
-import coreax.data
 import coreax.kernel
 import coreax.util
+from coreax.data import Data
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 
-_Data = TypeVar("_Data", bound=coreax.data.Data)
+_Data = TypeVar("_Data", bound=Data)
 
 
 class Metric(eqx.Module, Generic[_Data]):
@@ -57,7 +57,7 @@ class Metric(eqx.Module, Generic[_Data]):
         """
 
 
-class MMD(Metric[_Data]):
+class MMD(Metric[Data]):
     r"""
     Definition and calculation of the (weighted) maximum mean discrepancy metric.
 
@@ -88,8 +88,8 @@ class MMD(Metric[_Data]):
 
     def compute(
         self,
-        reference_data: _Data,
-        comparison_data: _Data,
+        reference_data: Data,
+        comparison_data: Data,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
