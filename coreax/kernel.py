@@ -149,6 +149,12 @@ class Kernel(eqx.Module):
 
         return ProductKernel(first_kernel, second_kernel)
 
+    def __mod__(self, tensor: Kernel) -> TensorProductKernel:
+        """Overload `%` operator to produce tensor products of kernel functions."""
+        if not isinstance(tensor, Kernel):
+            return NotImplemented
+        return TensorProductKernel(self, tensor)
+
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
@@ -584,7 +590,9 @@ class TensorProductKernel(eqx.Module):
             a[0], b[0]
         ) * self.response_kernel.compute_elementwise(a[1], b[1])
 
-    def compute(self, a: SupervisedData, b: SupervisedData) -> Array:
+    def compute(
+        self, a: tuple[ArrayLike, ArrayLike], b: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
         r"""
         Evaluate the kernel on input data.
 
@@ -597,15 +605,17 @@ class TensorProductKernel(eqx.Module):
 
         Evaluation is always vectorised.
 
-        :param a: Supervised dataset
-        :param b: Supervised dataset
+        :param a: A tuple with first element consisting of :math:`n \times d` dataset
+            (array), and second element consisting of :math:`n \times p` dataset
+            (array) or both single values (points)
+        :param a: A tuple with first element consisting of :math:`n \times d` dataset
+            (array), and second element consisting of :math:`n \times p` dataset
+            (array) or both single values (points)
         :return: Kernel evaluations between pairs in `a` and `b`. If `a`:math:`=``b`,
             then this is the Gram matrix corresponding to the tensor-product RKHS inner
             product.
         """
-        return pairwise_tuple(self.compute_elementwise)(
-            (a.data, a.supervision), (b.data, b.supervision)
-        )
+        return pairwise_tuple(self.compute_elementwise)(a, b)
 
     def gramian_row_mean(
         self,
@@ -705,7 +715,9 @@ class TensorProductKernel(eqx.Module):
             ) -> tuple[Array, Array]:
                 """Block reduce/accumulate over ``b``."""
                 w_a, w_b = block_a.weights, block_b.weights
-                column_sum_slice = jnp.dot(self.compute(block_a, block_b), w_b)
+                x_a, y_a = block_a.data, block_a.supervision
+                x_b, y_b = block_b.data, block_b.supervision
+                column_sum_slice = jnp.dot(self.compute((x_a, y_a), (x_b, y_b)), w_b)
                 accumulated_sum += jnp.dot(w_a, column_sum_slice)
                 return accumulated_sum, column_sum_slice
 

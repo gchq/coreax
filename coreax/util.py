@@ -139,8 +139,8 @@ def pairwise(
 
 
 def pairwise_tuple(
-    fn: Callable[[tuple[Array, Array], tuple[Array, Array]], Array],
-) -> Callable[[tuple[Array, Array], tuple[Array, Array]], Array]:
+    fn: Callable[[tuple[ArrayLike, ArrayLike], tuple[ArrayLike, ArrayLike]], Array],
+) -> Callable[[tuple[ArrayLike, ArrayLike], tuple[ArrayLike, ArrayLike]], Array]:
     """
     Transform a function so it returns all pairwise evaluations of its tuple inputs.
 
@@ -150,7 +150,9 @@ def pairwise_tuple(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: tuple[Array, Array], y: tuple[Array, Array]) -> Array:
+    def pairwise_fn(
+        x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
         x_1, y_1 = jnp.atleast_2d(*x)
         x_2, y_2 = jnp.atleast_2d(*y)
         return vmap(

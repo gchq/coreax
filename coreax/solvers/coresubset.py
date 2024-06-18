@@ -275,12 +275,15 @@ def _supervised_greedy_kernel_selection(
         updated_coreset_index = selection_function(i, valid_kernel_similarity_penalty)
         updated_coreset_indices = coreset_indices.at[i].set(updated_coreset_index)
 
-        updated_data = SupervisedData(
-            data.data[updated_coreset_index],
-            data.supervision[updated_coreset_index],
-            data.weights[updated_coreset_index],
+        penalty_update = jnp.ravel(
+            kernel.compute(
+                (data.data, data.supervision),
+                (
+                    data.data[updated_coreset_index],
+                    data.supervision[updated_coreset_index],
+                ),
+            )
         )
-        penalty_update = jnp.ravel(kernel.compute(data, updated_data))
         updated_penalty = kernel_similarity_penalty + penalty_update
         if unique:
             # Prevent the same 'updated_coreset_index' from being selected on a
@@ -615,9 +618,8 @@ class JointRPCholesky(
             )
             updated_coreset_indices = coreset_indices.at[i].set(pivot_point)
             # Remove overlap with previously chosen columns
-            pivoted_data = SupervisedData(x[pivot_point], y[pivot_point])
             g = (
-                self.kernel.compute(dataset, pivoted_data)
+                self.kernel.compute((x, y), (x[pivot_point], y[pivot_point]))
                 - (approximation_matrix @ approximation_matrix[pivot_point])[:, None]
             )
             updated_approximation_matrix = approximation_matrix.at[:, i].set(
