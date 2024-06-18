@@ -581,6 +581,12 @@ class ConditionalKernelHerding(
     ConditionalKernelHerding does not support non-uniform weights and will only return
     coresubsets with uniform weights.
 
+    .. note::
+        When requesting a unique coresubset there is a non-vanishing chance that the
+        returned coresubset will not be unique if `batch_size` is not large enough. In
+        this case `batch_size` should be increased or a larger coresubset should be
+        requested which can be made unique post-construction with `jnp.unique`.
+
     :param random_key: Key for random number generation
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
