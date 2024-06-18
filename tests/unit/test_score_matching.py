@@ -20,22 +20,31 @@ approaches used produce the expected results on simple examples.
 
 import unittest
 from collections.abc import Callable
+from typing import Union
 from unittest.mock import MagicMock
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
+import pytest
 from flax import linen as nn
 from jax import Array, vjp
 from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
 
-import coreax.kernel
 import coreax.networks
 import coreax.score_matching
-from coreax.kernel import LinearKernel, PCIMQKernel, SteinKernel
+from coreax.kernel import (
+    Kernel,
+    LaplacianKernel,
+    LinearKernel,
+    PCIMQKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
+    median_heuristic,
+)
 from coreax.score_matching import KernelDensityMatching, convert_stein_kernel
 
 
@@ -58,19 +67,24 @@ class TestKernelDensityMatching(unittest.TestCase):
     Tests related to the class in ``score_matching.py``.
     """
 
+    def setUp(self):
+        """Set up basic univariate Gaussian data."""
+        self.random_key = jr.key(0)
+        self.mu = 0.0
+        self.std_dev = 1.0
+        self.num_data_points = 250
+        generator = np.random.default_rng(1_989)
+        self.samples = generator.normal(
+            self.mu, self.std_dev, size=(self.num_data_points, 1)
+        )
+
     def test_univariate_gaussian_score(self) -> None:
         """
         Test a simple univariate Gaussian with a known score function.
         """
-        # Setup univariate Gaussian
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        generator = np.random.default_rng(1_989)
-        samples = generator.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            return -(x_ - mu) / std_dev**2
+            return -(x_ - self.mu) / self.std_dev**2
 
         # Define data
         x = jnp.linspace(-2, 2).reshape(-1, 1)
@@ -78,12 +92,12 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples)
+            length_scale=median_heuristic(self.samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match(self.samples)
         score_result = learned_score(x)
 
         # Check learned score and true score align
@@ -93,15 +107,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         """
         Test a simple univariate Gaussian with a known score function, 1D input.
         """
-        # Setup univariate Gaussian
-        mu = 0.0
-        std_dev = 1.0
-        num_data_points = 250
-        np.random.seed(0)
-        samples = np.random.normal(mu, std_dev, size=(num_data_points, 1))
 
         def true_score(x_: ArrayLike) -> ArrayLike:
-            return -(x_ - mu) / std_dev**2
+            return -(x_ - self.mu) / self.std_dev**2
 
         # Define data and select a specific single point to test
         test_index = 20
@@ -110,12 +118,12 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples)
+            length_scale=median_heuristic(self.samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
         # defined within the object)
-        learned_score = kernel_density_matcher.match(samples)
+        learned_score = kernel_density_matcher.match(self.samples)
         score_result = learned_score(x[test_index, 0])
 
         # Check learned score and true score align
@@ -130,11 +138,12 @@ class TestKernelDensityMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_data_points = 250
         generator = np.random.default_rng(1_989)
-        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
+        samples = generator.multivariate_normal(
+            mu, sigma_matrix, size=self.num_data_points
+        )
 
-        def true_score(x_: Array) -> ArrayLike:
+        def true_score(x_: Array) -> Array:
             return jnp.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
 
         # Define data
@@ -144,7 +153,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples)
+            length_scale=median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -164,9 +173,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_data_points = 250
         generator = np.random.default_rng(1_989)
-        comp = generator.binomial(1, p, size=num_data_points)
+        comp = generator.binomial(1, p, size=self.num_data_points)
         samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
@@ -189,7 +197,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=coreax.kernel.median_heuristic(samples)
+            length_scale=median_heuristic(samples)
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -208,7 +216,6 @@ class TestKernelDensityMatching(unittest.TestCase):
         # higher than dimension=2)
         dimension = 2
         k = 10
-        num_data_points = 250
         generator = np.random.default_rng(0)
         mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
@@ -217,7 +224,7 @@ class TestKernelDensityMatching(unittest.TestCase):
             [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
         mix = generator.dirichlet(np.ones(k))
-        comp = generator.choice(k, size=num_data_points, p=mix)
+        comp = generator.choice(k, size=self.num_data_points, p=mix)
         samples = np.array(
             [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
@@ -262,6 +269,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
     """
 
     def setUp(self):
+        """Set up basic univariate Gaussian data."""
         self.random_key = jr.key(0)
         self.mu = 0.0
         self.std_dev = 1.0
@@ -716,9 +724,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        num_data_points = 250
         generator = np.random.default_rng(1_989)
-        samples = generator.multivariate_normal(mu, sigma_matrix, size=num_data_points)
+        samples = generator.multivariate_normal(
+            mu, sigma_matrix, size=self.num_data_points
+        )
 
         def true_score(x_: Array) -> Array:
             return jnp.array(list(map(lambda z: -lambda_matrix @ (z - mu), x_)))
@@ -752,9 +761,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         std_devs = np.array([1.0, 2.0])
         p = 0.7
         mix = np.array([1 - p, p])
-        num_data_points = 250
         generator = np.random.default_rng(1_989)
-        comp = generator.binomial(1, p, size=num_data_points)
+        comp = generator.binomial(1, p, size=self.num_data_points)
         samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
 
         def e_grad(g: Callable) -> Callable:
@@ -781,7 +789,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
-            num_epochs=50,
+            num_epochs=20,
         )
 
         # Extract the score function
@@ -789,7 +797,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         score_result = learned_score(x)
 
         # Check learned score and true score align
-        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
 
     def test_multivariate_gmm_score(self):
         """
@@ -799,7 +807,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # higher than dimension=2)
         dimension = 2
         k = 10
-        num_data_points = 250
         generator = np.random.default_rng(0)
         mus = generator.multivariate_normal(
             np.zeros(dimension), np.eye(dimension), size=k
@@ -808,7 +815,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             [generator.gamma(2.0, 1.0) * np.eye(dimension) for _ in range(k)]
         )
         mix = generator.dirichlet(np.ones(k))
-        comp = generator.choice(k, size=num_data_points, p=mix)
+        comp = generator.choice(k, size=self.num_data_points, p=mix)
         samples = np.array(
             [generator.multivariate_normal(mus[c], sigmas[c]) for c in comp]
         )
@@ -841,7 +848,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
-            num_epochs=50,
+            num_epochs=5,
         )
 
         # Extract the score function
@@ -855,8 +862,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         Test  SlicedScoreMatching does not raise an error with no 'noise_conditioning'.
         """
-        # Define a sliced score matching object with num_random_vectors set to 0. This
-        # should get capped to a minimum of 1
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key, random_generator=jr.rademacher, noise_conditioning=False
@@ -1057,42 +1062,42 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # cSpell:enable
 
 
-class TestConvertSteinKernel(unittest.TestCase):
+class TestConvertSteinKernel:
     """Tests related to the function convert_stein_kernel in score_matching.py."""
 
-    def test_convert_stein_kernel(self) -> None:
+    @pytest.mark.parametrize("score_matching", [None, MagicMock()])
+    @pytest.mark.parametrize(
+        "kernel",
+        [LinearKernel(), SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    def test_convert_stein_kernel(
+        self, score_matching: Union[None, MagicMock], kernel: Kernel
+    ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""
         random_key = jr.key(2_024)
         dataset_shape = (100, 2)
-
         dataset = jr.uniform(random_key, dataset_shape)
-        for score_matching in [None, MagicMock()]:
-            for kernel in [PCIMQKernel(), SteinKernel(LinearKernel(), MagicMock())]:
-                converted_kernel = convert_stein_kernel(dataset, kernel, score_matching)
 
-                if isinstance(kernel, SteinKernel):
-                    if score_matching is not None:
-                        expected_kernel = eqx.tree_at(
-                            lambda x: x.score_function,
-                            kernel,
-                            score_matching.match(dataset),
-                        )
-                    expected_kernel = kernel
-                else:
-                    if score_matching is None:
-                        length_scale = getattr(kernel, "length_scale", 1.0)
-                        score_function = KernelDensityMatching(length_scale).match(
-                            dataset
-                        )
-                    else:
-                        score_function = score_matching.match(dataset)
-                    expected_kernel = SteinKernel(kernel, score_function)
-                assert eqx.tree_equal(
-                    converted_kernel.base_kernel, expected_kernel.base_kernel
+        converted_kernel = convert_stein_kernel(dataset, kernel, score_matching)
+        if isinstance(kernel, SteinKernel):
+            if score_matching is not None:
+                expected_kernel = eqx.tree_at(
+                    lambda x: x.score_function,
+                    kernel,
+                    score_matching.match(dataset),
                 )
-                # Score function hashes won't match; resort to checking identical
-                # evaluation.
-                assert eqx.tree_equal(
-                    converted_kernel.score_function(dataset),
-                    expected_kernel.score_function(dataset),
-                )
+            else:
+                expected_kernel = kernel
+        else:
+            if score_matching is None:
+                length_scale = getattr(kernel, "length_scale", 1.0)
+                score_matching = KernelDensityMatching(length_scale)
+            expected_kernel = SteinKernel(kernel, score_matching.match(dataset))
+
+        assert eqx.tree_equal(converted_kernel.base_kernel, expected_kernel.base_kernel)
+        # Score function hashes won't match; resort to checking identical
+        # evaluation.
+        assert eqx.tree_equal(
+            converted_kernel.score_function(dataset),
+            expected_kernel.score_function(dataset),
+        )

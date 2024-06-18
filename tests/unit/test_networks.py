@@ -143,19 +143,21 @@ class TestTrainState(unittest.TestCase):
         """
         score_network = coreax.networks.ScoreNetwork(
             self.hidden_dimensions,
-            1.0 * self.data_dimension,  # pyright:ignore
+            1.0 * self.data_dimension,  # pyright: ignore[reportArgumentType]
         )
 
         # Create a train state with this network - we expect optax to catch the invalid
         # data dimension argument and raise an appropriate error
+        # pylint: disable=line-too-long
         with self.assertRaisesRegex(TypeError, "Shapes must be"):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
                 module=score_network,
                 learning_rate=self.learning_rate,
-                data_dimension=1.0 * self.data_dimension,  # pyright:ignore
+                data_dimension=1.0 * self.data_dimension,  # pyright: ignore[reportArgumentType]
                 optimiser=self.optimiser,
             )
+        # pylint: enable=line-too-long
 
     def test_create_train_state_invalid_module(self):
         """
@@ -170,7 +172,7 @@ class TestTrainState(unittest.TestCase):
         ):
             coreax.networks.create_train_state(
                 random_key=self.state_key,
-                module=score_network,  # pyright:ignore
+                module=score_network,  # pyright: ignore[reportArgumentType]
                 learning_rate=self.learning_rate,
                 data_dimension=self.data_dimension,
                 optimiser=self.optimiser,

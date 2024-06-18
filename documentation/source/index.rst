@@ -61,6 +61,7 @@ Contents
     coreax/approximations
     coreax/coresets
     coreax/data
+    coreax/inverses
     coreax/kernel
     coreax/metrics
     coreax/networks

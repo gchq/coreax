@@ -28,7 +28,6 @@ import jax.tree_util as jtu
 import pytest
 from jax import Array, jacfwd
 
-import coreax.metrics
 from coreax.data import Data
 from coreax.kernel import (
     Kernel,
@@ -36,6 +35,7 @@ from coreax.kernel import (
     PCIMQKernel,
     SquaredExponentialKernel,
 )
+from coreax.metrics import KSD, MMD
 from coreax.score_matching import convert_stein_kernel
 
 
@@ -71,7 +71,7 @@ class TestMMD:
     def test_mmd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
         """Check MMD of a dataset with itself is approximately zero."""
         x = problem.reference_data
-        metric = coreax.metrics.MMD(kernel)
+        metric = MMD(kernel)
         assert metric.compute(x, x) == pytest.approx(0.0)
 
     def test_mmd_analytically_known(self):
@@ -125,7 +125,7 @@ class TestMMD:
         comparison_data = Data(data=comparison_points)
         expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
         # Compute MMD using the metric object
-        metric = coreax.metrics.MMD(SquaredExponentialKernel())
+        metric = MMD(SquaredExponentialKernel())
         output = metric.compute(reference_data, comparison_data)
         assert output == pytest.approx(expected_output)
 
@@ -175,7 +175,7 @@ class TestMMD:
             2 / 3 - (2 / 9) * jnp.exp(-1) - (4 / 9) * jnp.exp(-4)
         )
         # Compute the weighted MMD using the metric object
-        metric = coreax.metrics.MMD(SquaredExponentialKernel())
+        metric = MMD(SquaredExponentialKernel())
         output = metric.compute(reference_data, comparison_data)
         assert output == pytest.approx(expected_output)
 
@@ -215,7 +215,7 @@ class TestMMD:
         else:
             raise ValueError("Invalid mode parameterization")
         # Compute the MMD using the metric object
-        metric = coreax.metrics.MMD(kernel=kernel)
+        metric = MMD(kernel=kernel)
         output = metric.compute(x, y)
         assert output == pytest.approx(expected_mmd, abs=1e-6)
 
@@ -247,7 +247,7 @@ class TestKSD:
     def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
         """Check KSD of a dataset with itself is approximately zero."""
         x = problem.reference_data
-        metric = coreax.metrics.KSD(kernel)
+        metric = KSD(kernel)
         assert metric.compute(
             x, x, laplace_correct=False, regularise=False
         ) == pytest.approx(0.0)
@@ -274,7 +274,7 @@ class TestKSD:
 
         base_kernel = SquaredExponentialKernel()
         kernel = convert_stein_kernel(x.data, base_kernel, None)
-        metric = coreax.metrics.KSD(kernel=kernel, score_matching=None)
+        metric = KSD(kernel=kernel, score_matching=None)
 
         # Compute each term in the KSD formula to obtain an expected KSD.
         kernel_mm = kernel.compute(y.data, y.data)

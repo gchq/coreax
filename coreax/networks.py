@@ -27,7 +27,9 @@ from jax import numpy as jnp
 from jax.typing import ArrayLike
 from optax import GradientTransformation
 
-import coreax.util
+from coreax.util import KeyArrayLike
+
+_LearningRateOptimiser = Callable[[float], GradientTransformation]
 
 _LearningRateOptimiser = Callable[[float], GradientTransformation]
 
@@ -63,7 +65,7 @@ class ScoreNetwork(nn.Module):
 
 
 def create_train_state(
-    random_key: coreax.util.KeyArrayLike,
+    random_key: KeyArrayLike,
     module: Module,
     learning_rate: float,
     data_dimension: int,
