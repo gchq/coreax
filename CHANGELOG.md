@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
+- Added deterministic, iterative, and greedy coreset algorithm which targets the Kernelized Stein Discrepancy
+via `coreax.solvers.coresubset.SteinThinning`.
+- Added a stochastic, iterative, and greedy coreset algorithm which approximates the Gramian of a given kernel function
+via `coreax.solvers.coresubset.RPCholesky`.
 - Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
 - Added kernel classes `coreax.kernel.AdditiveKernel` and `coreax.kernel.ProductKernel` that
 allow for arbitrary composition of positive semi-definite kernels to produce new positive semi-definite kernels.
@@ -32,10 +36,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
   JIT-compilable via promise described in `coreax.solvers.base.PaddingInvariantSolver`.
   - Moved all coresubset algorithms in `coreax.coresubset.py` to `coreax.solvers.coresubset.py`.
   - All coreset algorithms now return a `coreax.coreset.Coreset` rather than modifying a `coreax.reduction.Coreset` in-place.
-- Added deterministic, iterative, and greedy coreset algorithm which targets the Kernelized Stein Discrepancy
-via `coreax.solvers.coresubset.SteinThinning`.
-- Added a stochastic, iterative, and greedy coreset algorithm which approximates the Gramian of a given kernel
-via `coreax.solvers.coresubset.RPCholesky`.
+
 
 
 ### Fixed
