@@ -25,8 +25,11 @@ from flax.linen import Module
 from flax.training.train_state import TrainState
 from jax import numpy as jnp
 from jax.typing import ArrayLike
+from optax import GradientTransformation
 
-import coreax.util
+from coreax.util import KeyArrayLike
+
+_LearningRateOptimiser = Callable[[float], GradientTransformation]
 
 
 class ScoreNetwork(nn.Module):
@@ -60,11 +63,11 @@ class ScoreNetwork(nn.Module):
 
 
 def create_train_state(
-    random_key: coreax.util.KeyArrayLike,
+    random_key: KeyArrayLike,
     module: Module,
     learning_rate: float,
     data_dimension: int,
-    optimiser: Callable,
+    optimiser: _LearningRateOptimiser,
 ) -> TrainState:
     """
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
