@@ -25,6 +25,7 @@ from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
     HerdingState,
     JointKernelHerding,
+    JointRPCholesky,
     KernelHerding,
     RandomSample,
     RPCholesky,
@@ -47,4 +48,5 @@ __all__ = [
     "MapReduce",
     "PaddingInvariantSolver",
     "JointKernelHerding",
+    "JointRPCholesky",
 ]

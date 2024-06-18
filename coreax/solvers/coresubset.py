@@ -324,10 +324,12 @@ class JointKernelHerding(
     distinct regions of the space (the second term).
 
     :param coreset_size: The desired size of the solved coreset
-    :param kernel: :class:`~coreax.kernel.TensorProductKernel` instance implementing a
-        tensor-product kernel function
-        :math:`k: (\mathbb{R}^d \times \mathbb{R}^p) \times
-        (\mathbb{R}^d \times \mathbb{R}^p) \rightarrow \mathbb{R}`
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
     :param unique: Boolean that ensures the resulting coresubset will only contain
         unique elements
     :param block_size: Block size passed to :meth:`~coreax.kernel.Kernel.compute_mean`
@@ -503,6 +505,119 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
             # Remove overlap with previously chosen columns
             g = (
                 self.kernel.compute(x, x[pivot_point])
+                - (approximation_matrix @ approximation_matrix[pivot_point])[:, None]
+            )
+            updated_approximation_matrix = approximation_matrix.at[:, i].set(
+                jnp.ravel(g / jnp.sqrt(g[pivot_point]))
+            )
+            # Track diagonal of residual matrix and ensure it remains non-negative
+            updated_residual_diagonal = jnp.clip(
+                residual_diagonal - jnp.square(approximation_matrix[:, i]), min=0
+            )
+            if self.unique:
+                # Ensures that index selected_pivot_point can't be drawn again in future
+                updated_residual_diagonal = updated_residual_diagonal.at[
+                    pivot_point
+                ].set(0.0)
+            return (
+                updated_residual_diagonal,
+                updated_approximation_matrix,
+                updated_coreset_indices,
+            )
+
+        approximation_matrix = jnp.zeros((num_data_points, self.coreset_size))
+        init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
+        output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
+        _, _, updated_coreset_indices = output_state
+        updated_coreset = Coresubset(updated_coreset_indices, dataset)
+        return updated_coreset, RPCholeskyState(gramian_diagonal)
+
+
+class JointRPCholesky(
+    CoresubsetSolver[_SupervisedData, RPCholeskyState], ExplicitSizeSolver
+):
+    r"""
+    Joint Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
+
+    Solves the coresubset problem by taking a stochastic, iterative, and greedy approach
+    to approximating the Gramian of a tensor-product kernel, evaluated on the original
+    supervised dataset.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param unique: If each index in the resulting coresubset should be unique
+    """
+
+    random_key: KeyArrayLike
+    kernel: TensorProductKernel
+    unique: bool = True
+
+    def __init__(
+        self,
+        coreset_size: int,
+        random_key: KeyArrayLike,
+        feature_kernel: Kernel,
+        response_kernel: Kernel,
+        unique: bool = True,
+    ):
+        """Initialise JointRPCholesky class and build tensor-product kernel."""
+        ExplicitSizeSolver.__init__(self, coreset_size)
+        self.random_key = random_key
+        self.kernel = TensorProductKernel(
+            feature_kernel=feature_kernel,
+            response_kernel=response_kernel,
+        )
+        self.unique = unique
+
+    def reduce(
+        self, dataset: _SupervisedData, solver_state: Optional[RPCholeskyState] = None
+    ) -> tuple[Coresubset[_SupervisedData], RPCholeskyState]:
+        """
+        Reduce 'dataset' to :class:`~coreax.coreset.Coresubset` with 'JointRPCholesky'.
+
+        This is done by first computing the tensor-product kernel Gram matrix of the
+        original supervised data pairs, and isolating the diagonal of this. A
+        'pivot point' is then sampled, where sampling probabilities correspond to the
+        size of the elements on this diagonal. The data-point corresponding to this
+        pivot point is added to the coreset, and the diagonal of the Gram matrix is
+        updated to add a repulsion term of sorts - encouraging the coreset to select a
+        range of distinct pairs in the original data. The pivot sampling and diagonal
+        updating steps are repeated until :math:`M` pairs have been selected.
+
+        :param dataset: The dataset to reduce to a coresubset
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: a refined coresubset and relevant intermediate solver state information
+        """
+        x, y = dataset.data, dataset.supervision
+        if solver_state is None:
+            gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)((x, y), (x, y))
+        else:
+            gramian_diagonal = solver_state.gramian_diagonal
+        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        coreset_indices = initial_coresubset.unweighted_indices
+        num_data_points = len(x)
+
+        def _greedy_body(
+            i: int, val: tuple[Array, Array, Array]
+        ) -> tuple[Array, Array, Array]:
+            """RPCholesky iteration - Algorithm 1 of :cite:`chen2023randomly`."""
+            residual_diagonal, approximation_matrix, coreset_indices = val
+            key = jr.fold_in(self.random_key, i)
+            pivot_point = jr.choice(
+                key, num_data_points, (), p=residual_diagonal, replace=False
+            )
+            updated_coreset_indices = coreset_indices.at[i].set(pivot_point)
+            # Remove overlap with previously chosen columns
+            pivoted_data = SupervisedData(x[pivot_point], y[pivot_point])
+            g = (
+                self.kernel.compute(dataset, pivoted_data)
                 - (approximation_matrix @ approximation_matrix[pivot_point])[:, None]
             )
             updated_approximation_matrix = approximation_matrix.at[:, i].set(

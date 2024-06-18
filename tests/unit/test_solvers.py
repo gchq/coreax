@@ -36,6 +36,7 @@ from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.solvers import (
     JointKernelHerding,
+    JointRPCholesky,
     KernelHerding,
     MapReduce,
     RandomSample,
@@ -458,6 +459,65 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         _, state = solver.reduce(dataset)
         x = dataset.data
         gramian_diagonal = jax.vmap(solver.kernel.compute_elementwise)(x, x)
+        expected_state = RPCholeskyState(gramian_diagonal)
+        assert eqx.tree_equal(state, expected_state)
+
+
+class TestJointRPCholesky(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.JointRPCholesky`."""
+
+    additional_key = jr.key(0)
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            JointRPCholesky,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            feature_kernel=kernel,
+            response_kernel=kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _ReduceProblem:
+        if request.param == "random":
+            features = jr.uniform(self.random_key, self.shape)
+            responses = jr.uniform(self.additional_key, self.shape)
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _ReduceProblem(
+            SupervisedData(features, responses), solver, expected_coreset
+        )
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        """Check functionality of 'unique' in addition to the default checks."""
+        super().check_solution_invariants(coreset, problem)
+        solver = cast(JointRPCholesky, problem.solver)
+        if solver.unique:
+            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            assert max(counts) <= 1
+
+    def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
+        """Check that the cached RPCholesky state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(RPCholesky, solver)
+        _, state = solver.reduce(dataset)
+
+        x, y = dataset.data, dataset.supervision
+        gramian_diagonal = jax.vmap(solver.kernel.compute_elementwise)((x, y), (x, y))
         expected_state = RPCholeskyState(gramian_diagonal)
         assert eqx.tree_equal(state, expected_state)
 
