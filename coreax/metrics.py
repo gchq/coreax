@@ -252,7 +252,7 @@ class KSD(Metric[_Data]):
             bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
             kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
             # Evaluate entropic regularisation term with data from Q
-            entropic_regularisation = abs(regularisation) * kde.logpdf(y.data.T).sum()
+            entropic_regularisation = abs(regularisation) * kde.logpdf(y.data.T).mean()
 
         # Apply Laplace correction
         if laplace_correct:
@@ -263,6 +263,6 @@ class KSD(Metric[_Data]):
                 hessian = jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()
 
-            laplace_correction = _laplace_positive(y.data).sum()
+            laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
 
         return squared_ksd + laplace_correction - entropic_regularisation
