@@ -119,6 +119,7 @@ typehints
 undoc
 unflatten
 unsrt
+urllib
 vars
 viewcode
 vmap
