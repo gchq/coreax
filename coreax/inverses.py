@@ -197,6 +197,27 @@ def _gaussian_range_finder(
     return q
 
 
+def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: float):
+    """
+    Given an array's eigendecomposition, return the inverse of the array.
+
+    :param eigenvalues: Vector of eigenvalues
+    :param eigenvectors: Array of eigenvectors as columns
+    :param rcond: Cut-off ratio for small eigenvalues
+    :return: Approximate inverse of array using its eigendecomposition.
+    """
+    # Mask the eigenvalues that are zero or almost zero according to value of rcond
+    # for safe inversion.
+    mask = eigenvalues >= jnp.array(rcond) * eigenvalues[-1]
+    safe_eigenvalues = jnp.where(mask, eigenvalues, 1)
+
+    # Invert the eigenvalues safely and extend array for broadcasting
+    inverse_eigenvalues = jnp.where(mask, 1 / safe_eigenvalues, 0)[:, jnp.newaxis]
+
+    # Solve Ax = I, x = A^-1 = UL^-1U^T
+    return eigenvectors.dot(inverse_eigenvalues * eigenvectors.T)
+
+
 class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
     Approximate regularised inverse of a Hermitian array via random eigendecomposition.
@@ -236,8 +257,8 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
             self.oversampling_parameter, int
         ):
             raise ValueError("'oversampling_parameter' must be a positive integer")
-        if (self.power_iterations <= 0.0) or not isinstance(self.power_iterations, int):
-            raise ValueError("'power_iterations' must be a positive integer")
+        if (self.power_iterations < 0.0) or not isinstance(self.power_iterations, int):
+            raise ValueError("'power_iterations' must be a non-negative integer")
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
@@ -288,7 +309,7 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         if array.shape != identity.shape:
             raise ValueError("Leading dimensions of 'array' and 'identity' must match")
 
-        # Set rcond parameter if not given
+        # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]
         machine_precision = jnp.finfo(array.dtype).eps
         if self.rcond is None:
@@ -305,19 +326,12 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
             )
         )
 
-        # Mask the eigenvalues that are zero or almost zero according to value of rcond
-        # for safe inversion.
-        mask = approximate_eigenvalues >= jnp.array(rcond) * approximate_eigenvalues[-1]
-        safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
-
-        # Invert the eigenvalues and extend array ready for broadcasting
-        approximate_inverse_eigenvalues = jnp.where(
-            mask, 1 / safe_approximate_eigenvalues, 0
-        )[:, jnp.newaxis]
-
         # Solve Ax = I, x = A^-1 = UL^-1U^T
-        return approximate_eigenvectors.dot(
-            (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
+        return (
+            _eigendecomposition_invert(
+                approximate_eigenvalues, approximate_eigenvectors, rcond
+            )
+            @ identity
         )
 
 
@@ -352,8 +366,8 @@ class NystromApproximator(RegularisedInverseApproximator):
             self.oversampling_parameter, int
         ):
             raise ValueError("'oversampling_parameter' must be a positive integer")
-        if (self.power_iterations <= 0.0) or not isinstance(self.power_iterations, int):
-            raise ValueError("'power_iterations' must be a positive integer")
+        if (self.power_iterations < 0.0) or not isinstance(self.power_iterations, int):
+            raise ValueError("'power_iterations' must be a non-negative integer")
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
@@ -405,7 +419,7 @@ class NystromApproximator(RegularisedInverseApproximator):
         if array.shape != identity.shape:
             raise ValueError("Leading dimensions of 'array' and 'identity' must match")
 
-        # Set rcond parameter if not given
+        # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]
         machine_precision = jnp.finfo(array.dtype).eps
         if self.rcond is None:
@@ -422,17 +436,10 @@ class NystromApproximator(RegularisedInverseApproximator):
             )
         )
 
-        # Mask the eigenvalues that are zero or almost zero according to value of rcond
-        # for safe inversion.
-        mask = approximate_eigenvalues >= jnp.array(rcond) * approximate_eigenvalues[-1]
-        safe_approximate_eigenvalues = jnp.where(mask, approximate_eigenvalues, 1)
-
-        # Invert the eigenvalues and extend array ready for broadcasting
-        approximate_inverse_eigenvalues = jnp.where(
-            mask, 1 / safe_approximate_eigenvalues, 0
-        )[:, jnp.newaxis]
-
         # Solve Ax = I, x = A^-1 = UL^-1U^T
-        return approximate_eigenvectors.dot(
-            (approximate_inverse_eigenvalues * approximate_eigenvectors.T).dot(identity)
+        return (
+            _eigendecomposition_invert(
+                approximate_eigenvalues, approximate_eigenvectors, rcond
+            )
+            @ identity
         )
