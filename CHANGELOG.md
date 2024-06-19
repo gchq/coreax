@@ -72,6 +72,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 
 - All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
 - All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
+- All uses of `coreax.util.squared_distance_pairwise` should be replaced with `coreax.util.pairwise(squared_distance)`.
+- All uses of ` coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
 
 ## [0.1.0] - 2024-02-16
 
