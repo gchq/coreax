@@ -344,6 +344,12 @@ class NystromApproximator(RegularisedInverseApproximator):
     approximated by various methods. :class:`NystromApproximator` is a class that does
     such an approximation using Algorithm 4.4. and 5.5 from :cite:`halko2009randomness`.
 
+    .. note::
+        If you are not certain your array is numerically positive semidefinite then the
+        performance of this method can be unexpectedly poor in comparison to
+        :class:`~coreax.inverses.RandomisedEigendecompositionApproximator`. If you are
+        certain, this method will be faster and more accurate.
+
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
