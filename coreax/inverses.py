@@ -442,7 +442,8 @@ class NystromApproximator(RegularisedInverseApproximator):
             )
         )
 
-        # Solve Ax = I, x = A^-1 = UL^-1U^T
+        # Solve Ax = I, x = A^-1 = UL^-1U^T, multiply by the passed "identity" for
+        # padded matrix inversion.
         return (
             _eigendecomposition_invert(
                 approximate_eigenvalues, approximate_eigenvectors, rcond

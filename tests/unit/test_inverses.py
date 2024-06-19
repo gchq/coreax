@@ -33,10 +33,11 @@ from typing_extensions import override
 
 from coreax.inverses import (
     LeastSquareApproximator,
+    NystromApproximator,
     RandomisedEigendecompositionApproximator,
     RegularisedInverseApproximator,
 )
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernel import SquaredExponentialKernel, median_heuristic
 from coreax.util import KeyArrayLike
 
 _RegularisedInverseApproximator = TypeVar(
@@ -179,7 +180,8 @@ class TestRandomisedEigendecompositionApproximator(
 
         # Compute kernel matrix from standard normal data
         x = jr.normal(random_key, (num_data_points, dimension))
-        array = SquaredExponentialKernel().compute(x, x)
+        length_scale = median_heuristic(x)
+        array = SquaredExponentialKernel(length_scale).compute(x, x)
 
         # Compute "exact" inverse
         exact_inverter = LeastSquareApproximator(random_key, rcond=None)
@@ -279,3 +281,134 @@ class TestRandomisedEigendecompositionApproximator(
                 rcond=None,
             )
             approximator.randomised_eigendecomposition(array=array)
+
+
+class TestNystromApproximator(
+    InverseApproximationTest[NystromApproximator],
+):
+    """Test NystromApproximator."""
+
+    random_seed = 2_024
+
+    @override
+    @pytest.fixture(scope="class")
+    def approximator(self) -> NystromApproximator:
+        """Abstract pytest fixture returns an initialised inverse approximator."""
+        return NystromApproximator(
+            random_key=jr.key(self.random_seed),
+            oversampling_parameter=100,
+            power_iterations=1,
+            rcond=None,
+        )
+
+    @override
+    @pytest.fixture(scope="class")
+    def problem(self) -> _Problem:
+        """Define data shared across tests."""
+        random_key = jr.key(2_024)
+        num_data_points = 1000
+        dimension = 2
+        identity = jnp.eye(num_data_points)
+        regularisation_parameter = 1e1
+
+        # Compute kernel matrix from standard normal data
+        x = jr.normal(random_key, (num_data_points, dimension))
+        length_scale = median_heuristic(x)
+        array = SquaredExponentialKernel(length_scale).compute(x, x)
+
+        # Compute "exact" inverse
+        exact_inverter = LeastSquareApproximator(random_key, rcond=None)
+        expected_inverse = exact_inverter.approximate(
+            array, regularisation_parameter, identity
+        )
+
+        return _Problem(
+            random_key,
+            array,
+            regularisation_parameter,
+            identity,
+            expected_inverse,
+        )
+
+    @pytest.mark.parametrize(
+        "array, identity, rcond, context",
+        [
+            (jnp.eye(2), jnp.eye(2), -10, pytest.raises(ValueError)),
+            (jnp.eye(2), jnp.eye(3), None, pytest.raises(ValueError)),
+            (jnp.eye(2), jnp.eye(2), 1e-6, does_not_raise()),
+            (jnp.eye(2), jnp.eye(2), -1, does_not_raise()),
+        ],
+        ids=[
+            "rcond_negative_not_negative_one",
+            "unequal_array_dimensions",
+            "valid_rcond_not_negative_one_or_none",
+            "valid_rcond_negative_one",
+        ],
+    )
+    def test_approximator_inputs(
+        self,
+        array: Array,
+        identity: Array,
+        rcond: Union[int, float, None],
+        context: AbstractContextManager,
+    ) -> None:
+        """Test `NystromApproximator` handles invalid inputs."""
+        with context:
+            approximator = NystromApproximator(
+                random_key=jr.key(0),
+                oversampling_parameter=1,
+                power_iterations=1,
+                rcond=rcond,
+            )
+            approximator.approximate(
+                array=array,
+                regularisation_parameter=1e-6,
+                identity=identity,
+            )
+
+    def test_nystrom_eigendecomposition_accuracy(
+        self, problem: _Problem, approximator: NystromApproximator
+    ) -> None:
+        """Test that the `nystrom_eigendecomposition` method is accurate."""
+        # Unpack problem data
+        _, array, _, _, _ = problem
+
+        eigenvalues, eigenvectors = approximator.nystrom_eigendecomposition(array=array)
+        assert jnp.linalg.norm(
+            array - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
+        ) == pytest.approx(0.0, abs=1)
+
+    @pytest.mark.parametrize(
+        "array, oversampling_parameter, power_iterations",
+        [
+            (jnp.zeros((2, 2, 2)), 1, 1),
+            (jnp.zeros((2, 3)), 1, 1),
+            (jnp.eye(2), 1.0, 1),
+            (jnp.eye(2), -1, 1),
+            (jnp.eye(2), 1, 1.0),
+            (jnp.eye(2), 1, -1),
+        ],
+        ids=[
+            "larger_than_two_d_array",
+            "non_square_array",
+            "float_oversampling_parameter",
+            "negative_oversampling_parameter",
+            "float_power_iterations",
+            "negative_power_iterations",
+        ],
+    )
+    def test_invalid_inputs(
+        self,
+        array: Array,
+        oversampling_parameter: int,
+        power_iterations: int,
+    ) -> None:
+        """Test that invalid inputs raise errors correctly."""
+        with pytest.raises(ValueError):
+            approximator = NystromApproximator(
+                random_key=jr.key(self.random_seed),
+                oversampling_parameter=oversampling_parameter,
+                power_iterations=power_iterations,
+                rcond=None,
+            )
+            approximator.nystrom_eigendecomposition(array=array)
