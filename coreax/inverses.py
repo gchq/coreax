@@ -348,7 +348,7 @@ class NystromApproximator(RegularisedInverseApproximator):
         If you are not certain your array is numerically positive semidefinite then the
         performance of this method can be unexpectedly poor in comparison to
         :class:`~coreax.inverses.RandomisedEigendecompositionApproximator`. If you are
-        certain, this method will be faster and more accurate.
+        certain, this method will be more accurate.
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
@@ -410,9 +410,11 @@ class NystromApproximator(RegularisedInverseApproximator):
         b2 = jnp.dot(q.T, b1)
         c = jnp.linalg.cholesky(b2, upper=False)
         f = jax.lax.linalg.triangular_solve(c, b1, lower=True)
-        approx_vectors, approx_values, _ = jnp.linalg.svd(f, full_matrices=False)
+        approximate_eigenvectors, approximate_eigenvalues, _ = jnp.linalg.svd(
+            f, full_matrices=False
+        )
 
-        return approx_values**2, approx_vectors
+        return approximate_eigenvalues**2, approximate_eigenvectors
 
     @override
     def approximate(

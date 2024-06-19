@@ -305,16 +305,14 @@ class TestNystromApproximator(
     @pytest.fixture(scope="class")
     def problem(self) -> _Problem:
         """Define data shared across tests."""
-        random_key = jr.key(2_024)
-        num_data_points = 1000
-        dimension = 2
+        random_key = jr.key(self.random_seed + 1)
+        num_data_points = 2500
         identity = jnp.eye(num_data_points)
-        regularisation_parameter = 1e1
+        regularisation_parameter = 1
 
-        # Compute kernel matrix from standard normal data
-        x = jr.normal(random_key, (num_data_points, dimension))
-        length_scale = median_heuristic(x)
-        array = SquaredExponentialKernel(length_scale).compute(x, x)
+        # Generate a low-rank positive semi-definite array
+        array = jr.normal(random_key, (num_data_points, 2))
+        array @= array.T
 
         # Compute "exact" inverse
         exact_inverter = LeastSquareApproximator(random_key, rcond=None)
