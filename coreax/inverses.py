@@ -155,6 +155,48 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
             raise
 
 
+def _gaussian_range_finder(
+    random_key: KeyArrayLike,
+    array: Array,
+    oversampling_parameter: int = 25,
+    power_iterations: int = 1,
+) -> Array:
+    """
+    Produce an orthonormal matrix whose range captures the action of an input array.
+
+    :param random_key: Key for random number generation
+    :param array: Array to be decomposed
+    :param oversampling_parameter: Number of random columns to sample; the larger the
+        oversampling_parameter, the more accurate, but slower the method will be
+    :param power_iterations: Number of power iterations to do; the larger the
+        power_iterations, the more accurate, but slower the method will be
+    :return: Orthonormal array capturing action of input array
+    """
+    # Input handling
+    supported_array_shape = 2
+    if len(array.shape) != supported_array_shape:
+        raise ValueError("'array' must be two-dimensional")
+    if array.shape[0] != array.shape[1]:
+        raise ValueError("'array' must be square")
+
+    standard_gaussian_draws = jr.normal(
+        random_key, shape=(array.shape[0], oversampling_parameter)
+    )
+
+    # QR decomposition to find orthonormal array with range approximating range of
+    # array
+    approximate_range = array @ standard_gaussian_draws
+    q, _ = jnp.linalg.qr(approximate_range)
+
+    # Power iterations for improved accuracy
+    for _ in range(power_iterations):
+        approximate_range_ = array.T @ q
+        q_, _ = jnp.linalg.qr(approximate_range_)
+        approximate_range = array @ q_
+        q, _ = jnp.linalg.qr(approximate_range)
+    return q
+
+
 class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     """
     Approximate regularised inverse of a Hermitian array via random eigendecomposition.
@@ -219,28 +261,13 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
         :param array: Array to be decomposed
         :return: Eigenvalues and eigenvectors that approximately decompose the array
         """
-        # Input handling
-        supported_array_shape = 2
-        if len(array.shape) != supported_array_shape:
-            raise ValueError("'array' must be two-dimensional")
-        if array.shape[0] != array.shape[1]:
-            raise ValueError("'array' must be square")
-
-        standard_gaussian_draws = jr.normal(
-            self.random_key, shape=(array.shape[0], self.oversampling_parameter)
+        # Find orthonormal array with range approximating range of array
+        q = _gaussian_range_finder(
+            random_key=self.random_key,
+            array=array,
+            oversampling_parameter=self.oversampling_parameter,
+            power_iterations=self.power_iterations,
         )
-
-        # QR decomposition to find orthonormal array with range approximating range of
-        # array
-        approximate_range = array @ standard_gaussian_draws
-        q, _ = jnp.linalg.qr(approximate_range)
-
-        # Power iterations for improved accuracy
-        for _ in range(self.power_iterations):
-            approximate_range_ = array.T @ q
-            q_, _ = jnp.linalg.qr(approximate_range_)
-            approximate_range = array @ q_
-            q, _ = jnp.linalg.qr(approximate_range)
 
         # Form the low rank array, compute its exact eigendecomposition and
         # ortho-normalise the eigenvectors.
@@ -350,28 +377,13 @@ class NystromApproximator(RegularisedInverseApproximator):
         :param array: Array to be decomposed
         :return: Eigenvalues and eigenvectors that approximately decompose the array
         """
-        # Input handling
-        supported_array_shape = 2
-        if len(array.shape) != supported_array_shape:
-            raise ValueError("'array' must be two-dimensional")
-        if array.shape[0] != array.shape[1]:
-            raise ValueError("'array' must be square")
-
-        standard_gaussian_draws = jr.normal(
-            self.random_key, shape=(array.shape[0], self.oversampling_parameter)
+        # Find orthonormal array with range approximating range of array
+        q = _gaussian_range_finder(
+            random_key=self.random_key,
+            array=array,
+            oversampling_parameter=self.oversampling_parameter,
+            power_iterations=self.power_iterations,
         )
-
-        # QR decomposition to find orthonormal array with range approximating range of
-        # array
-        approximate_range = array @ standard_gaussian_draws
-        q, _ = jnp.linalg.qr(approximate_range)
-
-        # Power iterations for improved accuracy
-        for _ in range(self.power_iterations):
-            approximate_range_ = array.T @ q
-            q_, _ = jnp.linalg.qr(approximate_range_)
-            approximate_range = array @ q_
-            q, _ = jnp.linalg.qr(approximate_range)
 
         # Parameter names follow convention taken in Algorithm 5.5
         b1 = jnp.dot(array, q)
