@@ -18,7 +18,7 @@ mdurl==0.1.2; python_version >= '3.7'
 ml-dtypes==0.3.2; python_version >= '3.9'
 msgpack==1.0.7; python_version >= '3.8'
 nest-asyncio==1.6.0; python_version >= '3.5'
-numpy==1.26.3; python_version >= '3.9'
+numpy==2.0.0
 opt-einsum==3.3.0; python_version >= '3.5'
 optax==0.1.8; python_version >= '3.8'
 orbax-checkpoint==0.5.0; python_version >= '3.9'

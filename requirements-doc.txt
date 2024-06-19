@@ -39,7 +39,7 @@ ml-dtypes==0.3.2
 msgpack==1.0.7
 natsort==8.4.0
 nest-asyncio==1.6.0
-numpy==1.26.4
+numpy==2.0.0
 opt-einsum==3.3.0
 optax==0.1.9
 orbax-checkpoint==0.5.3
