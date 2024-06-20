@@ -169,6 +169,9 @@ nitpick_ignore = [
     ("py:class", "jaxtyping.Shaped[Array, 'n']"),
     ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
     ("py:class", "jax._src.typing.SupportsDType"),
+    # TODO: Remove once no longer supporting Numpy < 2
+    # https://github.com/gchq/coreax/issues/674
+    ("py:class", "numpy.bool_"),
 ]
 
 
