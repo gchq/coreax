@@ -24,17 +24,15 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
-import jax.random as jr
 from jax import Array
 
 import coreax.kernel
 import coreax.util
-from coreax.data import Data, SupervisedData
-from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
+from coreax.data import Data
 
 _Data = TypeVar("_Data", bound=Data)
 
@@ -131,138 +129,3 @@ class MMD(Metric[Data]):
             self.precision_threshold,
         )
         return jnp.sqrt(squared_mmd_threshold_applied)
-
-
-class CMMD(Metric[SupervisedData]):
-    r"""
-    Definition and calculation of the conditional maximum mean discrepancy metric.
-
-    For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
-    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
-    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m`` pairs
-    with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
-    the conditional maximum mean discrepancy is given by:
-
-    .. math::
-
-        \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) =
-        ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
-
-    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
-    embeddings estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
-    respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding
-    to the kernel functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow
-    \mathbb{R}` and :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
-    respectively.
-
-    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
-        the feature space
-    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
-        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
-        \mathbb{R}` on the response space
-    :param regularisation_parameter: Regularisation parameter for stable inversion
-            of arrays, negative values will be converted to positive
-    :param precision_threshold: Positive threshold we compare against for precision
-    :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`, defaults to
-        :class:`coreax.inverses.LeastSquareApproximator` which solves a linear
-        system at cost :math:`\mathcal{O}(n^3)`
-    """
-
-    feature_kernel: coreax.kernel.Kernel
-    response_kernel: coreax.kernel.Kernel
-    regularisation_parameter: float
-    precision_threshold: float = 1e-2
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None
-
-    def compute(
-        self,
-        reference_data: SupervisedData,
-        comparison_data: SupervisedData,
-        **kwargs,
-    ) -> Array:
-        r"""
-        Compute the conditional maximum mean discrepancy between the two datasets.
-
-        For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n=`
-        `reference_data` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
-        :math:`y\in\mathbb{R}^p`, and another dataset
-        :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n=`
-        `comparison_data` of ``n`` pairs with
-        :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in \mathbb{R}^p`, the
-        conditional maximum mean discrepancy is given by:
-
-        .. math::
-
-            \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||\hat{\mu}^{(1)} -
-            \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
-
-        where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
-        embeddings estimated with :math:`\mathcal{D}^{(1)}` and
-        :math:`\mathcal{D}^{(2)}` respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l`
-        are the RKHSs corresponding to the kernel functions
-        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` and
-        :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
-
-        :param reference_data: The original supervised dataset :math:`\mathcal{D}^{(1)}=
-            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
-            :math:`y\in\mathbb{R}^p`
-        :param comparison_data: Supervised dataset
-            :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m``
-            pairs with :math:`\tilde{x}\in\mathbb{R}^d` and
-            :math:`\tilde{y}\in\mathbb{R}^p`
-        :return: Conditional maximum mean discrepancy as a 0-dimensional array
-        """
-        del kwargs
-        # Extract features and responses from reference and comparison datasets
-        x1, y1 = reference_data.data, reference_data.supervision
-        x2, y2 = comparison_data.data, comparison_data.supervision
-        # Compute feature kernel gramians
-        feature_gramian_1 = self.feature_kernel.compute(x1, x1)
-        feature_gramian_2 = self.feature_kernel.compute(x2, x2)
-
-        # Invert feature kernel gramians
-        if self.inverse_approximator is None:
-            inverse_approximator = LeastSquareApproximator(jr.key(2_024))
-        else:
-            inverse_approximator = self.inverse_approximator
-        inverse_feature_gramian_1 = inverse_approximator.approximate(
-            array=feature_gramian_1,
-            regularisation_parameter=self.regularisation_parameter,
-            identity=jnp.eye(feature_gramian_1.shape[0]),
-        )
-
-        inverse_feature_gramian_2 = inverse_approximator.approximate(
-            array=feature_gramian_2,
-            regularisation_parameter=self.regularisation_parameter,
-            identity=jnp.eye(feature_gramian_2.shape[0]),
-        )
-
-        # # Compute each term in the CMMD
-        term_1 = (
-            inverse_feature_gramian_1
-            @ self.response_kernel.compute(y1, y1)
-            @ inverse_feature_gramian_1
-            @ feature_gramian_1
-        )
-        term_2 = (
-            inverse_feature_gramian_2
-            @ self.response_kernel.compute(y2, y2)
-            @ inverse_feature_gramian_2
-            @ feature_gramian_2
-        )
-        term_3 = (
-            inverse_feature_gramian_1
-            @ self.response_kernel.compute(y1, y2)
-            @ inverse_feature_gramian_2
-            @ self.feature_kernel.compute(x2, x1)
-        )
-
-        # Compute CMMD
-        squared_cmmd = jnp.trace(term_1) + jnp.trace(term_2) - 2 * jnp.trace(term_3)
-        squared_cmmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
-            squared_cmmd,
-            self.precision_threshold,
-        )
-        return jnp.sqrt(squared_cmmd_threshold_applied)
