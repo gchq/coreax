@@ -3,7 +3,6 @@ approximator
 approximators
 archiveprefix
 cand
-CMMD
 coreax
 coreset
 coresets
