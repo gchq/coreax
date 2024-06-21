@@ -98,5 +98,5 @@ be issued as appropriate, dependent on the feature pipeline and development prio
 # Coming soon
 Some features coming soon include:
 * Coordinate bootstrapping for high-dimensional data.
-* Other coreset-style algorithms, including kernel thinning and recombination, as means
+* Other coreset-style algorithms, including recombination, as means
 to reducing a large dataset whilst maintaining properties of the underlying distribution.
