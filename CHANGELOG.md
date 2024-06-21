@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+
+
+### Fixed
+
+
+
+### Changed
+
+
+
+### Removed
+
+
+
+### Deprecated
+
+
+
+
+## [0.2.0]
+
+### Added
+
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
 - Added a deterministic, iterative, and greedy coreset algorithm which targets the
@@ -80,6 +103,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - All uses of `coreax.util.squared_distance_pairwise` should be replaced with `coreax.util.pairwise(squared_distance)`.
 - All uses of `coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
 
+
 ## [0.1.0]
 
 ### Added
@@ -143,6 +167,6 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.1.0...HEAD
-[//]: # ([0.1.1]: https://github.com/gchq/coreax/compare/v0.1.1...v0.1.0)
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gchq/coreax/releases/tag/v0.1.0
