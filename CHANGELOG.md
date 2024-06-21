@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
-- Added deterministic, iterative, and greedy coreset algorithm which targets the Kernelized Stein Discrepancy
-via `coreax.solvers.coresubset.SteinThinning`.
+- Added a deterministic, iterative, and greedy coreset algorithm which targets the
+  Kernelised Stein Discrepancy via `coreax.solvers.coresubset.SteinThinning`.
 - Added a stochastic, iterative, and greedy coreset algorithm which approximates the Gramian of a given kernel function
 via `coreax.solvers.coresubset.RPCholesky`.
 - Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
@@ -36,6 +36,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
   JIT-compilable via promise described in `coreax.solvers.base.PaddingInvariantSolver`.
   - Moved all coresubset algorithms in `coreax.coresubset.py` to `coreax.solvers.coresubset.py`.
   - All coreset algorithms now return a `coreax.coreset.Coreset` rather than modifying a `coreax.reduction.Coreset` in-place.
+- Use Equinox instead of manually constructing pytrees.
 
 ### Fixed
 
@@ -53,6 +54,10 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - All references to `kernel_matrix_row_{sum,mean}` have been replaced with `Gramian row-mean`.
 - `coreax.networks.ScoreNetwork` now allows the user to specify number of hidden layers.
 - Classes in `weights.py` and `score_matching.py` now inherit from `equinox.Module`.
+- Performance tests replaced by `jit_variants` tests, which checks whether a function
+  has been compiled for reuse.
+- Replace some pygrep-hooks with ruff equivalents.
+- Use Pytest fixtures instead of unittest style.
 
 ### Removed
 
@@ -73,7 +78,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
 - All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
 - All uses of `coreax.util.squared_distance_pairwise` should be replaced with `coreax.util.pairwise(squared_distance)`.
-- All uses of ` coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
+- All uses of `coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
 
 ## [0.1.0] - 2024-02-16
 
