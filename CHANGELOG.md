@@ -80,7 +80,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 - All uses of `coreax.util.squared_distance_pairwise` should be replaced with `coreax.util.pairwise(squared_distance)`.
 - All uses of `coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
 
-## [0.1.0] - 2024-02-16
+## [0.1.0]
 
 ### Added
 
@@ -126,7 +126,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 
 - Look-before-you-leap validation of all input to public functions
 
-[//]: # (## [M.m.p] - YYYY-MM-DD)
+[//]: # (## [M.m.p])
 
 [//]: # (### Added)
 [//]: # (This is where features that have been added should be noted.)
