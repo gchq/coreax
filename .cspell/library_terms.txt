@@ -86,6 +86,7 @@ pybtex
 pycodestyle
 pydocstyle
 pyflakes
+pygrep
 pylint
 pylintrc
 pyproject
