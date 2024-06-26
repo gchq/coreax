@@ -63,6 +63,7 @@ dev = [
     "pre-commit>=3.7",
     "pylint",
     "pyroma",
+    "pyright",
     "ruff",
 ]
 
