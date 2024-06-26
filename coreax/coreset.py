@@ -101,7 +101,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
         \hat{x}_i = x_i, \forall i \in I,
         I \subset \{1, \dots, n\}, text{card}(I) = \hat{n}.
 
-    Thus, a coresubset, unlike a corset, ensures that feasibility constraints on the
+    Thus, a coresubset, unlike a coreset, ensures that feasibility constraints on the
     support of the measure are maintained :cite:`litterer2012recombination`. This is
     vital if, for example, the test-functions are only defined on the support of the
     original measure/nodes, rather than all of :math:`\Omega`.

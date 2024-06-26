@@ -74,7 +74,7 @@ repos:
           - makefile
           - pylintrc
           - svg
-        exclude: requirements(-.*)?.txt
+        exclude: requirements(-.*)?.txt|.cspell/.*
 
   # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
