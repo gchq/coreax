@@ -91,6 +91,7 @@ pylint
 pylintrc
 pyproject
 pyqt
+pyright
 pyroma
 pytest
 pytree
