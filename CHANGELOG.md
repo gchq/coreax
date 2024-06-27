@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1]
 
+### Added
+
+- Pyright to development tools (code does not pass yet)
+
 ### Fixed
 
 - Nitpicks in documentation build
