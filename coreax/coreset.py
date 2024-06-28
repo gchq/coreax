@@ -21,41 +21,60 @@ class Coreset(eqx.Module, Generic[_Data]):
     r"""
     Data structure for representing a coreset.
 
-    TLDR: a coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data
+    **TLDR:** a coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data
     points that, in some sense, best represent the "important" properties of a larger
     set of :math:`n > \hat{n}` (potentially weighted) data points.
 
-    Given a dataset :math:`X = \{x_i\}_{i=1}^n, x \in \Omega`, where each node is paired
-    with a non-negative (probability) weight :math:`w_i \in \mathbb{R} \ge 0`, there
-    exists an implied discrete (probability) measure over :math:`\Omega`
+    For a dataset :math:`\{(x_i, w_i)\}_{i=1}^n`, where each node :math:`x_i \in \Omega`
+    is paired with a non-negative weight :math:`w_i \in \mathbb{R} \ge 0`, there exists
+    an implied (discrete) measure :math:`\nu_n = \sum_{i=1}^{n} w_i \delta_{x_i}` on
+    :math:`\Omega`. While not very useful on its own, when combined with a set of
+    :math:`\nu_n`-integrable test-functions :math:`\Phi = \{ \phi_1, \dots, \phi_M \}`,
+    where :math:`\phi_i\ \colon\ \Omega \to \mathbb{R}`, the measure :math:`\nu_n`
+    implies the following push-forward measure over :math:`\mathbb{R}^M`
 
     .. math::
-        \eta_n = \sum_{i=1}^{n} w_i \delta_{x_i}.
+        \begin{align}
+            \mu_n &:= \Phi_* \nu_n,\\
+            \mu_n &= \sum_{i=1}^{n} w_i \delta_{\Phi(x_i)}.
+        \end{align}
 
-    If we then specify a set of test-functions :math:`\Phi = {\phi_1, \dots, \phi_M}`,
-    where :math:`\phi_i \colon \Omega \to \mathbb{R}`, which somehow capture the
-    "important" properties of the data, then there also exists an implied push-forward
-    measure over :math:`\mathbb{R}^M`
-
-    .. math::
-        \mu_n = \sum_{i=1}^{n} w_i \delta_{\Phi(x_i)}.
-
-    A coreset is simply a reduced measure containing :math:`\hat{n} < n` updated nodes
-    :math:`\hat{x}_i` and weights :math:`\hat{w}_i`, such that the push-forward measure
-    of the coreset :math:`\nu_\hat{n}` has (approximately for some algorithms) the same
-    "centre-of-mass" as the push-forward measure for the original data :math:`\mu_n`
+    We assume, that for some choice of test-functions, the "important" properties of
+    :math:`\nu_n` (the original dataset) are encoded in the "centre-of-mass" of the
+    pushed-forward measure :math:`\mu_n`
 
     .. math::
-        \text{CoM}(\mu_n) = \text{CoM}(\nu_\hat{n}),
-        \text{CoM}(\nu_\hat{n}) = \int_\Omega \Phi(\omega) d\nu_\hat{x}(\omega),
-        \text{CoM}(\nu_\hat{n}) = \sum_{i=1}^\hat{n} \hat{w}_i \delta_{\Phi(\hat{x}_i)}.
+        \begin{align}
+            \text{CoM}(\mu_n) &:= \sum_{i}^{n} w_i \Phi(x_i),\\
+            \text{CoM}(\mu_n) &= \int_\Omega \phi_j(\omega) d\mu_n.\
+        \end{align}
 
     .. note::
-        Depending on the algorithm, the test-functions may be explicitly specified by
-        the user, or implicitly defined by the algorithm's specific objectives.
+        Depending on the coreset solver, the test-functions may be explicitly specified
+        by the user (the user makes a choice about what properties are "important"), or
+        implicitly defined by the solvers's specific objectives (the solver specifies
+        what properties are "important").
 
-    :param nodes: The (weighted) coreset nodes, math:`x_i \in \text{supp}(\nu_\hat{n})`;
-        once instantiated, the nodes should be accessed via :meth:`Coresubset.coreset`
+    A coreset is simply a reduced measure :math:`\hat{\nu}_\hat{n}`, whose push-forward
+    :math:`\hat{\mu}_\hat{n} := \Phi_* \hat{\nu}_\hat{n}` has, approximately in some
+    cases, the same "centre-of-mass" as the push-forward measure of the original dataset
+
+    .. math::
+        \hat{\nu}_\hat{n} := \sum_{i=1}^\hat{n} \hat{w}_i \delta_{\hat{x}_i}, \quad
+        \text{CoM}(\hat{\mu}_\hat{n}) = \text{CoM}(\mu_n),
+
+    where :math:`\hat{x}_i \in \Omega` and :math:`\hat{w}_i \in \mathbb{R} \ge 0`. In
+    preserving the "centre-of-mass", the coreset satisfies
+
+    .. math::
+        \int_\Omega f(\omega)\ d\mu_n = \int_\Omega f(\omega)\ d\hat{\mu}_\hat{n},
+
+    for all functions :math:`f \in \text{span}(\Phi)`. I.E. integration against the
+    push-forward of the original dataset and the push-forward of the coreset is
+    identical for all functions in the span of the test-functions.
+
+    :param nodes: The (weighted) coreset nodes, :math:`\hat{x}_i`; once instantiated,
+        the nodes should only be accessed via :meth:`Coresubset.coreset`
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
