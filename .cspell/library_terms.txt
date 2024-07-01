@@ -86,10 +86,12 @@ pybtex
 pycodestyle
 pydocstyle
 pyflakes
+pygrep
 pylint
 pylintrc
 pyproject
 pyqt
+pyright
 pyroma
 pytest
 pytree

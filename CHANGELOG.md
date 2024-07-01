@@ -8,27 +8,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
+- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
+
+
+### Fixed
+
+
+
+### Changed
+
+
+
+### Removed
+
+
+
+### Deprecated
+
+
+
+
+## [0.2.0]
+
+### Added
 
 - Badge to README to show code coverage percentage.
 - Support for Python 3.12.
-- Additional data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
-distinction between supervised and unsupervised datasets, and handle weighted data.
+- Added a deterministic, iterative, and greedy coreset algorithm which targets the
+  Kernelised Stein Discrepancy via `coreax.solvers.coresubset.SteinThinning`.
+- Added a stochastic, iterative, and greedy coreset algorithm which approximates the Gramian of a given kernel function
+via `coreax.solvers.coresubset.RPCholesky`.
 - Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
-- Additional kernel classes `coreax.kernel.AdditiveKernel` and
-`coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
-semi-definite kernels to produce new positive semi-definite kernels.
-- Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
- `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
-- Added capability to approximate regularised inverses of arrays `coreax.inverses.RegularisedInverseApproximator`
-- Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
-- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
+- Added kernel classes `coreax.kernel.AdditiveKernel` and `coreax.kernel.ProductKernel` that
+allow for arbitrary composition of positive semi-definite kernels to produce new positive semi-definite kernels.
+- Added additional kernel functions: `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
+ `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`.
+- Added capability to approximate the inverses of arrays via least-squares (`coreax.inverses.LeastSquaresApproximator`)
+or randomised eigendecomposition (`coreax.inverses.RandomisedEigendecompositionApproximator`) all inheriting
+from `coreax.inverses.RegularisedInverseApproximator`,
+- Refactor of package to a functional style to allow for JIT-compilation of the codebase in the largest possible scope:
+  - Added data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
+    distinction between supervised and unsupervised datasets, and handle weighted data.
+    Replaces `coreax.data.DataReader` and `coreax.data.ArrayData`.
+  - Added `coreax.solvers.base.Solver` to replace functionality in `coreax.refine.py`, `coreax.coresubset.py` and
+  `coreax.reduction.py`. In particular, `coreax.solvers.base.CoresubsetSolver` parents coresubset
+  algorithms, `coreax.solvers.base.RefinementSolver` parents coresubset algorithms which support refinement
+  post-reduction, `coreax.solvers.base.ExplicitSizeSolver` parents all coreset algorithms which
+  return a coreset of a specific size.
+  - `coreax.reduction.MapReduce` functionality moved to `coreax.solvers.composite.MapReduce`, now
+  JIT-compilable via promise described in `coreax.solvers.base.PaddingInvariantSolver`.
+  - Moved all coresubset algorithms in `coreax.coresubset.py` to `coreax.solvers.coresubset.py`.
+  - All coreset algorithms now return a `coreax.coreset.Coreset` rather than modifying a `coreax.reduction.Coreset` in-place.
+- Use Equinox instead of manually constructing pytrees.
 
 ### Fixed
 
 - Wording improvements in README.
 - Documentation now builds without warnings.
 - GitHub workflow runs automatically after Pre-commit autoupdate.
-- `coreax.kernel.Kernel.length_scale` and `coreax.kernel.Kernel.output_scale` are treated as dynamic elements of the kernel pytree.
 
 ### Changed
 
@@ -38,22 +76,36 @@ semi-definite kernels to produce new positive semi-definite kernels.
 - `requirements-*.txt` will no longer be updated frequently, thereby providing stable versions.
 - Single requirements files covering all supported Python versions.
 - All references to `kernel_matrix_row_{sum,mean}` have been replaced with `Gramian row-mean`.
+- `coreax.networks.ScoreNetwork` now allows the user to specify number of hidden layers.
+- Classes in `weights.py` and `score_matching.py` now inherit from `equinox.Module`.
+- Performance tests replaced by `jit_variants` tests, which checks whether a function
+  has been compiled for reuse.
+- Replace some pygrep-hooks with ruff equivalents.
+- Use Pytest fixtures instead of unittest style.
 
 ### Removed
+
 - Bash script to run integration tests has been removed. `pytest tests/integration` should now work as expected.
 - Tests for `coreax.kernels.Kernel.{calculate, update}_kernel_matrix_row_sum`.
 - `coreax.util.KernelComputeType`; use `Callable[[ArrayLike, ArrayLike], Array]` instead.
 - `coreax.kernels.Kernel.calculate_kernel_matrix_row_{sum,mean}`; use `coreax.kernels.Kernel.gramian_row_mean`.
 - `coreax.kernels.Kernel.updated_kernel_matrix_row_sum`; use `coreax.kernels.Kernel.gramian_row_mean` if possible.
-
+- `coreax.data.DataReader` and `coreax.data.ArrayData`; use `coreax.data.Data` and `coreax.data.SupervisedData`.
+- `coreax.refine.py` and `coreax.coresubset.py` removed; use `coreax.solvers.base.RefinementSolver` or
+`coreax.solvers.base.CoresubsetSolver` to define coreset algorithms in `coreax.solvers.coresubset`.
+- `coreax.reduction` removed, use `coreax.solvers.base.ExplicitSizeSolver` in place of `coreax.reduction.SizeReduce` and
+`coreax.solvers.composite.MapReduce` in place of `coreax.reduction.MapReduce`. Use `coreax.coreset.Coreset` and
+`coreax.coreset.Coresubset` in place of `coreax.reduction.Coreset`.
 
 ### Deprecated
 
 - All uses of `coreax.weights.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
 - All uses of `coreax.weights.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
+- All uses of `coreax.util.squared_distance_pairwise` should be replaced with `coreax.util.pairwise(squared_distance)`.
+- All uses of `coreax.util.pairwise_difference` should be replaced with `coreax.util.pairwise(difference)`.
 
 
-## [0.1.0] - 2024-02-16
+## [0.1.0]
 
 ### Added
 
@@ -99,7 +151,7 @@ semi-definite kernels to produce new positive semi-definite kernels.
 
 - Look-before-you-leap validation of all input to public functions
 
-[//]: # (## [M.m.p] - YYYY-MM-DD)
+[//]: # (## [M.m.p])
 
 [//]: # (### Added)
 [//]: # (This is where features that have been added should be noted.)
@@ -116,6 +168,6 @@ semi-definite kernels to produce new positive semi-definite kernels.
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.1.0...HEAD
-[//]: # ([0.1.1]: https://github.com/gchq/coreax/compare/v0.1.1...v0.1.0)
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gchq/coreax/releases/tag/v0.1.0

@@ -383,7 +383,7 @@ class SteinThinning(
     Stein Thinning - an explicitly sized coresubset refinement solver.
 
     Solves the coresubset problem by taking a deterministic, iterative, and greedy
-    approach to minimizing the Kernelized Stein Discrepancy (KSD) between the empirical
+    approach to minimizing the Kernelised Stein Discrepancy (KSD) between the empirical
     distribution of the coresubset (the solution) and the distribution of the problem
     dataset, as characterised by the score function of the Stein Kernel.
 
