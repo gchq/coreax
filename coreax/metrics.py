@@ -223,13 +223,13 @@ class KSD(Metric[Data]):
             :math:`\lambda = frac{1}{m}.
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
             sets `block_size`:math:`=n` effectively disabling the block accumulation; an
-            integer value ``B`` sets `block_size`:math:`=B``, it is often sensible to
+            integer value ``B`` sets `block_size`:math:`=B`, it is often sensible to
             select the largest block size that does not exhaust the available memory
             resources
         :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
             calls, allows for trade-offs between compilation and runtime cost; consult
             the JAX docs for further information
-        :return: Maximum mean discrepancy as a 0-dimensional array
+        :return: Kernel Stein Discrepancy as a 0-dimensional array
         """
         del kwargs
         # Train Stein kernel with data from P
