@@ -122,11 +122,13 @@ class MMD(Metric[Data]):
         del kwargs
         _block_size = coreax.util.tree_leaves_repeat(block_size, 2)
         bs_xx, bs_xy, _, bs_yy = tuple(product(_block_size, repeat=len(_block_size)))
+        _unroll = coreax.util.tree_leaves_repeat(unroll, 2)
+        u_xx, u_xy, _, u_yy = tuple(product(_unroll, repeat=len(_unroll)))
         # Variable rename allows for nicer automatic formatting
         x, y = reference_data, comparison_data
-        kernel_xx_mean = self.kernel.compute_mean(x, x, block_size=bs_xx, unroll=unroll)
-        kernel_yy_mean = self.kernel.compute_mean(y, y, block_size=bs_yy, unroll=unroll)
-        kernel_xy_mean = self.kernel.compute_mean(x, y, block_size=bs_xy, unroll=unroll)
+        kernel_xx_mean = self.kernel.compute_mean(x, x, block_size=bs_xx, unroll=u_xx)
+        kernel_yy_mean = self.kernel.compute_mean(y, y, block_size=bs_yy, unroll=u_yy)
+        kernel_xy_mean = self.kernel.compute_mean(x, y, block_size=bs_xy, unroll=u_xy)
         squared_mmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             kernel_xx_mean + kernel_yy_mean - 2 * kernel_xy_mean,
             self.precision_threshold,
