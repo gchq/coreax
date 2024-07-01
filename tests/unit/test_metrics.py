@@ -25,6 +25,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
+import numpy as np
 import pytest
 from jax import Array, jacfwd, vmap
 
@@ -35,9 +36,11 @@ from coreax.kernel import (
     PCIMQKernel,
     RationalQuadraticKernel,
     SquaredExponentialKernel,
+    SteinKernel,
 )
 from coreax.metrics import KSD, MMD
 from coreax.score_matching import convert_stein_kernel
+from coreax.util import ArrayLike, pairwise
 
 
 class _MetricProblem(NamedTuple):
@@ -252,6 +255,73 @@ class TestKSD:
         assert metric.compute(
             x, x, laplace_correct=False, regularise=False
         ) == pytest.approx(0.0, abs=1e-1)
+
+    def test_ksd_analytically_known_stein_kernel(self) -> None:
+        r"""
+        Test KSD computation against an analytically derived stein kernel solution.
+
+        Given a standard multivariate normal distribution
+        :math:`\mathbb{P} = \mathcal{N}(0, I_2)`, and the PCIMQ kernel function
+        :math:`k: \mathbb{R}^2 \times \mathbb{R}^2 \rightarrow \mathbb{R}` such that
+        :math:`k(x, y) = \frac{1}{\sqrt{1 + ||x-y||^2}}, one can analytically derive the
+        induced Stein kernel (see Exercise 3, :cite:`oates2021uncertainty`):
+
+        ..math::
+
+            k_{\mathbb{P}}(x, y) = -\frac{3||x-y||^2}{(1 + ||x-y||^2)^{\frac{5}{2}}}
+            + \frac{2 + (x-y)^T(y-x)}{(1 + ||x-y||^2)^{\frac{3}{2}}}
+            + \frac{x^Ty}{(1 + ||x-y||^2)^{\frac{1}{2}}}.
+
+        Then, given :math:`x_i \ sim \mathbb{Q}` where :math:`\mathbb{Q}` is some other
+        distribution, the Kernelised Stein Discrepancy can be computed as
+
+        .. math::
+
+            KSD^2(\mathbb{P}, \mathbb{Q})
+            =  \frac{1}{m^2}\sum_{i, j = 1}^m k_{\mathbb{P}}(x_i, x_j)
+        """
+        random_key = jr.key(2_024)
+        dim = 2
+        num_data_points = 1000
+
+        # Generate data from a uniform distribution Q with which to compute the expected
+        # KSD.
+        comparison_pts = jr.uniform(
+            random_key,
+            shape=(num_data_points, dim),
+        )
+
+        # Analytic stein kernel
+        def _stein_kernel(x: ArrayLike, y: ArrayLike) -> Array:
+            norm_sq = jnp.linalg.norm(jnp.subtract(x, y)) ** 2
+            body = 1 + norm_sq
+            first_term = 3 * norm_sq / body ** (5 / 2)
+            second_term = (dim - norm_sq) / body ** (3 / 2)
+            third_term = jnp.dot(x, y) / body ** (1 / 2)
+            return -first_term + second_term + third_term
+
+        stein_kernel_matrix = pairwise(_stein_kernel)(comparison_pts, comparison_pts)
+        expected_output = stein_kernel_matrix.sum() / num_data_points**2
+
+        # Compute the KSD using the metric object via a stein kernel induced by a
+        # PCIMQ kernel, with the corresponding analytic score function and
+        # reference data from a standard multivariate distribution P.
+        reference_pts = jr.multivariate_normal(
+            random_key,
+            jnp.zeros(dim),
+            jnp.eye(dim),
+            shape=(num_data_points,),
+        )
+        base_kernel = PCIMQKernel(length_scale=1 / np.sqrt(2), output_scale=1)
+
+        def _score_function(x: ArrayLike) -> Array:
+            return -jnp.asarray(x)
+
+        stein_kernel = SteinKernel(base_kernel, score_function=_score_function)
+        metric = KSD(kernel=stein_kernel)
+        output = metric.compute(Data(reference_pts), Data(comparison_pts))
+
+        assert output == pytest.approx(expected_output)
 
     @pytest.mark.parametrize(
         "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
