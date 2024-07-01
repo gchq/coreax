@@ -134,14 +134,14 @@ class MMD(Metric[Data]):
         return jnp.sqrt(squared_mmd_threshold_applied)
 
 
-class KSD(Metric[_Data]):
+class KSD(Metric[Data]):
     r"""
     Computation of the (regularised) (Laplace-corrected) kernel Stein discrepancy (KSD).
 
     For a set of ``n`` i.i.d. samples in ``d`` dimensions
     :math:`\mathcal{D}_1 \sim \mathbb{P}` and another set of ``m`` i.i.d. samples in
-    ``d`` dimensions :math:`\mathcal{D}_2 \sim \mathbb{Q}`, the kernel Stein
-    discrepancy is given by:
+    ``d`` dimensions :math:`\mathcal{D}_2 \sim \mathbb{Q}`, the regularised
+    Laplace-corrected kernel Stein discrepancy is given by:
 
     .. math::
 
@@ -152,9 +152,9 @@ class KSD(Metric[_Data]):
         - \lambda frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
 
     where :math:`x \sim \mathbb{Q}`, :math:`k_{\mathbb{P}}` is the Stein kernel
-    induced by the supplied base kernel and estimated with samples from
-    :math:`\mathbb{P}`. The first term is vanilla KSD, the second term implements a
-    Laplace correction, and the third term enforces entropic regularisation.
+    induced by a base kernel and estimated with samples from :math:`\mathbb{P}`.
+    The first term is vanilla KSD, the second term implements a Laplace-correction, and
+    the third term enforces entropic regularisation.
 
     Common uses of KSD include comparing a reduced representation of a dataset to the
     original dataset, comparing different original datasets to one another, or
@@ -178,7 +178,7 @@ class KSD(Metric[_Data]):
        :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
        :class:`~coreax.kernel.SteinKernel`, in which case the kernel's existing score
        function is used.
-    :param precision_threshold: Threshold above which negative values of the squared MMD
+    :param precision_threshold: Threshold above which negative values of the squared KSD
         are rounded to zero (accommodates precision loss)
     """
 
@@ -188,8 +188,8 @@ class KSD(Metric[_Data]):
 
     def compute(
         self,
-        reference_data: _Data,
-        comparison_data: _Data,
+        reference_data: Data,
+        comparison_data: Data,
         *,
         laplace_correct: bool = False,
         regularise: bool = False,
@@ -217,7 +217,7 @@ class KSD(Metric[_Data]):
         :param laplace_correct: Boolean that enforces Laplace correction, see Section
             3.1 of :cite:`benard2023kernel`.
         :param regularise: Boolean that enforces entropic regularisation. :data:`True`,
-            uses value suggested in :cite:`benard2023kernel`.
+            uses regularisation strength suggested in :cite:`benard2023kernel`.
             :math:`\lambda = frac{1}{m}.
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
             sets `block_size`:math:`=n` effectively disabling the block accumulation; an
@@ -230,31 +230,25 @@ class KSD(Metric[_Data]):
         :return: Maximum mean discrepancy as a 0-dimensional array
         """
         del kwargs
-        # Train Stein kernel with data from P (weights not used here)
+        # Train Stein kernel with data from P
         x, w_x = jtu.tree_leaves(reference_data)
         kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
 
-        # Variable rename allows for nicer automatic formatting. Make sure we pass 'y'
-        # as an instance of Data class to apply weights to mean computation.
-        bs = block_size
+        # Variable rename allows for nicer automatic formatting.
         y = comparison_data
-        # Compute kernel-mean term with data from Q.
-        squared_ksd = kernel.compute_mean(y, y, block_size=bs, unroll=unroll)
+        squared_ksd = kernel.compute_mean(y, y, block_size=block_size, unroll=unroll)
         laplace_correction = 0.0
         entropic_regularisation = 0.0
 
-        # Estimate entropic regularisation term (if regularisation strength is non-zero)
         if regularise:
-            # Use regularisation parameter suggested in :cite:`benard2023kernel`
-            regularisation = 1 / len(y)
             # Train weighted kde with data from P, noticing we cannot guarantee that
             # kernel.base_kernel has a 'length_scale' attribute
             bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
             kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
-            # Evaluate entropic regularisation term with data from Q
-            entropic_regularisation = abs(regularisation) * kde.logpdf(y.data.T).mean()
+            # Evaluate entropic regularisation term with data from Q using
+            # regularisation parameter suggested in :cite:`benard2023kernel`
+            entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
 
-        # Apply Laplace correction
         if laplace_correct:
 
             @vmap
