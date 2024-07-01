@@ -33,7 +33,6 @@ PRNG
 refs
 regulariser
 RKHS
-RKSD
 RPCHOLESKY
 sigmas
 supp
