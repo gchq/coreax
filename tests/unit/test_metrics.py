@@ -261,7 +261,7 @@ class TestKSD:
         Test KSD computation against an analytically derived stein kernel solution.
 
         Given a standard multivariate normal distribution
-        :math:`\mathbb{P} = \mathcal{N}(0, I_2)`, and the PCIMQ kernel function
+        :math:`\mathbb{P} = \mathcal{N}(0, I)`, and the PCIMQ kernel function
         :math:`k: \mathbb{R}^2 \times \mathbb{R}^2 \rightarrow \mathbb{R}` such that
         :math:`k(x, y) = \frac{1}{\sqrt{1 + ||x-y||^2}}, one can analytically derive the
         induced Stein kernel (see Exercise 3, :cite:`oates2021uncertainty`):
