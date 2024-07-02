@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
+- Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
 
 
 ### Fixed
