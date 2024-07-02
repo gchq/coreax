@@ -156,7 +156,9 @@ class KSD(Metric[Data]):
     where :math:`x \sim \mathbb{Q}`, :math:`k_{\mathbb{P}}` is the Stein kernel
     induced by a base kernel and estimated with samples from :math:`\mathbb{P}`.
     The first term is vanilla KSD, the second term implements a Laplace-correction, and
-    the third term enforces entropic regularisation.
+    the third term enforces entropic regularisation. See :cite:`benard2023kernel` for a
+    discussion on the need for and effects of Laplace-correction and entropic
+    regularisation.
 
     Common uses of KSD include comparing a reduced representation of a dataset to the
     original dataset, comparing different original datasets to one another, or
