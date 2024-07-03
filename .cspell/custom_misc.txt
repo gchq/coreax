@@ -23,6 +23,7 @@ kbar
 kdtree
 kernelised
 kernelized
+KSD
 ml.p3.8xlarge
 parsable
 PCIMQ
