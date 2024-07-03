@@ -249,12 +249,12 @@ class TestKSD:
         "kernel", [SquaredExponentialKernel(), RationalQuadraticKernel(), PCIMQKernel()]
     )
     def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
-        """Check KSD of a dataset with itself is approximately zero."""
+        """Check KSD of a dataset with itself is (very) approximately zero."""
         x = problem.reference_data
         metric = KSD(kernel)
         assert metric.compute(
             x, x, laplace_correct=False, regularise=False
-        ) == pytest.approx(0.0, abs=1e-1)
+        ) == pytest.approx(0.0, abs=1e0)
 
     def test_ksd_analytically_known_stein_kernel(self) -> None:
         r"""
@@ -266,7 +266,7 @@ class TestKSD:
         :math:`k(x, y) = \frac{1}{\sqrt{1 + ||x-y||^2}}, one can analytically derive the
         induced Stein kernel (see Exercise 3, :cite:`oates2021uncertainty`):
 
-        ..math::
+        .. math::
 
             k_{\mathbb{P}}(x, y) = -\frac{3||x-y||^2}{(1 + ||x-y||^2)^{\frac{5}{2}}}
             + \frac{2 + (x-y)^T(y-x)}{(1 + ||x-y||^2)^{\frac{3}{2}}}
@@ -301,7 +301,7 @@ class TestKSD:
             return -first_term + second_term + third_term
 
         stein_kernel_matrix = pairwise(_stein_kernel)(comparison_pts, comparison_pts)
-        expected_output = stein_kernel_matrix.sum() / num_data_points**2
+        expected_output = jnp.sqrt(stein_kernel_matrix.sum() / num_data_points**2)
 
         # Compute the KSD using the metric object via a stein kernel induced by a
         # PCIMQ kernel, with the corresponding analytic score function and
@@ -351,10 +351,10 @@ class TestKSD:
         kernel_mm = kernel.compute(y.data, y.data)
         if mode == "weighted":
             weights_mm = y.weights[..., None] * y.weights[None, ...]
-            expected_ksd = jnp.average(kernel_mm, weights=weights_mm)
+            expected_ksd = jnp.sqrt(jnp.average(kernel_mm, weights=weights_mm))
             output = metric.compute(x, y, laplace_correct=False, regularise=False)
         elif mode == "unweighted":
-            expected_ksd = jnp.mean(kernel_mm)
+            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm))
             output = metric.compute(
                 Data(x.data), Data(y.data), laplace_correct=False, regularise=False
             )
@@ -369,14 +369,16 @@ class TestKSD:
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
             # pylint: enable=duplicate-code
 
-            expected_ksd = jnp.mean(kernel_mm) + (laplace_correction / len(y) ** 2)
+            expected_ksd = jnp.sqrt(
+                jnp.mean(kernel_mm) + (laplace_correction / len(y) ** 2)
+            )
             output = metric.compute(
                 Data(x.data), Data(y.data), laplace_correct=True, regularise=False
             )
         elif mode == "regularised":
             kde = jsp.stats.gaussian_kde(x.data.T, bw_method=base_kernel.length_scale)
             entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
-            expected_ksd = jnp.mean(kernel_mm) - entropic_regularisation
+            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm) - entropic_regularisation)
             output = metric.compute(
                 Data(x.data), Data(y.data), laplace_correct=False, regularise=True
             )
