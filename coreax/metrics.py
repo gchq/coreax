@@ -151,7 +151,7 @@ class KSD(Metric[Data]):
         =  \frac{1}{m^2}\sum_{i \neq j}^m k_{\mathbb{P}}(x_i, x_j)
         + \frac{1}{m^2}\sum_{i = 1}^m [k_{\mathbb{P}}(x_i, x_i)
         + \Delta^+ \log(\mathbb{P}(x_i))]
-        - \lambda frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
+        - \lambda \frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
 
     where :math:`x \sim \mathbb{Q}`, :math:`k_{\mathbb{P}}` is the Stein kernel
     induced by a base kernel and estimated with samples from :math:`\mathbb{P}`.
@@ -210,7 +210,7 @@ class KSD(Metric[Data]):
             =  \frac{1}{m^2}\sum_{i \neq j}^m k_{\mathbb{P}}(x_i, x_j)
             + \frac{1}{m^2}\sum_{i = 1}^m [k_{\mathbb{P}}(x_i, x_i)
             + \Delta^+ \log(\mathbb{P}(x_i))]
-            - \lambda frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
+            - \lambda \frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
 
         :param reference_data: An instance of the class :class:`coreax.data.Data`,
             containing an :math:`n \times d` array of data sampled from
@@ -222,7 +222,7 @@ class KSD(Metric[Data]):
             3.1 of :cite:`benard2023kernel`.
         :param regularise: Boolean that enforces entropic regularisation. :data:`True`,
             uses regularisation strength suggested in :cite:`benard2023kernel`.
-            :math:`\lambda = frac{1}{m}`.
+            :math:`\lambda = \frac{1}{m}`.
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
             sets ``block_size``:math:`=n` effectively disabling the block accumulation;
             an integer value ``B`` sets ``block_size``:math:`=B`, it is often sensible
@@ -263,4 +263,8 @@ class KSD(Metric[Data]):
 
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
 
-        return squared_ksd + laplace_correction - entropic_regularisation
+        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
+            squared_ksd + laplace_correction - entropic_regularisation,
+            self.precision_threshold,
+        )
+        return jnp.sqrt(squared_ksd_threshold_applied)
