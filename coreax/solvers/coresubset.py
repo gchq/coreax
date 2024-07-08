@@ -68,7 +68,8 @@ class GreedyKernelInducingPointsState(eqx.Module):
     """
     Intermediate :class:`GreedyKernelInducingPoints` solver state information.
 
-    :param feature_gramian: Cached feature kernel gramian matrix
+    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
+        an additional row and column of zeros.
     """
 
     feature_gramian: Array
@@ -502,23 +503,27 @@ def _greedy_kernel_inducing_points_loss(
 
     :return: GreedyKernelInducingPoints loss for each candidate coreset
     """
-    # Extract all the possible "next" coreset arrays
-    extract_indices = (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
-    coreset_feature_gramians = feature_gramian[extract_indices]
-    coreset_responses = responses[candidate_coresets[:, None]]
-    cross_kernel_gramians = feature_gramian[candidate_coresets[:, :, None]]
+    # Extract all the possible "next" coreset feature gramians, cross feature gramians
+    # and coreset response vectors.
+    coreset_gramians = feature_gramian[
+        (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
+    ]
+    coreset_cross_gramians = feature_gramian[candidate_coresets, :-1]
+    coreset_responses = responses[candidate_coresets]
 
     # Invert the coreset feature gramians
-    inverse_coreset_feature_gramians = inverse_approximator.approximate_stack(
-        coreset_feature_gramians,
+    inverse_coreset_gramians = inverse_approximator.approximate_stack(
+        coreset_gramians,
         regularisation_parameter,
         identity,
     )
 
     # Compute the loss function
-    ykw = coreset_responses @ inverse_coreset_feature_gramians @ cross_kernel_gramians
-    term_2s = ykw @ ykw.T
-    term_3s = responses @ ykw.T
+    kwy = (coreset_cross_gramians * (inverse_coreset_gramians @ coreset_responses)).sum(
+        axis=1
+    )
+    term_2s = (kwy**2).sum(axis=1)
+    term_3s = kwy.dot(responses[:-1, 0])
     return term_2s - 2 * term_3s
 
 
@@ -567,6 +572,8 @@ class GreedyKernelInducingPoints(
         feature gram matrix
     :param unique: Boolean that enforces the resulting coreset will only contain
         unique elements
+    :param batch_size: An integer representing the size of the batches of data pairs
+        sampled at each iteration for consideration for adding to the coreset
     :param inverse_approximator: Instance of
         :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
         :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
@@ -576,6 +583,7 @@ class GreedyKernelInducingPoints(
     kernel: Kernel
     regularisation_parameter: float = 1e-6
     unique: bool = True
+    batch_size: Union[int, None] = None
     inverse_approximator: Optional[RegularisedInverseApproximator] = None
 
     @override
@@ -628,33 +636,41 @@ class GreedyKernelInducingPoints(
         else:
             coreset_indices = coresubset.unweighted_indices
 
+        # Extract features and responses
         dataset = coresubset.pre_coreset_data
         num_data_pairs = len(dataset)
+        x, y = dataset.data, dataset.supervision
+
+        # Pad the response array with an additional zero to allow us to
+        # extract sub-arrays and fill in elements with zeros simultaneously.
+        padded_responses = jnp.vstack((y, jnp.array([[0]])))
+
         if solver_state is None:
-            feature_gramian = self.kernel.compute(dataset.data, dataset.data)
+            feature_gramian = self.kernel.compute(x, y)
 
             # Pad the gramian with zeros in an additional column and row to allow us to
             # extract sub-arrays and fill in elements with zeros simultaneously.
-            feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
+            padded_feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
 
         else:
-            feature_gramian = solver_state.feature_gramian
+            padded_feature_gramian = solver_state.feature_gramian
 
-        # Randomise the order of indices to be considered at each iteration to guard
-        # against influence of index order
-        randomised_indices = sample_batch_indices(
+        # Sample the indices to be considered at each iteration ahead of time.
+        if self.batch_size is not None and self.batch_size < num_data_pairs:
+            batch_size = self.batch_size
+        else:
+            batch_size = num_data_pairs
+        batch_indices = sample_batch_indices(
             random_key=self.random_key,
             max_index=num_data_pairs,
-            batch_size=num_data_pairs,
+            batch_size=batch_size,
             num_batches=self.coreset_size,
         )
 
         # Initialise an array that will let us extract and build rectangular arrays
         # which stack arrays corresponding to every possible candidate coreset.
         initial_candidate_coresets = (
-            jnp.tile(coreset_indices, (num_data_pairs, 1))
-            .at[:, 0]
-            .set(randomised_indices[0, :])
+            jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[0, :])
         )
 
         # Adaptively initialise an "identity matrix". For reduction we need this to
@@ -677,8 +693,8 @@ class GreedyKernelInducingPoints(
             # not compute the first term as it is an invariant quantity wrt the coreset.
             loss = _greedy_kernel_inducing_points_loss(
                 candidate_coresets,
-                dataset.supervision,
-                feature_gramian,
+                padded_responses,
+                padded_feature_gramian,
                 self.regularisation_parameter,
                 updated_identity,
                 inverse_approximator,
@@ -699,8 +715,8 @@ class GreedyKernelInducingPoints(
             # batch of possible coreset indices.
             next_candidate_coresets = jnp.hstack(
                 (
-                    jnp.tile(index_to_include_in_coreset, (num_data_pairs, 1)),
-                    randomised_indices[[i + 1], :].T,
+                    jnp.tile(index_to_include_in_coreset, (batch_size, 1)),
+                    batch_indices[[i + 1], :].T,
                 )
             )
             updated_candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
@@ -727,7 +743,7 @@ class GreedyKernelInducingPoints(
 
         return Coresubset(
             updated_coreset_indices, dataset
-        ), GreedyKernelInducingPointsState(feature_gramian)
+        ), GreedyKernelInducingPointsState(padded_feature_gramian)
 
 
 # pylint: enable=too-many-locals
