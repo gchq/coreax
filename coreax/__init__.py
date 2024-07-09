@@ -42,6 +42,6 @@ from coreax.kernel import (
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.metrics import CMMD, MMD
+from coreax.metrics import CMMD, JMMD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 # pylint: enable=unused-import
