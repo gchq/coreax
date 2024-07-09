@@ -10,10 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
 - Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
-- Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
 - Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
-- Added coresubset algorithms targeting the joint density in `coreax.solvers.coresubset.JointKernelHerding`
-
 
 ### Fixed
 
@@ -43,13 +40,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a stochastic, iterative, and greedy coreset algorithm which approximates the Gramian of a given kernel function
 via `coreax.solvers.coresubset.RPCholesky`.
 - Added `coreax.util.sample_batch_indices` that allows one to sample an array of indices for batching.
-- Additional kernel classes `coreax.kernel.AdditiveKernel` and
-`coreax.kernel.ProductKernel` that allow for arbitrary composition of positive
-semi-definite kernels to produce new positive semi-definite kernels.
-- Added kernel classes `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
- `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`
-- Added capability to approximate regularised inverses of arrays `coreax.inverses.RegularisedInverseApproximator`
-- Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
+- Added kernel classes `coreax.kernel.AdditiveKernel` and `coreax.kernel.ProductKernel` that
+allow for arbitrary composition of positive semi-definite kernels to produce new positive semi-definite kernels.
+- Added additional kernel functions: `coreax.kernel.Linear`, `coreax.kernel.Polynomial`, `coreax.kernel.RationalQuadratic`,
+ `coreax.kernel.Periodic`, `coreax.kernel.LocallyPeriodic`.
+- Added capability to approximate the inverses of arrays via least-squares (`coreax.inverses.LeastSquaresApproximator`)
+or randomised eigendecomposition (`coreax.inverses.RandomisedEigendecompositionApproximator`) all inheriting
+from `coreax.inverses.RegularisedInverseApproximator`,
+- Refactor of package to a functional style to allow for JIT-compilation of the codebase in the largest possible scope:
+  - Added data classes `coreax.data.Data` and `coreax.data.SupervisedData` that draw
+    distinction between supervised and unsupervised datasets, and handle weighted data.
+    Replaces `coreax.data.DataReader` and `coreax.data.ArrayData`.
+  - Added `coreax.solvers.base.Solver` to replace functionality in `coreax.refine.py`, `coreax.coresubset.py` and
+  `coreax.reduction.py`. In particular, `coreax.solvers.base.CoresubsetSolver` parents coresubset
+  algorithms, `coreax.solvers.base.RefinementSolver` parents coresubset algorithms which support refinement
+  post-reduction, `coreax.solvers.base.ExplicitSizeSolver` parents all coreset algorithms which
+  return a coreset of a specific size.
+  - `coreax.reduction.MapReduce` functionality moved to `coreax.solvers.composite.MapReduce`, now
+  JIT-compilable via promise described in `coreax.solvers.base.PaddingInvariantSolver`.
+  - Moved all coresubset algorithms in `coreax.coresubset.py` to `coreax.solvers.coresubset.py`.
+  - All coreset algorithms now return a `coreax.coreset.Coreset` rather than modifying a `coreax.reduction.Coreset` in-place.
+- Use Equinox instead of manually constructing pytrees.
 
 ### Fixed
 
