@@ -275,8 +275,10 @@ class TestJMMD:
             comparison_features = [[0], [1]]
             comparison_responses = [[0], [1]]
 
-        with RBF feature kernel and response kernel given by
-        :math:`k(x,y) = \exp (-||x-y||^2/2\sigma^2)`, gives:
+        where we use an RBF feature and response kernel given by
+        :math:`r(x,y) = l(x,y) = \exp (-||x-y||^2/2\sigma^2)` to define the tensor
+        product kernel :math:`k((x_1, y_1),(x_2, y_2)) := r(x_1,x_2)l(y_1,y_2)`, we
+        have:
 
         .. math::
 
@@ -302,9 +304,6 @@ class TestJMMD:
             \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)) +
             \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2)) -
             2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
-
-            = \frac{3+4e^{-1}+2e^{-4}}{9} + \frac{2 + 2e^{-1}}{2} -2 \times
-            \frac{2 + 3e^{-1}+e^{-4}}{6}
 
             = \frac{3 - e^{-1} -2e^{-4}}{18}.
         """
@@ -352,8 +351,6 @@ class TestJMMD:
              - \frac{2}{||w_1||||w_2||} w_1
              \mathbb{E}_x(k(\mathcal{D}_1,\mathcal{D}_2)) w_2
 
-            = \frac{3+4e^{-1}+2e^{-4}}{9} + 1 - 2 \times \frac{1 + e^{-1} + e^{-4}}{3}
-
             = \frac{2}{3} - \frac{2}{9}e^{-1} - \frac{4}{9}e^{-4}.
         """
         reference_points = jnp.array([[0], [1], [2]])
@@ -395,8 +392,8 @@ class TestJMMD:
         kernel = TensorProductKernel(base_kernel, base_kernel)
         x, y = problem
         # Compute each term in the MMD formula to obtain an expected MMD.
-        x_no_weights = SupervisedData(x.data, x.supervision)
-        y_no_weights = SupervisedData(y.data, y.supervision)
+        x_no_weights = (x.data, x.supervision)
+        y_no_weights = (y.data, y.supervision)
         kernel_nn = kernel.compute(x_no_weights, x_no_weights)
         kernel_mm = kernel.compute(y_no_weights, y_no_weights)
         kernel_nm = kernel.compute(x_no_weights, y_no_weights)
@@ -410,6 +407,7 @@ class TestJMMD:
                 - 2 * jnp.average(kernel_nm, weights=weights_nm)
             )
         elif mode == "unweighted":
+            # Strip weights
             x, y = (
                 SupervisedData(x.data, x.supervision),
                 SupervisedData(y.data, y.supervision),
