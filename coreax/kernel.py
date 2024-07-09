@@ -658,7 +658,8 @@ class TensorProductKernel(eqx.Module):
         A convenience method for calling meth:`compute_mean`. Equivalent to the call
         :code:`compute_mean(a, a, axis=0, block_size=block_size, unroll=unroll)`.
 
-        :param a: Supervised dataset
+        :param a: Instance of :class:`~SupervisedData` or tuple of two arrays where the
+            order of the elements corresponds to inputs to the first and second kernels.
         :param block_size: Block size parameter passed to :meth:`compute_mean`
         :param unroll: Unroll parameter passed to :meth:`compute_mean`
         :return: Gramian 'row/column-mean', :math:`\frac{1}{n}\sum_{i=1}^{n} G_{ij}`.
@@ -706,8 +707,12 @@ class TensorProductKernel(eqx.Module):
             provide the block shape stability required by :func:`jax.lax.scan`
             (used for block iteration).
 
-        :param a: Supervised dataset containing :math:`n` (weighted) data pairs
-        :param b: Supervised dataset containing :math:`m` (weighted) data pairs
+        :param a: Instance of :class:`~SupervisedData` containing :math:`n` (weighted)
+            data pairs or tuple of two arrays where the order of the elements
+            corresponds to inputs to the first and second kernels.
+        :param b: Instance of :class:`~SupervisedData` containing :math:`m` (weighted)
+            data pairs or tuple of two arrays where the order of the elements
+            corresponds to inputs to the first and second kernels.
         :param axis: Which axis of the kernel matrix to compute the mean over; a value
             of `None` computes the mean over both axes
         :param block_size: Size of matrix blocks to process; a value of :data:`None`
