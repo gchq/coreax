@@ -667,12 +667,12 @@ class TestTensorProductKernel:
                 [7.0, 8.0],
             ]
         )
-        b = a[:-1] + 1
+        b = a[::-1] + 1
         kernel_matrix = kernel.compute((a, b), (a, b))
         a_weights, b_weights = jnp.arange(a.shape[0]), jnp.arange(b.shape[0])
         a_data, b_data = (
-            SupervisedData(a, a, a_weights),
-            SupervisedData(b, b, b_weights),
+            SupervisedData(a, b, a_weights),
+            SupervisedData(a, b, b_weights),
         )
         if axis == 0:
             weights = a_weights
@@ -692,10 +692,10 @@ class TestTensorProductKernel:
         jit_variant: Callable[[Callable], Callable],
     ) -> None:
         """Test that `gramian_row_mean` method is working as expected."""
-        data = jnp.ones((10, 10))
-        a = SupervisedData(data, data)
-        expected = kernel.compute(a, a).mean(axis=0)
-        mean_output = jit_variant(kernel.gramian_row_mean)(a)
+        a = jnp.ones((10, 2))
+        b = a[::-1] + 1
+        expected = kernel.compute((a, b), (a, b)).mean(axis=0)
+        mean_output = jit_variant(kernel.gramian_row_mean)((a, b))
         np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
     def test_compute_elementwise_calls_sub_kernels_correctly(self) -> None:

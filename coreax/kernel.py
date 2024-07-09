@@ -64,7 +64,14 @@ from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
 from typing_extensions import override
 
-from coreax.data import Data, SupervisedData, as_data, is_data
+from coreax.data import (
+    Data,
+    SupervisedData,
+    as_data,
+    as_supervised_data,
+    is_data,
+    is_supervised_data,
+)
 from coreax.util import (
     pairwise,
     pairwise_tuple,
@@ -556,6 +563,27 @@ class ProductKernel(PairedKernel):
         )
 
 
+def _block_supervised_data_convert(
+    x: Union[tuple[Array, Array], SupervisedData], block_size: Union[int, None]
+) -> tuple[Array, int]:
+    """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
+    x = as_supervised_data(x).normalize(preserve_zeros=True)
+    block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
+    padding = ceil(len(x) / block_size) * block_size - len(x)
+    padded_x = tree_zero_pad_leading_axis(x, padding)
+
+    def _reshape(x: Array) -> Array:
+        _, *remaining_shape = jnp.shape(x)
+        try:
+            return x.reshape(-1, block_size, *remaining_shape)
+        except ZeroDivisionError as err:
+            if 0 in x.shape:
+                raise ValueError("'x' must not be empty") from err
+            raise
+
+    return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
+
+
 class TensorProductKernel(eqx.Module):
     r"""
     Define a kernel which is a tensor product of two kernels.
@@ -619,7 +647,7 @@ class TensorProductKernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        a: Union[ArrayLike, SupervisedData],
+        a: Union[tuple[Array, Array], SupervisedData],
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -639,8 +667,8 @@ class TensorProductKernel(eqx.Module):
 
     def compute_mean(
         self,
-        a: Union[ArrayLike, SupervisedData],
-        b: Union[ArrayLike, SupervisedData],
+        a: Union[tuple[Array, Array], SupervisedData],
+        b: Union[tuple[Array, Array], SupervisedData],
         axis: Union[int, None] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -693,7 +721,7 @@ class TensorProductKernel(eqx.Module):
             the JAX docs for further information
         :return: The (weighted) mean of the kernel matrix :math:`K_{ij}`
         """
-        datasets = a, b
+        datasets = as_supervised_data(a), as_supervised_data(b)
         inner_unroll, outer_unroll = tree_leaves_repeat(unroll, len(datasets))
         _block_size = tree_leaves_repeat(block_size, len(datasets))
 
@@ -702,21 +730,23 @@ class TensorProductKernel(eqx.Module):
             datasets = datasets[::-1]
             _block_size = _block_size[::-1]
         (block_a, unpadded_len_a), (block_b, _) = jtu.tree_map(
-            _block_data_convert, datasets, tuple(_block_size), is_leaf=is_data
+            _block_supervised_data_convert,
+            datasets,
+            tuple(_block_size),
+            is_leaf=is_supervised_data,
         )
 
         def block_sum(
-            accumulated_sum: Array, block_a: SupervisedData
+            accumulated_sum: Array, a_block: SupervisedData
         ) -> tuple[Array, Array]:
             """Block reduce/accumulate over ``a``."""
 
             def slice_sum(
-                accumulated_sum: Array, block_b: SupervisedData
+                accumulated_sum: Array, b_block: SupervisedData
             ) -> tuple[Array, Array]:
                 """Block reduce/accumulate over ``b``."""
-                w_a, w_b = block_a.weights, block_b.weights
-                x_a, y_a = block_a.data, block_a.supervision
-                x_b, y_b = block_b.data, block_b.supervision
+                x_a, y_a, w_a = a_block.data, a_block.supervision, a_block.weights
+                x_b, y_b, w_b = b_block.data, b_block.supervision, b_block.weights
                 column_sum_slice = jnp.dot(self.compute((x_a, y_a), (x_b, y_b)), w_b)
                 accumulated_sum += jnp.dot(w_a, column_sum_slice)
                 return accumulated_sum, column_sum_slice
