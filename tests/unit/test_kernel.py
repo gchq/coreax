@@ -623,9 +623,7 @@ class TestTensorProductKernel:
             )
             expected_output = jnp.array([[14.0, 1.434551e-09], [1.434551e-09, 110.0]])
 
-        output = jit_variant(kernel.compute)(
-            SupervisedData(x1, y1), SupervisedData(x2, y2)
-        )
+        output = jit_variant(kernel.compute)((x1, y1), (x2, y2))
         np.testing.assert_array_almost_equal(output, expected_output)
 
     @pytest.mark.parametrize(
@@ -670,7 +668,7 @@ class TestTensorProductKernel:
             ]
         )
         b = a[:-1] + 1
-        kernel_matrix = kernel.compute(SupervisedData(a, a), SupervisedData(b, b))
+        kernel_matrix = kernel.compute((a, b), (a, b))
         a_weights, b_weights = jnp.arange(a.shape[0]), jnp.arange(b.shape[0])
         a_data, b_data = (
             SupervisedData(a, a, a_weights),
