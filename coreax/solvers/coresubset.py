@@ -295,6 +295,8 @@ def _supervised_greedy_kernel_selection(
         unroll=unroll,
     )
 
+    x, y = data.data, data.supervision
+
     def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, ArrayLike]:
         coreset_indices, kernel_similarity_penalty = val
         valid_kernel_similarity_penalty = jnp.where(
@@ -304,13 +306,7 @@ def _supervised_greedy_kernel_selection(
         updated_coreset_indices = coreset_indices.at[i].set(updated_coreset_index)
 
         penalty_update = jnp.ravel(
-            kernel.compute(
-                (data.data, data.supervision),
-                (
-                    data.data[updated_coreset_index],
-                    data.supervision[updated_coreset_index],
-                ),
-            )
+            kernel.compute((x, y), (x[updated_coreset_index], y[updated_coreset_index]))
         )
         updated_penalty = kernel_similarity_penalty + penalty_update
         if unique:
