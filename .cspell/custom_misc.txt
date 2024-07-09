@@ -21,6 +21,7 @@ GCHQ
 Gramian
 gramians
 infty
+JMMD
 kbar
 kdtree
 kernelised
@@ -38,4 +39,5 @@ RPCHOLESKY
 sigmas
 supp
 TLDR
+WJMMD
 WMMD
