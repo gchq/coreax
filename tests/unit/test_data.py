@@ -116,5 +116,5 @@ class TestSupervisedData:
             ValueError,
             match="Leading dimensions of 'supervision' and 'data' must be equal",
         ):
-            invalid_supervision = jnp.ones(DATA_ARRAY.shape[0] + 1)
+            invalid_supervision = jnp.ones(DATA_ARRAY.shape[0])
             coreax.data.SupervisedData(DATA_ARRAY, invalid_supervision)
