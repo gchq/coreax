@@ -397,7 +397,7 @@ class JointKernelHerding(
         dataset: _SupervisedData,
         solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_SupervisedData], HerdingState]:
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(

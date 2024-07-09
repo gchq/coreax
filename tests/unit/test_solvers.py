@@ -71,6 +71,12 @@ class _ReduceProblem(NamedTuple):
     expected_coreset: Optional[Coreset] = None
 
 
+class _SupervisedReduceProblem(NamedTuple):
+    dataset: SupervisedData
+    solver: Solver
+    expected_coreset: Optional[Coreset] = None
+
+
 class _RefineProblem(NamedTuple):
     initial_coresubset: Coresubset
     solver: RefinementSolver
@@ -408,7 +414,7 @@ class TestJointKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             SupervisedData(features, responses), solver, expected_coreset
         )
 
-    def test_herding_state(self, reduce_problem: _ReduceProblem) -> None:
+    def test_herding_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
         solver = cast(JointKernelHerding, solver)
@@ -578,7 +584,7 @@ class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     # pylint: disable=duplicate-code
-    def test_greedy_cmmd_state(self, reduce_problem: _ReduceProblem) -> None:
+    def test_greedy_cmmd_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
         """Check that the cached ConditionalKernelHerding state is as expected."""
         dataset, solver, _ = reduce_problem
         solver = cast(ConditionalKernelHerding, solver)
