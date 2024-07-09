@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
 - Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
-
+- Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
 
 ### Fixed
 
