@@ -151,10 +151,10 @@ def pairwise_tuple(
 
     @wraps(fn)
     def pairwise_fn(
-        x: tuple[ArrayLike, ArrayLike], y: tuple[ArrayLike, ArrayLike]
+        a: tuple[ArrayLike, ArrayLike], b: tuple[ArrayLike, ArrayLike]
     ) -> Array:
-        x_1, y_1 = jnp.atleast_2d(x[0], x[1])
-        x_2, y_2 = jnp.atleast_2d(y[0], y[1])
+        x_1, y_1 = jnp.atleast_2d(a[0], a[1])
+        x_2, y_2 = jnp.atleast_2d(b[0], b[1])
         return vmap(
             vmap(fn, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
