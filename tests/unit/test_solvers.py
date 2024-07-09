@@ -65,6 +65,12 @@ class _ReduceProblem(NamedTuple):
     expected_coreset: Optional[Coreset] = None
 
 
+class _SupervisedReduceProblem(NamedTuple):
+    dataset: SupervisedData
+    solver: Solver
+    expected_coreset: Optional[Coreset] = None
+
+
 class _RefineProblem(NamedTuple):
     initial_coresubset: Coresubset
     solver: RefinementSolver
@@ -367,50 +373,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         assert eqx.tree_equal(state, expected_state)
 
 
-class TestJointKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
-    """Test cases for :class:`coreax.solvers.coresubset.JointKernelHerding`."""
-
-    additional_key = jr.key(0)
-
-    @override
-    @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
-        kernel = SquaredExponentialKernel()
-        coreset_size = self.shape[0] // 10
-        return jtu.Partial(
-            JointKernelHerding,
-            coreset_size=coreset_size,
-            feature_kernel=kernel,
-            response_kernel=kernel,
-        )
-
-    @override
-    @pytest.fixture(params=["random"], scope="class")
-    def reduce_problem(
-        self,
-        request: pytest.FixtureRequest,
-        solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _ReduceProblem:
-        if request.param == "random":
-            features = jr.uniform(self.random_key, self.shape)
-            responses = jr.uniform(self.additional_key, self.shape)
-            solver = solver_factory()
-            expected_coreset = None
-        else:
-            raise ValueError("Invalid fixture parametrization")
-        return _ReduceProblem(
-            SupervisedData(features, responses), solver, expected_coreset
-        )
-
-    def test_herding_state(self, reduce_problem: _ReduceProblem) -> None:
-        """Check that the cached herding state is as expected."""
-        dataset, solver, _ = reduce_problem
-        solver = cast(JointKernelHerding, solver)
-        _, state = solver.reduce(dataset)
-        expected_state = HerdingState(solver.kernel.gramian_row_mean(dataset))
-        assert eqx.tree_equal(state, expected_state)
-
-
 class TestRandomSample(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
 
@@ -493,7 +455,7 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _ReduceProblem:
+    ) -> _SupervisedReduceProblem:
         if request.param == "random":
             features = jr.uniform(self.random_key, self.shape)
             responses = jr.uniform(self.additional_key, self.shape)
@@ -501,7 +463,7 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
             expected_coreset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        return _ReduceProblem(
+        return _SupervisedReduceProblem(
             SupervisedData(features, responses), solver, expected_coreset
         )
 
@@ -516,10 +478,10 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
             _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
             assert max(counts) <= 1
 
-    def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
-        """Check that the cached RPCholesky state is as expected."""
+    def test_rpcholesky_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Check that the cached JointRPCholesky state is as expected."""
         dataset, solver, _ = reduce_problem
-        solver = cast(RPCholesky, solver)
+        solver = cast(JointRPCholesky, solver)
         _, state = solver.reduce(dataset)
 
         x, y = dataset.data, dataset.supervision

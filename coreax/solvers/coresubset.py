@@ -443,7 +443,7 @@ class JointRPCholesky(
             gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)((x, y), (x, y))
         else:
             gramian_diagonal = solver_state.gramian_diagonal
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         coreset_indices = initial_coresubset.unweighted_indices
         num_data_points = len(x)
 

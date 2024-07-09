@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
 - Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
 - Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
-- Added coresubset algorithms targeting the joint density in `coreax.solvers.coresubset.JointKernelHerding`
-and `coreax.solvers.coresubset.JointRPCholesky`
+- Added coresubset algorithms targeting the joint density in `coreax.solvers.coresubset.JointRPCholesky`
 
 ### Fixed
 
