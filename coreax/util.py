@@ -315,7 +315,7 @@ def jit_test(
 @jit
 def atleast_2d(*arrays: ArrayLike) -> Union[Array, list[Array]]:
     r"""
-    Given an array or list of arrays ensure they are at least 2-dimensional.
+    Given an array or sequence of arrays ensure they are at least 2-dimensional.
 
     .. note::
         This function differs from `jax.numpy.atleast_2d` in that it converts
@@ -325,9 +325,9 @@ def atleast_2d(*arrays: ArrayLike) -> Union[Array, list[Array]]:
     :return: 2-dimensional array or list of 2-dimensional arrays
     """
     if len(arrays) == 1:
-        array = jnp.asarray(arrays, copy=False)
+        array = jnp.asarray(arrays[0], copy=False)
         if len(array.shape) == 1:
-            return array.reshape(-1, 1)
+            return jnp.expand_dims(array, 0)
         return jnp.array(array, copy=False, ndmin=2)
     _arrays = [jnp.asarray(array, copy=False) for array in arrays]
     return [

@@ -304,20 +304,20 @@ class TestUtil:
     @pytest.mark.parametrize(
         "arrays",
         [
-            1,
+            (1,),
             (1, 1),
-            1.0,
+            (1.0,),
             (1.0, 1.0),
-            True,
+            (True,),
             (False, True),
-            jnp.array(1),
+            (jnp.array(1),),
             (jnp.array(1), jnp.array(1)),
-            jnp.array([1, 1]),
+            (jnp.array([1, 1]),),
             (jnp.array([1, 1]), jnp.array([1, 1])),
-            jnp.array([[1], [1]]),
+            (jnp.array([[1], [1]]),),
             (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
-            jnp.array([[1], [1]]),
-            (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
+            (jnp.array([[[1]], [[1]]]),),
+            (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
         ],
         ids=[
             "single_int",
@@ -336,21 +336,27 @@ class TestUtil:
             "multiple_three_dimensional_arrays",
         ],
     )
-    def test_atleast_2d(self, arrays: ArrayLike) -> None:
+    def test_atleast_2d(self, arrays: tuple[ArrayLike]) -> None:
         """Check that ``atleast_2d`` returns arrays with expected dimension."""
         min_dimension = 2
-        num_arrays = len(*arrays)
-        arrays_2d = atleast_2d(arrays)
+        num_arrays = len(arrays)
+
+        arrays_atleast_2d = atleast_2d(*arrays)
         if num_arrays == 1:
-            assert len(arrays_2d.shape) == min_dimension
+            array = jnp.asarray(arrays[0])
+            array_shape = array.shape
+            if len(array_shape) <= min_dimension:
+                assert len(arrays_atleast_2d.shape) == min_dimension
+            else:
+                assert arrays_atleast_2d.shape == array_shape
         else:
             for i in range(num_arrays):
                 array = jnp.asarray(arrays[i])
                 array_shape = array.shape
                 if len(array_shape) <= min_dimension:
-                    assert len(array.shape) == min_dimension
+                    assert len(arrays_atleast_2d[i].shape) == min_dimension
                 else:
-                    assert arrays_2d[i] == array_shape
+                    assert arrays_atleast_2d[i].shape == array_shape
 
 
 class TestSilentTQDM:
