@@ -29,12 +29,15 @@ from typing import Generic, Optional, TypeVar, Union
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
-from jax import Array
+import jax.scipy as jsp
+import jax.tree_util as jtu
+from jax import Array, jacfwd, vmap
 
 import coreax.kernel
 import coreax.util
 from coreax.data import Data, SupervisedData
 from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
+from coreax.score_matching import ScoreMatching, convert_stein_kernel
 
 _Data = TypeVar("_Data", bound=Data)
 
@@ -133,6 +136,140 @@ class MMD(Metric[Data]):
             self.precision_threshold,
         )
         return jnp.sqrt(squared_mmd_threshold_applied)
+
+
+class KSD(Metric[Data]):
+    r"""
+    Computation of the (regularised) (Laplace-corrected) kernel Stein discrepancy (KSD).
+
+    For a set of ``n`` i.i.d. samples in ``d`` dimensions
+    :math:`\mathcal{D}_1 \sim \mathbb{P}` and another set of ``m`` i.i.d. samples in
+    ``d`` dimensions :math:`\mathcal{D}_2 \sim \mathbb{Q}`, the regularised
+    Laplace-corrected kernel Stein discrepancy is given by:
+
+    .. math::
+
+        KSD_{\lambda}^2(\mathbb{P}, \mathbb{Q})
+        =  \frac{1}{m^2}\sum_{i \neq j}^m k_{\mathbb{P}}(x_i, x_j)
+        + \frac{1}{m^2}\sum_{i = 1}^m [k_{\mathbb{P}}(x_i, x_i)
+        + \Delta^+ \log(\mathbb{P}(x_i))]
+        - \lambda \frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
+
+    where :math:`x \sim \mathbb{Q}`, :math:`k_{\mathbb{P}}` is the Stein kernel
+    induced by a base kernel and estimated with samples from :math:`\mathbb{P}`.
+    The first term is vanilla KSD, the second term implements a Laplace-correction, and
+    the third term enforces entropic regularisation. See :cite:`benard2023kernel` for a
+    discussion on the need for and effects of Laplace-correction and entropic
+    regularisation.
+
+    Common uses of KSD include comparing a reduced representation of a dataset to the
+    original dataset, comparing different original datasets to one another, or
+    comparing reduced representations of different original datasets to one another.
+
+    .. note::
+        The kernel stein discrepancy is not a metric like :class:`coreax.metrics.MMD`.
+        It is instead a divergence, which is a kind of statistical distance that differs
+        from a metric in a few ways. In particular, they are not symmetric. i.e.
+        :math:`KSD_{\lambda}(\mathbb{P}, \mathbb{Q})
+        \neq KSD_{\lambda}(\mathbb{Q}, \mathbb{P})`, and they generalise the concept
+        of squared distance and so do not satisfy the triangle inequality.
+
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
+        if 'kernel' is a :class:`~coreax.kernel.SteinKernel` and :code:`score_matching
+        is not None`, a new instance of the kernel will be generated where the score
+        function is given by :code:`score_matching.match(...)`
+    :param score_matching: Specifies/overwrite the score function of the implied/passed
+       :class:`~coreax.kernel.SteinKernel`; if :data:`None`, default to
+       :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
+       :class:`~coreax.kernel.SteinKernel`, in which case the kernel's existing score
+       function is used.
+    :param precision_threshold: Threshold above which negative values of the squared KSD
+        are rounded to zero (accommodates precision loss)
+    """
+
+    kernel: coreax.kernel.Kernel
+    score_matching: Optional[ScoreMatching] = None
+    precision_threshold: float = 1e-12
+
+    def compute(
+        self,
+        reference_data: Data,
+        comparison_data: Data,
+        *,
+        laplace_correct: bool = False,
+        regularise: bool = False,
+        block_size: Optional[int] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        **kwargs,
+    ) -> Array:
+        r"""
+        Compute the (regularised) (Laplace-corrected) kernel Stein discrepancy.
+
+        .. math::
+
+            KSD_{\lambda}^2(\mathbb{P}, \mathbb{Q})
+            =  \frac{1}{m^2}\sum_{i \neq j}^m k_{\mathbb{P}}(x_i, x_j)
+            + \frac{1}{m^2}\sum_{i = 1}^m [k_{\mathbb{P}}(x_i, x_i)
+            + \Delta^+ \log(\mathbb{P}(x_i))]
+            - \lambda \frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
+
+        :param reference_data: An instance of the class :class:`coreax.data.Data`,
+            containing an :math:`n \times d` array of data sampled from
+            :math:`\mathbb{P}`
+        :param comparison_data: An instance of the class :class:`coreax.data.Data` to
+            compare against ``reference_data`` containing an :math:`m \times d` array of
+            data sampled from :math:`\mathbb{Q}`
+        :param laplace_correct: Boolean that enforces Laplace correction, see Section
+            3.1 of :cite:`benard2023kernel`.
+        :param regularise: Boolean that enforces entropic regularisation. :data:`True`,
+            uses regularisation strength suggested in :cite:`benard2023kernel`.
+            :math:`\lambda = \frac{1}{m}`.
+        :param block_size: Size of matrix blocks to process; a value of :data:`None`
+            sets ``block_size``:math:`=n` effectively disabling the block accumulation;
+            an integer value ``B`` sets ``block_size``:math:`=B`, it is often sensible
+            to select the largest block size that does not exhaust the available memory
+            resources
+        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
+            calls, allows for trade-offs between compilation and runtime cost; consult
+            the JAX docs for further information
+        :return: Kernel Stein Discrepancy as a 0-dimensional array
+        """
+        del kwargs
+        # Train Stein kernel with data from P
+        x, w_x = jtu.tree_leaves(reference_data)
+        kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
+
+        # Variable rename allows for nicer automatic formatting.
+        y = comparison_data
+        squared_ksd = kernel.compute_mean(y, y, block_size=block_size, unroll=unroll)
+        laplace_correction = 0.0
+        entropic_regularisation = 0.0
+
+        if regularise:
+            # Train weighted kde with data from P, noticing we cannot guarantee that
+            # kernel.base_kernel has a 'length_scale' attribute
+            bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
+            kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
+            # Evaluate entropic regularisation term with data from Q using
+            # regularisation parameter suggested in :cite:`benard2023kernel`
+            entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
+
+        if laplace_correct:
+
+            @vmap
+            def _laplace_positive(x_: Array) -> Array:
+                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
+                hessian = jacfwd(kernel.score_function)(x_)
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
+
+            laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
+
+        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
+            squared_ksd + laplace_correction - entropic_regularisation,
+            self.precision_threshold,
+        )
+        return jnp.sqrt(squared_ksd_threshold_applied)
 
 
 class JMMD(Metric[SupervisedData]):

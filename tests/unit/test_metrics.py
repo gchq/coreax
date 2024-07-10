@@ -23,9 +23,11 @@ from typing import Literal, NamedTuple
 
 import jax.numpy as jnp
 import jax.random as jr
+import jax.scipy as jsp
 import jax.tree_util as jtu
+import numpy as np
 import pytest
-from jax import Array
+from jax import Array, jacfwd, vmap
 
 from coreax.data import Data, SupervisedData
 from coreax.inverses import (
@@ -38,10 +40,14 @@ from coreax.kernel import (
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    RationalQuadraticKernel,
     SquaredExponentialKernel,
+    SteinKernel,
     TensorProductKernel,
 )
-from coreax.metrics import CMMD, JMMD, MMD
+from coreax.metrics import CMMD, JMMD, KSD, MMD
+from coreax.score_matching import convert_stein_kernel
+from coreax.util import ArrayLike, pairwise
 
 
 class _MetricProblem(NamedTuple):
@@ -224,6 +230,170 @@ class TestMMD:
         metric = MMD(kernel=kernel)
         output = metric.compute(x, y)
         assert output == pytest.approx(expected_mmd, abs=1e-6)
+
+
+class TestKSD:
+    """
+    Tests related to the kernel Stein discrepancy (KSD) class in metrics.py.
+    """
+
+    @pytest.fixture
+    def problem(self) -> _MetricProblem:
+        """Generate an example problem for testing KSD."""
+        dimension = 1
+        num_points = 2500, 1000
+        keys = tuple(jr.split(jr.key(0), 2))
+
+        def _generate_data(_num_points: int, _key: Array) -> Data:
+            point_key, weight_key = jr.split(_key, 2)
+            points = jr.normal(point_key, (_num_points, dimension))
+            weights = jr.uniform(weight_key, (_num_points,))
+            return Data(points, weights)
+
+        reference_data, comparison_data = jtu.tree_map(_generate_data, num_points, keys)
+        return _MetricProblem(reference_data, comparison_data)
+
+    @pytest.mark.parametrize(
+        "kernel", [SquaredExponentialKernel(), RationalQuadraticKernel(), PCIMQKernel()]
+    )
+    def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
+        """Check KSD of a dataset with itself is (very) approximately zero."""
+        x = problem.reference_data
+        metric = KSD(kernel)
+        assert metric.compute(
+            x, x, laplace_correct=False, regularise=False
+        ) == pytest.approx(0.0, abs=1e0)
+
+    def test_ksd_analytically_known_stein_kernel(self) -> None:
+        r"""
+        Test KSD computation against an analytically derived stein kernel solution.
+
+        Given a standard multivariate normal distribution
+        :math:`\mathbb{P} = \mathcal{N}(0, I)`, and the PCIMQ kernel function
+        :math:`k: \mathbb{R}^2 \times \mathbb{R}^2 \rightarrow \mathbb{R}` such that
+        :math:`k(x, y) = \frac{1}{\sqrt{1 + ||x-y||^2}}, one can analytically derive the
+        induced Stein kernel (see Exercise 3, :cite:`oates2021uncertainty`):
+
+        .. math::
+
+            k_{\mathbb{P}}(x, y) = -\frac{3||x-y||^2}{(1 + ||x-y||^2)^{\frac{5}{2}}}
+            + \frac{2 + (x-y)^T(y-x)}{(1 + ||x-y||^2)^{\frac{3}{2}}}
+            + \frac{x^Ty}{(1 + ||x-y||^2)^{\frac{1}{2}}}.
+
+        Then, given :math:`x_i \ sim \mathbb{Q}` where :math:`\mathbb{Q}` is some other
+        distribution, the Kernelised Stein Discrepancy can be computed as
+
+        .. math::
+
+            KSD^2(\mathbb{P}, \mathbb{Q})
+            =  \frac{1}{m^2}\sum_{i, j = 1}^m k_{\mathbb{P}}(x_i, x_j)
+        """
+        random_key = jr.key(2_024)
+        dim = 2
+        num_data_points = 1000
+
+        # Generate data from a uniform distribution Q with which to compute the expected
+        # KSD.
+        comparison_pts = jr.uniform(
+            random_key,
+            shape=(num_data_points, dim),
+        )
+
+        # Analytic stein kernel
+        def _stein_kernel(x: ArrayLike, y: ArrayLike) -> Array:
+            norm_sq = jnp.linalg.norm(jnp.subtract(x, y)) ** 2
+            body = 1 + norm_sq
+            first_term = 3 * norm_sq / body ** (5 / 2)
+            second_term = (dim - norm_sq) / body ** (3 / 2)
+            third_term = jnp.dot(x, y) / body ** (1 / 2)
+            return -first_term + second_term + third_term
+
+        stein_kernel_matrix = pairwise(_stein_kernel)(comparison_pts, comparison_pts)
+        expected_output = jnp.sqrt(stein_kernel_matrix.sum() / num_data_points**2)
+
+        # Compute the KSD using the metric object via a stein kernel induced by a
+        # PCIMQ kernel, with the corresponding analytic score function and
+        # reference data from a standard multivariate distribution P.
+        reference_pts = jr.multivariate_normal(
+            random_key,
+            jnp.zeros(dim),
+            jnp.eye(dim),
+            shape=(num_data_points,),
+        )
+        base_kernel = PCIMQKernel(length_scale=1 / np.sqrt(2), output_scale=1)
+
+        def _score_function(x: ArrayLike) -> Array:
+            return -jnp.asarray(x)
+
+        stein_kernel = SteinKernel(base_kernel, score_function=_score_function)
+        metric = KSD(kernel=stein_kernel)
+        output = metric.compute(Data(reference_pts), Data(comparison_pts))
+
+        assert output == pytest.approx(expected_output)
+
+    @pytest.mark.parametrize(
+        "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
+    )
+    def test_ksd_random_data(
+        self,
+        problem: _MetricProblem,
+        mode: Literal["unweighted", "weighted", "laplace-corrected", "regularised"],
+    ):
+        r"""
+        Test KSD computed from randomly generated test data agrees with method result.
+
+        - "unweighted" parameterization checks that if the 'reference_data' and the
+            'comparison_data' have the default 'None' weights, that the computed KSD
+              is
+            given by the means of the unweighted kernel matrices.
+        - "weighted" parameterization checks that for arbitrarily weighted data, the
+            computed MMD is given by the weighted average of the kernel matrices.
+        """
+        x, y = problem
+
+        base_kernel = SquaredExponentialKernel()
+        kernel = convert_stein_kernel(x.data, base_kernel, None)
+        metric = KSD(kernel=kernel, score_matching=None)
+
+        # Compute each term in the KSD formula to obtain an expected KSD.
+        kernel_mm = kernel.compute(y.data, y.data)
+        if mode == "weighted":
+            weights_mm = y.weights[..., None] * y.weights[None, ...]
+            expected_ksd = jnp.sqrt(jnp.average(kernel_mm, weights=weights_mm))
+            output = metric.compute(x, y, laplace_correct=False, regularise=False)
+        elif mode == "unweighted":
+            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm))
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=False, regularise=False
+            )
+        elif mode == "laplace-corrected":
+            # pylint: disable=duplicate-code
+            @vmap
+            def _laplace_positive(x_: Array) -> Array:
+                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
+                hessian = jacfwd(kernel.score_function)(x_)
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
+
+            laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
+            # pylint: enable=duplicate-code
+
+            expected_ksd = jnp.sqrt(
+                jnp.mean(kernel_mm) + (laplace_correction / len(y) ** 2)
+            )
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=True, regularise=False
+            )
+        elif mode == "regularised":
+            kde = jsp.stats.gaussian_kde(x.data.T, bw_method=base_kernel.length_scale)
+            entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
+            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm) - entropic_regularisation)
+            output = metric.compute(
+                Data(x.data), Data(y.data), laplace_correct=False, regularise=True
+            )
+        else:
+            raise ValueError("Invalid mode parameterization")
+        # Compute the KSD using the metric object
+        assert output == pytest.approx(expected_ksd, abs=1e-6, rel=1e-3)
 
 
 class TestJMMD:
