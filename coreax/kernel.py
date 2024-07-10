@@ -608,7 +608,7 @@ class TensorProductKernel(eqx.Module):
         Evaluate the kernel on pairs of individual input vectors.
 
         Vectorisation only becomes relevant in terms of computational speed when we
-        have multiple pairs `a`:math:`=(x_1, y_1)``, or `b`:math:`=(x_2, y_2)`.
+        have multiple pairs `a`:math:`=(x_1, y_1)`, or `b`:math:`=(x_2, y_2)`.
 
         :param a: Tuple of vectors :math:`(x_1, y_1)`
         :param b: Tuple of vectors :math:`(x_2, y_2)`
