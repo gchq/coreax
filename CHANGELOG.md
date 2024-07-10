@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
 - Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
-- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
 - Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
 
 
@@ -28,6 +28,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 
+
+
+## [0.2.1]
+
+### Added
+
+- Pyright to development tools (code does not pass yet)
+
+### Fixed
+
+- Nitpicks in documentation build
+- Incorrect package version number
+
+### Changed
+
+- Augmented unroll parameter to be consistent with block size in MMD metric
 
 
 ## [0.2.0]
@@ -169,6 +185,7 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/gchq/coreax/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gchq/coreax/releases/tag/v0.1.0
