@@ -199,7 +199,12 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
     return pairwise(difference)(x, y)
 
 
-def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -> Array:
+def solve_qp(
+    kernel_mm: ArrayLike,
+    gramian_row_mean: ArrayLike,
+    precision_threshold: float = 1e-12,
+    **osqp_kwargs,
+) -> Array:
     r"""
     Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
@@ -218,6 +223,8 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
     :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
+    :precision_threshold: Threshold below which values are are rounded to zero
+        (accommodates precision loss)
     :return: Optimised solution for the quadratic program
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP
@@ -239,7 +246,10 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
     sol = qp.run(
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
-    return sol.primal
+
+    # Ensure conditions of solutions are met to chosen precision
+    solution = jnp.where(sol.primal < jnp.abs(precision_threshold), 0, sol.primal)
+    return solution / jnp.sum(solution)
 
 
 def sample_batch_indices(
