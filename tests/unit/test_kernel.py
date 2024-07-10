@@ -589,11 +589,14 @@ class TestProductKernel(
 class TestTensorProductKernel:
     """Test the methods of ``coreax.tensor_kernel.TensorProductKernel``."""
 
+    feature_kernel: Kernel = SquaredExponentialKernel()
+    response_kernel: Kernel = LinearKernel()
+
     @pytest.fixture(scope="class")
     def kernel(self) -> TensorProductKernel:
-        """Return a mocked paired kernel function."""
+        """Return an example `TensorProductKernel."""
         return TensorProductKernel(
-            feature_kernel=SquaredExponentialKernel(), response_kernel=LinearKernel()
+            feature_kernel=self.feature_kernel, response_kernel=self.response_kernel
         )
 
     @pytest.mark.parametrize("mode", ["floats", "vectors", "arrays"])
@@ -650,7 +653,7 @@ class TestTensorProductKernel:
         axis: Union[int, None],
     ) -> None:
         """
-        Test the `compute_mean` methods.
+        Test the `compute_mean` method.
 
         Considers all classes of 'block_size' and 'axis', along with implicitly and
         explicitly weighted data.
@@ -709,6 +712,11 @@ class TestTensorProductKernel:
         k.compute_elementwise((x1, y1), (x2, y2))
         k.feature_kernel.compute_elementwise.assert_called_once()  # pyright:ignore
         k.response_kernel.compute_elementwise.assert_called_once()  # pyright:ignore
+
+    def test_magic_method(self, kernel: TensorProductKernel) -> None:
+        """Ensure magic method `%` working as expected."""
+        magic_kernel = self.feature_kernel % self.response_kernel
+        assert kernel == magic_kernel
 
 
 class TestLinearKernel(
