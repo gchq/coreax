@@ -247,7 +247,7 @@ def solve_qp(
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
 
-    # Ensure conditions of solutions are met to chosen precision
+    # Ensure conditions of solution are met to chosen precision
     solution = jnp.where(sol.primal < jnp.abs(precision_threshold), 0, sol.primal)
     return solution / jnp.sum(solution)
 
