@@ -14,13 +14,40 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
+from jax import jit
 from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import Self
+
+
+@jit
+def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
+    r"""
+    Given an array or sequence of arrays ensure they are at least 2-dimensional.
+
+    .. note::
+        This function differs from `jax.numpy.atleast_2d` in that it converts
+        1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
+
+    :param arrays: Singular array or list of arrays
+    :return: 2-dimensional array or list of 2-dimensional arrays
+    """
+    if len(arrays) == 1:
+        array = jnp.asarray(arrays[0], copy=False)
+        if len(array.shape) == 1:
+            return jnp.expand_dims(array, 0)
+        return jnp.array(array, copy=False, ndmin=2)
+    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
+    return [
+        jnp.expand_dims(array, 0)
+        if len(array.shape) == 1
+        else jnp.array(array, copy=False, ndmin=2)
+        for array in _arrays
+    ]
 
 
 class Data(eqx.Module):
@@ -29,6 +56,10 @@ class Data(eqx.Module):
 
     A dataset of size `n` consists of a set of pairs :math:`\{(x_i, w_i)\}_{i=1}^n`
     where :math`x_i` are the features or inputs and :math:`w_i` are weights.
+
+    .. note::
+        `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
+        converted to a `(n, 1)` array.
 
     :param data: An :math:`n \times d` array defining the features of the unsupervised
         dataset
@@ -39,7 +70,7 @@ class Data(eqx.Module):
         the ones vector (implies a scalar weight of one);
     """
 
-    data: Shaped[Array, " n *d"]
+    data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
     weights: Shaped[Array, " n"]
 
     def __init__(
@@ -87,6 +118,10 @@ class SupervisedData(Data):
     :math:`y_i` are the responses or outputs, and :math:`w_i` are weights which
     correspond to the pairs :math:`(x_i, y_i)`.
 
+    .. note::
+        `n`-vector inputs for `data` and `supervision` are interpreted as `n` points in
+        1-dimension and converted to a `(n, 1)` array.
+
     :param data: An :math:`n \times d` array defining the features of the supervised
         dataset paired with the corresponding index of the supervision
     :param supervision: An :math:`n \times p` array defining the responses of the
@@ -98,7 +133,7 @@ class SupervisedData(Data):
         sets the weights to the ones vector (implies a scalar weight of one);
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
+    supervision: Shaped[Array, " n *p"] = eqx.field(converter=_atleast_2d_consistent)
 
     def __init__(
         self,
