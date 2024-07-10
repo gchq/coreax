@@ -30,8 +30,10 @@ from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
+    ArrayLike,
     SilentTQDM,
     apply_negative_precision_threshold,
+    atleast_2d,
     difference,
     jit_test,
     pairwise,
@@ -298,6 +300,57 @@ class TestUtil:
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
         assert post_time < (pre_time - wait_time)
+
+    @pytest.mark.parametrize(
+        "arrays",
+        [
+            1,
+            (1, 1),
+            1.0,
+            (1.0, 1.0),
+            True,
+            (False, True),
+            jnp.array(1),
+            (jnp.array(1), jnp.array(1)),
+            jnp.array([1, 1]),
+            (jnp.array([1, 1]), jnp.array([1, 1])),
+            jnp.array([[1], [1]]),
+            (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
+            jnp.array([[1], [1]]),
+            (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
+        ],
+        ids=[
+            "single_int",
+            "multiple_ints",
+            "single_float",
+            "multiple_floats",
+            "single_bool",
+            "multiple_bools",
+            "single_zero_dimensional_array",
+            "multiple_zero_dimensional_arrays",
+            "single_one_dimensional_array",
+            "multiple_one_dimensional_arrays",
+            "single_two_dimensional_array",
+            "multiple_two_dimensional_arrays",
+            "single_three_dimensional_array",
+            "multiple_three_dimensional_arrays",
+        ],
+    )
+    def test_atleast_2d(self, arrays: ArrayLike) -> None:
+        """Check that ``atleast_2d`` returns arrays with expected dimension."""
+        min_dimension = 2
+        num_arrays = len(*arrays)
+        arrays_2d = atleast_2d(arrays)
+        if num_arrays == 1:
+            assert len(arrays_2d.shape) == min_dimension
+        else:
+            for i in range(num_arrays):
+                array = jnp.asarray(arrays[i])
+                array_shape = array.shape
+                if len(array_shape) <= min_dimension:
+                    assert len(array.shape) == min_dimension
+                else:
+                    assert arrays_2d[i] == array_shape
 
 
 class TestSilentTQDM:
