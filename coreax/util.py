@@ -314,7 +314,16 @@ def jit_test(
 
 @jit
 def atleast_2d(*arrays: ArrayLike) -> Union[Array, list[Array]]:
-    """Shape array.."""
+    r"""
+    Given an array or list of arrays ensure they are at least 2-dimensional.
+
+    .. note::
+        This function differs from `jax.numpy.atleast_2d` in that it converts
+        1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
+
+    :param arrays: Singular array or list of arrays
+    :return: 2-dimensional array or list of 2-dimensional arrays
+    """
     if len(arrays) == 1:
         array = jnp.asarray(arrays, copy=False)
         if len(array.shape) == 1:
