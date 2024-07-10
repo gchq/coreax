@@ -122,7 +122,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     @property
     def coreset(self) -> Data:
         """Materialise the coresubset from the indices and original data."""
-        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
+        coreset_data = self.pre_coreset_data.data[self.unweighted_indices, :]
         if isinstance(self.pre_coreset_data, SupervisedData):
             coreset_supervision = self.pre_coreset_data.supervision[
                 self.unweighted_indices

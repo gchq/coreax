@@ -39,11 +39,11 @@ def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
     if len(arrays) == 1:
         array = jnp.asarray(arrays[0], copy=False)
         if len(array.shape) == 1:
-            return jnp.expand_dims(array, 0)
+            return jnp.expand_dims(array, 1)
         return jnp.array(array, copy=False, ndmin=2)
     _arrays = [jnp.asarray(array, copy=False) for array in arrays]
     return [
-        jnp.expand_dims(array, 0)
+        jnp.expand_dims(array, 1)
         if len(array.shape) == 1
         else jnp.array(array, copy=False, ndmin=2)
         for array in _arrays
