@@ -608,10 +608,10 @@ class TensorProductKernel(eqx.Module):
         Evaluate the kernel on pairs of individual input vectors.
 
         Vectorisation only becomes relevant in terms of computational speed when we
-        have multiple pairs `a`:math:`=(x_1, y_1)``, or `b`:math:`=(x_2, y_2)`.
+        have multiple pairs `a`:math:`=(x_1, y_1)`, or `b`:math:`=(x_2, y_2)`.
 
-        :param a: Tuple of vectors :math:`(x_1, y_1)``
-        :param b: Tuple of vectors :math:`(x_2, y_2)``
+        :param a: Tuple of vectors :math:`(x_1, y_1)`
+        :param b: Tuple of vectors :math:`(x_2, y_2)`
         :return: Kernel evaluated at :math:`((x_1, y_1), (x_2, y_2))`
         """
         return self.feature_kernel.compute_elementwise(
@@ -625,7 +625,7 @@ class TensorProductKernel(eqx.Module):
         Evaluate the kernel on input data.
 
         The 'data' must be instances of the :class:~coreax.data.SupervisedData
-        consisting of :
+        consisting of:
             * floating numbers (so a single data-point in 1-dimension)
             * zero-dimensional arrays (so a single data-point in 1-dimension)
             * vectors (a single-point in multiple dimensions)
@@ -636,8 +636,8 @@ class TensorProductKernel(eqx.Module):
         :param a: A tuple with first element consisting of :math:`n \times d` dataset
             (array), and second element consisting of :math:`n \times p` dataset
             (array) or both single values (points)
-        :param a: A tuple with first element consisting of :math:`n \times d` dataset
-            (array), and second element consisting of :math:`n \times p` dataset
+        :param b: A tuple with first element consisting of :math:`m \times d` dataset
+            (array), and second element consisting of :math:`m \times p` dataset
             (array) or both single values (points)
         :return: Kernel evaluations between pairs in `a` and `b`. If `a`:math:`=``b`,
             then this is the Gram matrix corresponding to the tensor-product RKHS inner
