@@ -287,19 +287,21 @@ class JMMD(Metric[SupervisedData]):
         \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
         - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
 
-    where :math:`k` is the selected tensor-product kernel, and the expectation is with
-    respect to the normalized data weights.
+    where :math:`k` is a tensor-product kernel, and the expectation is with respect to
+    the normalized data weights.
 
     Common uses of JMMD include comparing a reduced representation of a dataset to the
     original dataset, comparing different original datasets to one another, or
     comparing reduced representations of different original datasets to one another.
 
-    :param kernel: :class:`~coreax.kernel.TensorProductKernel` instance implementing a
-        tensor-product kernel function
-        :math:`k: (\mathbb{R}^d \times \mathbb{R}^p) \times
-        (\mathbb{R}^d \times \mathbb{R}^p) \rightarrow \mathbb{R}`
-    :param precision_threshold: Threshold above which negative values of the squared MMD
-        are rounded to zero (accommodates precision loss)
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param precision_threshold: Threshold above which negative values of the squared
+        JMMD are rounded to zero (accommodates precision loss)
     """
 
     kernel: coreax.kernel.TensorProductKernel
@@ -311,7 +313,7 @@ class JMMD(Metric[SupervisedData]):
         response_kernel: coreax.kernel.Kernel,
         precision_threshold: float = 1e-12,
     ):
-        """Initialise JointKernelHerding class and build tensor-product kernel."""
+        """Initialise JMMD class and build tensor-product kernel."""
         self.kernel = coreax.kernel.TensorProductKernel(
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
@@ -356,11 +358,13 @@ class JMMD(Metric[SupervisedData]):
         del kwargs
         _block_size = coreax.util.tree_leaves_repeat(block_size, 2)
         bs_aa, bs_ab, _, bs_bb = tuple(product(_block_size, repeat=len(_block_size)))
+        _unroll = coreax.util.tree_leaves_repeat(unroll, 2)
+        u_aa, u_ab, _, u_bb = tuple(product(_unroll, repeat=len(_unroll)))
         # Variable rename allows for nicer automatic formatting
-        x, y = reference_data, comparison_data
-        kernel_aa_mean = self.kernel.compute_mean(x, x, block_size=bs_aa, unroll=unroll)
-        kernel_bb_mean = self.kernel.compute_mean(y, y, block_size=bs_bb, unroll=unroll)
-        kernel_ab_mean = self.kernel.compute_mean(x, y, block_size=bs_ab, unroll=unroll)
+        a, b = reference_data, comparison_data
+        kernel_aa_mean = self.kernel.compute_mean(a, a, block_size=bs_aa, unroll=u_aa)
+        kernel_bb_mean = self.kernel.compute_mean(b, b, block_size=bs_bb, unroll=u_bb)
+        kernel_ab_mean = self.kernel.compute_mean(a, b, block_size=bs_ab, unroll=u_ab)
         squared_mmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
             kernel_aa_mean + kernel_bb_mean - 2 * kernel_ab_mean,
             self.precision_threshold,

@@ -425,7 +425,7 @@ class TestJMMD:
     def test_jmmd_compare_same_data(
         self, problem: _SupervisedMetricProblem, kernel: Kernel
     ):
-        """Check MMD of a dataset with itself is approximately zero."""
+        """Check JMMD of a dataset with itself is approximately zero."""
         x = problem.reference_data
         metric = JMMD(kernel, kernel)
         assert metric.compute(x, x) == pytest.approx(0.0)
