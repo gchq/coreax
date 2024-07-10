@@ -223,8 +223,8 @@ def solve_qp(
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
     :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
-    :precision_threshold: Threshold below which values are are rounded to zero
-        (accommodates precision loss)
+    :precision_threshold: Threshold below which values are rounded to zero (accommodates
+        precision loss)
     :return: Optimised solution for the quadratic program
     """
     # Setup optimisation problem - all variable names are consistent with the OSQP
