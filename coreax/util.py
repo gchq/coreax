@@ -24,7 +24,7 @@ class factories and checks for numerical precision.
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -310,32 +310,6 @@ def jit_test(
     end_time = time.time()
     post_delta = end_time - start_time
     return pre_delta, post_delta
-
-
-@jit
-def atleast_2d(*arrays: ArrayLike) -> Union[Array, list[Array]]:
-    r"""
-    Given an array or sequence of arrays ensure they are at least 2-dimensional.
-
-    .. note::
-        This function differs from `jax.numpy.atleast_2d` in that it converts
-        1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
-
-    :param arrays: Singular array or list of arrays
-    :return: 2-dimensional array or list of 2-dimensional arrays
-    """
-    if len(arrays) == 1:
-        array = jnp.asarray(arrays[0], copy=False)
-        if len(array.shape) == 1:
-            return jnp.expand_dims(array, 0)
-        return jnp.array(array, copy=False, ndmin=2)
-    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
-    return [
-        array.reshape(-1, 1)
-        if len(array.shape) == 1
-        else jnp.array(array, copy=False, ndmin=2)
-        for array in _arrays
-    ]
 
 
 T = TypeVar("T")
