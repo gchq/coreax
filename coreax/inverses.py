@@ -57,6 +57,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
+from jaxtyping import Shaped
 from typing_extensions import override
 
 from coreax.util import KeyArrayLike
@@ -78,10 +79,10 @@ class RegularisedInverseApproximator(eqx.Module):
     @abstractmethod
     def approximate(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        identity: Array,
-    ) -> Array:
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         r"""
         Approximate the regularised inverse of an array.
 
@@ -97,17 +98,20 @@ class RegularisedInverseApproximator(eqx.Module):
         :param array: :math:`n \times n` array
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of array, negative values will be converted to positive
-        :param identity: Block identity matrix
+        :param identity: Block :math:`n \times n` identity matrix
         :return: Approximation of the kernel matrix inverse
         """
 
     def approximate_stack(
-        self, arrays: Array, regularisation_parameter: float, identity: Array
-    ) -> Array:
+        self,
+        arrays: Shaped[Array, "m n n"],
+        regularisation_parameter: float,
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, "m n n"]:
         r"""
         Approximate the regularised inverses of a horizontal stack of kernel matrices.
 
-        :param array: Horizontal stack of :math:`n \times n` arrays
+        :param array: Horizontal stack of :math:`m` :math:`n \times n` arrays
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of array, negative values will be converted to positive
         :param identity: Block identity matrix
@@ -137,10 +141,10 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
     @override
     def approximate(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        identity: Array,
-    ) -> Array:
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         try:
             return jnp.linalg.lstsq(
                 array + abs(regularisation_parameter) * identity,
@@ -157,10 +161,10 @@ class LeastSquareApproximator(RegularisedInverseApproximator):
 
 def randomised_eigendecomposition(
     random_key: KeyArrayLike,
-    array: Array,
+    array: Shaped[Array, " n n"],
     oversampling_parameter: int = 25,
     power_iterations: int = 1,
-) -> tuple[Array, Array]:
+) -> tuple[Shaped[Array, " r r"], Shaped[Array, " n r"]]:
     r"""
     Approximate the eigendecomposition of Hermitian matrices.
 
@@ -171,7 +175,7 @@ def randomised_eigendecomposition(
     defaults chosen here are cautious.
 
     Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
-    :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
+    :math:`r=`oversampling_parameter` we return a diagonal array of eigenvalues
     :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of eigenvectors
     :math:`U\in\mathbb{R}^{n\times r}` such that we have :math:`A \approx U\Lambda U^T`.
 
@@ -260,10 +264,10 @@ class RandomisedEigendecompositionApproximator(RegularisedInverseApproximator):
     @override
     def approximate(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        identity: Array,
-    ) -> Array:
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         # Validate inputs
         if array.shape != identity.shape:
             raise ValueError("Leading dimensions of 'array' and 'identity' must match")

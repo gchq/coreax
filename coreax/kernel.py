@@ -62,6 +62,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev, jit
 from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import override
 
 from coreax.data import Data, as_data, is_data
@@ -76,7 +77,7 @@ T = TypeVar("T")
 
 
 @jit
-def median_heuristic(x: ArrayLike) -> Array:
+def median_heuristic(x: Shaped[ArrayLike, " *n *d"]) -> Shaped[Array, ""]:
     """
     Compute the median heuristic for setting kernel bandwidth.
 
@@ -148,7 +149,9 @@ class Kernel(eqx.Module):
 
         return ProductKernel(first_kernel, second_kernel)
 
-    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " n m"]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
 
@@ -168,7 +171,9 @@ class Kernel(eqx.Module):
         return pairwise(self.compute_elementwise)(x, y)
 
     @abstractmethod
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
 
@@ -180,7 +185,9 @@ class Kernel(eqx.Module):
         :return: Kernel evaluated at (``x``, ``y``)
         """
 
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " n m d"]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
@@ -196,7 +203,9 @@ class Kernel(eqx.Module):
         """
         return pairwise(self.grad_x_elementwise)(x, y)
 
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " n m d"]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
@@ -212,7 +221,9 @@ class Kernel(eqx.Module):
         """
         return pairwise(self.grad_y_elementwise)(x, y)
 
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, " *d"]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -229,7 +240,9 @@ class Kernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 0)(x, y)
 
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, " *d"]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -246,7 +259,9 @@ class Kernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 1)(x, y)
 
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " n m"]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -262,7 +277,9 @@ class Kernel(eqx.Module):
         """
         return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
 
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -282,11 +299,11 @@ class Kernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: Union[ArrayLike, Data],
+        x: Union[Shaped[ArrayLike, " *n *d"], Data],
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[ArrayLike, " n"]:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
@@ -302,13 +319,13 @@ class Kernel(eqx.Module):
 
     def compute_mean(
         self,
-        x: Union[ArrayLike, Data],
-        y: Union[ArrayLike, Data],
+        x: Union[Shaped[ArrayLike, " *n *d"], Data],
+        y: Union[Shaped[ArrayLike, " *n *d"], Data],
         axis: Union[int, None] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[ArrayLike, ""]:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
@@ -448,25 +465,33 @@ class AdditiveKernel(PairedKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -486,7 +511,9 @@ class ProductKernel(PairedKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         if self.first_kernel == self.second_kernel:
             return self.first_kernel.compute_elementwise(x, y) ** 2
         return self.first_kernel.compute_elementwise(
@@ -494,7 +521,9 @@ class ProductKernel(PairedKernel):
         ) * self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -510,7 +539,9 @@ class ProductKernel(PairedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -526,7 +557,9 @@ class ProductKernel(PairedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         if self.first_kernel == self.second_kernel:
             return 2 * (
                 self.first_kernel.grad_x_elementwise(x, y).dot(
@@ -565,19 +598,27 @@ class LinearKernel(Kernel):
     constant: float = eqx.field(default=0.0, converter=float)
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * jnp.dot(x, y) + self.constant
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return self.output_scale * jnp.asarray(y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return self.output_scale * jnp.asarray(x)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         d = len(jnp.asarray(x))
         return jnp.array(self.output_scale * d)
 
@@ -607,11 +648,15 @@ class PolynomialKernel(Kernel):
             raise ValueError("'degree' must be a positive integer greater than 1")
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * (jnp.dot(x, y) + self.constant) ** self.degree
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return (
             self.output_scale
             * self.degree
@@ -620,7 +665,9 @@ class PolynomialKernel(Kernel):
         )
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return (
             self.output_scale
             * self.degree
@@ -629,7 +676,9 @@ class PolynomialKernel(Kernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         dot = jnp.dot(x, y)
         body = dot + self.constant
         d = len(jnp.asarray(x))
@@ -662,23 +711,31 @@ class SquaredExponentialKernel(Kernel):
     output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * jnp.exp(
             -squared_distance(x, y) / (2 * self.length_scale**2)
         )
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return (
             jnp.subtract(x, y) / self.length_scale**2 * self.compute_elementwise(x, y)
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
         d = len(jnp.asarray(x))
@@ -706,24 +763,32 @@ class ExponentialKernel(Kernel):
     output_scale: float = 1.0
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * jnp.exp(
             -jnp.linalg.norm(jnp.subtract(x, y)) / (2 * self.length_scale**2)
         )
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         sub = jnp.subtract(x, y)
         dist = jnp.linalg.norm(sub)
         factor = 2 * self.length_scale**2
         return self.output_scale * sub * jnp.exp(-dist / factor) / (factor * dist)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         d = len(jnp.asarray(x))
         sub = jnp.subtract(x, y)
         dist = jnp.linalg.norm(sub)
@@ -761,7 +826,9 @@ class RationalQuadraticKernel(Kernel):
     relative_weighting: float = 1.0
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return (
             self.output_scale
             * (
@@ -773,11 +840,15 @@ class RationalQuadraticKernel(Kernel):
         )
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return (self.output_scale * jnp.subtract(x, y) / self.length_scale**2) * (
             1
             + squared_distance(x, y)
@@ -785,7 +856,9 @@ class RationalQuadraticKernel(Kernel):
         ) ** (-self.relative_weighting - 1)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         d = len(jnp.asarray(x))
         sq_dist = squared_distance(x, y)
         power = self.relative_weighting + 1
@@ -821,7 +894,9 @@ class PeriodicKernel(Kernel):
     periodicity: float = 1.0
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * (
             jnp.exp(
                 -2
@@ -834,11 +909,15 @@ class PeriodicKernel(Kernel):
         )
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         dist = jnp.linalg.norm(jnp.subtract(x, y))
         body = jnp.pi * dist / self.periodicity
         return (
@@ -855,7 +934,9 @@ class PeriodicKernel(Kernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         d = len(jnp.asarray(x))
         sub = jnp.subtract(x, y)
         dist = jnp.linalg.norm(sub)
@@ -940,17 +1021,23 @@ class LaplacianKernel(Kernel):
     output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         return self.output_scale * jnp.exp(
             -jnp.linalg.norm(jnp.subtract(x, y), ord=1) / (2 * self.length_scale**2)
         )
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return (
             jnp.sign(jnp.subtract(x, y))
             / (2 * self.length_scale**2)
@@ -958,7 +1045,9 @@ class LaplacianKernel(Kernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         k = self.compute_elementwise(x, y)
         d = len(jnp.asarray(x))
         return -d * k / (4 * self.length_scale**4)
@@ -982,17 +1071,23 @@ class PCIMQKernel(Kernel):
     output_scale: float = eqx.field(default=1.0, converter=float)
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         scaling = 2 * self.length_scale**2
         mq_array = squared_distance(x, y) / scaling
         return self.output_scale / jnp.sqrt(1 + mq_array)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, " *d"]:
         return -self.grad_y_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *n *d"]
+    ) -> Shaped[Array, " *d"]:
         return (
             self.output_scale
             * jnp.subtract(x, y)
@@ -1001,7 +1096,9 @@ class PCIMQKernel(Kernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[ArrayLike, " *d"], y: Shaped[ArrayLike, " *d"]
+    ) -> Shaped[Array, ""]:
         k = self.compute_elementwise(x, y) / self.output_scale
         scale = 2 * self.length_scale**2
         d = len(jnp.asarray(x))
@@ -1084,7 +1181,9 @@ class SteinKernel(CompositeKernel):
     score_function: Callable[[ArrayLike], Array]
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self, x: Shaped[ArrayLike, " *n *d"], y: Shaped[ArrayLike, " *m *d"]
+    ) -> Shaped[Array, ""]:
         k = self.base_kernel.compute_elementwise(x, y)
         div = self.base_kernel.divergence_x_grad_y_elementwise(x, y)
         gkx = self.base_kernel.grad_x_elementwise(x, y)

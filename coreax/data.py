@@ -44,8 +44,8 @@ class Data(eqx.Module):
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n *d"],
-        weights: Optional[Shaped[ArrayLike, " n"]] = None,
+        data: Shaped[ArrayLike, " *n *d"],
+        weights: Optional[Shaped[ArrayLike, " *n"]] = None,
     ):
         """Initialise Data class."""
         self.data = jnp.asarray(data)
@@ -56,7 +56,7 @@ class Data(eqx.Module):
         """Support Array style indexing of 'Data' objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
-    def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
+    def __jax_array__(self) -> Shaped[ArrayLike, " n *d"]:
         """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
         return self.data
 
@@ -102,12 +102,12 @@ class SupervisedData(Data):
 
     def __init__(
         self,
-        data: Shaped[Array, " n d"],
-        supervision: Shaped[Array, " n *p"],
-        weights: Optional[Shaped[Array, " n"]] = None,
+        data: Shaped[ArrayLike, " *n *d"],
+        supervision: Shaped[ArrayLike, " *n *p"],
+        weights: Optional[Shaped[ArrayLike, " *n"]] = None,
     ):
         """Initialise SupervisedData class."""
-        self.supervision = supervision
+        self.supervision = jnp.asarray(supervision)
         super().__init__(data, weights)
 
     def __check_init__(self):

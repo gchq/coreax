@@ -23,8 +23,9 @@ from collections.abc import Callable, Sequence
 from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
+from jax import Array
 from jax import numpy as jnp
-from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from optax import GradientTransformation
 
 from coreax.util import KeyArrayLike
@@ -48,7 +49,7 @@ class ScoreNetwork(nn.Module):
     output_dim: int
 
     @nn.compact
-    def __call__(self, x: ArrayLike) -> ArrayLike:
+    def __call__(self, x: Shaped[Array, " b m m"]) -> Shaped[Array, " b output_dim"]:
         r"""
         Compute forward pass through a three-layer network with softplus activations.
 
