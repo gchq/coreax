@@ -32,9 +32,10 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
-from coreax.kernel import Kernel, PCIMQKernel
+from coreax.data import Data, SupervisedData
+from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.solvers import (
+    GreedyKernelInducingPoints,
     KernelHerding,
     MapReduce,
     RandomSample,
@@ -47,12 +48,22 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.solvers.coresubset import HerdingState, RPCholeskyState
+from coreax.solvers.coresubset import (
+    GreedyKernelInducingPointsState,
+    HerdingState,
+    RPCholeskyState,
+)
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
 class _ReduceProblem(NamedTuple):
     dataset: Data
+    solver: Solver
+    expected_coreset: Optional[Coreset] = None
+
+
+class _SupervisedReduceProblem(NamedTuple):
+    dataset: SupervisedData
     solver: Solver
     expected_coreset: Optional[Coreset] = None
 
@@ -426,6 +437,54 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
+
+
+class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelInducingPoints`."""
+
+    additional_key = jr.key(0)
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        feature_kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            GreedyKernelInducingPoints,
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=feature_kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _SupervisedReduceProblem:
+        if request.param == "random":
+            features = jr.uniform(self.random_key, self.shape)
+            responses = jr.uniform(self.additional_key, self.shape)
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _SupervisedReduceProblem(
+            SupervisedData(features, responses), solver, expected_coreset
+        )
+
+    def test_herding_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Check that the cached herding state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(GreedyKernelInducingPoints, solver)
+        _, state = solver.reduce(dataset)
+
+        x = dataset.data
+        expected_state = GreedyKernelInducingPointsState(
+            jnp.pad(solver.feature_kernel.compute(x, x), [(0, 1)], mode="constant")
+        )
+        assert eqx.tree_equal(state, expected_state)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):

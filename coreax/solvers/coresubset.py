@@ -565,7 +565,7 @@ class GreedyKernelInducingPoints(
     coresubsets with uniform weights.
 
     :param random_key: Key for random number generation
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         on the feature space
     :param regularisation_parameter: Regularisation parameter for stable inversion of
@@ -580,7 +580,7 @@ class GreedyKernelInducingPoints(
     """
 
     random_key: KeyArrayLike
-    kernel: Kernel
+    feature_kernel: Kernel
     regularisation_parameter: float = 1e-6
     unique: bool = True
     batch_size: Union[int, None] = None
@@ -646,7 +646,7 @@ class GreedyKernelInducingPoints(
         padded_responses = jnp.vstack((y, jnp.array([[0]])))
 
         if solver_state is None:
-            feature_gramian = self.kernel.compute(x, y)
+            feature_gramian = self.feature_kernel.compute(x, x)
 
             # Pad the gramian with zeros in an additional column and row to allow us to
             # extract sub-arrays and fill in elements with zeros simultaneously.
