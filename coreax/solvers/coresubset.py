@@ -519,11 +519,12 @@ def _greedy_kernel_inducing_points_loss(
     )
 
     # Compute the loss function
-    kwy = (coreset_cross_gramians * (inverse_coreset_gramians @ coreset_responses)).sum(
-        axis=1
-    )
-    term_2s = (kwy**2).sum(axis=1)
-    term_3s = kwy.dot(responses[:-1, 0])
+    coefficients = (
+        coreset_cross_gramians * (inverse_coreset_gramians @ coreset_responses)
+    ).sum(axis=1)
+    # return ((responses[:-1, :].T - coreset_predictions) ** 2).sum(axis=1)
+    term_2s = (coefficients**2).sum(axis=1)
+    term_3s = coefficients.dot(responses[:-1, 0])
     return term_2s - 2 * term_3s
 
 
