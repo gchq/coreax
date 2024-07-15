@@ -36,18 +36,16 @@ def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
     :param arrays: Singular array or list of arrays
     :return: 2-dimensional array or list of 2-dimensional arrays
     """
-    if len(arrays) == 1:
-        array = jnp.asarray(arrays[0], copy=False)
-        if len(array.shape) == 1:
-            return jnp.expand_dims(array, 1)
-        return jnp.array(array, copy=False, ndmin=2)
-    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
-    return [
+    as_arrays = [jnp.asarray(array, copy=False) for array in arrays]
+    two_dimensional_arrays = [
         jnp.expand_dims(array, 1)
         if len(array.shape) == 1
         else jnp.array(array, copy=False, ndmin=2)
-        for array in _arrays
+        for array in as_arrays
     ]
+    if len(two_dimensional_arrays) == 1:
+        return two_dimensional_arrays[0]
+    return two_dimensional_arrays
 
 
 class Data(eqx.Module):
