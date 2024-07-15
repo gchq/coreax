@@ -244,8 +244,8 @@ def solve_qp(
         params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
     ).params
 
-    # Ensure conditions of solution are met to chosen precision
-    solution = apply_negative_precision_threshold(sol.primal, 0)
+    # Ensure conditions of solution are met
+    solution = apply_negative_precision_threshold(sol.primal, jnp.inf)
     return solution / jnp.sum(solution)
 
 
