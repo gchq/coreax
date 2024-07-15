@@ -161,3 +161,13 @@ def as_data(x: Any) -> Data:
 def is_data(x: Any) -> bool:
     """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
+
+
+def as_supervised_data(a: Any) -> SupervisedData:
+    """Cast a to a `SupervisedData` instance."""
+    return a if isinstance(a, SupervisedData) else SupervisedData(*a)
+
+
+def is_supervised_data(a: Any) -> bool:
+    """Return boolean checking if 'a' is an instance of 'coreax.data.SupervisedData'."""
+    return isinstance(a, SupervisedData)

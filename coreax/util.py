@@ -138,6 +138,32 @@ def pairwise(
     return pairwise_fn
 
 
+def pairwise_tuple(
+    fn: Callable[[tuple[ArrayLike, ArrayLike], tuple[ArrayLike, ArrayLike]], Array],
+) -> Callable[[tuple[ArrayLike, ArrayLike], tuple[ArrayLike, ArrayLike]], Array]:
+    """
+    Transform a function so it returns all pairwise evaluations of its tuple inputs.
+
+    :param fn: the function to apply the pairwise transform to.
+    :returns: function that returns an array whose entries are the evaluations of `fn`
+        for every pairwise combination of its input arguments.
+    """
+
+    @wraps(fn)
+    def pairwise_fn(
+        a: tuple[ArrayLike, ArrayLike], b: tuple[ArrayLike, ArrayLike]
+    ) -> Array:
+        x_1, y_1 = jnp.atleast_2d(a[0], a[1])
+        x_2, y_2 = jnp.atleast_2d(b[0], b[1])
+        return vmap(
+            vmap(fn, in_axes=(0, None), out_axes=0),
+            in_axes=(None, 0),
+            out_axes=1,
+        )((x_1, y_1), (x_2, y_2))
+
+    return pairwise_fn
+
+
 @jit
 def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     """
