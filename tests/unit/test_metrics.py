@@ -420,14 +420,21 @@ class TestJMMD:
         return _SupervisedMetricProblem(reference_data, comparison_data)
 
     @pytest.mark.parametrize(
-        "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+        "feature_kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_jmmd_compare_same_data(
-        self, problem: _SupervisedMetricProblem, kernel: Kernel
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: Kernel,
+        response_kernel: Kernel,
     ):
         """Check JMMD of a dataset with itself is approximately zero."""
         x = problem.reference_data
-        metric = JMMD(kernel, kernel)
+        metric = JMMD(feature_kernel, response_kernel)
         assert metric.compute(x, x) == pytest.approx(0.0)
 
     def test_jmmd_analytically_known(self):
@@ -511,7 +518,7 @@ class TestJMMD:
 
             w_2 = [1,0]
 
-        the weighted maximum mean discrepancy is calculated via:
+        the weighted joint maximum mean discrepancy is calculated via:
 
         .. math::
 
@@ -540,7 +547,7 @@ class TestJMMD:
         expected_output = jnp.sqrt(
             2 / 3 - (2 / 9) * jnp.exp(-1) - (4 / 9) * jnp.exp(-4)
         )
-        # Compute the weighted MMD using the metric object
+        # Compute the weighted JMMD using the metric object
         metric = JMMD(SquaredExponentialKernel(), SquaredExponentialKernel())
         output = metric.compute(reference_data, comparison_data)
         assert output == pytest.approx(expected_output)
@@ -553,15 +560,15 @@ class TestJMMD:
         Test JMMD computed from randomly generated test data agrees with method result.
 
         - "unweighted" parameterization checks that if the 'reference_data' and the
-            'comparison_data' have the default 'None' weights, that the computed MMD is
+            'comparison_data' have the default 'None' weights, that the computed JMMD is
             given by the means of the unweighted kernel matrices.
         - "weighted" parameterization checks that for arbitrarily weighted data, the
-            computed MMD is given by the weighted average of the kernel matrices.
+            computed JMMD is given by the weighted average of the kernel matrices.
         """
         base_kernel = SquaredExponentialKernel()
         kernel = TensorProductKernel(base_kernel, base_kernel)
         x, y = problem
-        # Compute each term in the MMD formula to obtain an expected MMD.
+        # Compute each term in the JMMD formula to obtain an expected JMMD.
         x_no_weights = (x.data, x.supervision)
         y_no_weights = (y.data, y.supervision)
         kernel_nn = kernel.compute(x_no_weights, x_no_weights)
@@ -571,7 +578,7 @@ class TestJMMD:
             weights_nn = x.weights[..., None] * x.weights[None, ...]
             weights_mm = y.weights[..., None] * y.weights[None, ...]
             weights_nm = x.weights[..., None] * y.weights[None, ...]
-            expected_mmd = jnp.sqrt(
+            expected_jmmd = jnp.sqrt(
                 jnp.average(kernel_nn, weights=weights_nn)
                 + jnp.average(kernel_mm, weights=weights_mm)
                 - 2 * jnp.average(kernel_nm, weights=weights_nm)
@@ -582,15 +589,35 @@ class TestJMMD:
                 SupervisedData(x.data, x.supervision),
                 SupervisedData(y.data, y.supervision),
             )
-            expected_mmd = jnp.sqrt(
+            expected_jmmd = jnp.sqrt(
                 jnp.mean(kernel_nn) + jnp.mean(kernel_mm) - 2 * jnp.mean(kernel_nm)
             )
         else:
             raise ValueError("Invalid mode parameterization")
-        # Compute the MMD using the metric object
+        # Compute the JMMD using the metric object
         metric = JMMD(base_kernel, base_kernel)
         output = metric.compute(x, y)
-        assert output == pytest.approx(expected_mmd, abs=1e-6)
+        assert output == pytest.approx(expected_jmmd, abs=1e-6)
+
+    @pytest.mark.parametrize(
+        "feature_kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    def test_mmd_equals_jmmd(
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: Kernel,
+        response_kernel: Kernel,
+    ):
+        """Check passing a `TensorProductKernel` to `MMD` is equivalent to `JMMD`."""
+        a, b = problem
+        kernel = TensorProductKernel(feature_kernel, response_kernel)
+        mmd = MMD(kernel).compute(a, b)  # pyright: ignore[reportArgumentType]
+        jmmd = JMMD(feature_kernel, response_kernel).compute(a, b)
+        assert jmmd == pytest.approx(mmd, abs=1e-6)
 
 
 class TestCMMD:
