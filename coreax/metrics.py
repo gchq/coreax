@@ -370,21 +370,12 @@ class JMMD(Metric[SupervisedData]):
             the JAX docs for further information
         :return: Joint maximum mean discrepancy as a 0-dimensional array
         """
-        del kwargs
-        _block_size = coreax.util.tree_leaves_repeat(block_size, 2)
-        bs_aa, bs_ab, _, bs_bb = tuple(product(_block_size, repeat=len(_block_size)))
-        _unroll = coreax.util.tree_leaves_repeat(unroll, 2)
-        u_aa, u_ab, _, u_bb = tuple(product(_unroll, repeat=len(_unroll)))
-        # Variable rename allows for nicer automatic formatting
-        a, b = reference_data, comparison_data
-        kernel_aa_mean = self.kernel.compute_mean(a, a, block_size=bs_aa, unroll=u_aa)
-        kernel_bb_mean = self.kernel.compute_mean(b, b, block_size=bs_bb, unroll=u_bb)
-        kernel_ab_mean = self.kernel.compute_mean(a, b, block_size=bs_ab, unroll=u_ab)
-        squared_jmmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
-            kernel_aa_mean + kernel_bb_mean - 2 * kernel_ab_mean,
-            self.precision_threshold,
+        return MMD(self.kernel).compute(
+            reference_data=reference_data,
+            comparison_data=comparison_data,
+            block_size=block_size,
+            unroll=unroll,
         )
-        return jnp.sqrt(squared_jmmd_threshold_applied)
 
 
 class CMMD(Metric[SupervisedData]):
