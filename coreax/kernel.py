@@ -624,12 +624,11 @@ class TensorProductKernel(eqx.Module):
         r"""
         Evaluate the kernel on input data.
 
-        The 'data' must be instances of the :class:~coreax.data.SupervisedData
-        consisting of:
+        The 'data' can be tuples of any of:
             * floating numbers (so a single data-point in 1-dimension)
             * zero-dimensional arrays (so a single data-point in 1-dimension)
-            * vectors (a single-point in multiple dimensions)
-            * arrays (multiple vectors).
+            * a vector (a single-point in multiple dimensions)
+            * array (multiple vectors).
 
         Evaluation is always vectorised.
 
