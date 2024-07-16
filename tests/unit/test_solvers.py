@@ -62,12 +62,6 @@ class _ReduceProblem(NamedTuple):
     expected_coreset: Optional[Coreset] = None
 
 
-class _SupervisedReduceProblem(NamedTuple):
-    dataset: SupervisedData
-    solver: Solver
-    expected_coreset: Optional[Coreset] = None
-
-
 class _RefineProblem(NamedTuple):
     initial_coresubset: Coresubset
     solver: RefinementSolver
@@ -462,19 +456,76 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _SupervisedReduceProblem:
+    ) -> _ReduceProblem:
         if request.param == "random":
-            features = jr.uniform(self.random_key, self.shape)
-            responses = jr.uniform(self.additional_key, self.shape)
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, (self.shape[0], 1))
             solver = solver_factory()
             expected_coreset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        return _SupervisedReduceProblem(
-            SupervisedData(features, responses), solver, expected_coreset
+        return _ReduceProblem(
+            SupervisedData(data=data, supervision=supervision), solver, expected_coreset
         )
 
-    def test_herding_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
+    @pytest.fixture(
+        params=[
+            "well-sized",
+            "under-sized",
+            "over-sized",
+            "random-unweighted",
+            "random-weighted",
+        ],
+        scope="class",
+    )
+    def refine_problem(
+        self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
+    ) -> _RefineProblem:
+        """
+        Pytest fixture that returns a problem dataset and the expected coreset.
+
+        An expected coreset of 'None' implies the expected coreset for this solver and
+        dataset combination is unknown.
+
+        We expect the '{well,under,over}-sized' cases to return the same result as a
+        call to 'reduce'. The 'random-unweighted' and 'random-weighted' case we only
+        expect to pass without raising an error.
+        """
+        dataset, solver, expected_coreset = reduce_problem
+        indices_key, weights_key = jr.split(self.random_key)
+        solver = cast(GreedyKernelInducingPoints, solver)
+        coreset_size = min(len(dataset), solver.coreset_size)
+        # We expect 'refine' to produce the same result as 'reduce' when the initial
+        # coresubset has all its indices equal to negative one.
+        expected_coresubset = None
+        if expected_coreset is None:
+            expected_coresubset, _ = solver.reduce(dataset)
+        elif isinstance(expected_coreset, Coresubset):
+            expected_coresubset = expected_coreset
+        if request.param == "well-sized":
+            indices = Data(-1 * jnp.ones(coreset_size, jnp.int32))
+        elif request.param == "under-sized":
+            indices = Data(-1 * jnp.ones(coreset_size - 1, jnp.int32))
+        elif request.param == "over-sized":
+            indices = Data(-1 * jnp.ones(coreset_size + 1, jnp.int32))
+        elif request.param == "random-unweighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            indices = Data(random_indices)
+            expected_coresubset = None
+        elif request.param == "random-weighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            random_weights = jr.uniform(weights_key, (coreset_size,))
+            indices = Data(random_indices, random_weights)
+            expected_coresubset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        initial_coresubset = Coresubset(indices, dataset)
+        return _RefineProblem(initial_coresubset, solver, expected_coresubset)
+
+    def test_greedy_kernel_inducing_point_state(
+        self, reduce_problem: _ReduceProblem
+    ) -> None:
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
         solver = cast(GreedyKernelInducingPoints, solver)

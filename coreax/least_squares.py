@@ -234,8 +234,8 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     of the input array.
 
     .. note::
-        Note that input `array`s must be Hermitian for this method to have predictable
-        behaviour. We do not check this.
+        Input arrays must be Hermitian for this method to have predictable behaviour.
+        We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
     eigendecomposition of a Hermitian matrix. The parameters `oversampling_parameter`
