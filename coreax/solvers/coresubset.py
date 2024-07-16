@@ -29,8 +29,11 @@ from typing_extensions import override
 
 from coreax.coreset import Coresubset
 from coreax.data import Data, SupervisedData, as_data
-from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
 from coreax.kernel import Kernel
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RegularisedLeastSquaresSolver,
+)
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 from coreax.solvers.base import (
     CoresubsetSolver,
@@ -484,7 +487,7 @@ def _greedy_kernel_inducing_points_loss(
     feature_gramian: Array,
     regularisation_parameter: float,
     identity: Array,
-    inverse_approximator: RegularisedInverseApproximator,
+    inverse_approximator: RegularisedLeastSquaresSolver,
 ) -> Array:
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
@@ -499,7 +502,7 @@ def _greedy_kernel_inducing_points_loss(
         array, negative values will be converted to positive
     :param identity: identity matrix
     :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`
+        :class:`coreax.inverses.RegularisedLeastSquaresSolver`
 
     :return: GreedyKernelInducingPoints loss for each candidate coreset
     """
@@ -512,9 +515,10 @@ def _greedy_kernel_inducing_points_loss(
     coreset_responses = responses[candidate_coresets]
 
     # Invert the coreset feature gramians
-    inverse_coreset_gramians = inverse_approximator.approximate_stack(
+    inverse_coreset_gramians = inverse_approximator.solve_stack(
         coreset_gramians,
         regularisation_parameter,
+        identity,
         identity,
     )
 
@@ -574,8 +578,8 @@ class GreedyKernelInducingPoints(
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
     :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
-        :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
+        :class:`coreax.inverses.RegularisedLeastSquaresSolver`, default value of
+        :data:`None` uses :class:`coreax.inverses.MinimalEuclideanNormSolver`
     """
 
     random_key: KeyArrayLike
@@ -583,7 +587,7 @@ class GreedyKernelInducingPoints(
     regularisation_parameter: float = 1e-6
     unique: bool = True
     batch_size: Union[int, None] = None
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None
+    inverse_approximator: Optional[RegularisedLeastSquaresSolver] = None
 
     @override
     def reduce(
@@ -613,7 +617,7 @@ class GreedyKernelInducingPoints(
         """
         # Handle default value of None
         if self.inverse_approximator is None:
-            inverse_approximator = LeastSquareApproximator(self.random_key)
+            inverse_approximator = MinimalEuclideanNormSolver(self.random_key)
         else:
             inverse_approximator = self.inverse_approximator
 
