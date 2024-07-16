@@ -502,7 +502,7 @@ def _greedy_kernel_inducing_points_loss(
         array, negative values will be converted to positive
     :param identity: identity matrix
     :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedLeastSquaresSolver`
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
 
     :return: GreedyKernelInducingPoints loss for each candidate coreset
     """
@@ -578,8 +578,8 @@ class GreedyKernelInducingPoints(
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
     :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedLeastSquaresSolver`, default value of
-        :data:`None` uses :class:`coreax.inverses.MinimalEuclideanNormSolver`
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
+        :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
     """
 
     random_key: KeyArrayLike
