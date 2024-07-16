@@ -23,7 +23,6 @@ from coreax.solvers.base import (
 )
 from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
-    GreedyKernelInducingPoints,
     HerdingState,
     KernelHerding,
     RandomSample,
@@ -46,5 +45,4 @@ __all__ = [
     "SteinThinning",
     "MapReduce",
     "PaddingInvariantSolver",
-    "GreedyKernelInducingPoints",
 ]
