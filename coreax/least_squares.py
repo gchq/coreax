@@ -332,7 +332,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             )
         )
 
-        # Solve Ax = I, x = A^-1 = UL^-1U^T
+        # Solve AX = B, X = A^-1B = UL^-1U^TB
         return _eigendecomposition_invert(
             approximate_eigenvalues, approximate_eigenvectors, rcond
         ).dot(target)
