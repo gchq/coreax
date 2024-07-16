@@ -172,6 +172,7 @@ nitpick_ignore = [
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
     ("py:class", "numpy.bool_"),
+    ("py:class", "coreax.solvers.coresubset.GreedyKernelInducingPointsState"),
 ]
 
 

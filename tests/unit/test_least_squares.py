@@ -105,8 +105,7 @@ class TestMinimalEuclideanNormSolver:
     @pytest.fixture(scope="class")
     def approximator(self) -> MinimalEuclideanNormSolver:
         """Pytest fixture returns an initialised `MinimalEuclideanNormSolver`."""
-        random_seed = 2_024
-        return MinimalEuclideanNormSolver(random_key=jr.key(random_seed), rcond=None)
+        return MinimalEuclideanNormSolver(rcond=None)
 
     def test_approximator_accuracy(
         self, approximator: MinimalEuclideanNormSolver
@@ -150,10 +149,7 @@ class TestMinimalEuclideanNormSolver:
     ) -> None:
         """Test `MinimalEuclideanNormSolver` handles inputs as expected."""
         with context:
-            approximator = MinimalEuclideanNormSolver(
-                random_key=jr.key(0),
-                rcond=rcond,
-            )
+            approximator = MinimalEuclideanNormSolver(rcond=rcond)
             approximator.solve(
                 array=array,
                 regularisation_parameter=1e-3,
@@ -192,7 +188,7 @@ class TestRandomisedEigendecompositionSolver(
         array = SquaredExponentialKernel().compute(x, x)
 
         # Compute "exact" inverse
-        exact_inverter = MinimalEuclideanNormSolver(random_key, rcond=None)
+        exact_inverter = MinimalEuclideanNormSolver(rcond=None)
         expected_inverse = exact_inverter.solve(
             array, regularisation_parameter, identity, identity
         )

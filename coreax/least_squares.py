@@ -13,9 +13,9 @@
 # limitations under the License.
 
 r"""
-Classes to approximate the least-squares solution to regularised linear equations.
+Classes to approximate least-squares solution to regularised linear matrix equations.
 
-Primarily used approximate regularised matrix inverses.
+Primarily used in Coreax to approximate regularised matrix inverses.
 
 Given a matrix :math:`A\in\mathbb{R}^{n\times n}` and some regularisation parameter
 :math:`\lambda\in\mathbb{R}_{\ge 0}`, the regularised inverse of :math:`A` is
@@ -42,8 +42,8 @@ where only the top-left block contains non-zero elements can be "inverted" to gi
     A^{-1} := \begin{bmatrix}B^{-1} & 0 & \dots & 0 \\ 0 & 0 & \dots & 0 \\
          \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix}.
 
-This functionality allows iterative coreset algorithms which require inverting growing
-arrays to have fully static array shapes and thus be JIT-compatible.
+This functionality allows for iterative coreset algorithms which require inverting
+growing arrays to have fully static array shapes and thus be JIT-compatible.
 
 To compute these "inverses" in JAX, we require the `target` and `identity` array
 passed in :meth:`~coreax.least_squares.RegularisedLeastSquaresSolver.solve` to be a
@@ -66,7 +66,7 @@ from coreax.util import KeyArrayLike
 
 class RegularisedLeastSquaresSolver(eqx.Module):
     r"""
-    Base class to compute the least-squares solution to regularised linear equations.
+    Base to compute the least-squares solution to a regularised linear matrix equation.
 
     Given an array :math:`A \in \mathbb{R}^{n \times n}`, a regularisation parameter
     :math:`\lambda \in \mathbb{R}_{\ge 0}`, and an array of targets
@@ -74,11 +74,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
     linear equation :math:`(A + \lambda I_n)B = X` has solution
     :math:`X = (A + \lambda I_n)^{-1}B` where
     :math:`\lambda_n \in \mathbb{R}^{n\times n}` is the identity matrix.
-
-    :param random_key: Key for random number generation
     """
-
-    random_key: KeyArrayLike
 
     @abstractmethod
     def solve(
@@ -89,7 +85,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         identity: Array,
     ) -> Array:
         r"""
-        Compute the least-squares solution to a regularised linear equation.
+        Compute the least-squares solution to a regularised linear matrix equation.
 
         :param array: :math:`n \times n` array, corresponds to :math:`A`
         :param regularisation_parameter: Regularisation parameter for stable inversion
@@ -107,7 +103,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         identity: Array,
     ) -> Array:
         r"""
-        Compute least-squares solutions to a stack of regularised linear equations.
+        Compute least-squares solutions to stack of regularised linear matrix equations.
 
         :param array: Horizontal stack of arrays with shape :math:`l \times n \times n`
         :param regularisation_parameter: Regularisation parameter for stable inversion
@@ -123,19 +119,18 @@ class RegularisedLeastSquaresSolver(eqx.Module):
 
 class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     """
-    Compute minimal-norm least-squares solution to the regularised linear equation.
+    Find minimal-norm least-squares solution to the regularised linear matrix equation.
 
-    Computes the solution that approximately solves the regularised linear equation.
-    The equation may be under-, well-, or over-determined. If `array` is full rank,
-    then the solution is exact, up to floating-point errors. Else, the solution
+    Computes the solution that approximately solves the regularised linear matrix
+    equation. The equation may be under-, well-, or over-determined. If `array` is full
+    rank, then the solution is *exact*, up to floating-point errors. Else, the solution
     minimises the Euclidean 2-norm. If there are multiple minimising solutions, the one
     with the smallest 2-norm is returned.
 
     .. note::
-        This solver does not give time savings and instead acts as a default option
-        useful for comparing other solvers to.
+        This solver does not give time savings and instead acts as a robust default
+        option useful for comparing other solvers to.
 
-    :param random_key: Key for random number generation
     :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes
         of rank determination, singular values are treated as zero if they are smaller
         than rcond times the largest singular value of 'array'. The default value of
@@ -256,6 +251,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
 
     """
 
+    random_key: KeyArrayLike
     oversampling_parameter: int = 25
     power_iterations: int = 1
     rcond: Optional[float] = None
