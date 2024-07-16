@@ -73,7 +73,14 @@ class MMD(Metric[Data]):
         - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
 
     where :math:`k` is the selected kernel, and the expectation is with respect to the
-    normalized data weights.
+    normalised data weights.
+
+    .. note::
+        Assuming that the kernel is characteristic (:cite:`muandet2016rkhs`), it can be
+        shown that :math:`\text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
+        :math:`\mathbb{P}^{(1)} = \mathbb{P}^{(2)}`, i.e. the distributions are the
+        same. Therefore, the MMD gives us a way to measure if two datasets have the same
+        (in the sense above) distribution.
 
     Common uses of MMD include comparing a reduced representation of a dataset to the
     original dataset, comparing different original datasets to one another, or
@@ -272,6 +279,105 @@ class KSD(Metric[Data]):
         return jnp.sqrt(squared_ksd_threshold_applied)
 
 
+class JMMD(Metric[SupervisedData]):
+    r"""
+    Definition and calculation of the (weighted) joint maximum mean discrepancy metric.
+
+    For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with
+    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^m` of ``m`` pairs
+    with :math:`\tilde{x}\in\mathbb{R}^d` and :math:`\tilde{y}\in\mathbb{R}^p`,
+    the joint maximum mean discrepancy is given by:
+
+    .. math::
+        \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
+        \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
+        - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
+
+    where :math:`k` is a tensor-product kernel, and the expectation is with respect to
+    the normalised data weights.
+
+    .. note::
+        Assuming that the feature and response kernels are characteristic
+        (:cite:`muandet2016rkhs`), it can be shown
+        that :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
+        :math:`\mathbb{P}^{(1)}_(X, Y) = \mathbb{P}^{(2)}_(X, Y)`, i.e. the joint
+        distributions are the same. Therefore, the JMMD gives us a way to measure if two
+        supervised datasets have the same (in the sense above) joint distribution.
+
+    Common uses of JMMD include comparing a reduced representation of a dataset to the
+    original dataset, comparing different original datasets to one another, or
+    comparing reduced representations of different original datasets to one another.
+
+    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
+        the feature space
+    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
+        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
+        \mathbb{R}` on the response space
+    :param precision_threshold: Threshold above which negative values of the squared
+        JMMD are rounded to zero (accommodates precision loss)
+    """
+
+    kernel: coreax.kernel.TensorProductKernel
+    precision_threshold: float = 1e-12
+
+    def __init__(
+        self,
+        feature_kernel: coreax.kernel.Kernel,
+        response_kernel: coreax.kernel.Kernel,
+        precision_threshold: float = 1e-12,
+    ):
+        """Initialise JMMD class and build tensor-product kernel."""
+        self.kernel = coreax.kernel.TensorProductKernel(
+            feature_kernel=feature_kernel,
+            response_kernel=response_kernel,
+        )
+        self.precision_threshold = precision_threshold
+
+    def compute(
+        self,
+        reference_data: SupervisedData,
+        comparison_data: SupervisedData,
+        *,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        **kwargs,
+    ) -> Array:
+        r"""
+        Compute the (weighted) joint maximum mean discrepancy.
+
+        .. math::
+            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
+            \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
+            - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
+
+        :param reference_data: The original supervised dataset :math:`\mathcal{D}^{(1)}=
+            \{(x_i, y_i)\}_{i=1}^n` of ``n`` pairs with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`
+        :param comparison_data: Supervised dataset
+            :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^n` of ``m``
+            pairs with :math:`\tilde{x}\in\mathbb{R}^d` and
+            :math:`\tilde{y}\in\mathbb{R}^p`
+        :param block_size: Size of matrix blocks to process; a value of :data:`None`
+            sets :math:`B_x = n` and :math:`B_y = m`, effectively disabling the block
+            accumulation; an integer value ``B`` sets :math:`B_y = B_x = B`; a tuple
+            allows different sizes to be specified for ``B_x`` and ``B_y``; to reduce
+            overheads, it is often sensible to select the largest block size that does
+            not exhaust the available memory resources
+        :param unroll: Unrolling parameter for the outer and inner :func:`jax.lax.scan`
+            calls, allows for trade-offs between compilation and runtime cost; consult
+            the JAX docs for further information
+        :return: Joint maximum mean discrepancy as a 0-dimensional array
+        """
+        return MMD(self.kernel).compute(
+            reference_data=reference_data,
+            comparison_data=comparison_data,
+            block_size=block_size,
+            unroll=unroll,
+        )
+
+
 class CMMD(Metric[SupervisedData]):
     r"""
     Definition and calculation of the conditional maximum mean discrepancy metric.
@@ -284,14 +390,25 @@ class CMMD(Metric[SupervisedData]):
 
     .. math::
         \text{CMMD}^2(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) =
-        ||\hat{\mu}^{(1)} - \hat{\mu}^{(2)}||^2_{\mathcal{H}_k \otimes \mathcal{H}_l}
+        ||\hat{\mu}^{(1)}_{Y|X} - \hat{\mu}^{(2)_{Y|X}}||^2_{\mathcal{H}_k \otimes
+        \mathcal{H}_l}
 
-    where :math:`\hat{\mu}^{(1)},\hat{\mu}^{(2)}` are the conditional mean
-    embeddings estimated with :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`
-    respectively, and :math:`\mathcal{H}_k,\mathcal{H}_l` are the RKHSs corresponding
-    to the kernel functions :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow
-    \mathbb{R}` and :math:`l: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
-    respectively.
+    where :math:`\hat{\mu}^{(1)}_{Y|X}, \hat{\mu}^{(2)}_{Y|X}` are the conditional mean
+    embeddings (:cite:`muandet2016rkhs`) estimated with :math:`\mathcal{D}^{(1)}` and
+    :math:`\mathcal{D}^{(2)}` respectively, and :math:`\mathcal{H}_k, \mathcal{H}_l` are
+    the RKHSs corresponding to the kernel functions :math:`k: \mathbb{R}^d \times
+    \mathbb{R}^d \rightarrow \mathbb{R}` and :math:`l: \mathbb{R}^p \times \mathbb{R}^p
+    \rightarrow \mathbb{R}` respectively.
+
+    .. note::
+        Given certain assumptions (:cite:`ren2016conditional`), including that
+        the feature kernel is characteristic (:cite:`muandet2016rkhs`), it can be shown
+        that if :math:`\mu^{(1)}_{Y|X} = \mu^{(2)}_{Y|X}`, then
+        :math:`\mathbb{P}^{(1)}_{Y|X} = \mathbb{P}^{(2)}_{Y|X}` in the sense that for
+        every fixed :math:`x`, we have
+        :math:`\mathbb{P}^{(1)}_{Y|x} = \mathbb{P}^{(2)}_{Y|x}`.
+        Therefore, the CMMD gives us a way to measure if two supervised datasets have
+        the same (in the sense above) conditional distributions.
 
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on

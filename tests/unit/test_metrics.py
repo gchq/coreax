@@ -43,8 +43,9 @@ from coreax.kernel import (
     RationalQuadraticKernel,
     SquaredExponentialKernel,
     SteinKernel,
+    TensorProductKernel,
 )
-from coreax.metrics import CMMD, KSD, MMD
+from coreax.metrics import CMMD, JMMD, KSD, MMD
 from coreax.score_matching import convert_stein_kernel
 from coreax.util import ArrayLike, pairwise
 
@@ -147,10 +148,6 @@ class TestMMD:
     def test_mmd_analytically_known_weighted(self) -> None:
         r"""
         Test MMD computation against an analytically derived weighted solution.
-
-        Weighted mmd is calculated if and only if comparison_weights are provided. When
-        `comparison_weights` = :data:`None`, the MMD class computes the standard,
-        non-weighted MMD.
 
         For the dataset of 3 points in 2 dimensions :math:`\mathcal{D}_1`, second
         dataset :math:`\mathcal{D}_2`, and weights for this second dataset :math:`w_2`,
@@ -397,6 +394,230 @@ class TestKSD:
             raise ValueError("Invalid mode parameterization")
         # Compute the KSD using the metric object
         assert output == pytest.approx(expected_ksd, abs=1e-6, rel=1e-3)
+
+
+class TestJMMD:
+    """
+    Tests related to the joint maximum mean discrepancy (JMMD) class in metrics.py.
+    """
+
+    @pytest.fixture
+    def problem(self) -> _SupervisedMetricProblem:
+        """Generate an example problem for testing JMMD."""
+        feature_dimension = 10
+        response_dimension = 2
+        num_points = 30, 5
+        keys = tuple(jr.split(jr.key(0), 2))
+
+        def _generate_data(_num_points: int, _key: Array) -> Data:
+            point_key, weight_key = jr.split(_key, 2)
+            data = jr.uniform(point_key, (_num_points, feature_dimension))
+            supervision = jr.uniform(point_key, (_num_points, response_dimension))
+            weights = jr.uniform(weight_key, (_num_points,))
+            return SupervisedData(data, supervision, weights)
+
+        reference_data, comparison_data = jtu.tree_map(_generate_data, num_points, keys)
+        return _SupervisedMetricProblem(reference_data, comparison_data)
+
+    @pytest.mark.parametrize(
+        "feature_kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    def test_jmmd_compare_same_data(
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: Kernel,
+        response_kernel: Kernel,
+    ):
+        """Check JMMD of a dataset with itself is approximately zero."""
+        x = problem.reference_data
+        metric = JMMD(feature_kernel, response_kernel)
+        assert metric.compute(x, x) == pytest.approx(0.0)
+
+    def test_jmmd_analytically_known(self):
+        r"""
+        Test JMMD computation against an analytically derived solution.
+
+        For the dataset of 3 pairs with feature and response dimension of 1,
+        :math:`\mathcal{D}_1`, and second dataset :math:`\mathcal{D}_2`, given by:
+
+        .. math::
+
+            reference_features = [[0], [1], [2]]
+            reference_responses = [[0], [1], [2]]
+
+            comparison_features = [[0], [1]]
+            comparison_responses = [[0], [1]]
+
+        where we use an RBF feature and response kernel given by
+        :math:`r(x,y) = l(x,y) = \exp (-||x-y||^2/2\sigma^2)` to define the tensor
+        product kernel :math:`k((x_1, y_1),(x_2, y_2)) := r(x_1,x_2)l(y_1,y_2)`, we
+        have:
+
+        .. math::
+
+            k(\mathcal{D}_1,\mathcal{D}_1) = \exp(-\begin{bmatrix}0 & 2 & 8 \\ 2 & 0 & 2
+            \\ 8 & 2 & 0
+            \end{bmatrix}/2\sigma^2) = \begin{bmatrix}1 & e^{-1} & e^{-4} \\ e^{-1} &
+            1 & e^{-1} \\ e^{-4} & e^{-1} & 1\end{bmatrix}.
+
+            k(\mathcal{D}_2,\mathcal{D}_2) = \exp(-\begin{bmatrix}0 & 2 \\ 2 & 0
+            \end{bmatrix}/2\sigma^2) = \begin{bmatrix}1 & e^{-1}\\ e^{-1} & 1
+            \end{bmatrix}.
+
+            k(\mathcal{D}_1,\mathcal{D}_2) =  \exp(-\begin{bmatrix}0 & 2 & 8
+            \\ 2 & 0 & 2 \end{bmatrix}
+            /2\sigma^2) = \begin{bmatrix}1 & e^{-1} \\  e^{-1} & 1 \\ e^{-4} & e^{-1}
+            \end{bmatrix}.
+
+        Then
+
+        .. math::
+
+            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) =
+            \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)) +
+            \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2)) -
+            2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
+
+            = \frac{3 - e^{-1} -2e^{-4}}{18}.
+        """
+        reference_points = jnp.array([[0], [1], [2]])
+        reference_supervision = jnp.array([[0], [1], [2]])
+        reference_data = SupervisedData(reference_points, reference_supervision)
+
+        comparison_points = jnp.array([[0], [1]])
+        comparison_supervision = jnp.array([[0], [1]])
+        comparison_data = SupervisedData(comparison_points, comparison_supervision)
+
+        expected_output = jnp.sqrt((3 - jnp.exp(-1) - 2 * jnp.exp(-4)) / 18)
+        # Compute JMMD using the metric object
+        metric = JMMD(SquaredExponentialKernel(), SquaredExponentialKernel())
+        output = metric.compute(reference_data, comparison_data)
+        assert output == pytest.approx(expected_output)
+
+    def test_jmmd_analytically_known_weighted(self) -> None:
+        r"""
+        Test JMMD computation against an analytically derived weighted solution.
+
+        For the dataset of 3 pairs with feature and response dimension of 1,
+        :math:`\mathcal{D}_1`, second dataset :math:`\mathcal{D}_2`, and weights for
+        this second dataset :math:`w_2`, given by:
+
+        .. math::
+
+            reference_features = [[0], [1], [2]]
+            reference_responses = [[0], [1], [2]]
+
+            w_1 = [1,1,1]
+
+            comparison_features = [[0], [1]]
+            comparison_responses = [[0], [1]]
+
+            w_2 = [1,0]
+
+        the weighted joint maximum mean discrepancy is calculated via:
+
+        .. math::
+
+            \text{WJMMD}^2(\mathcal{D}_1,\mathcal{D}_2) =
+            \frac{1}{||w_1||**2}w_1^T \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)) w_1
+             + \frac{1}{||w_2||**2}w_2^T k(\mathcal{D}_2,\mathcal{D}_2) w_2
+             - \frac{2}{||w_1||||w_2||} w_1
+             \mathbb{E}_x(k(\mathcal{D}_1,\mathcal{D}_2)) w_2
+
+            = \frac{2}{3} - \frac{2}{9}e^{-1} - \frac{4}{9}e^{-4}.
+        """
+        reference_points = jnp.array([[0], [1], [2]])
+        reference_supervision = jnp.array([[0], [1], [2]])
+        reference_weights = jnp.array([1, 1, 1])
+        reference_data = SupervisedData(
+            reference_points, reference_supervision, reference_weights
+        )
+
+        comparison_points = jnp.array([[0], [1]])
+        comparison_supervision = jnp.array([[0], [1]])
+        comparison_weights = jnp.array([1, 0])
+        comparison_data = SupervisedData(
+            comparison_points, comparison_supervision, comparison_weights
+        )
+
+        expected_output = jnp.sqrt(
+            2 / 3 - (2 / 9) * jnp.exp(-1) - (4 / 9) * jnp.exp(-4)
+        )
+        # Compute the weighted JMMD using the metric object
+        metric = JMMD(SquaredExponentialKernel(), SquaredExponentialKernel())
+        output = metric.compute(reference_data, comparison_data)
+        assert output == pytest.approx(expected_output)
+
+    @pytest.mark.parametrize("mode", ["unweighted", "weighted"])
+    def test_jmmd_random_data(
+        self, problem: _SupervisedMetricProblem, mode: Literal["unweighted", "weighted"]
+    ):
+        r"""
+        Test JMMD computed from randomly generated test data agrees with method result.
+
+        - "unweighted" parameterization checks that if the 'reference_data' and the
+            'comparison_data' have the default 'None' weights, that the computed JMMD is
+            given by the means of the unweighted kernel matrices.
+        - "weighted" parameterization checks that for arbitrarily weighted data, the
+            computed JMMD is given by the weighted average of the kernel matrices.
+        """
+        base_kernel = SquaredExponentialKernel()
+        kernel = TensorProductKernel(base_kernel, base_kernel)
+        x, y = problem
+        # Compute each term in the JMMD formula to obtain an expected JMMD.
+        x_no_weights = (x.data, x.supervision)
+        y_no_weights = (y.data, y.supervision)
+        kernel_nn = kernel.compute(x_no_weights, x_no_weights)
+        kernel_mm = kernel.compute(y_no_weights, y_no_weights)
+        kernel_nm = kernel.compute(x_no_weights, y_no_weights)
+        if mode == "weighted":
+            weights_nn = x.weights[..., None] * x.weights[None, ...]
+            weights_mm = y.weights[..., None] * y.weights[None, ...]
+            weights_nm = x.weights[..., None] * y.weights[None, ...]
+            expected_jmmd = jnp.sqrt(
+                jnp.average(kernel_nn, weights=weights_nn)
+                + jnp.average(kernel_mm, weights=weights_mm)
+                - 2 * jnp.average(kernel_nm, weights=weights_nm)
+            )
+        elif mode == "unweighted":
+            # Strip weights
+            x, y = (
+                SupervisedData(x.data, x.supervision),
+                SupervisedData(y.data, y.supervision),
+            )
+            expected_jmmd = jnp.sqrt(
+                jnp.mean(kernel_nn) + jnp.mean(kernel_mm) - 2 * jnp.mean(kernel_nm)
+            )
+        else:
+            raise ValueError("Invalid mode parameterization")
+        # Compute the JMMD using the metric object
+        metric = JMMD(base_kernel, base_kernel)
+        output = metric.compute(x, y)
+        assert output == pytest.approx(expected_jmmd, abs=1e-6)
+
+    @pytest.mark.parametrize(
+        "feature_kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    def test_mmd_equals_jmmd(
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: Kernel,
+        response_kernel: Kernel,
+    ):
+        """Check passing a `TensorProductKernel` to `MMD` is equivalent to `JMMD`."""
+        a, b = problem
+        kernel = TensorProductKernel(feature_kernel, response_kernel)
+        mmd = MMD(kernel).compute(a, b)  # pyright: ignore[reportArgumentType]
+        jmmd = JMMD(feature_kernel, response_kernel).compute(a, b)
+        assert jmmd == pytest.approx(mmd, abs=1e-6)
 
 
 class TestCMMD:
