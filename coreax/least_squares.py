@@ -46,7 +46,7 @@ This functionality allows iterative coreset algorithms which require inverting g
 arrays to have fully static array shapes and thus be JIT-compatible.
 
 To compute these "inverses" in JAX, we require the `target` and `identity` array
-passed in :meth:`~coreax.inverses.RegularisedLeastSquaresSolver.solve` to be a
+passed in :meth:`~coreax.least_squares.RegularisedLeastSquaresSolver.solve` to be a
 matrix of zeros except for ones on the diagonal up to the dimension of the non-zero
 block.
 """
