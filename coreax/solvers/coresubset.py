@@ -367,7 +367,7 @@ class _GenericDataRPCholesky(
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
         ) -> tuple[Array, Array, Array]:
-            """`RPCholesky Iteration - Algorithm 1 of :cite:`chen2023randomly`."""
+            """RPCholesky Iteration - Algorithm 1 of :cite:`chen2023randomly`."""
             residual_diagonal, approximation_matrix, coreset_indices = val
             key = jr.fold_in(self.random_key, i)
             pivot_point = jr.choice(
@@ -478,9 +478,9 @@ class JointRPCholesky(
     supervised dataset.
 
     .. note::
-        :class:`JointRPCholesky` is suitable for compressing supervised
+        :class:`JointRPCholesky` is suitable for compressing
         :class:`~coreax.data.SupervisedData`, use :class:`RPCholesky`, if compressing
-        :class:`~coreax.data.Data`.
+        unsupervised :class:`~coreax.data.Data`.
 
     :param coreset_size: The desired size of the solved coreset
     :param random_key: Key for random number generation
