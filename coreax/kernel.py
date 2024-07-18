@@ -590,7 +590,7 @@ class TensorProductKernel(eqx.Module):
 
     Given kernel functions :math:`r:\mathcal{X} \times \mathcal{X} \to \mathbb{R}` and
     :math:`l:\mathcal{Y} \times \mathcal{Y} \to \mathbb{R}`, define the tensor product
-    kernel :math:`p:(\mathcal{X} \times \mathcal{Y}) \otimes
+    kernel :math:`k:(\mathcal{X} \times \mathcal{Y}) \otimes
     (\mathcal{X} \times \mathcal{Y}) \to \mathbb{R}` where
     :math:`k((x_1, y_1),(x_2, y_2)) := r(x_1,x_2)l(y_1,y_2)`
 

@@ -26,6 +26,7 @@ from coreax.solvers.coresubset import (
     ConditionalKernelHerding,
     ConditionalKernelHerdingState,
     HerdingState,
+    JointRPCholesky,
     KernelHerding,
     RandomSample,
     RPCholesky,
@@ -49,4 +50,5 @@ __all__ = [
     "PaddingInvariantSolver",
     "ConditionalKernelHerding",
     "ConditionalKernelHerdingState",
+    "JointRPCholesky",
 ]
