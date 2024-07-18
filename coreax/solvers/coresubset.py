@@ -340,21 +340,19 @@ class _GenericDataRPCholesky(
         :return: a refined coresubset and relevant intermediate solver state information
         """
         # Setup the class to deal with supervised or unsupervised data
+        if solver_state is not None:
+            gramian_diagonal = solver_state.gramian_diagonal
         if isinstance(self.kernel, TensorProductKernel) and isinstance(
             dataset, SupervisedData
         ):
             x, y = dataset.data, dataset.supervision
-            if solver_state is not None:
-                gramian_diagonal = solver_state.gramian_diagonal
-            else:
+            if solver_state is None:
                 gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(
                     (x, y), (x, y)
                 )
-        elif isinstance(self.kernel, Kernel) and isinstance(dataset, Data):
+        elif isinstance(self.kernel, Kernel):
             x = dataset.data
-            if solver_state is not None:
-                gramian_diagonal = solver_state.gramian_diagonal
-            else:
+            if solver_state is None:
                 gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
             raise ValueError(
