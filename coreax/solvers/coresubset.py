@@ -104,6 +104,40 @@ def _initial_coresubset(
         raise
 
 
+class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
+    """
+    Reduce a dataset by randomly sampling a fixed number of points.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param weighted: If to use dataset weights as selection probabilities
+    :param unique: If to sample without replacement
+    """
+
+    random_key: KeyArrayLike
+    weighted: bool = False
+    unique: bool = True
+
+    @override
+    def reduce(
+        self, dataset: _Data, solver_state: None = None
+    ) -> tuple[Coresubset, None]:
+        selection_weights = dataset.weights if self.weighted else None
+        try:
+            random_indices = jr.choice(
+                self.random_key,
+                len(dataset),
+                (self.coreset_size,),
+                p=selection_weights,
+                replace=not self.unique,
+            )
+            return Coresubset(random_indices, dataset), solver_state
+        except ValueError as err:
+            if self.coreset_size > len(dataset) and self.unique:
+                raise ValueError(MSG) from err
+            raise
+
+
 def _greedy_kernel_selection(
     coresubset: Coresubset[Data],
     selection_function: Callable[[int, ArrayLike], Array],
@@ -116,7 +150,8 @@ def _greedy_kernel_selection(
     """
     Iterative-greedy coresubset point selection loop.
 
-    Primarily intended for use with :class`KernelHerding` and :class:`SteinThinning`.
+    Primarily intended for use with :class`_GenericDataKernelHerding` and
+    :class:`SteinThinning`.
 
     :param coresubset: The initialisation
     :param selection_function: Greedy selection function/objective
@@ -191,8 +226,8 @@ class _GenericDataKernelHerding(
     An implementation of Kernel Herding handling (un)supervised data types.
 
     .. note::
-        :class:`_GenericDataKernelHerding` should not be used directly, if wanting to
-        compressing unsupervised :class:`~coreax.data.Data`, use :class:`KernelHerding`,
+        :class:`_GenericDataKernelHerding` should not be used directly, if compressing
+        unsupervised :class:`~coreax.data.Data`, use :class:`KernelHerding`,
         if compressing :class:`~coreax.data.SupervisedData`, use
         :class:`JointKernelHerding`.
 
@@ -276,6 +311,11 @@ class KernelHerding(
     approach to minimizing the (weighted) Maximum Mean Discrepancy (MMD) between the
     coresubset (the solution) and the problem dataset.
 
+    .. note::
+        :class:`KernelHerding` is suitable for compressing unsupervised
+        :class:`~coreax.data.Data`, use :class:`JointKernelHerding`, if compressing
+        :class:`~coreax.data.SupervisedData`.
+
     Given one has selected :math:`T` data points for their compressed representation of
     the original dataset, kernel herding selects the next point using Equation 8 of
     :cite:`chen2012herding`:
@@ -354,6 +394,11 @@ class JointKernelHerding(
     coresubset problem by taking a deterministic, iterative, and greedy approach to
     minimizing the (weighted) Joint Maximum Mean Discrepancy (JMMD) between the
     coresubset (the solution) and the problem supervised dataset.
+
+    .. note::
+        :class:`JointKernelHerding` is suitable for compressing
+        :class:`~coreax.data.SupervisedData`, use :class:`KernelHerding`, if compressing
+        unsupervised :class:`~coreax.data.Data`.
 
     Given one has selected :math:`T` data pairs for their compressed representation of
     the original dataset, joint kernel herding selects the next pair using:
@@ -442,40 +487,6 @@ class JointKernelHerding(
             unroll=self.unroll,
         )
         return supervised_solver.refine(coresubset, solver_state)
-
-
-class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
-    """
-    Reduce a dataset by randomly sampling a fixed number of points.
-
-    :param coreset_size: The desired size of the solved coreset
-    :param random_key: Key for random number generation
-    :param weighted: If to use dataset weights as selection probabilities
-    :param unique: If to sample without replacement
-    """
-
-    random_key: KeyArrayLike
-    weighted: bool = False
-    unique: bool = True
-
-    @override
-    def reduce(
-        self, dataset: _Data, solver_state: None = None
-    ) -> tuple[Coresubset, None]:
-        selection_weights = dataset.weights if self.weighted else None
-        try:
-            random_indices = jr.choice(
-                self.random_key,
-                len(dataset),
-                (self.coreset_size,),
-                p=selection_weights,
-                replace=not self.unique,
-            )
-            return Coresubset(random_indices, dataset), solver_state
-        except ValueError as err:
-            if self.coreset_size > len(dataset) and self.unique:
-                raise ValueError(MSG) from err
-            raise
 
 
 class _GenericDataRPCholesky(
