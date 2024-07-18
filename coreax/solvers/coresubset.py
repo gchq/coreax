@@ -50,6 +50,12 @@ from coreax.util import (
 _Data = TypeVar("_Data", bound=Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
+INVALID_KERNEL_DATA_COMBINATION_MSG = (
+    "Invalid combination of 'kernel' and 'dataset'; if compressing"
+    + " 'SupervisedData', one must pass a 'TensorProductKernel', if"
+    + " compressing 'Data', one must pass a child of 'Kernel'."
+)
+
 
 class HerdingState(eqx.Module):
     """
@@ -307,7 +313,7 @@ class _GenericDataRPCholesky(
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` if
         compressing unsupervised :class:`~coreax.data.Data`, else
-        :class:`~coreax.kernel.TensorProduct` instance if compressing
+        :class:`~coreax.kernel.TensorProductKernel` instance if compressing
         :class:`~coreax.data.SupervisedData`
     :param unique: If each index in the resulting coresubset should be unique
     """
@@ -341,24 +347,23 @@ class _GenericDataRPCholesky(
         # Setup the class to deal with supervised or unsupervised data
         if solver_state is not None:
             gramian_diagonal = solver_state.gramian_diagonal
-        if isinstance(self.kernel, TensorProductKernel) and isinstance(
-            dataset, SupervisedData
+        # pylint: disable=unidiomatic-typecheck
+        if (
+            isinstance(self.kernel, TensorProductKernel)
+            and type(dataset) is SupervisedData
         ):
             x, y = dataset.data, dataset.supervision
             if solver_state is None:
                 gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(
                     (x, y), (x, y)
                 )
-        elif isinstance(self.kernel, Kernel):
+        elif isinstance(self.kernel, Kernel) and type(dataset) is Data:
             x = dataset.data
             if solver_state is None:
                 gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
-            raise ValueError(
-                "Invalid combination of 'kernel' and 'dataset'; if compressing"
-                + " 'SupervisedData', one must pass a 'TensorProductKernel', if"
-                + " compressing 'Data', one must pass a child of 'Kernel'."
-            )
+            raise ValueError(INVALID_KERNEL_DATA_COMBINATION_MSG)
+        # pylint: enable=unidiomatic-typecheck
 
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         coreset_indices = initial_coresubset.unweighted_indices

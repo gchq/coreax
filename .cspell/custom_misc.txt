@@ -22,6 +22,7 @@ Gramian
 gramians
 infty
 JMMD
+JSBQ
 kbar
 kdtree
 kernelised
@@ -41,5 +42,6 @@ RPCHOLESKY
 sigmas
 supp
 TLDR
+typecheck
 WJMMD
 WMMD

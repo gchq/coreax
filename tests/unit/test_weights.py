@@ -28,9 +28,9 @@ import coreax.kernel
 import coreax.weights
 
 
-class TestBayesianQuadrature(unittest.TestCase):
+class TestSBQWeightsOptimiser(unittest.TestCase):
     """
-    Tests related to :meth:`~coreax.weights.SBQ`.
+    Tests related to :meth:`~coreax.weights.SBQWeightsOptimiser`.
     """
 
     def test_calculate_bayesian_quadrature_weights(self) -> None:
@@ -94,9 +94,9 @@ class TestBayesianQuadrature(unittest.TestCase):
         self.assertTrue(jnp.allclose(output, expected_output))
 
 
-class TestMMD(unittest.TestCase):
+class TestMMDWeightsOptimiser(unittest.TestCase):
     """
-    Tests related to :meth:`~coreax.weights.MMD`.
+    Tests related to :meth:`~coreax.weights.MMDWeightsOptimiser`.
     """
 
     def test_simplex_weights(self) -> None:

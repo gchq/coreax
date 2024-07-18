@@ -646,7 +646,7 @@ class TensorProductKernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        a: Union[tuple[Array, Array], SupervisedData],
+        a: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -667,8 +667,8 @@ class TensorProductKernel(eqx.Module):
 
     def compute_mean(
         self,
-        a: Union[tuple[Array, Array], SupervisedData],
-        b: Union[tuple[Array, Array], SupervisedData],
+        a: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
+        b: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
         axis: Union[int, None] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
