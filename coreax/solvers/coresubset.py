@@ -105,14 +105,14 @@ def _initial_coresubset(
 
 
 def _greedy_kernel_selection(
-    coresubset: Coresubset[_Data],
+    coresubset: Coresubset[Data],
     selection_function: Callable[[int, ArrayLike], Array],
     output_size: int,
-    kernel: Kernel,
+    kernel: Union[Kernel, TensorProductKernel],
     unique: bool,
     block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
-) -> Coresubset[_Data]:
+) -> Coresubset[Data]:
     """
     Iterative-greedy coresubset point selection loop.
 
@@ -135,9 +135,20 @@ def _greedy_kernel_selection(
     # The kernel similarity penalty must be computed for the initial coreset. If we did
     # not support refinement, the penalty could be initialised to the zeros vector, and
     # the result would be invariant to the initial coresubset.
-    data, weights = jtu.tree_leaves(coresubset.pre_coreset_data)
+    dataset = coresubset.pre_coreset_data
+    weights = dataset.weights
+    if isinstance(kernel, TensorProductKernel) and isinstance(dataset, SupervisedData):
+        x, y = dataset.data, dataset.supervision
+    elif isinstance(kernel, Kernel):
+        x = dataset.data
+    else:
+        raise ValueError(
+            'Invalid combination of "kernel" and "dataset"; if compressing'
+            + ' "SupervisedData", one must pass a "TensorProductKernel, if"'
+            + ' compressing "Data", one must pass a child of "Kernel".'
+        )
     kernel_similarity_penalty = kernel.compute_mean(
-        data,
+        dataset,
         padded_coresubset.coreset,
         axis=1,
         block_size=block_size,
@@ -151,8 +162,14 @@ def _greedy_kernel_selection(
         )
         updated_coreset_index = selection_function(i, valid_kernel_similarity_penalty)
         updated_coreset_indices = coreset_indices.at[i].set(updated_coreset_index)
-        penalty_update = jnp.ravel(kernel.compute(data, data[updated_coreset_index]))
-        updated_penalty = kernel_similarity_penalty + penalty_update
+        if isinstance(kernel, TensorProductKernel):
+            penalty_update = kernel.compute(
+                (x, y), (x[updated_coreset_index], y[updated_coreset_index])
+            )
+        else:
+            penalty_update = kernel.compute(x, x[updated_coreset_index])
+
+        updated_penalty = kernel_similarity_penalty + jnp.ravel(penalty_update)
         if unique:
             # Prevent the same 'updated_coreset_index' from being selected on a
             # subsequent iteration, by setting the penalty to infinity.
@@ -163,6 +180,90 @@ def _greedy_kernel_selection(
     output_state = jax.lax.fori_loop(0, output_size, _greedy_body, init_state)
     updated_coreset_indices = output_state[0][:output_size]
     return eqx.tree_at(lambda x: x.nodes, coresubset, as_data(updated_coreset_indices))
+
+
+class _GenericDataKernelHerding(
+    RefinementSolver[Union[_Data, _SupervisedData], HerdingState],
+    ExplicitSizeSolver,
+    PaddingInvariantSolver,
+):
+    r"""
+    An implementation of Kernel Herding handling (un)supervised data types.
+
+    .. note::
+        :class:`_GenericDataKernelHerding` should not be used directly, if wanting to
+        compressing unsupervised :class:`~coreax.data.Data`, use :class:`KernelHerding`,
+        if compressing :class:`~coreax.data.SupervisedData`, use
+        :class:`JointKernelHerding`.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
+        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`  if
+        compressing unsupervised :class:`~coreax.data.Data`, else
+        :class:`~coreax.kernel.TensorProduct` instance if compressing
+        :class:`~coreax.data.SupervisedData`
+    :param unique: Boolean that ensures the resulting coresubset will only contain
+        unique elements
+    :param block_size: Block size passed to :meth:`~coreax.kernel.Kernel.compute_mean`
+    :param unroll: Unroll parameter passed to :meth:`~coreax.kernel.Kernel.compute_mean`
+    """
+
+    kernel: Union[Kernel, TensorProductKernel]
+    unique: bool = True
+    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
+
+    @override
+    def reduce(
+        self,
+        dataset: Union[Data, SupervisedData],
+        solver_state: Optional[HerdingState] = None,
+    ) -> tuple[Coresubset[Union[Data, SupervisedData]], HerdingState]:
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
+        return self.refine(initial_coresubset, solver_state)
+
+    def refine(
+        self,
+        coresubset: Coresubset[Union[Data, SupervisedData]],
+        solver_state: Optional[HerdingState] = None,
+    ) -> tuple[Coresubset[Union[Data, SupervisedData]], HerdingState]:
+        """
+        Refine a coresubset according to the 'Kernel Herding' loss.
+
+        We first compute the (tensor-product) kernel's Gramian row-mean if it is not
+        given in the `solver_state`, and then iteratively swap points with the initial
+        coreset,  balancing selecting points in high density regions with selecting
+        points far from those already in the coreset.
+
+        :param coresubset: The coresubset to refine
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: A refined coresubset and relevant intermediate solver state information
+        """
+        if solver_state is None:
+            data, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
+            gramian_row_mean = self.kernel.gramian_row_mean(
+                data, block_size=bs, unroll=un
+            )
+        else:
+            gramian_row_mean = solver_state.gramian_row_mean
+
+        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+            """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
+            return jnp.nanargmax(
+                gramian_row_mean - _kernel_similarity_penalty / (i + 1)
+            )
+
+        refined_coreset = _greedy_kernel_selection(
+            coresubset,
+            selection_function,
+            self.coreset_size,
+            self.kernel,
+            self.unique,
+            self.block_size,
+            self.unroll,
+        )
+        return refined_coreset, HerdingState(gramian_row_mean)
 
 
 class KernelHerding(
@@ -206,22 +307,22 @@ class KernelHerding(
     @override
     def reduce(
         self,
-        dataset: _Data,
+        dataset: Data,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[_Data],
+        coresubset: Coresubset[Data],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         """
-        Refine a coresubset with 'Kernel Herding'.
+        Refine a coresubset with :class:`KernelHerding`.
 
         We first compute the kernel's Gramian row-mean if it is not given in the
-        'solver_state', and then iteratively swap points with the initial coreset,
+        `solver_state`, and then iteratively swap points with the initial coreset,
         balancing selecting points in high density regions with selecting points far
         from those already in the coreset.
 
@@ -230,95 +331,14 @@ class KernelHerding(
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information
         """
-        if solver_state is None:
-            x, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
-            gramian_row_mean = self.kernel.gramian_row_mean(x, block_size=bs, unroll=un)
-        else:
-            gramian_row_mean = solver_state.gramian_row_mean
-
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
-            """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
-            return jnp.nanargmax(
-                gramian_row_mean - _kernel_similarity_penalty / (i + 1)
-            )
-
-        refined_coreset = _greedy_kernel_selection(
-            coresubset,
-            selection_function,
-            self.coreset_size,
-            self.kernel,
-            self.unique,
-            self.block_size,
-            self.unroll,
+        unsupervised_solver = _GenericDataKernelHerding(
+            coreset_size=self.coreset_size,
+            kernel=self.kernel,
+            unique=self.unique,
+            block_size=self.block_size,
+            unroll=self.unroll,
         )
-        return refined_coreset, HerdingState(gramian_row_mean)
-
-
-def _supervised_greedy_kernel_selection(
-    coresubset: Coresubset[_SupervisedData],
-    selection_function: Callable[[int, ArrayLike], Array],
-    output_size: int,
-    kernel: TensorProductKernel,
-    unique: bool,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
-) -> Coresubset[_SupervisedData]:
-    """
-    Iterative-greedy coresubset point selection loop.
-
-    Primarily intended for use with :class`JointKernelHerding`:
-
-    :param coresubset: The initialisation
-    :param selection_function: Greedy selection function/objective
-    :param output_size: The size of the resultant coresubset
-    :param kernel: The tensor-product kernel used to compute the penalty
-    :param unique: If each index in the resulting coresubset should be unique
-    :param block_size: Block size passed to :meth:`~coreax.kernel.Kernel.compute_mean`
-    :param unroll: Unroll parameter passed to :meth:`~coreax.kernel.Kernel.compute_mean`
-    :return: Coresubset generated by iterative-greedy selection
-    """
-    # If the initialisation coresubset is too small, pad its nodes up to 'output_size'
-    # with zero valued and weighted indices.
-    padding = max(0, output_size - len(coresubset))
-    padded_indices = tree_zero_pad_leading_axis(coresubset.nodes, padding)
-    padded_coresubset = eqx.tree_at(lambda x: x.nodes, coresubset, padded_indices)
-    # The kernel similarity penalty must be computed for the initial coreset. If we did
-    # not support refinement, the penalty could be initialised to the zeros vector, and
-    # the result would be invariant to the initial coresubset.
-    data = coresubset.pre_coreset_data
-    weights = data.weights
-    kernel_similarity_penalty = kernel.compute_mean(
-        data,
-        padded_coresubset.coreset,
-        axis=1,
-        block_size=block_size,
-        unroll=unroll,
-    )
-
-    x, y = data.data, data.supervision
-
-    def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, ArrayLike]:
-        coreset_indices, kernel_similarity_penalty = val
-        valid_kernel_similarity_penalty = jnp.where(
-            weights > 0, kernel_similarity_penalty, jnp.nan
-        )
-        updated_coreset_index = selection_function(i, valid_kernel_similarity_penalty)
-        updated_coreset_indices = coreset_indices.at[i].set(updated_coreset_index)
-
-        penalty_update = jnp.ravel(
-            kernel.compute((x, y), (x[updated_coreset_index], y[updated_coreset_index]))
-        )
-        updated_penalty = kernel_similarity_penalty + penalty_update
-        if unique:
-            # Prevent the same 'updated_coreset_index' from being selected on a
-            # subsequent iteration, by setting the penalty to infinity.
-            updated_penalty = updated_penalty.at[updated_coreset_index].set(jnp.inf)
-        return updated_coreset_indices, updated_penalty
-
-    init_state = (padded_coresubset.unweighted_indices, kernel_similarity_penalty)
-    output_state = jax.lax.fori_loop(0, output_size, _greedy_body, init_state)
-    updated_coreset_indices = output_state[0][:output_size]
-    return eqx.tree_at(lambda x: x.nodes, coresubset, as_data(updated_coreset_indices))
+        return unsupervised_solver.refine(coresubset, solver_state)
 
 
 class JointKernelHerding(
@@ -377,7 +397,7 @@ class JointKernelHerding(
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ):
-        """Initialise JointKernelHerding class and build tensor-product kernel."""
+        """Initialise `JointKernelHerding` class and build tensor-product kernel."""
         ExplicitSizeSolver.__init__(self, coreset_size)
         self.kernel = TensorProductKernel(
             feature_kernel=feature_kernel,
@@ -390,22 +410,22 @@ class JointKernelHerding(
     @override
     def reduce(
         self,
-        dataset: _SupervisedData,
+        dataset: SupervisedData,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_SupervisedData], HerdingState]:
+    ) -> tuple[Coresubset[SupervisedData], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[_SupervisedData],
+        coresubset: Coresubset[SupervisedData],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_SupervisedData], HerdingState]:
+    ) -> tuple[Coresubset[SupervisedData], HerdingState]:
         """
-        Refine a coresubset with 'Joint Kernel Herding'.
+        Refine a coresubset with :class:`JointKernelHerding`.
 
         We first compute the kernel's Gramian row-mean if it is not given in the
-        'solver_state', and then iteratively swap points with the initial coreset,
+        `solver_state`, and then iteratively swap points with the initial coreset,
         balancing selecting points in high density regions with selecting points far
         from those already in the coreset.
 
@@ -414,28 +434,14 @@ class JointKernelHerding(
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information
         """
-        if solver_state is None:
-            d, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
-            gramian_row_mean = self.kernel.gramian_row_mean(d, block_size=bs, unroll=un)
-        else:
-            gramian_row_mean = solver_state.gramian_row_mean
-
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
-            """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
-            return jnp.nanargmax(
-                gramian_row_mean - _kernel_similarity_penalty / (i + 1)
-            )
-
-        refined_coreset = _supervised_greedy_kernel_selection(
-            coresubset,
-            selection_function,
-            self.coreset_size,
-            self.kernel,
-            self.unique,
-            self.block_size,
-            self.unroll,
+        supervised_solver = _GenericDataKernelHerding(
+            coreset_size=self.coreset_size,
+            kernel=self.kernel,
+            unique=self.unique,
+            block_size=self.block_size,
+            unroll=self.unroll,
         )
-        return refined_coreset, HerdingState(gramian_row_mean)
+        return supervised_solver.refine(coresubset, solver_state)
 
 
 class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
