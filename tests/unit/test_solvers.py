@@ -33,12 +33,17 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
+from coreax.inverses import (
+    LeastSquareApproximator,
+    RandomisedEigendecompositionApproximator,
+)
 from coreax.kernel import (
     Kernel,
     PCIMQKernel,
     SquaredExponentialKernel,
 )
 from coreax.solvers import (
+    ConditionalKernelHerding,
     JointRPCholesky,
     KernelHerding,
     MapReduce,
@@ -53,6 +58,7 @@ from coreax.solvers.base import (
     RefinementSolver,
 )
 from coreax.solvers.coresubset import (
+    ConditionalKernelHerdingState,
     HerdingState,
     RPCholeskyState,
 )
@@ -434,19 +440,19 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 class TestJointRPCholesky(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.JointRPCholesky`."""
 
-    additional_key = jr.key(0)
+    feature_kernel = SquaredExponentialKernel()
+    response_kernel = PCIMQKernel()
 
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
-        kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
             JointRPCholesky,
             coreset_size=coreset_size,
             random_key=self.random_key,
-            feature_kernel=kernel,
-            response_kernel=kernel,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
         )
 
     @override
@@ -457,14 +463,15 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
         solver_factory: Union[type[Solver], jtu.Partial],
     ) -> _SupervisedReduceProblem:
         if request.param == "random":
-            features = jr.uniform(self.random_key, self.shape)
-            responses = jr.uniform(self.additional_key, self.shape)
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, self.shape)
             solver = solver_factory()
             expected_coreset = None
         else:
             raise ValueError("Invalid fixture parametrization")
         return _SupervisedReduceProblem(
-            SupervisedData(features, responses), solver, expected_coreset
+            SupervisedData(data, supervision), solver, expected_coreset
         )
 
     @override
@@ -489,6 +496,18 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
         expected_state = RPCholeskyState(gramian_diagonal)
         assert eqx.tree_equal(state, expected_state)
 
+    def test_non_uniqueness(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = JointRPCholesky(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            unique=False,
+        )
+        solver.reduce(dataset)
+
 
 class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.SteinThinning`."""
@@ -499,6 +518,178 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
+
+
+class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.ConditionalKernelHerding`."""
+
+    feature_kernel = SquaredExponentialKernel()
+    response_kernel = PCIMQKernel()
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            ConditionalKernelHerding,
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _SupervisedReduceProblem:
+        if request.param == "random":
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, self.shape)
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _SupervisedReduceProblem(
+            SupervisedData(data=data, supervision=supervision), solver, expected_coreset
+        )
+
+    @pytest.fixture(
+        params=[
+            "well-sized",
+            "under-sized",
+            "over-sized",
+            "random-unweighted",
+            "random-weighted",
+        ],
+        scope="class",
+    )
+    def refine_problem(
+        self, request: pytest.FixtureRequest, reduce_problem: _SupervisedReduceProblem
+    ) -> _RefineProblem:
+        """
+        Pytest fixture that returns a problem dataset and the expected coreset.
+
+        An expected coreset of `None` implies the expected coreset for this solver and
+        dataset combination is unknown.
+
+        We expect the '{well,under,over}-sized' cases to return the same result as a
+        call to 'reduce'. The 'random-unweighted' and 'random-weighted' case we only
+        expect to pass without raising an error.
+        """
+        dataset, solver, expected_coreset = reduce_problem
+        indices_key, weights_key = jr.split(self.random_key)
+        solver = cast(ConditionalKernelHerding, solver)
+        coreset_size = min(len(dataset), solver.coreset_size)
+        # We expect 'refine' to produce the same result as 'reduce' when the initial
+        # coresubset has all its indices equal to negative one.
+        expected_coresubset = None
+        if expected_coreset is None:
+            expected_coresubset, _ = solver.reduce(dataset)
+        elif isinstance(expected_coreset, Coresubset):
+            expected_coresubset = expected_coreset
+        if request.param == "well-sized":
+            indices = Data(-1 * jnp.ones(coreset_size, jnp.int32))
+        elif request.param == "under-sized":
+            indices = Data(-1 * jnp.ones(coreset_size - 1, jnp.int32))
+        elif request.param == "over-sized":
+            indices = Data(-1 * jnp.ones(coreset_size + 1, jnp.int32))
+        elif request.param == "random-unweighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            indices = Data(random_indices)
+            expected_coresubset = None
+        elif request.param == "random-weighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            random_weights = jr.uniform(weights_key, (coreset_size,))
+            indices = Data(random_indices, random_weights)
+            expected_coresubset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        initial_coresubset = Coresubset(indices, dataset)
+        return _RefineProblem(initial_coresubset, solver, expected_coresubset)
+
+    # pylint: disable=duplicate-code
+    def test_greedy_cmmd_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Check that the cached `ConditionalKernelHerdingState` is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(ConditionalKernelHerding, solver)
+        _, state = solver.reduce(dataset)
+
+        x = dataset.data
+        y = dataset.supervision
+        num_data_pairs = x.shape[0]
+
+        feature_gramian = solver.feature_kernel.compute(x, x)
+        response_gramian = solver.response_kernel.compute(y, y)
+
+        if solver.inverse_approximator is None:
+            inverse_approximator = LeastSquareApproximator(self.random_key)
+        else:
+            inverse_approximator = solver.inverse_approximator
+        inverse_feature_gramian = inverse_approximator.approximate(
+            array=feature_gramian,
+            regularisation_parameter=solver.regularisation_parameter,
+            identity=jnp.eye(num_data_pairs),
+        )
+        training_cme = jnp.pad(
+            feature_gramian @ inverse_feature_gramian @ response_gramian,
+            [(0, 1)],
+            mode="constant",
+        )
+        feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
+        response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
+
+        expected_state = ConditionalKernelHerdingState(
+            feature_gramian=feature_gramian,
+            response_gramian=response_gramian,
+            training_cme=training_cme,
+        )
+        assert eqx.tree_equal(state, expected_state)
+
+    # pylint: enable=duplicate-code
+
+    def test_batching(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Test that batching produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            batch_size=2,
+        )
+        solver.reduce(dataset)
+
+    def test_non_uniqueness(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            unique=False,
+        )
+        solver.reduce(dataset)
+
+    def test_approximate_inverse(
+        self, reduce_problem: _SupervisedReduceProblem
+    ) -> None:
+        """Test that using an inverse approximator produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = ConditionalKernelHerding(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            inverse_approximator=RandomisedEigendecompositionApproximator(
+                self.random_key
+            ),
+        )
+        solver.reduce(dataset)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):

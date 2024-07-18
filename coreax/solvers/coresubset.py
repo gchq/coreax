@@ -298,10 +298,9 @@ class _GenericDataRPCholesky(
     to approximating the Gramian of a given kernel, evaluated on the original dataset.
 
     .. note::
-        :class:`_GenericDataRPCholesky` should not be used directly, if wanting to
-        compressing unsupervised :class:`~coreax.data.Data`, use :class:`RPCholesky`,
-        if compressing :class:`~coreax.data.SupervisedData`, use
-        :class:`JointRPCholesky`.
+        :class:`_GenericDataRPCholesky` should not be used directly, if compressing
+        unsupervised :class:`~coreax.data.Data`, use :class:`RPCholesky`, if compressing
+        :class:`~coreax.data.SupervisedData`, use :class:`JointRPCholesky`.
 
     :param coreset_size: The desired size of the solved coreset
     :param random_key: Key for random number generation
@@ -356,9 +355,9 @@ class _GenericDataRPCholesky(
                 gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
             raise ValueError(
-                'Invalid combination of "kernel" and "dataset"; if compressing'
-                + ' "SupervisedData", one must pass a "TensorProductKernel, if"'
-                + ' compressing "Data", one must pass a child of "Kernel".'
+                "Invalid combination of 'kernel' and 'dataset'; if compressing"
+                + " 'SupervisedData', one must pass a 'TensorProductKernel', if"
+                + " compressing 'Data', one must pass a child of 'Kernel'."
             )
 
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
@@ -416,14 +415,17 @@ class _GenericDataRPCholesky(
         return updated_coreset, RPCholeskyState(gramian_diagonal)
 
 
-class RPCholesky(
-    CoresubsetSolver[_SupervisedData, RPCholeskyState], ExplicitSizeSolver
-):
+class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     r"""
     Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
 
     Solves the coresubset problem by taking a stochastic, iterative, and greedy approach
     to approximating the Gramian of a given kernel, evaluated on the original dataset.
+
+    .. note::
+        :class:`RPCholesky` is suitable for compressing unsupervised
+        :class:`~coreax.data.Data`, use :class:`JointRPCholesky`, if compressing
+        :class:`~coreax.data.SupervisedData`.
 
     :param coreset_size: The desired size of the solved coreset
     :param random_key: Key for random number generation
@@ -474,6 +476,11 @@ class JointRPCholesky(
     Solves the coresubset problem by taking a stochastic, iterative, and greedy approach
     to approximating the Gramian of a tensor-product kernel, evaluated on the original
     supervised dataset.
+
+    .. note::
+        :class:`JointRPCholesky` is suitable for compressing supervised
+        :class:`~coreax.data.SupervisedData`, use :class:`RPCholesky`, if compressing
+        :class:`~coreax.data.Data`.
 
     :param coreset_size: The desired size of the solved coreset
     :param random_key: Key for random number generation
