@@ -19,11 +19,11 @@ This example showcases how a coreset can be generated from a supervised dataset
 containing ``n`` data pairs consisting of features sampled from a Gaussian distribution
 with corresponding responses generated with a non-linear relationship to the features.
 
-A coreset is generated using :class:`~coreax.solvers.ConditionalKernelHerding`, with a
+A coreset is generated using :class:`~coreax.solvers.JointKernelHerding` and
+:class:`~coreax.solvers.JointRPCholesky`, with a
 :class:`~coreax.kernel.SquaredExponentialKernel` for both the features and the response.
-To reduce computational demand, we approximate the feature kernel gram matrix's
-regularised inverse. This coreset is compared to a coreset generated via uniform random
-sampling. Coreset quality is measured using conditional maximum mean discrepancy (CMMD).
+These coresets are compared to a coreset generated via uniform random sampling. Coreset
+quality is measured using joint maximum mean discrepancy (JMMD).
 """
 
 from pathlib import Path
@@ -36,10 +36,9 @@ import numpy as np
 from jax import random
 from sklearn.preprocessing import StandardScaler
 
-from coreax import CMMD, SquaredExponentialKernel, SupervisedData
-from coreax.inverses import RandomisedEigendecompositionApproximator
+from coreax import JMMD, SquaredExponentialKernel, SupervisedData
 from coreax.kernel import median_heuristic
-from coreax.solvers import ConditionalKernelHerding, RandomSample
+from coreax.solvers import JointKernelHerding, JointRPCholesky, RandomSample
 
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
@@ -49,23 +48,22 @@ from coreax.solvers import ConditionalKernelHerding, RandomSample
 # pylint: disable=duplicate-code
 def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     """
-    Run `ConditionalKernelHerding` on tabular data approximating the inverses for speed.
+    Run the basic herding on tabular supervised data example.
 
-    Generate a set of features from a Gaussian distribution, generate response with a
-    non-linear relationship to the features and Gaussian errors. Generate a coreset via
-    `ConditionalKernelHerding`, where computation time is reduce by approximating the
-    feature kernel matrix's regularised inverse. Compare results to coresets generated
-    via uniform random sampling. Coreset quality is measured using conditional maximum
-    mean discrepancy (CMMD).
+    Generate a set of features from a Gaussian distribution, generate the response with
+    a non-linear relationship to the features with Gaussian errors. Generate a coreset
+    via `JointKernelHerding` and `JointRPCholesky`. Compare results to coresets
+    generated via uniform random sampling. Coreset quality is measured using joint
+    maximum mean discrepancy (JMMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
-    :return: Coreset CMMD, random sample CMMD
+    :return: Coreset JMMD, random sample JMMD
     """
     print("Generating data...")
     # Generate features from normal distribution and produce response
     # with non-linear relationship to the features with normal errors.
-    num_data_points = 5_000
+    num_data_points = 10000
     feature_sd = 1
     response_sd = 0.1
     random_seed = 2_024
@@ -86,8 +84,8 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     y = jnp.array(response_scaler.transform(y))
     supervised_data = SupervisedData(data=x, supervision=y)
 
-    # Request 100 coreset points
-    coreset_size = 100
+    # Request 250 coreset points
+    coreset_size = 250
 
     # Set the bandwidth parameter of the kernel using a median heuristic derived from at
     # most 1000 random samples in the data.
@@ -100,68 +98,90 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     response_length_scale = median_heuristic(y[idx])
     response_kernel = SquaredExponentialKernel(length_scale=response_length_scale)
 
-    print("Computing ConditionalKernelHerding coreset...")
-    # Compute a coreset using ConditionalKernelHerding with squared exponential kernels
-    regularisation_parameter = 1e-6
-    cmmd_key, sample_key, invert_key = random.split(random.key(random_seed), num=3)
-    cmmd_solver = ConditionalKernelHerding(
+    print("Computing JointKernelHerding coreset...")
+    # Compute a coreset using JointKernelHerding with squared exponential kernels
+    cholesky_key, sample_key = random.split(random.key(random_seed), num=2)
+    herding_solver = JointKernelHerding(
         coreset_size=coreset_size,
-        random_key=cmmd_key,
         feature_kernel=feature_kernel,
         response_kernel=response_kernel,
-        regularisation_parameter=regularisation_parameter,
         unique=True,
-        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
     )
-    cmmd_coreset, _ = eqx.filter_jit(cmmd_solver.reduce)(supervised_data)
+    herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(supervised_data)
+
+    print("Computing JointRPCholesky coreset...")
+    # Compute a coreset using JointRPCholesky with squared exponential kernels
+    cholesky_solver = JointRPCholesky(
+        coreset_size=coreset_size,
+        random_key=cholesky_key,
+        feature_kernel=feature_kernel,
+        response_kernel=response_kernel,
+        unique=True,
+    )
+    cholesky_coreset, _ = eqx.filter_jit(cholesky_solver.reduce)(supervised_data)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
     random_solver = RandomSample(coreset_size, sample_key, unique=True)
     random_coreset, _ = eqx.filter_jit(random_solver.reduce)(supervised_data)
 
-    # Define reference kernels to use for comparisons of CMMD. We'll use normalised
+    # Define reference kernels to use for comparisons of JMMD. We'll use normalised
     # SquaredExponentialKernels (which is also a Gaussian kernel)
-    print("Computing CMMD...")
-    feature_cmmd_kernel = SquaredExponentialKernel(
+    print("Computing JMMD...")
+    feature_jmmd_kernel = SquaredExponentialKernel(
         length_scale=feature_length_scale,
         output_scale=1.0 / (feature_length_scale * jnp.sqrt(2.0 * jnp.pi)),
     )
-    response_cmmd_kernel = SquaredExponentialKernel(
+    response_jmmd_kernel = SquaredExponentialKernel(
         length_scale=response_length_scale,
         output_scale=1.0 / (response_length_scale * jnp.sqrt(2.0 * jnp.pi)),
     )
 
-    # Compute CMMD between the original data and the coreset generated via
-    # ConditionalKernelHerding
-    cmmd_metric = CMMD(
-        feature_kernel=feature_cmmd_kernel,
-        response_kernel=response_cmmd_kernel,
-        regularisation_parameter=regularisation_parameter,
-        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
+    # Compute JMMD between the original data and the coreset generated via
+    # JointKernelHerding
+    jmmd_metric = JMMD(
+        feature_kernel=feature_jmmd_kernel,
+        response_kernel=response_jmmd_kernel,
     )
-    herding_cmmd = eqx.filter_jit(cmmd_coreset.compute_metric)(cmmd_metric)
+    herding_jmmd = eqx.filter_jit(herding_coreset.compute_metric)(jmmd_metric)
 
-    # Compute the CMMD between the original data and the coreset generated via random
+    # Compute JMMD between the original data and the coreset generated via
+    # JointRPCholesky
+    cholesky_jmmd = eqx.filter_jit(cholesky_coreset.compute_metric)(jmmd_metric)
+
+    # Compute the JMMD between the original data and the coreset generated via random
     # sampling
-    random_cmmd = eqx.filter_jit(random_coreset.compute_metric)(cmmd_metric)
+    random_jmmd = eqx.filter_jit(random_coreset.compute_metric)(jmmd_metric)
 
-    # Print the CMMD values
-    print(f"Random sampling coreset CMMD: {random_cmmd}")
-    print(f"ConditionalKernelHerding coreset CMMD: {herding_cmmd}")
+    # Print the JMMD values
+    print(f"Random sampling coreset JMMD: {random_jmmd}")
+    print(f"JointKernelHerding coreset JMMD: {herding_jmmd}")
+    print(f"JointRPCholesky coreset JMMD: {cholesky_jmmd}")
 
     # Produce some scatter plots (assume 1-dimensional features and response)
     plt.scatter(x[:, 0], y[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        cmmd_coreset.coreset.data[:, 0],
-        cmmd_coreset.coreset.data[:, 1],
+        herding_coreset.coreset.data[:, 0],
+        herding_coreset.coreset.data[:, 1],
         s=10,
         color="red",
     )
     plt.axis("off")
     plt.title(
-        f"ConditionalKernelHerding, m={coreset_size}, "
-        f"CMMD={round(float(herding_cmmd), 6)}"
+        f"JointKernelHerding, m={coreset_size}, " f"J={round(float(herding_jmmd), 6)}"
+    )
+    plt.show()
+
+    plt.scatter(x[:, 0], y[:, 1], s=2.0, alpha=0.1)
+    plt.scatter(
+        cholesky_coreset.coreset.data[:, 0],
+        cholesky_coreset.coreset.data[:, 1],
+        s=10,
+        color="red",
+    )
+    plt.axis("off")
+    plt.title(
+        f"JointRPCholesky, m={coreset_size}, " f"JMMD={round(float(cholesky_jmmd), 6)}"
     )
     plt.show()
 
@@ -172,7 +192,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         s=10,
         color="red",
     )
-    plt.title(f"Random, m={coreset_size}, " f"CMMD={round(float(random_cmmd), 6)}")
+    plt.title(f"Random, m={coreset_size}, " f"JMMD={round(float(random_jmmd), 6)}")
     plt.axis("off")
 
     if out_path is not None:
@@ -182,7 +202,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     plt.show()
 
-    return float(herding_cmmd), float(random_cmmd)
+    return float(herding_jmmd), float(random_jmmd)
 
 
 # pylint: enable=too-many-locals
