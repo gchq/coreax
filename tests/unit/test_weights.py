@@ -31,7 +31,7 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData, as_supervised_data
-from coreax.kernel import LinearKernel, SquaredExponentialKernel, TensorProductKernel
+from coreax.kernel import SquaredExponentialKernel, TensorProductKernel
 from coreax.metrics import JMMD, MMD, Metric
 from coreax.util import KeyArrayLike
 from coreax.weights import (
@@ -59,7 +59,7 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
     """Test the common behaviour of `WeightsOptimiser`s."""
 
     random_key: KeyArrayLike = jr.key(2_024)
-    data_shape: tuple = (100, 10)
+    data_shape: tuple = (250, 5)
     coreset_size: int = data_shape[0] // 10
 
     @abstractmethod
@@ -71,9 +71,8 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
         (0.0, -0.1, 2),
         ids=["zero_epsilon", "negative_epsilon", "large_epsilon"],
     )
-    def test_solve_with_unexpected_epsilon(
+    def test_solver_with_unexpected_epsilon(
         self,
-        jit_variant: Callable[[Callable], Callable],
         problem: _Problem,
         epsilon: float,
     ) -> None:
@@ -84,27 +83,22 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
         `epsilon`
         """
         coreset, optimiser, _ = problem
-        jit_variant(optimiser.solve)(
-            coreset.pre_coreset_data, coreset.coreset, epsilon=epsilon
-        )
+        optimiser.solve(coreset.pre_coreset_data, coreset.coreset, epsilon=epsilon)
 
-    def test_solve_reduces_target_metric(
+    def test_solver_reduces_target_metric(
         self,
         jit_variant: Callable[[Callable], Callable],
         problem: _Problem,
     ) -> None:
         """
-        Test if `solve` method of `WeightsOptimiser` handles unexpected `epsilon`.
-
-        The `solve` method should not throw any errors, even with odd choices of
-        `epsilon`
+        Test if :meth:`~coreax.coreset.Coreset.solve_weights` reduces `target_metric`.
         """
         coreset, optimiser, target_metric = problem
 
         # Compute the value of the target metric before we weight the coreset, solve for
         # optimal weights, then compute the metric again, asserting that it has reduced
         metric_before_weighting = coreset.compute_metric(target_metric)
-        weighted_coreset = jit_variant(coreset.solve_weights)(optimiser)
+        weighted_coreset = jit_variant(coreset.solve_weights)(optimiser, epsilon=1e-4)
         metric_after_weighting = weighted_coreset.compute_metric(target_metric)
 
         assert metric_after_weighting < metric_before_weighting
@@ -123,7 +117,7 @@ class TestSBQWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         optimiser = SBQWeightsOptimiser(kernel)
         target_metric = MMD(kernel)
 
-        pre_coreset_data = Data(jr.uniform(self.random_key, self.data_shape))
+        pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
         coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
 
@@ -200,7 +194,7 @@ class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         optimiser = MMDWeightsOptimiser(kernel)
         target_metric = MMD(kernel)
 
-        pre_coreset_data = Data(jr.uniform(self.random_key, self.data_shape))
+        pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
         coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
 
@@ -297,18 +291,20 @@ class TestJointSBQWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
     def problem(self) -> _Problem:
         # Set up optimiser and target metric (JointSBQ targets the JMMD)
         feature_kernel = SquaredExponentialKernel()
-        response_kernel = LinearKernel()
+        response_kernel = SquaredExponentialKernel()
         optimiser = JointSBQWeightsOptimiser(feature_kernel, response_kernel)
         target_metric = JMMD(feature_kernel, response_kernel)
 
         # Generate supervised dataset
         data_key, supervision_key = jr.split(self.random_key, 2)
-        data = jr.uniform(data_key, self.data_shape)
-        supervision = jr.uniform(supervision_key, self.data_shape)
+        data = jr.normal(data_key, self.data_shape)
+        supervision = jr.normal(supervision_key, self.data_shape)
 
         # Initialise coreset ready for testing
         pre_coreset_data = SupervisedData(data, supervision)
-        coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
 
         return _Problem(coreset, optimiser, target_metric)
@@ -398,18 +394,20 @@ class TestJointMMDWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
     def problem(self) -> _Problem:
         # Set up optimiser and target metric
         feature_kernel = SquaredExponentialKernel()
-        response_kernel = LinearKernel()
+        response_kernel = SquaredExponentialKernel()
         optimiser = JointMMDWeightsOptimiser(feature_kernel, response_kernel)
         target_metric = JMMD(feature_kernel, response_kernel)
 
         # Generate supervised dataset
         data_key, supervision_key = jr.split(self.random_key, 2)
-        data = jr.uniform(data_key, self.data_shape)
-        supervision = jr.uniform(supervision_key, self.data_shape)
+        data = jr.normal(data_key, self.data_shape)
+        supervision = jr.normal(supervision_key, self.data_shape)
 
         # Initialise coreset ready for testing
         pre_coreset_data = SupervisedData(data, supervision)
-        coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
 
         return _Problem(coreset, optimiser, target_metric)
