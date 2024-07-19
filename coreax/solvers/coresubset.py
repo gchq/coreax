@@ -487,7 +487,7 @@ def _greedy_kernel_inducing_points_loss(
     feature_gramian: Array,
     regularisation_parameter: float,
     identity: Array,
-    least_square_solver: RegularisedLeastSquaresSolver,
+    least_squares_solver: RegularisedLeastSquaresSolver,
 ) -> Array:
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
@@ -501,7 +501,7 @@ def _greedy_kernel_inducing_points_loss(
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: identity matrix
-    :param least_square_solver: Instance of
+    :param least_squares_solver: Instance of
         :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
 
     :return: GreedyKernelInducingPoints loss for each candidate coreset
@@ -515,7 +515,7 @@ def _greedy_kernel_inducing_points_loss(
     coreset_responses = responses[candidate_coresets]
 
     # Solve for the kernel ridge regression coefficients for each possible coreset
-    coefficients = least_square_solver.solve_stack(
+    coefficients = least_squares_solver.solve_stack(
         arrays=coreset_gramians,
         regularisation_parameter=regularisation_parameter,
         targets=coreset_responses,
@@ -576,7 +576,7 @@ class GreedyKernelInducingPoints(
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
-    :param least_square_solver: Instance of
+    :param least_squares_solver: Instance of
         :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
         :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
     """
@@ -586,7 +586,7 @@ class GreedyKernelInducingPoints(
     regularisation_parameter: float = 1e-6
     unique: bool = True
     batch_size: Union[int, None] = None
-    least_square_solver: Optional[RegularisedLeastSquaresSolver] = None
+    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
 
     @override
     def reduce(
@@ -615,10 +615,10 @@ class GreedyKernelInducingPoints(
         :return: A refined coresubset and relevant intermediate solver state information
         """
         # Handle default value of None
-        if self.least_square_solver is None:
-            least_square_solver = MinimalEuclideanNormSolver()
+        if self.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
         else:
-            least_square_solver = self.least_square_solver
+            least_squares_solver = self.least_squares_solver
 
         # If the initialisation coresubset is too small, pad its nodes up to
         # 'output_size' with -1 valued indices. If it is too large, raise a warning and
@@ -699,7 +699,7 @@ class GreedyKernelInducingPoints(
                 padded_feature_gramian,
                 self.regularisation_parameter,
                 updated_identity,
-                least_square_solver,
+                least_squares_solver,
             )
 
             # Find the optimal replacement coreset index, ensuring we don't pick an
