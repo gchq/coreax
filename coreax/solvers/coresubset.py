@@ -616,7 +616,7 @@ class GreedyKernelInducingPoints(
         """
         # Handle default value of None
         if self.least_square_solver is None:
-            least_square_solver = MinimalEuclideanNormSolver(self.random_key)
+            least_square_solver = MinimalEuclideanNormSolver()
         else:
             least_square_solver = self.least_square_solver
 

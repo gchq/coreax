@@ -62,6 +62,12 @@ class _ReduceProblem(NamedTuple):
     expected_coreset: Optional[Coreset] = None
 
 
+class _SupervisedReduceProblem(NamedTuple):
+    dataset: SupervisedData
+    solver: Solver
+    expected_coreset: Optional[Coreset] = None
+
+
 class _RefineProblem(NamedTuple):
     initial_coresubset: Coresubset
     solver: RefinementSolver
@@ -436,8 +442,6 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
 class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelInducingPoints`."""
 
-    additional_key = jr.key(0)
-
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
@@ -456,7 +460,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _ReduceProblem:
+    ) -> _SupervisedReduceProblem:
         if request.param == "random":
             data_key, supervision_key = jr.split(self.random_key)
             data = jr.uniform(data_key, self.shape)
@@ -465,7 +469,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
             expected_coreset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        return _ReduceProblem(
+        return _SupervisedReduceProblem(
             SupervisedData(data=data, supervision=supervision), solver, expected_coreset
         )
 
@@ -524,7 +528,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     def test_greedy_kernel_inducing_point_state(
-        self, reduce_problem: _ReduceProblem
+        self, reduce_problem: _SupervisedReduceProblem
     ) -> None:
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
