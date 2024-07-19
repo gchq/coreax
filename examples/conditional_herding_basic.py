@@ -19,10 +19,10 @@ This example showcases how a coreset can be generated from a supervised dataset
 containing ``n`` data pairs consisting of features sampled from a Gaussian distribution
 with corresponding responses generated with a non-linear relationship to the features.
 
-A coreset is generated using ConditionalKernelHerding, with a Squared Exponential kernel
-for both the features and the response. This coreset is compared to a coreset generated
-via uniform random sampling. Coreset quality is measured using conditional maximum
-mean discrepancy (CMMD).
+A coreset is generated using :class:`~coreax.solvers.ConditionalKernelHerding`, with a
+:class:`~coreax.kernel.SquaredExponentialKernel` for both the features and the response.
+This coreset is compared to a coreset generated via uniform random sampling. Coreset
+quality is measured using conditional maximum mean discrepancy (CMMD).
 """
 
 from pathlib import Path
@@ -47,13 +47,13 @@ from coreax.solvers import ConditionalKernelHerding, RandomSample
 # pylint: disable=duplicate-code
 def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     """
-    Run the basic ConditionalKernelHerding on tabular data example.
+    Run the basic `ConditionalKernelHerding` on tabular data example.
 
     Generate a set of features from a Gaussian distribution, generate the response with
     a non-linear relationship to the features with Gaussian errors. Generate a coreset
-    via ConditionalKernelHerding. Compare results to coresets generated via uniform
+    via `ConditionalKernelHerding`. Compare results to coresets generated via uniform
     random sampling. Coreset quality is measured using conditional maximum mean
-    discrepancy  (CMMD).
+    discrepancy (CMMD).
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
@@ -135,7 +135,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         response_kernel=response_cmmd_kernel,
         regularisation_parameter=regularisation_parameter,
     )
-    greedy_cmmd = eqx.filter_jit(cmmd_coreset.compute_metric)(cmmd_metric)
+    herding_cmmd = eqx.filter_jit(cmmd_coreset.compute_metric)(cmmd_metric)
 
     # Compute the CMMD between the original data and the coreset generated via random
     # sampling
@@ -143,7 +143,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     # Print the CMMD values
     print(f"Random sampling coreset CMMD: {random_cmmd}")
-    print(f"ConditionalKernelHerding coreset CMMD: {greedy_cmmd}")
+    print(f"ConditionalKernelHerding coreset CMMD: {herding_cmmd}")
 
     # Produce some scatter plots (assume 1-dimensional features and response)
     plt.scatter(x[:, 0], y[:, 1], s=2.0, alpha=0.1)
@@ -156,7 +156,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     plt.axis("off")
     plt.title(
         f"ConditionalKernelHerding, m={coreset_size}, "
-        f"CMMD={round(float(greedy_cmmd), 6)}"
+        f"CMMD={round(float(herding_cmmd), 6)}"
     )
     plt.show()
 
@@ -177,7 +177,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     plt.show()
 
-    return float(greedy_cmmd), float(random_cmmd)
+    return float(herding_cmmd), float(random_cmmd)
 
 
 # pylint: enable=too-many-locals
