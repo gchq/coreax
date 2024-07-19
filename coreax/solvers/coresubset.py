@@ -183,11 +183,7 @@ def _greedy_kernel_selection(
     elif isinstance(kernel, Kernel):
         x = dataset.data
     else:
-        raise ValueError(
-            'Invalid combination of "kernel" and "dataset"; if compressing'
-            + ' "SupervisedData", one must pass a "TensorProductKernel, if"'
-            + ' compressing "Data", one must pass a child of "Kernel".'
-        )
+        raise ValueError(INVALID_KERNEL_DATA_COMBINATION_MSG)
     kernel_similarity_penalty = kernel.compute_mean(
         dataset,
         padded_coresubset.coreset,
@@ -241,7 +237,7 @@ class _GenericDataKernelHerding(
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`  if
         compressing unsupervised :class:`~coreax.data.Data`, else
-        :class:`~coreax.kernel.TensorProduct` instance if compressing
+        :class:`~coreax.kernel.TensorProductKernel` instance if compressing
         :class:`~coreax.data.SupervisedData`
     :param unique: Boolean that ensures the resulting coresubset will only contain
         unique elements
