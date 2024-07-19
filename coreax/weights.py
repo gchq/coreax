@@ -38,20 +38,79 @@ import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
 from jax.typing import ArrayLike
+from jaxopt import OSQP
 from typing_extensions import deprecated
 
 from coreax.data import Data, SupervisedData, as_data, as_supervised_data
 from coreax.kernel import Kernel, TensorProductKernel
-from coreax.util import solve_qp
+from coreax.util import apply_negative_precision_threshold
 
 _Data = TypeVar("_Data", bound=Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
+INVALID_KERNEL_DATA_COMBINATION = (
+    "Invalid combination of 'kernel' and 'x' or 'y'; if solving weights for"
+    + " 'SupervisedData' a 'TensorProductKernel' must be passed,"
+    + " if solving weights for unsupervised 'Data', one must pass child of 'Kernel'"
+)
+
+
+def _solve_qp(
+    kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs
+) -> Array:
+    r"""
+    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
+
+    Solves simplex weight problems of the form:
+
+    .. math::
+
+        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
+        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
+
+    subject to
+
+    .. math::
+
+        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
+
+    :param kernel_mm: :math:`m \times m` coreset Gram matrix
+    :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
+    :return: Optimised solution for the quadratic program
+    """
+    # Setup optimisation problem - all variable names are consistent with the OSQP
+    # terminology. Begin with the objective parameters.
+    q_array = jnp.asarray(kernel_mm)
+    c = -jnp.asarray(gramian_row_mean)
+
+    # Define the equality constraint parameters
+    num_points = q_array.shape[0]
+    a_array = jnp.ones((1, num_points))
+    b = jnp.array([1.0])
+
+    # Define the inequality constraint parameters
+    g_array = jnp.eye(num_points) * -1.0
+    h = jnp.zeros(num_points)
+
+    # Define solver object and run solver
+    qp = OSQP(**osqp_kwargs)
+    sol = qp.run(
+        params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
+    ).params
+
+    # Ensure conditions of solution are met
+    solution = apply_negative_precision_threshold(sol.primal, jnp.inf)
+    return solution / jnp.sum(solution)
+
+
+# Disable this so we can type check specifically the parent class
+# # pylint: disable = unidiomatic-typecheck
+
 
 def _prepare_kernel_system(
     kernel: Union[Kernel, TensorProductKernel],
-    x: Union[Data, SupervisedData],
-    y: Union[Data, SupervisedData],
+    dataset: Union[Data, SupervisedData],
+    coreset: Union[Data, SupervisedData],
     epsilon: float = 1e-10,
     *,
     block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -62,58 +121,74 @@ def _prepare_kernel_system(
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` if
-        working with unsupervised :class:`~coreax.data.Data`, else
-        :class:`~coreax.kernel.TensorProductKernel` instance if working with
-        :class:`~coreax.data.SupervisedData`
-    :param x: :class:`~coreax.data.Data` instance consisting of a :math:`n \times d`
-        data array or :class:`~coreax.data.SupervisedData` instance consisting of
-        :math:`n \times d` data array paired with :math:`n \times p` supervision array
-    :param y: :class:`~coreax.data.Data` instance consisting of a :math:`m \times d`
-        data array or :class:`~coreax.data.SupervisedData` instance consisting of
-        :math:`m \times d` data array paired with :math:`m \times p` supervision array,
-        representing a coreset
+        solving with unsupervised data, else :class:`~coreax.kernel.TensorProductKernel`
+        instance if solving with supervised data
+    :param dataset: :class:`~coreax.data.Data` instance consisting of a
+        :math:`n \times d` data array or :class:`~coreax.data.SupervisedData` instance
+        consisting of :math:`n \times d` data array paired with :math:`n \times p`
+        supervision array
+    :param coreset: :class:`~coreax.data.Data` instance consisting of a
+        :math:`m \times d` data array or :class:`~coreax.data.SupervisedData` instance
+        consisting of :math:`m \times d` data array paired with :math:`m \times p`
+        supervision array, representing a coreset
     :param epsilon: Small positive value to add to the kernel Gram matrix to aid
         numerical solver computations
     :param block_size: Block size passed to the ``self.kernel.compute_mean``
     :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
     :return: The row mean of k(y,x) and the epsilon perturbed Gramian k(y,y)
     """
-    # Check for invalid combinations
-    error_msg = (
-        "Invalid combination of 'kernel' and 'x' or 'y'; if solving weights for"
-        + " 'SupervisedData' or tuple of arrays, one must pass a 'TensorProductKernel',"
-        + " if solving weights for 'Data' or an array, one must pass child of 'Kernel'"
-    )
-    # pylint: disable=unidiomatic-typecheck
-    if isinstance(kernel, TensorProductKernel) and (
-        (type(x) is not SupervisedData) or (type(y) is not SupervisedData)
+    if (
+        type(dataset) is SupervisedData
+        and type(coreset) is SupervisedData
+        and isinstance(kernel, TensorProductKernel)
     ):
-        raise ValueError(error_msg)
-    if isinstance(kernel, Kernel) and ((type(x) is not Data) or (type(y) is not Data)):
-        raise ValueError(error_msg)
-    # pylint: enable=unidiomatic-typecheck
-    kernel_yx = kernel.compute_mean(y, x, axis=1, block_size=block_size, unroll=unroll)
-    kernel_yy = kernel.compute(y, y) + epsilon * jnp.identity(len(y))
+        x_1, y_1 = dataset.data, dataset.supervision
+        x_2, y_2 = coreset.data, coreset.supervision
+        kernel_yx = kernel.compute_mean(
+            (x_1, y_1), (x_2, y_2), axis=0, block_size=block_size, unroll=unroll
+        )
+        kernel_yy = kernel.compute((x_2, y_2), (x_2, y_2)) + epsilon * jnp.eye(
+            len(coreset)
+        )
+    elif type(dataset) is Data and type(coreset) is Data and isinstance(kernel, Kernel):
+        x_1, x_2 = dataset.data, coreset.data
+        kernel_yx = kernel.compute_mean(
+            x_1, x_2, axis=0, block_size=block_size, unroll=unroll
+        )
+        kernel_yy = kernel.compute(x_2, x_2) + epsilon * jnp.eye(len(coreset))
+    else:
+        raise ValueError(INVALID_KERNEL_DATA_COMBINATION)
+
     return kernel_yx, kernel_yy
+
+
+# pylint: enable = unidiomatic-typecheck
 
 
 class WeightsOptimiser(eqx.Module, Generic[_Data]):
     r"""Base class for optimising weights."""
 
     @abstractmethod
-    def solve(self, x: _Data, y: _Data) -> Array:
+    def solve(
+        self,
+        dataset: _Data,
+        coreset: _Data,
+        epsilon: float = 1e-10,
+    ) -> Array:
         r"""
-        Calculate the weights.
+        Solve the optimisation problem, return the optimal weights.
 
-        :param x: :class:`~coreax.data.Data` instance consisting of a :math:`n \times d`
-            data array or :class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`n \times d` data array paired with :math:`n \times p` supervision
-            array
-        :param y: :class:`~coreax.data.Data` instance consisting of a :math:`m \times d`
-            data array or :class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`m \times d` data array paired with :math:`m \times p` supervision
-            array, representing a coreset
-        :return: Optimal weighting of points in ``y`` to represent ``x``
+        :param dataset: :class:`~coreax.data.Data` instance consisting of a
+            :math:`n \times d` data array or :class:`~coreax.data.SupervisedData`
+            instance consisting of :math:`n \times d` data array paired with
+            :math:`n \times p` supervision array
+        :param coreset: :class:`~coreax.data.Data` instance consisting of a
+            :math:`m \times d` data array or :class:`~coreax.data.SupervisedData`
+            instance consisting of :math:`m \times d` data array paired with
+            :math:`m \times p` supervision array, representing a coreset
+        :param epsilon: Small positive value to add to the matrices to aid numerical
+            solver computations
+        :return: Optimal weighting of points in `dataset` to represent `coreset`
         """
 
 
@@ -151,8 +226,8 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
 
     def solve(
         self,
-        x: Union[ArrayLike, Data],
-        y: Union[ArrayLike, Data],
+        dataset: Union[Data, ArrayLike],
+        coreset: Union[Data, ArrayLike],
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -182,8 +257,8 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel,
-            as_data(x),
-            as_data(y),
+            as_data(dataset),
+            as_data(coreset),
             epsilon,
             block_size=block_size,
             unroll=unroll,
@@ -218,8 +293,8 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
 
     def solve(
         self,
-        x: Union[ArrayLike, Data],
-        y: Union[ArrayLike, Data],
+        dataset: Union[Data, ArrayLike],
+        coreset: Union[Data, ArrayLike],
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -242,13 +317,13 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel,
-            as_data(x),
-            as_data(y),
+            as_data(dataset),
+            as_data(coreset),
             epsilon,
             block_size=block_size,
             unroll=unroll,
         )
-        return solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
+        return _solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
 
 
 class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
@@ -287,8 +362,7 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         \mathbb{R}` on the response space
     """
 
-    feature_kernel: Kernel
-    response_kernel: Kernel
+    kernel: TensorProductKernel
 
     def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
         """Initialise JointSBQWeightsOptimiser class and build tensor-product kernel."""
@@ -299,8 +373,8 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
 
     def solve(
         self,
-        x: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        y: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
+        dataset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
+        coreset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -317,10 +391,10 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         Note that weights determined through SBQ do not need to sum to 1, and can be
         negative.
 
-        :param x: :class:`~coreax.data.SupervisedData` instance consisting of
+        :param dataset: :class:`~coreax.data.SupervisedData` instance consisting of
             :math:`n \times d` data array paired with :math:`n \times p` supervision
             array
-        :param y::class:`~coreax.data.SupervisedData` instance consisting of
+        :param coreset::class:`~coreax.data.SupervisedData` instance consisting of
             :math:`m \times d` data array paired with :math:`m \times p` supervision
             array, representing a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
@@ -332,8 +406,8 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel,
-            as_supervised_data(x),
-            as_supervised_data(y),
+            as_supervised_data(dataset),
+            as_supervised_data(coreset),
             epsilon,
             block_size=block_size,
             unroll=unroll,
@@ -368,8 +442,7 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         \mathbb{R}` on the response space
     """
 
-    feature_kernel: Kernel
-    response_kernel: Kernel
+    kernel: TensorProductKernel
 
     def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
         """Initialise JointMMDWeightsOptimiser class and build tensor-product kernel."""
@@ -380,8 +453,8 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
 
     def solve(
         self,
-        x: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        y: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
+        dataset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
+        coreset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
@@ -391,10 +464,10 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         r"""
         Compute optimal weights given the simplex constraint.
 
-        :param x: :class:`~coreax.data.SupervisedData` instance consisting of
+        :param dataset: :class:`~coreax.data.SupervisedData` instance consisting of
             :math:`n \times d` data array paired with :math:`n \times p` supervision
             array
-        :param y::class:`~coreax.data.SupervisedData` instance consisting of
+        :param coreset::class:`~coreax.data.SupervisedData` instance consisting of
             :math:`m \times d` data array paired with :math:`m \times p` supervision
             array, representing a coreset
         :param epsilon: Small positive value to add to the kernel Gram matrix to aid
@@ -406,13 +479,13 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel,
-            as_supervised_data(x),
-            as_supervised_data(y),
+            as_supervised_data(dataset),
+            as_supervised_data(coreset),
             epsilon,
             block_size=block_size,
             unroll=unroll,
         )
-        return solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
+        return _solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
 
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
