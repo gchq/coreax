@@ -44,6 +44,7 @@ from coreax.kernel import (
 )
 from coreax.solvers import (
     ConditionalKernelHerding,
+    JointKernelHerding,
     JointRPCholesky,
     KernelHerding,
     MapReduce,
@@ -102,7 +103,7 @@ class SolverTest:
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _ReduceProblem:
+    ) -> Union[_ReduceProblem, _SupervisedReduceProblem]:
         """
         Pytest fixture that returns a problem dataset and the expected coreset.
 
@@ -116,7 +117,9 @@ class SolverTest:
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self,
+        coreset: Coreset,
+        problem: Union[_RefineProblem, _ReduceProblem, _SupervisedReduceProblem],
     ) -> None:
         """
         Check that a coreset obeys certain expected invariant properties.
@@ -157,7 +160,7 @@ class SolverTest:
     def test_reduce(
         self,
         jit_variant: Callable[[Callable], Callable],
-        reduce_problem: _ReduceProblem,
+        reduce_problem: Union[_ReduceProblem, _SupervisedReduceProblem],
         use_cached_state: bool,
     ) -> None:
         """
@@ -270,7 +273,9 @@ class ExplicitSizeSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self,
+        coreset: Coreset,
+        problem: Union[_RefineProblem, _ReduceProblem, _SupervisedReduceProblem],
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = problem.solver
@@ -304,7 +309,7 @@ class ExplicitSizeSolverTest(SolverTest):
             assert solver.coreset_size == int(coreset_size)
 
     def test_reduce_oversized_coreset_size(
-        self, reduce_problem: _ReduceProblem
+        self, reduce_problem: Union[_ReduceProblem, _SupervisedReduceProblem]
     ) -> None:
         """
         Check error is raised if 'coreset_size' is too large.
@@ -318,6 +323,29 @@ class ExplicitSizeSolverTest(SolverTest):
         )
         with pytest.raises(ValueError, match=re.escape(self.OVERSIZE_MSG)):
             modified_solver.reduce(dataset)
+
+
+class TestRandomSample(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
+
+    @override
+    def check_solution_invariants(
+        self,
+        coreset: Coreset,
+        problem: Union[_RefineProblem, _ReduceProblem, _SupervisedReduceProblem],
+    ) -> None:
+        super().check_solution_invariants(coreset, problem)
+        solver = cast(RandomSample, problem.solver)
+        if solver.unique:
+            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            assert max(counts) <= 1
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        coreset_size = self.shape[0] // 10
+        key = jr.fold_in(self.random_key, self.shape[0])
+        return jtu.Partial(RandomSample, coreset_size=coreset_size, random_key=key)
 
 
 class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
@@ -379,25 +407,60 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         assert eqx.tree_equal(state, expected_state)
 
 
-class TestRandomSample(ExplicitSizeSolverTest):
-    """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
+class TestJointKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.JointKernelHerding`."""
 
-    @override
-    def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
-    ) -> None:
-        super().check_solution_invariants(coreset, problem)
-        solver = cast(RandomSample, problem.solver)
-        if solver.unique:
-            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
-            assert max(counts) <= 1
+    feature_kernel = SquaredExponentialKernel()
+    response_kernel = PCIMQKernel()
 
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> jtu.Partial:
         coreset_size = self.shape[0] // 10
-        key = jr.fold_in(self.random_key, self.shape[0])
-        return jtu.Partial(RandomSample, coreset_size=coreset_size, random_key=key)
+        return jtu.Partial(
+            JointKernelHerding,
+            coreset_size=coreset_size,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _SupervisedReduceProblem:
+        if request.param == "random":
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, self.shape)
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _SupervisedReduceProblem(
+            SupervisedData(data, supervision), solver, expected_coreset
+        )
+
+    def test_herding_state(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Check that the cached herding state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(JointKernelHerding, solver)
+        _, state = solver.reduce(dataset)
+        expected_state = HerdingState(solver.kernel.gramian_row_mean(dataset))
+        assert eqx.tree_equal(state, expected_state)
+
+    def test_non_uniqueness(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = JointKernelHerding(
+            coreset_size=10,
+            feature_kernel=self.feature_kernel,
+            response_kernel=self.response_kernel,
+            unique=False,
+        )
+        solver.reduce(dataset)
 
 
 class TestRPCholesky(ExplicitSizeSolverTest):
@@ -405,7 +468,9 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self,
+        coreset: Coreset,
+        problem: Union[_RefineProblem, _ReduceProblem, _SupervisedReduceProblem],
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -435,6 +500,17 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         gramian_diagonal = jax.vmap(solver.kernel.compute_elementwise)(x, x)
         expected_state = RPCholeskyState(gramian_diagonal)
         assert eqx.tree_equal(state, expected_state)
+
+    def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = RPCholesky(
+            random_key=self.random_key,
+            coreset_size=10,
+            kernel=PCIMQKernel(),
+            unique=False,
+        )
+        solver.reduce(dataset)
 
 
 class TestJointRPCholesky(ExplicitSizeSolverTest):
@@ -476,7 +552,9 @@ class TestJointRPCholesky(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self,
+        coreset: Coreset,
+        problem: Union[_RefineProblem, _ReduceProblem, _SupervisedReduceProblem],
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -568,7 +646,9 @@ class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest)
         scope="class",
     )
     def refine_problem(
-        self, request: pytest.FixtureRequest, reduce_problem: _SupervisedReduceProblem
+        self,
+        request: pytest.FixtureRequest,
+        reduce_problem: Union[_ReduceProblem, _SupervisedReduceProblem],
     ) -> _RefineProblem:
         """
         Pytest fixture that returns a problem dataset and the expected coreset.
