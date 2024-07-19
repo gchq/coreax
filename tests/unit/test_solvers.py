@@ -34,6 +34,7 @@ from typing_extensions import override
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
+from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     GreedyKernelInducingPoints,
     KernelHerding,
@@ -540,6 +541,43 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
             jnp.pad(solver.feature_kernel.compute(x, x), [(0, 1)], mode="constant")
         )
         assert eqx.tree_equal(state, expected_state)
+
+    def test_non_uniqueness(self, reduce_problem: _SupervisedReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelInducingPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            unique=False,
+        )
+        solver.reduce(dataset)
+
+    def test_approximate_inverse(
+        self, reduce_problem: _SupervisedReduceProblem
+    ) -> None:
+        """Test that using an approximate least squares solver produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelInducingPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            least_squares_solver=RandomisedEigendecompositionSolver(self.random_key),
+        )
+        solver.reduce(dataset)
+
+    def test_batch_size_not_none(
+        self, reduce_problem: _SupervisedReduceProblem
+    ) -> None:
+        """Test that setting a not `None` `batch_size` produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelInducingPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            batch_size=10,
+        )
+        solver.reduce(dataset)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
