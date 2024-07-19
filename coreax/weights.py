@@ -251,7 +251,7 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         return solve_qp(kernel_yy, kernel_yx, **solver_kwargs)
 
 
-class JSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
+class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
     r"""
     Define the Joint Sequential Bayesian Quadrature (JSBQ) optimiser.
 
@@ -291,7 +291,7 @@ class JSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
     response_kernel: Kernel
 
     def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
-        """Initialise JSBQWeightsOptimiser class and build tensor-product kernel."""
+        """Initialise JointSBQWeightsOptimiser class and build tensor-product kernel."""
         self.kernel = TensorProductKernel(
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
@@ -341,7 +341,7 @@ class JSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         return jnp.linalg.solve(kernel_yy, kernel_yx, **solver_kwargs)
 
 
-class JMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
+class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
     r"""
     Define the JMMD weights optimiser class.
 
@@ -372,7 +372,7 @@ class JMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
     response_kernel: Kernel
 
     def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
-        """Initialise JMMDWeightsOptimiser class and build tensor-product kernel."""
+        """Initialise JointMMDWeightsOptimiser class and build tensor-product kernel."""
         self.kernel = TensorProductKernel(
             feature_kernel=feature_kernel,
             response_kernel=response_kernel,
@@ -406,8 +406,8 @@ class JMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         """
         kernel_yx, kernel_yy = _prepare_kernel_system(
             self.kernel,
-            as_data(x),
-            as_data(y),
+            as_supervised_data(x),
+            as_supervised_data(y),
             epsilon,
             block_size=block_size,
             unroll=unroll,

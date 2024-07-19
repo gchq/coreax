@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
 - Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
 - Added coresubset algorithms targeting the joint density in `coreax.solvers.coresubset.JointRPCholesky`
-- Added weight solvers for joint distribution coreset methods in `coreax.weights.JSBQWeightsOptimiser`
-and `coreax.weights.JMMDWeightsOptimiser`
+- Added weight solvers for joint distribution coreset methods in `coreax.weights.JointSBQWeightsOptimiser`
+and `coreax.weights.JointMMDWeightsOptimiser`
 
 ### Fixed
 
