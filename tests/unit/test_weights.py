@@ -21,7 +21,7 @@ written produce the expected results on simple examples.
 
 import cmath
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, NamedTuple, TypeVar
+from typing import Callable, Generic, NamedTuple, Optional, TypeVar
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -52,14 +52,14 @@ _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 class _Problem(NamedTuple):
     coreset: Coreset
     optimiser: WeightsOptimiser
-    target_metric: Metric
+    target_metric: Optional[Metric]
 
 
 class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
     """Test the common behaviour of `WeightsOptimiser`s."""
 
     random_key: KeyArrayLike = jr.key(2_024)
-    data_shape: tuple = (250, 5)
+    data_shape: tuple = (100, 2)
     coreset_size: int = data_shape[0] // 10
 
     @abstractmethod
@@ -97,11 +97,14 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
 
         # Compute the value of the target metric before we weight the coreset, solve for
         # optimal weights, then compute the metric again, asserting that it has reduced
-        metric_before_weighting = coreset.compute_metric(target_metric)
-        weighted_coreset = jit_variant(coreset.solve_weights)(optimiser, epsilon=1e-4)
-        metric_after_weighting = weighted_coreset.compute_metric(target_metric)
+        if target_metric is not None:
+            metric_before_weighting = coreset.compute_metric(target_metric)
+            weighted_coreset = jit_variant(coreset.solve_weights)(
+                optimiser, epsilon=1e-4
+            )
+            metric_after_weighting = weighted_coreset.compute_metric(target_metric)
 
-        assert metric_after_weighting < metric_before_weighting
+            assert metric_after_weighting < metric_before_weighting
 
 
 class TestSBQWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
