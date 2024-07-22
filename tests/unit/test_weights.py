@@ -467,10 +467,9 @@ class TestJointMMDWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
 
         .. math::
 
-            w_2 = (-1-2e^{3}+3e^{4}+\sqrt{1+4e^{3}-6e^4+28e^{6}-6e^{7}-21e^{8}})
-            /(6(e^4 - e^3))
+            w_1 = \frac{1 - e^{-13} + \frac{1}{3}(e^{-5} - e^{-2})}{2(1-e^{-13})}
 
-            w_1 = 1 - w_2
+            w_2 = 1 - w_1
         """
         # Setup data
         x_1 = jnp.array([[0], [1], [2]])
@@ -481,8 +480,10 @@ class TestJointMMDWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
         y_2 = jnp.array([[1], [4]])
         coreset = as_supervised_data((x_2, y_2))
 
-        w2 = 0
-        w1 = 1 - w2
+        w1 = (1 - jnp.exp(-13) - (1 / 3) * (jnp.exp(-2) - jnp.exp(-5))) / (
+            2 * (1 - jnp.exp(-13))
+        )
+        w2 = 1 - w1
         expected_output = jnp.asarray([w1, w2])
 
         optimiser = JointMMDWeightsOptimiser(
