@@ -542,20 +542,16 @@ class TestPrivateFunctions:
         various weight optimisers that are used in this codebase. This test just ensures
         sensible behaviour occurs when unexpected inputs are passed to the function.
         """
-        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
-        # this should error as no sensible result can be found in such a case.
+        x = jnp.array([1])
+        supervised_data = SupervisedData(x, x)
+        kernel = SquaredExponentialKernel()
+
         with pytest.raises(ValueError, match=INVALID_KERNEL_DATA_COMBINATION):
             _prepare_kernel_system(
-                kernel=SquaredExponentialKernel(),
-                dataset=SupervisedData(jnp.array([1]), jnp.array([1])),
-                coreset=SupervisedData(jnp.array([1]), jnp.array([1])),
+                kernel=kernel, dataset=supervised_data, coreset=supervised_data
             )
+
+        data = Data(x, x)
+        tensor_kernel = TensorProductKernel(kernel, kernel)
         with pytest.raises(ValueError, match=INVALID_KERNEL_DATA_COMBINATION):
-            _prepare_kernel_system(
-                kernel=TensorProductKernel(
-                    SquaredExponentialKernel(),
-                    SquaredExponentialKernel(),
-                ),
-                dataset=Data(jnp.array([1])),
-                coreset=Data(jnp.array([1])),
-            )
+            _prepare_kernel_system(kernel=tensor_kernel, dataset=data, coreset=data)

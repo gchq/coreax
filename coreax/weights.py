@@ -49,7 +49,7 @@ _Data = TypeVar("_Data", bound=Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 INVALID_KERNEL_DATA_COMBINATION = (
-    "Invalid combination of 'kernel' and 'x' or 'y'; if solving weights for"
+    "Invalid combination of 'kernel' and 'dataset' or 'coreset'; if solving weights for"
     + " 'SupervisedData' a 'TensorProductKernel' must be passed,"
     + " if solving weights for unsupervised 'Data', one must pass child of 'Kernel'"
 )
