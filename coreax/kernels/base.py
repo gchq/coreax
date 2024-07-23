@@ -396,8 +396,8 @@ class AdditiveKernel(DuoCompositeKernel):
     kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
     :math:`p(x,y) := k(x,y) + l(x,y)`
 
-    :param first_kernel: Instance of :class:`Kernel`
-    :param second_kernel: Instance of :class:`Kernel`
+    :param first_kernel: Instance of :class:`ScalarValuedKernel`
+    :param second_kernel: Instance of :class:`ScalarValuedKernel`
     """
 
     @override
@@ -434,8 +434,8 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
     :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
     :math:`p(x,y) = k(x,y)l(x,y)`
 
-    :param first_kernel: Instance of :class:`Kernel`
-    :param second_kernel: Instance of :class:`Kernel`
+    :param first_kernel: Instance of :class:`ScalarValuedKernel`
+    :param second_kernel: Instance of :class:`ScalarValuedKernel`
     """
 
     @override

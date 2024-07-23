@@ -549,10 +549,11 @@ def convert_stein_kernel(
     Convert the kernel to a :class:`~coreax.kernels.SteinKernel`.
 
     :param x: The data used to call `score_matching.match(x)`
-    :param kernel: :class:`~coreax.kernels.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
-        if 'kernel' is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching
-        is not None`, a new instance of the kernel will be generated where the score
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`; if 'kernel'
+        is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching is not
+        data:`None`, a new instance of the kernel will be generated where the score
         function is given by :code:`score_matching.match(x)`
     :param score_matching: Specifies/overwrite the score function of the implied/passed
        :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
