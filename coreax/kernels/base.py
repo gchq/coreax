@@ -35,24 +35,23 @@ which if parameterized with an ``output_scale`` of
 :math:`\frac{1}{\sqrt{2\pi} \,*\, \text{length_scale}}`, yields the well known
 Gaussian kernel.
 
-A :class:`~coreax.kernel.Kernel` must implement a
-:meth:`~coreax.kernel.Kernel.compute_elementwise` method, which returns the floating
-point value after evaluating the kernel on two floats, ``x`` and ``y``. Additional
-methods, such as :meth:`Kernel.grad_x_elementwise`, can optionally be overridden to
-improve performance. The canonical example is when a suitable closed-form representation
-of a higher-order gradient can be used to avoid the expense of performing automatic
-differentiation.
+A :class:`~coreax.kernels.ScalarValuedKernel` must implement a
+:meth:`~coreax.kernels.ScalarValuedKernel.compute_elementwise` method, which returns the
+floating point value after evaluating the kernel on two floats, ``x`` and ``y``.
+Additional methods, such as :meth:`Kernel.grad_x_elementwise`, can optionally be
+overridden to improve performance. The canonical example is when a suitable closed-form
+representation of a higher-order gradient can be used to avoid the expense of performing
+automatic differentiation.
 
 Such an example can be seen in :class:`SteinKernel`, where the analytic forms of
 :meth:`Kernel.divergence_x_grad_y` are significantly cheaper to compute that the
 automatic differentiated default.
 """
 
-# Support annotations with | in Python < 3.10
+# Support class typing annotations inside itself
 from __future__ import annotations
 
 from abc import abstractmethod
-from math import ceil
 from typing import Union
 
 import equinox as eqx
@@ -61,17 +60,49 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev
 from jax.typing import ArrayLike
+from typing_extensions import override
 
-from coreax.data import Data, as_data, is_data
-from coreax.util import (
-    pairwise,
-    tree_leaves_repeat,
-    tree_zero_pad_leading_axis,
-)
+from coreax.data import Data, is_data
+from coreax.kernels.util import block_data_convert
+from coreax.util import pairwise, tree_leaves_repeat
 
 
 class ScalarValuedKernel(eqx.Module):
     """Abstract base class for scalar-valued kernels."""
+
+    def __add__(self, addition: ScalarValuedKernel) -> AdditiveKernel:
+        """Overload `+` operator."""
+        if not isinstance(addition, ScalarValuedKernel):
+            raise ValueError("'addition' must be an instance of a 'ScalarValuedKernel'")
+        return AdditiveKernel(self, addition)
+
+    def __mul__(self, product: ScalarValuedKernel) -> ProductKernel:
+        """Overload `*` operator."""
+        if not isinstance(product, ScalarValuedKernel):
+            raise ValueError("'product' must be an instance of a 'ScalarValuedKernel'")
+        return ProductKernel(self, product)
+
+    def __pow__(self, power: int) -> ProductKernel:
+        """Overload `**` operator."""
+        min_power = 2
+        power = int(power)
+        if power < min_power:
+            raise ValueError("'power' must be an integer greater than or equal to 2.")
+
+        first_kernel = self
+        second_kernel = self
+
+        # Ensure the first and second kernels are symmetric for even powers to make use
+        # of reduced computation capabilities in ProductKernel. For example,
+        # :meth:`~divergence_x_grad_y_elementwise` can be computed more efficiently if
+        # the first and second kernels are recognised as the same.
+        for i in range(min_power, power):
+            if i % 2 == 0:
+                first_kernel = ProductKernel(first_kernel, self)
+            else:
+                second_kernel = ProductKernel(second_kernel, self)
+
+        return ProductKernel(first_kernel, second_kernel)
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -144,8 +175,8 @@ class ScalarValuedKernel(eqx.Module):
         The gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_x` provides a vectorised version of this method
-        for arrays.
+        :meth:`coreax.kernels.ScalarValuedKernel.grad_x` provides a vectorised version
+        of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`
@@ -161,8 +192,8 @@ class ScalarValuedKernel(eqx.Module):
         The gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
         Only accepts single vectors ``x`` and ``y``, i.e. not arrays.
-        :meth:`coreax.kernel.Kernel.grad_y` provides a vectorised version of this method
-        for arrays.
+        :meth:`coreax.kernels.ScalarValuedKernel.grad_y` provides a vectorised version
+        of this method for arrays.
 
         :param x: Vector :math:`\mathbf{x} \in \mathbb{R}^d`.
         :param y: Vector :math:`\mathbf{y} \in \mathbb{R}^d`.
@@ -193,7 +224,7 @@ class ScalarValuedKernel(eqx.Module):
 
         :math:`\nabla_\mathbf{x} \cdot \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
         Only accepts vectors ``x`` and ``y``. A vectorised version for arrays is
-        computed in :meth:`~coreax.kernel.Kernel.divergence_x_grad_y`.
+        computed in :meth:`~coreax.kernels.ScalarValuedKernel.divergence_x_grad_y`.
 
         This is the trace of the 'pseudo-Hessian', i.e. the trace of the Jacobian matrix
         :math:`\nabla_\mathbf{x} \nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y})`.
@@ -286,7 +317,7 @@ class ScalarValuedKernel(eqx.Module):
             operands = operands[::-1]
             _block_size = _block_size[::-1]
         (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
-            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
+            block_data_convert, operands, tuple(_block_size), is_leaf=is_data
         )
 
         def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
@@ -315,22 +346,157 @@ class ScalarValuedKernel(eqx.Module):
         return column_sum_padded[:unpadded_len_x]
 
 
-def _block_data_convert(
-    x: Union[ArrayLike, Data], block_size: Union[int, None]
-) -> tuple[Array, int]:
-    """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
-    x = as_data(x).normalize(preserve_zeros=True)
-    block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
-    padding = ceil(len(x) / block_size) * block_size - len(x)
-    padded_x = tree_zero_pad_leading_axis(x, padding)
+class UniCompositeKernel(ScalarValuedKernel):
+    """
+    Abstract base class for kernels that compose/wrap one scalar-valued kernel.
 
-    def _reshape(x: Array) -> Array:
-        _, *remaining_shape = jnp.shape(x)
-        try:
-            return x.reshape(-1, block_size, *remaining_shape)
-        except ZeroDivisionError as err:
-            if 0 in x.shape:
-                raise ValueError("'x' must not be empty") from err
-            raise
+    :param base_kernel: kernel to be wrapped/used in composition
+    """
 
-    return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
+    base_kernel: ScalarValuedKernel
+
+    def __check_init__(self):
+        """Check that 'base_kernel' is of the required type."""
+        if not isinstance(self.base_kernel, ScalarValuedKernel):
+            raise ValueError(
+                "'base_kernel' must be an instance of "
+                + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
+            )
+
+
+class DuoCompositeKernel(ScalarValuedKernel):
+    """
+    Abstract base class for kernels that compose/wrap two scalar-valued kernels.
+
+    :param first_kernel: Instance of :class:`ScalarValuedKernel`
+    :param second_kernel: Instance of :class:`ScalarValuedKernel`
+    """
+
+    first_kernel: ScalarValuedKernel
+    second_kernel: ScalarValuedKernel
+
+    def __check_init__(self):
+        """Ensure attributes are instances of Kernel class."""
+        if not (
+            isinstance(self.first_kernel, ScalarValuedKernel)
+            and isinstance(self.second_kernel, ScalarValuedKernel)
+        ):
+            raise ValueError(
+                "'first_kernel'and `second_kernel` must be an instance of "
+                + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
+            )
+
+
+class AdditiveKernel(DuoCompositeKernel):
+    r"""
+    Define a kernel which is a summation of two kernels.
+
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the additive
+    kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`p(x,y) := k(x,y) + l(x,y)`
+
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
+    """
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.first_kernel.divergence_x_grad_y_elementwise(
+            x, y
+        ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+
+
+class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
+    r"""
+    Define a kernel which is a product of two kernels.
+
+    Given kernel functions :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` and
+    :math:`l:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`, define the product kernel
+    :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}` where
+    :math:`p(x,y) = k(x,y)l(x,y)`
+
+    :param first_kernel: Instance of :class:`Kernel`
+    :param second_kernel: Instance of :class:`Kernel`
+    """
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return self.first_kernel.compute_elementwise(x, y) ** 2
+        return self.first_kernel.compute_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_x_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
+        return self.first_kernel.grad_x_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_x_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return (
+                2
+                * self.first_kernel.grad_y_elementwise(x, y)
+                * self.first_kernel.compute_elementwise(x, y)
+            )
+        return self.first_kernel.grad_y_elementwise(
+            x, y
+        ) * self.second_kernel.compute_elementwise(
+            x, y
+        ) + self.second_kernel.grad_y_elementwise(
+            x, y
+        ) * self.first_kernel.compute_elementwise(x, y)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        if self.first_kernel == self.second_kernel:
+            return 2 * (
+                self.first_kernel.grad_x_elementwise(x, y).dot(
+                    self.first_kernel.grad_y_elementwise(x, y)
+                )
+                + self.first_kernel.compute_elementwise(x, y)
+                * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+            )
+        return (
+            self.first_kernel.grad_x_elementwise(x, y).dot(
+                self.second_kernel.grad_y_elementwise(x, y)
+            )
+            + self.first_kernel.grad_y_elementwise(x, y).dot(
+                self.second_kernel.grad_x_elementwise(x, y)
+            )
+            + self.first_kernel.compute_elementwise(x, y)
+            * self.second_kernel.divergence_x_grad_y_elementwise(x, y)
+            + self.second_kernel.compute_elementwise(x, y)
+            * self.first_kernel.divergence_x_grad_y_elementwise(x, y)
+        )

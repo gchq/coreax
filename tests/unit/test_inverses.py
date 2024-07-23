@@ -37,7 +37,7 @@ from coreax.inverses import (
     RegularisedInverseApproximator,
     randomised_eigendecomposition,
 )
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels import SquaredExponentialKernel
 from coreax.util import KeyArrayLike
 
 _RegularisedInverseApproximator = TypeVar(

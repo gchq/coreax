@@ -41,12 +41,12 @@ from jax.typing import ArrayLike
 from typing_extensions import deprecated
 
 from coreax.data import Data
-from coreax.kernel import Kernel
+from coreax.kernels import ScalarValuedKernel
 from coreax.util import solve_qp
 
 
 def _prepare_kernel_system(
-    kernel: Kernel,
+    kernel: ScalarValuedKernel,
     x: Union[ArrayLike, Data],
     y: Union[ArrayLike, Data],
     epsilon: float = 1e-10,
@@ -77,10 +77,10 @@ class WeightsOptimiser(ABC, eqx.Module):
     """
     Base class for calculating weights.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` object
     """
 
-    kernel: Kernel
+    kernel: ScalarValuedKernel
 
     @abstractmethod
     def solve(self, x: Union[ArrayLike, Data], y: Union[ArrayLike, Data]) -> Array:
@@ -119,7 +119,7 @@ class SBQWeightsOptimiser(WeightsOptimiser):
     and :math:`K = k(y, y)` in the above expression. See equation 20 in
     :cite:`huszar2016optimally` for further detail.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` object
     """
 
     def solve(
@@ -176,7 +176,7 @@ class MMDWeightsOptimiser(WeightsOptimiser):
 
     using the OSQP quadratic programming solver.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` object
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` object
     """
 
     def solve(
