@@ -116,8 +116,8 @@ def _prepare_kernel_system(
 
     :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` if
-        solving with unsupervised data, else :class:`~coreax.kernel.TensorProductKernel`
-        instance if solving with supervised data
+        solving with unsupervised data. Support for `SupervisedData` not currently
+        handled
     :param dataset: :class:`~coreax.data.Data` instance consisting of a
         :math:`n \times d` data array or :class:`~coreax.data.SupervisedData` instance
         consisting of :math:`n \times d` data array paired with :math:`n \times p`
