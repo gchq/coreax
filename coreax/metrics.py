@@ -28,7 +28,6 @@ from typing import Generic, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
-import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
@@ -36,7 +35,10 @@ from jax import Array, jacfwd, vmap
 import coreax.kernel
 import coreax.util
 from coreax.data import Data, SupervisedData
-from coreax.inverses import LeastSquareApproximator, RegularisedInverseApproximator
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RegularisedLeastSquaresSolver,
+)
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 
 _Data = TypeVar("_Data", bound=Data)
@@ -419,9 +421,9 @@ class CMMD(Metric[SupervisedData]):
     :param regularisation_parameter: Regularisation parameter for stable inversion
             of arrays, negative values will be converted to positive
     :param precision_threshold: Positive threshold we compare against for precision
-    :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`, defaults to
-        :class:`coreax.inverses.LeastSquareApproximator` which solves a linear
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, defaults to
+        :class:`coreax.least_squares.MinimalEuclideanNormSolver` which solves a linear
         system at cost :math:`\mathcal{O}(n^3)`
     """
 
@@ -429,7 +431,7 @@ class CMMD(Metric[SupervisedData]):
     response_kernel: coreax.kernel.Kernel
     regularisation_parameter: float
     precision_threshold: float = 1e-2
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None
+    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
 
     def compute(
         self,
@@ -477,20 +479,23 @@ class CMMD(Metric[SupervisedData]):
         feature_gramian_2 = self.feature_kernel.compute(x2, x2)
 
         # Invert feature kernel gramians
-        if self.inverse_approximator is None:
-            inverse_approximator = LeastSquareApproximator(jr.key(2_024))
+        if self.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
         else:
-            inverse_approximator = self.inverse_approximator
-        inverse_feature_gramian_1 = inverse_approximator.approximate(
+            least_squares_solver = self.least_squares_solver
+
+        inverse_feature_gramian_1 = least_squares_solver.solve(
             array=feature_gramian_1,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_1.shape[0]),
+            target=jnp.eye(feature_gramian_1.shape[0]),
         )
 
-        inverse_feature_gramian_2 = inverse_approximator.approximate(
+        inverse_feature_gramian_2 = least_squares_solver.solve(
             array=feature_gramian_2,
             regularisation_parameter=self.regularisation_parameter,
             identity=jnp.eye(feature_gramian_2.shape[0]),
+            target=jnp.eye(feature_gramian_2.shape[0]),
         )
 
         # # Compute each term in the CMMD

@@ -29,11 +29,11 @@ from typing_extensions import override
 
 from coreax.coreset import Coresubset
 from coreax.data import Data, SupervisedData, as_data
-from coreax.inverses import (
-    LeastSquareApproximator,
-    RegularisedInverseApproximator,
-)
 from coreax.kernel import Kernel, TensorProductKernel
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RegularisedLeastSquaresSolver,
+)
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 from coreax.solvers.base import (
     CoresubsetSolver,
@@ -864,7 +864,7 @@ def _conditional_herding_loss(
     training_cme: Array,
     regularisation_parameter: float,
     identity: Array,
-    inverse_approximator: RegularisedInverseApproximator,
+    least_squares_solver: RegularisedLeastSquaresSolver,
 ) -> Array:
     """
     Given an array of candidate coreset indices, compute the CMMD loss for each.
@@ -879,8 +879,8 @@ def _conditional_herding_loss(
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Block "identity" matrix
-    :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
 
     :return: ConditionalKernelHerding loss for each candidate coreset
     """
@@ -891,10 +891,12 @@ def _conditional_herding_loss(
     coreset_cmes = training_cme[extract_indices]
 
     # Invert the coreset feature gramians
-    inverse_coreset_feature_gramians = inverse_approximator.approximate_stack(
+    inverse_coreset_feature_gramians = least_squares_solver.solve_stack(
         coreset_feature_gramians,
         regularisation_parameter,
         identity,
+        identity,
+        in_axes=(0, None, None, None),
     )
 
     # Compute the loss function. As the trace is a cyclic operation i.e. Tr(ABC) =
@@ -968,9 +970,9 @@ class ConditionalKernelHerding(
         unique elements
     :param batch_size: An integer representing the size of the batches of data pairs
         sampled at each iteration for consideration for adding to the coreset
-    :param inverse_approximator: Instance of
-        :class:`coreax.inverses.RegularisedInverseApproximator`, default value of
-        :data:`None` uses :class:`coreax.inverses.LeastSquareApproximator`
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
+        :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
     """
 
     random_key: KeyArrayLike
@@ -979,7 +981,7 @@ class ConditionalKernelHerding(
     regularisation_parameter: float = 1e-6
     unique: bool = True
     batch_size: Union[int, None] = None
-    inverse_approximator: Optional[RegularisedInverseApproximator] = None
+    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
 
     @override
     def reduce(
@@ -1008,10 +1010,10 @@ class ConditionalKernelHerding(
         :return: A refined coresubset and relevant intermediate solver state information
         """
         # Handle default value of None
-        if self.inverse_approximator is None:
-            inverse_approximator = LeastSquareApproximator(self.random_key)
+        if self.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
         else:
-            inverse_approximator = self.inverse_approximator
+            least_squares_solver = self.least_squares_solver
 
         # If the initialisation coresubset is too small, pad its nodes up to
         # 'output_size' with -1 valued indices. If it is too large, raise a warning and
@@ -1039,22 +1041,25 @@ class ConditionalKernelHerding(
             feature_gramian = self.feature_kernel.compute(x, x)
             response_gramian = self.response_kernel.compute(y, y)
 
-            inverse_feature_gramian = inverse_approximator.approximate(
+            identity = jnp.eye(num_data_pairs)
+            inverse_feature_gramian = least_squares_solver.solve(
                 array=feature_gramian,
                 regularisation_parameter=self.regularisation_parameter,
-                identity=jnp.eye(num_data_pairs),
+                target=identity,
+                identity=identity,
             )
 
             # Evaluate conditional mean embedding (CME) at all possible pairs of the
-            # available training data.
-            training_cme = feature_gramian @ inverse_feature_gramian @ response_gramian
-
-            # Pad the gramians and training CME evaluations with zeros in an additional
-            # column and row to allow us to extract sub-arrays and fill in elements with
-            # zeros simultaneously.
+            # available training data. # Pad the gramians and training CME evaluations
+            # with zeros in an additional column and row to allow us to extract
+            # sub-arrays and fill in elements with zeros simultaneously.
+            training_cme = jnp.pad(
+                feature_gramian @ inverse_feature_gramian @ response_gramian,
+                [(0, 1)],
+                mode="constant",
+            )
             feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
             response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
-            training_cme = jnp.pad(training_cme, [(0, 1)], mode="constant")
 
         else:
             feature_gramian = solver_state.feature_gramian
@@ -1110,7 +1115,7 @@ class ConditionalKernelHerding(
                 training_cme,
                 self.regularisation_parameter,
                 updated_identity,
-                inverse_approximator,
+                least_squares_solver,
             )
 
             # Find the optimal replacement coreset index, ensuring we don't pick an

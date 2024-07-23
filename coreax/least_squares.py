@@ -52,7 +52,7 @@ block.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional, Sequence, Union
 
 import equinox as eqx
 import jax
@@ -101,6 +101,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         regularisation_parameter: float,
         targets: Array,
         identity: Array,
+        in_axes: Union[int, None, Sequence[Any]] = (0, None, 0, None),
     ) -> Array:
         r"""
         Compute least-squares solutions to stack of regularised linear matrix equations.
@@ -111,9 +112,12 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         :param targets: Horizontal stack of targets with shape
             :math`l \times n \times m`
         :param identity: Identity matrix
+        :param in_axes: An integer, None, or sequence of values specifying which input
+            array axes to map over. See :func:`jax.vamp` documentation for further
+            information.
         :return: Approximation of the regularised least-squares solutions
         """
-        _map_solve = jax.vmap(self.solve, in_axes=(0, None, 0, None))
+        _map_solve = jax.vmap(self.solve, in_axes=in_axes)
         return _map_solve(arrays, abs(regularisation_parameter), targets, identity)
 
 

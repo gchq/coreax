@@ -33,14 +33,14 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.inverses import (
-    LeastSquareApproximator,
-    RandomisedEigendecompositionApproximator,
-)
 from coreax.kernel import (
     Kernel,
     PCIMQKernel,
     SquaredExponentialKernel,
+)
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RandomisedEigendecompositionSolver,
 )
 from coreax.solvers import (
     ConditionalKernelHerding,
@@ -705,13 +705,14 @@ class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest)
         feature_gramian = solver.feature_kernel.compute(x, x)
         response_gramian = solver.response_kernel.compute(y, y)
 
-        if solver.inverse_approximator is None:
-            inverse_approximator = LeastSquareApproximator(self.random_key)
+        if solver.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
         else:
-            inverse_approximator = solver.inverse_approximator
-        inverse_feature_gramian = inverse_approximator.approximate(
+            least_squares_solver = solver.least_squares_solver
+        inverse_feature_gramian = least_squares_solver.solve(
             array=feature_gramian,
             regularisation_parameter=solver.regularisation_parameter,
+            target=jnp.eye(num_data_pairs),
             identity=jnp.eye(num_data_pairs),
         )
         training_cme = jnp.pad(
@@ -765,9 +766,7 @@ class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest)
             coreset_size=10,
             feature_kernel=self.feature_kernel,
             response_kernel=self.response_kernel,
-            inverse_approximator=RandomisedEigendecompositionApproximator(
-                self.random_key
-            ),
+            least_squares_solver=RandomisedEigendecompositionSolver(self.random_key),
         )
         solver.reduce(dataset)
 
