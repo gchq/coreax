@@ -65,12 +65,12 @@ class BaseKernelTest(ABC, Generic[_ScalarValuedKernel]):
     """Test the ``compute`` methods of a ``coreax.kernels.ScalarValuedKernel``."""
 
     @abstractmethod
-    def kernel(self) -> ScalarValuedKernel:
+    def kernel(self) -> _ScalarValuedKernel:
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
     @abstractmethod
     def problem(
-        self, request: pytest.FixtureRequest, kernel: ScalarValuedKernel
+        self, request: pytest.FixtureRequest, kernel: _ScalarValuedKernel
     ) -> _Problem:
         """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
 
@@ -105,7 +105,7 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
     def test_compute_mean(
         self,
         jit_variant: Callable[[Callable], Callable],
-        kernel: ScalarValuedKernel,
+        kernel: _ScalarValuedKernel,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
         axis: Union[int, None],
     ) -> None:
@@ -187,7 +187,7 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],
-        kernel: ScalarValuedKernel,
+        kernel: _ScalarValuedKernel,
         mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
         elementwise: bool,
         auto_diff: bool,
@@ -216,19 +216,19 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
 
     @abstractmethod
     def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: ScalarValuedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: ScalarValuedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: ScalarValuedKernel
+        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
