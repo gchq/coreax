@@ -228,7 +228,7 @@ def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: f
 
 
 class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
-    r"""
+    """
     Approximate solution to regularised linear equations via random eigendecomposition.
 
     Solving regularised linear equations involving large arrays can become prohibitively
@@ -238,7 +238,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     of the input array.
 
     .. warning::
-        Input ``array``s must be Hermitian for this method to have predictable
+        Input arrays must be Hermitian for this method to have predictable
         behaviour. We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
