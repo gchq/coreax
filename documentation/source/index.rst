@@ -61,14 +61,15 @@ Contents
     coreax/approximations
     coreax/coresets
     coreax/data
-    coreax/least_squares
     coreax/kernel
+    coreax/least_squares
     coreax/metrics
     coreax/networks
     coreax/score_matching
     coreax/solvers
     coreax/utils
     coreax/weights
+
 
 
 Bibliography
