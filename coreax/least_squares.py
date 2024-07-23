@@ -36,7 +36,7 @@ array
     A = \begin{bmatrix}B & 0 & \dots & 0 \\ 0 & 0 & \dots & 0 \\
          \vdots & \ddots & \dots & \vdots \\ 0 & 0 & \dots & 0\end{bmatrix},
 
-where only the top-left block contains non-zero elements can be "inverted" to give
+where only the top-left block contains non-zero elements, can be "inverted" to give
 
 .. math::
     A^{-1} := \begin{bmatrix}B^{-1} & 0 & \dots & 0 \\ 0 & 0 & \dots & 0 \\
@@ -66,11 +66,11 @@ from coreax.util import KeyArrayLike
 
 class RegularisedLeastSquaresSolver(eqx.Module):
     r"""
-    Base to compute the least-squares solution to a regularised linear matrix equation.
+    Base class for solving regularised linear matrix equations via least-squares.
 
     Given an array :math:`A \in \mathbb{R}^{n \times n}`, a regularisation parameter
     :math:`\lambda \in \mathbb{R}_{\ge 0}`, and an array of targets
-    :math:`B \in \mathbb{R}^{n \times m} the least-squares solution to the regularised
+    :math:`B \in \mathbb{R}^{n \times m}` the least-squares solution to the regularised
     linear equation :math:`(A + \lambda I_n)B = X` has solution
     :math:`X = (A + \lambda I_n)^{-1}B` where
     :math:`\lambda_n \in \mathbb{R}^{n\times n}` is the identity matrix.
@@ -89,10 +89,10 @@ class RegularisedLeastSquaresSolver(eqx.Module):
 
         :param array: :math:`n \times n` array, corresponds to :math:`A`
         :param regularisation_parameter: Regularisation parameter for stable inversion
-            of array, negative values will be converted to positive
-        :param target: :math`n \times m` array of targets, corresponds to :math:`B`
+            of array; negative values will be converted to positive
+        :param target: :math:`n \times m` array of targets, corresponds to :math:`B`
         :param identity: Identity matrix
-        :return: Approximation of the regularised least square solution :math:`X`
+        :return: Approximation of the regularised least-squares solution :math:`X`
         """
 
     def solve_stack(
@@ -105,16 +105,16 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         r"""
         Compute least-squares solutions to stack of regularised linear matrix equations.
 
-        :param array: Horizontal stack of arrays with shape :math:`l \times n \times n`
+        :param arrays: Horizontal stack of arrays with shape :math:`l \times n \times n`
         :param regularisation_parameter: Regularisation parameter for stable inversion
-            of array, negative values will be converted to positive
+            of ``arrays``; negative values will be converted to positive
         :param targets: Horizontal stack of targets with shape
             :math`l \times n \times m`
         :param identity: Identity matrix
-        :return: Approximation of the regularised least square solutions
+        :return: Approximation of the regularised least-squares solutions
         """
         _map_solve = jax.vmap(self.solve, in_axes=(0, None, 0, None))
-        return _map_solve(arrays, regularisation_parameter, targets, identity)
+        return _map_solve(arrays, abs(regularisation_parameter), targets, identity)
 
 
 class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
@@ -122,20 +122,20 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     Find minimal-norm least-squares solution to the regularised linear matrix equation.
 
     Computes the solution that approximately solves the regularised linear matrix
-    equation. The equation may be under-, well-, or over-determined. If `array` is full
-    rank, then the solution is *exact*, up to floating-point errors. Else, the solution
-    minimises the Euclidean 2-norm. If there are multiple minimising solutions, the one
-    with the smallest 2-norm is returned.
+    equation. The equation may be under-, well-, or over-determined. If ``array`` is
+    full rank, then the solution is *exact*, up to floating-point errors. Else, the
+    solution minimises the Euclidean 2-norm. If there are multiple minimising solutions,
+    the one with the smallest 2-norm is returned.
 
     .. note::
         This solver does not give time savings and instead acts as a robust default
         option useful for comparing other solvers to.
 
-    :param rcond: Cut-off ratio for small singular values of 'array'. For the purposes
+    :param rcond: Cut-off ratio for small singular values of ``array``. For the purposes
         of rank determination, singular values are treated as zero if they are smaller
-        than rcond times the largest singular value of 'array'. The default value of
-        None will use the machine precision multiplied by the largest dimension of the
-        array. An alternate value of -1 will use machine precision.
+        than rcond times the largest singular value of ``array``. The default value of
+        data:`None` will use the machine precision multiplied by the largest dimension
+        of the ``array``. An alternate value of -1 will use machine precision.
     """
 
     rcond: Optional[float] = None
@@ -162,7 +162,7 @@ def _gaussian_range_finder(
     power_iterations: int = 1,
 ) -> Array:
     """
-    Produce an orthonormal matrix whose range captures the action of an input array.
+    Produce an orthonormal matrix whose range captures the action of an input ``array``.
 
     :param random_key: Key for random number generation
     :param array: Array to be decomposed
@@ -170,7 +170,7 @@ def _gaussian_range_finder(
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
-    :return: Orthonormal array capturing action of input array
+    :return: Orthonormal array capturing action of input ``array``
     """
     # Input handling
     supported_array_shape = 2
@@ -201,14 +201,19 @@ def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: f
     """
     Given an array's eigendecomposition, return the inverse of the array.
 
+    .. warning::
+        We assume the order of the ``eigenvalues`` and ``eigenvectors`` correspond, i.e.
+        the first element of ``eigenvalues`` is paired with the first column of
+        ``eigenvectors``.
+
     :param eigenvalues: Vector of eigenvalues
     :param eigenvectors: Array of eigenvectors as columns
     :param rcond: Cut-off ratio for small eigenvalues
-    :return: Approximate inverse of array using its eigendecomposition.
+    :return: Approximate inverse of array using its eigendecomposition
     """
     # Mask the eigenvalues that are zero or almost zero according to value of rcond
     # for safe inversion.
-    mask = eigenvalues >= jnp.array(rcond) * eigenvalues[-1]
+    mask = eigenvalues >= jnp.array(rcond) * jnp.max(eigenvalues)
     safe_eigenvalues = jnp.where(mask, eigenvalues, 1)
 
     # Invert the eigenvalues safely and extend array for broadcasting
@@ -228,14 +233,14 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     is a class that does such an approximation using the randomised eigendecomposition
     of the input array.
 
-    .. note::
-        Input arrays must be Hermitian for this method to have predictable behaviour.
-        We do not check this.
+    .. warning::
+        Input ``array``s must be Hermitian for this method to have predictable
+        behaviour. We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
     eigendecomposition of a Hermitian matrix. The parameters `oversampling_parameter`
     and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness` for discussion on choosing sensible parameters, the
+    See :cite:`halko2009randomness` for discussion on choosing sensible parameters; the
     defaults chosen here are cautious.
 
     :param random_key: Key for random number generation
@@ -243,12 +248,11 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
         power_iterations, the more accurate, but slower the method will be
-    :param rcond: Cut-off ratio for small singular values of the `array`. For the
+    :param rcond: Cut-off ratio for small singular values of the ``array``. For the
         purposes of rank determination, singular values are treated as zero if they are
         smaller than rcond times the largest singular value of a. The default value of
-        None will use the machine precision multiplied by the largest dimension of
-        the array. An alternate value of -1 will use machine precision.
-
+        :data:`None` will use the machine precision multiplied by the largest dimension
+        of the ``array``. An alternate value of -1 will use machine precision
     """
 
     random_key: KeyArrayLike
@@ -279,13 +283,13 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         the defaults chosen here are cautious.
 
         Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
-        :math:`r=``oversampling_parameter` we return a diagonal array of eigenvalues
+        :math:`r=` ``oversampling_parameter``, we return a diagonal array of eigenvalues
         :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of
         eigenvectors :math:`U\in\mathbb{R}^{n\times r}` such that we have
         :math:`A \approx U\Lambda U^T`.
 
         :param array: Array to be decomposed
-        :return: Eigenvalues and eigenvectors that approximately decompose the array
+        :return: Eigenvalues and eigenvectors that approximately decompose the ``array``
         """
         # Find orthonormal array with range approximating range of array
         q = _gaussian_range_finder(
