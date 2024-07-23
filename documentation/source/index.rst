@@ -71,7 +71,6 @@ Contents
     coreax/weights
 
 
-
 Bibliography
 ------------
 
