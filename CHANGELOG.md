@@ -21,6 +21,10 @@ and `coreax.solvers.coresubset.JointKernelHerding`
 
 
 ### Changed
+- Refactored `coreax.inverses.py` functionality into `coreax.least_squares.py`:
+  - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`
+  - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`
+  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`
 
 
 
