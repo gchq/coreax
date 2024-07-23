@@ -113,7 +113,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
             :math`l \times n \times m`
         :param identity: Identity matrix
         :param in_axes: An integer, None, or sequence of values specifying which input
-            array axes to map over. See :func:`jax.vamp` documentation for further
+            array axes to map over. See :func:`jax.vmap` documentation for further
             information.
         :return: Approximation of the regularised least-squares solutions
         """
