@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- Refactoring of `coreax.kernel.py` into `coreax.kernels` sub-package:
+  - `kernels.util.py` holds utility functions relating to kernels e.g. `median_heuristic`.
+  - `kernels.base.py` holds the base kernel class `ScalarValuedKernel` (renamed from `Kernel`),
+    as well as the base composite classes `UniCompositeKernel` (renamed from `CompositeKernel`),
+    `DuoCompositeKernel` (renamed from `PairedKernel`) and the derived duo-composite kernels
+    `AdditiveKernel` and `ProductKernel`
+  - `coreax.kernels.scalar_valued.py` holds all currently implemented scalar valued kernels e.g.
+    `SquaredExponentialKernel`.
+
+
 
 
 
