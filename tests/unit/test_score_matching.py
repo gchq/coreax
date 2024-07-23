@@ -36,11 +36,11 @@ from optax import sgd
 
 import coreax.networks
 import coreax.score_matching
-from coreax.kernel import (
-    Kernel,
+from coreax.kernels import (
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
     median_heuristic,
@@ -1071,7 +1071,7 @@ class TestConvertSteinKernel:
         [LinearKernel(), SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_convert_stein_kernel(
-        self, score_matching: Union[None, MagicMock], kernel: Kernel
+        self, score_matching: Union[None, MagicMock], kernel: ScalarValuedKernel
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""
         random_key = jr.key(2_024)

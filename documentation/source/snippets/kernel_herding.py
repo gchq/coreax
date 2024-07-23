@@ -15,8 +15,8 @@
 import numpy as np
 from sklearn.datasets import make_blobs
 
-from coreax import Data, SquaredExponentialKernel
-from coreax.kernel import median_heuristic
+from coreax.data import Data
+from coreax.kernels import SquaredExponentialKernel, median_heuristic
 from coreax.solvers import KernelHerding
 
 # Generate some data

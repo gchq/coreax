@@ -34,7 +34,7 @@ from coreax.approximation import (
     NystromApproximateKernel,
     RandomRegressionKernel,
 )
-from coreax.kernel import Kernel, SquaredExponentialKernel
+from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel
 from coreax.util import InvalidKernel, KeyArrayLike
 
 _RandomRegressionKernel = type[RandomRegressionKernel]
@@ -43,7 +43,7 @@ _RandomRegressionKernel = type[RandomRegressionKernel]
 class _Problem(NamedTuple):
     random_key: KeyArrayLike
     data: ArrayLike
-    kernel: Kernel
+    kernel: ScalarValuedKernel
     num_kernel_points: int
     num_train_points: int
     true_distances: ArrayLike
@@ -268,7 +268,7 @@ class TestRandomRegressionApproximations:
         }
         expected_msg = (
             "'base_kernel' must be an instance of "
-            + f"'{Kernel.__module__}.{Kernel.__qualname__}'"
+            + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
         )
         with pytest.raises(ValueError, match=expected_msg):
             approximator(InvalidKernel(0), random_key, **kwargs)  # pyright: ignore

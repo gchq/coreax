@@ -24,7 +24,7 @@ import unittest
 
 import jax.numpy as jnp
 
-import coreax.kernel
+import coreax.kernels
 import coreax.weights
 
 
@@ -85,7 +85,7 @@ class TestBayesianQuadrature(unittest.TestCase):
         )
 
         optimiser = coreax.weights.SBQWeightsOptimiser(
-            kernel=coreax.kernel.SquaredExponentialKernel()
+            kernel=coreax.kernels.SquaredExponentialKernel()
         )
 
         # Solve for the weights
@@ -173,7 +173,7 @@ class TestMMD(unittest.TestCase):
         expected_output = jnp.asarray([w1, w2])
 
         optimiser = coreax.weights.MMDWeightsOptimiser(
-            kernel=coreax.kernel.SquaredExponentialKernel()
+            kernel=coreax.kernels.SquaredExponentialKernel()
         )
 
         # Solve for the weights
@@ -195,7 +195,7 @@ class TestMMD(unittest.TestCase):
 
         # Define weights object
         optimiser = coreax.weights.MMDWeightsOptimiser(
-            kernel=coreax.kernel.SquaredExponentialKernel()
+            kernel=coreax.kernels.SquaredExponentialKernel()
         )
 
         # Solve for the weights with a zero valued epsilon - this should still work, it

@@ -14,11 +14,12 @@
 
 """Solvers for generating coresets."""
 
-from coreax.kernels.base import ScalarValuedKernel
-from coreax.kernels.composite import (
+from coreax.kernels.base import (
     AdditiveKernel,
-    MagicScalarValuedKernel,
+    DuoCompositeKernel,
     ProductKernel,
+    ScalarValuedKernel,
+    UniCompositeKernel,
 )
 from coreax.kernels.scalar_valued import (
     ExponentialKernel,
@@ -32,6 +33,7 @@ from coreax.kernels.scalar_valued import (
     SquaredExponentialKernel,
     SteinKernel,
 )
+from coreax.kernels.util import median_heuristic
 
 __all__ = [
     "ScalarValuedKernel",
@@ -47,5 +49,7 @@ __all__ = [
     "AdditiveKernel",
     "ProductKernel",
     "SteinKernel",
-    "MagicScalarValuedKernel",
+    "median_heuristic",
+    "DuoCompositeKernel",
+    "UniCompositeKernel",
 ]

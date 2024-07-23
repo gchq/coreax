@@ -14,50 +14,19 @@
 
 """Scalar-valued kernel functions."""
 
-# Support annotations with | in Python < 3.10
-from __future__ import annotations
-
 from typing import Callable
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax import Array, jit
+from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import override
 
-from coreax.kernels.composite import (
-    MagicScalarValuedKernel,
-    ProductKernel,
-    UniCompositeKernel,
-)
-from coreax.util import pairwise, squared_distance
+from coreax.kernels.base import ProductKernel, ScalarValuedKernel, UniCompositeKernel
+from coreax.util import squared_distance
 
 
-@jit
-def median_heuristic(x: ArrayLike) -> Array:
-    """
-    Compute the median heuristic for setting kernel bandwidth.
-
-    Analysis of the performance of the median heuristic can be found in
-    :cite:`garreau2018median`.
-
-    :param x: Input array of vectors
-    :return: Bandwidth parameter, computed from the median heuristic, as a
-        zero-dimensional array
-    """
-    # Format inputs
-    x = jnp.atleast_2d(x)
-    # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
-    # Calculate the median of the square distances
-    median_square_distance = jnp.median(
-        square_distances[jnp.triu_indices_from(square_distances, k=1)]
-    )
-
-    return jnp.sqrt(median_square_distance / 2.0)
-
-
-class LinearKernel(MagicScalarValuedKernel):
+class LinearKernel(ScalarValuedKernel):
     r"""
     Define a linear kernel.
 
@@ -90,7 +59,7 @@ class LinearKernel(MagicScalarValuedKernel):
         return jnp.array(self.output_scale * d)
 
 
-class PolynomialKernel(MagicScalarValuedKernel):
+class PolynomialKernel(ScalarValuedKernel):
     r"""
     Define a polynomial kernel.
 
@@ -152,7 +121,7 @@ class PolynomialKernel(MagicScalarValuedKernel):
         )
 
 
-class SquaredExponentialKernel(MagicScalarValuedKernel):
+class SquaredExponentialKernel(ScalarValuedKernel):
     r"""
     Define a squared exponential kernel.
 
@@ -193,7 +162,7 @@ class SquaredExponentialKernel(MagicScalarValuedKernel):
         return scale * k * (d - scale * squared_distance(x, y))
 
 
-class ExponentialKernel(MagicScalarValuedKernel):
+class ExponentialKernel(ScalarValuedKernel):
     r"""
     Define an exponential kernel.
 
@@ -246,7 +215,7 @@ class ExponentialKernel(MagicScalarValuedKernel):
         )
 
 
-class RationalQuadraticKernel(MagicScalarValuedKernel):
+class RationalQuadraticKernel(ScalarValuedKernel):
     r"""
     Define a rational quadratic kernel.
 
@@ -306,7 +275,7 @@ class RationalQuadraticKernel(MagicScalarValuedKernel):
         return d * first_term + second_term
 
 
-class PeriodicKernel(MagicScalarValuedKernel):
+class PeriodicKernel(ScalarValuedKernel):
     r"""
     Define a periodic kernel.
 
@@ -388,7 +357,7 @@ class PeriodicKernel(MagicScalarValuedKernel):
         return output_factor * (d * first_term + jnp.dot(second_term, sub))
 
 
-class LaplacianKernel(MagicScalarValuedKernel):
+class LaplacianKernel(ScalarValuedKernel):
     r"""
     Define a Laplacian kernel.
 
@@ -430,7 +399,7 @@ class LaplacianKernel(MagicScalarValuedKernel):
         return -d * k / (4 * self.length_scale**4)
 
 
-class PCIMQKernel(MagicScalarValuedKernel):
+class PCIMQKernel(ScalarValuedKernel):
     r"""
     Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
@@ -520,7 +489,7 @@ class LocallyPeriodicKernel(ProductKernel):
         )
 
 
-class SteinKernel(UniCompositeKernel, MagicScalarValuedKernel):
+class SteinKernel(UniCompositeKernel):
     r"""
     Define the Stein kernel, i.e. the application of the Stein operator.
 
