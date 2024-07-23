@@ -41,7 +41,7 @@ import numpy as np
 from jax import random
 from sklearn.datasets import make_blobs
 
-from coreax.Data import Data
+from coreax.data import Data
 from coreax.kernels import (
     PCIMQKernel,
     SquaredExponentialKernel,
