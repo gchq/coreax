@@ -27,8 +27,12 @@ from jaxtyping import Array, ArrayLike
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, as_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.kernel import Kernel
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RegularisedLeastSquaresSolver,
+)
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 from coreax.solvers.base import (
     CoresubsetSolver,
@@ -36,9 +40,10 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
+from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
+_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
 class HerdingState(eqx.Module):
@@ -48,7 +53,17 @@ class HerdingState(eqx.Module):
     :param gramian_row_mean: Cached Gramian row-mean.
     """
 
-    gramian_row_mean: Array
+    feature_gramian: Array
+
+
+class GreedyKernelInducingPointsState(eqx.Module):
+    """
+    Intermediate :class:`GreedyKernelInducingPointsState` solver state information.
+
+    :param feature_gramian: Cached Gramian array.
+    """
+
+    feature_gramian: Array
 
 
 class RPCholeskyState(eqx.Module):
@@ -458,3 +473,101 @@ class SteinThinning(
             self.unroll,
         )
         return refined_coreset, solver_state
+
+
+class GreedyKernelInducingPoints(
+    CoresubsetSolver[_SupervisedData, GreedyKernelInducingPointsState],
+    ExplicitSizeSolver,
+):
+    """Apply GreedyKernelInducingPoints to a supervised dataset."""
+
+    random_key: KeyArrayLike
+    feature_kernel: Kernel
+    regularisation_parameter: float = 1e-6
+    unique: bool = True
+    batch_size: Union[int, None] = None
+    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
+
+    @override
+    def reduce(
+        self,
+        dataset: _SupervisedData,
+        solver_state: Union[GreedyKernelInducingPointsState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
+        # Handle default value of None
+        if self.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
+        else:
+            least_squares_solver = self.least_squares_solver
+
+        # Extract features and responses
+        num_data_pairs = len(dataset)
+        responses = dataset.supervision
+        if solver_state is None:
+            feature_gramian = self.feature_kernel.compute(dataset.data, dataset.data)
+        else:
+            feature_gramian = solver_state.feature_gramian
+
+        if self.batch_size is not None and self.batch_size < num_data_pairs:
+            batch_size = self.batch_size
+        else:
+            batch_size = num_data_pairs
+        batch_indices = sample_batch_indices(
+            random_key=self.random_key,
+            max_index=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=self.coreset_size,
+        )
+
+        def greedy_kip_loss(coreset_indices, identity):
+            """GreedyKernelInducingPoints loss for coreset."""
+            coreset_cross_kernel = feature_gramian[:, coreset_indices]
+            coreset_gramian = coreset_cross_kernel[coreset_indices, :]
+            coreset_response = responses[coreset_indices, :]
+            coefficients = least_squares_solver.solve(
+                array=coreset_gramian,
+                regularisation_parameter=self.regularisation_parameter,
+                target=coreset_response,
+                identity=identity,
+            )
+            predictions = coreset_cross_kernel.dot(coefficients)
+            return jnp.linalg.norm(responses - predictions) ** 2
+
+        def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, Array]:
+            """Execute main loop of GreedyKernelInducingPoints."""
+            coreset_indices, candidate_coresets = val
+
+            identity = jnp.eye(i + 1)
+            next_batch = batch_indices[[i + 1], :]
+            candidate_coresets = jnp.vstack((candidate_coresets, next_batch))
+
+            # Compute the loss corresponding to each candidate coreset.
+            loss = jax.vmap(greedy_kip_loss, (1, None))(candidate_coresets, identity)
+
+            # Find the optimal replacement coreset index, ensuring we don't pick an
+            # already chosen point if we want the indices to be unique.
+            if self.unique:
+                unique_mask = jnp.isin(candidate_coresets[i, :], coreset_indices)
+                loss += jnp.where(unique_mask, jnp.inf, 0)
+            index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
+
+            # Repeat the chosen coreset index into the candidate coresets
+            updated_candidate_coresets = candidate_coresets.at[i, :].set(
+                index_to_include_in_coreset
+            )
+
+            # Add the chosen coreset index to the current coreset indices
+            updated_coreset_indices = coreset_indices.at[i].set(
+                index_to_include_in_coreset
+            )
+            return updated_coreset_indices, updated_candidate_coresets
+
+        coreset_indices = -1 * jnp.ones(self.coreset_size, jnp.int32)
+        candidate_coresets = batch_indices[[0], :]
+        for i in range(self.coreset_size):
+            coreset_indices, candidate_coresets = _greedy_body(
+                i, (coreset_indices, candidate_coresets)
+            )
+        return Coresubset(coreset_indices, dataset), GreedyKernelInducingPointsState(
+            feature_gramian
+        )
