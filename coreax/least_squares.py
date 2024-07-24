@@ -113,7 +113,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
             :math`l \times n \times m`
         :param identity: Identity matrix
         :param in_axes: An integer, None, or sequence of values specifying which input
-            array axes to map over. See :func:`jax.vamp` documentation for further
+            array axes to map over. See :func:`jax.vmap` documentation for further
             information.
         :return: Approximation of the regularised least-squares solutions
         """
@@ -228,7 +228,7 @@ def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: f
 
 
 class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
-    r"""
+    """
     Approximate solution to regularised linear equations via random eigendecomposition.
 
     Solving regularised linear equations involving large arrays can become prohibitively
@@ -238,7 +238,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     of the input array.
 
     .. warning::
-        Input ``array``s must be Hermitian for this method to have predictable
+        Input arrays must be Hermitian for this method to have predictable
         behaviour. We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
@@ -254,9 +254,9 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         power_iterations, the more accurate, but slower the method will be
     :param rcond: Cut-off ratio for small singular values of the ``array``. For the
         purposes of rank determination, singular values are treated as zero if they are
-        smaller than rcond times the largest singular value of a. The default value of
-        :data:`None` will use the machine precision multiplied by the largest dimension
-        of the ``array``. An alternate value of -1 will use machine precision
+        smaller than ``rcond`` times the largest singular value of a. The default value
+        of :data:`None` will use the machine precision multiplied by the largest
+        dimension of the ``array``. An alternate value of -1 will use machine precision.
     """
 
     random_key: KeyArrayLike
