@@ -522,10 +522,9 @@ def _greedy_kernel_inducing_points_loss(
         identity=identity,
     )
 
-    # Compute the loss function
-    unpadded_responses = responses[:-1, 0]
+    # Compute the loss function, making sure that we remove the padding on the responses
     predictions = (coreset_cross_gramians * coefficients).sum(axis=1)
-    loss = ((predictions - 2 * unpadded_responses) * predictions).sum(axis=1)
+    loss = ((predictions - 2 * responses[:-1, 0]) * predictions).sum(axis=1)
     return loss
 
 
@@ -625,8 +624,12 @@ class GreedyKernelInducingPoints(
         # clip off the indices at the end.
         if self.coreset_size > len(coresubset):
             pad_size = max(0, self.coreset_size - len(coresubset))
-            pad_indices = -1 * jnp.ones(pad_size, dtype=jnp.int32)
-            coreset_indices = jnp.hstack((coresubset.unweighted_indices, pad_indices))
+            coreset_indices = jnp.hstack(
+                (
+                    coresubset.unweighted_indices,
+                    -1 * jnp.ones(pad_size, dtype=jnp.int32),
+                )
+            )
         elif self.coreset_size < len(coresubset):
             warn(
                 "Requested coreset size is smaller than input 'coresubset', clipping"
@@ -648,12 +651,10 @@ class GreedyKernelInducingPoints(
         padded_responses = jnp.vstack((y, jnp.array([[0]])))
 
         if solver_state is None:
-            feature_gramian = self.feature_kernel.compute(x, x)
-
-            # Pad the gramian with zeros in an additional column and row to allow us to
-            # extract sub-arrays and fill in elements with zeros simultaneously.
-            padded_feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
-
+            # Pad the gramian with zeros in an additional column and row
+            padded_feature_gramian = jnp.pad(
+                self.feature_kernel.compute(x, x), [(0, 1)], mode="constant"
+            )
         else:
             padded_feature_gramian = solver_state.feature_gramian
 
@@ -669,8 +670,8 @@ class GreedyKernelInducingPoints(
             num_batches=self.coreset_size,
         )
 
-        # Initialise an array that will let us extract and build rectangular arrays
-        # which stack arrays corresponding to every possible candidate coreset.
+        # Initialise an array that will let us extract arrays corresponding to every
+        # possible candidate coreset.
         initial_candidate_coresets = (
             jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[0, :])
         )
@@ -684,11 +685,11 @@ class GreedyKernelInducingPoints(
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
         ) -> tuple[Array, Array, Array]:
-            """Execute main loop of GreedyKernelInducingPointsState."""
+            """Execute main loop of GreedyKernelInducingPoints."""
             coreset_indices, identity, candidate_coresets = val
 
             # Update the identity matrix to allow for sub-array inversion in the
-            # case of reduction (no effect when refining)
+            # case of reduction (no effect when refining).
             updated_identity = identity.at[i, i].set(1)
 
             # Compute the loss corresponding to each candidate coreset. Note that we do
@@ -715,16 +716,13 @@ class GreedyKernelInducingPoints(
             index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
 
             # Repeat the chosen coreset index into the ith column of the array of
-            # candidate coreset indices and replace the (i+1)th column with the next
-            # batch of possible coreset indices.
-            next_candidate_coresets = jnp.hstack(
-                (
-                    jnp.tile(index_to_include_in_coreset, (batch_size, 1)),
-                    batch_indices[[i + 1], :].T,
-                )
-            )
-            updated_candidate_coresets = candidate_coresets.at[:, [i, i + 1]].set(
-                next_candidate_coresets
+            # candidate coreset indices. Replace the (i+1)th column with the next batch
+            # of possible coreset indices.
+            updated_candidate_coresets = (
+                candidate_coresets.at[:, i]
+                .set(index_to_include_in_coreset)
+                .at[:, i + 1]
+                .set(batch_indices[i + 1, :])
             )
 
             # Add the chosen coreset index to the current coreset indices
