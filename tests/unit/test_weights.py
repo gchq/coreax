@@ -42,7 +42,7 @@ from coreax.weights import (
     SBQWeightsOptimiser,
     WeightsOptimiser,
     _prepare_kernel_system,  # noqa: PLC2701
-    _solve_qp,  # noqa: PLC2701
+    solve_qp,
 )
 
 _Data = TypeVar("_Data", bound=Data)
@@ -499,37 +499,37 @@ class TestJointMMDWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
 
 class TestPrivateFunctions:
     """
-    Tests for the private functions `_solve_qp` and `prepare_kernel_system`.
+    Tests for the private functions `solve_qp` and `prepare_kernel_system`.
     """
 
     def test_solve_qp_invalid_kernel_mm(self) -> None:
         """
-        Test how `_solve_qp` handles invalid inputs of kernel_mm.
+        Test how `solve_qp` handles invalid inputs of kernel_mm.
 
-        The output of `_solve_qp` is indirectly tested when testing the various weight
+        The output of `solve_qp` is indirectly tested when testing the various weight
         optimisers that are used in this codebase. This test just ensures sensible
         behaviour occurs when unexpected inputs are passed to the function.
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
         with pytest.raises(TypeError, match="not a valid JAX array type"):
-            _solve_qp(
+            solve_qp(
                 kernel_mm="invalid_kernel_mm",  # pyright: ignore
                 gramian_row_mean=np.array([1, 2, 3]),
             )
 
     def test_solve_qp_invalid_gramian_row_mean(self) -> None:
         """
-        Test how `_solve_qp` handles invalid inputs of gramian_row_mean.
+        Test how `solve_qp` handles invalid inputs of gramian_row_mean.
 
-        The output of `_solve_qp` is indirectly tested when testing the various weight
+        The output of `solve_qp` is indirectly tested when testing the various weight
         optimisers that are used in this codebase. This test just ensures sensible
         behaviour occurs when unexpected inputs are passed to the function.
         """
         # Attempt to solve a QP with an input that cannot be converted to a JAX array -
         # this should error as no sensible result can be found in such a case.
         with pytest.raises(TypeError, match="not a valid JAX array type"):
-            _solve_qp(
+            solve_qp(
                 kernel_mm=np.array([1, 2, 3]),
                 gramian_row_mean="invalid_gramian_row_mean",  # pyright: ignore
             )
