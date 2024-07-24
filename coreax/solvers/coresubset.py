@@ -519,7 +519,7 @@ class GreedyKernelInducingPoints(
             num_batches=self.coreset_size,
         )
 
-        def greedy_kip_loss(coreset_indices, identity):
+        def greedy_kip_loss(coreset_indices: Array, identity: Array) -> Array:
             """GreedyKernelInducingPoints loss for coreset."""
             coreset_cross_kernel = feature_gramian[:, coreset_indices]
             coreset_gramian = coreset_cross_kernel[coreset_indices, :]
@@ -531,17 +531,13 @@ class GreedyKernelInducingPoints(
                 identity=identity,
             )
             predictions = coreset_cross_kernel.dot(coefficients)
-            return jnp.linalg.norm(responses - predictions) ** 2
+            return (predictions**2).sum() - 2 * (responses * predictions).sum()
 
         def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, Array]:
             """Execute main loop of GreedyKernelInducingPoints."""
             coreset_indices, candidate_coresets = val
 
             identity = jnp.eye(i + 1)
-            next_batch = batch_indices[[i + 1], :]
-            candidate_coresets = jnp.vstack((candidate_coresets, next_batch))
-
-            # Compute the loss corresponding to each candidate coreset.
             loss = jax.vmap(greedy_kip_loss, (1, None))(candidate_coresets, identity)
 
             # Find the optimal replacement coreset index, ensuring we don't pick an
@@ -549,11 +545,16 @@ class GreedyKernelInducingPoints(
             if self.unique:
                 unique_mask = jnp.isin(candidate_coresets[i, :], coreset_indices)
                 loss += jnp.where(unique_mask, jnp.inf, 0)
-            index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
+            index_to_include_in_coreset = candidate_coresets[i, loss.argmin()]
 
-            # Repeat the chosen coreset index into the candidate coresets
-            updated_candidate_coresets = candidate_coresets.at[i, :].set(
-                index_to_include_in_coreset
+            # Repeat the chosen coreset index into the candidate coresets and add our
+            # next batch of indices to consider.
+            next_batch = batch_indices[[i + 1], :]
+            updated_candidate_coresets = jnp.vstack(
+                (
+                    candidate_coresets.at[i, :].set(index_to_include_in_coreset),
+                    next_batch,
+                )
             )
 
             # Add the chosen coreset index to the current coreset indices
