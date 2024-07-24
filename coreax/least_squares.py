@@ -254,9 +254,9 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         power_iterations, the more accurate, but slower the method will be
     :param rcond: Cut-off ratio for small singular values of the ``array``. For the
         purposes of rank determination, singular values are treated as zero if they are
-        smaller than rcond times the largest singular value of a. The default value of
-        :data:`None` will use the machine precision multiplied by the largest dimension
-        of the ``array``. An alternate value of -1 will use machine precision
+        smaller than ``rcond`` times the largest singular value of a. The default value
+        of :data:`None` will use the machine precision multiplied by the largest
+        dimension of the ``array``. An alternate value of -1 will use machine precision.
     """
 
     random_key: KeyArrayLike
