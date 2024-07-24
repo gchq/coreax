@@ -709,17 +709,13 @@ class TestConditionalKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest)
             least_squares_solver = MinimalEuclideanNormSolver()
         else:
             least_squares_solver = solver.least_squares_solver
-        inverse_feature_gramian = least_squares_solver.solve(
+        training_cme = feature_gramian @ least_squares_solver.solve(
             array=feature_gramian,
             regularisation_parameter=solver.regularisation_parameter,
-            target=jnp.eye(num_data_pairs),
+            target=response_gramian,
             identity=jnp.eye(num_data_pairs),
         )
-        training_cme = jnp.pad(
-            feature_gramian @ inverse_feature_gramian @ response_gramian,
-            [(0, 1)],
-            mode="constant",
-        )
+        training_cme = jnp.pad(training_cme, [(0, 1)], mode="constant")
         feature_gramian = jnp.pad(feature_gramian, [(0, 1)], mode="constant")
         response_gramian = jnp.pad(response_gramian, [(0, 1)], mode="constant")
 
