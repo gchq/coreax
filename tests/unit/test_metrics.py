@@ -30,11 +30,6 @@ import pytest
 from jax import Array, jacfwd, vmap
 
 from coreax.data import Data, SupervisedData
-from coreax.inverses import (
-    LeastSquareApproximator,
-    RandomisedEigendecompositionApproximator,
-    RegularisedInverseApproximator,
-)
 from coreax.kernel import (
     Kernel,
     LaplacianKernel,
@@ -44,6 +39,11 @@ from coreax.kernel import (
     SquaredExponentialKernel,
     SteinKernel,
     TensorProductKernel,
+)
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RandomisedEigendecompositionSolver,
+    RegularisedLeastSquaresSolver,
 )
 from coreax.metrics import CMMD, JMMD, KSD, MMD
 from coreax.score_matching import convert_stein_kernel
@@ -801,15 +801,17 @@ class TestCMMD:
         feature_gramian_1 = kernel.compute(x1, x1)
         feature_gramian_2 = kernel.compute(x2, x2)
 
-        inverse_approximator = LeastSquareApproximator(jr.key(2_024))
-        inverse_feature_gramian_1 = inverse_approximator.approximate(
+        least_squares_solver = MinimalEuclideanNormSolver()
+        inverse_feature_gramian_1 = least_squares_solver.solve(
             array=feature_gramian_1,
             regularisation_parameter=regularisation_parameter,
+            target=jnp.eye(feature_gramian_1.shape[0]),
             identity=jnp.eye(feature_gramian_1.shape[0]),
         )
-        inverse_feature_gramian_2 = inverse_approximator.approximate(
+        inverse_feature_gramian_2 = least_squares_solver.solve(
             array=feature_gramian_2,
             regularisation_parameter=regularisation_parameter,
+            target=jnp.eye(feature_gramian_2.shape[0]),
             identity=jnp.eye(feature_gramian_2.shape[0]),
         )
 
@@ -850,9 +852,9 @@ class TestCMMD:
     # pylint: enable=too-many-locals
 
     @pytest.mark.parametrize(
-        "approximator",
+        "least_squares_solver",
         [
-            RandomisedEigendecompositionApproximator(
+            RandomisedEigendecompositionSolver(
                 jr.key(0), oversampling_parameter=100, power_iterations=2
             )
         ],
@@ -860,7 +862,7 @@ class TestCMMD:
     def test_approximate_cmmd_random_data(
         self,
         problem: _SupervisedMetricProblem,
-        approximator: RegularisedInverseApproximator,
+        least_squares_solver: RegularisedLeastSquaresSolver,
     ):
         r"""
         Test approximate CMMD is close to exact CMMD.
@@ -878,7 +880,7 @@ class TestCMMD:
             feature_kernel=kernel,
             response_kernel=kernel,
             regularisation_parameter=1e-6,
-            inverse_approximator=approximator,
+            least_squares_solver=least_squares_solver,
         )
         approximate_output = approximate_metric.compute(x, y)
 

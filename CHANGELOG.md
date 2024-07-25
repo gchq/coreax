@@ -25,8 +25,10 @@ and `coreax.weights.JointMMDWeightsOptimiser`
 ### Changed
 - Refactored `coreax.weights.py` to be generic on `coreax.data.Data`/`coreax.data.SupervisedData`
 type and expanded testing of weight solvers to include verifying they reduce their target
-`coreax.metrics.Metric` on randomly generated data
-
+- Refactored `coreax.inverses.py` functionality into `coreax.least_squares.py`:
+  - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`
+  - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`
+  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`
 
 ### Removed
 

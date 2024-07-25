@@ -37,8 +37,8 @@ from jax import random
 from sklearn.preprocessing import StandardScaler
 
 from coreax import CMMD, SquaredExponentialKernel, SupervisedData
-from coreax.inverses import RandomisedEigendecompositionApproximator
 from coreax.kernel import median_heuristic
+from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import ConditionalKernelHerding, RandomSample
 
 
@@ -111,7 +111,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         response_kernel=response_kernel,
         regularisation_parameter=regularisation_parameter,
         unique=True,
-        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
+        inverse_approximator=RandomisedEigendecompositionSolver(invert_key),
     )
     cmmd_coreset, _ = eqx.filter_jit(cmmd_solver.reduce)(supervised_data)
 
@@ -138,7 +138,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         feature_kernel=feature_cmmd_kernel,
         response_kernel=response_cmmd_kernel,
         regularisation_parameter=regularisation_parameter,
-        inverse_approximator=RandomisedEigendecompositionApproximator(invert_key),
+        inverse_approximator=RandomisedEigendecompositionSolver(invert_key),
     )
     herding_cmmd = eqx.filter_jit(cmmd_coreset.compute_metric)(cmmd_metric)
 
