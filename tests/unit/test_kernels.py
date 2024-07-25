@@ -72,7 +72,7 @@ class BaseKernelTest(ABC, Generic[_ScalarValuedKernel]):
     def problem(
         self, request: pytest.FixtureRequest, kernel: _ScalarValuedKernel
     ) -> _Problem:
-        """Abstract pytest fixture which returns a problem for ``Kernel.compute``."""
+        """Abstract fixture returning a problem for ``ScalarValuedKernel.compute``."""
 
     def test_compute(
         self, jit_variant: Callable[[Callable], Callable], problem: _Problem
@@ -327,7 +327,7 @@ class TestAdditiveKernel(
     KernelMeanTest[AdditiveKernel],
     KernelGradientTest[AdditiveKernel],
 ):
-    """Test ``coreax.kernel.AdditiveKernel``."""
+    """Test ``coreax.kernels.AdditiveKernel``."""
 
     # Set size and dimension of mock "dataset" that the mocked kernel will act on
     mock_num_points = 5
@@ -439,7 +439,7 @@ class TestProductKernel(
     KernelMeanTest[ProductKernel],
     KernelGradientTest[ProductKernel],
 ):
-    """Test ``coreax.kernel.ProductKernel``."""
+    """Test ``coreax.kernels.ProductKernel``."""
 
     # Set size and dimension of mock "dataset" that the mocked kernel will act on
     mock_num_points = 5
@@ -583,7 +583,7 @@ class TestLinearKernel(
     KernelMeanTest[LinearKernel],
     KernelGradientTest[LinearKernel],
 ):
-    """Test ``coreax.kernel.LinearKernel``."""
+    """Test ``coreax.kernels.LinearKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> LinearKernel:
@@ -666,7 +666,7 @@ class TestPolynomialKernel(
     KernelMeanTest[PolynomialKernel],
     KernelGradientTest[PolynomialKernel],
 ):
-    """Test ``coreax.kernel.PolynomialKernel``."""
+    """Test ``coreax.kernels.PolynomialKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> PolynomialKernel:
@@ -800,7 +800,7 @@ class TestSquaredExponentialKernel(
     KernelMeanTest[SquaredExponentialKernel],
     KernelGradientTest[SquaredExponentialKernel],
 ):
-    """Test ``coreax.kernel.SquaredExponentialKernel``."""
+    """Test ``coreax.kernels.SquaredExponentialKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> SquaredExponentialKernel:
@@ -955,7 +955,7 @@ class TestExponentialKernel(
     KernelMeanTest[ExponentialKernel],
     KernelGradientTest[ExponentialKernel],
 ):
-    """Test ``coreax.kernel.ExponentialKernel``."""
+    """Test ``coreax.kernels.ExponentialKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> ExponentialKernel:
@@ -1077,7 +1077,7 @@ class TestRationalQuadraticKernel(
     KernelMeanTest[RationalQuadraticKernel],
     KernelGradientTest[RationalQuadraticKernel],
 ):
-    """Test ``coreax.kernel.RationalQuadraticKernel``."""
+    """Test ``coreax.kernels.RationalQuadraticKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> RationalQuadraticKernel:
@@ -1216,7 +1216,7 @@ class TestPeriodicKernel(
     KernelMeanTest[PeriodicKernel],
     KernelGradientTest[PeriodicKernel],
 ):
-    """Test ``coreax.kernel.PeriodicKernel``."""
+    """Test ``coreax.kernels.PeriodicKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> PeriodicKernel:
@@ -1375,7 +1375,7 @@ class TestLocallyPeriodicKernel(
     BaseKernelTest[LocallyPeriodicKernel],
     KernelMeanTest[LocallyPeriodicKernel],
 ):
-    """Test ``coreax.kernel.LocallyPeriodicKernel``."""
+    """Test ``coreax.kernels.LocallyPeriodicKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> LocallyPeriodicKernel:
@@ -1467,7 +1467,7 @@ class TestLaplacianKernel(
     KernelMeanTest[LaplacianKernel],
     KernelGradientTest[LaplacianKernel],
 ):
-    """Test ``coreax.kernel.LaplacianKernel``."""
+    """Test ``coreax.kernels.LaplacianKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> LaplacianKernel:
@@ -1599,7 +1599,7 @@ class TestPCIMQKernel(
     KernelMeanTest[PCIMQKernel],
     KernelGradientTest[PCIMQKernel],
 ):
-    """Test ``coreax.kernel.PCIMQKernel``."""
+    """Test ``coreax.kernels.PCIMQKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> PCIMQKernel:
@@ -1736,7 +1736,7 @@ class TestPCIMQKernel(
 
 
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
-    """Test ``coreax.kernel.SteinKernel``."""
+    """Test ``coreax.kernels.SteinKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> SteinKernel:

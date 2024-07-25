@@ -34,14 +34,14 @@ import numpy as np
 from jax import random
 from sklearn.datasets import make_blobs
 
-from coreax import (
-    MMD,
-    Data,
+from coreax.data import Data
+from coreax.kernels import (
     LaplacianKernel,
     PCIMQKernel,
     SquaredExponentialKernel,
+    median_heuristic,
 )
-from coreax.kernels import median_heuristic
+from coreax.metrics import MMD
 from coreax.solvers import KernelHerding, RandomSample
 
 
