@@ -37,10 +37,13 @@ from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     GreedyKernelInducingPoints,
+    GreedyKernelInducingPointsState,
+    HerdingState,
     KernelHerding,
     MapReduce,
     RandomSample,
     RPCholesky,
+    RPCholeskyState,
     Solver,
     SteinThinning,
 )
@@ -48,11 +51,6 @@ from coreax.solvers.base import (
     ExplicitSizeSolver,
     PaddingInvariantSolver,
     RefinementSolver,
-)
-from coreax.solvers.coresubset import (
-    GreedyKernelInducingPointsState,
-    HerdingState,
-    RPCholeskyState,
 )
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
