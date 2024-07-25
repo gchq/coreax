@@ -38,14 +38,14 @@ Gaussian kernel.
 A :class:`~coreax.kernels.ScalarValuedKernel` must implement a
 :meth:`~coreax.kernels.ScalarValuedKernel.compute_elementwise` method, which returns the
 floating point value after evaluating the kernel on two floats, ``x`` and ``y``.
-Additional methods, such as :meth:`Kernel.grad_x_elementwise`, can optionally be
-overridden to improve performance. The canonical example is when a suitable closed-form
-representation of a higher-order gradient can be used to avoid the expense of performing
-automatic differentiation.
+Additional methods, such as :meth:`ScalarValuedKernel.grad_x_elementwise`, can
+optionally be overridden to improve performance. The canonical example is when a
+suitable closed-form representation of a higher-order gradient can be used to avoid the
+expense of performing automatic differentiation.
 
-Such an example can be seen in :class:`SteinKernel`, where the analytic forms of
-:meth:`Kernel.divergence_x_grad_y` are significantly cheaper to compute that the
-automatic differentiated default.
+Such an example can be seen in :class:`coreax.kernels.SteinKernel`, where the analytic
+forms of :meth:`ScalarValuedKernel.divergence_x_grad_y` are significantly cheaper to
+compute than the automatic differentiated default.
 """
 
 # Support class typing annotations inside itself
