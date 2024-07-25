@@ -7,7 +7,7 @@ autodocsumm==0.2.12
 Babel==2.14.0
 beautifulsoup4==4.12.3
 CacheControl==0.14.0
-certifi==2024.2.2
+certifi==2024.7.4
 charset-normalizer==3.3.2
 chex==0.1.85
 cssutils==2.9.0
@@ -58,7 +58,7 @@ ruamel.yaml==0.18.6
 ruamel.yaml.clib==0.2.8
 scikit-learn==1.5.0
 scipy==1.12.0
-setuptools==69.5.1
+setuptools==70.0.0
 six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.5
@@ -86,4 +86,4 @@ typeguard==2.13.3
 typing_extensions==4.9.0
 urllib3==2.2.2
 webencodings==0.5.1
-zipp==3.17.0
+zipp==3.19.1
