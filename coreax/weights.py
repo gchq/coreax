@@ -140,24 +140,24 @@ def _prepare_kernel_system(
         and type(coreset) is SupervisedData
         and isinstance(kernel, TensorProductKernel)
     ):
-        x_1, y_1 = dataset.data, dataset.supervision
-        x_2, y_2 = coreset.data, coreset.supervision
-        kernel_21 = kernel.compute_mean(
-            (x_1, y_1), (x_2, y_2), axis=0, block_size=block_size, unroll=unroll
+        x_d, y_d = dataset.data, dataset.supervision
+        x_c, y_c = coreset.data, coreset.supervision
+        kernel_cd = kernel.compute_mean(
+            (x_d, y_d), (x_c, y_c), axis=0, block_size=block_size, unroll=unroll
         )
-        kernel_22 = kernel.compute((x_2, y_2), (x_2, y_2)) + epsilon * jnp.eye(
+        kernel_cc = kernel.compute((x_c, y_c), (x_c, y_c)) + epsilon * jnp.eye(
             len(coreset)
         )
     elif type(dataset) is Data and type(coreset) is Data and isinstance(kernel, Kernel):
-        x_1, x_2 = dataset.data, coreset.data
-        kernel_21 = kernel.compute_mean(
-            x_1, x_2, axis=0, block_size=block_size, unroll=unroll
+        x_d, x_c = dataset.data, coreset.data
+        kernel_cd = kernel.compute_mean(
+            x_d, x_c, axis=0, block_size=block_size, unroll=unroll
         )
-        kernel_22 = kernel.compute(x_2, x_2) + epsilon * jnp.eye(len(coreset))
+        kernel_cc = kernel.compute(x_c, x_c) + epsilon * jnp.eye(len(coreset))
     else:
         raise ValueError(INVALID_KERNEL_DATA_COMBINATION)
 
-    return kernel_21, kernel_22
+    return kernel_cd, kernel_cc
 
 
 # pylint: enable = unidiomatic-typecheck
@@ -253,7 +253,7 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
         :param solver_kwargs: Additional kwargs passed to ``jnp.linalg.solve``
         :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
         """
-        kernel_21, kernel_22 = _prepare_kernel_system(
+        kernel_cd, kernel_cc = _prepare_kernel_system(
             self.kernel,
             as_data(dataset),
             as_data(coreset),
@@ -261,7 +261,7 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
             block_size=block_size,
             unroll=unroll,
         )
-        return jnp.linalg.solve(kernel_22, kernel_21, **solver_kwargs)
+        return jnp.linalg.solve(kernel_cc, kernel_cd, **solver_kwargs)
 
 
 class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
@@ -313,7 +313,7 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         :param solver_kwargs: Additional kwargs passed to :func:`solve_qp`
         :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
         """
-        kernel_21, kernel_22 = _prepare_kernel_system(
+        kernel_cd, kernel_cc = _prepare_kernel_system(
             self.kernel,
             as_data(dataset),
             as_data(coreset),
@@ -321,7 +321,7 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
             block_size=block_size,
             unroll=unroll,
         )
-        return solve_qp(kernel_22, kernel_21, **solver_kwargs)
+        return solve_qp(kernel_cc, kernel_cd, **solver_kwargs)
 
 
 class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
@@ -402,7 +402,7 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         :param solver_kwargs: Additional kwargs passed to ``jnp.linalg.solve``
         :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
         """
-        kernel_21, kernel_22 = _prepare_kernel_system(
+        kernel_cd, kernel_cc = _prepare_kernel_system(
             self.kernel,
             as_supervised_data(dataset),
             as_supervised_data(coreset),
@@ -410,7 +410,7 @@ class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
             block_size=block_size,
             unroll=unroll,
         )
-        return jnp.linalg.solve(kernel_22, kernel_21, **solver_kwargs)
+        return jnp.linalg.solve(kernel_cc, kernel_cd, **solver_kwargs)
 
 
 class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
@@ -475,7 +475,7 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
         :param solver_kwargs: Additional kwargs passed to :func:`solve_qp`
         :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
         """
-        kernel_21, kernel_22 = _prepare_kernel_system(
+        kernel_cd, kernel_cc = _prepare_kernel_system(
             self.kernel,
             as_supervised_data(dataset),
             as_supervised_data(coreset),
@@ -483,7 +483,7 @@ class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
             block_size=block_size,
             unroll=unroll,
         )
-        return solve_qp(kernel_22, kernel_21, **solver_kwargs)
+        return solve_qp(kernel_cc, kernel_cd, **solver_kwargs)
 
 
 @deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
