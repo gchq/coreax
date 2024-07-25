@@ -61,8 +61,8 @@ Contents
     coreax/approximations
     coreax/coresets
     coreax/data
-    coreax/inverses
     coreax/kernel
+    coreax/least_squares
     coreax/metrics
     coreax/networks
     coreax/score_matching
