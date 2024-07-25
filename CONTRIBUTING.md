@@ -201,6 +201,29 @@ You can generate Sphinx documentation with:
 documentation/make html
 ```
 
+Releases
+--------
+
+Releases are made on an ad-hoc basis, not on every merge into `main`. When the
+maintainers decide the codebase is ready for another release:
+
+1. Create an issue for the release.
+2. Identify a commit on `main` that is ready for release, except for housekeeping that
+   does not affect the functionality of the code.
+3. Create a branch `release/#.#.#` off the identified commit, populating with the target
+   version number.
+4. Tidy `CHANGELOG.md` including:
+   - Move the content under `Unreleased` to a section under the target version number.
+   - Create a new unpopulated `Unreleased` section at the top.
+   - Update the hyperlinks to Git diffs at the bottom of the file so that they compare
+     the relevant versions.
+5. Update the version number in `coreax/__init.py__`.
+6. Create and review a pull request.
+7. Once approved, create a release in GitHub pointing at the final commit on the release
+   branch.
+8. Build and publish to PyPI and ReadTheDocs.
+9. Merge the release branch into `main`.
+
 [github-issues]: https://github.com/gchq/coreax/issues?q=
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
 [gh-feature-request]: https://github.com/gchq/coreax/issues/new?assignees=&labels=enhancement%2Cnew&projects=&template=feature_request.yml&title=%5BFeature%5D%3A+
