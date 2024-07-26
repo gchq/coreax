@@ -41,17 +41,14 @@ from jax.typing import ArrayLike
 from jaxopt import OSQP
 from typing_extensions import deprecated
 
-from coreax.data import Data, SupervisedData, as_data, as_supervised_data
-from coreax.kernel import Kernel, TensorProductKernel
+from coreax.data import Data, SupervisedData, as_data
+from coreax.kernel import Kernel
 from coreax.util import apply_negative_precision_threshold
 
 _Data = TypeVar("_Data", bound=Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 INVALID_KERNEL_DATA_COMBINATION = (
-    "Invalid combination of 'kernel' and 'dataset' or 'coreset'; if solving weights for"
-    + " 'SupervisedData' a 'TensorProductKernel' must be passed,"
-    + " if solving weights for unsupervised 'Data', one must pass child of 'Kernel'"
+    "Support for `SupervisedData` not currently handled by `Kernel`"
 )
 
 
@@ -106,7 +103,7 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
 
 
 def _prepare_kernel_system(
-    kernel: Union[Kernel, TensorProductKernel],
+    kernel: Kernel,
     dataset: Union[Data, SupervisedData],
     coreset: Union[Data, SupervisedData],
     epsilon: float = 1e-10,
@@ -135,20 +132,7 @@ def _prepare_kernel_system(
     :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
     :return: Row mean of k(coreset, dataset) and the epsilon perturbed coreset Gramian
     """
-    if (
-        type(dataset) is SupervisedData
-        and type(coreset) is SupervisedData
-        and isinstance(kernel, TensorProductKernel)
-    ):
-        x_d, y_d = dataset.data, dataset.supervision
-        x_c, y_c = coreset.data, coreset.supervision
-        kernel_cd = kernel.compute_mean(
-            (x_d, y_d), (x_c, y_c), axis=0, block_size=block_size, unroll=unroll
-        )
-        kernel_cc = kernel.compute((x_c, y_c), (x_c, y_c)) + epsilon * jnp.eye(
-            len(coreset)
-        )
-    elif type(dataset) is Data and type(coreset) is Data and isinstance(kernel, Kernel):
+    if type(dataset) is Data and type(coreset) is Data and isinstance(kernel, Kernel):
         x_d, x_c = dataset.data, coreset.data
         kernel_cd = kernel.compute_mean(
             x_d, x_c, axis=0, block_size=block_size, unroll=unroll
@@ -161,8 +145,6 @@ def _prepare_kernel_system(
 
 
 # pylint: enable = unidiomatic-typecheck
-
-
 class WeightsOptimiser(eqx.Module, Generic[_Data]):
     r"""Base class for optimising weights."""
 
@@ -317,168 +299,6 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
             self.kernel,
             as_data(dataset),
             as_data(coreset),
-            epsilon,
-            block_size=block_size,
-            unroll=unroll,
-        )
-        return solve_qp(kernel_cc, kernel_cd, **solver_kwargs)
-
-
-class JointSBQWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
-    r"""
-    Define the Joint Sequential Bayesian Quadrature (JSBQ) optimiser.
-
-    Related references for this technique can be found in :cite:`huszar2016optimally`.
-    Weights determined by JSBQ are equivalent to the unconstrained weighted joint
-    maximum mean discrepancy (JMMD) optimum.
-
-    The Bayesian quadrature estimate of the joint integral
-
-    .. math::
-
-        \int\int f(x, y) p(x, y) dx dy
-
-    can be viewed as a weighted version of joint kernel herding. The Bayesian
-    quadrature weights, :math:`w_{BQ}`, are given by
-
-    .. math::
-
-        w_{BQ}^{(n)} = \sum_m z_m^T K_{mn}^{-1}
-
-    for a supervised dataset :math:`(x, y)` with :math:`n` points, and coreset
-    :math:`(\tilde{x}, \tilde{y})` of :math:`m` points. Here, for given tensor-product
-    kernel :math:`k`, we have
-    :math:`z = \int k((x, y), (\tilde{x}, \tilde{y}))p(x, y) dx dy`
-    and :math:`K = k((\tilde{x}, \tilde{y}), (\tilde{x}, \tilde{y}))` in the above
-    expression. See equation 20 in :cite:`huszar2016optimally` for further detail.
-
-    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
-        the feature space
-    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
-        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
-        \mathbb{R}` on the response space
-    """
-
-    kernel: TensorProductKernel
-
-    def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
-        """Initialise JointSBQWeightsOptimiser class and build tensor-product kernel."""
-        self.kernel = TensorProductKernel(
-            feature_kernel=feature_kernel,
-            response_kernel=response_kernel,
-        )
-
-    def solve(
-        self,
-        dataset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        coreset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        epsilon: float = 1e-10,
-        *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-        **solver_kwargs,
-    ) -> Array:
-        r"""
-        Calculate weights from Joint Sequential Bayesian Quadrature (JSBQ).
-
-        References for this technique can be found in
-        :cite:`huszar2016optimally`. These are equivalent to the unconstrained
-        weighted joint maximum mean discrepancy (JMMD) optimum.
-
-        Note that weights determined through SBQ do not need to sum to 1, and can be
-        negative.
-
-        :param dataset: :class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`n \times d` data array paired with :math:`n \times p` supervision
-            array
-        :param coreset::class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`m \times d` data array paired with :math:`m \times p` supervision
-            array, representing a coreset
-        :param epsilon: Small positive value to add to the kernel Gram matrix to aid
-            numerical solver computations
-        :param block_size: Block size passed to the ``self.kernel.compute_mean``
-        :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
-        :param solver_kwargs: Additional kwargs passed to ``jnp.linalg.solve``
-        :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
-        """
-        kernel_cd, kernel_cc = _prepare_kernel_system(
-            self.kernel,
-            as_supervised_data(dataset),
-            as_supervised_data(coreset),
-            epsilon,
-            block_size=block_size,
-            unroll=unroll,
-        )
-        return jnp.linalg.solve(kernel_cc, kernel_cd, **solver_kwargs)
-
-
-class JointMMDWeightsOptimiser(WeightsOptimiser[_SupervisedData]):
-    r"""
-    Define the JMMD weights optimiser class.
-
-    This optimiser solves a simplex weight problem of the form:
-
-    .. math::
-
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
-        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
-
-    subject to
-
-    .. math::
-
-        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
-
-    using the OSQP quadratic programming solver.
-
-    :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on
-        the feature space
-    :param response_kernel: :class:`~coreax.kernel.Kernel` instance implementing a
-        kernel function :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow
-        \mathbb{R}` on the response space
-    """
-
-    kernel: TensorProductKernel
-
-    def __init__(self, feature_kernel: Kernel, response_kernel: Kernel):
-        """Initialise JointMMDWeightsOptimiser class and build tensor-product kernel."""
-        self.kernel = TensorProductKernel(
-            feature_kernel=feature_kernel,
-            response_kernel=response_kernel,
-        )
-
-    def solve(
-        self,
-        dataset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        coreset: Union[tuple[ArrayLike, ArrayLike], SupervisedData],
-        epsilon: float = 1e-10,
-        *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-        **solver_kwargs,
-    ) -> Array:
-        r"""
-        Compute optimal weights given the simplex constraint.
-
-        :param dataset: :class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`n \times d` data array paired with :math:`n \times p` supervision
-            array
-        :param coreset::class:`~coreax.data.SupervisedData` instance consisting of
-            :math:`m \times d` data array paired with :math:`m \times p` supervision
-            array, representing a coreset
-        :param epsilon: Small positive value to add to the kernel Gram matrix to aid
-            numerical solver computations
-        :param block_size: Block size passed to the ``self.kernel.compute_mean``
-        :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
-        :param solver_kwargs: Additional kwargs passed to :func:`solve_qp`
-        :return: Optimal weighting of points in ``coreset`` to represent ``dataset``
-        """
-        kernel_cd, kernel_cc = _prepare_kernel_system(
-            self.kernel,
-            as_supervised_data(dataset),
-            as_supervised_data(coreset),
             epsilon,
             block_size=block_size,
             unroll=unroll,

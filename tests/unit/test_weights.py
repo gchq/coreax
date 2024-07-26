@@ -30,14 +30,12 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data, SupervisedData, as_supervised_data
-from coreax.kernel import SquaredExponentialKernel, TensorProductKernel
-from coreax.metrics import JMMD, MMD, Metric
+from coreax.data import Data, SupervisedData
+from coreax.kernel import SquaredExponentialKernel
+from coreax.metrics import MMD, Metric
 from coreax.util import KeyArrayLike
 from coreax.weights import (
     INVALID_KERNEL_DATA_COMBINATION,
-    JointMMDWeightsOptimiser,
-    JointSBQWeightsOptimiser,
     MMDWeightsOptimiser,
     SBQWeightsOptimiser,
     WeightsOptimiser,
@@ -46,7 +44,6 @@ from coreax.weights import (
 )
 
 _Data = TypeVar("_Data", bound=Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
 class _Problem(NamedTuple):
@@ -284,219 +281,6 @@ class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         assert output == pytest.approx(expected_output, abs=1e-3)
 
 
-class TestJointSBQWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
-    """
-    Tests related to :meth:`~coreax.weights.JointSBQWeightsOptimiser`.
-    """
-
-    @override
-    @pytest.fixture(scope="class")
-    def problem(self) -> _Problem:
-        # Set up optimiser and target metric (JointSBQ targets the JMMD)
-        feature_kernel = SquaredExponentialKernel()
-        response_kernel = SquaredExponentialKernel()
-        optimiser = JointSBQWeightsOptimiser(feature_kernel, response_kernel)
-        target_metric = JMMD(feature_kernel, response_kernel)
-
-        # Generate supervised dataset
-        data_key, supervision_key = jr.split(self.random_key, 2)
-        data = jr.normal(data_key, self.data_shape)
-        supervision = jr.normal(supervision_key, self.data_shape)
-
-        # Initialise coreset ready for testing
-        pre_coreset_data = SupervisedData(data, supervision)
-        coreset_indices = Data(
-            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
-        )
-        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
-
-        return _Problem(coreset, optimiser, target_metric)
-
-    def test_analytic_case(self) -> None:
-        r"""
-        Test the calculation of weights via joint sequential Bayesian quadrature.
-
-        For the simple dataset of 3 pairs in 1D :math:`(x, y)`, with coreset
-        :math:`(x_c, y_c)`, given by:
-
-        .. math::
-
-            x = [[0], [1], [2]]
-            y = [[1], [3], [4]]
-
-            x_c = [[0], [2]]
-            y_c = [[1], [4]]
-
-        the weights, calculated by sequential Bayesian quadrature, are the solution to
-        the equation :math:`w = z^T K^{-1}`. Here, :math:`z` is the row-mean of the
-        tensor-product kernel matrix :math:`k((x_c, y_c), (x, y))`, i.e., the mean in
-        the :math:`(x, y)` direction. The matrix :math:`K = k((x_c, y_c), (x_c, y_c))`.
-
-        Choosing SquaredExponentialKernels for both the feature kernel and response
-        kernel, :math:`f(x_1,x_2) = \exp (-||x_1-x_2||^2/2\text{length_scale}^2)`,
-        and :math:`r(y_1,y_2) = \exp (-||y_1-y_2||^2/2\text{length_scale}^2)`
-        setting ``length_scale`` to :math:\sqrt{0.5}`, we have tensor-product kernel
-        :math:`k((x_1, y_1),(x_2, y_2)) = \exp(-||x_1-x_2||^2)\exp(-||y_1-y_2||^2) and:
-
-        .. math::
-
-            z^T = [\frac{1 + e^{-5} + e^{-13}}{3}, \frac{1 + e^{-2} + e^{-13}}{3}]
-
-            K = [1, e^{-13}; e^{-13}, 1]
-
-        Therefore
-
-        .. math::
-
-            K^{-1} = \frac{1}{1 - e^{-26}}[1, -e^{-13}; -e^{-13}, 1]
-            \approx [1, -e^{-13}; -e^{-13}, 1]
-
-        and it follows that
-
-        .. math::
-
-            w = [\frac{1 + e^{-5} + e^{-13}}{3} - \frac{1 + e^{-2} + e^{-13}}{3e^{13},
-            \frac{1 + e^{-2} + e^{-13}}{3} -\frac{1 + e^{-5} + e^{-13}}{3e^{13}} ]
-        """
-        # Setup data
-        x_1 = jnp.array([[0], [1], [2]])
-        y_1 = jnp.array([[1], [3], [4]])
-        dataset = as_supervised_data((x_1, y_1))
-
-        x_2 = jnp.array([[0], [2]])
-        y_2 = jnp.array([[1], [4]])
-        coreset = as_supervised_data((x_2, y_2))
-
-        expected_output = jnp.asarray(
-            [
-                (1 + jnp.exp(-5) + jnp.exp(-13)) / 3
-                - (1 + jnp.exp(-2) + jnp.exp(-13)) / (3 * jnp.exp(13)),
-                (1 + jnp.exp(-2) + jnp.exp(-13)) / 3
-                - (1 + jnp.exp(-5) + jnp.exp(-13)) / (3 * jnp.exp(13)),
-            ]
-        )
-
-        optimiser = JointSBQWeightsOptimiser(
-            feature_kernel=SquaredExponentialKernel(1 / np.sqrt(2)),
-            response_kernel=SquaredExponentialKernel(1 / np.sqrt(2)),
-        )
-
-        # Solve for the weights
-        output = optimiser.solve(dataset, coreset)
-
-        assert output == pytest.approx(expected_output, abs=1e-3)
-
-
-class TestJointMMDWeightsOptimiser(BaseWeightsOptimiserTest[_SupervisedData]):
-    """
-    Tests related to :meth:`~coreax.weights.JointMMDWeightsOptimiser`.
-    """
-
-    @override
-    @pytest.fixture(scope="class")
-    def problem(self) -> _Problem:
-        # Set up optimiser and target metric
-        feature_kernel = SquaredExponentialKernel()
-        response_kernel = SquaredExponentialKernel()
-        optimiser = JointMMDWeightsOptimiser(feature_kernel, response_kernel)
-        target_metric = JMMD(feature_kernel, response_kernel)
-
-        # Generate supervised dataset
-        data_key, supervision_key = jr.split(self.random_key, 2)
-        data = jr.normal(data_key, self.data_shape)
-        supervision = jr.normal(supervision_key, self.data_shape)
-
-        # Initialise coreset ready for testing
-        pre_coreset_data = SupervisedData(data, supervision)
-        coreset_indices = Data(
-            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
-        )
-        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
-
-        return _Problem(coreset, optimiser, target_metric)
-
-    def test_analytic_case(self) -> None:
-        r"""
-        Test calculation of weights via the simplex method for quadratic programming.
-
-        :meth:`~JointMMDWeightsOptimiser.solve` solves the equation:
-
-        .. math::
-
-            0.5 \mathbf{w}^{\mathrm{T}} \mathbf{K} \mathbf{w}
-            + \mathbf{z}^{\mathrm{T}} \mathbf{w} = 0
-
-        subject to
-
-        .. math::
-
-            \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gw} \le 0.
-
-        Here, :math:`z` is the row-mean of the kernel matrix
-        :math:`k((x_c, y_c), (x, y))`, i.e., the mean in the :math:`(x, y)` direction.
-        The matrix :math:`K = k((x_c, y_c), (x_c, y_c))`.
-
-        The constraints (see :func:`~coreax.util.solve_qp()`), are imposed with
-        :math:`\mathbf{A}=1` and :math:`\mathbf{G}=-I`, ensuring the weights sum to 1
-        and are non-negative, respectively.
-
-        For the simple dataset of 3 pairs in 1D :math:`(x, y)`, with coreset
-        :math:`(x_c, y_c)`, given by:
-
-        .. math::
-
-            x = [[0], [1], [2]]
-            y = [[1], [3], [4]]
-
-            x_c = [[0], [2]]
-            y_c = [[1], [4]]
-
-        Choosing SquaredExponentialKernels for both the feature kernel and response
-        kernel, :math:`f(x_1,x_2) = \exp (-||x_1-x_2||^2/2\text{length_scale}^2)`,
-        and :math:`r(y_1,y_2) = \exp (-||y_1-y_2||^2/2\text{length_scale}^2)`
-        setting ``length_scale`` to :math:\sqrt{0.5}`, we have tensor-product kernel
-        :math:`k((x_1, y_1),(x_2, y_2)) = \exp(-||x_1-x_2||^2)\exp(-||y_1-y_2||^2) and:
-
-        .. math::
-
-            z^T = [\frac{1 + e^{-5} + e^{-13}}{3}, \frac{1 + e^{-2} + e^{-13}}{3}]
-
-            K = [1, e^{-13}; e^{-13}, 1]
-
-        It follows that
-
-        .. math::
-
-            w_1 = \frac{1 - e^{-13} + \frac{1}{3}(e^{-5} - e^{-2})}{2(1-e^{-13})}
-
-            w_2 = 1 - w_1
-        """
-        # Setup data
-        x_1 = jnp.array([[0], [1], [2]])
-        y_1 = jnp.array([[1], [3], [4]])
-        dataset = as_supervised_data((x_1, y_1))
-
-        x_2 = jnp.array([[0], [2]])
-        y_2 = jnp.array([[1], [4]])
-        coreset = as_supervised_data((x_2, y_2))
-
-        w1 = (1 - jnp.exp(-13) - (1 / 3) * (jnp.exp(-2) - jnp.exp(-5))) / (
-            2 * (1 - jnp.exp(-13))
-        )
-        w2 = 1 - w1
-        expected_output = jnp.asarray([w1, w2])
-
-        optimiser = JointMMDWeightsOptimiser(
-            feature_kernel=SquaredExponentialKernel(1 / np.sqrt(2)),
-            response_kernel=SquaredExponentialKernel(1 / np.sqrt(2)),
-        )
-
-        # Solve for the weights
-        output = optimiser.solve(dataset, coreset)
-
-        assert output == pytest.approx(expected_output, abs=1e-3)
-
-
 class TestPrivateFunctions:
     """
     Tests for the private functions `solve_qp` and `prepare_kernel_system`.
@@ -550,8 +334,3 @@ class TestPrivateFunctions:
             _prepare_kernel_system(
                 kernel=kernel, dataset=supervised_data, coreset=supervised_data
             )
-
-        data = Data(x, x)
-        tensor_kernel = TensorProductKernel(kernel, kernel)
-        with pytest.raises(ValueError, match=INVALID_KERNEL_DATA_COMBINATION):
-            _prepare_kernel_system(kernel=tensor_kernel, dataset=data, coreset=data)

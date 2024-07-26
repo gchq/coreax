@@ -43,5 +43,4 @@ sigmas
 supp
 TLDR
 typecheck
-WJMMD
 WMMD
