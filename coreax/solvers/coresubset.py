@@ -47,6 +47,10 @@ _Data = TypeVar("_Data", bound=Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
 
 
+class SizeWarning(Warning):
+    """Custom warning to be raised when some parameter shape is too large."""
+
+
 class HerdingState(eqx.Module):
     """
     Intermediate :class:`KernelHerding` solver state information.
@@ -492,7 +496,7 @@ def _greedy_kernel_inducing_points_loss(
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
 
-    Primarily intended for use with :class`GreedyKernelInducingPoints.
+    Primarily intended for use with :class:`GreedyKernelInducingPoints`.
 
     :param candidate_coresets: Array of indices representing all possible "next"
         coresets
@@ -500,11 +504,15 @@ def _greedy_kernel_inducing_points_loss(
     :param feature_gramian: Feature kernel gramian
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
-    :param identity: identity matrix
+    :param identity: Identity array used to regularise the feature gramians
+        corresponding to each coreset. For :meth:`GreedyKernelInductionPoints.reduce`
+        this array is a matrix of zeros except for ones on the diagonal up to the
+        current size of the coreset. For :meth:`GreedyKernelInductionPoints.refine` this
+        array is a standard identity array.
     :param least_squares_solver: Instance of
         :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
 
-    :return: GreedyKernelInducingPoints loss for each candidate coreset
+    :return: :class`GreedyKernelInducingPoints` loss for each candidate coreset
     """
     # Extract all the possible "next" coreset feature gramians, cross feature gramians
     # and coreset response vectors.
@@ -534,16 +542,16 @@ class GreedyKernelInducingPoints(
     ExplicitSizeSolver,
 ):
     r"""
-    Apply GreedyKernelInducingPoints to a supervised dataset.
+    Apply `GreedyKernelInducingPoints` to a supervised dataset.
 
-    GreedyKernelInducingPoints is a deterministic, iterative and greedy approach to
+    `GreedyKernelInducingPoints` is a deterministic, iterative and greedy approach to
     build a coreset.
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
-    of ``n`` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and one
-    has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+    of :math:`n` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and
+    one has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
     \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
-    dataset, GreedyKernelInducingPoints selects the next point to minimise the loss
+    dataset, `GreedyKernelInducingPoints` selects the next point to minimise the loss
 
     .. math::
 
@@ -552,29 +560,29 @@ class GreedyKernelInducingPoints(
 
     where :math:`y^{(1)}\in\mathbb{R}^n` is the vector of responses from
     :math:`\mathcal{D}^{(1)}`, :math:`y^{(2)}\in\mathbb{R}^n` is the vector of responses
-    from :math:`\mathcal{D}^{(2)}`,  :math:`K^{(12)} \in \mathbb{R}^{n\times m}`is the
+    from :math:`\mathcal{D}^{(2)}`,  :math:`K^{(12)} \in \mathbb{R}^{n\times m}` is the
     cross-matrix of kernel evaluations between :math:`\mathcal{D}^{(1)}` and
     :math:`\mathcal{D}^{(2)}`, :math:`K^{(22)} \in \mathbb{R}^{m\times m}` is the
     kernel matrix on :math:`\mathcal{D}^{(2)}`,
-    :math:`\lambda I_m \in \mathbb{R}^{m \times m}`is the identity matrix and
+    :math:`\lambda I_m \in \mathbb{R}^{m \times m}` is the identity matrix and
     :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation parameter.
 
-    The search is performed over the entire dataset.
-
     This class works with all children of :class:`~coreax.kernel.Kernel`. Note that
-    GreedyKernelInducingPoints does not support non-uniform weights and will only return
-    coresubsets with uniform weights.
+    `GreedyKernelInducingPoints` does not support non-uniform weights and will only
+    return coresubsets with uniform weights.
 
     :param random_key: Key for random number generation
     :param feature_kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
         function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
         on the feature space
     :param regularisation_parameter: Regularisation parameter for stable inversion of
-        feature gram matrix
-    :param unique: Boolean that enforces the resulting coreset will only contain
-        unique elements
+        the feature Gramian
+    :param unique: If :data:`False`, the resulting coresubset may contain the same point
+        multiple times. If :data:`True` (default), the resulting coresubset will not
+        contain any duplicate points
     :param batch_size: An integer representing the size of the batches of data pairs
-        sampled at each iteration for consideration for adding to the coreset
+        sampled at each iteration for consideration for adding to the coreset. If
+        :data:`None` (default), the search is performed over the entire dataset
     :param least_squares_solver: Instance of
         :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
         :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
@@ -584,7 +592,7 @@ class GreedyKernelInducingPoints(
     feature_kernel: Kernel
     regularisation_parameter: float = 1e-6
     unique: bool = True
-    batch_size: Union[int, None] = None
+    batch_size: Optional[int] = None
     least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
 
     @override
@@ -634,7 +642,7 @@ class GreedyKernelInducingPoints(
             warn(
                 "Requested coreset size is smaller than input 'coresubset', clipping"
                 + " to the correct size and proceeding...",
-                Warning,
+                SizeWarning,
                 stacklevel=2,
             )
             coreset_indices = coresubset.unweighted_indices[: self.coreset_size]
@@ -746,6 +754,3 @@ class GreedyKernelInducingPoints(
         return Coresubset(
             updated_coreset_indices, dataset
         ), GreedyKernelInducingPointsState(padded_feature_gramian)
-
-
-# pylint: enable=too-many-locals

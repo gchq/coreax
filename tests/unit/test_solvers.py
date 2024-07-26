@@ -56,13 +56,7 @@ from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
 class _ReduceProblem(NamedTuple):
-    dataset: Data
-    solver: Solver
-    expected_coreset: Optional[Coreset] = None
-
-
-class _SupervisedReduceProblem(NamedTuple):
-    dataset: SupervisedData
+    dataset: Union[Data, SupervisedData]
     solver: Solver
     expected_coreset: Optional[Coreset] = None
 
@@ -459,7 +453,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
-    ) -> _SupervisedReduceProblem:
+    ) -> _ReduceProblem:
         if request.param == "random":
             data_key, supervision_key = jr.split(self.random_key)
             data = jr.uniform(data_key, self.shape)
@@ -468,9 +462,20 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
             expected_coreset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        return _SupervisedReduceProblem(
+        return _ReduceProblem(
             SupervisedData(data=data, supervision=supervision), solver, expected_coreset
         )
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        """Check functionality of 'unique' in addition to the default checks."""
+        super().check_solution_invariants(coreset, problem)
+        solver = cast(GreedyKernelInducingPoints, problem.solver)
+        if solver.unique:
+            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            assert max(counts) <= 1
 
     @pytest.fixture(
         params=[
@@ -527,7 +532,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     def test_greedy_kernel_inducing_point_state(
-        self, reduce_problem: _SupervisedReduceProblem
+        self, reduce_problem: _ReduceProblem
     ) -> None:
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
@@ -540,7 +545,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         )
         assert eqx.tree_equal(state, expected_state)
 
-    def test_non_uniqueness(self, reduce_problem: _SupervisedReduceProblem) -> None:
+    def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
         """Test that setting `unique` to be false produces no errors."""
         dataset, _, _ = reduce_problem
         solver = GreedyKernelInducingPoints(
@@ -551,9 +556,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         )
         solver.reduce(dataset)
 
-    def test_approximate_inverse(
-        self, reduce_problem: _SupervisedReduceProblem
-    ) -> None:
+    def test_approximate_inverse(self, reduce_problem: _ReduceProblem) -> None:
         """Test that using an approximate least squares solver produces no errors."""
         dataset, _, _ = reduce_problem
         solver = GreedyKernelInducingPoints(
@@ -564,9 +567,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         )
         solver.reduce(dataset)
 
-    def test_batch_size_not_none(
-        self, reduce_problem: _SupervisedReduceProblem
-    ) -> None:
+    def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
         """Test that setting a not `None` `batch_size` produces no errors."""
         dataset, _, _ = reduce_problem
         solver = GreedyKernelInducingPoints(
