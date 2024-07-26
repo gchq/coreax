@@ -50,7 +50,7 @@ _Data = TypeVar("_Data", bound=Data)
 INVALID_KERNEL_DATA_COMBINATION = (
     "Invalid combination of 'kernel' and 'dataset' or 'coreset'; if solving weights for"
     + " unsupervised 'Data', one must pass child of 'Kernel'. 'SupervisedData' is not"
-    + " currently supported."
+    + " currently supported by any implemented solvers."
 )
 
 
