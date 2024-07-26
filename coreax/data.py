@@ -36,16 +36,18 @@ def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
     :param arrays: Singular array or list of arrays
     :return: 2-dimensional array or list of 2-dimensional arrays
     """
-    as_arrays = [jnp.asarray(array, copy=False) for array in arrays]
-    two_dimensional_arrays = [
+    if len(arrays) == 1:
+        array = jnp.asarray(arrays[0], copy=False)
+        if len(array.shape) == 1:
+            return jnp.expand_dims(array, 1)
+        return jnp.array(array, copy=False, ndmin=2)
+    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
+    return [
         jnp.expand_dims(array, 1)
         if len(array.shape) == 1
         else jnp.array(array, copy=False, ndmin=2)
-        for array in as_arrays
+        for array in _arrays
     ]
-    if len(two_dimensional_arrays) == 1:
-        return two_dimensional_arrays[0]
-    return two_dimensional_arrays
 
 
 class Data(eqx.Module):
@@ -159,13 +161,3 @@ def as_data(x: Any) -> Data:
 def is_data(x: Any) -> bool:
     """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
     return isinstance(x, Data)
-
-
-def as_supervised_data(a: Any) -> SupervisedData:
-    """Cast a to a `SupervisedData` instance."""
-    return a if isinstance(a, SupervisedData) else SupervisedData(*a)
-
-
-def is_supervised_data(a: Any) -> bool:
-    """Return boolean checking if 'a' is an instance of 'coreax.data.SupervisedData'."""
-    return isinstance(a, SupervisedData)

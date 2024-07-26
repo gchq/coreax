@@ -9,26 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
-- Added Conditional Maximum Mean Discrepancy (CMMD) metric in `coreax.metrics.CMMD`
-- Added coresubset algorithm to target CMMD `coreax.solvers.coresubset.ConditionalKernelHerding`
-- Added capability to take tensor products of kernels in `coreax.kernel.TensorProductKernel`
-- Added Joint Maximum Mean Discrepancy (JMMD) metric in `coreax.metrics.JMMD`
-- Added coresubset algorithms targeting the joint density in `coreax.solvers.coresubset.JointRPCholesky`
-and `coreax.solvers.coresubset.JointKernelHerding`
-- Added weight solvers for joint distribution coreset methods in `coreax.weights.JointSBQWeightsOptimiser`
-and `coreax.weights.JointMMDWeightsOptimiser`
+
 
 ### Fixed
 
 
 
 ### Changed
-- Refactored `coreax.weights.py` to be generic on `coreax.data.Data`/`coreax.data.SupervisedData`
-type and expanded testing of weight solvers to include verifying they reduce their target
 - Refactored `coreax.inverses.py` functionality into `coreax.least_squares.py`:
   - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`
   - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`
   - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`
+
+
 
 ### Removed
 

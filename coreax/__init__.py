@@ -37,11 +37,10 @@ from coreax.kernel import (
     CompositeKernel,
     Kernel,
     LaplacianKernel,
-    PairedKernel,
     PCIMQKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.metrics import CMMD, JMMD, KSD, MMD
+from coreax.metrics import KSD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 # pylint: enable=unused-import

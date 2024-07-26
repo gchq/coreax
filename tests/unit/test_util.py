@@ -26,7 +26,6 @@ import equinox as eqx
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax import Array
 from jax.random import key
 from scipy.stats import ortho_group
 
@@ -36,8 +35,8 @@ from coreax.util import (
     difference,
     jit_test,
     pairwise,
-    pairwise_tuple,
     sample_batch_indices,
+    solve_qp,
     squared_distance,
     tree_leaves_repeat,
     tree_zero_pad_leading_axis,
@@ -84,28 +83,6 @@ class TestUtil:
         y_array = generator.random((num_points_y, dimension))
         expected_output = np.array([[x - y for y in y_array] for x in x_array])
         output = pairwise(difference)(x_array, y_array)
-        assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
-
-    def test_pairwise_tuple(self) -> None:
-        """Test the pairwise_tuple transform on an arbitrary function taking tuples."""
-        num_points = 10
-        dimension = 3
-        gen = np.random.default_rng(1_989)
-        data = jnp.array(gen.random((num_points, dimension)))
-        supervision = jnp.array(gen.random((num_points, dimension)))
-        a = (data, supervision)
-        b = (data[::-1], supervision[::-1])
-
-        def tuple_fn(a: tuple[Array, Array], b: tuple[Array, Array]) -> Array:
-            return jnp.array((a[0] - b[0]) * (a[1] - b[1])).sum()
-
-        expected_output = jnp.zeros((num_points, num_points))
-        for i in range(num_points):
-            for j in range(num_points):
-                expected_output = expected_output.at[i, j].set(
-                    tuple_fn((a[0][i], a[1][i]), (b[0][j], b[1][j]))
-                )
-        output = pairwise_tuple(tuple_fn)(a, b)
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 
     @pytest.mark.parametrize(
@@ -179,6 +156,38 @@ class TestUtil:
             x=value, precision_threshold=threshold
         )
         assert func_out == expected
+
+    def test_solve_qp_invalid_kernel_mm(self) -> None:
+        """
+        Test how solve_qp handles invalid inputs of kernel_mm.
+
+        The output of solve_qp is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
+        """
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
+                kernel_mm="invalid_kernel_mm",
+                gramian_row_mean=np.array([1, 2, 3]),
+            )
+
+    def test_solve_qp_invalid_gramian_row_mean(self) -> None:
+        """
+        Test how solve_qp handles invalid inputs of gramian_row_mean.
+
+        The output of solve_qp is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
+        """
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
+                kernel_mm=np.array([1, 2, 3]),
+                gramian_row_mean="invalid_gramian_row_mean",
+            )
 
     @pytest.mark.parametrize(
         "max_index, batch_size, num_batches",

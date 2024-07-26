@@ -4,8 +4,6 @@ approximator
 approximators
 archiveprefix
 cand
-cmes
-CMMD
 coreax
 coreset
 coresets
@@ -21,8 +19,6 @@ GCHQ
 Gramian
 gramians
 infty
-JMMD
-JSBQ
 kbar
 kdtree
 kernelised
@@ -42,5 +38,4 @@ RPCHOLESKY
 sigmas
 supp
 TLDR
-typecheck
 WMMD
