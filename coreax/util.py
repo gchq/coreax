@@ -24,7 +24,8 @@ class factories and checks for numerical precision.
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar
+from math import log10
+from typing import Any, NamedTuple, Optional, Sequence, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -45,6 +46,23 @@ KeyArrayLike: TypeAlias = ArrayLike
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
+
+
+class JITCompilableFunction(NamedTuple):
+    """
+    Intended for use in :func:`speed_comparison_test`.
+
+    :param fn: JIT-compilable function callable to test
+    :param fn_args: Arguments passed during the calls to the passed function
+    :param fn_kwargs: Keyword arguments passed during the calls to the passed function
+    :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function.
+    """
+
+    fn: Callable
+    fn_args: tuple = ()
+    fn_kwargs: Optional[dict] = None
+    jit_kwargs: Optional[dict] = None
 
 
 class InvalidKernel:
@@ -285,7 +303,7 @@ def jit_test(
     The function is called with supplied arguments twice, and timed for each run. These
     timings are returned in a 2-tuple.
 
-    :param fn: Function callable to test
+    :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
@@ -308,11 +326,85 @@ def jit_test(
     block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.time()
     pre_delta = end_time - start_time
+
     start_time = time.time()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.time()
     post_delta = end_time - start_time
+
     return pre_delta, post_delta
+
+
+def _format_number(num: float) -> str:
+    """Standardise the format of the input number."""
+    if num == 0:
+        return "0 s"
+    order = log10(num)
+    if order >= 2:  # noqa: PLR2004
+        scaled_num = num / 60
+        order = "mins"
+    elif 0 <= order < 2:  # noqa: PLR2004
+        scaled_num = num
+        order = "s"
+    elif -3 <= order < 0:  # noqa: PLR2004
+        scaled_num = 1e3 * num
+        order = "ms"
+    elif -6 <= order < -3:  # noqa: PLR2004
+        scaled_num = 1e6 * num
+        order = "\u03bcs"
+    elif -9 <= order < -6:  # noqa: PLR2004
+        scaled_num = 1e9 * num
+        order = "ns"
+    else:
+        scaled_num = 1e12 * num
+        order = "ps"
+
+    return f"{round(scaled_num, 2)} {order}"
+
+
+def speed_comparison_test(
+    function_setups: Sequence[JITCompilableFunction],
+    num_runs: int = 10,
+    print_results: bool = True,
+) -> Sequence[tuple[Array, Array]]:
+    """
+    Compare compilation time and runtime of a list of JIT-able functions.
+
+    :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
+    :param num_runs: Number of times to average function timings over
+    :print_results: If :data:`True`, the results are formatted and printed
+    :return: Mean and standard deviation of compilation time and runtime for each
+        function as a list of tuples
+    """
+    num_functions = len(function_setups)
+    timings_dict = {}
+    results = []
+    for i in range(num_functions):
+        timings = jnp.zeros((num_runs, 2))
+        for j in range(num_runs):
+            timings = timings.at[j, :].set(jit_test(*function_setups[i]))
+        # Compute the time just spent on compilation
+        timings_dict[f"timings_{i}"] = timings.at[:, 0].set(
+            timings[:, 0] - timings[:, 1]
+        )
+        print(timings_dict[f"timings_{i}"])
+        # Compute summary statistics
+        results.append((timings.mean(axis=0), timings.std(axis=0)))
+
+    if print_results:
+        for k in range(num_functions):
+            print(f"------------------- Function {k + 1} -------------------")
+            print(
+                "Compilation time: "
+                + f"{_format_number(results[k][0][0].item())} \u00b1 "
+                + f"{_format_number(results[k][1][0].item())}"
+            )
+            print(
+                "Run time: "
+                + f"{_format_number(results[k][0][1].item())} \u00b1 "
+                + f"{_format_number(results[k][1][1].item())}"
+            )
+    return results
 
 
 T = TypeVar("T")
