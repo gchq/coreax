@@ -106,7 +106,7 @@ def _greedy_kernel_selection(
     output_size: int,
     kernel: Kernel,
     unique: bool,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]],
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
 ) -> Coresubset[_Data]:
     """
@@ -196,7 +196,7 @@ class KernelHerding(
 
     kernel: Kernel
     unique: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
@@ -418,7 +418,7 @@ class SteinThinning(
     score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
