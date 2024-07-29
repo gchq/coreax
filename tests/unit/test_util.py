@@ -24,12 +24,14 @@ from unittest.mock import Mock
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import pytest
 from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
+    JITCompilableFunction,
     SilentTQDM,
     apply_negative_precision_threshold,
     difference,
@@ -37,6 +39,7 @@ from coreax.util import (
     pairwise,
     sample_batch_indices,
     solve_qp,
+    speed_comparison_test,
     squared_distance,
     tree_leaves_repeat,
     tree_zero_pad_leading_axis,
@@ -298,6 +301,53 @@ class TestUtil:
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
         assert post_time < (pre_time - wait_time)
+
+    def test_speed_comparison_test(self) -> None:
+        """
+        Check that ``speed_comparison_test`` returns expected timings.
+
+        ``speed_comparison_test`` returns raw timings and a list of summary statistics
+        with two elements. The former includes an estimate of the mean time for JIT
+        compiling the passed function, the latter includes an estimate of the mean time
+        for executing the JIT compiled function.
+
+        In this test we check that the passed functions are compiled for each run and
+        not cached, and that a for-looped variant of a mean function takes longer to
+        compile than the in-built vectorised version.
+        """
+        trace_counter = Mock()
+        # Define a for-looped version of a mean computation, this will be very slow to
+        # compile.
+
+        def _slow_mean(a):
+            trace_counter()
+            num_points = a.shape[0]
+            total = 0
+            for i in range(num_points):
+                total += a[i]
+            return total / num_points
+
+        random_vector = jr.normal(jr.key(2_024), shape=(100,))
+
+        num_runs = 10
+        summary_stats, _ = speed_comparison_test(
+            [
+                JITCompilableFunction(_slow_mean, fn_kwargs={"a": random_vector}),
+                JITCompilableFunction(jnp.mean, fn_kwargs={"a": random_vector}),
+            ],
+            num_runs=num_runs,
+            print_results=True,
+        )
+
+        # Tracing should occur for each run of the function, not just once, thus
+        # `trace_counter` should be called num_runs times.
+        assert trace_counter.call_count == num_runs
+
+        # Assert that indeed the mean compilation time of slow_mean is slower than
+        # jnp.mean.
+        slow_mean_compilation_time = summary_stats[0][0][0]
+        fast_mean_compilation_time = summary_stats[1][0][0]
+        assert slow_mean_compilation_time > fast_mean_compilation_time
 
 
 class TestSilentTQDM:
