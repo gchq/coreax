@@ -48,7 +48,14 @@ from coreax.solvers.base import (
     RefinementSolver,
 )
 from coreax.solvers.coresubset import HerdingState, RPCholeskyState
-from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
+from coreax.util import (
+    JITCompilableFunction,
+    KeyArrayLike,
+    speed_comparison_test,
+    tree_zero_pad_leading_axis,
+)
+
+NUM_SPEED_TEST_RUNS = 5
 
 
 class _ReduceProblem(NamedTuple):
@@ -156,6 +163,14 @@ class SolverTest:
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
         self.check_solution_invariants(coreset, reduce_problem)
+
+    def test_speed(self, reduce_problem: _ReduceProblem):
+        """Store mean, std. dev. of runs of the compilation and execution time."""
+        dataset, solver, _ = reduce_problem
+        reduction_method = JITCompilableFunction(
+            solver.reduce, fn_kwargs={"dataset": dataset}
+        )
+        speed_comparison_test([reduction_method], NUM_SPEED_TEST_RUNS)
 
 
 class RefinementSolverTest(SolverTest):
