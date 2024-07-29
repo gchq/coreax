@@ -607,7 +607,7 @@ class GreedyKernelInducingPoints(
     def refine(  # noqa: PLR0915
         self,
         coresubset: Coresubset[_SupervisedData],
-        solver_state: Union[GreedyKernelInducingPointsState, None] = None,
+        solver_state: Optional[GreedyKernelInducingPointsState] = None,
     ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
         """
         Refine a coresubset with 'GreedyKernelInducingPointsState'.
