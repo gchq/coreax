@@ -296,6 +296,7 @@ def jit_test(
     fn_args: tuple = (),
     fn_kwargs: Optional[dict] = None,
     jit_kwargs: Optional[dict] = None,
+    check_hash: bool = True,
 ) -> tuple[float, float]:
     """
     Verify JIT performance by comparing timings of a before and after run of a function.
@@ -308,6 +309,8 @@ def jit_test(
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
         before being called to compile the passed function.
+    :param check_hash: If :data:`True` check that the hash of the JITted function is
+        different to the supplied function.
     :return: (First run time, Second run time)
     """
     # Avoid dangerous default values - Pylint W0102
@@ -320,7 +323,8 @@ def jit_test(
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
 
-    assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
+    if check_hash:
+        assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
 
     start_time = time.time()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
@@ -365,7 +369,8 @@ def _format_number(num: float) -> str:
 def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
-    print_results: bool = True,
+    print_results: bool = False,
+    check_hash: bool = False,
 ) -> Sequence[tuple[Array, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
@@ -373,6 +378,8 @@ def speed_comparison_test(
     :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
     :param num_runs: Number of times to average function timings over
     :print_results: If :data:`True`, the results are formatted and printed
+    :param check_hash: If :data:`True` check that the hash of the JITted functions are
+        different to the supplied functions.
     :return: Mean and standard deviation of compilation time and runtime for each
         function as a list of tuples, and a dictionary of raw timings
     """
@@ -382,7 +389,9 @@ def speed_comparison_test(
     for i in range(num_functions):
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
-            timings = timings.at[j, :].set(jit_test(*function_setups[i]))
+            timings = timings.at[j, :].set(
+                jit_test(*function_setups[i], check_hash=check_hash)
+            )
         # Compute the time just spent on compilation
         timings_dict[f"timings_{i}"] = timings.at[:, 0].set(
             timings[:, 0] - timings[:, 1]
