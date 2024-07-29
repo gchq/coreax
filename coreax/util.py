@@ -32,7 +32,6 @@ import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
-from jaxopt import OSQP
 from typing_extensions import TypeAlias, deprecated
 
 PyTreeDef: TypeAlias = Any
@@ -197,52 +196,6 @@ def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
         :math:`n \times m \times d` array
     """
     return pairwise(difference)(x, y)
-
-
-def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -> Array:
-    r"""
-    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
-
-    Solves simplex weight problems of the form:
-
-    .. math::
-
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
-        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
-
-    subject to
-
-    .. math::
-
-        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
-
-    :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
-    :return: Optimised solution for the quadratic program
-    """
-    # Setup optimisation problem - all variable names are consistent with the OSQP
-    # terminology. Begin with the objective parameters.
-    q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(gramian_row_mean)
-
-    # Define the equality constraint parameters
-    num_points = q_array.shape[0]
-    a_array = jnp.ones((1, num_points))
-    b = jnp.array([1.0])
-
-    # Define the inequality constraint parameters
-    g_array = jnp.eye(num_points) * -1.0
-    h = jnp.zeros(num_points)
-
-    # Define solver object and run solver
-    qp = OSQP(**osqp_kwargs)
-    sol = qp.run(
-        params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
-    ).params
-
-    # Ensure conditions of solution are met
-    solution = apply_negative_precision_threshold(sol.primal, jnp.inf)
-    return solution / jnp.sum(solution)
 
 
 def sample_batch_indices(
