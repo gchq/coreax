@@ -610,7 +610,7 @@ class GreedyKernelInducingPoints(
         solver_state: Optional[GreedyKernelInducingPointsState] = None,
     ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
         """
-        Refine a coresubset with 'GreedyKernelInducingPointsState'.
+        Refine a coresubset with `GreedyKernelInducingPoints`.
 
         We first compute the various factors if they are not given in the
         `solver_state`, and then iteratively swap points with the initial coreset,
