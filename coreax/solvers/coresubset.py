@@ -599,7 +599,7 @@ class GreedyKernelInducingPoints(
     def reduce(
         self,
         dataset: _SupervisedData,
-        solver_state: Union[GreedyKernelInducingPointsState, None] = None,
+        solver_state: Optional[GreedyKernelInducingPointsState] = None,
     ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
