@@ -374,7 +374,7 @@ def speed_comparison_test(
     :param num_runs: Number of times to average function timings over
     :print_results: If :data:`True`, the results are formatted and printed
     :return: Mean and standard deviation of compilation time and runtime for each
-        function as a list of tuples
+        function as a list of tuples, and a dictionary of raw timings
     """
     num_functions = len(function_setups)
     timings_dict = {}
@@ -387,7 +387,6 @@ def speed_comparison_test(
         timings_dict[f"timings_{i}"] = timings.at[:, 0].set(
             timings[:, 0] - timings[:, 1]
         )
-        print(timings_dict[f"timings_{i}"])
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
@@ -398,13 +397,15 @@ def speed_comparison_test(
                 "Compilation time: "
                 + f"{_format_number(results[k][0][0].item())} \u00b1 "
                 + f"{_format_number(results[k][1][0].item())}"
+                + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
             print(
                 "Run time: "
                 + f"{_format_number(results[k][0][1].item())} \u00b1 "
                 + f"{_format_number(results[k][1][1].item())}"
+                + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
-    return results
+    return results, timings_dict
 
 
 T = TypeVar("T")
