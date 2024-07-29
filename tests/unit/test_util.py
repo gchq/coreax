@@ -307,9 +307,9 @@ class TestUtil:
         Check that ``speed_comparison_test`` returns expected timings.
 
         ``speed_comparison_test`` returns raw timings and a list of summary statistics
-        with two elements. The former includes an estimate of the mean time for JIT
-        compiling the passed function, the latter includes an estimate of the mean time
-        for executing the JIT compiled function.
+        for each passed function. The summary statistics include an  estimate of the
+        mean time for JIT compiling the passed function, and an estimate of the mean
+        time for executing the JIT compiled function.
 
         In this test we check that the passed functions are compiled for each run and
         not cached, and that a for-looped variant of a mean function takes longer to
