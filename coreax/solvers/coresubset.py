@@ -613,7 +613,7 @@ class GreedyKernelInducingPoints(
         Refine a coresubset with 'GreedyKernelInducingPointsState'.
 
         We first compute the various factors if they are not given in the
-        'solver_state', and then iteratively swap points with the initial coreset,
+        `solver_state`, and then iteratively swap points with the initial coreset,
         selecting points which minimise the loss.
 
         :param coresubset: The coresubset to refine
