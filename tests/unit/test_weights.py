@@ -118,9 +118,10 @@ class TestSBQWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         target_metric = MMD(kernel)
 
         pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
-        coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
-
         return _Problem(coreset, optimiser, target_metric)
 
     def test_analytic_case(self) -> None:
@@ -195,7 +196,9 @@ class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         target_metric = MMD(kernel)
 
         pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
-        coreset_indices = Data(jr.choice(self.random_key, self.coreset_size))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
         coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
 
         return _Problem(coreset, optimiser, target_metric)
