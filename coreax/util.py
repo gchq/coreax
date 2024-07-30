@@ -371,7 +371,7 @@ def speed_comparison_test(
     num_runs: int = 10,
     print_results: bool = False,
     check_hash: bool = False,
-) -> Sequence[tuple[Array, Array]]:
+) -> tuple[Sequence[tuple[Array, Array]], dict]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
 
@@ -409,7 +409,7 @@ def speed_comparison_test(
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
             print(
-                "Run time: "
+                "Execution time: "
                 + f"{_format_number(results[k][0][1].item())} \u00b1 "
                 + f"{_format_number(results[k][1][1].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
