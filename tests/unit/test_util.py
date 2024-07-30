@@ -36,7 +36,6 @@ from coreax.util import (
     jit_test,
     pairwise,
     sample_batch_indices,
-    solve_qp,
     squared_distance,
     tree_leaves_repeat,
     tree_zero_pad_leading_axis,
@@ -156,38 +155,6 @@ class TestUtil:
             x=value, precision_threshold=threshold
         )
         assert func_out == expected
-
-    def test_solve_qp_invalid_kernel_mm(self) -> None:
-        """
-        Test how solve_qp handles invalid inputs of kernel_mm.
-
-        The output of solve_qp is indirectly tested when testing the various weight
-        optimisers that are used in this codebase. This test just ensures sensible
-        behaviour occurs when unexpected inputs are passed to the function.
-        """
-        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
-        # this should error as no sensible result can be found in such a case.
-        with pytest.raises(TypeError, match="not a valid JAX array type"):
-            solve_qp(
-                kernel_mm="invalid_kernel_mm",
-                gramian_row_mean=np.array([1, 2, 3]),
-            )
-
-    def test_solve_qp_invalid_gramian_row_mean(self) -> None:
-        """
-        Test how solve_qp handles invalid inputs of gramian_row_mean.
-
-        The output of solve_qp is indirectly tested when testing the various weight
-        optimisers that are used in this codebase. This test just ensures sensible
-        behaviour occurs when unexpected inputs are passed to the function.
-        """
-        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
-        # this should error as no sensible result can be found in such a case.
-        with pytest.raises(TypeError, match="not a valid JAX array type"):
-            solve_qp(
-                kernel_mm=np.array([1, 2, 3]),
-                gramian_row_mean="invalid_gramian_row_mean",
-            )
 
     @pytest.mark.parametrize(
         "max_index, batch_size, num_batches",

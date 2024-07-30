@@ -16,6 +16,7 @@
 
 from collections.abc import Callable
 from typing import Optional, TypeVar, Union
+from warnings import warn
 
 import equinox as eqx
 import jax
@@ -27,8 +28,12 @@ from jaxtyping import Array, ArrayLike
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, as_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.kernels import ScalarValuedKernel
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RegularisedLeastSquaresSolver,
+)
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 from coreax.solvers.base import (
     CoresubsetSolver,
@@ -36,9 +41,14 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
+from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
+_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
+
+
+class SizeWarning(Warning):
+    """Custom warning to be raised when some parameter shape is too large."""
 
 
 class HerdingState(eqx.Module):
@@ -61,12 +71,27 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
+class GreedyKernelPointsState(eqx.Module):
+    """
+    Intermediate :class:`GreedyKernelPoints` solver state information.
+
+    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
+        an additional row and column of zeros.
+    """
+
+    feature_gramian: Array
+
+
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
-def _initial_coresubset(coreset_size: int, dataset: _Data) -> Coresubset[_Data]:
-    """Generate a coresubset with zero valued and weighted indices."""
-    initial_coresubset_indices = Data(jnp.zeros(coreset_size, dtype=jnp.int32), 0)
+def _initial_coresubset(
+    fill_value: int, coreset_size: int, dataset: _Data
+) -> Coresubset[_Data]:
+    """Generate a coresubset with `fill_value` valued and zero-weighted indices."""
+    initial_coresubset_indices = Data(
+        jnp.full((coreset_size,), fill_value, dtype=jnp.int32), 0
+    )
     try:
         return Coresubset(initial_coresubset_indices, dataset)
     except ValueError as err:
@@ -81,7 +106,7 @@ def _greedy_kernel_selection(
     output_size: int,
     kernel: ScalarValuedKernel,
     unique: bool,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]],
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
 ) -> Coresubset[_Data]:
     """
@@ -176,7 +201,7 @@ class KernelHerding(
 
     kernel: ScalarValuedKernel
     unique: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
@@ -185,7 +210,7 @@ class KernelHerding(
         dataset: _Data,
         solver_state: Optional[HerdingState] = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
@@ -308,7 +333,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
             gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
             gramian_diagonal = solver_state.gramian_diagonal
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         coreset_indices = initial_coresubset.unweighted_indices
         num_data_points = len(x)
 
@@ -402,14 +427,14 @@ class SteinThinning(
     score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
     def reduce(
         self, dataset: _Data, solver_state: None = None
     ) -> tuple[Coresubset[_Data], None]:
-        initial_coresubset = _initial_coresubset(self.coreset_size, dataset)
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
@@ -467,3 +492,275 @@ class SteinThinning(
             self.unroll,
         )
         return refined_coreset, solver_state
+
+
+def _greedy_kernel_points_loss(
+    candidate_coresets: Array,
+    responses: Array,
+    feature_gramian: Array,
+    regularisation_parameter: float,
+    identity: Array,
+    least_squares_solver: RegularisedLeastSquaresSolver,
+) -> Array:
+    """
+    Given an array of candidate coreset indices, compute the greedy KIP loss for each.
+
+    Primarily intended for use with :class:`GreedyKernelPoints`.
+
+    :param candidate_coresets: Array of indices representing all possible "next"
+        coresets
+    :param responses: Array of responses
+    :param feature_gramian: Feature kernel gramian
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        array, negative values will be converted to positive
+    :param identity: Identity array used to regularise the feature gramians
+        corresponding to each coreset. For :meth:`GreedyKernelPoints.reduce`
+        this array is a matrix of zeros except for ones on the diagonal up to the
+        current size of the coreset. For :meth:`GreedyKernelPoints.refine` this
+        array is a standard identity array.
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
+
+    :return: :class`GreedyKernelPoints` loss for each candidate coreset
+    """
+    # Extract all the possible "next" coreset feature gramians, cross feature gramians
+    # and coreset response vectors.
+    coreset_gramians = feature_gramian[
+        (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
+    ]
+    coreset_cross_gramians = feature_gramian[candidate_coresets, :-1]
+    coreset_responses = responses[candidate_coresets]
+
+    # Solve for the kernel ridge regression coefficients for each possible coreset
+    coefficients = least_squares_solver.solve_stack(
+        arrays=coreset_gramians,
+        regularisation_parameter=regularisation_parameter,
+        targets=coreset_responses,
+        identity=identity,
+    )
+
+    # Compute the loss function, making sure that we remove the padding on the responses
+    predictions = (coreset_cross_gramians * coefficients).sum(axis=1)
+    loss = ((predictions - 2 * responses[:-1, 0]) * predictions).sum(axis=1)
+    return loss
+
+
+class GreedyKernelPoints(
+    RefinementSolver[_SupervisedData, GreedyKernelPointsState],
+    ExplicitSizeSolver,
+):
+    r"""
+    Apply `GreedyKernelPoints` to a supervised dataset.
+
+    `GreedyKernelPoints` is a deterministic, iterative and greedy approach to
+    build a coreset adapted from the inducing point method developed in
+    :cite:`nguyen2021meta`.
+
+    Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
+    of :math:`n` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and
+    one has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
+    \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
+    dataset, `GreedyKernelPoints` selects the next point to minimise the loss
+
+    .. math::
+
+        L(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||y^{(1)} -
+        K^{(12)}(K^{(22)} + \lambda I_m)^{-1}y^{(2)} ||^2_{\mathbb{R}^n}
+
+    where :math:`y^{(1)}\in\mathbb{R}^n` is the vector of responses from
+    :math:`\mathcal{D}^{(1)}`, :math:`y^{(2)}\in\mathbb{R}^n` is the vector of responses
+    from :math:`\mathcal{D}^{(2)}`,  :math:`K^{(12)} \in \mathbb{R}^{n\times m}` is the
+    cross-matrix of kernel evaluations between :math:`\mathcal{D}^{(1)}` and
+    :math:`\mathcal{D}^{(2)}`, :math:`K^{(22)} \in \mathbb{R}^{m\times m}` is the
+    kernel matrix on :math:`\mathcal{D}^{(2)}`,
+    :math:`\lambda I_m \in \mathbb{R}^{m \times m}` is the identity matrix and
+    :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation parameter.
+
+    This class works with all children of :class:`~coreax.kernels.ScalarValuedKernel`.
+    Note that `GreedyKernelPoints` does not support non-uniform weights and will only
+    return coresubsets with uniform weights.
+
+    :param random_key: Key for random number generation
+    :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the
+        feature space
+    :param regularisation_parameter: Regularisation parameter for stable inversion of
+        the feature Gramian
+    :param unique: If :data:`False`, the resulting coresubset may contain the same point
+        multiple times. If :data:`True` (default), the resulting coresubset will not
+        contain any duplicate points
+    :param batch_size: An integer representing the size of the batches of data pairs
+        sampled at each iteration for consideration for adding to the coreset. If
+        :data:`None` (default), the search is performed over the entire dataset
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
+        :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
+    """
+
+    random_key: KeyArrayLike
+    feature_kernel: ScalarValuedKernel
+    regularisation_parameter: float = 1e-6
+    unique: bool = True
+    batch_size: Optional[int] = None
+    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
+
+    @override
+    def reduce(
+        self,
+        dataset: _SupervisedData,
+        solver_state: Union[GreedyKernelPointsState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+        initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
+        return self.refine(initial_coresubset, solver_state)
+
+    def refine(  # noqa: PLR0915
+        self,
+        coresubset: Coresubset[_SupervisedData],
+        solver_state: Union[GreedyKernelPointsState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+        """
+        Refine a coresubset with 'GreedyKernelPointsState'.
+
+        We first compute the various factors if they are not given in the
+        `solver_state`, and then iteratively swap points with the initial coreset,
+        selecting points which minimise the loss.
+
+        :param coresubset: The coresubset to refine
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: A refined coresubset and relevant intermediate solver state information
+        """
+        # Handle default value of None
+        if self.least_squares_solver is None:
+            least_squares_solver = MinimalEuclideanNormSolver()
+        else:
+            least_squares_solver = self.least_squares_solver
+
+        # If the initialisation coresubset is too small, pad its nodes up to
+        # 'output_size' with -1 valued indices. If it is too large, raise a warning and
+        # clip off the indices at the end.
+        if self.coreset_size > len(coresubset):
+            pad_size = max(0, self.coreset_size - len(coresubset))
+            coreset_indices = jnp.hstack(
+                (
+                    coresubset.unweighted_indices,
+                    -1 * jnp.ones(pad_size, dtype=jnp.int32),
+                )
+            )
+        elif self.coreset_size < len(coresubset):
+            warn(
+                "Requested coreset size is smaller than input 'coresubset', clipping"
+                + " to the correct size and proceeding...",
+                SizeWarning,
+                stacklevel=2,
+            )
+            coreset_indices = coresubset.unweighted_indices[: self.coreset_size]
+        else:
+            coreset_indices = coresubset.unweighted_indices
+
+        # Extract features and responses
+        dataset = coresubset.pre_coreset_data
+        num_data_pairs = len(dataset)
+        x, y = dataset.data, dataset.supervision
+
+        # Pad the response array with an additional zero to allow us to
+        # extract sub-arrays and fill in elements with zeros simultaneously.
+        padded_responses = jnp.vstack((y, jnp.array([[0]])))
+
+        if solver_state is None:
+            # Pad the gramian with zeros in an additional column and row
+            padded_feature_gramian = jnp.pad(
+                self.feature_kernel.compute(x, x), [(0, 1)], mode="constant"
+            )
+        else:
+            padded_feature_gramian = solver_state.feature_gramian
+
+        # Sample the indices to be considered at each iteration ahead of time.
+        if self.batch_size is not None and self.batch_size < num_data_pairs:
+            batch_size = self.batch_size
+        else:
+            batch_size = num_data_pairs
+        batch_indices = sample_batch_indices(
+            random_key=self.random_key,
+            max_index=num_data_pairs,
+            batch_size=batch_size,
+            num_batches=self.coreset_size,
+        )
+
+        # Initialise an array that will let us extract arrays corresponding to every
+        # possible candidate coreset.
+        initial_candidate_coresets = (
+            jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[0, :])
+        )
+
+        # Adaptively initialise an "identity matrix". For reduction we need this to
+        # be a zeros matrix which we will iteratively add ones to on the diagonal. While
+        # for refinement we need an actual identity matrix.
+        identity_helper = jnp.hstack((jnp.ones(num_data_pairs), jnp.array([0])))
+        identity = jnp.diag(identity_helper[coreset_indices])
+
+        def _greedy_body(
+            i: int, val: tuple[Array, Array, Array]
+        ) -> tuple[Array, Array, Array]:
+            """Execute main loop of GreedyKernelPoints."""
+            coreset_indices, identity, candidate_coresets = val
+
+            # Update the identity matrix to allow for sub-array inversion in the
+            # case of reduction (no effect when refining).
+            updated_identity = identity.at[i, i].set(1)
+
+            # Compute the loss corresponding to each candidate coreset. Note that we do
+            # not compute the first term as it is an invariant quantity wrt the coreset.
+            loss = _greedy_kernel_points_loss(
+                candidate_coresets,
+                padded_responses,
+                padded_feature_gramian,
+                self.regularisation_parameter,
+                updated_identity,
+                least_squares_solver,
+            )
+
+            # Find the optimal replacement coreset index, ensuring we don't pick an
+            # already chosen point if we want the indices to be unique. Note we
+            # must set the ith index to -1 for refinement purposes, as we are happy for
+            # the current index to be retained if it is the best.
+            if self.unique:
+                already_chosen_indices_mask = jnp.isin(
+                    candidate_coresets[:, i],
+                    coreset_indices.at[i].set(-1),
+                )
+                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+            index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
+
+            # Repeat the chosen coreset index into the ith column of the array of
+            # candidate coreset indices. Replace the (i+1)th column with the next batch
+            # of possible coreset indices.
+            updated_candidate_coresets = (
+                candidate_coresets.at[:, i]
+                .set(index_to_include_in_coreset)
+                .at[:, i + 1]
+                .set(batch_indices[i + 1, :])
+            )
+
+            # Add the chosen coreset index to the current coreset indices
+            updated_coreset_indices = coreset_indices.at[i].set(
+                index_to_include_in_coreset
+            )
+            return updated_coreset_indices, updated_identity, updated_candidate_coresets
+
+        # Greedily refine coreset points
+        updated_coreset_indices, _, _ = jax.lax.fori_loop(
+            lower=0,
+            upper=self.coreset_size,
+            body_fun=_greedy_body,
+            init_val=(
+                coreset_indices,
+                identity,
+                initial_candidate_coresets,
+            ),
+        )
+
+        return Coresubset(updated_coreset_indices, dataset), GreedyKernelPointsState(
+            padded_feature_gramian
+        )
