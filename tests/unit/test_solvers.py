@@ -32,13 +32,18 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
-from coreax.kernel import Kernel, PCIMQKernel
+from coreax.data import Data, SupervisedData
+from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
+from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
+    GreedyKernelPoints,
+    GreedyKernelPointsState,
+    HerdingState,
     KernelHerding,
     MapReduce,
     RandomSample,
     RPCholesky,
+    RPCholeskyState,
     Solver,
     SteinThinning,
 )
@@ -47,12 +52,11 @@ from coreax.solvers.base import (
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.solvers.coresubset import HerdingState, RPCholeskyState
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
 class _ReduceProblem(NamedTuple):
-    dataset: Data
+    dataset: Union[Data, SupervisedData]
     solver: Solver
     expected_coreset: Optional[Coreset] = None
 
@@ -426,6 +430,153 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
+
+
+class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelPoints`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        feature_kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            GreedyKernelPoints,
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=feature_kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _ReduceProblem:
+        if request.param == "random":
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, (self.shape[0], 1))
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _ReduceProblem(
+            SupervisedData(data=data, supervision=supervision), solver, expected_coreset
+        )
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        """Check functionality of 'unique' in addition to the default checks."""
+        super().check_solution_invariants(coreset, problem)
+        solver = cast(GreedyKernelPoints, problem.solver)
+        if solver.unique:
+            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            assert max(counts) <= 1
+
+    @pytest.fixture(
+        params=[
+            "well-sized",
+            "under-sized",
+            "over-sized",
+            "random-unweighted",
+            "random-weighted",
+        ],
+        scope="class",
+    )
+    def refine_problem(
+        self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
+    ) -> _RefineProblem:
+        """
+        Pytest fixture that returns a problem dataset and the expected coreset.
+
+        An expected coreset of 'None' implies the expected coreset for this solver and
+        dataset combination is unknown.
+
+        We expect the '{well,under,over}-sized' cases to return the same result as a
+        call to 'reduce'. The 'random-unweighted' and 'random-weighted' case we only
+        expect to pass without raising an error.
+        """
+        dataset, solver, expected_coreset = reduce_problem
+        indices_key, weights_key = jr.split(self.random_key)
+        solver = cast(GreedyKernelPoints, solver)
+        coreset_size = min(len(dataset), solver.coreset_size)
+        # We expect 'refine' to produce the same result as 'reduce' when the initial
+        # coresubset has all its indices equal to negative one.
+        expected_coresubset = None
+        if expected_coreset is None:
+            expected_coresubset, _ = solver.reduce(dataset)
+        elif isinstance(expected_coreset, Coresubset):
+            expected_coresubset = expected_coreset
+        if request.param == "well-sized":
+            indices = Data(-1 * jnp.ones(coreset_size, jnp.int32))
+        elif request.param == "under-sized":
+            indices = Data(-1 * jnp.ones(coreset_size - 1, jnp.int32))
+        elif request.param == "over-sized":
+            indices = Data(-1 * jnp.ones(coreset_size + 1, jnp.int32))
+        elif request.param == "random-unweighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            indices = Data(random_indices)
+            expected_coresubset = None
+        elif request.param == "random-weighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            random_weights = jr.uniform(weights_key, (coreset_size,))
+            indices = Data(random_indices, random_weights)
+            expected_coresubset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        initial_coresubset = Coresubset(indices, dataset)
+        return _RefineProblem(initial_coresubset, solver, expected_coresubset)
+
+    def test_greedy_kernel_inducing_point_state(
+        self, reduce_problem: _ReduceProblem
+    ) -> None:
+        """Check that the cached herding state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(GreedyKernelPoints, solver)
+        _, state = solver.reduce(dataset)
+
+        x = dataset.data
+        expected_state = GreedyKernelPointsState(
+            jnp.pad(solver.feature_kernel.compute(x, x), [(0, 1)], mode="constant")
+        )
+        assert eqx.tree_equal(state, expected_state)
+
+    def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            unique=False,
+        )
+        solver.reduce(dataset)
+
+    def test_approximate_inverse(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that using an approximate least squares solver produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            least_squares_solver=RandomisedEigendecompositionSolver(self.random_key),
+        )
+        solver.reduce(dataset)
+
+    def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting a not `None` `batch_size` produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            batch_size=10,
+        )
+        solver.reduce(dataset)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
