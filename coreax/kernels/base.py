@@ -25,7 +25,8 @@ points, we can reconstruct the underlying data generating distribution through s
 of the data with kernels.
 
 Some kernels are parameterizable and may represent other well known kernels when given
-appropriate parameter values. For example, the :class:`SquaredExponentialKernel`,
+appropriate parameter values. For example, the
+:class:`~coreax.kernels.SquaredExponentialKernel`,
 
 .. math::
 
