@@ -32,7 +32,7 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
+from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel
 from coreax.solvers import (
     KernelHerding,
@@ -51,6 +51,7 @@ from coreax.solvers.coresubset import HerdingState, RPCholeskyState
 from coreax.util import (
     JITCompilableFunction,
     KeyArrayLike,
+    _format_number,  # noqa:PLC2701
     speed_comparison_test,
     tree_zero_pad_leading_axis,
 )
@@ -170,7 +171,25 @@ class SolverTest:
         reduction_method = JITCompilableFunction(
             solver.reduce, fn_kwargs={"dataset": dataset}
         )
-        speed_comparison_test([reduction_method], NUM_SPEED_TEST_RUNS)
+        results, _ = speed_comparison_test([reduction_method], NUM_SPEED_TEST_RUNS)
+        results = results[0]
+        # dataset shape, solver args, compilation time, runtime
+        result_dict = {}
+        result_dict["Name"] = solver.__class__.__name__
+        result_dict["Attributes"] = solver.__dict__
+        result_dict["Data shape"] = dataset.data.shape
+        if isinstance(dataset, SupervisedData):
+            result_dict["Supervision shape"] = dataset.supervision.shape
+        result_dict["Compilation time"] = (
+            f"{_format_number(results[0][0].item())} \u00b1 "
+            + f"{_format_number(results[1][0].item())}"
+            + f" per run (mean ± std. dev. of {NUM_SPEED_TEST_RUNS} runs)"
+        )
+        result_dict["Execution time"] = (
+            f"{_format_number(results[0][1].item())} \u00b1 "
+            + f"{_format_number(results[1][1].item())}"
+            + f" per run (mean ± std. dev. of {NUM_SPEED_TEST_RUNS} runs)"
+        )
 
 
 class RefinementSolverTest(SolverTest):
