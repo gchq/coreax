@@ -36,8 +36,8 @@ from coreax.data import Data, SupervisedData
 from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
-    GreedyKernelInducingPoints,
-    GreedyKernelInducingPointsState,
+    GreedyKernelPoints,
+    GreedyKernelPointsState,
     HerdingState,
     KernelHerding,
     MapReduce,
@@ -432,8 +432,8 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
 
 
-class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTest):
-    """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelInducingPoints`."""
+class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelPoints`."""
 
     @override
     @pytest.fixture(scope="class")
@@ -441,7 +441,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         feature_kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
-            GreedyKernelInducingPoints,
+            GreedyKernelPoints,
             random_key=self.random_key,
             coreset_size=coreset_size,
             feature_kernel=feature_kernel,
@@ -472,7 +472,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
-        solver = cast(GreedyKernelInducingPoints, problem.solver)
+        solver = cast(GreedyKernelPoints, problem.solver)
         if solver.unique:
             _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
             assert max(counts) <= 1
@@ -502,7 +502,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
         """
         dataset, solver, expected_coreset = reduce_problem
         indices_key, weights_key = jr.split(self.random_key)
-        solver = cast(GreedyKernelInducingPoints, solver)
+        solver = cast(GreedyKernelPoints, solver)
         coreset_size = min(len(dataset), solver.coreset_size)
         # We expect 'refine' to produce the same result as 'reduce' when the initial
         # coresubset has all its indices equal to negative one.
@@ -536,11 +536,11 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
     ) -> None:
         """Check that the cached herding state is as expected."""
         dataset, solver, _ = reduce_problem
-        solver = cast(GreedyKernelInducingPoints, solver)
+        solver = cast(GreedyKernelPoints, solver)
         _, state = solver.reduce(dataset)
 
         x = dataset.data
-        expected_state = GreedyKernelInducingPointsState(
+        expected_state = GreedyKernelPointsState(
             jnp.pad(solver.feature_kernel.compute(x, x), [(0, 1)], mode="constant")
         )
         assert eqx.tree_equal(state, expected_state)
@@ -548,7 +548,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
     def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
         """Test that setting `unique` to be false produces no errors."""
         dataset, _, _ = reduce_problem
-        solver = GreedyKernelInducingPoints(
+        solver = GreedyKernelPoints(
             random_key=self.random_key,
             coreset_size=10,
             feature_kernel=SquaredExponentialKernel(),
@@ -559,7 +559,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
     def test_approximate_inverse(self, reduce_problem: _ReduceProblem) -> None:
         """Test that using an approximate least squares solver produces no errors."""
         dataset, _, _ = reduce_problem
-        solver = GreedyKernelInducingPoints(
+        solver = GreedyKernelPoints(
             random_key=self.random_key,
             coreset_size=10,
             feature_kernel=SquaredExponentialKernel(),
@@ -570,7 +570,7 @@ class TestGreedyKernelInducingPoints(RefinementSolverTest, ExplicitSizeSolverTes
     def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
         """Test that setting a not `None` `batch_size` produces no errors."""
         dataset, _, _ = reduce_problem
-        solver = GreedyKernelInducingPoints(
+        solver = GreedyKernelPoints(
             random_key=self.random_key,
             coreset_size=10,
             feature_kernel=SquaredExponentialKernel(),

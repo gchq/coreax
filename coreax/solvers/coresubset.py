@@ -71,9 +71,9 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
-class GreedyKernelInducingPointsState(eqx.Module):
+class GreedyKernelPointsState(eqx.Module):
     """
-    Intermediate :class:`GreedyKernelInducingPoints` solver state information.
+    Intermediate :class:`GreedyKernelPoints` solver state information.
 
     :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
         an additional row and column of zeros.
@@ -485,7 +485,7 @@ class SteinThinning(
         return refined_coreset, solver_state
 
 
-def _greedy_kernel_inducing_points_loss(
+def _greedy_kernel_points_loss(
     candidate_coresets: Array,
     responses: Array,
     feature_gramian: Array,
@@ -496,7 +496,7 @@ def _greedy_kernel_inducing_points_loss(
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
 
-    Primarily intended for use with :class:`GreedyKernelInducingPoints`.
+    Primarily intended for use with :class:`GreedyKernelPoints`.
 
     :param candidate_coresets: Array of indices representing all possible "next"
         coresets
@@ -505,14 +505,14 @@ def _greedy_kernel_inducing_points_loss(
     :param regularisation_parameter: Regularisation parameter for stable inversion of
         array, negative values will be converted to positive
     :param identity: Identity array used to regularise the feature gramians
-        corresponding to each coreset. For :meth:`GreedyKernelInductionPoints.reduce`
+        corresponding to each coreset. For :meth:`GreedyKernelPoints.reduce`
         this array is a matrix of zeros except for ones on the diagonal up to the
-        current size of the coreset. For :meth:`GreedyKernelInductionPoints.refine` this
+        current size of the coreset. For :meth:`GreedyKernelPoints.refine` this
         array is a standard identity array.
     :param least_squares_solver: Instance of
         :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
 
-    :return: :class`GreedyKernelInducingPoints` loss for each candidate coreset
+    :return: :class`GreedyKernelPoints` loss for each candidate coreset
     """
     # Extract all the possible "next" coreset feature gramians, cross feature gramians
     # and coreset response vectors.
@@ -536,22 +536,22 @@ def _greedy_kernel_inducing_points_loss(
     return loss
 
 
-# pylint: disable=too-many-locals
-class GreedyKernelInducingPoints(
-    RefinementSolver[_SupervisedData, GreedyKernelInducingPointsState],
+class GreedyKernelPoints(
+    RefinementSolver[_SupervisedData, GreedyKernelPointsState],
     ExplicitSizeSolver,
 ):
     r"""
-    Apply `GreedyKernelInducingPoints` to a supervised dataset.
+    Apply `GreedyKernelPoints` to a supervised dataset.
 
-    `GreedyKernelInducingPoints` is a deterministic, iterative and greedy approach to
-    build a coreset.
+    `GreedyKernelPoints` is a deterministic, iterative and greedy approach to
+    build a coreset adapted from the inducing point method developed in
+    :cite:`nguyen2021meta`.
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
     of :math:`n` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and
     one has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
     \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
-    dataset, `GreedyKernelInducingPoints` selects the next point to minimise the loss
+    dataset, `GreedyKernelPoints` selects the next point to minimise the loss
 
     .. math::
 
@@ -568,7 +568,7 @@ class GreedyKernelInducingPoints(
     :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation parameter.
 
     This class works with all children of :class:`~coreax.kernel.Kernel`. Note that
-    `GreedyKernelInducingPoints` does not support non-uniform weights and will only
+    `GreedyKernelPoints` does not support non-uniform weights and will only
     return coresubsets with uniform weights.
 
     :param random_key: Key for random number generation
@@ -599,18 +599,18 @@ class GreedyKernelInducingPoints(
     def reduce(
         self,
         dataset: _SupervisedData,
-        solver_state: Optional[GreedyKernelInducingPointsState] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
+        solver_state: Union[GreedyKernelPointsState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(  # noqa: PLR0915
         self,
         coresubset: Coresubset[_SupervisedData],
-        solver_state: Optional[GreedyKernelInducingPointsState] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelInducingPointsState]:
+        solver_state: Union[GreedyKernelPointsState, None] = None,
+    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
         """
-        Refine a coresubset with `GreedyKernelInducingPoints`.
+        Refine a coresubset with 'GreedyKernelPointsState'.
 
         We first compute the various factors if they are not given in the
         `solver_state`, and then iteratively swap points with the initial coreset,
@@ -693,7 +693,7 @@ class GreedyKernelInducingPoints(
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
         ) -> tuple[Array, Array, Array]:
-            """Execute main loop of GreedyKernelInducingPoints."""
+            """Execute main loop of GreedyKernelPoints."""
             coreset_indices, identity, candidate_coresets = val
 
             # Update the identity matrix to allow for sub-array inversion in the
@@ -702,7 +702,7 @@ class GreedyKernelInducingPoints(
 
             # Compute the loss corresponding to each candidate coreset. Note that we do
             # not compute the first term as it is an invariant quantity wrt the coreset.
-            loss = _greedy_kernel_inducing_points_loss(
+            loss = _greedy_kernel_points_loss(
                 candidate_coresets,
                 padded_responses,
                 padded_feature_gramian,
@@ -751,6 +751,6 @@ class GreedyKernelInducingPoints(
             ),
         )
 
-        return Coresubset(
-            updated_coreset_indices, dataset
-        ), GreedyKernelInducingPointsState(padded_feature_gramian)
+        return Coresubset(updated_coreset_indices, dataset), GreedyKernelPointsState(
+            padded_feature_gramian
+        )
