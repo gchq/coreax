@@ -20,20 +20,111 @@ written produce the expected results on simple examples.
 """
 
 import cmath
-import unittest
+from abc import ABC, abstractmethod
+from typing import Callable, Generic, NamedTuple, Optional, TypeVar
 
 import jax.numpy as jnp
+import jax.random as jr
+import numpy as np
+import pytest
+from typing_extensions import override
 
-import coreax.kernels
-import coreax.weights
+from coreax.coreset import Coreset, Coresubset
+from coreax.data import Data, SupervisedData
+from coreax.kernels import SquaredExponentialKernel
+from coreax.metrics import MMD, Metric
+from coreax.util import KeyArrayLike
+from coreax.weights import (
+    INVALID_KERNEL_DATA_COMBINATION,
+    MMDWeightsOptimiser,
+    SBQWeightsOptimiser,
+    WeightsOptimiser,
+    _prepare_kernel_system,  # noqa: PLC2701
+    solve_qp,
+)
+
+_Data = TypeVar("_Data", bound=Data)
 
 
-class TestBayesianQuadrature(unittest.TestCase):
+class _Problem(NamedTuple):
+    coreset: Coreset
+    optimiser: WeightsOptimiser
+    target_metric: Optional[Metric]
+
+
+class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
+    """Test the common behaviour of `WeightsOptimiser`s."""
+
+    random_key: KeyArrayLike = jr.key(2_024)
+    data_shape: tuple = (100, 2)
+    coreset_size: int = data_shape[0] // 10
+
+    @abstractmethod
+    def problem(self) -> _Problem:
+        """Abstract pytest fixture which returns a weight optimisation problem."""
+
+    @pytest.mark.parametrize(
+        "epsilon",
+        (0.0, -0.1, 2),
+        ids=["zero_epsilon", "negative_epsilon", "large_epsilon"],
+    )
+    def test_solver_with_unexpected_epsilon(
+        self,
+        problem: _Problem,
+        epsilon: float,
+    ) -> None:
+        """
+        Test if `solve` method of `WeightsOptimiser` handles unexpected `epsilon`.
+
+        The `solve` method should not throw any errors, even with odd choices of
+        `epsilon`
+        """
+        coreset, optimiser, _ = problem
+        optimiser.solve(coreset.pre_coreset_data, coreset.coreset, epsilon=epsilon)
+
+    def test_solver_reduces_target_metric(
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        problem: _Problem,
+    ) -> None:
+        """
+        Test if :meth:`~coreax.coreset.Coreset.solve_weights` reduces `target_metric`.
+        """
+        coreset, optimiser, target_metric = problem
+
+        # Compute the value of the target metric before we weight the coreset, solve for
+        # optimal weights, then compute the metric again, asserting that it has reduced
+        if target_metric is not None:
+            metric_before_weighting = coreset.compute_metric(target_metric)
+            weighted_coreset = jit_variant(coreset.solve_weights)(
+                optimiser, epsilon=1e-4
+            )
+            metric_after_weighting = weighted_coreset.compute_metric(target_metric)
+
+            assert metric_after_weighting < metric_before_weighting
+
+
+class TestSBQWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
     """
-    Tests related to :meth:`~coreax.weights.SBQ`.
+    Tests related to :meth:`~coreax.weights.SBQWeightsOptimiser`.
     """
 
-    def test_calculate_bayesian_quadrature_weights(self) -> None:
+    @override
+    @pytest.fixture(scope="class")
+    def problem(self) -> _Problem:
+        # SBQ targets the MMD
+        kernel = SquaredExponentialKernel()
+        optimiser = SBQWeightsOptimiser(kernel)
+        target_metric = MMD(kernel)
+
+        pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
+        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
+        return _Problem(coreset, optimiser, target_metric)
+
+    def test_analytic_case(self) -> None:
         r"""
         Test the calculation of weights via sequential Bayesian quadrature.
 
@@ -84,26 +175,39 @@ class TestBayesianQuadrature(unittest.TestCase):
             ]
         )
 
-        optimiser = coreax.weights.SBQWeightsOptimiser(
-            kernel=coreax.kernels.SquaredExponentialKernel()
-        )
+        optimiser = SBQWeightsOptimiser(kernel=SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)
 
-        self.assertTrue(jnp.allclose(output, expected_output))
+        assert output == pytest.approx(expected_output, abs=1e-3)
 
 
-class TestMMD(unittest.TestCase):
+class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
     """
-    Tests related to :meth:`~coreax.weights.MMD`.
+    Tests related to :meth:`~coreax.weights.MMDWeightsOptimiser`.
     """
 
-    def test_simplex_weights(self) -> None:
+    @override
+    @pytest.fixture(scope="class")
+    def problem(self) -> _Problem:
+        kernel = SquaredExponentialKernel()
+        optimiser = MMDWeightsOptimiser(kernel)
+        target_metric = MMD(kernel)
+
+        pre_coreset_data = Data(jr.normal(self.random_key, self.data_shape))
+        coreset_indices = Data(
+            jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
+        )
+        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
+
+        return _Problem(coreset, optimiser, target_metric)
+
+    def test_analytic_case(self) -> None:
         r"""
         Test calculation of weights via the simplex method for quadratic programming.
 
-        The simplex_weights() method solves the equation:
+        :meth:`~MMDWeightsOptimiser.solve` solves the equation:
 
         .. math::
 
@@ -172,40 +276,64 @@ class TestMMD(unittest.TestCase):
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
 
-        optimiser = coreax.weights.MMDWeightsOptimiser(
-            kernel=coreax.kernels.SquaredExponentialKernel()
-        )
+        optimiser = MMDWeightsOptimiser(kernel=SquaredExponentialKernel())
 
         # Solve for the weights
         output = optimiser.solve(x, y)
 
-        self.assertTrue(jnp.allclose(output, expected_output, rtol=1e-4))
+        assert output == pytest.approx(expected_output, abs=1e-3)
 
-    def test_simplex_weights_invalid_epsilon(self) -> None:
+
+class TestHelperFunctions:
+    """
+    Tests for the helper functions `solve_qp` and `_prepare_kernel_system`.
+    """
+
+    def test_solve_qp_invalid_kernel_mm(self) -> None:
         """
-        Test invalid epsilon value passed to simplex method for quadratic programming.
+        Test how `solve_qp` handles invalid inputs of kernel_mm.
 
-        A small positive value is added to the kernel Gram matrix to ensure numerical
-        operations remain valid. This test assess how the method handles unexpected
-        values.
+        The output of `solve_qp` is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
         """
-        # Setup data
-        x = jnp.array([[0, 0], [1, 1], [2, 2]])
-        y = jnp.array([[0, 0], [1, 1]])
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
+                kernel_mm="invalid_kernel_mm",  # pyright: ignore
+                gramian_row_mean=np.array([1, 2, 3]),
+            )
 
-        # Define weights object
-        optimiser = coreax.weights.MMDWeightsOptimiser(
-            kernel=coreax.kernels.SquaredExponentialKernel()
-        )
+    def test_solve_qp_invalid_gramian_row_mean(self) -> None:
+        """
+        Test how `solve_qp` handles invalid inputs of gramian_row_mean.
 
-        # Solve for the weights with a zero valued epsilon - this should still work, it
-        # may just be that in some cases, matrix inversions are not possible
-        optimiser.solve(x, y, epsilon=0.0)
+        The output of `solve_qp` is indirectly tested when testing the various weight
+        optimisers that are used in this codebase. This test just ensures sensible
+        behaviour occurs when unexpected inputs are passed to the function.
+        """
+        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
+        # this should error as no sensible result can be found in such a case.
+        with pytest.raises(TypeError, match="not a valid JAX array type"):
+            solve_qp(
+                kernel_mm=np.array([1, 2, 3]),
+                gramian_row_mean="invalid_gramian_row_mean",  # pyright: ignore
+            )
 
-        # Solve for the weights with a negative valued epsilon - this would be an
-        # unusual choice but should not raise any errors
-        optimiser.solve(x, y, epsilon=-0.1)
+    def test_prepare_kernel_system_invalid_kernel_data_combination(self) -> None:
+        """
+        Test `_prepare_kernel_system` handling of bad combinations of kernel and data.
 
-        # Solve for the weights with an integer valued epsilon - this would be an
-        # unusually large choice but should not raise any errors
-        optimiser.solve(x, y, epsilon=2)
+        The output of `_prepare_kernel_system` is indirectly tested when testing the
+        various weight optimisers that are used in this codebase. This test just ensures
+        sensible behaviour occurs when unexpected inputs are passed to the function.
+        """
+        x = jnp.array([1])
+        supervised_data = SupervisedData(x, x)
+        kernel = SquaredExponentialKernel()
+
+        with pytest.raises(ValueError, match=INVALID_KERNEL_DATA_COMBINATION):
+            _prepare_kernel_system(
+                kernel=kernel, dataset=supervised_data, coreset=supervised_data
+            )

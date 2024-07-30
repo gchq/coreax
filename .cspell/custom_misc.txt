@@ -38,4 +38,5 @@ RPCHOLESKY
 sigmas
 supp
 TLDR
+typecheck
 WMMD
