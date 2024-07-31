@@ -27,7 +27,7 @@ from coreax.data import Data, as_data
 from coreax.util import pairwise, squared_distance, tree_zero_pad_leading_axis
 
 
-def block_data_convert(
+def _block_data_convert(
     x: Union[ArrayLike, Data], block_size: Union[int, None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
