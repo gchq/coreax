@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
+- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`
+- Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
+within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 
 
 ### Fixed
@@ -28,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `AdditiveKernel` and `ProductKernel`
   - `coreax.kernels.scalar_valued.py` holds all currently implemented scalar valued kernels e.g.
     `SquaredExponentialKernel`.
-
 
 
 
