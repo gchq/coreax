@@ -71,4 +71,4 @@ jobs:
         env:
           gist_id: 51dd332be75961a7dc903c67718028e1
           out_name: coreax_coverage.json
-        run: gh gist edit ${{ env.gist_id }} -f ${{ env.out_name }} badge.json
+        run: gh gist edit ${{ env.gist_id }} -a ${{ env.out_name }} badge.json
