@@ -40,8 +40,21 @@ within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 
 
 ### Deprecated
-- All uses of `coreax.kernel.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
-- All uses of `coreax.kernel.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
+- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.
+- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.
+- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.
+- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.
+- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.
+- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.
+- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.
+- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.
+- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.
+- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.
+- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.
+- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.
+- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.
+- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.
+- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.
 - All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.
 
 
