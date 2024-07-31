@@ -49,23 +49,23 @@ automatic differentiated default.
 from typing_extensions import deprecated
 
 from coreax.kernels.base import (
-    AdditiveKernel,  # pyright: ignore=reportAssignmentType
+    AdditiveKernel,
     DuoCompositeKernel,
-    ProductKernel,  # pyright: ignore=reportAssignmentType
+    ProductKernel,
     ScalarValuedKernel,
     UniCompositeKernel,
 )
 from coreax.kernels.scalar_valued import (
-    ExponentialKernel,  # pyright: ignore=reportAssignmentType
-    LaplacianKernel,  # pyright: ignore=reportAssignmentType
-    LinearKernel,  # pyright: ignore=reportAssignmentType
-    LocallyPeriodicKernel,  # pyright: ignore=reportAssignmentType
-    PCIMQKernel,  # pyright: ignore=reportAssignmentType
-    PeriodicKernel,  # pyright: ignore=reportAssignmentType
-    PolynomialKernel,  # pyright: ignore=reportAssignmentType
-    RationalQuadraticKernel,  # pyright: ignore=reportAssignmentType
-    SquaredExponentialKernel,  # pyright: ignore=reportAssignmentType
-    SteinKernel,  # pyright: ignore=reportAssignmentType
+    ExponentialKernel,
+    LaplacianKernel,
+    LinearKernel,
+    LocallyPeriodicKernel,
+    PCIMQKernel,
+    PeriodicKernel,
+    PolynomialKernel,
+    RationalQuadraticKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
 )
 
 
