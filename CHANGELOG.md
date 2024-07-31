@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
-
+- Added the `coreax.solvers.recombination` module, which provides the following new solvers:
+  - `RecombinationSolver`: an abstract base class for recombination solvers.
+  - `CaratheodoryRecombination`: a simple deterministic approach to solving recombination problems.
+  - `TreeRecombination`: an advanced deterministic approach that utilises `CaratheodoryRecombination`,
+    but provides superior performance for solving all but the smallest recombination problems.
 
 ### Fixed
 
