@@ -33,6 +33,14 @@ from coreax.approximation import (
 )
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
+from coreax.kernels import (
+    LaplacianKernel,
+    PCIMQKernel,
+    ScalarValuedKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
+    UniCompositeKernel,
+)
 from coreax.metrics import KSD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 # pylint: enable=unused-import
