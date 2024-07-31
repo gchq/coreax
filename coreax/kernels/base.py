@@ -64,7 +64,7 @@ from jax.typing import ArrayLike
 from typing_extensions import override
 
 from coreax.data import Data, is_data
-from coreax.kernels.util import block_data_convert
+from coreax.kernels.util import _block_data_convert
 from coreax.util import pairwise, tree_leaves_repeat
 
 
@@ -300,7 +300,7 @@ class ScalarValuedKernel(eqx.Module):
             operands = operands[::-1]
             _block_size = _block_size[::-1]
         (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
-            block_data_convert, operands, tuple(_block_size), is_leaf=is_data
+            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
         )
 
         def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
