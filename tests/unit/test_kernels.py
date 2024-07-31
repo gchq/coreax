@@ -43,6 +43,7 @@ from coreax.kernels import (
     PCIMQKernel,
     PeriodicKernel,
     PolynomialKernel,
+    PowerKernel,
     ProductKernel,
     RationalQuadraticKernel,
     ScalarValuedKernel,
@@ -203,7 +204,7 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
         if elementwise:
             expected_output = expected_output.squeeze()
         if auto_diff:
-            if isinstance(kernel, (AdditiveKernel, ProductKernel)):
+            if isinstance(kernel, (AdditiveKernel, ProductKernel, PowerKernel)):
                 pytest.skip(
                     "Autodiff of Additive and Product kernels is tested implicitly."
                 )
@@ -279,6 +280,157 @@ class TestKernelMagicMethods:
         elif mode == "invalid_duo_composite_kernel_inputs":
             with pytest.raises(ValueError):
                 AdditiveKernel(1, "string")  # pyright:ignore
+
+
+class _MockedUniCompositeKernel:
+    """
+    Mock UniCompositeKernel class for construction of an Additive or Product kernel.
+
+    :param num_points: Size of the mock dataset the kernel will act on
+    :param dimension: Dimension of the mock dataset the kernel will act on
+    """
+
+    def __init__(self, num_points: int = 5, dimension: int = 3):
+        k = MagicMock(spec=ScalarValuedKernel)
+        k.compute_elementwise.return_value = np.array(1.0)
+        k.compute.return_value = np.full((num_points, num_points), 1.0)
+        k.grad_x_elementwise.return_value = np.full(dimension, 1.0)
+        k.grad_x.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k.grad_y_elementwise.return_value = np.full(dimension, 1.0)
+        k.grad_y.return_value = np.full((num_points, num_points, dimension), 1.0)
+        k.divergence_x_grad_y_elementwise.return_value = np.array(1.0)
+        k.divergence_x_grad_y.return_value = np.full((num_points, num_points), 1.0)
+        self.base_kernel = k
+
+    def to_power_kernel(self, power: int) -> PowerKernel:
+        """Construct a Power kernel."""
+        return PowerKernel(self.base_kernel, power)
+
+
+class TestPowerKernel(
+    BaseKernelTest[PowerKernel],
+    KernelMeanTest[PowerKernel],
+    KernelGradientTest[PowerKernel],
+):
+    """Test ``coreax.kernels.PowerKernel``."""
+
+    # Set size and dimension of mock "dataset" that the mocked kernel will act on
+    mock_num_points: int = 5
+    mock_dimension: int = 3
+    power: int = 2
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> PowerKernel:
+        """Return a mocked paired kernel function."""
+        return _MockedUniCompositeKernel(
+            num_points=self.mock_num_points, dimension=self.mock_dimension
+        ).to_power_kernel(self.power)
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(self, request: pytest.FixtureRequest, kernel: PowerKernel) -> _Problem:
+        r"""
+        Test problems for the Power kernel.
+
+        Given kernel function :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        define a power kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+        where :math:`p(x,y) = k(x,y)^n` and :math:`n\in\mathbb{N}`.
+
+        We consider the simplest possible example of taking the second power of a Linear
+        kernel with the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 3.0
+        if mode == "floats":
+            expected_distances = 2.25
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 400
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array([[400.0, 1936.0], [4900.0, 30276.0]])
+        else:
+            raise ValueError("Invalid problem mode")
+        output_scale = 1.0
+        constant = 0.0
+
+        # Replace mocked kernel with actual kernel
+        modified_kernel = eqx.tree_at(
+            lambda x: x.base_kernel,
+            kernel,
+            LinearKernel(output_scale, constant),
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        expected_grad = (
+            self.power
+            * kernel.base_kernel.grad_x_elementwise(x, y)
+            * kernel.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
+        )
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
+    ) -> np.ndarray:
+        num_points, dimension = np.atleast_2d(x).shape
+
+        expected_grad = (
+            self.power
+            * kernel.base_kernel.grad_y_elementwise(x, y)
+            * kernel.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
+        )
+
+        shape = num_points, num_points, self.mock_dimension
+        if dimension != 1:
+            expected_grad = np.tile(expected_grad, num_points**2).reshape(shape)
+
+        return np.array(expected_grad)
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
+    ) -> np.ndarray:
+        divergence = self.power * (
+            (
+                kernel.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
+                * kernel.base_kernel.divergence_x_grad_y_elementwise(x, y)
+            )
+            + (self.power - 1)
+            * kernel.base_kernel.compute_elementwise(x, y) ** (self.power - 2)
+            * (
+                kernel.base_kernel.grad_x_elementwise(x, y).dot(
+                    kernel.base_kernel.grad_y_elementwise(x, y)
+                )
+            )
+        )
+
+        num_points, _ = np.atleast_2d(x).shape
+
+        return np.tile(divergence, num_points**2).reshape(num_points, num_points)
+
+    @pytest.mark.parametrize(
+        "power",
+        [1.1, -1, 1],
+        ids=["float_power", "negative_power", "power_is_1"],
+    )
+    def test_invalid_power(self, power):
+        """Test that invalid values of `power` are rejected."""
+        with pytest.raises(ValueError):
+            PowerKernel(LinearKernel(), power)
 
 
 class _MockedDuoCompositeKernel:

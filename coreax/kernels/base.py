@@ -83,27 +83,9 @@ class ScalarValuedKernel(eqx.Module):
             raise ValueError("'product' must be an instance of a 'ScalarValuedKernel'")
         return ProductKernel(self, product)
 
-    def __pow__(self, power: int) -> ProductKernel:
+    def __pow__(self, power: int) -> PowerKernel:
         """Overload `**` operator."""
-        min_power = 2
-        power = int(power)
-        if power < min_power:
-            raise ValueError("'power' must be an integer greater than or equal to 2.")
-
-        first_kernel = self
-        second_kernel = self
-
-        # Ensure the first and second kernels are symmetric for even powers to make use
-        # of reduced computation capabilities in ProductKernel. For example,
-        # :meth:`~divergence_x_grad_y_elementwise` can be computed more efficiently if
-        # the first and second kernels are recognised as the same.
-        for i in range(min_power, power):
-            if i % 2 == 0:
-                first_kernel = ProductKernel(first_kernel, self)
-            else:
-                second_kernel = ProductKernel(second_kernel, self)
-
-        return ProductKernel(first_kernel, second_kernel)
+        return PowerKernel(self, power)
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
@@ -347,6 +329,7 @@ class ScalarValuedKernel(eqx.Module):
         return column_sum_padded[:unpadded_len_x]
 
 
+# pylint: disable=abstract-method
 class UniCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap one scalar-valued kernel.
@@ -365,6 +348,72 @@ class UniCompositeKernel(ScalarValuedKernel):
             )
 
 
+# pylint: enable=abstract-method
+
+
+class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
+    r"""
+    Define a kernel function which is an integer power of a base kernel function.
+
+    Given a kernel function :math:`k:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+    define the power kernel :math:`p:\mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`
+    where :math:`p(x,y) = k(x,y)^n` and :math:`n\in\mathbb{N}`.
+
+    :param base_kernel: Instance of :class:`ScalarValuedKernel`
+    :param power:
+    """
+
+    power: int
+
+    def __check_init__(self):
+        """Check that we have an integer power that is greater than 1."""
+        min_power = 2
+        if not isinstance(self.power, int) or self.power < min_power:
+            raise ValueError(
+                "'power' must be a positive integer to ensure positive"
+                + "semi-definiteness"
+            )
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.base_kernel.compute_elementwise(x, y) ** self.power
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.power
+            * self.base_kernel.grad_x_elementwise(x, y)
+            * self.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
+        )
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.power
+            * self.base_kernel.grad_y_elementwise(x, y)
+            * self.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
+        )
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        n = self.power
+        compute = self.base_kernel.compute_elementwise(x, y)
+        return n * (
+            (
+                compute ** (n - 1)
+                * self.base_kernel.divergence_x_grad_y_elementwise(x, y)
+            )
+            + (n - 1)
+            * compute ** (n - 2)
+            * (
+                self.base_kernel.grad_x_elementwise(x, y).dot(
+                    self.base_kernel.grad_y_elementwise(x, y)
+                )
+            )
+        )
+
+
+# pylint: disable=abstract-method
 class DuoCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap two scalar-valued kernels.
@@ -386,6 +435,9 @@ class DuoCompositeKernel(ScalarValuedKernel):
                 "'first_kernel'and `second_kernel` must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
+
+
+# pylint: enable=abstract-method
 
 
 class AdditiveKernel(DuoCompositeKernel):
