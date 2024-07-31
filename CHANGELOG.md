@@ -40,7 +40,9 @@ within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 
 
 ### Deprecated
-
+- All uses of `coreax.kernel.MMD` should be replaced with `coreax.weights.MMDWeightsOptimiser`.
+- All uses of `coreax.kernel.SBQ` should be replaced with `coreax.weights.SBQWeightsOptimiser`.
+- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.
 
 
 
