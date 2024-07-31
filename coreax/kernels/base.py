@@ -71,17 +71,39 @@ from coreax.util import pairwise, tree_leaves_repeat
 class ScalarValuedKernel(eqx.Module):
     """Abstract base class for scalar-valued kernels."""
 
-    def __add__(self, addition: ScalarValuedKernel) -> AdditiveKernel:
+    def __add__(
+        self, addition: Union[ScalarValuedKernel, int, float]
+    ) -> AdditiveKernel:
         """Overload `+` operator."""
-        if not isinstance(addition, ScalarValuedKernel):
-            raise ValueError("'addition' must be an instance of a 'ScalarValuedKernel'")
-        return AdditiveKernel(self, addition)
+        if isinstance(addition, (int, float)):
+            return AdditiveKernel(self, _Constant(addition))
+        if isinstance(addition, ScalarValuedKernel):
+            return AdditiveKernel(self, addition)
+        raise ValueError(
+            "'addition' must be an instance of a 'ScalarValuedKernel', "
+            + "an integer or a float"
+        )
 
-    def __mul__(self, product: ScalarValuedKernel) -> ProductKernel:
+    def __radd__(
+        self, addition: Union[ScalarValuedKernel, int, float]
+    ) -> AdditiveKernel:
+        """Overload right `+` operator, order is mathematically irrelevant."""
+        return self.__add__(addition)
+
+    def __mul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
         """Overload `*` operator."""
-        if not isinstance(product, ScalarValuedKernel):
-            raise ValueError("'product' must be an instance of a 'ScalarValuedKernel'")
-        return ProductKernel(self, product)
+        if isinstance(product, (int, float)):
+            return ProductKernel(self, _Constant(product))
+        if isinstance(product, ScalarValuedKernel):
+            return ProductKernel(self, product)
+        raise ValueError(
+            "'product' must be an instance of a 'ScalarValuedKernel', "
+            + "an integer or a float"
+        )
+
+    def __rmul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
+        """Overload right `*` operator, order is mathematically irrelevant."""
+        return self.__mul__(product)
 
     def __pow__(self, power: int) -> PowerKernel:
         """Overload `**` operator."""
@@ -329,6 +351,36 @@ class ScalarValuedKernel(eqx.Module):
         return column_sum_padded[:unpadded_len_x]
 
 
+class _Constant(ScalarValuedKernel):
+    r"""Define a helper class to add additional functionality to magic methods."""
+
+    constant: float = eqx.field(default=1, converter=float)
+
+    def __check_init__(self):
+        """Check that the constant is not negative."""
+        if self.constant < 0:
+            raise ValueError(
+                "'constant' must not be negative in order to retain positive"
+                + " semi-definiteness"
+            )
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(self.constant)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(0)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(0)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return jnp.asarray(0)
+
+
 # pylint: disable=abstract-method
 class UniCompositeKernel(ScalarValuedKernel):
     """
@@ -370,8 +422,7 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         min_power = 2
         if not isinstance(self.power, int) or self.power < min_power:
             raise ValueError(
-                "'power' must be a positive integer to ensure positive"
-                + "semi-definiteness"
+                "'power' must be an integer to ensure positive" + " semi-definiteness"
             )
 
     @override

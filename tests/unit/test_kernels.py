@@ -50,6 +50,7 @@ from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
 )
+from coreax.kernels.base import _Constant  # noqa: PLC2701
 
 _ScalarValuedKernel = TypeVar("_ScalarValuedKernel", bound=ScalarValuedKernel)
 
@@ -240,46 +241,56 @@ class TestKernelMagicMethods:
     @pytest.mark.parametrize(
         "mode",
         [
-            "invalid_addition",
-            "invalid_multiplication",
+            "add_int",
+            "add_float",
             "add_self",
+            "right_add",
+            "mul_int",
+            "mul_float",
             "mul_self",
+            "right_mul",
             "int_pow",
-            "float_pow",
-            "invalid_pow",
-            "invalid_duo_composite_kernel_inputs",
+            "invalid_float_pow",
+            "less_than_min_power",
+            "invalid_kernel_inputs",
         ],
     )
     def test_magic_methods(  # noqa: C901
         self, mode: str
     ):
-        """Test kernel magic methods produce correct `DuoCompositeKernel`s."""
+        """Test kernel magic methods produce correct paired Kernels."""
         kernel = LinearKernel()
-        if mode == "invalid_addition":
-            with pytest.raises(ValueError):
-                # pylint: disable-next=pointless-statement
-                kernel + 1.0  # pyright:ignore
-        elif mode == "invalid_multiplication":
-            with pytest.raises(ValueError):
-                # pylint: disable-next=pointless-statement
-                kernel * 1.0  # pyright:ignore
+        if mode == "add_int":
+            assert kernel + 1 == AdditiveKernel(kernel, _Constant(1))
+        elif mode == "add_float":
+            assert kernel + 1.0 == AdditiveKernel(kernel, _Constant(1.0))
         elif mode == "add_self":
             assert kernel + kernel == AdditiveKernel(kernel, kernel)
+        elif mode == "right_add":
+            assert 1 + kernel == AdditiveKernel(kernel, _Constant(1.0))
+        elif mode == "mul_int":
+            assert kernel * 1 == ProductKernel(kernel, _Constant(1))
+        elif mode == "mul_float":
+            assert kernel * 1.0 == ProductKernel(kernel, _Constant(1.0))
         elif mode == "mul_self":
             assert kernel * kernel == ProductKernel(kernel, kernel)
+        elif mode == "right_mul":
+            assert 1 * kernel == ProductKernel(kernel, _Constant(1.0))
         elif mode == "int_pow":
-            assert kernel**4 == ProductKernel(
-                ProductKernel(kernel, kernel), ProductKernel(kernel, kernel)
-            )
-        elif mode == "float_pow":
-            assert kernel**2.6 == ProductKernel(kernel, kernel)  # pyright:ignore
-        elif mode == "invalid_pow":
+            assert kernel**4 == PowerKernel(kernel, 4)
+        elif mode == "invalid_float_pow":
             with pytest.raises(ValueError):
-                # pylint: disable-next=pointless-statement
-                kernel**0.5  # pyright:ignore
-        elif mode == "invalid_duo_composite_kernel_inputs":
+                # pylint: disable=pointless-statement
+                kernel**2.6  # pyright: ignore
+                # pylint: enable=pointless-statement
+        elif mode == "less_than_min_power":
             with pytest.raises(ValueError):
-                AdditiveKernel(1, "string")  # pyright:ignore
+                # pylint: disable=pointless-statement
+                kernel**1  # pyright: ignore
+                # pylint: enable=pointless-statement
+        elif mode == "invalid_kernel_inputs":
+            with pytest.raises(ValueError):
+                AdditiveKernel(1, "string")  # pyright: ignore
 
 
 class _MockedUniCompositeKernel:
