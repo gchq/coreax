@@ -31,7 +31,7 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels import SquaredExponentialKernel
 from coreax.metrics import MMD, Metric
 from coreax.util import KeyArrayLike
 from coreax.weights import (

@@ -32,7 +32,7 @@ import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
 
-import coreax.kernel
+import coreax.kernels
 import coreax.util
 from coreax.data import Data
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
@@ -83,7 +83,7 @@ class MMD(Metric[Data]):
         are rounded to zero (accommodates precision loss)
     """
 
-    kernel: coreax.kernel.Kernel
+    kernel: coreax.kernels.ScalarValuedKernel
     precision_threshold: float = 1e-12
 
     def compute(
@@ -172,21 +172,22 @@ class KSD(Metric[Data]):
         \neq KSD_{\lambda}(\mathbb{Q}, \mathbb{P})`, and they generalise the concept
         of squared distance and so do not satisfy the triangle inequality.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
-        if 'kernel' is a :class:`~coreax.kernel.SteinKernel` and :code:`score_matching
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
+        if 'kernel' is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching
         is not None`, a new instance of the kernel will be generated where the score
         function is given by :code:`score_matching.match(...)`
     :param score_matching: Specifies/overwrite the score function of the implied/passed
-       :class:`~coreax.kernel.SteinKernel`; if :data:`None`, default to
+       :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
        :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
-       :class:`~coreax.kernel.SteinKernel`, in which case the kernel's existing score
+       :class:`~coreax.kernels.SteinKernel`, in which case the kernel's existing score
        function is used.
     :param precision_threshold: Threshold above which negative values of the squared KSD
         are rounded to zero (accommodates precision loss)
     """
 
-    kernel: coreax.kernel.Kernel
+    kernel: coreax.kernels.ScalarValuedKernel
     score_matching: Optional[ScoreMatching] = None
     precision_threshold: float = 1e-12
 

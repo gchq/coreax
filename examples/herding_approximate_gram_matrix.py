@@ -40,7 +40,7 @@ from coreax import (
     SquaredExponentialKernel,
 )
 from coreax.approximation import ANNchorApproximateKernel
-from coreax.kernel import median_heuristic
+from coreax.kernels import median_heuristic
 from coreax.solvers import KernelHerding, RandomSample
 
 

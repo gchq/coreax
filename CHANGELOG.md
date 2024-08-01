@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
+- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`
+- Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
+within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 
 
 ### Fixed
@@ -20,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`
   - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`
   - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`
+- Refactoring of `coreax.kernel.py` into `coreax.kernels` sub-package:
+  - `kernels.util.py` holds utility functions relating to kernels e.g. `median_heuristic`.
+  - `kernels.base.py` holds the base kernel class `ScalarValuedKernel` (renamed from `Kernel`),
+    as well as the base composite classes `UniCompositeKernel` (renamed from `CompositeKernel`),
+    `DuoCompositeKernel` (renamed from `PairedKernel`) and the derived duo-composite kernels
+    `AdditiveKernel` and `ProductKernel`
+  - `coreax.kernels.scalar_valued.py` holds all currently implemented scalar valued kernels e.g.
+    `SquaredExponentialKernel`.
+
 
 
 
@@ -28,7 +40,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Deprecated
-
+- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.
+- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.
+- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.
+- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.
+- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.
+- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.
+- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.
+- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.
+- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.
+- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.
+- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.
+- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.
+- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.
+- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.
+- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.
+- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.
 
 
 

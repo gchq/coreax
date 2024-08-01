@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for kernel herding example with a paired kernel.
+Integration test for kernel herding example with a duo-composite kernel.
 """
 
 import tempfile
@@ -21,7 +21,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.herding_paired_kernel import main as herding_paired_kernel_main
+from examples.herding_duo_composite_kernel import (
+    main as herding_duo_composite_kernel_main,
+)
 
 # Integration tests are split across several files, to allow serial calls and avoid
 # sharing of JIT caches between tests. As a result, ignore the pylint warnings for
@@ -29,16 +31,16 @@ from examples.herding_paired_kernel import main as herding_paired_kernel_main
 # pylint: disable=duplicate-code
 
 
-class TestHerdingPairedKernel(unittest.TestCase):
+class TestHerdingDuoCompositeKernel(unittest.TestCase):
     """
-    Test end-to-end code run using a PairedKernel.
+    Test end-to-end code run using a DuoCompositeKernel.
     """
 
     def test_herding_basic(self) -> None:
         """
-        Test herding_paired_kernel.py example.
+        Test herding_duo_composite_kernel.py example.
 
-        An end-to-end test to check herding_paired_kernel.py runs without error.
+        An end-to-end test to check herding_duo_composite_kernel.py runs without error.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
@@ -47,7 +49,7 @@ class TestHerdingPairedKernel(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "herding_paired_kernel.png"
-            herding_paired_kernel_main(out_path=out_path)
+            herding_duo_composite_kernel_main(out_path=out_path)
 
             mock_show.assert_has_calls([call(), call()])
 

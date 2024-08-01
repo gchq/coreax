@@ -54,7 +54,7 @@ from coreax import (
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.kernel import PCIMQKernel, median_heuristic
+from coreax.kernels import PCIMQKernel, median_heuristic
 from coreax.solvers import KernelHerding, MapReduce, RandomSample
 from coreax.weights import MMDWeightsOptimiser
 

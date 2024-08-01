@@ -16,15 +16,16 @@ r"""
 Classes and associated functionality to approximate kernels.
 
 When a dataset is very large, methods which have to evaluate all pairwise combinations
-of the data, such as :meth:`~coreax.kernel.Kernel.gramian_row_mean`, can become
-prohibitively expensive. To reduce this computational cost, such methods can instead be
-approximated (providing suitable approximation error can be achieved).
+of the data, such as :meth:`~coreax.kernels.ScalarValuedKernel.gramian_row_mean`, can
+become prohibitively expensive. To reduce this computational cost, such methods can
+instead be approximated (providing suitable approximation error can be achieved).
 
 The :class:`ApproximateKernel`\ s in this module provide the functionality required to
 override specific methods of a ``base_kernel`` with their approximate counterparts.
-Because :class:`ApproximateKernel`\ s inherit from :class:`~coreax.kernel.Kernel`, with
-all functionality provided through composition with a ``base_kernel``, they can be
-freely used in any place where a standard :class:`~coreax.kernel.Kernel` is expected.
+Because :class:`ApproximateKernel`\ s inherit from
+:class:`~coreax.kernels.ScalarValuedKernel`, with all functionality provided through
+composition with a ``base_kernel``, they can be freely used in any place where a
+standard :class:`~coreax.kernels.ScalarValuedKernel` is expected.
 """
 
 from collections.abc import Callable
@@ -39,11 +40,11 @@ from jax.typing import ArrayLike
 from typing_extensions import TYPE_CHECKING, Literal, override
 
 from coreax.data import Data
-from coreax.kernel import CompositeKernel
+from coreax.kernels import UniCompositeKernel
 from coreax.util import KeyArrayLike
 
 if TYPE_CHECKING:
-    from coreax.kernel import Kernel  # noqa: F401
+    from coreax.kernels import ScalarValuedKernel  # noqa: F401
 
 
 def _random_indices(
@@ -104,18 +105,18 @@ def _random_least_squares(
     return features @ approximate_solution
 
 
-class ApproximateKernel(CompositeKernel):
+class ApproximateKernel(UniCompositeKernel):
     """
     Base class for approximated kernels.
 
     Provides approximations of the methods in the ``base_kernel``.
 
-    The :meth:`~coreax.kernel.Kernel.gramian_row_mean` method is particularly amenable
-    to approximation, with significant performance improvements possible depending on
-    the acceptable levels of error.
+    The :meth:`~coreax.kernels.ScalarValuedKernel.gramian_row_mean` method is
+    particularly amenable to approximation, with significant performance improvements
+    possible depending on the acceptable levels of error.
 
-    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
-        to be approximated
+    :param base_kernel: a :class:`~coreax.kernels.ScalarValuedKernel` whose
+        attributes/methods are to be approximated
     """
 
     @override
@@ -139,8 +140,8 @@ class RandomRegressionKernel(ApproximateKernel):
     """
     An approximate kernel that requires the attributes for random regression.
 
-    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
-        to be approximated
+    :param base_kernel: a :class:`~coreax.kernels.ScalarValuedKernel` whose
+        attributes/methods are to be approximated
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
@@ -165,8 +166,8 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     Only the Gramian row-mean is approximated here, all other methods are inherited
     directly from the ``base_kernel``.
 
-    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
-        to be approximated
+    :param base_kernel: a :class:`~coreax.kernels.ScalarValuedKernel` whose
+        attributes/methods are to be approximated
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
@@ -204,8 +205,8 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     Only the base kernel's Gramian row-mean is approximated here, all other methods are
     inherited directly from the ``base_kernel``.
 
-    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
-        to be approximated
+    :param base_kernel: a :class:`~coreax.kernels.ScalarValuedKernel` whose
+        attributes/methods are to be approximated
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
@@ -259,8 +260,8 @@ class NystromApproximateKernel(RandomRegressionKernel):
     Only the base kernel's Gramian row-mean is approximated here, all other methods
     are inherited directly from the ``base_kernel``.
 
-    :param base_kernel: a :class:`~coreax.kernel.Kernel` whose attributes/methods are
-        to be approximated
+    :param base_kernel: a :class:`~coreax.kernels.ScalarValuedKernel` whose
+        attributes/methods are to be approximated
     :param random_key: Key for random number generation
     :param num_kernel_points: Number of kernel evaluation points
     :param num_train_points: Number of training points used to fit kernel regression
