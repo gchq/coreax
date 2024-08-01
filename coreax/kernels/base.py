@@ -106,7 +106,15 @@ class ScalarValuedKernel(eqx.Module):
         return self.__mul__(product)
 
     def __pow__(self, power: int) -> PowerKernel:
-        """Overload `**` operator."""
+        """
+        Overload `**` operator.
+
+        .. note::
+            The positive semi-definiteness of the `PowerKernel` can only be guaranteed
+            for positive integer powers. An error is thrown for float or negative
+            `power`.
+
+        """
         return PowerKernel(self, power)
 
     def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
