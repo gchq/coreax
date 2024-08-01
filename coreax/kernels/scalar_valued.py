@@ -30,28 +30,42 @@ class LinearKernel(ScalarValuedKernel):
     r"""
     Define a linear kernel.
 
-    Given :math:`\rho`=`'output_scale` and :math:`c =`'constant',  the linear kernel is
+    Given :math:`\rho`=` ``output_scale``, :math:`a=` ``constant`` and
+    :math: `b =` ``offset``,  the linear kernel is
     defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho x^Ty + c`.
+    :math:`k(x, y) = a + \rho (x-b)^T(y-b)`.
 
     :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param constant: Additive constant, :math:`c`
+    :param constant: Additive constant, :math:`a`, must be positive
+    :param offset: Offset term, :math:`b`
     """
 
     output_scale: float = eqx.field(default=1.0, converter=float)
     constant: float = eqx.field(default=0.0, converter=float)
+    offset: float = eqx.field(default=0.0, converter=float)
+
+    def __check_init__(self):
+        """Check that the additive constant is not negative."""
+        if self.constant < 0:
+            raise ValueError(
+                "'constant' must not be negative in order to retain positive"
+                + " semi-definiteness"
+            )
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.dot(x, y) + self.constant
+        return (
+            self.output_scale * jnp.dot(x - self.offset, y - self.offset)
+            + self.constant
+        )
 
     @override
     def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.asarray(y)
+        return self.output_scale * jnp.asarray(y - self.offset)
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.asarray(x)
+        return self.output_scale * jnp.asarray(x - self.offset)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
