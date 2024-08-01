@@ -41,14 +41,6 @@ class LinearKernel(ScalarValuedKernel):
     output_scale: float = eqx.field(default=1.0, converter=float)
     constant: float = eqx.field(default=0.0, converter=float)
 
-    def __check_init__(self):
-        """Check that the additive constant is not negative."""
-        if self.constant < 0:
-            raise ValueError(
-                "'constant' must not be negative in order to retain positive"
-                + " semi-definiteness"
-            )
-
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.dot(x, y) + self.constant
