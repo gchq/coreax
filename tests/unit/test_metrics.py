@@ -30,11 +30,11 @@ import pytest
 from jax import Array, jacfwd, vmap
 
 from coreax.data import Data
-from coreax.kernel import (
-    Kernel,
+from coreax.kernels import (
     LaplacianKernel,
     PCIMQKernel,
     RationalQuadraticKernel,
+    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
@@ -72,7 +72,9 @@ class TestMMD:
     @pytest.mark.parametrize(
         "kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
     )
-    def test_mmd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
+    def test_mmd_compare_same_data(
+        self, problem: _MetricProblem, kernel: ScalarValuedKernel
+    ):
         """Check MMD of a dataset with itself is approximately zero."""
         x = problem.reference_data
         metric = MMD(kernel)
@@ -248,7 +250,9 @@ class TestKSD:
     @pytest.mark.parametrize(
         "kernel", [SquaredExponentialKernel(), RationalQuadraticKernel(), PCIMQKernel()]
     )
-    def test_ksd_compare_same_data(self, problem: _MetricProblem, kernel: Kernel):
+    def test_ksd_compare_same_data(
+        self, problem: _MetricProblem, kernel: ScalarValuedKernel
+    ):
         """Check KSD of a dataset with itself is (very) approximately zero."""
         x = problem.reference_data
         metric = KSD(kernel)

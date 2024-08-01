@@ -40,14 +40,10 @@ import numpy as np
 from jax import random
 from sklearn.decomposition import PCA
 
-from coreax import (
-    MMD,
-    Data,
-    KernelDensityMatching,
-    SquaredExponentialKernel,
-    SteinKernel,
-)
-from coreax.kernel import median_heuristic
+from coreax.data import Data
+from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
+from coreax.metrics import MMD
+from coreax.score_matching import KernelDensityMatching
 from coreax.solvers import KernelHerding, RandomSample
 
 
