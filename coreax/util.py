@@ -183,6 +183,33 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @deprecated(
+    "Use coreax.kernels.util.median_heuristic; will be removed in version 0.3.0"
+)
+@jit
+def median_heuristic(x: ArrayLike) -> Array:
+    """
+    Compute the median heuristic for setting kernel bandwidth.
+
+    Analysis of the performance of the median heuristic can be found in
+    :cite:`garreau2018median`.
+
+    :param x: Input array of vectors
+    :return: Bandwidth parameter, computed from the median heuristic, as a
+        zero-dimensional array
+    """
+    # Format inputs
+    x = jnp.atleast_2d(x)
+    # Calculate square distances as an upper triangular matrix
+    square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
+    # Calculate the median of the square distances
+    median_square_distance = jnp.median(
+        square_distances[jnp.triu_indices_from(square_distances, k=1)]
+    )
+
+    return jnp.sqrt(median_square_distance / 2.0)
+
+
+@deprecated(
     "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
     "will be removed in version 0.3.0"
 )

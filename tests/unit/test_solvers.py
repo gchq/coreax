@@ -33,7 +33,7 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.kernel import Kernel, PCIMQKernel, SquaredExponentialKernel
+from coreax.kernels import PCIMQKernel, ScalarValuedKernel, SquaredExponentialKernel
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     CaratheodoryRecombination,
@@ -489,7 +489,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             dataset = jnp.array([[0, 0], [1, 1], [2, 2]])
             # Set the kernel such that a simple analytic solution exists.
             kernel_matrix = jnp.asarray([[1, 1, 1], [1, 1, 1], [0.5, 0.5, 0.5]])
-            kernel = MagicMock(Kernel)
+            kernel = MagicMock(ScalarValuedKernel)
             kernel.compute = lambda x, y: jnp.hstack(
                 [kernel_matrix[:, y[0]], jnp.zeros((len(x) - 3,))]
             )

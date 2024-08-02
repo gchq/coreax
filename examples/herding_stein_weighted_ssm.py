@@ -41,14 +41,15 @@ import numpy as np
 from jax import random
 from sklearn.datasets import make_blobs
 
-from coreax import (
-    MMD,
-    Data,
-    SlicedScoreMatching,
+from coreax.data import Data
+from coreax.kernels import (
+    PCIMQKernel,
     SquaredExponentialKernel,
     SteinKernel,
+    median_heuristic,
 )
-from coreax.kernel import PCIMQKernel, median_heuristic
+from coreax.metrics import MMD
+from coreax.score_matching import SlicedScoreMatching
 from coreax.solvers import KernelHerding, RandomSample
 from coreax.weights import MMDWeightsOptimiser
 

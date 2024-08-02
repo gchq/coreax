@@ -42,7 +42,7 @@ from jaxopt import OSQP
 from typing_extensions import deprecated
 
 from coreax.data import Data, as_data
-from coreax.kernel import Kernel
+from coreax.kernels import ScalarValuedKernel
 from coreax.util import apply_negative_precision_threshold
 
 _Data = TypeVar("_Data", bound=Data)
@@ -105,7 +105,7 @@ def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -
 
 
 def _prepare_kernel_system(
-    kernel: Kernel,
+    kernel: ScalarValuedKernel,
     dataset: Data,
     coreset: Data,
     epsilon: float = 1e-10,
@@ -116,9 +116,10 @@ def _prepare_kernel_system(
     r"""
     Return the row mean of :math`k(coreset, dataset)` and the coreset Gramian.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` if
-        solving with unsupervised data.
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` if solving
+        with unsupervised data.
     :param dataset: :class:`~coreax.data.Data` instance consisting of a
         :math:`n \times d` data array
     :param coreset: :class:`~coreax.data.Data` instance consisting of a
@@ -129,7 +130,11 @@ def _prepare_kernel_system(
     :param unroll: Unroll parameter passed to ``self.kernel.compute_mean``
     :return: Row mean of k(coreset, dataset) and the epsilon perturbed coreset Gramian
     """
-    if type(dataset) is Data and type(coreset) is Data and isinstance(kernel, Kernel):
+    if (
+        type(dataset) is Data
+        and type(coreset) is Data
+        and isinstance(kernel, ScalarValuedKernel)
+    ):
         x_d, x_c = dataset.data, coreset.data
         kernel_cd = kernel.compute_mean(
             x_d, x_c, axis=0, block_size=block_size, unroll=unroll
@@ -197,11 +202,11 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
     and :math:`K = k(y, y)` in the above expression. See equation 20 in
     :cite:`huszar2016optimally` for further detail.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     """
 
-    kernel: Kernel
+    kernel: ScalarValuedKernel
 
     def solve(
         self,
@@ -264,11 +269,12 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
 
     using the OSQP quadratic programming solver.
 
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     """
 
-    kernel: Kernel
+    kernel: ScalarValuedKernel
 
     def solve(
         self,
