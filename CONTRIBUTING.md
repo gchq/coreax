@@ -70,6 +70,57 @@ BREAKING CHANGE: numpy 1.0.2 no longer supported
 Refs: #123
 ```
 
+### Breaking changes and deprecation
+
+Since we are still pre-1.0, [SemVer] states that any release may contain breaking
+changes. However, breaking changes should not be made without warning.
+
+**Any breaking changes must have a deprecation period of at least one minor release**
+before the breaking change is made. If the change is one that may require significant
+changes to client code, such as removing a function or class entirely, the deprecation
+period must instead be at least **two minor releases**.
+
+Ensure that during the deprecation period, the old behaviour still works, but raises a
+`DeprecationWarning` with an appropriate message. If at all possible, ensure that there
+is straightforward signposting for how users should change their code to use
+non-deprecated parts of the codebase instead.
+
+As an example, this is what the deprecation period for renaming `my_old_function` to
+`my_new_function` would look like.
+
+```python
+# v0.1.0:
+def my_old_function(x: int) -> int:
+    return x + x + x + x
+
+# v0.2.0:
+def my_new_function(x: int) -> int:
+    return x*4
+
+@deprecated("Renamed to my_new_function; will be removed in v0.3.0")
+def my_old_function(x: int) -> int:
+    return my_new_function(x)
+
+# v0.3.0:
+def my_new_function(x: int) -> int:
+    return x*4
+```
+
+Examples of breaking changes include, but are not limited to:
+ - Renaming a public function or class
+ - Removing a public function or class
+ - Changing the name of an argument that isn't positional-only
+ - Changing the order of arguments that aren't keyword-only
+ - Adding a new argument to a function without a default value
+ - Changing the return type of a function
+
+Examples of changes that are _not_ breaking:
+ - Adding a new public function or class
+ - Adding a new argument to a function with a default value
+ - Renaming or removing a private function or class
+ - Making changes to documentation
+ - Making changes to tests
+
 ## Code
 
 Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
@@ -229,6 +280,7 @@ maintainers decide the codebase is ready for another release:
 [pr-ready]: https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request
 [pep-8]: https://peps.python.org/pep-0008/
 [black]: https://black.readthedocs.io/en/stable/
+[semver]: https://semver.org/
 [sphinx-rst]: https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html
 [sphinx]: https://www.sphinx-doc.org/en/master/index.html
 [pep-257]: https://peps.python.org/pep-0257/
