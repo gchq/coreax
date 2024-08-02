@@ -41,6 +41,13 @@ class LinearKernel(ScalarValuedKernel):
     output_scale: float = eqx.field(default=1.0, converter=float)
     constant: float = eqx.field(default=0.0, converter=float)
 
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.constant < 0:
+            raise ValueError("'constant' must be non-negative")
+
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.dot(x, y) + self.constant
@@ -78,8 +85,12 @@ class PolynomialKernel(ScalarValuedKernel):
     degree: int = 2
 
     def __check_init__(self):
-        """Ensure degree is an integer greater than 1."""
+        """Ensure degree is an integer greater than 1 and other attributes are valid."""
         min_degree = 2
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.constant < 0:
+            raise ValueError("'constant' must be non-negative")
         if not isinstance(self.degree, int) or self.degree < min_degree:
             raise ValueError("'degree' must be a positive integer greater than 1")
 
@@ -138,6 +149,13 @@ class SquaredExponentialKernel(ScalarValuedKernel):
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
 
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
@@ -181,6 +199,13 @@ class ExponentialKernel(ScalarValuedKernel):
 
     length_scale: float = 1.0
     output_scale: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -236,6 +261,15 @@ class RationalQuadraticKernel(ScalarValuedKernel):
     length_scale: float = 1.0
     output_scale: float = 1.0
     relative_weighting: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.relative_weighting < 0:
+            raise ValueError("'relative_weighting' must be non-negative")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -296,6 +330,13 @@ class PeriodicKernel(ScalarValuedKernel):
     length_scale: float = 1.0
     output_scale: float = 1.0
     periodicity: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -374,6 +415,13 @@ class LaplacianKernel(ScalarValuedKernel):
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
 
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
@@ -415,6 +463,13 @@ class PCIMQKernel(ScalarValuedKernel):
 
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
