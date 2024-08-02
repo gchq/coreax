@@ -1,8 +1,6 @@
-Contributing to coreax
-======================
+### Contributing to coreax
 
-Getting started
----------------
+## Getting started
 
 If you would like to contribute to the development of coreax, you can do so in a number of ways:
 - Highlight any bugs you encounter during usage, or any feature requests that would improve coreax by raising appropriate issues.
@@ -16,8 +14,7 @@ All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
 Developers should install additional packages required for development using
 `pip install -e .[dev]`. Then, set up pre-commit hooks using `pre-commit install`.
 
-Reporting issues
---------------
+## Reporting issues
 
 - [Search existing issues][github-issues] (both open **and** closed).
 - Make sure you are using the latest version of coreax.
@@ -27,8 +24,7 @@ Reporting issues
   - This will make the issue a candidate for inclusion in future sprints, as-well as open to the community to address.
 - If you are able to fix the bug or implement the feature, [create a pull request](#pull-requests) with the relevant changes.
 
-Pull requests
--------------
+## Pull requests
 Currently, we are using a [GitHub Flow][github-flow] development approach.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
@@ -74,8 +70,7 @@ BREAKING CHANGE: numpy 1.0.2 no longer supported
 Refs: #123
 ```
 
-Code
-------
+## Code
 
 Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
 facilitate code review, code should meet these standards prior to creating a pull request.
@@ -201,8 +196,7 @@ You can generate Sphinx documentation with:
 documentation/make html
 ```
 
-Releases
---------
+## Releases
 
 Releases are made on an ad-hoc basis, not on every merge into `main`. When the
 maintainers decide the codebase is ready for another release:
