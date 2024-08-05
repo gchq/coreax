@@ -34,8 +34,8 @@ class LinearKernel(ScalarValuedKernel):
     is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = a + \rho (x)^T(y)`.
 
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param constant: Additive constant, :math:`a`, must be positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param constant: Additive constant, :math:`a`, must be non-negative
     """
 
     output_scale: float = eqx.field(default=1.0, converter=float)
@@ -75,9 +75,9 @@ class PolynomialKernel(ScalarValuedKernel):
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho (x^Ty + c)^d`.
 
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param constant: Additive constant, :math:`c`
-    :param degree: Degree of kernel, must be a positive integer greater than 1.
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param constant: Additive constant, :math:`c`, must be non-negative
+    :param degree: Degree of kernel, must be a positive integer greater than 1
     """
 
     output_scale: float = 1.0
@@ -142,8 +142,9 @@ class SquaredExponentialKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        a positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
@@ -193,8 +194,9 @@ class ExponentialKernel(ScalarValuedKernel):
     .. note::
         Note that the Exponential kernel is not differentiable when :math:`x=y`.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = 1.0
@@ -250,12 +252,13 @@ class RationalQuadraticKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     :param relative_weighting: Parameter controlling the relative weighting of
         large-scale and small-scale variations, :math:`\alpha`. As
         :math:`alpha \to \infty` the rational quadratic kernel is identical to the
-        squared exponential kernel.
+        squared exponential kernel. Must be non-negative.
     """
 
     length_scale: float = 1.0
@@ -322,8 +325,9 @@ class PeriodicKernel(ScalarValuedKernel):
     .. note::
         Note that the Periodic kernel is not differentiable when :math:`x=y`.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
     """
 
@@ -408,8 +412,9 @@ class LaplacianKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
@@ -457,8 +462,9 @@ class PCIMQKernel(ScalarValuedKernel):
     :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
     where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
