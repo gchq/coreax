@@ -402,7 +402,7 @@ class UniCompositeKernel(ScalarValuedKernel):
     def __check_init__(self):
         """Check that 'base_kernel' is of the required type."""
         if not isinstance(self.base_kernel, ScalarValuedKernel):
-            raise ValueError(
+            raise TypeError(
                 "'base_kernel' must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
@@ -490,7 +490,7 @@ class DuoCompositeKernel(ScalarValuedKernel):
             isinstance(self.first_kernel, ScalarValuedKernel)
             and isinstance(self.second_kernel, ScalarValuedKernel)
         ):
-            raise ValueError(
+            raise TypeError(
                 "'first_kernel'and `second_kernel` must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
