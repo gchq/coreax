@@ -442,7 +442,11 @@ class TestPowerKernel(
     )
     def test_invalid_power(self, power):
         """Test that invalid values of `power` are rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="'power' must be an integer to ensure positive"
+            + " semi-definiteness",
+        ):
             PowerKernel(LinearKernel(), power)
 
 
@@ -963,14 +967,6 @@ class TestPolynomialKernel(
                     )
                 )
         return expected_divergence
-
-    @pytest.mark.parametrize(
-        "degree", [2.6, 1], ids=["float_degree", "degree_less_than_min"]
-    )
-    def test_invalid_inputs(self, degree):
-        """Test that polynomial kernel rejects bad degree inputs."""
-        with pytest.raises(ValueError):
-            PolynomialKernel(degree=degree)
 
     @pytest.mark.parametrize(
         "parameters, error_msg",
