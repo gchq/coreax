@@ -427,10 +427,11 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
 
     def __check_init__(self):
         """Check that we have an integer power that is greater than 1."""
-        min_power = 2
+        min_power = 1
         if not isinstance(self.power, int) or self.power < min_power:
             raise ValueError(
-                "'power' must be an integer to ensure positive" + " semi-definiteness"
+                "'power' must be a positive integer to ensure positive"
+                + " semi-definiteness"
             )
 
     @override
