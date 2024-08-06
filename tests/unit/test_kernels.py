@@ -279,18 +279,40 @@ class TestKernelMagicMethods:
         elif mode == "int_pow":
             assert kernel**4 == PowerKernel(kernel, 4)
         elif mode == "invalid_float_pow":
-            with pytest.raises(ValueError):
-                # pylint: disable=pointless-statement
-                kernel**2.6  # pyright: ignore
-                # pylint: enable=pointless-statement
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
+                _ = kernel**2.6  # pyright: ignore[reportOperatorIssue]
         elif mode == "less_than_min_power":
-            with pytest.raises(ValueError):
-                # pylint: disable=pointless-statement
-                kernel**1  # pyright: ignore
-                # pylint: enable=pointless-statement
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
+                _ = kernel**-1  # pyright: ignore[reportOperatorIssue]
         elif mode == "invalid_kernel_inputs":
-            with pytest.raises(ValueError):
-                AdditiveKernel(1, "string")  # pyright: ignore
+            with pytest.raises(TypeError):
+                _ = AdditiveKernel(1, "string")  # pyright: ignore[reportArgumentType]
+            with pytest.raises(
+                ValueError,
+                match="'addition' must be an instance of a 'ScalarValuedKernel',"
+                + " an integer or a float",
+            ):
+                _ = kernel + "string"  # pyright: ignore[reportOperatorIssue]
+            with pytest.raises(
+                ValueError,
+                match="'product' must be an instance of a 'ScalarValuedKernel',"
+                + " an integer or a float",
+            ):
+                _ = kernel * "string"  # pyright: ignore[reportOperatorIssue]
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
+                _ = kernel ** "string"  # pyright: ignore[reportOperatorIssue]
 
 
 class _MockedUniCompositeKernel:
@@ -435,12 +457,16 @@ class TestPowerKernel(
 
     @pytest.mark.parametrize(
         "power",
-        [1.1, -1, 1],
-        ids=["float_power", "negative_power", "power_is_1"],
+        [1.1, -1, 0],
+        ids=["float_power", "negative_power", "power_is_non_positive"],
     )
     def test_invalid_power(self, power):
         """Test that invalid values of `power` are rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="'power' must be a positive integer to ensure positive"
+            + " semi-definiteness",
+        ):
             PowerKernel(LinearKernel(), power)
 
 
@@ -823,6 +849,19 @@ class TestLinearKernel(
                 expected_divergence[x_idx, y_idx] = kernel.output_scale * dimension
         return expected_divergence
 
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'output_scale' must be positive"),
+            ((1, -0.1), "'constant' must be non-negative"),
+        ],
+        ids=["non_positive_output_scale", "non_positive_constant"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            LinearKernel(*parameters)
+
 
 class TestPolynomialKernel(
     BaseKernelTest[PolynomialKernel],
@@ -950,12 +989,24 @@ class TestPolynomialKernel(
         return expected_divergence
 
     @pytest.mark.parametrize(
-        "degree", [2.6, 1], ids=["float_degree", "degree_less_than_min"]
+        "parameters, error_msg",
+        [
+            ((-0.1, 1, 2), "'output_scale' must be positive"),
+            ((1, -0.1, 2), "'constant' must be non-negative"),
+            ((1, 1, 2.6), "'degree' must be a positive integer greater than 1"),
+            ((1, 1, 1), "'degree' must be a positive integer greater than 1"),
+        ],
+        ids=[
+            "non_positive_output_scale",
+            "non_positive_constant",
+            "float_degree",
+            "degree_less_than_min",
+        ],
     )
-    def test_invalid_inputs(self, degree):
-        """Test that polynomial kernel rejects bad degree inputs."""
-        with pytest.raises(ValueError):
-            PolynomialKernel(degree=degree)
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            PolynomialKernel(*parameters)
 
 
 class TestSquaredExponentialKernel(
@@ -1112,6 +1163,19 @@ class TestSquaredExponentialKernel(
                 )
         return expected_divergence
 
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'length_scale' must be positive"),
+            ((1, -0.1), "'output_scale' must be positive"),
+        ],
+        ids=["non_positive_length_scale", "non_positive_output_scale"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            SquaredExponentialKernel(*parameters)
+
 
 class TestExponentialKernel(
     BaseKernelTest[ExponentialKernel],
@@ -1233,6 +1297,19 @@ class TestExponentialKernel(
                     np.dot(first_term, sub) + dimension * second_term
                 )
         return expected_divergence
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'length_scale' must be positive"),
+            ((1, -0.1), "'output_scale' must be positive"),
+        ],
+        ids=["non_positive_length_scale", "non_positive_output_scale"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            ExponentialKernel(*parameters)
 
 
 class TestRationalQuadraticKernel(
@@ -1372,6 +1449,24 @@ class TestRationalQuadraticKernel(
 
                 expected_divergence[x_idx, y_idx] = dimension * first_term + second_term
         return expected_divergence
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1, 1), "'length_scale' must be positive"),
+            ((1, -0.1, 1), "'output_scale' must be positive"),
+            ((1, 1, -0.1), "'relative_weighting' must be non-negative"),
+        ],
+        ids=[
+            "non_positive_length_scale",
+            "non_positive_output_scale",
+            "non_positive_relative_weighting",
+        ],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            RationalQuadraticKernel(*parameters)
 
 
 class TestPeriodicKernel(
@@ -1532,6 +1627,19 @@ class TestPeriodicKernel(
                     * (dimension * first_term + np.dot(second_term, sub))
                 )
         return expected_divergence
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'length_scale' must be positive"),
+            ((1, -0.1), "'output_scale' must be positive"),
+        ],
+        ids=["non_positive_length_scale", "non_positive_output_scale"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            PeriodicKernel(*parameters)
 
 
 class TestLocallyPeriodicKernel(
@@ -1756,6 +1864,19 @@ class TestLaplacianKernel(
                 )
         return expected_divergence
 
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'length_scale' must be positive"),
+            ((1, -0.1), "'output_scale' must be positive"),
+        ],
+        ids=["non_positive_length_scale", "non_positive_output_scale"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            LaplacianKernel(*parameters)
+
 
 class TestPCIMQKernel(
     BaseKernelTest[PCIMQKernel],
@@ -1897,6 +2018,19 @@ class TestPCIMQKernel(
 
         return expected_divergence
 
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1), "'length_scale' must be positive"),
+            ((1, -0.1), "'output_scale' must be positive"),
+        ],
+        ids=["non_positive_length_scale", "non_positive_output_scale"],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            PCIMQKernel(*parameters)
+
 
 class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernels.SteinKernel``."""
@@ -1976,3 +2110,15 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
                 expected_output[x_idx, y_idx] = k_x_y(x[x_idx, :], y[y_idx, :])
 
         return _Problem(x, y, expected_output, modified_kernel)
+
+    def test_invalid_base_kernel(self):
+        """Check that an error is thrown if the base kernel is not the correct type."""
+        with pytest.raises(
+            TypeError,
+            match="'base_kernel' must be an instance of "
+            + "'coreax.kernels.base.ScalarValuedKernel'",
+        ):
+            SteinKernel(
+                base_kernel="base_kernel",  # pyright: ignore[reportArgumentType]
+                score_function=jnp.negative,
+            )

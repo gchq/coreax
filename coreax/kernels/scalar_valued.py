@@ -34,12 +34,19 @@ class LinearKernel(ScalarValuedKernel):
     is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = a + \rho (x)^T(y)`.
 
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param constant: Additive constant, :math:`a`, must be positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param constant: Additive constant, :math:`a`, must be non-negative
     """
 
     output_scale: float = eqx.field(default=1.0, converter=float)
     constant: float = eqx.field(default=0.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.constant < 0:
+            raise ValueError("'constant' must be non-negative")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -68,9 +75,9 @@ class PolynomialKernel(ScalarValuedKernel):
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho (x^Ty + c)^d`.
 
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
-    :param constant: Additive constant, :math:`c`
-    :param degree: Degree of kernel, must be a positive integer greater than 1.
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param constant: Additive constant, :math:`c`, must be non-negative
+    :param degree: Degree of kernel, must be a positive integer greater than 1
     """
 
     output_scale: float = 1.0
@@ -78,8 +85,12 @@ class PolynomialKernel(ScalarValuedKernel):
     degree: int = 2
 
     def __check_init__(self):
-        """Ensure degree is an integer greater than 1."""
+        """Ensure degree is an integer greater than 1 and other attributes are valid."""
         min_degree = 2
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.constant < 0:
+            raise ValueError("'constant' must be non-negative")
         if not isinstance(self.degree, int) or self.degree < min_degree:
             raise ValueError("'degree' must be a positive integer greater than 1")
 
@@ -131,12 +142,20 @@ class SquaredExponentialKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -175,12 +194,20 @@ class ExponentialKernel(ScalarValuedKernel):
     .. note::
         Note that the Exponential kernel is not differentiable when :math:`x=y`.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = 1.0
     output_scale: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -225,17 +252,27 @@ class RationalQuadraticKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     :param relative_weighting: Parameter controlling the relative weighting of
         large-scale and small-scale variations, :math:`\alpha`. As
         :math:`alpha \to \infty` the rational quadratic kernel is identical to the
-        squared exponential kernel.
+        squared exponential kernel. Must be non-negative
     """
 
     length_scale: float = 1.0
     output_scale: float = 1.0
     relative_weighting: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.relative_weighting < 0:
+            raise ValueError("'relative_weighting' must be non-negative")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -288,14 +325,22 @@ class PeriodicKernel(ScalarValuedKernel):
     .. note::
         Note that the Periodic kernel is not differentiable when :math:`x=y`.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
     """
 
     length_scale: float = 1.0
     output_scale: float = 1.0
     periodicity: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -367,12 +412,20 @@ class LaplacianKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
     :math:`||\cdot||_1` is the :math:`L_1`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
@@ -409,12 +462,20 @@ class PCIMQKernel(ScalarValuedKernel):
     :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
     where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`
-    :param output_scale: Kernel normalisation constant, :math:`\rho`
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:

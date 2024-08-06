@@ -270,5 +270,5 @@ class TestRandomRegressionApproximations:
             "'base_kernel' must be an instance of "
             + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
         )
-        with pytest.raises(ValueError, match=expected_msg):
+        with pytest.raises(TypeError, match=expected_msg):
             approximator(InvalidKernel(0), random_key, **kwargs)  # pyright: ignore
