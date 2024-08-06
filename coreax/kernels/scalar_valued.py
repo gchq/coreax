@@ -143,7 +143,7 @@ class SquaredExponentialKernel(ScalarValuedKernel):
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
-        a positive
+        positive
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
@@ -258,7 +258,7 @@ class RationalQuadraticKernel(ScalarValuedKernel):
     :param relative_weighting: Parameter controlling the relative weighting of
         large-scale and small-scale variations, :math:`\alpha`. As
         :math:`alpha \to \infty` the rational quadratic kernel is identical to the
-        squared exponential kernel. Must be non-negative.
+        squared exponential kernel. Must be non-negative
     """
 
     length_scale: float = 1.0
