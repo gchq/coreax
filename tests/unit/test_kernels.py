@@ -2098,4 +2098,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     def test_invalid_base_kernel(self):
         """Check that an error is thrown if the base kernel is not the correct type."""
         with pytest.raises(TypeError):
-            SteinKernel(base_kernel="base_kernel", score_function=jnp.negative)
+            SteinKernel(
+                base_kernel="base_kernel",  # pyright: ignore[reportArgumentType]
+                score_function=jnp.negative,
+            )
