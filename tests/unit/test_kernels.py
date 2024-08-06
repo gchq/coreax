@@ -279,19 +279,39 @@ class TestKernelMagicMethods:
         elif mode == "int_pow":
             assert kernel**4 == PowerKernel(kernel, 4)
         elif mode == "invalid_float_pow":
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
                 _ = kernel**2.6  # pyright: ignore[reportOperatorIssue]
         elif mode == "less_than_min_power":
-            with pytest.raises(ValueError):
-                _ = kernel**1  # pyright: ignore[reportOperatorIssue]
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
+                _ = kernel**-1  # pyright: ignore[reportOperatorIssue]
         elif mode == "invalid_kernel_inputs":
             with pytest.raises(TypeError):
                 _ = AdditiveKernel(1, "string")  # pyright: ignore[reportArgumentType]
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match="'addition' must be an instance of a 'ScalarValuedKernel',"
+                + " an integer or a float",
+            ):
                 _ = kernel + "string"  # pyright: ignore[reportOperatorIssue]
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match="'product' must be an instance of a 'ScalarValuedKernel',"
+                + " an integer or a float",
+            ):
                 _ = kernel * "string"  # pyright: ignore[reportOperatorIssue]
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match="'power' must be a positive integer to ensure positive"
+                + " semi-definiteness",
+            ):
                 _ = kernel ** "string"  # pyright: ignore[reportOperatorIssue]
 
 
@@ -437,14 +457,14 @@ class TestPowerKernel(
 
     @pytest.mark.parametrize(
         "power",
-        [1.1, -1, 1],
-        ids=["float_power", "negative_power", "power_is_1"],
+        [1.1, -1, 0],
+        ids=["float_power", "negative_power", "power_is_non_positive"],
     )
     def test_invalid_power(self, power):
         """Test that invalid values of `power` are rejected."""
         with pytest.raises(
             ValueError,
-            match="'power' must be an integer to ensure positive"
+            match="'power' must be a positive integer to ensure positive"
             + " semi-definiteness",
         ):
             PowerKernel(LinearKernel(), power)
@@ -2093,7 +2113,11 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
 
     def test_invalid_base_kernel(self):
         """Check that an error is thrown if the base kernel is not the correct type."""
-        with pytest.raises(TypeError):
+        with pytest.raises(
+            TypeError,
+            match="'base_kernel' must be an instance of "
+            + "'coreax.kernels.base.ScalarValuedKernel'",
+        ):
             SteinKernel(
                 base_kernel="base_kernel",  # pyright: ignore[reportArgumentType]
                 score_function=jnp.negative,
