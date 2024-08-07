@@ -29,6 +29,7 @@ dependencies = [
     "flax",
     "jax",
     "jaxopt",
+    "jaxtyping",
     "optax",
     "scikit-learn",
     "tqdm",
@@ -110,6 +111,8 @@ ignore = [
     # Incompatible with other pydocstyle rules
     "D203",   # one-blank-line-before-class
     "D212",   # multi-line-summary-first-line
+    # Incompatible with jaxtyping
+    "F722",   # forward-annotation-syntax-error
     # Opinionated ignores
     "PLR6301", # no-self-use (opinionated)
     # Incompatible with jaxtyping

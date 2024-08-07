@@ -112,7 +112,7 @@ class PaddingInvariantSolver(Solver):
     A :class:`Solver` whose results are invariant to zero weighted data.
 
     In some cases, such as in :class:`coreax.solvers.MapReduce`, there is a need to pad
-    data to ensure shape stability. In some cases, we may assign zero weight to the
+    data to ensure shape stability. In these cases, we may assign zero weight to the
     padded data points, which allows certain 'padding invariant' solvers to return the
     same values on a call to :meth:`~coreax.solvers.Solver.reduce` as would have been
     returned if no padding were present.
