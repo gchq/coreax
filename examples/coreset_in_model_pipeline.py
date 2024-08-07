@@ -13,14 +13,11 @@
 # limitations under the License.
 
 """
-Example coreset generation using randomly generated point clouds.
+Integration test showing how coresets can be included in a machine learning pipeline.
 
-This example showcases how a coreset can be generated from a dataset containing ``n``
-points sampled from ``k`` clusters in space.
-
-A coreset is generated using kernel herding, with a Squared Exponential kernel. This
-coreset is compared to a coreset generated via uniform random sampling. Coreset quality
-is measured using maximum mean discrepancy (MMD).
+A coreset is generated using Kernel Herding and a Kernel Ridge Regression model is fit
+using it. It is then compared in terms of time and test mean squared error to the
+full dataset and a random subset.
 """
 
 from pathlib import Path
@@ -51,12 +48,13 @@ def main(
     out_path: Optional[Path] = None,
 ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
     """
-    Run the basic herding on tabular data example.
+    Run machine learning pipeline example.
 
-    Generate 1-dimensional features from a uniform distribution, compute a set of
-    responses with a non-linear relationship with the feature. Generate a coreset via
-    Kernel Herding. Estimate a polynomial regression model using the full data, the
-    coreset and a random sample, and compare test mean squared error.
+    A 1-dimensional set of features is generated from the standard Gaussian
+    distribution a set of paired responses is generated with a non-linear relationship
+    to the features. A coreset is then generated using Kernel Herding and a Kernel Ridge
+    Regression model is fit using it. It is then compared in terms of time to fit the
+    model and test mean squared error to the full dataset and a random subset.
 
     :param out_path: Path to save output to, if not :data:`None`, assumed relative to
         this module file unless an absolute path is given
