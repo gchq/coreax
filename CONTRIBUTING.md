@@ -1,4 +1,4 @@
-### Contributing to coreax
+# Contributing to coreax
 
 ## Getting started
 
@@ -105,21 +105,6 @@ def my_old_function(x: int) -> int:
 def my_new_function(x: int) -> int:
     return x*4
 ```
-
-Examples of breaking changes include, but are not limited to:
- - Renaming a public function or class
- - Removing a public function or class
- - Changing the name of an argument that isn't positional-only
- - Changing the order of arguments that aren't keyword-only
- - Adding a new argument to a function without a default value
- - Changing the return type of a function
-
-Examples of changes that are _not_ breaking:
- - Adding a new public function or class
- - Adding a new argument to a function with a default value
- - Renaming or removing a private function or class
- - Making changes to documentation
- - Making changes to tests
 
 ## Code
 
