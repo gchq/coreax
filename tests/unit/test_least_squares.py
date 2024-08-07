@@ -31,7 +31,7 @@ import pytest
 from jax import Array
 from typing_extensions import override
 
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels import SquaredExponentialKernel
 from coreax.least_squares import (
     MinimalEuclideanNormSolver,
     RandomisedEigendecompositionSolver,

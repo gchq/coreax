@@ -1,6 +1,6 @@
 Kernels
 ========
 
-.. automodule:: coreax.kernel
+.. automodule:: coreax.kernels
     :no-undoc-members:
     :no-private-members:
