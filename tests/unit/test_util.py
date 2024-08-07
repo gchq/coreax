@@ -293,7 +293,7 @@ class TestUtil:
                 total += a[i]
             return total / num_points
 
-        random_vector = jr.normal(jr.jr.key(2_024), shape=(100,))
+        random_vector = jr.normal(jr.key(2_024), shape=(100,))
 
         num_runs = 10
         summary_stats, _ = speed_comparison_test(
@@ -302,7 +302,7 @@ class TestUtil:
                 JITCompilableFunction(jnp.mean, fn_kwargs={"a": random_vector}),
             ],
             num_runs=num_runs,
-            print_results=True,
+            log_results=False,
         )
 
         # Tracing should occur for each run of the function, not just once, thus
