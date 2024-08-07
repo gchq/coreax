@@ -49,7 +49,7 @@ class TestCoresetInModelPipeline(unittest.TestCase):
             out_path = Path(tmp_dir) / "coreset_in_model_pipeline.png"
             coreset_in_model_pipeline_main(out_path=out_path)
 
-            mock_show.assert_has_calls([call(), call(), call()])
+            mock_show.assert_has_calls([call(), call(), call(), call()])
 
             self.assertTrue(Path(out_path).resolve().is_file())
 
