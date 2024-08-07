@@ -21,6 +21,8 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
+import logging
+import sys
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
@@ -34,6 +36,9 @@ import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from typing_extensions import TypeAlias, deprecated
+
+_logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
@@ -290,7 +295,7 @@ def jit_test(
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
         before being called to compile the passed function.
     :param check_hash: If :data:`True` check that the hash of the JITted function is
-        different to the supplied function.
+        different to the supplied function
     :return: (First run time, Second run time)
     """
     # Avoid dangerous default values - Pylint W0102
@@ -349,15 +354,15 @@ def _format_number(num: float) -> str:
 def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
-    print_results: bool = False,
+    log_results: bool = False,
     check_hash: bool = False,
-) -> tuple[Sequence[tuple[Array, Array]], dict]:
+) -> tuple[list[tuple[Array, Array]], dict[str, float]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
 
     :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
     :param num_runs: Number of times to average function timings over
-    :print_results: If :data:`True`, the results are formatted and printed
+    :log_results: If :data:`True`, the results are formatted and logged
     :param check_hash: If :data:`True` check that the hash of the JITted functions are
         different to the supplied functions.
     :return: Mean and standard deviation of compilation time and runtime for each
@@ -379,18 +384,18 @@ def speed_comparison_test(
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
-    if print_results:
+    if log_results:
         for k in range(num_functions):
-            print(f"------------------- Function {k + 1} -------------------")
-            print(
+            _logger.info("------------------- Function %s -------------------", k + 1)
+            _logger.info(
                 "Compilation time: "
-                + f"{_format_number(results[k][0][0].item())} \u00b1 "
+                + f"{_format_number(results[k][0][0].item())} ± "
                 + f"{_format_number(results[k][1][0].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
-            print(
+            _logger.info(
                 "Execution time: "
-                + f"{_format_number(results[k][0][1].item())} \u00b1 "
+                + f"{_format_number(results[k][0][1].item())} ± "
                 + f"{_format_number(results[k][1][1].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
