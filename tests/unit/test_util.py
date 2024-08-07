@@ -27,7 +27,6 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
-from jax.random import key
 from scipy.stats import ortho_group
 
 from coreax.util import (
@@ -38,7 +37,6 @@ from coreax.util import (
     jit_test,
     pairwise,
     sample_batch_indices,
-    solve_qp,
     speed_comparison_test,
     squared_distance,
     tree_leaves_repeat,
@@ -160,38 +158,6 @@ class TestUtil:
         )
         assert func_out == expected
 
-    def test_solve_qp_invalid_kernel_mm(self) -> None:
-        """
-        Test how solve_qp handles invalid inputs of kernel_mm.
-
-        The output of solve_qp is indirectly tested when testing the various weight
-        optimisers that are used in this codebase. This test just ensures sensible
-        behaviour occurs when unexpected inputs are passed to the function.
-        """
-        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
-        # this should error as no sensible result can be found in such a case.
-        with pytest.raises(TypeError, match="not a valid JAX array type"):
-            solve_qp(
-                kernel_mm="invalid_kernel_mm",
-                gramian_row_mean=np.array([1, 2, 3]),
-            )
-
-    def test_solve_qp_invalid_gramian_row_mean(self) -> None:
-        """
-        Test how solve_qp handles invalid inputs of gramian_row_mean.
-
-        The output of solve_qp is indirectly tested when testing the various weight
-        optimisers that are used in this codebase. This test just ensures sensible
-        behaviour occurs when unexpected inputs are passed to the function.
-        """
-        # Attempt to solve a QP with an input that cannot be converted to a JAX array -
-        # this should error as no sensible result can be found in such a case.
-        with pytest.raises(TypeError, match="not a valid JAX array type"):
-            solve_qp(
-                kernel_mm=np.array([1, 2, 3]),
-                gramian_row_mean="invalid_gramian_row_mean",
-            )
-
     @pytest.mark.parametrize(
         "max_index, batch_size, num_batches",
         [
@@ -212,7 +178,7 @@ class TestUtil:
         """Test sample_batch_indices for valid input parameters."""
         with pytest.raises(ValueError):
             sample_batch_indices(
-                random_key=key(0),
+                random_key=jr.key(0),
                 max_index=max_index,
                 batch_size=batch_size,
                 num_batches=num_batches,
@@ -223,7 +189,7 @@ class TestUtil:
         batch_size = 50
         num_batches = 10
         batch_indices = sample_batch_indices(
-            random_key=key(0),
+            random_key=jr.key(0),
             max_index=100,
             batch_size=batch_size,
             num_batches=num_batches,
@@ -236,7 +202,7 @@ class TestUtil:
         batch_size = 50
         num_batches = 10
         batch_indices = sample_batch_indices(
-            random_key=key(0),
+            random_key=jr.key(0),
             max_index=max_index,
             batch_size=batch_size,
             num_batches=num_batches,
@@ -255,7 +221,7 @@ class TestUtil:
         batch_size = 200
         num_batches = 100
         batch_indices = sample_batch_indices(
-            random_key=key(0),
+            random_key=jr.key(0),
             max_index=max_index,
             batch_size=batch_size,
             num_batches=num_batches,
@@ -327,7 +293,7 @@ class TestUtil:
                 total += a[i]
             return total / num_points
 
-        random_vector = jr.normal(jr.key(2_024), shape=(100,))
+        random_vector = jr.normal(jr.jr.key(2_024), shape=(100,))
 
         num_runs = 10
         summary_stats, _ = speed_comparison_test(
