@@ -19,7 +19,7 @@ of the data. Exactly how the score function is modelled is specific to each
 child class of the abstract base class :class:`ScoreMatching`.
 
 An example use of score matching arises when trying to work with a
-:class:`~coreax.kernel.SteinKernel`, which requires as an input a score function. If
+:class:`~coreax.kernels.SteinKernel`, which requires as an input a score function. If
 this is known analytically, one can provide an exact score function. In other cases,
 approximations to the score function are required, which can be determined using
 :class:`ScoreMatching`.
@@ -44,7 +44,7 @@ from jax.typing import ArrayLike, DTypeLike
 from optax import adamw
 from tqdm import tqdm
 
-from coreax.kernel import Kernel, SquaredExponentialKernel, SteinKernel
+from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
 from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
 from coreax.util import KeyArrayLike
 
@@ -477,7 +477,7 @@ class KernelDensityMatching(ScoreMatching):
         estimate
     """
 
-    kernel: Kernel
+    kernel: ScalarValuedKernel
 
     def __init__(self, length_scale: float):
         """Define the kernel density matching class."""
@@ -542,24 +542,25 @@ class KernelDensityMatching(ScoreMatching):
 
 def convert_stein_kernel(
     x: ArrayLike,
-    kernel: Kernel,
+    kernel: ScalarValuedKernel,
     score_matching: Union[ScoreMatching, None],
 ) -> SteinKernel:
     r"""
-    Convert the kernel to a :class:`~coreax.kernel.SteinKernel`.
+    Convert the kernel to a :class:`~coreax.kernels.SteinKernel`.
 
     :param x: The data used to call `score_matching.match(x)`
-    :param kernel: :class:`~coreax.kernel.Kernel` instance implementing a kernel
-        function :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`;
-        if 'kernel' is a :class:`~coreax.kernel.SteinKernel` and :code:`score_matching
-        is not None`, a new instance of the kernel will be generated where the score
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`; if 'kernel'
+        is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching is not
+        data:`None`, a new instance of the kernel will be generated where the score
         function is given by :code:`score_matching.match(x)`
     :param score_matching: Specifies/overwrite the score function of the implied/passed
-       :class:`~coreax.kernel.SteinKernel`; if :data:`None`, default to
+       :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
        :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
-       :class:`~coreax.kernel.SteinKernel`, in which case the kernel's existing score
+       :class:`~coreax.kernels.SteinKernel`, in which case the kernel's existing score
        function is used.
-    :return: The (potentially) converted/updated :class:`~coreax.kernel.SteinKernel`.
+    :return: The (potentially) converted/updated :class:`~coreax.kernels.SteinKernel`.
     """
     if isinstance(kernel, SteinKernel):
         if score_matching is not None:

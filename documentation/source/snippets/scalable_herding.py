@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels import SquaredExponentialKernel
 from coreax.solvers import KernelHerding, MapReduce
 
 # Compute a coreset using kernel herding with a squared exponential kernel.
