@@ -64,13 +64,19 @@ def main(
         (random test MSE, fitting time))
     """
     # Create some data. Here we'll use 25,000 points in 1D from a uniform distribution
-    seed = 2_024
+    seed = 1_234
     num_data_pairs = 25_000
-    x = (jr.uniform(jr.key(seed), shape=(num_data_pairs, 1)) - 0.5) * 8
+    x = jr.normal(jr.key(seed), shape=(num_data_pairs, 1))
 
     def _generating_func(x: Array) -> Array:
         """Encode non-linear relationship between features and response."""
-        return x + x**2 + 5 * jnp.sin(x)
+        return (
+            x
+            + x**2
+            + 5 * jnp.sin(x)
+            + 100 * jnp.exp(-((x - 3) ** 2))
+            + 100 * jnp.exp(-((x + 2) ** 2))
+        )
 
     y = _generating_func(x) + jr.normal(jr.key(seed + 1), shape=(num_data_pairs, 1))
     x, x_test, y, y_test = train_test_split(x, y, test_size=0.1, random_state=seed)
@@ -84,8 +90,8 @@ def main(
     y = jnp.asarray(response_scaler.transform(y))
     y_test = jnp.asarray(response_scaler.transform(y_test))
 
-    # Request 10 coreset points
-    coreset_size = 10
+    # Request 200 coreset points
+    coreset_size = 200
 
     # Setup the original data object
     data = Data(x)
@@ -117,9 +123,9 @@ def main(
     print("Estimating kernel ridge regression model with coreset...")
     coreset_indices = coreset.unweighted_indices
     coreset_fit_time = time()
-    coreset_model = KernelRidge(kernel="rbf", gamma=length_scale, alpha=1e-2).fit(
-        x[coreset_indices], y[coreset_indices]
-    )
+    coreset_model = KernelRidge(
+        kernel="rbf", gamma=float(median_heuristic(x[coreset_indices])), alpha=1e-1
+    ).fit(x[coreset_indices], y[coreset_indices])
     coreset_fit_time = time() - coreset_fit_time
     coreset_overall_time = coreset_build_time + coreset_fit_time
     coreset_mse = jnp.linalg.norm(y_test - coreset_model.predict(x_test))
@@ -129,15 +135,15 @@ def main(
     random_set, _ = eqx.filter_jit(solver.reduce)(data)
     random_indices = random_set.unweighted_indices
     random_fit_time = time()
-    random_model = KernelRidge(kernel="rbf", gamma=length_scale, alpha=1e-2).fit(
-        x[random_indices], y[random_indices]
-    )
+    random_model = KernelRidge(
+        kernel="rbf", gamma=float(median_heuristic(x[random_indices])), alpha=1e-1
+    ).fit(x[random_indices], y[random_indices])
     random_fit_time = time() - random_fit_time
     random_mse = jnp.linalg.norm(y_test - random_model.predict(x_test))
 
     # Produce some scatter plots
     x_plot = jnp.linspace(x.min(), x.max(), 100).reshape(-1, 1)
-    plt.scatter(x, y, s=1, color="black", alpha=0.25, label="Data")
+    plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
     plt.plot(
         x_plot,
         full_data_model.predict(x_plot),
@@ -149,11 +155,11 @@ def main(
     plt.title("Model trained on the full dataset")
     plt.show()
 
-    plt.scatter(x, y, s=1, color="black", alpha=0.25, label="Data")
+    plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
     plt.scatter(
         x[coreset_indices],
         y[coreset_indices],
-        s=25,
+        s=100,
         color="yellow",
         ec="black",
         label="Coreset",
@@ -170,11 +176,11 @@ def main(
     plt.title("Model trained on the coreset")
     plt.show()
 
-    plt.scatter(x, y, s=1, color="black", alpha=0.25, label="Data")
+    plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
     plt.scatter(
         x[random_indices],
         y[random_indices],
-        s=25,
+        s=100,
         color="yellow",
         ec="black",
         label="Random sample",
@@ -188,10 +194,10 @@ def main(
         label="Model estimate",
     )
     plt.legend()
-    plt.title("Model trained on the Kernel Herding coreset")
+    plt.title("Model trained on the random sample")
     plt.show()
 
-    plt.scatter(x, y, s=1, color="black", alpha=0.25, label="Data")
+    plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
 
     plt.plot(
         x_plot,
