@@ -75,10 +75,11 @@ Refs: #123
 Since we are still pre-1.0, [SemVer] states that any release may contain breaking
 changes. However, breaking changes should not be made without warning.
 
-**Any breaking changes must have a deprecation period of at least one minor release**
-before the breaking change is made. If the change is one that may require significant
-changes to client code, such as removing a function or class entirely, the deprecation
-period must instead be at least **two minor releases**.
+Any breaking changes must have a deprecation period of at least **one minor release,
+or one month (whichever is longer),** before the breaking change is made. If the change
+is one that may require significant changes to client code, such as removing a function
+or class entirely, the deprecation period must instead be at least **two minor releases,
+or two months (whichever is longer).**
 
 Ensure that during the deprecation period, the old behaviour still works, but raises a
 `DeprecationWarning` with an appropriate message. If at all possible, ensure that there
