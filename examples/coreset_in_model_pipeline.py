@@ -191,6 +191,34 @@ def main(
     plt.title("Model trained on the Kernel Herding coreset")
     plt.show()
 
+    plt.scatter(x, y, s=1, color="black", alpha=0.25, label="Data")
+
+    plt.plot(
+        x_plot,
+        full_data_model.predict(x_plot),
+        color="green",
+        linewidth=3,
+        label=f"Full estimate, MSE = {round(float(full_data_mse), 3)}",
+    )
+    plt.plot(
+        x_plot,
+        coreset_model.predict(x_plot),
+        color="red",
+        linewidth=3,
+        label=f"Coreset estimate, MSE = {round(float(coreset_mse), 3)}",
+    )
+    plt.plot(
+        x_plot,
+        random_model.predict(x_plot),
+        color="blue",
+        linewidth=3,
+        label=f"Random estimate, MSE = {round(float(random_mse), 3)}",
+    )
+    plt.legend()
+
+    plt.title("All models compared")
+    plt.show()
+
     if out_path is not None:
         if not out_path.is_absolute():
             out_path = Path(__file__).parent.joinpath(out_path)
