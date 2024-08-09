@@ -64,7 +64,8 @@ def main(
     # Create some data. Here we'll use 25,000 points in 1D from a uniform distribution
     seed = 1_234
     num_data_pairs = 25_000
-    x = jr.normal(jr.key(seed), shape=(num_data_pairs, 1))
+    feature_key, error_key = jr.split(jr.key(seed), 2)
+    x = jr.normal(feature_key, shape=(num_data_pairs, 1))
 
     def _generating_func(x: Array) -> Array:
         """Encode non-linear relationship between features and response."""
@@ -76,7 +77,7 @@ def main(
             + 100 * jnp.exp(-((x + 2) ** 2))
         )
 
-    y = _generating_func(x) + jr.normal(jr.key(seed + 1), shape=(num_data_pairs, 1))
+    y = _generating_func(x) + jr.normal(error_key, shape=(num_data_pairs, 1))
     x, x_test, y, y_test = train_test_split(x, y, test_size=0.1, random_state=seed)
 
     # Scale the features and responses individually
@@ -141,6 +142,8 @@ def main(
 
     # Produce some scatter plots
     x_plot = jnp.linspace(x.min(), x.max(), 100).reshape(-1, 1)
+
+    # Plot of full data model
     plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
     plt.plot(
         x_plot,
@@ -163,6 +166,7 @@ def main(
         label="Coreset",
     )
 
+    # Plot of coreset model
     plt.plot(
         x_plot,
         coreset_model.predict(x_plot),
@@ -174,6 +178,7 @@ def main(
     plt.title("Model trained on the coreset")
     plt.show()
 
+    # Plot of random subset model
     plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
     plt.scatter(
         x[random_indices],
@@ -195,31 +200,33 @@ def main(
     plt.title("Model trained on the random sample")
     plt.show()
 
+    # Plot comparing each model on one graph
     plt.scatter(x, y, s=20, color="black", alpha=0.25, label="Data")
-
     plt.plot(
         x_plot,
         full_data_model.predict(x_plot),
         color="green",
         linewidth=3,
-        label=f"Full estimate, MSE = {round(float(full_data_mse), 3)}",
+        label=f"Full estimate, MSE = {round(float(full_data_mse), 3)},"
+        + f" Time = {round(float(full_data_fit_time), 3)}s",
     )
     plt.plot(
         x_plot,
         coreset_model.predict(x_plot),
         color="red",
         linewidth=3,
-        label=f"Coreset estimate, MSE = {round(float(coreset_mse), 3)}",
+        label=f"Coreset estimate, MSE = {round(float(coreset_mse), 3)},"
+        + f" Time = {round(float(coreset_overall_time), 3)}s",
     )
     plt.plot(
         x_plot,
         random_model.predict(x_plot),
         color="blue",
         linewidth=3,
-        label=f"Random estimate, MSE = {round(float(random_mse), 3)}",
+        label=f"Random estimate, MSE = {round(float(random_mse), 3)},"
+        + f" Time = {round(float(random_fit_time), 3)}s",
     )
     plt.legend()
-
     plt.title("All models compared")
     plt.show()
 
@@ -237,7 +244,7 @@ def main(
 
 # pylint: enable=too-many-locals
 # pylint: enable=duplicate-code
-
+# pylint: enable=too-many-statements
 
 if __name__ == "__main__":
     main()
