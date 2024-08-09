@@ -47,7 +47,16 @@ class TestCoresetInModelPipeline(unittest.TestCase):
         ):
             # Run weighted herding example
             out_path = Path(tmp_dir) / "coreset_in_model_pipeline.png"
-            coreset_in_model_pipeline_main(out_path=out_path)
+            full_data_results, coreset_results, random_results = (
+                coreset_in_model_pipeline_main(out_path=out_path)
+            )
+
+            # Check that the coreset beats random in terms of MSE
+            self.assertTrue(coreset_results[0] < random_results[0])
+
+            # Check that the coreset build and fit time is faster than full dataset fit
+            # time.
+            self.assertTrue(full_data_results[1] > coreset_results[1])
 
             mock_show.assert_has_calls([call(), call(), call(), call()])
 
