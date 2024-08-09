@@ -55,7 +55,8 @@ class Data(eqx.Module):
     Class for representing unsupervised data.
 
     A dataset of size `n` consists of a set of pairs :math:`\{(x_i, w_i)\}_{i=1}^n`
-    where :math`x_i` are the features or inputs and :math:`w_i` are weights.
+    where :math:`x_i\in\mathbb{R}^d` are the features or inputs and :math:`w_i` are
+    weights.
 
     .. note::
         `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
@@ -67,7 +68,7 @@ class Data(eqx.Module):
         vector is paired with the corresponding index of the data array, forming the
         pair :math:`(x_i, w_i)`; if passed a scalar weight, it will be broadcast to an
         :math:`n`-vector. the default value of :data:`None` sets the weights to
-        the ones vector (implies a scalar weight of one);
+        the ones vector (implies a scalar weight of one)
     """
 
     data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
@@ -114,9 +115,9 @@ class SupervisedData(Data):
     Class for representing supervised data.
 
     A supervised dataset of size `n` consists of a set of triples
-    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math`x_i` are the features or inputs,
-    :math:`y_i` are the responses or outputs, and :math:`w_i` are weights which
-    correspond to the pairs :math:`(x_i, y_i)`.
+    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math:`x_i\in\mathbb{R}^d` are the
+    features or inputs, :math:`y_i\in\mathbb{R}^p` are the responses or outputs, and
+    :math:`w_i` are weights which correspond to the pairs :math:`(x_i, y_i)`.
 
     .. note::
         `n`-vector inputs for `data` and `supervision` are interpreted as `n` points in
@@ -130,7 +131,7 @@ class SupervisedData(Data):
         vector is is paired with the corresponding index of the data and supervision
         array, forming the triple :math:`(x_i, y_i, w_i)`; if passed a scalar weight,
         it will be broadcast to an :math:`n`-vector. the default value of :data:`None`
-        sets the weights to the ones vector (implies a scalar weight of one);
+        sets the weights to the ones vector (implies a scalar weight of one)
     """
 
     supervision: Shaped[Array, " n *p"] = eqx.field(converter=_atleast_2d_consistent)
