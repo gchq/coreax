@@ -24,6 +24,7 @@ kdtree
 kernelised
 kernelized
 KSD
+linewidth
 ml.p3.8xlarge
 ndmin
 parsable
