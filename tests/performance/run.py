@@ -4,6 +4,7 @@ import argparse
 import json
 
 from cases.basic_coresets import setup_herding, setup_rpc, setup_stein
+from cases.normaliser import setup_normaliser
 
 from coreax.util import speed_comparison_test
 
@@ -13,6 +14,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     function_setups = [
+        setup_normaliser(),
         setup_herding(),
         setup_rpc(),
         setup_stein(),
