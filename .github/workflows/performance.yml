@@ -14,9 +14,8 @@ jobs:
   performance-check:
     name: Check performance
     runs-on: ubuntu-latest
-    outputs:
-      percentage: ${{ steps.cov.outputs.percentage }}
     env:
+      GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
       gist_id: 094213d70dcc9c03ec49a81545627373
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +53,6 @@ jobs:
             })
       - name: Save performance data to Gist
         if: github.event_name == 'push'
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
         run: |
           OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA"
           gh gist edit ${{ env.gist_id }} -a $OUT_NAME $RUNNER_TEMP/performance.json
