@@ -9,20 +9,32 @@ from coreax.util import speed_comparison_test
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out_file", default=None)
+    parser.add_argument("-o", "--output-file", default=None)
     args = parser.parse_args()
 
-    _, timings = speed_comparison_test(
-        [
-            setup_herding(),
-            setup_rpc(),
-            setup_stein(),
-        ],
-        10,
+    function_setups = [
+        setup_herding(),
+        setup_rpc(),
+        setup_stein(),
+    ]
+
+    results, _ = speed_comparison_test(
+        function_setups=function_setups,
+        num_runs=10,
         log_results=True,
         check_hash=False,
     )
 
-    if args.out_file is not None:
-        with open(args.out_file, "w", encoding="utf8") as f:
-            json.dump(timings, f)
+    if args.output_file is not None:
+        # we have to do a little work here since JAX arrays are not JSON serializable
+        dict_results = {
+            setup.name: {
+                "compilation_mean": float(times[0][0]),
+                "execution_mean": float(times[0][1]),
+                "compilation_std": float(times[1][0]),
+                "execution_std": float(times[1][1]),
+            }
+            for setup, times in zip(function_setups, results)
+        }
+        with open(args.output_file, "w", encoding="utf8") as f:
+            json.dump(dict_results, f)

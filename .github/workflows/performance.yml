@@ -1,0 +1,40 @@
+name: Performance
+# Monitor performance of Coreax code.
+
+on:
+  push:
+    branches:
+      - main
+      - feature/performance-testing-ci
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  performance-check:
+    name: Check performance
+    runs-on: ubuntu-latest
+    outputs:
+      percentage: ${{ steps.cov.outputs.percentage }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Install package and dependencies
+        run: pip install -e .
+      - name: Assess performance
+        run: python tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
+      - name: Save performance data to Gist
+        if: github.event_name == 'push'
+        env:
+          gist_id: 094213d70dcc9c03ec49a81545627373
+          GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
+        run: |
+          OUT_NAME="performance-$(date -I)-$GITHUB_SHA"
+          gh gist edit ${{ env.gist_id }} -a $OUT_NAME $RUNNER_TEMP/performance.json
