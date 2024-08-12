@@ -60,7 +60,11 @@ def setup_herding():
         CORESET_SIZE, SquaredExponentialKernel(length_scale=length_scale)
     )
     return JITCompilableFunction(
-        fn=herding_solver.reduce, fn_args=(data,), fn_kwargs=None, jit_kwargs=None
+        fn=herding_solver.reduce,
+        fn_args=(data,),
+        fn_kwargs=None,
+        jit_kwargs=None,
+        name="basic_herding",
     )
 
 
@@ -77,7 +81,11 @@ def setup_stein():
     )
     stein_solver = SteinThinning(CORESET_SIZE, kernel=stein_kernel)
     return JITCompilableFunction(
-        fn=stein_solver.reduce, fn_args=(data,), fn_kwargs=None, jit_kwargs=None
+        fn=stein_solver.reduce,
+        fn_args=(data,),
+        fn_kwargs=None,
+        jit_kwargs=None,
+        name="basic_stein",
     )
 
 
@@ -91,5 +99,9 @@ def setup_rpc():
         SquaredExponentialKernel(length_scale=length_scale),
     )
     return JITCompilableFunction(
-        fn=rpc_solver.reduce, fn_args=(data,), fn_kwargs=None, jit_kwargs=None
+        fn=rpc_solver.reduce,
+        fn_args=(data,),
+        fn_kwargs=None,
+        jit_kwargs=None,
+        name="basic_rpc",
     )

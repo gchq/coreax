@@ -67,6 +67,7 @@ class JITCompilableFunction(NamedTuple):
     fn_args: tuple = ()
     fn_kwargs: Optional[dict] = None
     jit_kwargs: Optional[dict] = None
+    name: Optional[str] = None
 
 
 class InvalidKernel:
@@ -281,6 +282,7 @@ def jit_test(
     fn_args: tuple = (),
     fn_kwargs: Optional[dict] = None,
     jit_kwargs: Optional[dict] = None,
+    _name: Optional[str] = None,  # UNUSED
     check_hash: bool = True,
 ) -> tuple[float, float]:
     """
@@ -372,8 +374,10 @@ def speed_comparison_test(
     timings_dict = {}
     results = []
     for i in range(num_functions):
+        name = function_setups[i].name
+        name = name if name is not None else f"function_{i + 1}"
         if log_results:
-            _logger.info("------------------- Function %s -------------------", i + 1)
+            _logger.info("------------------- %s -------------------", name)
 
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
@@ -381,9 +385,7 @@ def speed_comparison_test(
                 jit_test(*function_setups[i], check_hash=check_hash)
             )
         # Compute the time just spent on compilation
-        timings_dict[f"timings_{i}"] = timings.at[:, 0].set(
-            timings[:, 0] - timings[:, 1]
-        )
+        timings_dict[name] = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
