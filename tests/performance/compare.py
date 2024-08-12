@@ -9,8 +9,6 @@ from typing import Tuple
 
 from scipy.stats import ttest_ind_from_stats
 
-from coreax.util import format_number
-
 PERFORMANCE_FILENAME_REGEX = re.compile(
     r"^performance"
     r"-(\d{4})-(\d{2})-(\d{2})"
@@ -68,14 +66,14 @@ def get_most_recent_historic_data(reference_directory: Path) -> Path:
 def format_run_time(times: dict[str, float]) -> str:
     """Format the performance data for a specific test in a human readable form."""
     return (
-        f"compilation {format_number(times['compilation_mean'])} "
-        f"± {format_number(times['compilation_std'])}; "
-        f"execution {format_number(times['execution_mean'])} "
-        f"± {format_number(times['execution_std'])}"
+        f"compilation {times['compilation_mean']:.4g} units "
+        f"± {times['compilation_std']:.4g} units; "
+        f"execution {times['execution_mean']:.4g} units "
+        f"± {times['execution_std']:.4g} units"
     )
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901
     """Run the command-line script."""
     performance_file, reference_directory = parse_args()
     with open(performance_file, "r", encoding="utf8") as f:
