@@ -54,5 +54,5 @@ jobs:
       - name: Save performance data to Gist
         if: github.event_name == 'push'
         run: |
-          OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA"
+          OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA.json"
           gh gist edit ${{ env.gist_id }} -a $OUT_NAME $RUNNER_TEMP/performance.json
