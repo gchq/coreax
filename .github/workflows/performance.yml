@@ -37,7 +37,8 @@ jobs:
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
         run: |
-          python tests/performance/compare.py $RUNNER_TEMP/performance.json $RUNNER_TEMP/historic >> $RUNNER_TEMP/comment.md
+          python tests/performance/compare.py $RUNNER_TEMP/performance.json $RUNNER_TEMP/historic > $RUNNER_TEMP/comment.md
+          cat $RUNNER_TEMP/comment.md
       - name: Comment performance update on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -49,7 +50,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: fs.readFileSync("$RUNNER_TEMP/comment.md", "utf8")
+              body: fs.readFileSync(`${RUNNER_TEMP}/comment.md`, "utf8")
             })
       - name: Save performance data to Gist
         if: github.event_name == 'push'
