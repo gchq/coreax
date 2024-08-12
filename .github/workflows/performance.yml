@@ -33,14 +33,14 @@ jobs:
       - name: Assess performance
         run: python tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
       - name: Download historic performance data
-        if: github.event_name == 'pr'
+        if: github.event_name == 'pull_request'
         run: gh gist clone ${{ env.gist_id }} $RUNNER_TEMP/historic
       - name: Compare performance against historic data
-        if: github.event_name == 'pr'
+        if: github.event_name == 'pull_request'
         run: |
           python tests/performance/compare.py $RUNNER_TEMP/performance.json $RUNNER_TEMP/historic >> $RUNNER_TEMP/comment.md
       - name: Comment performance update on PR
-        if: github.event_name == 'pr'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           script: |
