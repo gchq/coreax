@@ -372,6 +372,9 @@ def speed_comparison_test(
     timings_dict = {}
     results = []
     for i in range(num_functions):
+        if log_results:
+            _logger.info("------------------- Function %s -------------------", i + 1)
+
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
             timings = timings.at[j, :].set(
@@ -384,21 +387,20 @@ def speed_comparison_test(
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
-    if log_results:
-        for k in range(num_functions):
-            _logger.info("------------------- Function %s -------------------", k + 1)
+        if log_results:
             _logger.info(
                 "Compilation time: "
-                + f"{_format_number(results[k][0][0].item())} ± "
-                + f"{_format_number(results[k][1][0].item())}"
+                + f"{_format_number(results[i][0][0].item())} ± "
+                + f"{_format_number(results[i][1][0].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
             _logger.info(
                 "Execution time: "
-                + f"{_format_number(results[k][0][1].item())} ± "
-                + f"{_format_number(results[k][1][1].item())}"
+                + f"{_format_number(results[i][0][1].item())} ± "
+                + f"{_format_number(results[i][1][1].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
+
     return results, timings_dict
 
 
