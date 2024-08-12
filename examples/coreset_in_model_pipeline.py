@@ -109,7 +109,9 @@ def main(
         x, y
     )
     full_data_fit_time = time() - full_data_fit_time
-    full_data_mse = jnp.linalg.norm(y_test - full_data_model.predict(x_test))
+    full_data_rmse = jnp.sqrt(
+        ((y_test - full_data_model.predict(x_test)) ** 2).sum() / num_data_pairs
+    )
 
     print("Computing herding coreset...")
     # Compute a coreset using kernel herding with a squared exponential kernel.
@@ -127,7 +129,9 @@ def main(
     ).fit(x[coreset_indices], y[coreset_indices])
     coreset_fit_time = time() - coreset_fit_time
     coreset_overall_time = coreset_build_time + coreset_fit_time
-    coreset_mse = jnp.linalg.norm(y_test - coreset_model.predict(x_test))
+    coreset_rmse = jnp.sqrt(
+        ((y_test - coreset_model.predict(x_test)) ** 2).sum() / num_data_pairs
+    )
 
     print("Estimating kernel ridge regression model with random sample of data...")
     solver = RandomSample(coreset_size, jr.key(seed))
@@ -138,7 +142,9 @@ def main(
         kernel="rbf", gamma=float(median_heuristic(x[random_indices])), alpha=1e-1
     ).fit(x[random_indices], y[random_indices])
     random_fit_time = time() - random_fit_time
-    random_mse = jnp.linalg.norm(y_test - random_model.predict(x_test))
+    random_rmse = jnp.sqrt(
+        ((y_test - random_model.predict(x_test)) ** 2).sum() / num_data_pairs
+    )
 
     # Produce some scatter plots
     x_plot = jnp.linspace(x.min(), x.max(), 100).reshape(-1, 1)
@@ -207,7 +213,7 @@ def main(
         full_data_model.predict(x_plot),
         color="green",
         linewidth=3,
-        label=f"Full estimate, MSE = {round(float(full_data_mse), 3)},"
+        label=f"Full estimate, RMSE = {round(float(full_data_rmse), 3)},"
         + f" Time = {round(float(full_data_fit_time), 3)}s",
     )
     plt.plot(
@@ -215,7 +221,7 @@ def main(
         coreset_model.predict(x_plot),
         color="red",
         linewidth=3,
-        label=f"Coreset estimate, MSE = {round(float(coreset_mse), 3)},"
+        label=f"Coreset estimate, RMSE = {round(float(coreset_rmse), 3)},"
         + f" Time = {round(float(coreset_overall_time), 3)}s",
     )
     plt.plot(
@@ -223,7 +229,7 @@ def main(
         random_model.predict(x_plot),
         color="blue",
         linewidth=3,
-        label=f"Random estimate, MSE = {round(float(random_mse), 3)},"
+        label=f"Random estimate, RMSE = {round(float(random_rmse), 3)},"
         + f" Time = {round(float(random_fit_time), 3)}s",
     )
     plt.legend()
@@ -236,9 +242,9 @@ def main(
         plt.savefig(out_path)
 
     return (
-        (float(full_data_mse), float(full_data_fit_time)),
-        (float(coreset_mse), float(coreset_overall_time)),
-        (float(random_mse), float(random_fit_time)),
+        (float(full_data_rmse), float(full_data_fit_time)),
+        (float(coreset_rmse), float(coreset_overall_time)),
+        (float(random_rmse), float(random_fit_time)),
     )
 
 
