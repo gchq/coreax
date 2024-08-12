@@ -55,7 +55,14 @@ def date_from_filename(path: Path) -> Tuple[datetime.datetime, str]:
 
 def get_most_recent_historic_data(reference_directory: Path) -> Path:
     """Get the most recent saved performance data in the given directory."""
-    return max(reference_directory.iterdir(), key=date_from_filename)
+    return max(
+        (
+            f
+            for f in reference_directory.iterdir()
+            if f.is_file() and f.suffix == ".json"
+        ),
+        key=date_from_filename,
+    )
 
 
 def format_run_time(times: dict[str, float]) -> str:
