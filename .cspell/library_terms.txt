@@ -73,6 +73,7 @@ nanargmin
 ndarray
 ndim
 newaxis
+nobs
 nonzero
 numpy
 opencv
@@ -117,6 +118,7 @@ toctree
 tomli
 tqdm
 triu
+ttest
 typehints
 undoc
 unflatten

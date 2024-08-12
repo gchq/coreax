@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       percentage: ${{ steps.cov.outputs.percentage }}
+    env:
+      gist_id: 094213d70dcc9c03ec49a81545627373
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
@@ -30,10 +32,29 @@ jobs:
         run: pip install -e .
       - name: Assess performance
         run: python tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
+      - name: Download historic performance data
+        if: github.event_name == 'pr'
+        run: gh gist clone ${{ env.gist_id }} $RUNNER_TEMP/historic
+      - name: Compare performance against historic data
+        if: github.event_name == 'pr'
+        run: |
+          python tests/performance/compare.py $RUNNER_TEMP/performance.json $RUNNER_TEMP/historic >> $RUNNER_TEMP/comment.md
+      - name: Comment performance update on PR
+        if: github.event_name == 'pr'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            var fs = require('fs');
+            const RUNNER_TEMP = process.env.RUNNER_TEMP
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: fs.readFileSync("$RUNNER_TEMP/comment.md", "utf8")
+            })
       - name: Save performance data to Gist
         if: github.event_name == 'push'
         env:
-          gist_id: 094213d70dcc9c03ec49a81545627373
           GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
         run: |
           OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA"
