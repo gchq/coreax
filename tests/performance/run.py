@@ -18,9 +18,11 @@ if __name__ == "__main__":
         setup_stein(),
     ]
 
+    NUM_RUNS = 10
+
     results, _ = speed_comparison_test(
         function_setups=function_setups,
-        num_runs=10,
+        num_runs=NUM_RUNS,
         log_results=True,
         check_hash=False,
     )
@@ -33,6 +35,7 @@ if __name__ == "__main__":
                 "execution_mean": float(times[0][1]),
                 "compilation_std": float(times[1][0]),
                 "execution_std": float(times[1][1]),
+                "num_runs": NUM_RUNS,
             }
             for setup, times in zip(function_setups, results)
         }

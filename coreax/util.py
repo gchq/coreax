@@ -326,7 +326,7 @@ def jit_test(
     return pre_delta, post_delta
 
 
-def _format_number(num: float) -> str:
+def format_number(num: float) -> str:
     """Standardise the format of the input number."""
     if num == 0:
         return "0 s"
@@ -358,7 +358,7 @@ def speed_comparison_test(
     num_runs: int = 10,
     log_results: bool = False,
     check_hash: bool = False,
-) -> tuple[list[tuple[Array, Array]], dict[str, float]]:
+) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
 
@@ -385,21 +385,22 @@ def speed_comparison_test(
                 jit_test(*function_setups[i], check_hash=check_hash)
             )
         # Compute the time just spent on compilation
-        timings_dict[name] = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        timings_dict[name] = timings
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
         if log_results:
             _logger.info(
                 "Compilation time: "
-                + f"{_format_number(results[i][0][0].item())} ± "
-                + f"{_format_number(results[i][1][0].item())}"
+                + f"{format_number(results[i][0][0].item())} ± "
+                + f"{format_number(results[i][1][0].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
             _logger.info(
                 "Execution time: "
-                + f"{_format_number(results[i][0][1].item())} ± "
-                + f"{_format_number(results[i][1][1].item())}"
+                + f"{format_number(results[i][0][1].item())} ± "
+                + f"{format_number(results[i][1][1].item())}"
                 + f" per run (mean ± std. dev. of {num_runs} runs)"
             )
 
