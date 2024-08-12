@@ -8,35 +8,44 @@ from cases.normaliser import setup_normaliser
 
 from coreax.util import speed_comparison_test
 
+NUM_RUNS = 10
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output-file", default=None)
     args = parser.parse_args()
 
+    normaliser_results, _ = speed_comparison_test(
+        function_setups=[setup_normaliser()],
+        num_runs=NUM_RUNS,
+        log_results=True,
+        check_hash=False,
+    )
+    normaliser_compilation_time = normaliser_results[0][0][0].item()
+    normaliser_execution_time = normaliser_results[0][0][1].item()
+
     function_setups = [
-        setup_normaliser(),
         setup_herding(),
         setup_rpc(),
         setup_stein(),
     ]
-
-    NUM_RUNS = 10
 
     results, _ = speed_comparison_test(
         function_setups=function_setups,
         num_runs=NUM_RUNS,
         log_results=True,
         check_hash=False,
+        normalisation=(normaliser_compilation_time, normaliser_execution_time),
     )
 
     if args.output_file is not None:
         # we have to do a little work here since JAX arrays are not JSON serializable
         dict_results = {
             setup.name: {
-                "compilation_mean": float(times[0][0]),
-                "execution_mean": float(times[0][1]),
-                "compilation_std": float(times[1][0]),
-                "execution_std": float(times[1][1]),
+                "compilation_mean": times[0][0].item(),
+                "execution_mean": times[0][1].item(),
+                "compilation_std": times[1][0].item(),
+                "execution_std": times[1][1].item(),
                 "num_runs": NUM_RUNS,
             }
             for setup, times in zip(function_setups, results)

@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, NamedTuple, Optional, Sequence, TypeVar
+from typing import Any, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -358,6 +358,7 @@ def speed_comparison_test(
     num_runs: int = 10,
     log_results: bool = False,
     check_hash: bool = False,
+    normalisation: Optional[Tuple[float, float]] = None,
 ) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
@@ -367,6 +368,9 @@ def speed_comparison_test(
     :log_results: If :data:`True`, the results are formatted and logged
     :param check_hash: If :data:`True` check that the hash of the JITted functions are
         different to the supplied functions.
+    :param normalisation: Tuple (compilation normalisation, execution normalisation).
+        If provided, returned compilation/execution times are normalised so that this
+        time is 1 time unit.
     :return: Mean and standard deviation of compilation time and runtime for each
         function as a list of tuples, and a dictionary of raw timings
     """
@@ -386,23 +390,41 @@ def speed_comparison_test(
             )
         # Compute the time just spent on compilation
         timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        # Normalise, if necessary
+        if normalisation is not None:
+            timings = timings.at[:, 0].set(timings[:, 0] / normalisation[0])
+            timings = timings.at[:, 1].set(timings[:, 1] / normalisation[1])
         timings_dict[name] = timings
         # Compute summary statistics
         results.append((timings.mean(axis=0), timings.std(axis=0)))
 
         if log_results:
-            _logger.info(
-                "Compilation time: "
-                + f"{format_number(results[i][0][0].item())} ± "
-                + f"{format_number(results[i][1][0].item())}"
-                + f" per run (mean ± std. dev. of {num_runs} runs)"
-            )
-            _logger.info(
-                "Execution time: "
-                + f"{format_number(results[i][0][1].item())} ± "
-                + f"{format_number(results[i][1][1].item())}"
-                + f" per run (mean ± std. dev. of {num_runs} runs)"
-            )
+            if normalisation:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{results[i][0][0].item():.4g} units ± "
+                    + f"{results[i][1][0].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{results[i][0][1].item():.4g} units ± "
+                    + f"{results[i][1][1].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+            else:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{format_number(results[i][0][0].item())} ± "
+                    + f"{format_number(results[i][1][0].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{format_number(results[i][0][1].item())} ± "
+                    + f"{format_number(results[i][1][1].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
 
     return results, timings_dict
 
