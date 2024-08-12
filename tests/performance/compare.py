@@ -88,7 +88,6 @@ def main() -> None:
 
     missing = historic_performance.keys() - current_performance.keys()
     new = current_performance.keys() - historic_performance.keys()
-    matched = set(historic_performance.keys()).intersection(current_performance.keys())
 
     print("## Performance review")
 
@@ -101,6 +100,26 @@ def main() -> None:
         for name in new:
             print(f"- `{name}`: {format_run_time(current_performance[name])}")
 
+    significant_changes = get_significant_differences(
+        current_performance, historic_performance
+    )
+
+    if significant_changes:
+        print("### Statistically significant changes")
+        for name, messages in significant_changes:
+            print(f"- `{name}`:")
+            print(f"  - OLD: {format_run_time(historic_performance[name])}")
+            print(f"  - NEW: {format_run_time(current_performance[name])}")
+            for message in messages:
+                print(f"  - {message}")
+
+    if not missing and not new and not significant_changes:
+        print("No statistically significant changes to performance.")
+
+
+def get_significant_differences(current_performance, historic_performance):
+    """Check if there are any statistically significant differences in performance."""
+    matched = set(historic_performance.keys()).intersection(current_performance.keys())
     # we're doing len(matched)*2 tests, so we need to correct the p-value accordingly
     p_value_threshold = P_VALUE_THRESHOLD_UNCORRECTED / (len(matched) * 2)
     significant = []
@@ -123,21 +142,36 @@ def main() -> None:
             nobs2=historic_performance[name]["num_runs"],
             equal_var=False,
         )
-        if (
+        is_significant = (
             t_execution.pvalue < p_value_threshold
             or t_compilation.pvalue < p_value_threshold
-        ):
-            significant.append(name)
-
-    if significant:
-        print("### Significant changes")
-        for name in significant:
-            print(f"- `{name}`:")
-            print(f"  - OLD: {format_run_time(historic_performance[name])}")
-            print(f"  - NEW: {format_run_time(current_performance[name])}")
-
-    if not missing and not new and not significant:
-        print("No significant changes to performance.")
+        )
+        if is_significant:
+            messages = []
+            if t_compilation.pvalue < p_value_threshold:
+                direction = (
+                    "increase"
+                    if current_performance[name]["compilation_mean"]
+                    > historic_performance[name]["compilation_mean"]
+                    else "decrease"
+                )
+                messages.append(
+                    f"Statistically significant {direction} in compilation time "
+                    f"(p={t_compilation.pvalue:.4g})"
+                )
+            if t_execution.pvalue < p_value_threshold:
+                direction = (
+                    "increase"
+                    if current_performance[name]["execution_mean"]
+                    > historic_performance[name]["execution_mean"]
+                    else "decrease"
+                )
+                messages.append(
+                    f"Statistically significant {direction} in execution time "
+                    f"(p={t_execution.pvalue:.4g})"
+                )
+            significant.append((name, messages))
+    return significant
 
 
 if __name__ == "__main__":
