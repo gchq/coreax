@@ -54,7 +54,7 @@ class NotCalculatedError(Exception):
 
 class JITCompilableFunction(NamedTuple):
     """
-    Intended for use in :func:`speed_comparison_test`.
+    Parameters for :func:`speed_comparison_test`.
 
     :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
@@ -286,19 +286,20 @@ def jit_test(
     check_hash: bool = True,
 ) -> tuple[float, float]:
     """
-    Verify JIT performance by comparing timings of a before and after run of a function.
+    Measure execution times of two runs of a JIT-compilable function.
 
     The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple.
+    timings are returned in a 2-tuple. These timings can help verify the JIT performance
+    by comparing timings of a before and after run of a function.
 
     :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
         before being called to compile the passed function.
-    :param check_hash: If :data:`True` check that the hash of the JITted function is
+    :param check_hash: If :data:`True`, check that the hash of the JITted function is
         different to the supplied function
-    :return: (First run time, Second run time)
+    :return: (First run time, Second run time), in seconds
     """
     # Avoid dangerous default values - Pylint W0102
     if fn_kwargs is None:
@@ -326,31 +327,39 @@ def jit_test(
     return pre_delta, post_delta
 
 
-def format_number(num: float) -> str:
-    """Standardise the format of the input number."""
+def format_time(num: float) -> str:
+    """
+    Standardise the format of the input time.
+
+    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms"
+
+    :param num: Float to be converted
+
+    :return: Formatted time as a string
+    """
     if num == 0:
         return "0 s"
-    order = log10(num)
+    order = log10(abs(num))
     if order >= 2:  # noqa: PLR2004
-        scaled_num = num / 60
+        scaled_time = num / 60
         order = "mins"
     elif 0 <= order < 2:  # noqa: PLR2004
-        scaled_num = num
+        scaled_time = num
         order = "s"
     elif -3 <= order < 0:  # noqa: PLR2004
-        scaled_num = 1e3 * num
+        scaled_time = 1e3 * num
         order = "ms"
     elif -6 <= order < -3:  # noqa: PLR2004
-        scaled_num = 1e6 * num
+        scaled_time = 1e6 * num
         order = "\u03bcs"
     elif -9 <= order < -6:  # noqa: PLR2004
-        scaled_num = 1e9 * num
+        scaled_time = 1e9 * num
         order = "ns"
     else:
-        scaled_num = 1e12 * num
+        scaled_time = 1e12 * num
         order = "ps"
 
-    return f"{round(scaled_num, 2)} {order}"
+    return f"{round(scaled_time, 2)} {order}"
 
 
 def speed_comparison_test(
@@ -365,29 +374,27 @@ def speed_comparison_test(
 
     :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
     :param num_runs: Number of times to average function timings over
-    :log_results: If :data:`True`, the results are formatted and logged
-    :param check_hash: If :data:`True` check that the hash of the JITted functions are
-        different to the supplied functions.
+    :param log_results: If :data:`True`, the results are formatted and logged
+    :param check_hash: If :data:`True`, check that the hash of the JITted functions are
+        different to the supplied functions
     :param normalisation: Tuple (compilation normalisation, execution normalisation).
         If provided, returned compilation/execution times are normalised so that this
         time is 1 time unit.
-    :return: Mean and standard deviation of compilation time and runtime for each
-        function as a list of tuples, and a dictionary of raw timings
+    :return: List of tuples (means, standard deviations) for each function containing
+        un-compiled and precompiled execution times as array components; Dictionary with
+        key function and value array of execution time savings for each repeat test of a
+        function
     """
-    num_functions = len(function_setups)
     timings_dict = {}
     results = []
-    for i in range(num_functions):
-        name = function_setups[i].name
+    for i, function in enumerate(function_setups):
+        name = function.name
         name = name if name is not None else f"function_{i + 1}"
         if log_results:
             _logger.info("------------------- %s -------------------", name)
-
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
-            timings = timings.at[j, :].set(
-                jit_test(*function_setups[i], check_hash=check_hash)
-            )
+            timings = timings.at[j, :].set(jit_test(*function, check_hash=check_hash))
         # Compute the time just spent on compilation
         timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
         # Normalise, if necessary
@@ -396,33 +403,35 @@ def speed_comparison_test(
             timings = timings.at[:, 1].set(timings[:, 1] / normalisation[1])
         timings_dict[name] = timings
         # Compute summary statistics
-        results.append((timings.mean(axis=0), timings.std(axis=0)))
+        mean = timings.mean(axis=0)
+        std = timings.std(axis=0)
+        results.append((mean, std))
 
         if log_results:
             if normalisation:
                 _logger.info(
                     "Compilation time: "
-                    + f"{results[i][0][0].item():.4g} units ± "
-                    + f"{results[i][1][0].item():.4g} units"
+                    + f"{mean[0].item():.4g} units ± "
+                    + f"{std[0].item():.4g} units"
                     + f" per run (mean ± std. dev. of {num_runs} runs)"
                 )
                 _logger.info(
                     "Execution time: "
-                    + f"{results[i][0][1].item():.4g} units ± "
-                    + f"{results[i][1][1].item():.4g} units"
+                    + f"{mean[1].item():.4g} units ± "
+                    + f"{std[1].item():.4g} units"
                     + f" per run (mean ± std. dev. of {num_runs} runs)"
                 )
             else:
                 _logger.info(
                     "Compilation time: "
-                    + f"{format_number(results[i][0][0].item())} ± "
-                    + f"{format_number(results[i][1][0].item())}"
+                    + f"{format_time(mean[0].item())} ± "
+                    + f"{format_time(std[0].item())}"
                     + f" per run (mean ± std. dev. of {num_runs} runs)"
                 )
                 _logger.info(
                     "Execution time: "
-                    + f"{format_number(results[i][0][1].item())} ± "
-                    + f"{format_number(results[i][1][1].item())}"
+                    + f"{format_time(mean[1].item())} ± "
+                    + f"{format_time(std[1].item())}"
                     + f" per run (mean ± std. dev. of {num_runs} runs)"
                 )
 

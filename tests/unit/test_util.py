@@ -34,6 +34,7 @@ from coreax.util import (
     SilentTQDM,
     apply_negative_precision_threshold,
     difference,
+    format_time,
     jit_test,
     pairwise,
     sample_batch_indices,
@@ -228,6 +229,13 @@ class TestUtil:
         )
         assert jnp.unique(batch_indices, axis=0).shape[0] == num_batches
 
+    def test_format_time(self) -> None:
+        """Test that `format_time` outputs expected strings."""
+        assert format_time(0.0004531) == "453.1 \u03bcs"
+        assert format_time(-0.032) == "-32.0 ms"
+        assert format_time(125) == "2.08 mins"
+        assert format_time(1e-15) == "0.0 ps"
+
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
         "args, kwargs, jit_kwargs",
@@ -266,7 +274,7 @@ class TestUtil:
         # Post compilation `time.sleep` will be ignored, with JAX compiling the
         # function to the identity function. Thus, we can be almost sure that
         # `post_time` is upper bounded by `pre_time - wait_time`.
-        assert post_time < (pre_time - wait_time)
+        assert 0 < post_time < (pre_time - wait_time)
 
     def test_speed_comparison_test(self) -> None:
         """
