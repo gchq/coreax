@@ -119,6 +119,7 @@ tomli
 tqdm
 triu
 ttest
+tuplegetter
 typehints
 undoc
 unflatten
