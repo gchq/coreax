@@ -117,6 +117,7 @@ toctree
 tomli
 tqdm
 triu
+tuplegetter
 typehints
 undoc
 unflatten
