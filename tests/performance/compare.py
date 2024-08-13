@@ -5,7 +5,7 @@ import datetime
 import json
 import re
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from scipy.stats import ttest_ind_from_stats
 
@@ -16,6 +16,7 @@ PERFORMANCE_FILENAME_REGEX = re.compile(
     r"--([0-9a-f]{40})\.json$"
 )
 P_VALUE_THRESHOLD_UNCORRECTED = 0.05
+RATIO_THRESHOLD = 0.1  # 10% change minimum
 
 
 def parse_args() -> Tuple[Path, Path]:
@@ -64,7 +65,7 @@ def get_most_recent_historic_data(reference_directory: Path) -> Path:
 
 
 def format_run_time(times: dict[str, float]) -> str:
-    """Format the performance data for a specific test in a human readable form."""
+    """Format the performance data for a specific test in a human-readable form."""
     return (
         f"compilation {times['compilation_mean']:.4g} units "
         f"± {times['compilation_std']:.4g} units; "
@@ -112,11 +113,45 @@ def main() -> None:  # noqa: C901
                 print(f"  - {message}")
 
     if not missing and not new and not significant_changes:
-        print("No statistically significant changes to performance.")
+        print("No significant changes to performance.")
 
 
-def get_significant_differences(current_performance, historic_performance):
-    """Check if there are any statistically significant differences in performance."""
+def relative_change(before: float, after: float) -> float:
+    """
+    Get the relative change between two values, to be interpreted as a percent change.
+
+    Inputs must be non-negative.
+
+    :Example:
+        >>> relative_change(2, 3)  # 3 is 50% bigger than 2
+        0.5
+        >>> relative_change(4, 3)  # 3 is 25% less then 4
+        -0.25
+        >>> relative_change(1, 0)  # 0 is 100% less than 1
+        -1
+        >>> relative_change(0, 1)  # 1 is infinitely larger than 0
+        inf
+    """
+    if before < 0 or after < 0:
+        raise ValueError((before, after))
+
+    change = after - before
+    try:
+        return change / before
+    except ZeroDivisionError:
+        return float("inf")
+
+
+def get_significant_differences(
+    current_performance: Dict[str, Dict[str, float]],
+    historic_performance: Dict[str, Dict[str, float]],
+) -> List[Tuple[str, List[str]]]:
+    """
+    Check if there are any significant differences in performance.
+
+    Returns a list of (test_name, messages) tuples, to be used in the main part of
+    the script.
+    """
     matched = set(historic_performance.keys()).intersection(current_performance.keys())
     # we're doing len(matched)*2 tests, so we need to correct the p-value accordingly
     p_value_threshold = P_VALUE_THRESHOLD_UNCORRECTED / (len(matched) * 2)
@@ -131,6 +166,10 @@ def get_significant_differences(current_performance, historic_performance):
             nobs2=historic_performance[name]["num_runs"],
             equal_var=False,
         )
+        compilation_change = relative_change(
+            historic_performance[name]["compilation_mean"],
+            current_performance[name]["compilation_mean"],
+        )
         t_execution = ttest_ind_from_stats(
             mean1=current_performance[name]["execution_mean"],
             std1=current_performance[name]["execution_std"],
@@ -140,13 +179,23 @@ def get_significant_differences(current_performance, historic_performance):
             nobs2=historic_performance[name]["num_runs"],
             equal_var=False,
         )
-        is_significant = (
-            t_execution.pvalue < p_value_threshold
-            or t_compilation.pvalue < p_value_threshold
+        execution_change = relative_change(
+            historic_performance[name]["execution_mean"],
+            current_performance[name]["execution_mean"],
         )
-        if is_significant:
+
+        is_compilation_significant = (
+            t_compilation.pvalue < p_value_threshold
+            and abs(compilation_change) > RATIO_THRESHOLD
+        )
+        is_execution_significant = (
+            t_execution.pvalue < p_value_threshold
+            and abs(execution_change) > RATIO_THRESHOLD
+        )
+
+        if is_compilation_significant or is_execution_significant:
             messages = []
-            if t_compilation.pvalue < p_value_threshold:
+            if is_compilation_significant:
                 direction = (
                     "increase"
                     if current_performance[name]["compilation_mean"]
@@ -154,10 +203,10 @@ def get_significant_differences(current_performance, historic_performance):
                     else "decrease"
                 )
                 messages.append(
-                    f"Statistically significant {direction} in compilation time "
-                    f"(p={t_compilation.pvalue:.4g})"
+                    f"Significant {direction} in compilation time "
+                    f"({compilation_change:.2%}, p={t_compilation.pvalue:.4g})"
                 )
-            if t_execution.pvalue < p_value_threshold:
+            if is_execution_significant:
                 direction = (
                     "increase"
                     if current_performance[name]["execution_mean"]
@@ -165,8 +214,8 @@ def get_significant_differences(current_performance, historic_performance):
                     else "decrease"
                 )
                 messages.append(
-                    f"Statistically significant {direction} in execution time "
-                    f"(p={t_execution.pvalue:.4g})"
+                    f"Significant {direction} in execution time "
+                    f"({execution_change:.2%}, p={t_execution.pvalue:.4g})"
                 )
             significant.append((name, messages))
     return significant
