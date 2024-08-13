@@ -256,7 +256,10 @@ class TestUtil:
         wait_time = 2
         trace_counter = Mock()
 
-        def _mock(x=1.0, *, a=2.0):
+        x = jnp.ones(1000)
+        a = 2 * jnp.ones(1000)
+
+        def _mock(x=x, *, a=a):
             trace_counter()
             time.sleep(wait_time)
             return x + a
