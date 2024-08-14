@@ -235,6 +235,9 @@ class TestUtil:
         assert format_time(-0.032) == "-32.0 ms"
         assert format_time(125) == "2.08 mins"
         assert format_time(1e-15) == "0.0 ps"
+        assert format_time(0) == "0 s"
+        assert format_time(0.00000000113) == "1.13 ns"
+        assert format_time(10.15) == "10.15 s"
 
     @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
@@ -256,10 +259,10 @@ class TestUtil:
         wait_time = 2
         trace_counter = Mock()
 
-        x = jnp.ones(1000)
-        a = 2 * jnp.ones(1000)
+        x_in = jnp.ones(1000)
+        a_in = 2 * jnp.ones(1000)
 
-        def _mock(x=x, *, a=a):
+        def _mock(x=x_in, *, a=a_in):
             trace_counter()
             time.sleep(wait_time)
             return x + a
