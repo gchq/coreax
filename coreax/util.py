@@ -374,7 +374,7 @@ def speed_comparison_test(
     :param check_hash: If :data:`True`, check that the hash of the JITted functions are
         different to the supplied functions
     :return: List of tuples (means, standard deviations) for each function containing
-        un-compiled and precompiled execution times as array components; Dictionary with
+        JIT compilation and execution times as array components; Dictionary with
         key function number and value array of execution time savings for each repeat
         test of a function
 
@@ -386,10 +386,11 @@ def speed_comparison_test(
         for j in range(num_runs):
             timings = timings.at[j, :].set(jit_test(*function, check_hash=check_hash))
         # Compute the time just spent on compilation
-        timings_dict[i] = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        post_processed_timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        timings_dict[i] = post_processed_timings
         # Compute summary statistics
-        mean = timings.mean(axis=0)
-        std = timings.std(axis=0)
+        mean = post_processed_timings.mean(axis=0)
+        std = post_processed_timings.std(axis=0)
         results.append((mean, std))
         if log_results:
             _logger.info("------------------- Function %s -------------------", i + 1)
