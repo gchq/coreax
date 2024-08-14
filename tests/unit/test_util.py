@@ -310,7 +310,7 @@ class TestUtil:
         random_vector = jr.normal(jr.key(2_024), shape=(100,))
 
         num_runs = 10
-        summary_stats, _ = speed_comparison_test(
+        summary_stats, result_dict = speed_comparison_test(
             [
                 JITCompilableFunction(_slow_mean, fn_kwargs={"a": random_vector}),
                 JITCompilableFunction(jnp.mean, fn_kwargs={"a": random_vector}),
@@ -327,7 +327,17 @@ class TestUtil:
         # jnp.mean.
         slow_mean_compilation_time = summary_stats[0][0][0]
         fast_mean_compilation_time = summary_stats[1][0][0]
-        assert slow_mean_compilation_time > fast_mean_compilation_time
+        assert slow_mean_compilation_time > fast_mean_compilation_time > 0
+
+        # Check we are returning a list of tuples of the correct size
+        assert len(result_dict[0]) == num_runs
+        assert len(result_dict[1]) == num_runs
+
+        # Check summary stats have been computed correctly
+        assert jnp.all(result_dict[0].mean(axis=0) == summary_stats[0][0])
+        assert jnp.all(result_dict[0].std(axis=0) == summary_stats[0][1])
+        assert jnp.all(result_dict[1].mean(axis=0) == summary_stats[1][0])
+        assert jnp.all(result_dict[1].std(axis=0) == summary_stats[1][1])
 
 
 class TestSilentTQDM:
