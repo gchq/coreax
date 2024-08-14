@@ -155,6 +155,7 @@ intersphinx_mapping = {  # linking to external documentation
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "tqdm": ("https://tqdm.github.io/docs/", str(TQDM_CUSTOM_PATH)),
+    "equinox": ("https://docs.kidger.site/equinox/", None),
 }
 
 nitpick_ignore = [
@@ -177,19 +178,20 @@ nitpick_ignore = [
     ("py:class", "jax._src.typing.SupportsDType"),
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
-    ("py:class", "equinox._module.Module"),
-    ("py:class", "coreax.coreset._Data"),
-    ("py:class", "coreax.solvers.composite._Data"),
-    ("py:class", "coreax.solvers.composite._Coreset "),
-    ("py:class", "coreax.solvers.composite._State"),
-    ("py:class", "coreax.solvers.base._Data"),
-    ("py:class", "coreax.solvers.base._State"),
-    ("py:class", "coreax.solvers.base._Coreset"),
-    ("py:class", "coreax.solvers.coresubset._Data"),
-    ("py:class", "coreax.solvers.coresubset._State"),
-    ("py:class", "coreax.solvers.coresubset._Coreset"),
-    ("py:class", "coreax.weights._Data "),
-    ("py:class", "coreax.solvers.coresubset._SupervisedData "),
+    ("py:class", "numpy.bool_"),
+    ("py:obj", "equinox._module.Module"),
+    ("py:obj", "coreax.coreset._Data"),
+    ("py:obj", "coreax.solvers.composite._Data"),
+    ("py:obj", "coreax.solvers.composite._Coreset"),
+    ("py:obj", "coreax.solvers.composite._State"),
+    ("py:obj", "coreax.solvers.base._Data"),
+    ("py:obj", "coreax.solvers.base._State"),
+    ("py:obj", "coreax.solvers.base._Coreset"),
+    ("py:obj", "coreax.solvers.coresubset._Data"),
+    ("py:obj", "coreax.solvers.coresubset._State"),
+    ("py:obj", "coreax.solvers.coresubset._Coreset"),
+    ("py:obj", "coreax.weights._Data"),
+    ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
 ]
 
 
@@ -347,7 +349,7 @@ if not TQDM_CUSTOM_PATH.exists():
 
 
 def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
-    """Remove auto documented parameters from all NamedTuple classes."""
+    """Combine fields and parameters into a single entry for NamedTuple classes."""
     if type(obj) is collections._tuplegetter:
         return True
     return skip
@@ -359,5 +361,5 @@ def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
 
 
 def setup(app):
-    """Attaches `remove_namedtuple_attrib_docstring` handler to event."""
+    """Register custom functions."""
     app.connect("autodoc-skip-member", remove_namedtuple_attrib_docstring)
