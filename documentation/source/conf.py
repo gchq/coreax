@@ -179,7 +179,7 @@ nitpick_ignore = [
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
     ("py:class", "numpy.bool_"),
-    ("py:obj", "equinox._module.Module"),
+    ("py:class", "equinox._module.Module"),
     ("py:obj", "coreax.coreset._Data"),
     ("py:obj", "coreax.solvers.composite._Data"),
     ("py:obj", "coreax.solvers.composite._Coreset"),
@@ -191,6 +191,7 @@ nitpick_ignore = [
     ("py:obj", "coreax.solvers.coresubset._State"),
     ("py:obj", "coreax.solvers.coresubset._Coreset"),
     ("py:obj", "coreax.weights._Data"),
+    ("py:obj", "coreax.metrics._Data"),
     ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
 ]
 
