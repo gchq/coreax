@@ -329,7 +329,7 @@ class TestUtil:
         fast_mean_compilation_time = summary_stats[1][0][0]
         assert slow_mean_compilation_time > fast_mean_compilation_time > 0
 
-        # Check we are returning a list of tuples of the correct size
+        # Check result dictionary has the correct size
         assert len(result_dict[0]) == num_runs
         assert len(result_dict[1]) == num_runs
 
