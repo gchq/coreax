@@ -364,7 +364,7 @@ def speed_comparison_test(
     num_runs: int = 10,
     log_results: bool = False,
     check_hash: bool = False,
-) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
+) -> tuple[list[tuple[Array, Array]], dict[int, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
 
