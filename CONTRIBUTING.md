@@ -87,7 +87,7 @@ is straightforward signposting for how users should change their code to use
 non-deprecated parts of the codebase instead.
 
 As an example, this is what the deprecation period for renaming `my_old_function` to
-`my_new_function` would look like.
+`my_new_function` would look like:
 
 ```python
 # v0.1.0:
