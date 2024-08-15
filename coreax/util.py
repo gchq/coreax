@@ -54,13 +54,13 @@ class NotCalculatedError(Exception):
 
 class JITCompilableFunction(NamedTuple):
     """
-    Parameters for :func:`speed_comparison_test`.
+    Parameters for :func:`jit_test`.
 
     :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
-        before being called to compile the passed function.
+        before being called to compile the passed function
     """
 
     fn: Callable
@@ -296,7 +296,7 @@ def jit_test(
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
-        before being called to compile the passed function.
+        before being called to compile the passed function
     :param check_hash: If :data:`True`, check that the hash of the JITted function is
         different to the supplied function
     :return: (First run time, Second run time), in seconds
@@ -314,14 +314,14 @@ def jit_test(
     if check_hash:
         assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     pre_delta = end_time - start_time
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     post_delta = end_time - start_time
 
     return pre_delta, post_delta
@@ -331,35 +331,37 @@ def format_time(num: float) -> str:
     """
     Standardise the format of the input time.
 
-    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms"
+    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms".
 
     :param num: Float to be converted
-
     :return: Formatted time as a string
     """
-    if num == 0:
-        return "0 s"
-    order = log10(abs(num))
+    scaled_time = 0
+    unit_string = "s"
+    try:
+        order = log10(abs(num))
+    except ValueError:
+        return f"{round(scaled_time, 2)} {unit_string}"
     if order >= 2:  # noqa: PLR2004
         scaled_time = num / 60
-        order = "mins"
-    elif 0 <= order < 2:  # noqa: PLR2004
+        unit_string = "mins"
+    if order < 2:  # noqa: PLR2004
         scaled_time = num
-        order = "s"
-    elif -3 <= order < 0:  # noqa: PLR2004
+        unit_string = "s"
+    if order < 0:  # noqa: PLR2004
         scaled_time = 1e3 * num
-        order = "ms"
-    elif -6 <= order < -3:  # noqa: PLR2004
+        unit_string = "ms"
+    if order < -3:  # noqa: PLR2004
         scaled_time = 1e6 * num
-        order = "\u03bcs"
-    elif -9 <= order < -6:  # noqa: PLR2004
+        unit_string = "\u03bcs"
+    if order < -6:  # noqa: PLR2004
         scaled_time = 1e9 * num
-        order = "ns"
-    else:
+        unit_string = "ns"
+    if order < -9:  # noqa: PLR2004
         scaled_time = 1e12 * num
-        order = "ps"
+        unit_string = "ps"
 
-    return f"{round(scaled_time, 2)} {order}"
+    return f"{round(scaled_time, 2)} {unit_string}"
 
 
 def speed_comparison_test(
@@ -381,9 +383,9 @@ def speed_comparison_test(
         If provided, returned compilation/execution times are normalised so that this
         time is 1 time unit.
     :return: List of tuples (means, standard deviations) for each function containing
-        un-compiled and precompiled execution times as array components; Dictionary with
-        key function and value array of execution time savings for each repeat test of a
-        function
+        JIT compilation and execution times as array components; Dictionary with
+        key function name and value array of execution time savings for each repeat
+        test of a function
     """
     timings_dict = {}
     results = []
