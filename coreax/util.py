@@ -281,7 +281,6 @@ def jit_test(
     fn_args: tuple = (),
     fn_kwargs: Optional[dict] = None,
     jit_kwargs: Optional[dict] = None,
-    check_hash: bool = True,
 ) -> tuple[float, float]:
     """
     Measure execution times of two runs of a JIT-compilable function.
@@ -295,8 +294,6 @@ def jit_test(
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
         before being called to compile the passed function
-    :param check_hash: If :data:`True`, check that the hash of the JITted function is
-        different to the supplied function
     :return: (First run time, Second run time), in seconds
     """
     # Avoid dangerous default values - Pylint W0102
@@ -308,9 +305,6 @@ def jit_test(
     @partial(jit, **jit_kwargs)
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
-
-    if check_hash:
-        assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
 
     start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
@@ -334,30 +328,29 @@ def format_time(num: float) -> str:
     :param num: Float to be converted
     :return: Formatted time as a string
     """
-    scaled_time = 0
-    unit_string = "s"
     try:
         order = log10(abs(num))
     except ValueError:
-        return f"{round(scaled_time, 2)} {unit_string}"
+        return "0 s"
+
     if order >= 2:  # noqa: PLR2004
         scaled_time = num / 60
         unit_string = "mins"
-    if order < 2:  # noqa: PLR2004
-        scaled_time = num
-        unit_string = "s"
-    if order < 0:  # noqa: PLR2004
-        scaled_time = 1e3 * num
-        unit_string = "ms"
-    if order < -3:  # noqa: PLR2004
-        scaled_time = 1e6 * num
-        unit_string = "\u03bcs"
-    if order < -6:  # noqa: PLR2004
-        scaled_time = 1e9 * num
-        unit_string = "ns"
-    if order < -9:  # noqa: PLR2004
+    elif order < -9:  # noqa: PLR2004
         scaled_time = 1e12 * num
         unit_string = "ps"
+    elif order < -6:  # noqa: PLR2004
+        scaled_time = 1e9 * num
+        unit_string = "ns"
+    elif order < -3:  # noqa: PLR2004
+        scaled_time = 1e6 * num
+        unit_string = "\u03bcs"
+    elif order < 0:  # noqa: PLR2004
+        scaled_time = 1e3 * num
+        unit_string = "ms"
+    else:
+        scaled_time = num
+        unit_string = "s"
 
     return f"{round(scaled_time, 2)} {unit_string}"
 
@@ -366,7 +359,6 @@ def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
     log_results: bool = False,
-    check_hash: bool = False,
 ) -> tuple[list[tuple[Array, Array]], dict[int, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
@@ -374,20 +366,17 @@ def speed_comparison_test(
     :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
     :param num_runs: Number of times to average function timings over
     :param log_results: If :data:`True`, the results are formatted and logged
-    :param check_hash: If :data:`True`, check that the hash of the JITted functions are
-        different to the supplied functions
     :return: List of tuples (means, standard deviations) for each function containing
         JIT compilation and execution times as array components; Dictionary with
-        key function number and value array of execution time savings for each repeat
-        test of a function
-
+        key function number and value array of estimated compilation times in first
+        column and execution time in second column
     """
     timings_dict = {}
     results = []
     for i, function in enumerate(function_setups):
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
-            timings = timings.at[j, :].set(jit_test(*function, check_hash=check_hash))
+            timings = timings.at[j, :].set(jit_test(*function))
         # Compute the time just spent on compilation
         post_processed_timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
         timings_dict[i] = post_processed_timings
