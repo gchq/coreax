@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - feature/performance-testing-ci
   pull_request:
     branches:
       - "**"
@@ -16,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
-      gist_id: 094213d70dcc9c03ec49a81545627373
+      gist_id: 3707a122b3697109068a3e55487de4fc
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.12
