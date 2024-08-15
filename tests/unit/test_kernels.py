@@ -42,6 +42,7 @@ from coreax.kernels import (
     LocallyPeriodicKernel,
     PCIMQKernel,
     PeriodicKernel,
+    PoissonKernel,
     PolynomialKernel,
     PowerKernel,
     ProductKernel,
@@ -861,6 +862,97 @@ class TestLinearKernel(
         """Test that kernel rejects bad inputs."""
         with pytest.raises(ValueError, match=error_msg):
             LinearKernel(*parameters)
+
+
+# Cannot inherit from the gradient and mean tests as the domain of the Poisson kernel
+# is not compatible with the data used.
+class TestPoissonKernel(
+    BaseKernelTest[PoissonKernel],
+):
+    """Test ``coreax.kernels.DiracKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> PoissonKernel:
+        random_seed = 2_024
+        output_scale, index = jr.uniform(
+            key=jr.key(random_seed), shape=(2,), minval=0, maxval=1
+        )
+        return PoissonKernel(index, output_scale)
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: PoissonKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Poisson kernel.
+
+        Given :math:`0 < r < 1` =``index` and :math:`\rho =``output_scale`, the
+        Poisson kernel is defined as
+        :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
+        :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}.
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.84798735
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.52530843
+        elif mode == "arrays":
+            x = np.array([[0], [1], [2], [3]])
+            y = np.array([[1], [2], [3], [4]])
+            expected_distances = np.array(
+                [
+                    [1.4090506, 0.6001872, 0.44643006, 0.52530843],
+                    [4.0, 1.4090506, 0.6001872, 0.44643006],
+                    [1.4090506, 4.0, 1.4090506, 0.6001872],
+                    [0.6001872, 1.4090506, 4.0, 1.4090506],
+                ]
+            )
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale, eqx.tree_at(lambda x: x.index, kernel, 0.5), 1.0
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    def test_gradient(self, kernel: PoissonKernel) -> None:
+        """Test the gradient methods of the kernel with data in the domain."""
+
+    def test_divergence(self, kernel: PoissonKernel) -> None:
+        """Test the divergence method of the kernel with data in the domain."""
+
+    def test_mean(self, kernel: PoissonKernel) -> None:
+        """Test the mean methods of the kernel with data in the domain."""
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((0.5, -0.1), "'output_scale' must be positive"),
+            ((1, 1), "index' must be be between 0 and 1 exclusive"),
+            ((0, 1), "index' must be be between 0 and 1 exclusive"),
+            ((1.1, 1), "index' must be be between 0 and 1 exclusive"),
+            ((-0.1, 1), "index' must be be between 0 and 1 exclusive"),
+        ],
+        ids=[
+            "non_positive_output_scale",
+            "index_inclusive_1",
+            "index_inclusive_0",
+            "index_greater_than_1",
+            "index_less_than_zero",
+        ],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            PoissonKernel(*parameters)
 
 
 class TestPolynomialKernel(
