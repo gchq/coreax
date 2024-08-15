@@ -69,11 +69,9 @@ class TestCoresetCommon:
         kwargs = {"test": None}
         coreset_metric = coreset.compute_metric(metric, **kwargs)
         assert eqx.tree_equal(coreset_metric, expected_metric)
-        # pylint: disable=no-member
         metric.compute.assert_called_with(
             coreset.pre_coreset_data, coreset.coreset, **kwargs
         )
-        # pylint: enable=no-member
 
 
 class TestCoresubset:

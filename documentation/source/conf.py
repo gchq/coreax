@@ -18,6 +18,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 """Configuration details for Sphinx documentation."""
 
+import collections
 import os
 import sys
 from pathlib import Path
@@ -120,7 +121,7 @@ autodoc_default_options = {
     "member-order": "bysource",
     "private-members": True,
     "undoc-members": True,
-    "show_inheritance": True,
+    "show-inheritance": True,
     "exclude-members": ",".join(
         (  # Use this join syntax to make positions of commas clear and consistent
             "_abc_impl",
@@ -131,6 +132,11 @@ autodoc_default_options = {
             "name",
             "parent",
             "scope",
+            "_asdict",
+            "_field_defaults",
+            "_fields",
+            "_make",
+            "_replace",
         )
     ),
 }
@@ -149,6 +155,7 @@ intersphinx_mapping = {  # linking to external documentation
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "sklearn": ("https://scikit-learn.org/stable/", None),
     "tqdm": ("https://tqdm.github.io/docs/", str(TQDM_CUSTOM_PATH)),
+    "equinox": ("https://docs.kidger.site/equinox/", None),
 }
 
 nitpick_ignore = [
@@ -172,6 +179,20 @@ nitpick_ignore = [
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
     ("py:class", "numpy.bool_"),
+    ("py:class", "equinox._module.Module"),
+    ("py:obj", "coreax.coreset._Data"),
+    ("py:obj", "coreax.solvers.composite._Data"),
+    ("py:obj", "coreax.solvers.composite._Coreset"),
+    ("py:obj", "coreax.solvers.composite._State"),
+    ("py:obj", "coreax.solvers.base._Data"),
+    ("py:obj", "coreax.solvers.base._State"),
+    ("py:obj", "coreax.solvers.base._Coreset"),
+    ("py:obj", "coreax.solvers.coresubset._Data"),
+    ("py:obj", "coreax.solvers.coresubset._State"),
+    ("py:obj", "coreax.solvers.coresubset._Coreset"),
+    ("py:obj", "coreax.weights._Data"),
+    ("py:obj", "coreax.metrics._Data"),
+    ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
 ]
 
 
@@ -321,3 +342,25 @@ def create_custom_inv_file(
 if not TQDM_CUSTOM_PATH.exists():
     print("Creating custom inventory file for tqdm")
     create_custom_inv_file(tqdm, tqdm_refs)
+
+
+# pylint: disable=unused-argument
+# pylint: disable=unidiomatic-typecheck
+# pylint: disable=protected-access
+
+
+def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
+    """Combine fields and parameters into a single entry for NamedTuple classes."""
+    if type(obj) is collections._tuplegetter:
+        return True
+    return skip
+
+
+# pylint: enable=protected-access
+# pylint: enable=unused-argument
+# pylint: enable=unidiomatic-typecheck
+
+
+def setup(app):
+    """Register custom functions."""
+    app.connect("autodoc-skip-member", remove_namedtuple_attrib_docstring)
