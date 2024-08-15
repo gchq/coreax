@@ -334,9 +334,12 @@ def format_time(num: float) -> str:
     :param num: Float to be converted
     :return: Formatted time as a string
     """
-    if num == 0:
-        return "0 s"
-    order = log10(abs(num))
+    scaled_time = 0
+    unit_string = "s"
+    try:
+        order = log10(abs(num))
+    except ValueError:
+        return f"{round(scaled_time, 2)} {unit_string}"
     if order >= 2:  # noqa: PLR2004
         scaled_time = num / 60
         unit_string = "mins"
