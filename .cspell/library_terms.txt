@@ -62,9 +62,11 @@ mathbb
 mathbf
 mathrm
 matplotlib
+maxval
 meshgrid
 mimread
 mimsave
+minval
 modindex
 myst
 nabla

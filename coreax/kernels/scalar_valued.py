@@ -132,38 +132,6 @@ class PolynomialKernel(ScalarValuedKernel):
         )
 
 
-class DiracKernel(ScalarValuedKernel):
-    r"""
-    Define the dirac kernel.
-
-    The dirac kernel is defined as
-    :math:`k: \{1,dots,n\} times \{1,dots,n\} \to \{0,1\}`,
-    :math:`k(x, y) = \delta_{x=y}:=\begin{cases}
-        1 \;\; \text{if} \;\; x=y\\
-        0 \;\; \text{otherwise}
-        \end{cases}
-    """
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        output = jnp.asarray(0)
-        if x == y:
-            output = jnp.asarray(1)
-        return output
-
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(0)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(0)
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return jnp.asarray(0)
-
-
 class SquaredExponentialKernel(ScalarValuedKernel):
     r"""
     Define a squared exponential kernel.
@@ -225,8 +193,9 @@ class PoissonKernel(ScalarValuedKernel):
         Unlike many other kernels in CoreAX, the Poisson kernel is not defined on
         arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
         :math:`[0, 2\pi)`. We do not check that inputs to the methods in this class
-        lie in the correct domain, therefore unexpected behaviour will occur. In CoreAX
-        :math:`n`-vectors are interpreted as
+        lie in the correct domain, therefore unexpected behaviour will occur. Note that
+        in CoreAX :math:`n`-vectors are interpreted as one observation of a `:math:`n`-
+        dimensional vector.
 
     :param index: Kernel parameter indexing the family of Poisson kernel functions
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
@@ -245,7 +214,7 @@ class PoissonKernel(ScalarValuedKernel):
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale / (
-            1 - 2 * self.index * jnp.cos(jnp.subtract(x, y)) + self.index**2
+            1 - 2 * self.index * jnp.cos(jnp.subtract(x, y).sum()) + self.index**2
         )
 
     @override
@@ -254,30 +223,30 @@ class PoissonKernel(ScalarValuedKernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        sub = jnp.subtract(x, y)
-        return (2 * self.output_scale * self.index * jnp.sin(sub)) / (
-            1 - 2 * self.index * jnp.cos(sub) + self.index**2
+        norm = jnp.subtract(x, y).sum()
+        return (2 * self.output_scale * self.index * jnp.sin(norm)) / (
+            1 - 2 * self.index * jnp.cos(norm) + self.index**2
         ) ** 2
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        sub = jnp.subtract(x, y)
-        div = 1 - 2 * self.index * jnp.cos(sub) + self.index**2
-        first_term = (2 * self.output_scale * self.index * jnp.cos(sub)) / div**2
+        norm = jnp.subtract(x, y).sum()
+        div = 1 - 2 * self.index * jnp.cos(norm) + self.index**2
+        first_term = (2 * self.output_scale * self.index * jnp.cos(norm)) / div**2
         second_term = (
-            4 * self.output_scale * self.index**2 * jnp.sin(sub) ** 2
+            8 * self.output_scale * self.index**2 * jnp.sin(norm) ** 2
         ) / div**3
-        return first_term + second_term
+        return first_term - second_term
 
 
 class MaternKernel(ScalarValuedKernel):
     r"""
-    Define a Matérn kernel.
+    Define the Matérn kernel with smoothness parameter set to :math:`\frac{1}{2}`.
 
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the squared
-    exponential kernel is defined as
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the Matérn
+    kernel with smoothness parameter set to :math:`\frac{1}{2}` is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||^2}{2 \lambda^2})` where
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{\lambda})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
@@ -298,7 +267,7 @@ class MaternKernel(ScalarValuedKernel):
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale * jnp.exp(
-            -squared_distance(x, y) / (2 * self.length_scale**2)
+            -jnp.linalg.norm(jnp.subtract(x, y) / self.length_scale**2)
         )
 
     @override
