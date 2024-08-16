@@ -5,7 +5,7 @@ import datetime
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from scipy.stats import ttest_ind_from_stats
 
@@ -33,12 +33,12 @@ def parse_args() -> Tuple[Path, Path]:
     return Path(args.performance_file), Path(args.reference_directory)
 
 
-def date_from_filename(path: Path) -> Tuple[datetime.datetime, str]:
+def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
     """Extract the date from a performance data file name."""
     filename = path.name
     match = PERFORMANCE_FILENAME_REGEX.fullmatch(filename)
     if not match:
-        raise ValueError(f"Could not parse date from filename: {filename}")
+        return None
 
     year, month, day, hour, minute, second, git_hash = match.groups()
     return datetime.datetime(
@@ -52,19 +52,27 @@ def date_from_filename(path: Path) -> Tuple[datetime.datetime, str]:
     ), git_hash
 
 
-def get_most_recent_historic_data(reference_directory: Path) -> Path:
+def get_most_recent_historic_data(
+    reference_directory: Path,
+) -> Dict[str, Dict[str, float]]:
     """Get the most recent saved performance data in the given directory."""
-    return max(
-        (
-            f
-            for f in reference_directory.iterdir()
-            if f.is_file() and f.suffix == ".json"
-        ),
-        key=date_from_filename,
-    )
+    files: Dict[Path, Tuple[datetime.datetime, str]] = {}
+    for filename in reference_directory.iterdir():
+        date_tuple = date_from_filename(filename)
+        if date_tuple is not None:
+            files[filename] = date_tuple
+
+    if not files:
+        print("**WARNING: No historic performance data found.**")
+        return {}
+
+    most_recent_file = max(files.keys(), key=files.get)
+
+    with open(most_recent_file, "r", encoding="utf8") as f:
+        return json.load(f)
 
 
-def format_run_time(times: dict[str, float]) -> str:
+def format_run_time(times: Dict[str, float]) -> str:
     """Format the performance data for a specific test in a human-readable form."""
     return (
         f"compilation {times['compilation_mean']:.4g} units "
@@ -76,19 +84,15 @@ def format_run_time(times: dict[str, float]) -> str:
 
 def main() -> None:  # noqa: C901
     """Run the command-line script."""
+    print("## Performance review")
+
     performance_file, reference_directory = parse_args()
     with open(performance_file, "r", encoding="utf8") as f:
         current_performance: dict = json.load(f)
-
-    with open(
-        get_most_recent_historic_data(reference_directory), "r", encoding="utf8"
-    ) as f:
-        historic_performance: dict = json.load(f)
+    historic_performance = get_most_recent_historic_data(reference_directory)
 
     missing = historic_performance.keys() - current_performance.keys()
     new = current_performance.keys() - historic_performance.keys()
-
-    print("## Performance review")
 
     if missing:
         print("### (!!) Missing performance tests")
@@ -153,6 +157,8 @@ def get_significant_differences(
     the script.
     """
     matched = set(historic_performance.keys()).intersection(current_performance.keys())
+    if not matched:
+        return []
     # we're doing len(matched)*2 tests, so we need to correct the p-value accordingly
     p_value_threshold = P_VALUE_THRESHOLD_UNCORRECTED / (len(matched) * 2)
     significant = []
