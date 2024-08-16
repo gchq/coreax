@@ -195,7 +195,7 @@ class PoissonKernel(ScalarValuedKernel):
         :math:`[0, 2\pi)`. We do not check that inputs to the methods in this class
         lie in the correct domain, therefore unexpected behaviour will occur. Note that
         in CoreAX :math:`n`-vectors are interpreted as one observation of a `:math:`n`-
-        dimensional vector.
+        dimensional vector, and not :math:`n` observations of a one dimensional vector.
 
     :param index: Kernel parameter indexing the family of Poisson kernel functions
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
@@ -241,13 +241,20 @@ class PoissonKernel(ScalarValuedKernel):
 
 class MaternKernel(ScalarValuedKernel):
     r"""
-    Define the Matérn kernel with smoothness parameter set to :math:`\frac{1}{2}`.
+    Define Matérn kernel with smoothness parameter a multiple of :math:`\frac{1}{2}`.
 
     Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the Matérn
-    kernel with smoothness parameter set to :math:`\frac{1}{2}` is defined as
+    kernel with smoothness parameter :math:`\nu` set to be a multiple of
+    :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
+    :math:`p`=``degree``:math:`\in\mathbb{N}`, is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{\lambda})` where
-    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    .. math::
+        k(x, y) = \rho^2 * \exp\left((-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
+        \frac{p!}{(2p)!}\sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
+        \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}
+
+    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
