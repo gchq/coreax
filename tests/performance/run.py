@@ -19,7 +19,6 @@ if __name__ == "__main__":
         function_setups=[setup_normaliser()],
         num_runs=NUM_RUNS,
         log_results=True,
-        check_hash=False,
     )
     normaliser_compilation_time = normaliser_results[0][0][0].item()
     normaliser_execution_time = normaliser_results[0][0][1].item()
@@ -34,7 +33,6 @@ if __name__ == "__main__":
         function_setups=function_setups,
         num_runs=NUM_RUNS,
         log_results=True,
-        check_hash=False,
         normalisation=(normaliser_compilation_time, normaliser_execution_time),
     )
 
