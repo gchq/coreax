@@ -14,7 +14,7 @@ jobs:
     name: Check performance
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.PERFORMANCE_GIST_KEY }}
+      GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
       gist_id: 3707a122b3697109068a3e55487de4fc
     steps:
       - uses: actions/checkout@v4
