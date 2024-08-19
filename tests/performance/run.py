@@ -53,14 +53,20 @@ if __name__ == "__main__":
     if args.output_file is not None:
         # we have to do a little work here since JAX arrays are not JSON serializable
         dict_results = {
-            setup.name: {
-                "compilation_mean": times[0][0].item(),
-                "execution_mean": times[0][1].item(),
-                "compilation_std": times[1][0].item(),
-                "execution_std": times[1][1].item(),
-                "num_runs": NUM_RUNS,
-            }
-            for setup, times in zip(function_setups, results)
+            "normalisation": {
+                "compilation": normaliser_compilation_time,
+                "execution": normaliser_execution_time,
+            },
+            "results": {
+                setup.name: {
+                    "compilation_mean": times[0][0].item(),
+                    "execution_mean": times[0][1].item(),
+                    "compilation_std": times[1][0].item(),
+                    "execution_std": times[1][1].item(),
+                    "num_runs": NUM_RUNS,
+                }
+                for setup, times in zip(function_setups, results)
+            },
         }
         with open(args.output_file, "w", encoding="utf8") as f:
             json.dump(dict_results, f)
