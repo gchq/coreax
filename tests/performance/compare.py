@@ -48,7 +48,14 @@ def parse_args() -> Tuple[Path, Path]:
 
 
 def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
-    """Extract the date from a performance data file name."""
+    """
+    Extract the date from a performance data file name.
+
+    :param path: The path to the performance data file. Only the filename component
+        (`path.name`) is used.
+    :return: Tuple (date_time, commit_hash) if the filename matched the expected format,
+        or :data:`None` if it did not match.
+    """
     filename = path.name
     match = PERFORMANCE_FILENAME_REGEX.fullmatch(filename)
     if not match:
@@ -69,7 +76,19 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
 def get_most_recent_historic_data(
     reference_directory: Path,
 ) -> Dict[str, Dict[str, float]]:
-    """Get the most recent saved performance data in the given directory."""
+    """
+    Get the most recent saved performance data in the given directory.
+
+    Uses :py:func:`date_from_filename()` to extract the date, time and commit hash from
+    each file name. The date and time are stored with an accuracy of one second, so two
+    data files sharing a time are extremely unlikely but not impossible. In case two
+    data files have the exact same time recorded, the latest file is selected based on
+    the lexicographic ordering of the associated commit hashes.
+
+    :param reference_directory: The directory containing historic performance data
+    :return: Dictionary `(test_name -> dictionary(statistic -> value))` extracted from
+        the most recent performance file
+    """
     files: Dict[Path, Tuple[datetime.datetime, str]] = {}
     for filename in reference_directory.iterdir():
         date_tuple = date_from_filename(filename)
@@ -87,7 +106,12 @@ def get_most_recent_historic_data(
 
 
 def format_run_time(times: Dict[str, float]) -> str:
-    """Format the performance data for a specific test in a human-readable form."""
+    """
+    Format the performance data for a specific test in a human-readable form.
+
+    :param times: Dictionary `(statistic -> value)` describing a single performance test
+    :return: A string describing the compilation and execution time of the test
+    """
     return (
         f"compilation {times['compilation_mean']:.4g} units "
         f"± {times['compilation_std']:.4g} units; "
@@ -149,6 +173,10 @@ def relative_change(before: float, after: float) -> float:
         -1
         >>> relative_change(0, 1)  # 1 is infinitely larger than 0
         inf
+
+    :param before: The "before" value for comparison
+    :param after: The "after" value for comparison
+    :return: The relative change, as described in the example above
     """
     if before < 0 or after < 0:
         raise ValueError((before, after))
@@ -169,6 +197,15 @@ def get_significant_differences(
 
     Returns a list of (test_name, messages) tuples, to be used in the main part of
     the script.
+
+    :param current_performance: Performance data representing the current state
+        of performance
+    :param historic_performance: The most recent historic performance data, representing
+        the last known state of performance
+    :return: List of tuples `(test_name, messages)` containing only those tests which
+        had significant differences between their current and historic performance.
+        `messages` is a list of human-readable strings that describes the significant
+        differences for each test
     """
     matched = set(historic_performance.keys()).intersection(current_performance.keys())
     if not matched:

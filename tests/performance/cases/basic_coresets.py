@@ -37,12 +37,14 @@ from coreax.solvers import KernelHerding, RPCholesky, SteinThinning
 from coreax.util import JITCompilableFunction
 
 CORESET_SIZE = 100
+NUM_DATA_POINTS = 4_000
+NUM_FEATURES = 2
 
 
 @functools.cache
 def _setup_dataset():
-    num_data_points = 4_000
-    num_features = 2
+    num_data_points = NUM_DATA_POINTS
+    num_features = NUM_FEATURES
     num_cluster_centers = 6
     random_seed = 1_989
     x, *_ = make_blobs(
