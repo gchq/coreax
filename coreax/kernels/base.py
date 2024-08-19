@@ -402,7 +402,7 @@ class UniCompositeKernel(ScalarValuedKernel):
     def __check_init__(self):
         """Check that 'base_kernel' is of the required type."""
         if not isinstance(self.base_kernel, ScalarValuedKernel):
-            raise ValueError(
+            raise TypeError(
                 "'base_kernel' must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
@@ -427,10 +427,11 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
 
     def __check_init__(self):
         """Check that we have an integer power that is greater than 1."""
-        min_power = 2
+        min_power = 1
         if not isinstance(self.power, int) or self.power < min_power:
             raise ValueError(
-                "'power' must be an integer to ensure positive" + " semi-definiteness"
+                "'power' must be a positive integer to ensure positive"
+                + " semi-definiteness"
             )
 
     @override
@@ -490,7 +491,7 @@ class DuoCompositeKernel(ScalarValuedKernel):
             isinstance(self.first_kernel, ScalarValuedKernel)
             and isinstance(self.second_kernel, ScalarValuedKernel)
         ):
-            raise ValueError(
+            raise TypeError(
                 "'first_kernel'and `second_kernel` must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )

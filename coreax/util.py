@@ -21,10 +21,13 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
+import logging
+import sys
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar
+from math import log10
+from typing import Any, NamedTuple, Optional, Sequence, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -33,6 +36,9 @@ import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from typing_extensions import TypeAlias, deprecated
+
+_logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
@@ -44,6 +50,23 @@ KeyArrayLike: TypeAlias = ArrayLike
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
+
+
+class JITCompilableFunction(NamedTuple):
+    """
+    Parameters for :func:`jit_test`.
+
+    :param fn: JIT-compilable function callable to test
+    :param fn_args: Arguments passed during the calls to the passed function
+    :param fn_kwargs: Keyword arguments passed during the calls to the passed function
+    :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function
+    """
+
+    fn: Callable
+    fn_args: tuple = ()
+    fn_kwargs: Optional[dict] = None
+    jit_kwargs: Optional[dict] = None
 
 
 class InvalidKernel:
@@ -260,17 +283,18 @@ def jit_test(
     jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
-    Verify JIT performance by comparing timings of a before and after run of a function.
+    Measure execution times of two runs of a JIT-compilable function.
 
     The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple.
+    timings are returned in a 2-tuple. These timings can help verify the JIT performance
+    by comparing timings of a before and after run of a function.
 
-    :param fn: Function callable to test
+    :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
-        before being called to compile the passed function.
-    :return: (First run time, Second run time)
+        before being called to compile the passed function
+    :return: (First run time, Second run time), in seconds
     """
     # Avoid dangerous default values - Pylint W0102
     if fn_kwargs is None:
@@ -282,17 +306,100 @@ def jit_test(
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
 
-    assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
-
-    start_time = time.time()
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     pre_delta = end_time - start_time
-    start_time = time.time()
+
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     post_delta = end_time - start_time
+
     return pre_delta, post_delta
+
+
+def format_time(num: float) -> str:
+    """
+    Standardise the format of the input time.
+
+    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms".
+
+    :param num: Float to be converted
+    :return: Formatted time as a string
+    """
+    try:
+        order = log10(abs(num))
+    except ValueError:
+        return "0 s"
+
+    if order >= 2:  # noqa: PLR2004
+        scaled_time = num / 60
+        unit_string = "mins"
+    elif order < -9:  # noqa: PLR2004
+        scaled_time = 1e12 * num
+        unit_string = "ps"
+    elif order < -6:  # noqa: PLR2004
+        scaled_time = 1e9 * num
+        unit_string = "ns"
+    elif order < -3:  # noqa: PLR2004
+        scaled_time = 1e6 * num
+        unit_string = "\u03bcs"
+    elif order < 0:  # noqa: PLR2004
+        scaled_time = 1e3 * num
+        unit_string = "ms"
+    else:
+        scaled_time = num
+        unit_string = "s"
+
+    return f"{round(scaled_time, 2)} {unit_string}"
+
+
+def speed_comparison_test(
+    function_setups: Sequence[JITCompilableFunction],
+    num_runs: int = 10,
+    log_results: bool = False,
+) -> tuple[list[tuple[Array, Array]], dict[int, Array]]:
+    """
+    Compare compilation time and runtime of a list of JIT-able functions.
+
+    :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
+    :param num_runs: Number of times to average function timings over
+    :param log_results: If :data:`True`, the results are formatted and logged
+    :return: List of tuples (means, standard deviations) for each function containing
+        JIT compilation and execution times as array components; Dictionary with
+        key function number and value array of estimated compilation times in first
+        column and execution time in second column
+    """
+    timings_dict = {}
+    results = []
+    for i, function in enumerate(function_setups):
+        timings = jnp.zeros((num_runs, 2))
+        for j in range(num_runs):
+            timings = timings.at[j, :].set(jit_test(*function))
+        # Compute the time just spent on compilation
+        post_processed_timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        timings_dict[i] = post_processed_timings
+        # Compute summary statistics
+        mean = post_processed_timings.mean(axis=0)
+        std = post_processed_timings.std(axis=0)
+        results.append((mean, std))
+        if log_results:
+            _logger.info("------------------- Function %s -------------------", i + 1)
+            _logger.info(
+                "Compilation time: "
+                + f"{format_time(mean[0].item())} ± "
+                + f"{format_time(std[0].item())}"
+                + f" per run (mean ± std. dev. of {num_runs} runs)"
+            )
+            _logger.info(
+                "Execution time: "
+                + f"{format_time(mean[1].item())} ± "
+                + f"{format_time(std[1].item())}"
+                + f" per run (mean ± std. dev. of {num_runs} runs)"
+            )
+
+    return results, timings_dict
 
 
 T = TypeVar("T")
