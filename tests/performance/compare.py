@@ -23,6 +23,8 @@ from typing import Dict, List, Optional, Tuple
 
 from scipy.stats import ttest_ind_from_stats
 
+from coreax.util import format_time
+
 PERFORMANCE_FILENAME_REGEX = re.compile(
     r"^performance"
     r"-(\d{4})-(\d{2})-(\d{2})"
@@ -126,8 +128,11 @@ def main() -> None:  # noqa: C901
 
     performance_file, reference_directory = parse_args()
     with open(performance_file, "r", encoding="utf8") as f:
-        current_performance: dict = json.load(f)
-    historic_performance = get_most_recent_historic_data(reference_directory)
+        current_performance_data: dict = json.load(f)
+    historic_performance_data = get_most_recent_historic_data(reference_directory)
+
+    current_performance = current_performance_data["results"]
+    historic_performance = historic_performance_data["results"]
 
     missing = historic_performance.keys() - current_performance.keys()
     new = current_performance.keys() - historic_performance.keys()
@@ -156,6 +161,13 @@ def main() -> None:  # noqa: C901
 
     if not missing and not new and not significant_changes:
         print("No significant changes to performance.")
+    elif new or significant_changes:
+        # add normalisation data
+        normalisation = current_performance_data["normalisation"]
+        print("---")
+        print("_Normalisation values for new data:_  ")
+        print(f"_Compilation: 1 unit = {format_time(normalisation['compilation'])}_  ")
+        print(f"_Execution: 1 unit = {format_time(normalisation['execution'])}_")
 
 
 def relative_change(before: float, after: float) -> float:
