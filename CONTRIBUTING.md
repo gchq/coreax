@@ -1,8 +1,6 @@
-Contributing to coreax
-======================
+# Contributing to coreax
 
-Getting started
----------------
+## Getting started
 
 If you would like to contribute to the development of coreax, you can do so in a number of ways:
 - Highlight any bugs you encounter during usage, or any feature requests that would improve coreax by raising appropriate issues.
@@ -16,8 +14,7 @@ All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
 Developers should install additional packages required for development using
 `pip install -e .[dev]`. Then, set up pre-commit hooks using `pre-commit install`.
 
-Reporting issues
---------------
+## Reporting issues
 
 - [Search existing issues][github-issues] (both open **and** closed).
 - Make sure you are using the latest version of coreax.
@@ -27,8 +24,7 @@ Reporting issues
   - This will make the issue a candidate for inclusion in future sprints, as-well as open to the community to address.
 - If you are able to fix the bug or implement the feature, [create a pull request](#pull-requests) with the relevant changes.
 
-Pull requests
--------------
+## Pull requests
 Currently, we are using a [GitHub Flow][github-flow] development approach.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
@@ -74,8 +70,44 @@ BREAKING CHANGE: numpy 1.0.2 no longer supported
 Refs: #123
 ```
 
-Code
-------
+### Breaking changes and deprecation
+
+Since we are still pre-1.0, [SemVer] states that any release may contain breaking
+changes. However, breaking changes should not be made without warning.
+
+Any breaking changes must have a deprecation period of at least **one minor release,
+or one month (whichever is longer),** before the breaking change is made. If the change
+is one that may require significant changes to client code, such as removing a function
+or class entirely, the deprecation period must instead be at least **two minor releases,
+or two months (whichever is longer).**
+
+Ensure that during the deprecation period, the old behaviour still works, but raises a
+`DeprecationWarning` with an appropriate message. If at all possible, ensure that there
+is straightforward signposting for how users should change their code to use
+non-deprecated parts of the codebase instead.
+
+As an example, this is what the deprecation period for renaming `my_old_function` to
+`my_new_function` would look like:
+
+```python
+# v0.1.0:
+def my_old_function(x: int) -> int:
+    return x + x + x + x
+
+# v0.2.0:
+def my_new_function(x: int) -> int:
+    return x*4
+
+@deprecated("Renamed to my_new_function; will be removed in v0.3.0")
+def my_old_function(x: int) -> int:
+    return my_new_function(x)
+
+# v0.3.0:
+def my_new_function(x: int) -> int:
+    return x*4
+```
+
+## Code
 
 Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
 facilitate code review, code should meet these standards prior to creating a pull request.
@@ -201,8 +233,7 @@ You can generate Sphinx documentation with:
 documentation/make html
 ```
 
-Releases
---------
+## Releases
 
 Releases are made on an ad-hoc basis, not on every merge into `main`. When the
 maintainers decide the codebase is ready for another release:
@@ -235,6 +266,7 @@ maintainers decide the codebase is ready for another release:
 [pr-ready]: https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request
 [pep-8]: https://peps.python.org/pep-0008/
 [black]: https://black.readthedocs.io/en/stable/
+[semver]: https://semver.org/
 [sphinx-rst]: https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html
 [sphinx]: https://www.sphinx-doc.org/en/master/index.html
 [pep-257]: https://peps.python.org/pep-0257/

@@ -25,6 +25,7 @@ kdtree
 kernelised
 kernelized
 KSD
+linewidth
 mapsto
 ml.p3.8xlarge
 ndmin
