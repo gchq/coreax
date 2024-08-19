@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, NamedTuple, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -65,9 +65,15 @@ class JITCompilableFunction(NamedTuple):
 
     fn: Callable
     fn_args: tuple = ()
-    fn_kwargs: Optional[dict] = None
-    jit_kwargs: Optional[dict] = None
+    fn_kwargs: Optional[Dict[str, Any]] = None
+    jit_kwargs: Optional[Dict[str, Any]] = None
     name: Optional[str] = None
+
+    def without_name(
+        self,
+    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
+        return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
 
 class InvalidKernel:
@@ -282,7 +288,6 @@ def jit_test(
     fn_args: tuple = (),
     fn_kwargs: Optional[dict] = None,
     jit_kwargs: Optional[dict] = None,
-    _name: Optional[str] = None,  # UNUSED
 ) -> tuple[float, float]:
     """
     Measure execution times of two runs of a JIT-compilable function.
@@ -386,7 +391,7 @@ def speed_comparison_test(
             _logger.info("------------------- %s -------------------", name)
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
-            timings = timings.at[j, :].set(jit_test(*function))
+            timings = timings.at[j, :].set(jit_test(*function.without_name()))
         # Compute the time just spent on compilation
         timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
         # Normalise, if necessary
