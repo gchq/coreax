@@ -99,7 +99,7 @@ def get_most_recent_historic_data(
 
     if not files:
         print("**WARNING: No historic performance data found.**")
-        return {}
+        return {"results": {}}
 
     most_recent_file = max(files.keys(), key=files.get)
 
