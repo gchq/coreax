@@ -53,6 +53,7 @@ jaxlib
 jaxopt
 jaxtyping
 jumanjihouse
+keepends
 linalg
 linkcheck
 literalinclude
