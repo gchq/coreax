@@ -29,10 +29,15 @@ PERFORMANCE_FILENAME_REGEX = re.compile(
     r"^performance"
     r"-(\d{4})-(\d{2})-(\d{2})"
     r"--(\d{2})-(\d{2})-(\d{2})"
-    r"--([0-9a-f]{40})\.json$"
+    r"--([0-9a-f]{40})"
+    r"--v(\d+)\.json$"
 )
 P_VALUE_THRESHOLD_UNCORRECTED = 0.05
 RATIO_THRESHOLD = 0.1  # 10% change minimum
+
+# Increment this if any changes are made to the storage format! Remember to also
+# increment the corresponding value in the `performance.yml` workflow file.
+CURRENT_DATA_VERSION = 1
 
 
 def parse_args() -> Tuple[Path, Path]:
@@ -53,6 +58,15 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
     """
     Extract the date from a performance data file name.
 
+    The current filename format is::
+
+        performance-YYYY-MM-DD--HH-MM-SS--[40-char git commit hash]--vX.json
+
+    where `YYYY-MM-DD--HH-MM-SS` is the year, month, day, hour, minute, and second
+    that the file was created, the commit hash is for the commit the tests were run
+    against, and the vX at the end is a version number specifier, in case we need to
+    change the format at a later date.
+
     :param path: The path to the performance data file. Only the filename component
         (`path.name`) is used.
     :return: Tuple (date_time, commit_hash) if the filename matched the expected format,
@@ -63,7 +77,11 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
     if not match:
         return None
 
-    year, month, day, hour, minute, second, git_hash = match.groups()
+    year, month, day, hour, minute, second, git_hash, spec_version = match.groups()
+    if spec_version != int(CURRENT_DATA_VERSION):
+        # But in future, we could try and extract at least some data?
+        return None
+
     return datetime.datetime(
         year=int(year),
         month=int(month),
