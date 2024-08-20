@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from scipy.stats import ttest_ind_from_stats
+from typing_extensions import TypedDict
 
 from coreax.util import format_time
 
@@ -38,6 +39,30 @@ RATIO_THRESHOLD = 0.1  # 10% change minimum
 # Increment this if any changes are made to the storage format! Remember to also
 # increment the corresponding value in the `performance.yml` workflow file.
 CURRENT_DATA_VERSION = 1
+
+
+class NormalisationData(TypedDict):
+    """Type hint for the normalisation data stored with the performance data."""
+
+    compilation: float
+    execution: float
+
+
+class SinglePerformanceTestData(TypedDict):
+    """Type hint for the data representing a single performance test."""
+
+    compilation_mean: float
+    execution_mean: float
+    compilation_std: float
+    execution_std: float
+    num_runs: int
+
+
+class FullPerformanceData(TypedDict):
+    """Type hint for the full performance test data file."""
+
+    results: Dict[str, SinglePerformanceTestData]
+    normalisation: NormalisationData
 
 
 def parse_args() -> Tuple[Path, Path]:
@@ -95,7 +120,7 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
 
 def get_most_recent_historic_data(
     reference_directory: Path,
-) -> Dict[str, Dict[str, float]]:
+) -> FullPerformanceData:
     """
     Get the most recent saved performance data in the given directory.
 
@@ -117,7 +142,9 @@ def get_most_recent_historic_data(
 
     if not files:
         print("**WARNING: No historic performance data found.**")
-        return {"results": {}}
+        # the normalisation data here will cause errors if actually used, but that's
+        # fine since there aren't any results present to normalise
+        return {"results": {}, "normalisation": {"compilation": 0.0, "execution": 0.0}}
 
     most_recent_file = max(files.keys(), key=files.get)
 
@@ -125,7 +152,7 @@ def get_most_recent_historic_data(
         return json.load(f)
 
 
-def format_run_time(times: Dict[str, float]) -> str:
+def format_run_time(times: SinglePerformanceTestData) -> str:
     """
     Format the performance data for a specific test in a human-readable form.
 
@@ -219,8 +246,8 @@ def relative_change(before: float, after: float) -> float:
 
 
 def get_significant_differences(
-    current_performance: Dict[str, Dict[str, float]],
-    historic_performance: Dict[str, Dict[str, float]],
+    current_performance: Dict[str, SinglePerformanceTestData],
+    historic_performance: Dict[str, SinglePerformanceTestData],
 ) -> List[Tuple[str, List[str]]]:
     """
     Check if there are any significant differences in performance.
