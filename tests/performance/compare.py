@@ -197,7 +197,8 @@ def main() -> None:  # noqa: C901
 
     if significant_changes:
         print("### Statistically significant changes")
-        for name, messages in significant_changes:
+        # sort the changes by test name
+        for name, messages in sorted(significant_changes, key=lambda tuple_: tuple_[0]):
             print(f"- `{name}`:")
             print(f"  - OLD: {format_run_time(historic_performance[name])}")
             print(f"  - NEW: {format_run_time(current_performance[name])}")
