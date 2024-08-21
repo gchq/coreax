@@ -40,6 +40,7 @@ from coreax.kernels import (
     LaplacianKernel,
     LinearKernel,
     LocallyPeriodicKernel,
+    MaternKernel,
     PCIMQKernel,
     PeriodicKernel,
     PoissonKernel,
@@ -1446,6 +1447,96 @@ class TestSquaredExponentialKernel(
         """Test that kernel rejects bad inputs."""
         with pytest.raises(ValueError, match=error_msg):
             SquaredExponentialKernel(*parameters)
+
+
+class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel]):
+    """Test ``coreax.kernels.MaternKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> MaternKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        return MaternKernel(
+            output_scale=parameters[0].item(),
+            length_scale=parameters[1].item(),
+            degree=int(jnp.ceil(jnp.abs(parameters[2]))) + 1,
+        )
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(  # noqa: C901
+        self, request: pytest.FixtureRequest, kernel: MaternKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the SquaredExponential kernel.
+
+        The kernel is defined as
+        :math:`k(x,y) = \exp (-||x-y||^2/(2 * \text{length_scale}^2))`.
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale is :math:`\exp(1)` and output scale is
+        :math:`\frac{1}{\sqrt{2*\pi} * \exp(1)}`:
+        - `normalized`: where x and y are vectors of the same size (this is the
+        special case where the squared exponential kernel is the Gaussian kernel)
+
+        3. length scale or output scale is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.26775646
+        elif mode == "vectors":
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.13973127
+        elif mode == "arrays":
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array(
+                [[1.3973127e-01, 5.5047366e-07], [1.4261089e-05, 9.9999952e-01]]
+            )
+        else:
+            raise ValueError("Invalid problem mode")
+
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(
+                lambda x: x.length_scale,
+                eqx.tree_at(lambda x: x.degree, kernel, 1),
+                1,
+            ),
+            1,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1, 2), "'length_scale' must be positive"),
+            ((1, -0.1, 2), "'output_scale' must be positive"),
+            ((1, 1, 2.6), "'degree' must be a non-negative integer"),
+            ((1, 1, -1), "'degree' must be a non-negative integer"),
+        ],
+        ids=[
+            "non_positive_length_scale",
+            "non_positive_output_scale",
+            "float_degree",
+            "degree_less_than_min",
+        ],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            MaternKernel(*parameters)
 
 
 class TestExponentialKernel(
