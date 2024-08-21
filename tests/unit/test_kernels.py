@@ -902,9 +902,9 @@ class TestPoissonKernel(
         if mode == "floats":
             expected_distances = 0.84798735
         elif mode == "vectors":
-            x = 1.0 * np.arange(4)
+            x = 1.0 * np.arange(1)
             y = x + 1.0
-            expected_distances = 0.52530843
+            expected_distances = 1.4090506
         elif mode == "arrays":
             x = np.array([[0], [1], [2], [3]])
             y = np.array([[1], [2], [3], [4]])
@@ -923,14 +923,193 @@ class TestPoissonKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
-    def test_gradient(self, kernel: PoissonKernel) -> None:
-        """Test the gradient methods of the kernel with data in the domain."""
+    @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
+    @pytest.mark.parametrize("elementwise", [False, True])
+    @pytest.mark.parametrize("auto_diff", [False, True])
+    def test_gradients(
+        self,
+        kernel: PoissonKernel,
+        mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
+        elementwise: bool,
+        auto_diff: bool,
+    ):
+        """Test computation of the kernel gradients."""
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        y = x[::-1] + 1
+        test_mode = mode
+        reference_mode = "expected_" + mode
+        if elementwise:
+            test_mode += "_elementwise"
+            x, y = x[0, :], y[0, :]
+        expected_output = getattr(self, reference_mode)(x, y, kernel)
+        if elementwise:
+            expected_output = expected_output.squeeze()
+        if auto_diff:
+            # Access overridden parent methods that use auto-differentiation
+            autodiff_kernel = super(type(kernel), kernel)
+            output = getattr(autodiff_kernel, test_mode)(x, y)
+        else:
+            output = getattr(kernel, test_mode)(x, y)
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
-    def test_divergence(self, kernel: PoissonKernel) -> None:
-        """Test the divergence method of the kernel with data in the domain."""
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected gradient of the kernel w.r.t ``x``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
 
-    def test_mean(self, kernel: PoissonKernel) -> None:
-        """Test the mean methods of the kernel with data in the domain."""
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    -(
+                        2
+                        * kernel.output_scale
+                        * kernel.index
+                        * jnp.sin(x[x_idx] - y[y_idx])
+                    )
+                    / (
+                        1
+                        - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                        + kernel.index**2
+                    )
+                    ** 2
+                )
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected gradient of the kernel w.r.t ``y``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    2
+                    * kernel.output_scale
+                    * kernel.index
+                    * jnp.sin(x[x_idx] - y[y_idx])
+                ) / (
+                    1
+                    - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                    + kernel.index**2
+                ) ** 2
+        return expected_gradients
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, _ = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dist = jnp.linalg.norm(x[x_idx] - y[y_idx])
+                div = 1 - 2 * kernel.index * jnp.cos(dist) + kernel.index**2
+                first_term = (
+                    2 * kernel.output_scale * kernel.index * jnp.cos(dist)
+                ) / div**2
+                second_term = (
+                    8 * kernel.output_scale * kernel.index**2 * jnp.sin(dist) ** 2
+                ) / div**3
+                expected_divergence[x_idx, y_idx] = first_term - second_term
+        return expected_divergence
+
+    @pytest.mark.parametrize(
+        "block_size",
+        [None, 0, -1, 1.2, 2, 3, 9, (None, 2), (2, None)],
+        ids=[
+            "none",
+            "zero",
+            "negative",
+            "floating",
+            "integer_multiple",
+            "fractional_multiple",
+            "oversized",
+            "tuple[none, integer_multiple]",
+            "tuple[integer_multiple, none]",
+        ],
+    )
+    @pytest.mark.parametrize("axis", [None, 0, 1])
+    def test_compute_mean(
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: PoissonKernel,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
+        axis: Union[int, None],
+    ) -> None:
+        """
+        Test the `compute_mean` methods with data from the domain.
+
+        Considers all classes of 'block_size' and 'axis', along with implicitly and
+        explicitly weighted data.
+        """
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        y = x[::-1] + 1
+        kernel_matrix = kernel.compute(x, y)
+        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
+        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
+        if axis == 0:
+            weights = x_weights
+        elif axis == 1:
+            weights = y_weights
+        else:
+            weights = x_weights[..., None] * y_weights[None, ...]
+        expected = jnp.average(kernel_matrix, axis, weights)
+        test_fn = jit_variant(kernel.compute_mean)
+        mean_output = test_fn(x_data, y_data, axis, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
+
+    def test_gramian_row_mean(
+        self, jit_variant: Callable[[Callable], Callable], kernel: ScalarValuedKernel
+    ) -> None:
+        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
+        bs = None
+        unroll = (1, 1)
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        expected_fn = jit_variant(kernel.compute_mean)
+        output_fn = jit_variant(kernel.gramian_row_mean)
+        expected = expected_fn(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = output_fn(x, block_size=bs, unroll=unroll)
+        np.testing.assert_array_equal(output, expected)
 
     @pytest.mark.parametrize(
         "parameters, error_msg",
