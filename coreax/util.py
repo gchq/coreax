@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, NamedTuple, Optional, Sequence, TypeVar
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -65,8 +65,15 @@ class JITCompilableFunction(NamedTuple):
 
     fn: Callable
     fn_args: tuple = ()
-    fn_kwargs: Optional[dict] = None
-    jit_kwargs: Optional[dict] = None
+    fn_kwargs: Optional[Dict[str, Any]] = None
+    jit_kwargs: Optional[Dict[str, Any]] = None
+    name: Optional[str] = None
+
+    def without_name(
+        self,
+    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
+        return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
 
 class InvalidKernel:
@@ -359,45 +366,71 @@ def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
     log_results: bool = False,
-) -> tuple[list[tuple[Array, Array]], dict[int, Array]]:
+    normalisation: Optional[Tuple[float, float]] = None,
+) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
 
     :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
     :param num_runs: Number of times to average function timings over
     :param log_results: If :data:`True`, the results are formatted and logged
+    :param normalisation: Tuple (compilation normalisation, execution normalisation).
+        If provided, returned compilation/execution times are normalised so that this
+        time is 1 time unit.
     :return: List of tuples (means, standard deviations) for each function containing
         JIT compilation and execution times as array components; Dictionary with
-        key function number and value array of estimated compilation times in first
+        key function name and value array of estimated compilation times in first
         column and execution time in second column
     """
     timings_dict = {}
     results = []
     for i, function in enumerate(function_setups):
+        name = function.name
+        name = name if name is not None else f"function_{i + 1}"
+        if log_results:
+            _logger.info("------------------- %s -------------------", name)
         timings = jnp.zeros((num_runs, 2))
         for j in range(num_runs):
-            timings = timings.at[j, :].set(jit_test(*function))
+            timings = timings.at[j, :].set(jit_test(*function.without_name()))
         # Compute the time just spent on compilation
-        post_processed_timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
-        timings_dict[i] = post_processed_timings
+        timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        # Normalise, if necessary
+        if normalisation is not None:
+            timings = timings.at[:, 0].set(timings[:, 0] / normalisation[0])
+            timings = timings.at[:, 1].set(timings[:, 1] / normalisation[1])
+        timings_dict[name] = timings
         # Compute summary statistics
-        mean = post_processed_timings.mean(axis=0)
-        std = post_processed_timings.std(axis=0)
+        mean = timings.mean(axis=0)
+        std = timings.std(axis=0)
         results.append((mean, std))
+
         if log_results:
-            _logger.info("------------------- Function %s -------------------", i + 1)
-            _logger.info(
-                "Compilation time: "
-                + f"{format_time(mean[0].item())} ± "
-                + f"{format_time(std[0].item())}"
-                + f" per run (mean ± std. dev. of {num_runs} runs)"
-            )
-            _logger.info(
-                "Execution time: "
-                + f"{format_time(mean[1].item())} ± "
-                + f"{format_time(std[1].item())}"
-                + f" per run (mean ± std. dev. of {num_runs} runs)"
-            )
+            if normalisation:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{mean[0].item():.4g} units ± "
+                    + f"{std[0].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{mean[1].item():.4g} units ± "
+                    + f"{std[1].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+            else:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{format_time(mean[0].item())} ± "
+                    + f"{format_time(std[0].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{format_time(mean[1].item())} ± "
+                    + f"{format_time(std[1].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
 
     return results, timings_dict
 

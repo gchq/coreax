@@ -314,8 +314,12 @@ class TestUtil:
         num_runs = 10
         summary_stats, result_dict = speed_comparison_test(
             [
-                JITCompilableFunction(_slow_mean, fn_kwargs={"a": random_vector}),
-                JITCompilableFunction(jnp.mean, fn_kwargs={"a": random_vector}),
+                JITCompilableFunction(
+                    _slow_mean, fn_kwargs={"a": random_vector}, name="slow_mean"
+                ),
+                JITCompilableFunction(
+                    jnp.mean, fn_kwargs={"a": random_vector}, name="jnp_mean"
+                ),
             ],
             num_runs=num_runs,
             log_results=False,
@@ -332,14 +336,14 @@ class TestUtil:
         assert slow_mean_compilation_time > fast_mean_compilation_time > 0
 
         # Check result dictionary has the correct size
-        assert len(result_dict[0]) == num_runs
-        assert len(result_dict[1]) == num_runs
+        assert len(result_dict["slow_mean"]) == num_runs
+        assert len(result_dict["jnp_mean"]) == num_runs
 
         # Check summary stats have been computed correctly
-        assert jnp.all(result_dict[0].mean(axis=0) == summary_stats[0][0])
-        assert jnp.all(result_dict[0].std(axis=0) == summary_stats[0][1])
-        assert jnp.all(result_dict[1].mean(axis=0) == summary_stats[1][0])
-        assert jnp.all(result_dict[1].std(axis=0) == summary_stats[1][1])
+        assert jnp.all(result_dict["slow_mean"].mean(axis=0) == summary_stats[0][0])
+        assert jnp.all(result_dict["slow_mean"].std(axis=0) == summary_stats[0][1])
+        assert jnp.all(result_dict["jnp_mean"].mean(axis=0) == summary_stats[1][0])
+        assert jnp.all(result_dict["jnp_mean"].std(axis=0) == summary_stats[1][1])
 
 
 class TestSilentTQDM:
