@@ -18,7 +18,8 @@ from typing import Callable
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax import Array
+from jax import Array, vmap
+from jax.scipy.special import factorial
 from jax.typing import ArrayLike
 from typing_extensions import override
 
@@ -249,7 +250,7 @@ class MaternKernel(ScalarValuedKernel):
     kernel with smoothness parameter :math:`\nu` set to be a multiple of
     :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
     :math:`p`=``degree``:math:`\in\mathbb{N}`, is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
 
     .. math::
         k(x, y) = \rho^2 * \exp\left((-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
@@ -261,10 +262,12 @@ class MaternKernel(ScalarValuedKernel):
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param degree: Kernel degree, :math:`p`, must be a non-negative integer
     """
 
     length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
+    degree: int = 1
 
     def __check_init__(self):
         """Check attributes are valid."""
@@ -272,29 +275,40 @@ class MaternKernel(ScalarValuedKernel):
             raise ValueError("'length_scale' must be positive")
         if self.output_scale <= 0:
             raise ValueError("'output_scale' must be positive")
+        if not isinstance(self.degree, int) or self.degree < 0:
+            raise ValueError("'degree' must be a non-negative integer")
+
+    def _compute_summation_term(self, distance: float, iteration: ArrayLike) -> Array:
+        """
+        Compute the summation term of the Matérn kernel for a given iteration.
+
+        :param distance: Float representing :math:`||x-y||`
+        :param iteration: Current iteration
+        """
+        factorial_term = factorial(self.degree + iteration) / (
+            factorial(iteration) * factorial(self.degree - iteration)
+        )
+        distance_term = (
+            2 * jnp.sqrt(2 * self.degree + 1) * distance / self.length_scale
+        ) ** (self.degree - iteration)
+        return factorial_term * distance_term
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.exp(
-            -jnp.linalg.norm(jnp.subtract(x, y) / self.length_scale**2)
+        norm = jnp.linalg.norm(jnp.subtract(x, y))
+        body = (jnp.sqrt(2 * self.degree + 1) * norm) / self.length_scale
+        factor = (
+            self.output_scale**2
+            * jnp.exp(-body)
+            * factorial(self.degree)
+            / factorial(2 * self.degree)
         )
 
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return -self.grad_y_elementwise(x, y)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (
-            jnp.subtract(x, y) / self.length_scale**2 * self.compute_elementwise(x, y)
-        )
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        k = self.compute_elementwise(x, y)
-        scale = 1 / self.length_scale**2
-        d = len(jnp.asarray(x))
-        return scale * k * (d - scale * squared_distance(x, y))
+        summation = 1.0
+        if self.degree > 0:
+            mapped_function = vmap(self._compute_summation_term, in_axes=(None, 0))
+            summation = mapped_function(norm, jnp.arange(self.degree + 1)).sum()
+        return factor * summation
 
 
 class ExponentialKernel(ScalarValuedKernel):
