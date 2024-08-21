@@ -186,17 +186,19 @@ class PoissonKernel(ScalarValuedKernel):
     r"""
     Define a Poisson kernel.
 
-    Given :math:`0 < r < 1` =``index` and :math:`\rho =``output_scale`, the poisson
+    Given :math:`0 < r < 1` =``index` and :math:`\rho =``output_scale`, the Poisson
     kernel is defined as :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
     :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}.
 
-    .. warn::
+    .. warning::
         Unlike many other kernels in CoreAX, the Poisson kernel is not defined on
         arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
-        :math:`[0, 2\pi)`. We do not check that inputs to the methods in this class
-        lie in the correct domain, therefore unexpected behaviour will occur. Note that
-        in CoreAX :math:`n`-vectors are interpreted as one observation of a `:math:`n`-
-        dimensional vector, and not :math:`n` observations of a one dimensional vector.
+        :math:`[0, 2\pi)`. We do not check that inputs to methods in this class lie in
+        the correct domain, therefore unexpected behaviour may occur. For example,
+        passing :math:`n`-vectors to the `compute` method will be interpreted as one
+        observation of a `:math:`n`- dimensional vector, and not :math:`n` observations
+        of a one dimensional vector, and therefore would be an invalid use of this
+        kernel function.
 
     :param index: Kernel parameter indexing the family of Poisson kernel functions
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
@@ -278,19 +280,24 @@ class MaternKernel(ScalarValuedKernel):
         if not isinstance(self.degree, int) or self.degree < 0:
             raise ValueError("'degree' must be a non-negative integer")
 
-    def _compute_summation_term(self, distance: float, iteration: ArrayLike) -> Array:
-        """
+    def _compute_summation_term(self, body: float, iteration: ArrayLike) -> Array:
+        r"""
         Compute the summation term of the Matérn kernel for a given iteration.
 
-        :param distance: Float representing :math:`||x-y||`
+        Given :math:`p`=``degree``:math:`\in\mathbb{N}`, compute
+
+        .. math::
+            \sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
+            \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}.
+
+        :param body: Float representing
+            :math:`\left(\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)`
         :param iteration: Current iteration
         """
         factorial_term = factorial(self.degree + iteration) / (
             factorial(iteration) * factorial(self.degree - iteration)
         )
-        distance_term = (
-            2 * jnp.sqrt(2 * self.degree + 1) * distance / self.length_scale
-        ) ** (self.degree - iteration)
+        distance_term = (2 * body) ** (self.degree - iteration)
         return factorial_term * distance_term
 
     @override
@@ -307,7 +314,7 @@ class MaternKernel(ScalarValuedKernel):
         summation = 1.0
         if self.degree > 0:
             mapped_function = vmap(self._compute_summation_term, in_axes=(None, 0))
-            summation = mapped_function(norm, jnp.arange(self.degree + 1)).sum()
+            summation = mapped_function(body, jnp.arange(self.degree + 1)).sum()
         return factor * summation
 
 
