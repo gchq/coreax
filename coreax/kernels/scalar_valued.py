@@ -214,7 +214,9 @@ class PoissonKernel(ScalarValuedKernel):
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         return self.output_scale / (
-            1 - 2 * self.index * jnp.cos(jnp.subtract(x, y).sum()) + self.index**2
+            1
+            - 2 * self.index * jnp.cos(jnp.linalg.norm(jnp.subtract(x, y)))
+            + self.index**2
         )
 
     @override
@@ -223,18 +225,18 @@ class PoissonKernel(ScalarValuedKernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        norm = jnp.subtract(x, y).sum()
-        return (2 * self.output_scale * self.index * jnp.sin(norm)) / (
-            1 - 2 * self.index * jnp.cos(norm) + self.index**2
+        distance = jnp.subtract(x, y)
+        return (2 * self.output_scale * self.index * jnp.sin(distance)) / (
+            1 - 2 * self.index * jnp.cos(distance) + self.index**2
         ) ** 2
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        norm = jnp.subtract(x, y).sum()
-        div = 1 - 2 * self.index * jnp.cos(norm) + self.index**2
-        first_term = (2 * self.output_scale * self.index * jnp.cos(norm)) / div**2
+        distance = jnp.linalg.norm(jnp.subtract(x, y))
+        div = 1 - 2 * self.index * jnp.cos(distance) + self.index**2
+        first_term = (2 * self.output_scale * self.index * jnp.cos(distance)) / div**2
         second_term = (
-            8 * self.output_scale * self.index**2 * jnp.sin(norm) ** 2
+            8 * self.output_scale * self.index**2 * jnp.sin(distance) ** 2
         ) / div**3
         return first_term - second_term
 
