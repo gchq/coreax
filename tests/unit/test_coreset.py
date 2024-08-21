@@ -14,7 +14,7 @@
 
 """Tests for coreset data-structures."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -76,9 +76,9 @@ class TestCoresetCommon:
 
     def test_compute_metric(self, coreset_type):
         """Test the metric computation convenience interface."""
-        metric = MagicMock(Metric)
+        metric = MagicMock(spec=Metric)
         expected_metric = jnp.asarray(123)
-        metric.compute.return_value = expected_metric
+        metric.compute = Mock(return_value=expected_metric)
         coreset = coreset_type(NODES, PRE_CORESET_DATA)
         kwargs = {"test": None}
         coreset_metric = coreset.compute_metric(metric, **kwargs)
