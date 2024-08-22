@@ -103,7 +103,7 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
         return None
 
     year, month, day, hour, minute, second, git_hash, spec_version = match.groups()
-    if spec_version != int(CURRENT_DATA_VERSION):
+    if int(spec_version) != CURRENT_DATA_VERSION:
         # But in future, we could try and extract at least some data?
         return None
 
