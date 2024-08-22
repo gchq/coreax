@@ -1462,12 +1462,21 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
             degree=int(jnp.ceil(jnp.abs(parameters[2]))) + 1,
         )
 
-    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    @pytest.fixture(
+        params=[
+            "floats_zero_degree",
+            "vectors_zero_degree",
+            "arrays_zero_degree",
+            "floats_degree_greater_than_zero",
+            "vectors_degree_greater_than_zero",
+            "arrays_degree_greater_than_zero",
+        ]
+    )
     def problem(  # noqa: C901
         self, request: pytest.FixtureRequest, kernel: MaternKernel
     ) -> _Problem:
         r"""
-        Test problems for the Matern kernel.
+        Test problems for the Matérn kernel.
 
         Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
         Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
@@ -1500,20 +1509,46 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
         - `negative_output_scale`: should negate the positive equivalent.
         """
         mode = request.param
-        x = 0.5
-        y = 2.0
-        if mode == "floats":
+        if mode == "floats_zero_degree":
+            degree = 0
+            x = 0.5
+            y = 2.0
+            expected_distances = 0.22313017
+
+        elif mode == "floats_degree_greater_than_zero":
+            degree = 1
+            x = 0.5
+            y = 2.0
             expected_distances = 0.26775646
-        elif mode == "vectors":
+
+        elif mode == "vectors_zero_degree":
+            degree = 0
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.13533528
+
+        elif mode == "vectors_degree_greater_than_zero":
+            degree = 1
             x = 1.0 * np.arange(4)
             y = x + 1.0
             expected_distances = 0.13973127
-        elif mode == "arrays":
+
+        elif mode == "arrays_zero_degree":
+            degree = 0
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array(
+                [[1.3533528e-01, 4.5399931e-05], [3.3546262e-04, 1.0000000e00]]
+            )
+
+        elif mode == "arrays_degree_greater_than_zero":
+            degree = 1
             x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
             y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
             expected_distances = np.array(
                 [[1.3973127e-01, 5.5047366e-07], [1.4261089e-05, 9.9999952e-01]]
             )
+
         else:
             raise ValueError("Invalid problem mode")
 
@@ -1521,7 +1556,7 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
             lambda x: x.output_scale,
             eqx.tree_at(
                 lambda x: x.length_scale,
-                eqx.tree_at(lambda x: x.degree, kernel, 1),
+                eqx.tree_at(lambda x: x.degree, kernel, degree),
                 1,
             ),
             1,

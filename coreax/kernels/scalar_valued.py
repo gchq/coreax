@@ -229,6 +229,9 @@ class PoissonKernel(ScalarValuedKernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        # Note that we do not take a norm here in order to maintain the dimensionality
+        # of the vectors x and y, this ensures calls to 'grad_y' and 'grad_x' have
+        # expected dimensionality.
         distance = jnp.subtract(x, y)
         return (2 * self.output_scale * self.index * jnp.sin(distance)) / (
             1 - 2 * self.index * jnp.cos(distance) + self.index**2
