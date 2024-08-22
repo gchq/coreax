@@ -186,12 +186,13 @@ class PoissonKernel(ScalarValuedKernel):
     r"""
     Define a Poisson kernel.
 
-    Given :math:`r=```index``, :math:`0 < r < 1`, and :math:`\rho =``output_scale`, the
-    Poisson kernel is defined as :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}.
+    Given :math:`r=` ``index``, :math:`0 < r < 1`, and :math:`\rho =` ``output_scale``,
+    the Poisson kernel is defined as
+    :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
+    :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}`.
 
     .. warning::
-        Unlike many other kernels in CoreAX, the Poisson kernel is not defined on
+        Unlike many other kernels in Coreax, the Poisson kernel is not defined on
         arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
         :math:`[0, 2\pi)`. We do not check that inputs to methods in this class lie in
         the correct domain, therefore unexpected behaviour may occur. For example,
@@ -248,14 +249,14 @@ class MaternKernel(ScalarValuedKernel):
     r"""
     Define Matérn kernel with smoothness parameter a multiple of :math:`\frac{1}{2}`.
 
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the Matérn
-    kernel with smoothness parameter :math:`\nu` set to be a multiple of
+    Given :math:`\lambda =` ``length_scale`` and :math:`\rho =` ``output_scale``, the
+    Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
     :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
-    :math:`p`=``degree``:math:`\in\mathbb{N}`, is defined as
+    :math:`p`=` ``degree`` `:`math:`\in\mathbb{N}`, is defined as
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
 
     .. math::
-        k(x, y) = \rho^2 * \exp\left((-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
+        k(x, y) = \rho^2 * \exp\left(-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
         \frac{p!}{(2p)!}\sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
         \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}
 

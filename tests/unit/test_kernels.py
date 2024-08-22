@@ -870,7 +870,7 @@ class TestLinearKernel(
 class TestPoissonKernel(
     BaseKernelTest[PoissonKernel],
 ):
-    """Test ``coreax.kernels.DiracKernel``."""
+    """Test ``coreax.kernels.PoissonKernel``."""
 
     @pytest.fixture(scope="class")
     def kernel(self) -> PoissonKernel:
@@ -1467,10 +1467,20 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
         self, request: pytest.FixtureRequest, kernel: MaternKernel
     ) -> _Problem:
         r"""
-        Test problems for the SquaredExponential kernel.
+        Test problems for the Matern kernel.
 
-        The kernel is defined as
-        :math:`k(x,y) = \exp (-||x-y||^2/(2 * \text{length_scale}^2))`.
+        Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+        Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
+        :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
+        :math:`p`=``degree``:math:`\in\mathbb{N}`, is defined as
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
+
+        .. math::
+            k(x, y) = \rho^2 * \exp\left((-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
+            \frac{p!}{(2p)!}\sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
+            \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}
+
+        where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
         We consider the following cases:
         1. length scale is :math:`\sqrt{\pi} / 2`:
