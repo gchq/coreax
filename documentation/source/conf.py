@@ -166,6 +166,7 @@ nitpick_ignore = [
     ("py:class", "coreax.solvers.composite._Data"),
     ("py:class", "coreax.solvers.composite._State"),
     ("py:class", "Array"),
+    ("py:class", "typing.Self"),
     ("py:class", "jaxtyping.Shaped"),
     ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
     ("py:class", "jaxtyping.Shaped[ndarray, 'n *d']"),
