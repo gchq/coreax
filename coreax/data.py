@@ -14,40 +14,58 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import jit
 from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import Self
 
 
-@jit
-def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
+@overload
+def _atleast_2d_consistent(array: Shaped[Array, " n d"]) -> Shaped[Array, " n d"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    array: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload],
+    array: Shaped[Array, ""],
+) -> Shaped[Array, " 1 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(array: Union[float, int, bool]) -> Shaped[Array, " 1 1"]: ...
+
+
+def _atleast_2d_consistent(
+    array: Union[
+        Shaped[Array, " n d"],
+        Shaped[Array, " n"],
+        Shaped[Array, ""],
+        Union[float, int],
+    ],
+) -> Union[Shaped[Array, " n d"], Shaped[Array, " n 1"], Shaped[Array, " 1 1"]]:
     r"""
-    Given an array or sequence of arrays ensure they are at least 2-dimensional.
+    Given an array, ensure it is at least 2-dimensional.
 
     .. note::
         This function differs from `jax.numpy.atleast_2d` in that it converts
         1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
 
-    :param arrays: Singular array or list of arrays
-    :return: 2-dimensional array or list of 2-dimensional arrays
+    :param array: An array of arbitrary dimension
+    :return: 2-dimensional array if dimension of ``array` is less than 2, p-dimensional
+        array if ``array`` is p-dimensional
     """
-    if len(arrays) == 1:
-        array = jnp.asarray(arrays[0], copy=False)
-        if len(array.shape) == 1:
-            return jnp.expand_dims(array, 1)
-        return jnp.array(array, copy=False, ndmin=2)
-    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
-    return [
-        jnp.expand_dims(array, 1)
-        if len(array.shape) == 1
-        else jnp.array(array, copy=False, ndmin=2)
-        for array in _arrays
-    ]
+    array = jnp.asarray(array, copy=False)
+    if len(array.shape) == 1:
+        return jnp.expand_dims(array, 1)
+    return jnp.array(array, copy=False, ndmin=2)
 
 
 class Data(eqx.Module):
@@ -72,24 +90,24 @@ class Data(eqx.Module):
     """
 
     data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
-    weights: Shaped[Array, " n"]
+    weights: Union[Union[int, float], Shaped[Array, " *n"]]
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n *d"],
-        weights: Optional[Shaped[ArrayLike, " n"]] = None,
+        data: Shaped[Array, " n *d"],
+        weights: Optional[Union[Union[int, float], Shaped[Array, " *n"]]] = None,
     ):
-        """Initialise Data class."""
-        self.data = jnp.asarray(data)
-        n = self.data.shape[:1]
+        """Initialise `Data` class, handle non-Array weight attribute."""
+        self.data = _atleast_2d_consistent(data)
+        n = self.data.shape[0]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
     def __getitem__(self, key) -> Self:
-        """Support Array style indexing of 'Data' objects."""
+        """Support `Array` style indexing of `Data` objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
     def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
-        """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
+        """Register `ArrayLike` behaviour - return for `jnp.asarray(Data(...))`."""
         return self.data
 
     def __len__(self) -> int:
@@ -98,7 +116,7 @@ class Data(eqx.Module):
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
         """
-        Return a copy of 'self' with 'weights' that sum to one.
+        Return a copy of ``self`` with ``weights`` that sum to one.
 
         :param preserve_zeros: If to preserve zero valued weights; when all weights are
             zero valued, the 'normalized' copy will **sum to zero, not one**.
@@ -138,9 +156,9 @@ class SupervisedData(Data):
 
     def __init__(
         self,
-        data: Shaped[Array, " n d"],
+        data: Shaped[Array, " n *d"],
         supervision: Shaped[Array, " n *p"],
-        weights: Optional[Shaped[Array, " n"]] = None,
+        weights: Optional[Shaped[Array, " *n"]] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
@@ -155,10 +173,10 @@ class SupervisedData(Data):
 
 
 def as_data(x: Any) -> Data:
-    """Cast 'x' to a data instance."""
+    """Cast `x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
 def is_data(x: Any) -> bool:
-    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
+    """Return boolean indicating if ``x`` is an instance of `Data`."""
     return isinstance(x, Data)

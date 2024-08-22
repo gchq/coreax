@@ -285,7 +285,12 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def grad_x_elementwise(
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Float[Array, " d"]: ...
+
+    @overload
+    def grad_x_elementwise(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
     ) -> Float[Array, ""]: ...
 
     @overload
@@ -295,9 +300,9 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def grad_x_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " *d"], Union[float, int]],
-    ) -> Float[Array, ""]:
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+    ) -> Union[Float[Array, " d"], Float[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -316,7 +321,12 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def grad_y_elementwise(
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Float[Array, " d"]: ...
+
+    @overload
+    def grad_y_elementwise(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
     ) -> Float[Array, ""]: ...
 
     @overload
@@ -326,9 +336,9 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " *d"], Union[float, int]],
-    ) -> Float[Array, ""]:
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+    ) -> Union[Float[Array, " d"], Float[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -390,7 +400,11 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         self, x: Union[float, int], y: Union[float, int]
     ) -> Float[Array, ""]: ...
 
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self,
+        x: Union[Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " *d"], Union[float, int]],
+    ) -> Float[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -532,23 +546,22 @@ class _Constant(ScalarValuedKernel):
             )
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return jnp.asarray(self.constant)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return jnp.asarray(0)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return jnp.asarray(0)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return jnp.asarray(0)
 
 
-# pylint: disable=abstract-method
 class UniCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap one scalar-valued kernel.
@@ -565,9 +578,6 @@ class UniCompositeKernel(ScalarValuedKernel):
                 "'base_kernel' must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
-
-
-# pylint: enable=abstract-method
 
 
 class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
@@ -594,11 +604,11 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
             )
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.base_kernel.compute_elementwise(x, y) ** self.power
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return (
             self.power
             * self.base_kernel.grad_x_elementwise(x, y)
@@ -606,7 +616,7 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return (
             self.power
             * self.base_kernel.grad_y_elementwise(x, y)
@@ -614,7 +624,7 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         n = self.power
         compute = self.base_kernel.compute_elementwise(x, y)
         return n * (
@@ -632,7 +642,6 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
 
-# pylint: disable=abstract-method
 class DuoCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap two scalar-valued kernels.
@@ -656,9 +665,6 @@ class DuoCompositeKernel(ScalarValuedKernel):
             )
 
 
-# pylint: enable=abstract-method
-
-
 class AdditiveKernel(DuoCompositeKernel):
     r"""
     Define a kernel which is a summation of two kernels.
@@ -673,25 +679,25 @@ class AdditiveKernel(DuoCompositeKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -711,7 +717,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return self.first_kernel.compute_elementwise(x, y) ** 2
         return self.first_kernel.compute_elementwise(
@@ -719,7 +725,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -735,7 +741,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -751,7 +757,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return 2 * (
                 self.first_kernel.grad_x_elementwise(x, y).dot(

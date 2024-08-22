@@ -1,5 +1,8 @@
 """Module for defining coreset data structures."""
 
+# Support class typing annotations inside itself
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 import equinox as eqx
@@ -7,7 +10,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
-from coreax.data import Data, SupervisedData, as_data
+from coreax.data import Data
 from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
 
@@ -59,7 +62,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    nodes: Data = eqx.field(converter=as_data)
+    nodes: _Data
     pre_coreset_data: _Data
 
     def __check_init__(self):
@@ -75,16 +78,16 @@ class Coreset(eqx.Module, Generic[_Data]):
         return len(self.nodes)
 
     @property
-    def coreset(self) -> Data:
+    def coreset(self) -> _Data:
         """Materialised coreset."""
         return self.nodes
 
-    def solve_weights(self, solver: WeightsOptimiser, **solver_kwargs) -> Self:
+    def solve_weights(self, solver: WeightsOptimiser[_Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
         weights = solver.solve(self.pre_coreset_data, self.coreset, **solver_kwargs)
         return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
 
-    def compute_metric(self, metric: Metric, **metric_kwargs) -> Array:
+    def compute_metric(self, metric: Metric[_Data], **metric_kwargs) -> Array:
         """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
         return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 
@@ -117,26 +120,13 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    # Incompatibility between Pylint and eqx.field. Pyright handles this correctly.
-    # pylint: disable=no-member
     @property
-    def coreset(self) -> Data:
+    def coreset(self) -> _Data:
         """Materialise the coresubset from the indices and original data."""
-        coreset_data = self.pre_coreset_data.data[self.unweighted_indices]
-        if isinstance(self.pre_coreset_data, SupervisedData):
-            coreset_supervision = self.pre_coreset_data.supervision[
-                self.unweighted_indices
-            ]
-            return SupervisedData(
-                data=coreset_data,
-                supervision=coreset_supervision,
-                weights=self.nodes.weights,
-            )
-        return Data(data=coreset_data, weights=self.nodes.weights)
+        coreset_data = self.pre_coreset_data[self.unweighted_indices]
+        return eqx.tree_at(lambda x: x.weights, coreset_data, self.nodes.weights)
 
     @property
     def unweighted_indices(self) -> Shaped[Array, " n"]:
         """Unweighted Coresubset indices - attribute access helper."""
         return jnp.squeeze(self.nodes.data)
-
-    # pylint: enable=no-member

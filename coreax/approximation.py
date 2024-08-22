@@ -39,7 +39,7 @@ from jax import Array
 from jax.typing import ArrayLike
 from typing_extensions import TYPE_CHECKING, Literal, override
 
-from coreax.data import Data
+from coreax.data import Data, _atleast_2d_consistent
 from coreax.kernels import UniCompositeKernel
 from coreax.util import KeyArrayLike
 
@@ -120,19 +120,19 @@ class ApproximateKernel(UniCompositeKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.base_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return self.base_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return self.base_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return self.base_kernel.divergence_x_grad_y_elementwise(x, y)
 
 
@@ -184,7 +184,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
+        data = _atleast_2d_consistent(x)
         num_data_points = len(data)
         key = self.random_key
         features_idx = _random_indices(key, num_data_points, self.num_kernel_points - 1)
@@ -224,7 +224,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
+        data = _atleast_2d_consistent(x)
         num_data_points = len(data)
         features = jnp.zeros((num_data_points, self.num_kernel_points))
         features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
@@ -280,7 +280,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
+        data = _atleast_2d_consistent(x)
         num_data_points = len(data)
         feature_idx = _random_indices(
             self.random_key, num_data_points, self.num_kernel_points
