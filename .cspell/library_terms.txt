@@ -53,6 +53,7 @@ jaxlib
 jaxopt
 jaxtyping
 jumanjihouse
+keepends
 linalg
 linkcheck
 literalinclude
@@ -62,11 +63,9 @@ mathbb
 mathbf
 mathrm
 matplotlib
-maxval
 meshgrid
 mimread
 mimsave
-minval
 modindex
 myst
 nabla
@@ -75,6 +74,7 @@ nanargmin
 ndarray
 ndim
 newaxis
+nobs
 nonzero
 numpy
 opencv
@@ -119,6 +119,8 @@ toctree
 tomli
 tqdm
 triu
+ttest
+tuplegetter
 typehints
 undoc
 unflatten
