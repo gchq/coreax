@@ -186,8 +186,8 @@ class PoissonKernel(ScalarValuedKernel):
     r"""
     Define a Poisson kernel.
 
-    Given :math:`0 < r < 1` =``index` and :math:`\rho =``output_scale`, the Poisson
-    kernel is defined as :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
+    Given :math:`r=```index``, :math:`0 < r < 1`, and :math:`\rho =``output_scale`, the
+    Poisson kernel is defined as :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
     :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}.
 
     .. warning::
