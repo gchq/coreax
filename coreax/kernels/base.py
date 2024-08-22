@@ -53,7 +53,7 @@ compute than the automatic differentiated default.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Union
+from typing import Union, overload
 
 import equinox as eqx
 import jax
@@ -61,6 +61,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev
 from jax.typing import ArrayLike
+from jaxtyping import Float, Shaped
 from typing_extensions import override
 
 from coreax.data import Data, is_data
@@ -68,7 +69,7 @@ from coreax.kernels.util import _block_data_convert
 from coreax.util import pairwise, tree_leaves_repeat
 
 
-class ScalarValuedKernel(eqx.Module):
+class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     """Abstract base class for scalar-valued kernels."""
 
     def __add__(
@@ -117,7 +118,26 @@ class ScalarValuedKernel(eqx.Module):
         """
         return PowerKernel(self, power)
 
-    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def compute(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
+    ) -> Float[Array, " n n"]: ...
+
+    @overload
+    def compute(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, " 1 1"]: ...
+
+    @overload
+    def compute(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, "1 1"]: ...
+
+    def compute(
+        self,
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+    ) -> Union[Float[Array, " n n"], Float[Array, "1 1"]]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
 
@@ -136,8 +156,22 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.compute_elementwise)(x, y)
 
+    @overload
+    def compute_elementwise(
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, ""]: ...
+
+    @overload
+    def compute_elementwise(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, ""]: ...
+
     @abstractmethod
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self,
+        x: Union[Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " *d"], Union[float, int]],
+    ) -> Float[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
 
@@ -149,7 +183,41 @@ class ScalarValuedKernel(eqx.Module):
         :return: Kernel evaluated at (``x``, ``y``)
         """
 
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_x(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
+    ) -> Float[Array, " n n d"]: ...
+
+    @overload
+    def grad_x(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Float[Array, " 1 1 d"]: ...
+
+    @overload
+    def grad_x(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
+    ) -> Float[Array, " 1 1 1"]: ...
+
+    @overload
+    def grad_x(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, "1 1 1"]: ...
+
+    def grad_x(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            Union[float, int],
+        ],
+        y: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            Union[float, int],
+        ],
+    ) -> Union[Float[Array, " n n d"], Float[Array, " 1 1 d"], Float[Array, "1 1 1"]]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
@@ -165,7 +233,41 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.grad_x_elementwise)(x, y)
 
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_y(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
+    ) -> Float[Array, " n n d"]: ...
+
+    @overload
+    def grad_y(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Float[Array, " 1 1 d"]: ...
+
+    @overload
+    def grad_y(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
+    ) -> Float[Array, " 1 1 1"]: ...
+
+    @overload
+    def grad_y(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, "1 1 1"]: ...
+
+    def grad_y(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            Union[float, int],
+        ],
+        y: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            Union[float, int],
+        ],
+    ) -> Union[Float[Array, " n n d"], Float[Array, " 1 1 d"], Float[Array, "1 1 1"]]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
@@ -181,7 +283,21 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.grad_y_elementwise)(x, y)
 
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_x_elementwise(
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, ""]: ...
+
+    @overload
+    def grad_x_elementwise(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, ""]: ...
+
+    def grad_x_elementwise(
+        self,
+        x: Union[Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " *d"], Union[float, int]],
+    ) -> Float[Array, ""]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -198,7 +314,21 @@ class ScalarValuedKernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 0)(x, y)
 
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_y_elementwise(
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, ""]: ...
+
+    @overload
+    def grad_y_elementwise(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, ""]: ...
+
+    def grad_y_elementwise(
+        self,
+        x: Union[Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " *d"], Union[float, int]],
+    ) -> Float[Array, ""]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -215,7 +345,26 @@ class ScalarValuedKernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 1)(x, y)
 
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def divergence_x_grad_y(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
+    ) -> Float[Array, " n n"]: ...
+
+    @overload
+    def divergence_x_grad_y(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, " 1 1"]: ...
+
+    @overload
+    def divergence_x_grad_y(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, "1 1"]: ...
+
+    def divergence_x_grad_y(
+        self,
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+    ) -> Union[Float[Array, " n n"], Float[Array, " 1 1"]]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -230,6 +379,16 @@ class ScalarValuedKernel(eqx.Module):
         :return: Array of Laplace-style operator traces :math:`n \times m` array
         """
         return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
+
+    @overload
+    def divergence_x_grad_y_elementwise(
+        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+    ) -> Float[Array, ""]: ...
+
+    @overload
+    def divergence_x_grad_y_elementwise(
+        self, x: Union[float, int], y: Union[float, int]
+    ) -> Float[Array, ""]: ...
 
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         r"""
