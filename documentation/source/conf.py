@@ -119,7 +119,7 @@ autodoc_default_options = {
     "members": True,
     "class": True,
     "member-order": "bysource",
-    "private-members": True,
+    "private-members": False,
     "undoc-members": True,
     "show-inheritance": True,
     "exclude-members": ",".join(
