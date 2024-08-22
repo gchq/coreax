@@ -49,7 +49,7 @@ def test_is_data():
 
 
 @pytest.mark.parametrize(
-    "arrays",
+    "array",
     [
         (1,),
         (1.0,),
