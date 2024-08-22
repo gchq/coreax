@@ -63,7 +63,7 @@ class LinearKernel(ScalarValuedKernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         return jnp.array(self.output_scale * d)
 
 
@@ -121,7 +121,7 @@ class PolynomialKernel(ScalarValuedKernel):
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         dot = jnp.dot(x, y)
         body = dot + self.constant
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
 
         return (
             self.output_scale
@@ -178,7 +178,7 @@ class SquaredExponentialKernel(ScalarValuedKernel):
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
         scale = 1 / self.length_scale**2
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
 
 
@@ -365,7 +365,7 @@ class ExponentialKernel(ScalarValuedKernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         sub = jnp.subtract(x, y)
         dist = jnp.linalg.norm(sub)
         factor = 2 * self.length_scale**2
@@ -437,7 +437,7 @@ class RationalQuadraticKernel(ScalarValuedKernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         sq_dist = squared_distance(x, y)
         power = self.relative_weighting + 1
         div = self.relative_weighting * self.length_scale**2
@@ -515,7 +515,7 @@ class PeriodicKernel(ScalarValuedKernel):
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         sub = jnp.subtract(x, y)
         dist = jnp.linalg.norm(sub)
         factor = jnp.pi / self.periodicity
@@ -585,7 +585,7 @@ class LaplacianKernel(ScalarValuedKernel):
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y)
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         return -d * k / (4 * self.length_scale**4)
 
 
@@ -637,7 +637,7 @@ class PCIMQKernel(ScalarValuedKernel):
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
         k = self.compute_elementwise(x, y) / self.output_scale
         scale = 2 * self.length_scale**2
-        d = len(jnp.atleast_1d(x))
+        d = len(jnp.asarray(x))
         return (
             self.output_scale
             / scale
