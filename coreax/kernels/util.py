@@ -20,10 +20,11 @@ from typing import Union
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import Array, jit
+from jax import Array
 from jax.typing import ArrayLike
+from jaxtyping import Shaped
 
-from coreax.data import Data, as_data
+from coreax.data import Data, _atleast_2d_consistent, as_data
 from coreax.util import pairwise, squared_distance, tree_zero_pad_leading_axis
 
 
@@ -48,8 +49,14 @@ def _block_data_convert(
     return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
 
-@jit
-def median_heuristic(x: ArrayLike) -> Array:
+def median_heuristic(
+    x: Union[
+        Shaped[Array, " n d"],
+        Shaped[Array, " n"],
+        Shaped[Array, ""],
+        Union[float, int],
+    ],
+) -> Shaped[Array, ""]:
     """
     Compute the median heuristic for setting kernel bandwidth.
 
@@ -61,7 +68,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         zero-dimensional array
     """
     # Format inputs
-    x = jnp.atleast_2d(x)
+    x = _atleast_2d_consistent(x)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
     # Calculate the median of the square distances

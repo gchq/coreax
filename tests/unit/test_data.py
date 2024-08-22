@@ -20,12 +20,14 @@ produce the expected results on simple examples.
 """
 
 from functools import partial
+from typing import Union
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import pytest
-from jaxtyping import ArrayLike
+from jax import Array
+from jaxtyping import Shaped
 
 import coreax.data
 
@@ -50,61 +52,42 @@ def test_is_data():
     "arrays",
     [
         (1,),
-        (1, 1),
         (1.0,),
-        (1.0, 1.0),
-        (True,),
-        (False, True),
         (jnp.array(1),),
-        (jnp.array(1), jnp.array(1)),
         (jnp.array([1, 1]),),
-        (jnp.array([1, 1]), jnp.array([1, 1])),
         (jnp.array([[1], [1]]),),
-        (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
         (jnp.array([[[1]], [[1]]]),),
-        (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
     ],
     ids=[
-        "single_int",
-        "multiple_ints",
-        "single_float",
-        "multiple_floats",
-        "single_bool",
-        "multiple_bools",
-        "single_zero_dimensional_array",
-        "multiple_zero_dimensional_arrays",
-        "single_one_dimensional_array",
-        "multiple_one_dimensional_arrays",
-        "single_two_dimensional_array",
-        "multiple_two_dimensional_arrays",
-        "single_three_dimensional_array",
-        "multiple_three_dimensional_arrays",
+        "int",
+        "float",
+        "zero_dimensional_array",
+        "one_dimensional_array",
+        "two_dimensional_array",
+        "three_dimensional_array",
     ],
 )
-def test_atleast_2d_consistent(arrays: tuple[ArrayLike]) -> None:
+def test_atleast_2d_consistent(
+    array: Union[
+        Shaped[Array, " n p"],
+        Shaped[Array, " n"],
+        Shaped[Array, ""],
+        Union[float, int],
+    ],
+) -> None:
     """Check ``atleast_2d_consistent`` returns arrays with expected dimension."""
     min_dimension = 2
-    num_arrays = len(arrays)
 
     # pylint: disable=protected-access
-    arrays_atleast_2d = coreax.data._atleast_2d_consistent(*arrays)
+    arrays_atleast_2d = coreax.data._atleast_2d_consistent(array)
     # pylint: enable=protected-access
 
-    if num_arrays == 1:
-        array = jnp.asarray(arrays[0])
-        array_shape = array.shape
-        if len(array_shape) <= min_dimension:
-            assert len(arrays_atleast_2d.shape) == min_dimension
-        else:
-            assert arrays_atleast_2d.shape == array_shape
+    array = jnp.asarray(array)
+    array_shape = array.shape
+    if len(array_shape) <= min_dimension:
+        assert len(arrays_atleast_2d.shape) == min_dimension
     else:
-        for i in range(num_arrays):
-            array = jnp.asarray(arrays[i])
-            array_shape = array.shape
-            if len(array_shape) <= min_dimension:
-                assert len(arrays_atleast_2d[i].shape) == min_dimension
-            else:
-                assert arrays_atleast_2d[i].shape == array_shape
+        assert arrays_atleast_2d.shape == array_shape
 
 
 @pytest.mark.parametrize(

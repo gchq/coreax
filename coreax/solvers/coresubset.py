@@ -164,7 +164,7 @@ def _greedy_kernel_selection(
 
 
 class KernelHerding(
-    RefinementSolver[_Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
+    RefinementSolver[Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
 ):
     r"""
     Kernel Herding - an explicitly sized coresubset refinement solver.
@@ -207,17 +207,17 @@ class KernelHerding(
     @override
     def reduce(
         self,
-        dataset: _Data,
+        dataset: Data,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[_Data],
+        coresubset: Coresubset[Data],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
 
@@ -289,7 +289,7 @@ class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             raise
 
 
-class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
+class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
     r"""
     Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
 
@@ -309,8 +309,8 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
-    ) -> tuple[Coresubset[_Data], RPCholeskyState]:
+        self, dataset: Data, solver_state: Optional[RPCholeskyState] = None
+    ) -> tuple[Coresubset[Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
 
@@ -379,7 +379,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
 
 
 class SteinThinning(
-    RefinementSolver[_Data, None], ExplicitSizeSolver, PaddingInvariantSolver
+    RefinementSolver[Data, None], ExplicitSizeSolver, PaddingInvariantSolver
 ):
     r"""
     Stein Thinning - an explicitly sized coresubset refinement solver.
@@ -432,14 +432,14 @@ class SteinThinning(
 
     @override
     def reduce(
-        self, dataset: _Data, solver_state: None = None
-    ) -> tuple[Coresubset[_Data], None]:
+        self, dataset: Data, solver_state: None = None
+    ) -> tuple[Coresubset[Data], None]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
-        self, coresubset: Coresubset[_Data], solver_state: None = None
-    ) -> tuple[Coresubset[_Data], None]:
+        self, coresubset: Coresubset[Data], solver_state: None = None
+    ) -> tuple[Coresubset[Data], None]:
         r"""
         Refine a coresubset with 'Stein thinning'.
 
@@ -546,7 +546,7 @@ def _greedy_kernel_points_loss(
 
 
 class GreedyKernelPoints(
-    RefinementSolver[_SupervisedData, GreedyKernelPointsState],
+    RefinementSolver[SupervisedData, GreedyKernelPointsState],
     ExplicitSizeSolver,
 ):
     r"""
@@ -608,17 +608,17 @@ class GreedyKernelPoints(
     @override
     def reduce(
         self,
-        dataset: _SupervisedData,
+        dataset: SupervisedData,
         solver_state: Union[GreedyKernelPointsState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+    ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(  # noqa: PLR0915
         self,
-        coresubset: Coresubset[_SupervisedData],
+        coresubset: Coresubset[SupervisedData],
         solver_state: Union[GreedyKernelPointsState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+    ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         """
         Refine a coresubset with 'GreedyKernelPointsState'.
 

@@ -24,7 +24,7 @@ class factories and checks for numerical precision.
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -32,7 +32,10 @@ import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
+
+from coreax.data import _atleast_2d_consistent
 
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
@@ -113,9 +116,7 @@ def apply_negative_precision_threshold(
     return jnp.where((-jnp.abs(precision_threshold) < _x) & (_x < 0.0), 0.0, _x)
 
 
-def pairwise(
-    fn: Callable[[ArrayLike, ArrayLike], Array],
-) -> Callable[[ArrayLike, ArrayLike], Array]:
+def pairwise(fn: Callable) -> Callable:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -125,9 +126,12 @@ def pairwise(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
-        x = jnp.atleast_2d(x)
-        y = jnp.atleast_2d(y)
+    def pairwise_fn(
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
+    ) -> Array:
+        x = _atleast_2d_consistent(x)
+        y = _atleast_2d_consistent(y)
         return vmap(
             vmap(fn, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -198,7 +202,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         zero-dimensional array
     """
     # Format inputs
-    x = jnp.atleast_2d(x)
+    x = _atleast_2d_consistent(x)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
     # Calculate the median of the square distances
@@ -316,7 +320,7 @@ class SilentTQDM:
         """Store iterable."""
         self.iterable = iterable
 
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self) -> Iterator[object]:
         """
         Iterate.
 
