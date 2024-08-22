@@ -119,7 +119,7 @@ autodoc_default_options = {
     "members": True,
     "class": True,
     "member-order": "bysource",
-    "private-members": True,
+    "private-members": False,
     "undoc-members": True,
     "show-inheritance": True,
     "exclude-members": ",".join(
@@ -166,6 +166,7 @@ nitpick_ignore = [
     ("py:class", "coreax.solvers.composite._Data"),
     ("py:class", "coreax.solvers.composite._State"),
     ("py:class", "Array"),
+    ("py:class", "typing.Self"),
     ("py:class", "jaxtyping.Shaped"),
     ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
     ("py:class", "jaxtyping.Shaped[ndarray, 'n *d']"),
