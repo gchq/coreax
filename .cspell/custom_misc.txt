@@ -25,6 +25,7 @@ kernelised
 kernelized
 KSD
 linewidth
+Matern
 ml.p3.8xlarge
 ndmin
 parsable

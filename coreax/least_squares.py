@@ -59,6 +59,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
+from jaxtyping import Shaped
 from typing_extensions import override
 
 from coreax.util import KeyArrayLike
@@ -79,10 +80,10 @@ class RegularisedLeastSquaresSolver(eqx.Module):
     @abstractmethod
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
     ) -> Array:
         r"""
         Compute the least-squares solution to a regularised linear matrix equation.
@@ -97,10 +98,10 @@ class RegularisedLeastSquaresSolver(eqx.Module):
 
     def solve_stack(
         self,
-        arrays: Array,
+        arrays: Shaped[Array, " l n n"],
         regularisation_parameter: float,
-        targets: Array,
-        identity: Array,
+        targets: Shaped[Array, " l n m"],
+        identity: Shaped[Array, " n n"],
         in_axes: Union[int, None, Sequence[Any]] = (0, None, 0, None),
     ) -> Array:
         r"""
@@ -147,10 +148,10 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     @override
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
     ) -> Array:
         return jnp.linalg.lstsq(
             array + abs(regularisation_parameter) * identity,
@@ -161,15 +162,15 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
 
 def _gaussian_range_finder(
     random_key: KeyArrayLike,
-    array: Array,
+    array: Shaped[Array, " n n"],
     oversampling_parameter: int = 25,
     power_iterations: int = 1,
-) -> Array:
-    """
+) -> Shaped[Array, " n oversampling_parameter"]:
+    r"""
     Produce an orthonormal matrix whose range captures the action of an input ``array``.
 
     :param random_key: Key for random number generation
-    :param array: Array to be decomposed
+    :param array: Array :math:`A \in \mathbb{R}^{n \times n}` to be decomposed
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
@@ -201,17 +202,21 @@ def _gaussian_range_finder(
     return q
 
 
-def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: float):
-    """
-    Given an array's eigendecomposition, return the inverse of the array.
+def _eigendecomposition_invert(
+    eigenvalues: Shaped[Array, " n r"],
+    eigenvectors: Shaped[Array, " r"],
+    rcond: float,
+) -> Shaped[Array, " n n"]:
+    r"""
+    Given an array's rank-:math:`r` eigendecomposition, return the inverse of the array.
 
     .. warning::
         We assume the order of the ``eigenvalues`` and ``eigenvectors`` correspond, i.e.
         the first element of ``eigenvalues`` is paired with the first column of
         ``eigenvectors``.
 
-    :param eigenvalues: Vector of eigenvalues
-    :param eigenvectors: Array of eigenvectors as columns
+    :param eigenvalues: Vector of :math:`r` eigenvalues
+    :param eigenvectors: :math:`n \times r` array of eigenvectors
     :param rcond: Cut-off ratio for small eigenvalues
     :return: Approximate inverse of array using its eigendecomposition
     """
@@ -276,7 +281,12 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
 
-    def randomised_eigendecomposition(self, array: Array) -> tuple[Array, Array]:
+    def randomised_eigendecomposition(
+        self, array: Shaped[Array, " n n"]
+    ) -> tuple[
+        Shaped[Array, " oversampling_parameter"],
+        Shaped[Array, " n oversampling_parameter"],
+    ]:
         r"""
         Approximate the eigendecomposition of Hermitian matrices.
 
@@ -314,10 +324,10 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     @override
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
     ) -> Array:
         # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]

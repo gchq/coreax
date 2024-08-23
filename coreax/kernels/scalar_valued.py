@@ -21,6 +21,7 @@ import jax.numpy as jnp
 from jax import Array, vmap
 from jax.scipy.special import factorial
 from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import override
 
 from coreax.kernels.base import ProductKernel, ScalarValuedKernel, UniCompositeKernel
@@ -738,7 +739,7 @@ class SteinKernel(UniCompositeKernel):
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
     """
 
-    score_function: Callable[[ArrayLike], Array]
+    score_function: Callable[[Shaped[Array, " d"]], Shaped[Array, " d"]]
 
     @override
     def compute_elementwise(self, x, y):
