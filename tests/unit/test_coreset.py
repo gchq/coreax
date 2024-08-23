@@ -1,6 +1,20 @@
+# © Crown Copyright GCHQ
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Tests for coreset data-structures."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -62,18 +76,16 @@ class TestCoresetCommon:
 
     def test_compute_metric(self, coreset_type):
         """Test the metric computation convenience interface."""
-        metric = MagicMock(Metric)
+        metric = MagicMock(spec=Metric)
         expected_metric = jnp.asarray(123)
-        metric.compute.return_value = expected_metric
+        metric.compute = Mock(return_value=expected_metric)
         coreset = coreset_type(NODES, PRE_CORESET_DATA)
         kwargs = {"test": None}
         coreset_metric = coreset.compute_metric(metric, **kwargs)
         assert eqx.tree_equal(coreset_metric, expected_metric)
-        # pylint: disable=no-member
         metric.compute.assert_called_with(
             coreset.pre_coreset_data, coreset.coreset, **kwargs
         )
-        # pylint: enable=no-member
 
 
 class TestCoresubset:

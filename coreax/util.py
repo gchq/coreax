@@ -21,10 +21,13 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
+import logging
+import sys
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar, Union
+from math import log10
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -34,6 +37,9 @@ from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
 from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
+
+_logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
@@ -45,6 +51,30 @@ KeyArrayLike: TypeAlias = ArrayLike
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
+
+
+class JITCompilableFunction(NamedTuple):
+    """
+    Parameters for :func:`jit_test`.
+
+    :param fn: JIT-compilable function callable to test
+    :param fn_args: Arguments passed during the calls to the passed function
+    :param fn_kwargs: Keyword arguments passed during the calls to the passed function
+    :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function
+    """
+
+    fn: Callable
+    fn_args: tuple = ()
+    fn_kwargs: Optional[Dict[str, Any]] = None
+    jit_kwargs: Optional[Dict[str, Any]] = None
+    name: Optional[str] = None
+
+    def without_name(
+        self,
+    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
+        return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
 
 class InvalidKernel:
@@ -262,17 +292,18 @@ def jit_test(
     jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
-    Verify JIT performance by comparing timings of a before and after run of a function.
+    Measure execution times of two runs of a JIT-compilable function.
 
     The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple.
+    timings are returned in a 2-tuple. These timings can help verify the JIT performance
+    by comparing timings of a before and after run of a function.
 
-    :param fn: Function callable to test
+    :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
-        before being called to compile the passed function.
-    :return: (First run time, Second run time)
+        before being called to compile the passed function
+    :return: (First run time, Second run time), in seconds
     """
     # Avoid dangerous default values - Pylint W0102
     if fn_kwargs is None:
@@ -284,17 +315,126 @@ def jit_test(
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
 
-    assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
-
-    start_time = time.time()
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     pre_delta = end_time - start_time
-    start_time = time.time()
+
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     post_delta = end_time - start_time
+
     return pre_delta, post_delta
+
+
+def format_time(num: float) -> str:
+    """
+    Standardise the format of the input time.
+
+    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms".
+
+    :param num: Float to be converted
+    :return: Formatted time as a string
+    """
+    try:
+        order = log10(abs(num))
+    except ValueError:
+        return "0 s"
+
+    if order >= 2:  # noqa: PLR2004
+        scaled_time = num / 60
+        unit_string = "mins"
+    elif order < -9:  # noqa: PLR2004
+        scaled_time = 1e12 * num
+        unit_string = "ps"
+    elif order < -6:  # noqa: PLR2004
+        scaled_time = 1e9 * num
+        unit_string = "ns"
+    elif order < -3:  # noqa: PLR2004
+        scaled_time = 1e6 * num
+        unit_string = "\u03bcs"
+    elif order < 0:  # noqa: PLR2004
+        scaled_time = 1e3 * num
+        unit_string = "ms"
+    else:
+        scaled_time = num
+        unit_string = "s"
+
+    return f"{round(scaled_time, 2)} {unit_string}"
+
+
+def speed_comparison_test(
+    function_setups: Sequence[JITCompilableFunction],
+    num_runs: int = 10,
+    log_results: bool = False,
+    normalisation: Optional[Tuple[float, float]] = None,
+) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
+    """
+    Compare compilation time and runtime of a list of JIT-able functions.
+
+    :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
+    :param num_runs: Number of times to average function timings over
+    :param log_results: If :data:`True`, the results are formatted and logged
+    :param normalisation: Tuple (compilation normalisation, execution normalisation).
+        If provided, returned compilation/execution times are normalised so that this
+        time is 1 time unit.
+    :return: List of tuples (means, standard deviations) for each function containing
+        JIT compilation and execution times as array components; Dictionary with
+        key function name and value array of estimated compilation times in first
+        column and execution time in second column
+    """
+    timings_dict = {}
+    results = []
+    for i, function in enumerate(function_setups):
+        name = function.name
+        name = name if name is not None else f"function_{i + 1}"
+        if log_results:
+            _logger.info("------------------- %s -------------------", name)
+        timings = jnp.zeros((num_runs, 2))
+        for j in range(num_runs):
+            timings = timings.at[j, :].set(jit_test(*function.without_name()))
+        # Compute the time just spent on compilation
+        timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        # Normalise, if necessary
+        if normalisation is not None:
+            timings = timings.at[:, 0].set(timings[:, 0] / normalisation[0])
+            timings = timings.at[:, 1].set(timings[:, 1] / normalisation[1])
+        timings_dict[name] = timings
+        # Compute summary statistics
+        mean = timings.mean(axis=0)
+        std = timings.std(axis=0)
+        results.append((mean, std))
+
+        if log_results:
+            if normalisation:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{mean[0].item():.4g} units ± "
+                    + f"{std[0].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{mean[1].item():.4g} units ± "
+                    + f"{std[1].item():.4g} units"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+            else:
+                _logger.info(
+                    "Compilation time: "
+                    + f"{format_time(mean[0].item())} ± "
+                    + f"{format_time(std[0].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+                _logger.info(
+                    "Execution time: "
+                    + f"{format_time(mean[1].item())} ± "
+                    + f"{format_time(std[1].item())}"
+                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                )
+
+    return results, timings_dict
 
 
 T = TypeVar("T")
