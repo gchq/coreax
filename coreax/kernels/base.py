@@ -432,7 +432,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[Array, " n"]:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
@@ -520,10 +520,14 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
             _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
         )
 
-        def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
+        def block_sum(
+            accumulated_sum: Shaped[Array, ""], x_block: Data
+        ) -> tuple[Array, Array]:
             """Block reduce/accumulate over ``x``."""
 
-            def slice_sum(accumulated_sum: Array, y_block: Data) -> tuple[Array, Array]:
+            def slice_sum(
+                accumulated_sum: Shaped[Array, ""], y_block: Data
+            ) -> tuple[Array, Array]:
                 """Block reduce/accumulate over ``y``."""
                 x_, w_x = x_block.data, x_block.weights
                 y_, w_y = y_block.data, y_block.weights

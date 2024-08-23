@@ -24,11 +24,11 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jaxtyping import Array, ArrayLike
+from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, SupervisedData, as_data
+from coreax.data import Data, SupervisedData, as_data, as_supervised_data
 from coreax.kernels import ScalarValuedKernel
 from coreax.least_squares import (
     MinimalEuclideanNormSolver,
@@ -58,7 +58,7 @@ class HerdingState(eqx.Module):
     :param gramian_row_mean: Cached Gramian row-mean.
     """
 
-    gramian_row_mean: Array
+    gramian_row_mean: Shaped[Array, " n"]
 
 
 class RPCholeskyState(eqx.Module):
@@ -68,7 +68,7 @@ class RPCholeskyState(eqx.Module):
     :param gramian_diagonal: Cached Gramian diagonal.
     """
 
-    gramian_diagonal: Array
+    gramian_diagonal: Shaped[Array, " n"]
 
 
 class GreedyKernelPointsState(eqx.Module):
@@ -79,7 +79,7 @@ class GreedyKernelPointsState(eqx.Module):
         an additional row and column of zeros.
     """
 
-    feature_gramian: Array
+    feature_gramian: Shaped[Array, " n n"]
 
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
@@ -102,7 +102,7 @@ def _initial_coresubset(
 
 def _greedy_kernel_selection(
     coresubset: Coresubset[_Data],
-    selection_function: Callable[[int, ArrayLike], Array],
+    selection_function: Callable[[int, Shaped[Array, " n"]], Shaped[Array, ""]],
     output_size: int,
     kernel: ScalarValuedKernel,
     unique: bool,
@@ -237,7 +237,9 @@ class KernelHerding(
         else:
             gramian_row_mean = solver_state.gramian_row_mean
 
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+        def selection_function(
+            i: int, _kernel_similarity_penalty: Shaped[Array, " n"]
+        ) -> Shaped[Array, ""]:
             """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
             return jnp.nanargmax(
                 gramian_row_mean - _kernel_similarity_penalty / (i + 1)
@@ -282,7 +284,7 @@ class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 p=selection_weights,
                 replace=not self.unique,
             )
-            return Coresubset(random_indices, dataset), solver_state
+            return Coresubset(Data(random_indices), dataset), solver_state
         except ValueError as err:
             if self.coreset_size > len(dataset) and self.unique:
                 raise ValueError(MSG) from err
@@ -473,7 +475,9 @@ class SteinThinning(
         else:
             laplace_correction, regularised_log_pdf = 0.0, 0.0
 
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+        def selection_function(
+            i: int, _kernel_similarity_penalty: Shaped[Array, " n"]
+        ) -> Shaped[Array, ""]:
             """
             Greedy selection criterion - Section 3.1 :cite:`benard2023kernel`.
 
@@ -495,11 +499,11 @@ class SteinThinning(
 
 
 def _greedy_kernel_points_loss(
-    candidate_coresets: Array,
-    responses: Array,
-    feature_gramian: Array,
+    candidate_coresets: Shaped[Array, " batch_size coreset_size"],
+    responses: Shaped[Array, " n+1 1"],
+    feature_gramian: Shaped[Array, " n+1 n+1"],
     regularisation_parameter: float,
-    identity: Array,
+    identity: Shaped[Array, " coreset_size coreset_size"],
     least_squares_solver: RegularisedLeastSquaresSolver,
 ) -> Array:
     """
@@ -660,7 +664,7 @@ class GreedyKernelPoints(
             coreset_indices = coresubset.unweighted_indices
 
         # Extract features and responses
-        dataset = coresubset.pre_coreset_data
+        dataset = as_supervised_data(coresubset.pre_coreset_data)
         num_data_pairs = len(dataset)
         x, y = dataset.data, dataset.supervision
 
