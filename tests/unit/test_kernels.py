@@ -40,8 +40,10 @@ from coreax.kernels import (
     LaplacianKernel,
     LinearKernel,
     LocallyPeriodicKernel,
+    MaternKernel,
     PCIMQKernel,
     PeriodicKernel,
+    PoissonKernel,
     PolynomialKernel,
     PowerKernel,
     ProductKernel,
@@ -863,6 +865,276 @@ class TestLinearKernel(
             LinearKernel(*parameters)
 
 
+# Cannot inherit from the gradient and mean tests as the domain of the Poisson kernel
+# is not compatible with the data used.
+class TestPoissonKernel(
+    BaseKernelTest[PoissonKernel],
+):
+    """Test ``coreax.kernels.PoissonKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> PoissonKernel:
+        random_seed = 2_024
+        output_scale, index = jr.uniform(
+            key=jr.key(random_seed), shape=(2,), minval=0, maxval=1
+        )
+        return PoissonKernel(index, output_scale)
+
+    @pytest.fixture(params=["floats", "vectors", "arrays"])
+    def problem(
+        self, request: pytest.FixtureRequest, kernel: PoissonKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Poisson kernel.
+
+        Given :math:`0 < r < 1` =``index` and :math:`\rho =``output_scale`, the
+        Poisson kernel is defined as
+        :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
+        :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}.
+
+        We consider the following cases:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+        """
+        mode = request.param
+        x = 0.5
+        y = 2.0
+        if mode == "floats":
+            expected_distances = 0.84798735
+        elif mode == "vectors":
+            x = 1.0 * np.arange(1)
+            y = x + 1.0
+            expected_distances = 1.4090506
+        elif mode == "arrays":
+            x = np.array([[0], [1], [2], [3]])
+            y = np.array([[1], [2], [3], [4]])
+            expected_distances = np.array(
+                [
+                    [1.4090506, 0.6001872, 0.44643006, 0.52530843],
+                    [4.0, 1.4090506, 0.6001872, 0.44643006],
+                    [1.4090506, 4.0, 1.4090506, 0.6001872],
+                    [0.6001872, 1.4090506, 4.0, 1.4090506],
+                ]
+            )
+        else:
+            raise ValueError("Invalid problem mode")
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale, eqx.tree_at(lambda x: x.index, kernel, 0.5), 1.0
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
+    @pytest.mark.parametrize("elementwise", [False, True])
+    @pytest.mark.parametrize("auto_diff", [False, True])
+    def test_gradients(
+        self,
+        kernel: PoissonKernel,
+        mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
+        elementwise: bool,
+        auto_diff: bool,
+    ):
+        """Test computation of the kernel gradients."""
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        y = x[::-1] + 1
+        test_mode = mode
+        reference_mode = "expected_" + mode
+        if elementwise:
+            test_mode += "_elementwise"
+            x, y = x[0, :], y[0, :]
+        expected_output = getattr(self, reference_mode)(x, y, kernel)
+        if elementwise:
+            expected_output = expected_output.squeeze()
+        if auto_diff:
+            # Access overridden parent methods that use auto-differentiation
+            autodiff_kernel = super(type(kernel), kernel)
+            output = getattr(autodiff_kernel, test_mode)(x, y)
+        else:
+            output = getattr(kernel, test_mode)(x, y)
+        np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
+
+    def expected_grad_x(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected gradient of the kernel w.r.t ``x``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    -(
+                        2
+                        * kernel.output_scale
+                        * kernel.index
+                        * jnp.sin(x[x_idx] - y[y_idx])
+                    )
+                    / (
+                        1
+                        - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                        + kernel.index**2
+                    )
+                    ** 2
+                )
+        return expected_gradients
+
+    def expected_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected gradient of the kernel w.r.t ``y``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, dimension = x.shape
+        expected_gradients = np.zeros((num_points, num_points, dimension))
+
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                expected_gradients[x_idx, y_idx] = (
+                    2
+                    * kernel.output_scale
+                    * kernel.index
+                    * jnp.sin(x[x_idx] - y[y_idx])
+                ) / (
+                    1
+                    - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                    + kernel.index**2
+                ) ** 2
+        return expected_gradients
+
+    def expected_divergence_x_grad_y(
+        self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
+    ) -> np.ndarray:
+        """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
+        x = np.atleast_2d(x)
+        y = np.atleast_2d(y)
+        num_points, _ = x.shape
+        expected_divergence = np.zeros((num_points, num_points))
+        for x_idx in range(x.shape[0]):
+            for y_idx in range(y.shape[0]):
+                dist = jnp.linalg.norm(x[x_idx] - y[y_idx])
+                div = 1 - 2 * kernel.index * jnp.cos(dist) + kernel.index**2
+                first_term = (
+                    2 * kernel.output_scale * kernel.index * jnp.cos(dist)
+                ) / div**2
+                second_term = (
+                    8 * kernel.output_scale * kernel.index**2 * jnp.sin(dist) ** 2
+                ) / div**3
+                expected_divergence[x_idx, y_idx] = first_term - second_term
+        return expected_divergence
+
+    @pytest.mark.parametrize(
+        "block_size",
+        [None, 0, -1, 1.2, 2, 3, 9, (None, 2), (2, None)],
+        ids=[
+            "none",
+            "zero",
+            "negative",
+            "floating",
+            "integer_multiple",
+            "fractional_multiple",
+            "oversized",
+            "tuple[none, integer_multiple]",
+            "tuple[integer_multiple, none]",
+        ],
+    )
+    @pytest.mark.parametrize("axis", [None, 0, 1])
+    def test_compute_mean(
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: PoissonKernel,
+        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
+        axis: Union[int, None],
+    ) -> None:
+        """
+        Test the `compute_mean` methods with data from the domain.
+
+        Considers all classes of 'block_size' and 'axis', along with implicitly and
+        explicitly weighted data.
+        """
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        y = x[::-1] + 1
+        kernel_matrix = kernel.compute(x, y)
+        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
+        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
+        if axis == 0:
+            weights = x_weights
+        elif axis == 1:
+            weights = y_weights
+        else:
+            weights = x_weights[..., None] * y_weights[None, ...]
+        expected = jnp.average(kernel_matrix, axis, weights)
+        test_fn = jit_variant(kernel.compute_mean)
+        mean_output = test_fn(x_data, y_data, axis, block_size=block_size)
+        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
+
+    def test_gramian_row_mean(
+        self, jit_variant: Callable[[Callable], Callable], kernel: ScalarValuedKernel
+    ) -> None:
+        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
+        bs = None
+        unroll = (1, 1)
+        x = jnp.array(
+            [
+                [0.0],
+                [1.0],
+                [2.0],
+                [3.0],
+                [4.0],
+                [5.0],
+                [6.0],
+            ]
+        )
+        expected_fn = jit_variant(kernel.compute_mean)
+        output_fn = jit_variant(kernel.gramian_row_mean)
+        expected = expected_fn(x, x, axis=0, block_size=bs, unroll=unroll)
+        output = output_fn(x, block_size=bs, unroll=unroll)
+        np.testing.assert_array_equal(output, expected)
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((0.5, -0.1), "'output_scale' must be positive"),
+            ((1, 1), "index' must be be between 0 and 1 exclusive"),
+            ((0, 1), "index' must be be between 0 and 1 exclusive"),
+            ((1.1, 1), "index' must be be between 0 and 1 exclusive"),
+            ((-0.1, 1), "index' must be be between 0 and 1 exclusive"),
+        ],
+        ids=[
+            "non_positive_output_scale",
+            "index_inclusive_1",
+            "index_inclusive_0",
+            "index_greater_than_1",
+            "index_less_than_zero",
+        ],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            PoissonKernel(*parameters)
+
+
 class TestPolynomialKernel(
     BaseKernelTest[PolynomialKernel],
     KernelMeanTest[PolynomialKernel],
@@ -1175,6 +1447,141 @@ class TestSquaredExponentialKernel(
         """Test that kernel rejects bad inputs."""
         with pytest.raises(ValueError, match=error_msg):
             SquaredExponentialKernel(*parameters)
+
+
+class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel]):
+    """Test ``coreax.kernels.MaternKernel``."""
+
+    @pytest.fixture(scope="class")
+    def kernel(self) -> MaternKernel:
+        random_seed = 2_024
+        parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
+        return MaternKernel(
+            output_scale=parameters[0].item(),
+            length_scale=parameters[1].item(),
+            degree=int(jnp.ceil(jnp.abs(parameters[2]))) + 1,
+        )
+
+    @pytest.fixture(
+        params=[
+            "floats_zero_degree",
+            "vectors_zero_degree",
+            "arrays_zero_degree",
+            "floats_degree_greater_than_zero",
+            "vectors_degree_greater_than_zero",
+            "arrays_degree_greater_than_zero",
+        ]
+    )
+    def problem(  # noqa: C901
+        self, request: pytest.FixtureRequest, kernel: MaternKernel
+    ) -> _Problem:
+        r"""
+        Test problems for the Matérn kernel.
+
+        Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+        Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
+        :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
+        :math:`p`=``degree``:math:`\in\mathbb{N}`, is defined as
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
+
+        .. math::
+            k(x, y) = \rho^2 * \exp\left((-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
+            \frac{p!}{(2p)!}\sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
+            \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}
+
+        where :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+        We consider the following cases:
+        1. length scale is :math:`\sqrt{\pi} / 2`:
+        - `floats`: where x and y are floats
+        - `vectors`: where x and y are vectors of the same size
+        - `arrays`: where x and y are arrays of the same shape
+
+        2. length scale is :math:`\exp(1)` and output scale is
+        :math:`\frac{1}{\sqrt{2*\pi} * \exp(1)}`:
+        - `normalized`: where x and y are vectors of the same size (this is the
+        special case where the squared exponential kernel is the Gaussian kernel)
+
+        3. length scale or output scale is degenerate:
+        - `negative_length_scale`: should give same result as positive equivalent
+        - `large_negative_length_scale`: should approximately equal one
+        - `near_zero_length_scale`: should approximately equal zero
+        - `negative_output_scale`: should negate the positive equivalent.
+        """
+        mode = request.param
+        if mode == "floats_zero_degree":
+            degree = 0
+            x = 0.5
+            y = 2.0
+            expected_distances = 0.22313017
+
+        elif mode == "floats_degree_greater_than_zero":
+            degree = 1
+            x = 0.5
+            y = 2.0
+            expected_distances = 0.26775646
+
+        elif mode == "vectors_zero_degree":
+            degree = 0
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.13533528
+
+        elif mode == "vectors_degree_greater_than_zero":
+            degree = 1
+            x = 1.0 * np.arange(4)
+            y = x + 1.0
+            expected_distances = 0.13973127
+
+        elif mode == "arrays_zero_degree":
+            degree = 0
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array(
+                [[1.3533528e-01, 4.5399931e-05], [3.3546262e-04, 1.0000000e00]]
+            )
+
+        elif mode == "arrays_degree_greater_than_zero":
+            degree = 1
+            x = np.array(([0, 1, 2, 3], [5, 6, 7, 8]))
+            y = np.array(([1, 2, 3, 4], [5, 6, 7, 8]))
+            expected_distances = np.array(
+                [[1.3973127e-01, 5.5047366e-07], [1.4261089e-05, 9.9999952e-01]]
+            )
+
+        else:
+            raise ValueError("Invalid problem mode")
+
+        modified_kernel = eqx.tree_at(
+            lambda x: x.output_scale,
+            eqx.tree_at(
+                lambda x: x.length_scale,
+                eqx.tree_at(lambda x: x.degree, kernel, degree),
+                1,
+            ),
+            1,
+        )
+        return _Problem(x, y, expected_distances, modified_kernel)
+
+    @pytest.mark.parametrize(
+        "parameters, error_msg",
+        [
+            ((-0.1, 1, 2), "'length_scale' must be positive"),
+            ((1, -0.1, 2), "'output_scale' must be positive"),
+            ((1, 1, 2.6), "'degree' must be a non-negative integer"),
+            ((1, 1, -1), "'degree' must be a non-negative integer"),
+        ],
+        ids=[
+            "non_positive_length_scale",
+            "non_positive_output_scale",
+            "float_degree",
+            "degree_less_than_min",
+        ],
+    )
+    def test_invalid_parameters(self, parameters: tuple, error_msg: str):
+        """Test that kernel rejects bad inputs."""
+        with pytest.raises(ValueError, match=error_msg):
+            MaternKernel(*parameters)
 
 
 class TestExponentialKernel(
