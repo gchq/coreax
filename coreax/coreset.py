@@ -87,7 +87,7 @@ class Coreset(eqx.Module, Generic[_Data]):
 
         if isinstance(pre_coreset_data, Array):
             self.pre_coreset_data = as_data(pre_coreset_data)
-        elif isinstance(nodes, tuple):
+        elif isinstance(pre_coreset_data, tuple):
             self.pre_coreset_data = as_supervised_data(pre_coreset_data)
         else:
             self.pre_coreset_data = pre_coreset_data
