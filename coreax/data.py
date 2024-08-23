@@ -19,6 +19,7 @@ from typing import Any, Optional, Union, overload
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
+from jax import jit
 from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import Self
 
@@ -43,6 +44,8 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload],
 def _atleast_2d_consistent(array: Union[float, int, bool]) -> Shaped[Array, " 1 1"]: ...
 
 
+# Seems like @jit suppresses the @overload hints unfortunately
+@jit
 def _atleast_2d_consistent(
     array: Union[
         Shaped[Array, " n d"],
