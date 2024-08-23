@@ -184,7 +184,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
             Data,
         ],
         **kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Monte-Carlo sampling.
 
@@ -237,7 +237,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
             Data,
         ],
         **kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by random regression on ANNchor points.
 
@@ -259,7 +259,9 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         features = jnp.zeros((num_data_points, self.num_kernel_points))
         features = features.at[:, 0].set(self.base_kernel.compute(x, x[0])[:, 0])
 
-        def _annchor_body(idx: int, _features: Array) -> Array:
+        def _annchor_body(
+            idx: int, _features: Shaped[Array, " n num_kernel_points"]
+        ) -> Array:
             r"""
             Execute main loop of the ANNchor construction.
 
@@ -306,7 +308,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
             Data,
         ],
         **kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Nystrom approximation.
 

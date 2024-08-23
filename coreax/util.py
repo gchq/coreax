@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp

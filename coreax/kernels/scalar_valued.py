@@ -14,13 +14,12 @@
 
 """Scalar-valued kernel functions."""
 
-from typing import Callable
+from typing import Callable, Union
 
 import equinox as eqx
 import jax.numpy as jnp
 from jax import Array, vmap
 from jax.scipy.special import factorial
-from jax.typing import ArrayLike
 from jaxtyping import Shaped
 from typing_extensions import override
 
@@ -285,7 +284,11 @@ class MaternKernel(ScalarValuedKernel):
         if not isinstance(self.degree, int) or self.degree < 0:
             raise ValueError("'degree' must be a non-negative integer")
 
-    def _compute_summation_term(self, body: float, iteration: ArrayLike) -> Array:
+    def _compute_summation_term(
+        self,
+        body: float,
+        iteration: Union[Shaped[Array, " *number_of_iterations"], int],
+    ) -> Array:
         r"""
         Compute the summation term of the Matérn kernel for a given iteration.
 
