@@ -53,7 +53,7 @@ compute than the automatic differentiated default.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Union
+from typing import Union, overload
 
 import equinox as eqx
 import jax
@@ -68,7 +68,7 @@ from coreax.kernels.util import _block_data_convert
 from coreax.util import pairwise, tree_leaves_repeat
 
 
-class ScalarValuedKernel(eqx.Module):
+class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     """Abstract base class for scalar-valued kernels."""
 
     def __add__(
