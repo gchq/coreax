@@ -26,6 +26,8 @@ kernelized
 KSD
 linewidth
 Matern
+maxval
+minval
 ml.p3.8xlarge
 ndmin
 parsable
