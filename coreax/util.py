@@ -35,8 +35,6 @@ from jax.typing import ArrayLike
 from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
 
-from coreax.data import _atleast_2d_consistent
-
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
 
@@ -130,8 +128,8 @@ def pairwise(fn: Callable) -> Callable:
         x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
         y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
     ) -> Array:
-        x = _atleast_2d_consistent(x)
-        y = _atleast_2d_consistent(y)
+        x = jnp.atleast_2d(x)
+        y = jnp.atleast_2d(y)
         return vmap(
             vmap(fn, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
@@ -202,7 +200,7 @@ def median_heuristic(x: ArrayLike) -> Array:
         zero-dimensional array
     """
     # Format inputs
-    x = _atleast_2d_consistent(x)
+    x = jnp.atleast_2d(x)
     # Calculate square distances as an upper triangular matrix
     square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
     # Calculate the median of the square distances

@@ -3,14 +3,14 @@
 # Support class typing annotations inside itself
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
-from coreax.data import Data
+from coreax.data import Data, SupervisedData, as_data, as_supervised_data
 from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
 
@@ -62,8 +62,29 @@ class Coreset(eqx.Module, Generic[_Data]):
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    nodes: _Data
-    pre_coreset_data: _Data
+    nodes: Union[Data, SupervisedData]
+    pre_coreset_data: Union[Data, SupervisedData]
+
+    def __init__(
+        self,
+        nodes: Union[Data, SupervisedData],
+        pre_coreset_data: Union[Data, SupervisedData],
+    ):
+        """Convert `Array` attributes to `Data`/`SupervisedData` instances."""
+        # If the nodes are passed as an Array, assume the user wants an unsupervised
+        # Coreset. If the nodes are passed as a tuple of Arrays, assume the user
+        # wants a supervised Coreset.
+        self.nodes = nodes
+        if isinstance(nodes, Array):
+            self.nodes = as_data(nodes)
+        if isinstance(nodes, tuple):
+            self.nodes = as_supervised_data(nodes)
+
+        self.pre_coreset_data = pre_coreset_data
+        if isinstance(pre_coreset_data, Array):
+            self.pre_coreset_data = as_data(pre_coreset_data)
+        if isinstance(pre_coreset_data, tuple):
+            self.pre_coreset_data = as_supervised_data(pre_coreset_data)
 
     def __check_init__(self):
         """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
@@ -73,21 +94,25 @@ class Coreset(eqx.Module, Generic[_Data]):
                 "by definition of a Coreset"
             )
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return Coreset size/length."""
         return len(self.nodes)
 
     @property
-    def coreset(self) -> _Data:
+    def coreset(self) -> Union[Data, SupervisedData]:
         """Materialised coreset."""
         return self.nodes
 
-    def solve_weights(self, solver: WeightsOptimiser[_Data], **solver_kwargs) -> Self:
+    def solve_weights(
+        self, solver: WeightsOptimiser[Union[Data, SupervisedData]], **solver_kwargs
+    ) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
         weights = solver.solve(self.pre_coreset_data, self.coreset, **solver_kwargs)
         return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
 
-    def compute_metric(self, metric: Metric[_Data], **metric_kwargs) -> Array:
+    def compute_metric(
+        self, metric: Metric[Union[Data, SupervisedData]], **metric_kwargs
+    ) -> Array:
         """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
         return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 
@@ -121,7 +146,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     """
 
     @property
-    def coreset(self) -> _Data:
+    def coreset(self) -> Union[Data, SupervisedData]:
         """Materialise the coresubset from the indices and original data."""
         coreset_data = self.pre_coreset_data[self.unweighted_indices]
         return eqx.tree_at(lambda x: x.weights, coreset_data, self.nodes.weights)

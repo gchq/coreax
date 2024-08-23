@@ -29,8 +29,8 @@ def _atleast_2d_consistent(array: Shaped[Array, " n d"]) -> Shaped[Array, " n d"
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    array: Shaped[Array, " n"],
-) -> Shaped[Array, " n 1"]: ...
+    array: Shaped[Array, " d"],
+) -> Shaped[Array, " d 1"]: ...
 
 
 @overload
@@ -46,11 +46,11 @@ def _atleast_2d_consistent(array: Union[float, int, bool]) -> Shaped[Array, " 1 
 def _atleast_2d_consistent(
     array: Union[
         Shaped[Array, " n d"],
-        Shaped[Array, " n"],
+        Shaped[Array, " d"],
         Shaped[Array, ""],
         Union[float, int],
     ],
-) -> Union[Shaped[Array, " n d"], Shaped[Array, " n 1"], Shaped[Array, " 1 1"]]:
+) -> Union[Shaped[Array, " n d"], Shaped[Array, " d 1"], Shaped[Array, " 1 1"]]:
     r"""
     Given an array, ensure it is at least 2-dimensional.
 
@@ -173,10 +173,20 @@ class SupervisedData(Data):
 
 
 def as_data(x: Any) -> Data:
-    """Cast `x`` to a `Data` instance."""
+    """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
 def is_data(x: Any) -> bool:
     """Return boolean indicating if ``x`` is an instance of `Data`."""
     return isinstance(x, Data)
+
+
+def as_supervised_data(xy: Any) -> SupervisedData:
+    """Cast ``xy`` to a `SupervisedData` instance."""
+    return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)
+
+
+def is_supervised_data(xy: Any) -> bool:
+    """Check if 'xy' is an instance of 'coreax.data.SupervisedData'."""
+    return isinstance(xy, SupervisedData)

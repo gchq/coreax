@@ -48,6 +48,19 @@ def test_is_data():
     assert coreax.data.is_data(coreax.data.Data(1))
 
 
+def test_as_supervised_data():
+    """Test functionality of `as_supervised_data` converter method."""
+    _array = jnp.array([1, 2, 3])
+    _data = coreax.data.SupervisedData(_array, _array)
+    assert eqx.tree_equal(coreax.data.as_supervised_data((_array, _array)), _data)
+
+
+def test_is_supervised_data():
+    """Test functionality of `is_supervised_data` filter method."""
+    assert not coreax.data.is_supervised_data(123)
+    assert coreax.data.is_data(coreax.data.SupervisedData(1, 2, 3))
+
+
 @pytest.mark.parametrize(
     "array",
     [

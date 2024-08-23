@@ -60,7 +60,6 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev
-from jax.typing import ArrayLike
 from jaxtyping import Float, Shaped
 from typing_extensions import override
 
@@ -424,7 +423,12 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def gramian_row_mean(
         self,
-        x: Union[ArrayLike, Data],
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " *d"],
+            Union[float, int],
+            Data,
+        ],
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -444,8 +448,18 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def compute_mean(
         self,
-        x: Union[ArrayLike, Data],
-        y: Union[ArrayLike, Data],
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " *d"],
+            Union[float, int],
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " *d"],
+            Union[float, int],
+            Data,
+        ],
         axis: Union[int, None] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
