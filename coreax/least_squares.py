@@ -73,7 +73,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
     :math:`B \in \mathbb{R}^{n \times m}` the least-squares solution to the regularised
     linear equation :math:`(A + \lambda I_n)B = X` has solution
     :math:`X = (A + \lambda I_n)^{-1}B` where
-    :math:`\lambda_n \in \mathbb{R}^{n\times n}` is the identity matrix.
+    :math:`I_n \in \mathbb{R}^{n\times n}` is the identity matrix.
     """
 
     @abstractmethod
@@ -110,11 +110,11 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of ``arrays``; negative values will be converted to positive
         :param targets: Horizontal stack of targets with shape
-            :math`l \times n \times m`
+            :math:`l \times n \times m`
         :param identity: Identity matrix
-        :param in_axes: An integer, None, or sequence of values specifying which input
-            array axes to map over. See :func:`jax.vmap` documentation for further
-            information.
+        :param in_axes: An integer, :data:`None`, or sequence of values specifying which
+            array axes of parameters to :meth:`solve` to map over. See :func:`~jax.vmap`
+            documentation for further information.
         :return: Approximation of the regularised least-squares solutions
         """
         _map_solve = jax.vmap(self.solve, in_axes=in_axes)
@@ -138,7 +138,7 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     :param rcond: Cut-off ratio for small singular values of ``array``. For the purposes
         of rank determination, singular values are treated as zero if they are smaller
         than rcond times the largest singular value of ``array``. The default value of
-        data:`None` will use the machine precision multiplied by the largest dimension
+        :data:`None` will use the machine precision multiplied by the largest dimension
         of the ``array``. An alternate value of -1 will use machine precision.
     """
 
@@ -173,7 +173,7 @@ def _gaussian_range_finder(
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
-        power_iterations, the more accurate, but slower the method will be
+        ``power_iterations``, the more accurate, but slower the method will be
     :return: Orthonormal array capturing action of input ``array``
     """
     # Input handling
@@ -242,10 +242,10 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         behaviour. We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
-    eigendecomposition of a Hermitian matrix. The parameters `oversampling_parameter`
-    and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness` for discussion on choosing sensible parameters; the
-    defaults chosen here are cautious.
+    eigendecomposition of a Hermitian matrix. The parameters ``oversampling_parameter``
+    and ``power_iterations`` present a trade-off between speed and approximation
+    quality. See :cite:`halko2009randomness` for discussion on choosing sensible
+    parameters; the defaults chosen here are cautious.
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
