@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `RecombinationSolver`: an abstract base class for recombination solvers.
   - `CaratheodoryRecombination`: a simple deterministic approach to solving recombination problems.
   - `TreeRecombination`: an advanced deterministic approach that utilises `CaratheodoryRecombination`,
-    but provides superior performance for solving all but the smallest recombination problems.
+    but is faster for solving all but the smallest recombination problems.
 - Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`
 - Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
 within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
