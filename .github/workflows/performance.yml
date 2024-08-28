@@ -14,8 +14,7 @@ jobs:
     name: Check performance
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
-      GH_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       gist_id: 3707a122b3697109068a3e55487de4fc
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +40,7 @@ jobs:
           cat $RUNNER_TEMP/comment.md
       - name: Comment performance update on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             var fs = require('fs');
@@ -54,6 +53,9 @@ jobs:
             })
       - name: Save performance data to Gist
         if: github.event_name == 'push'
+        env:
+          # this is the only step that should actually need write permissions
+          GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
         run: |
           OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
           gh gist edit ${{ env.gist_id }} -a $OUT_NAME $RUNNER_TEMP/performance.json
