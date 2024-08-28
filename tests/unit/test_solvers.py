@@ -217,7 +217,7 @@ class RecombinationSolverTest(SolverTest):
         1. Check 'sum(coreset.weights)' is one.
         1. Check 'len(coreset)' is less than or equal to the upper bound `m`.
         2. Check 'len(coreset[idx]) where idx = jnp.nonzero(coreset.weights)' is less
-            than or equal to the rank, `m^\prime`, of the pushed forward nodes.
+            than or equal to the rank, :math:`m^\prime`, of the pushed forward nodes.
         3. Check the push-forward of the coreset preserves the "centre-of-mass" (CoM) of
             the pushed-forward dataset (with implicit and explicit zero weight removal).
         4. Check the default value of 'test_functions' is the identity map.

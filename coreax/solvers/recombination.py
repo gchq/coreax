@@ -35,7 +35,7 @@ following linear-programming problem (with trivial objective)
 .. math::
     \begin{align}
         \mathbf{Y} \mathbf{\hat{w}} &= \text{CoM}(\mu_n),\\
-        \mathbf{\hat{w}} &\ge \mathbf{0},
+        \mathbf{\hat{w}} &\ge 0,
     \end{align}
 
 where the system variables and "centre-of-mass" are defined as
@@ -105,18 +105,18 @@ Omega = TypeVar("Omega")
 
 class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
     r"""
-    Solver which returns a :class:`coreax.coreset.Coresubset` via recombination.
+    Solver which returns a :class:`~coreax.coreset.Coresubset` via recombination.
 
     Given :math:`m-1` explicitly provided test-functions :math:`\Phi^\prime`, a
     recombination solver finds a coresubset with :math:`m^\prime \le m` points, whose
-    push-forward :math:`\hat\{mu}_{\m^\prime}` has the same "centre-of-mass" as the
-    dataset push-forward :math:`\mu_n := \Phi_* \nu_n`.
+    push-forward :math:`\hat{\mu}_{m^\prime}` has the same "centre-of-mass" (CoM) as
+    the dataset push-forward :math:`\mu_n := \Phi_* \nu_n`.
 
     :param test_functions: A callable that applies a set of specified test-functions
         :math:`\Phi^\prime = \{\phi_1,\dots,\phi_{m-1}\}` where each function is a map
-        :math:`\phi_i \colon \Omega\to\mathbb{R}`; a value of none implies the identity
-        map :math:`\Phi^\prime \colon x \mapsto x`, and necessarily assumes that
-        :math:`x \in \Omega \subseteq \mathbb{R}^{m-1}`
+        :math:`\phi_i \colon \Omega\to\mathbb{R}`; a value of :data:`None` implies the
+        identity map :math:`\Phi^\prime \colon x \mapsto x`, and necessarily assumes
+        that :math:`x \in \Omega \subseteq \mathbb{R}^{m-1}`
     :param mode: 'implicit-explicit' explicitly removes :math:`n - m` points, yielding
         a coreset of size :math:`m`, with :math:`m - m^\prime` zero-weighted (implicitly
         removed) points; 'implicit' explicitly removes no points, yielding a coreset of
@@ -126,7 +126,7 @@ class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State
         compatible as the coreset size :math:`m^\prime` is unknown at compile time.
     """
 
-    test_functions: Union[Callable[[Omega], Real[Array, " m-1"]], None] = None
+    test_functions: Optional[Callable[[Omega], Real[Array, " m-1"]]] = None
     mode: Literal["implicit-explicit", "implicit", "explicit"] = "implicit-explicit"
 
     def __check_init__(self):
@@ -172,10 +172,10 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
         compatible as the coreset size :math:`m^\prime` is unknown at compile time.
     :param rcond: A relative condition number; any singular value :math:`s` below the
         threshold :math:`\text{rcond} * \text{max}(s)` is treated as equal to zero; if
-        :code:`rcond is None`, it defaults to `floating point eps * max(n, d)`
+        rcond is :data:`None`, it defaults to `floating point eps * max(n, d)`
     """
 
-    rcond: Union[float, None] = None
+    rcond: Optional[float] = None
 
     @override
     def reduce(
@@ -206,6 +206,9 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
                 vectors, is due to the dimension of the null space being unknown at JIT
                 compile time, preventing us from slicing the left singular vectors down
                 to only those which form a basis for the left null space.
+
+            :param state: Elimination state information
+            :return: Boolean indicating if to continue/exit the elimination loop.
             """
             *_, basis_index = state
             return basis_index < null_space_rank
@@ -222,6 +225,9 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             If the procedure is repeated until all the left null space basis vectors
             are eliminated, the resulting weights (when combined with the original
             nodes) are a BFS to the recombination problem/linear-program.
+
+            :param state: Elimination state information
+            :return: Updated `state` information resulting from the elimination step.
             """
             _weights, null_space_basis, basis_index = state
             basis_vector = null_space_basis[basis_index]
@@ -259,7 +265,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
 
 def _push_forward(
     nodes: Shaped[Array, "n d"],
-    test_functions: Union[Callable[[Omega], Real[Array, " m-1"]], None],
+    test_functions: Optional[Callable[[Omega], Real[Array, " m-1"]]],
     augment: bool = True,
 ) -> Shaped[Array, "n m"]:
     r"""
@@ -271,9 +277,9 @@ def _push_forward(
         :math:`\phi_i \colon \Omega \to \mathbb{R}`; a value of non implies the identity
         map :math:`\Phi^\prime \colon x \mapsto x`, and necessarily assumes that
         :math:`x \in \Omega \subseteq \mathbb{R}^{m-1}`
-    :param augment: If to prepend prepend the affine-augmentation test function
+    :param augment: If to prepend the affine-augmentation test function
         :math:`\{x \mapsto 1\}` to the explicitly pushed forward nodes \Phi^\prime(x),
-        to yield \Phi(x)
+        to yield \Phi(x); default behaviour prepends the affine-augmentation function
     :return: The pushed-forward nodes.
     """
     if test_functions is None:
@@ -320,10 +326,14 @@ def _co_linearize(
     non_zero_weights_mask = weights > 0
     zero_weights_mask = 1 - non_zero_weights_mask
     n_zeros = zero_weights_mask.sum()
-    weights = weights.at[max_index].divide(n_zeros + 1)
+    # Create a new set of indices that replace the zero-weighted node indices with the
+    # maximum weighted node's index.
     indices = jnp.arange(weights.shape[0])
     indices *= non_zero_weights_mask
     indices += zero_weights_mask * max_index
+    # Renormalize the maximum weight; ensures the weight sum is preserved under the new
+    # (co-linearized) indices; prevents co-linearization from changing the weight sum.
+    weights = weights.at[max_index].divide(n_zeros + 1)
     return nodes[indices], weights[indices], indices
 
 
@@ -444,9 +454,9 @@ class TreeRecombination(RecombinationSolver[Data, None]):
     introduced in :cite:`litterer2012recombination`.
 
     The time complexity is of order :math:`\mathcal{O}(\log_2(\frac{n}{c_r m}) m^3)`,
-    where `c_r = tree_reduction_factor`. The time complexity can be equivalently
-    expressed as :math:`\mathcal{O}(m^3)`, using the same arguments as used in
-    :class:`CaratheodoryRecombination`.
+    where :math`c_r` is the `tree_reduction_factor`. The time complexity can be
+    equivalently expressed as :math:`\mathcal{O}(m^3)`, using the same arguments as used
+    in :class:`CaratheodoryRecombination`.
 
     ..note::
         As the ratio of :math:`n / m` grows, the constant factor for the time complexity
@@ -457,7 +467,7 @@ class TreeRecombination(RecombinationSolver[Data, None]):
 
     :param test_functions: the map :math:`\Phi^\prime = \{ \phi_1, \dots, \phi_{M-1} \}`
         where each :math:`\phi_i \colon \Omega \to \mathbb{R}` represents a linearly
-        independent test-function; a value of `None` implies the identity function
+        independent test-function; a value of :data:`None` implies the identity function
         (necessarily assuming :math:`\Omega \subseteq \mathbb{R}^{M-1}`)
     :param mode: 'implicit-explicit' explicitly removes :math:`n - m` points, yielding
         a coreset of size :math:`m`, with :math:`m - m^\prime` zero-weighted (implicitly
@@ -491,7 +501,7 @@ class TreeRecombination(RecombinationSolver[Data, None]):
         padding, count, depth = _prepare_tree(n, m + 1, self.tree_reduction_factor)
         car_recomb_solver = CaratheodoryRecombination(rcond=self.rcond, mode="implicit")
 
-        def _tree_reduce(_, state):
+        def _tree_reduce(_, state: tuple[Array, Array]) -> tuple[Array, Array]:
             """
             Apply Tree-Based Caratheodory Recombination (Gaussian-Elimination).
 
@@ -504,6 +514,14 @@ class TreeRecombination(RecombinationSolver[Data, None]):
             number of remaining clusters down to 'm'. We can repeat the process until
             each cluster contains, at most, a single non-zero weighted point (at this
             point the recombination problem has been solved).
+
+            :param _: Not used
+            :param state: Tuple of node weights and indices
+            :return: Updated tuple of node weights and indices; weights are zeroed
+                (implicitly removed) where appropriate; indices are shuffled to ensure
+                balanced centroids in subsequent iterations (centroids are balanced when
+                they are all constructed from subsets with as near to an equal number
+                of non-zero weighted nodes as possible).
             """
             _weights, _indices = state
             centroid_indices = jnp.argsort(_weights).reshape(count, -1, order="F")
