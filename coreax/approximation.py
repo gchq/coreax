@@ -177,12 +177,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         **kwargs,
     ) -> Shaped[Array, " n"]:
         r"""
@@ -230,12 +225,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         **kwargs,
     ) -> Shaped[Array, " n"]:
         r"""
@@ -301,12 +291,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         **kwargs,
     ) -> Shaped[Array, " n"]:
         r"""

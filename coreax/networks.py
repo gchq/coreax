@@ -21,6 +21,7 @@ Neural networks are used throughout the codebase as functional approximators.
 from collections.abc import Callable, Sequence
 
 import jax.numpy as jnp
+import jax.random as jr
 from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
@@ -80,6 +81,6 @@ def create_train_state(
     :param optimiser: optax optimiser, e.g. :func:`~optax.adam`
     :return: :class:`~flax.training.train_state.TrainState` object
     """
-    params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
+    params = module.init(jr.key(random_key), jnp.ones((1, data_dimension)))["params"]
     tx = optimiser(learning_rate)
     return TrainState.create(apply_fn=module.apply, params=params, tx=tx)

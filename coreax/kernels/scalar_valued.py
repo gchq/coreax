@@ -288,19 +288,20 @@ class MaternKernel(ScalarValuedKernel):
         self,
         body: float,
         iteration: Union[Shaped[Array, " *number_of_iterations"], int],
-    ) -> Array:
+    ) -> Shaped[Array, ""]:
         r"""
         Compute the summation term of the Matérn kernel for a given iteration.
 
         Given :math:`p`=``degree``:math:`\in\mathbb{N}`, compute
 
         .. math::
-            \sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
+            \gamma := \sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
             \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}.
 
         :param body: Float representing
             :math:`\left(\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)`
         :param iteration: Current iteration
+        :return: :math:`\gamma` as a zero-dimensional array
         """
         factorial_term = factorial(self.degree + iteration) / (
             factorial(iteration) * factorial(self.degree - iteration)

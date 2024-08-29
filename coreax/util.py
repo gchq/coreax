@@ -27,7 +27,17 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -144,7 +154,21 @@ def apply_negative_precision_threshold(
     return jnp.where((-jnp.abs(precision_threshold) < _x) & (_x < 0.0), 0.0, _x)
 
 
-def pairwise(fn: Callable) -> Callable:
+def pairwise(
+    fn: Callable[
+        [
+            Union[Shaped[Array, " *d"], float, int],
+            Union[Shaped[Array, " *d"], float, int],
+        ],
+        Shaped[Array, " *d"],
+    ],
+) -> Callable[
+    [
+        Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+        Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+    ],
+    Shaped[Array, " n m *d"],
+]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -155,9 +179,9 @@ def pairwise(fn: Callable) -> Callable:
 
     @wraps(fn)
     def pairwise_fn(
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-    ) -> Array:
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+    ) -> Shaped[Array, " n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
@@ -170,7 +194,10 @@ def pairwise(fn: Callable) -> Callable:
 
 
 @jit
-def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance(
+    x: Union[Shaped[Array, " *d"], float, int],
+    y: Union[Shaped[Array, " *d"], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate the squared distance between two vectors.
 
@@ -201,7 +228,10 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @jit
-def difference(x: ArrayLike, y: ArrayLike) -> Array:
+def difference(
+    x: Union[Shaped[Array, " *d"], float, int],
+    y: Union[Shaped[Array, " *d"], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate vector difference for a pair of vectors.
 
@@ -440,7 +470,7 @@ def speed_comparison_test(
 T = TypeVar("T")
 
 
-class SilentTQDM:
+class SilentTQDM(Generic[T]):
     """
     Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
 
@@ -458,7 +488,7 @@ class SilentTQDM:
         """Store iterable."""
         self.iterable = iterable
 
-    def __iter__(self) -> Iterator[object]:
+    def __iter__(self) -> Iterator[T]:
         """
         Iterate.
 

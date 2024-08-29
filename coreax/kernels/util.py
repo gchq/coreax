@@ -50,12 +50,7 @@ def _block_data_convert(
 
 
 def median_heuristic(
-    x: Union[
-        Shaped[Array, " n d"],
-        Shaped[Array, " n"],
-        Shaped[Array, ""],
-        Union[float, int],
-    ],
+    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
 ) -> Shaped[Array, ""]:
     """
     Compute the median heuristic for setting kernel bandwidth.
