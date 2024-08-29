@@ -165,7 +165,7 @@ def pairwise(
 ) -> Callable[
     [
         Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
-        Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+        Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
     ],
     Shaped[Array, " n m *d"],
 ]:
