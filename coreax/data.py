@@ -14,7 +14,7 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Optional, Union, overload
+from typing import Optional, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -89,13 +89,15 @@ class Data(eqx.Module):
         the ones vector (implies a scalar weight of one)
     """
 
-    data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
-    weights: Union[Shaped[Array, " *n"], int, float]
+    data: Shaped[Array, " n d"] = eqx.field(converter=_atleast_2d_consistent)
+    weights: Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
 
     def __init__(
         self,
-        data: Shaped[Array, " n *d"],
-        weights: Optional[Union[Shaped[Array, " *n"], int, float]] = None,
+        data: Shaped[Array, " n d"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
         """Initialise `Data` class, handle non-Array weight attribute."""
         self.data = _atleast_2d_consistent(data)
@@ -152,13 +154,15 @@ class SupervisedData(Data):
         sets the weights to the ones vector (implies a scalar weight of one)
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=_atleast_2d_consistent)
+    supervision: Shaped[Array, " n p"] = eqx.field(converter=_atleast_2d_consistent)
 
     def __init__(
         self,
-        data: Shaped[Array, " n *d"],
-        supervision: Shaped[Array, " n *p"],
-        weights: Optional[Union[Shaped[Array, " *n"], int, float]] = None,
+        data: Shaped[Array, " n d"],
+        supervision: Shaped[Array, " n p"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
@@ -172,23 +176,13 @@ class SupervisedData(Data):
             )
 
 
-def as_data(x: Union[Data, Shaped[Array, " n *d"]]) -> Data:
+def as_data(x: Union[Data, Shaped[Array, " n d"]]) -> Data:
     """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
-def is_data(x: Any) -> bool:
-    """Return boolean indicating if ``x`` is an instance of `Data`."""
-    return isinstance(x, Data)
-
-
 def as_supervised_data(
-    xy: Union[SupervisedData, tuple[Shaped[Array, " n *d"], Shaped[Array, " n *p"]]],
+    xy: Union[SupervisedData, tuple[Shaped[Array, " n d"], Shaped[Array, " n p"]]],
 ) -> SupervisedData:
     """Cast ``xy`` to a `SupervisedData` instance."""
     return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)
-
-
-def is_supervised_data(xy: Any) -> bool:
-    """Check if 'xy' is an instance of 'coreax.data.SupervisedData'."""
-    return isinstance(xy, SupervisedData)

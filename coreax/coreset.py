@@ -121,7 +121,7 @@ class Coreset(eqx.Module, Generic[_Data]):
         return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 
 
-class Coresubset(Coreset[_Data], Generic[_Data]):
+class Coresubset(Coreset[Data], Generic[_Data]):
     r"""
     Data structure for representing a coresubset.
 
@@ -151,9 +151,6 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
 
     def __init__(self, nodes: Data, pre_coreset_data: _Data):
         """Handle typing of ``nodes`` being a `Data` instance."""
-        # I do not think there is a way here to satisfy Pyright in the current
-        # implementation of this class as the ``nodes`` here *must* be a `Data`
-        # instance and cannot be generic on `_Data` as is the case in the parent class.
         super().__init__(nodes, pre_coreset_data)
 
     @property

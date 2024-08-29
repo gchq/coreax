@@ -21,7 +21,6 @@ import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array
-from jax.typing import ArrayLike
 from jaxtyping import Shaped
 
 from coreax.data import Data, _atleast_2d_consistent, as_data
@@ -29,7 +28,7 @@ from coreax.util import pairwise, squared_distance, tree_zero_pad_leading_axis
 
 
 def _block_data_convert(
-    x: Union[ArrayLike, Data], block_size: Union[int, None]
+    x: Union[Data, Shaped[Array, " n d"]], block_size: Union[int, None]
 ) -> tuple[Array, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
