@@ -162,7 +162,7 @@ class WeightsOptimiser(eqx.Module, Generic[_Data]):
         dataset: _Data,
         coreset: _Data,
         epsilon: float = 1e-10,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Solve the optimisation problem, return the optimal weights.
 
@@ -221,7 +221,7 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
@@ -289,7 +289,7 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Compute optimal weights given the simplex constraint.
 

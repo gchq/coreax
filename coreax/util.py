@@ -131,7 +131,7 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
         raise ValueError("'pad_width' must be a positive integer")
     leaves_to_pad, leaves_to_keep = eqx.partition(tree, eqx.is_array)
 
-    def _pad(x: ArrayLike) -> Array:
+    def _pad(x: Shaped[Array, " n"]) -> Shaped[Array, " n + pad_width"]:
         padding = (0, int(pad_width))
         skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
         return jnp.pad(x, (padding, *skip_padding))
@@ -141,8 +141,8 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
 
 
 def apply_negative_precision_threshold(
-    x: ArrayLike, precision_threshold: float = 1e-8
-) -> Array:
+    x: Union[Shaped[Array, ""], float, int], precision_threshold: float = 1e-8
+) -> Shaped[Array, ""]:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -292,7 +292,7 @@ def sample_batch_indices(
     max_index: int,
     batch_size: int,
     num_batches: int,
-) -> Array:
+) -> Shaped[Array, " num_batches batch_size"]:
     """
     Sample an array of indices of size `num_batches` x `batch_size`.
 

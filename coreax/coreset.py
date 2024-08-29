@@ -114,7 +114,9 @@ class Coreset(eqx.Module, Generic[_Data]):
         weights = solver.solve(self.pre_coreset_data, self.coreset, **solver_kwargs)
         return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
 
-    def compute_metric(self, metric: Metric[_Data], **metric_kwargs) -> Array:
+    def compute_metric(
+        self, metric: Metric[_Data], **metric_kwargs
+    ) -> Shaped[Array, ""]:
         """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
         return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 

@@ -50,7 +50,7 @@ compute than the automatic differentiated default.
 """
 
 from abc import abstractmethod
-from typing import Union, overload
+from typing import Optional, Union, overload
 
 import equinox as eqx
 import jax
@@ -403,11 +403,11 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         self,
         x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
-        axis: Union[int, None] = None,
+        axis: Optional[int] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[Array, " *d"]:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
