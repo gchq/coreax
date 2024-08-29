@@ -29,7 +29,7 @@ from coreax.util import pairwise, squared_distance, tree_zero_pad_leading_axis
 
 def _block_data_convert(
     x: Union[Data, Shaped[Array, " n d"]], block_size: Union[int, None]
-) -> tuple[Array, int]:
+) -> tuple[Data, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
     block_size = len(x) if block_size is None else min(max(int(block_size), 1), len(x))
