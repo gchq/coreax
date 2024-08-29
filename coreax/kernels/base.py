@@ -50,7 +50,7 @@ compute than the automatic differentiated default.
 """
 
 from abc import abstractmethod
-from typing import Optional, Union, overload
+from typing import Any, Optional, Union, overload
 
 import equinox as eqx
 import jax
@@ -60,7 +60,7 @@ from jax import Array, grad, jacrev
 from jaxtyping import Shaped
 from typing_extensions import override
 
-from coreax.data import Data, is_data
+from coreax.data import Data
 from coreax.kernels.util import _block_data_convert
 from coreax.util import pairwise, tree_leaves_repeat
 
@@ -125,18 +125,19 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def compute(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Shaped[Array, " 1 1"]: ...
-
-    @overload
-    def compute(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, "1 1"]: ...
 
     def compute(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
     ) -> Union[Shaped[Array, " n m"], Shaped[Array, "1 1"]]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
@@ -159,8 +160,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @abstractmethod
     def compute_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " *d"], float, int],
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
@@ -333,14 +334,18 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def divergence_x_grad_y(
         self,
-        x: Union[Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " *d"], float, int],
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Shaped[Array, " 1 1"]: ...
 
     def divergence_x_grad_y(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
     ) -> Union[Shaped[Array, " n m"], Shaped[Array, " 1 1"]]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
@@ -359,8 +364,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def divergence_x_grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " *d"], float, int],
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
@@ -381,9 +386,16 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def gramian_row_mean(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
     ) -> Shaped[Array, " n"]:
         r"""
@@ -401,13 +413,27 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def compute_mean(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
-        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
         axis: Optional[int] = None,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Shaped[Array, " *d"]:
+    ) -> Array:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
@@ -459,8 +485,16 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         if axis == 0:
             operands = operands[::-1]
             _block_size = _block_size[::-1]
+
+        def _is_data(x: Any) -> bool:
+            """Return boolean indicating if ``x`` is an instance of `Data`."""
+            return isinstance(x, Data)
+
         (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
-            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
+            _block_data_convert,
+            operands,
+            tuple(_block_size),
+            is_leaf=_is_data,
         )
 
         def block_sum(

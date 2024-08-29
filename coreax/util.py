@@ -157,17 +157,21 @@ def apply_negative_precision_threshold(
 def pairwise(
     fn: Callable[
         [
-            Union[Shaped[Array, " *d"], float, int],
-            Union[Shaped[Array, " *d"], float, int],
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
         ],
         Shaped[Array, " *d"],
     ],
 ) -> Callable[
     [
-        Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
-        Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+        Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
     ],
-    Shaped[Array, " n m *d"],
+    Shaped[Array, "n m *d"],
 ]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
@@ -179,9 +183,13 @@ def pairwise(
 
     @wraps(fn)
     def pairwise_fn(
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
-        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
-    ) -> Shaped[Array, " n m *d"]:
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Shaped[Array, "n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
