@@ -50,7 +50,7 @@ compute than the automatic differentiated default.
 """
 
 from abc import abstractmethod
-from typing import Any, Optional, Union, overload
+from typing import Any, Literal, Optional, Union, overload
 
 import equinox as eqx
 import jax
@@ -411,6 +411,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         """
         return self.compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)
 
+    @overload
     def compute_mean(
         self,
         x: Union[
@@ -422,7 +423,81 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
             Data,
         ],
         y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: Literal[0] = 0,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Shaped[Array, " #m"]: ...
+
+    @overload
+    def compute_mean(
+        self,
+        x: Union[
             Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: Literal[1] = 1,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Shaped[Array, " #n"]: ...
+
+    @overload
+    def compute_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: None = None,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Shaped[Array, ""]: ...
+
+    def compute_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
             Shaped[Array, " d"],
             Shaped[Array, ""],
             float,
@@ -433,7 +508,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         *,
         block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Union[Shaped[Array, " n"], Shaped[Array, " m"], Shaped[Array, ""]]:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
