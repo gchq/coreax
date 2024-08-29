@@ -203,8 +203,8 @@ def pairwise(
 
 @jit
 def squared_distance(
-    x: Union[Shaped[Array, " *d"], float, int],
-    y: Union[Shaped[Array, " *d"], float, int],
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
 ) -> Shaped[Array, ""]:
     """
     Calculate the squared distance between two vectors.
@@ -223,7 +223,10 @@ def squared_distance(
     "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
     "will be removed in version 0.3.0"
 )
-def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance_pairwise(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     r"""
     Calculate efficient pairwise square distance between two arrays.
 
@@ -237,8 +240,8 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
 
 @jit
 def difference(
-    x: Union[Shaped[Array, " *d"], float, int],
-    y: Union[Shaped[Array, " *d"], float, int],
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
 ) -> Shaped[Array, ""]:
     """
     Calculate vector difference for a pair of vectors.
@@ -256,7 +259,9 @@ def difference(
     "Use coreax.kernels.util.median_heuristic; will be removed in version 0.3.0"
 )
 @jit
-def median_heuristic(x: ArrayLike) -> Array:
+def median_heuristic(
+    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Compute the median heuristic for setting kernel bandwidth.
 
@@ -283,7 +288,10 @@ def median_heuristic(x: ArrayLike) -> Array:
     "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
     "will be removed in version 0.3.0"
 )
-def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
+def pairwise_difference(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
