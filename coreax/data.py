@@ -176,13 +176,13 @@ class SupervisedData(Data):
             )
 
 
-def as_data(x: Union[Data, Shaped[Array, " n d"]]) -> Data:
+def as_data(x: Union[Shaped[Array, " n d"], Data]) -> Data:
     """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
 def as_supervised_data(
-    xy: Union[SupervisedData, tuple[Shaped[Array, " n d"], Shaped[Array, " n p"]]],
+    xy: Union[tuple[Shaped[Array, " n d"], Shaped[Array, " n p"]], SupervisedData],
 ) -> SupervisedData:
     """Cast ``xy`` to a `SupervisedData` instance."""
     return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)

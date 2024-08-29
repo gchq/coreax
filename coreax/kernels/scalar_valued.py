@@ -747,7 +747,7 @@ class SteinKernel(UniCompositeKernel):
         :math:`\mathbb{R}^d \to \mathbb{R}^d`
     """
 
-    score_function: Callable[[Shaped[Array, " n d"]], Shaped[Array, "n d"]]
+    score_function: Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]
 
     @override
     def compute_elementwise(self, x, y):
