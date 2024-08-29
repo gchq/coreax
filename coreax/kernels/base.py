@@ -49,9 +49,6 @@ forms of :meth:`ScalarValuedKernel.divergence_x_grad_y` are significantly cheape
 compute than the automatic differentiated default.
 """
 
-# Support class typing annotations inside itself
-from __future__ import annotations
-
 from abc import abstractmethod
 from typing import Union, overload
 
@@ -72,8 +69,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     """Abstract base class for scalar-valued kernels."""
 
     def __add__(
-        self, addition: Union[ScalarValuedKernel, int, float]
-    ) -> AdditiveKernel:
+        self, addition: Union["ScalarValuedKernel", int, float]
+    ) -> "AdditiveKernel":
         """Overload `+` operator."""
         if isinstance(addition, (int, float)):
             return AdditiveKernel(self, _Constant(addition))
@@ -85,12 +82,14 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         )
 
     def __radd__(
-        self, addition: Union[ScalarValuedKernel, int, float]
-    ) -> AdditiveKernel:
+        self, addition: Union["ScalarValuedKernel", int, float]
+    ) -> "AdditiveKernel":
         """Overload right `+` operator, order is mathematically irrelevant."""
         return self.__add__(addition)
 
-    def __mul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
+    def __mul__(
+        self, product: Union["ScalarValuedKernel", int, float]
+    ) -> "ProductKernel":
         """Overload `*` operator."""
         if isinstance(product, (int, float)):
             return ProductKernel(self, _Constant(product))
@@ -101,11 +100,13 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
             + "an integer or a float"
         )
 
-    def __rmul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
+    def __rmul__(
+        self, product: Union["ScalarValuedKernel", int, float]
+    ) -> "ProductKernel":
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 
-    def __pow__(self, power: int) -> PowerKernel:
+    def __pow__(self, power: int) -> "PowerKernel":
         """
         Overload `**` operator.
 
@@ -119,8 +120,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def compute(
-        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
-    ) -> Shaped[Array, " n n"]: ...
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m"]: ...
 
     @overload
     def compute(  # pyright: ignore[reportOverlappingOverload]
@@ -134,9 +135,9 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def compute(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-    ) -> Union[Shaped[Array, " n n"], Shaped[Array, "1 1"]]:
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+    ) -> Union[Shaped[Array, " n m"], Shaped[Array, "1 1"]]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
 
@@ -155,21 +156,11 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         """
         return pairwise(self.compute_elementwise)(x, y)
 
-    @overload
-    def compute_elementwise(
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
-    ) -> Shaped[Array, ""]: ...
-
-    @overload
-    def compute_elementwise(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, ""]: ...
-
     @abstractmethod
     def compute_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " *d"], Union[float, int]],
+        x: Union[Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " *d"], float, int],
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
@@ -184,8 +175,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def grad_x(
-        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
-    ) -> Shaped[Array, " n n d"]: ...
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m d"]: ...
 
     @overload
     def grad_x(  # pyright: ignore[reportOverlappingOverload]
@@ -193,31 +184,22 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     ) -> Shaped[Array, " 1 1 d"]: ...
 
     @overload
-    def grad_x(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
-    ) -> Shaped[Array, " 1 1 1"]: ...
-
-    @overload
     def grad_x(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, "1 1 1"]: ...
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1 1"]: ...
 
     def grad_x(
         self,
         x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            Union[float, int],
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
         y: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            Union[float, int],
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
     ) -> Union[
-        Shaped[Array, " n n d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
+        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
     ]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
@@ -236,8 +218,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def grad_y(
-        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
-    ) -> Shaped[Array, " n n d"]: ...
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m d"]: ...
 
     @overload
     def grad_y(  # pyright: ignore[reportOverlappingOverload]
@@ -245,31 +227,22 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     ) -> Shaped[Array, " 1 1 d"]: ...
 
     @overload
-    def grad_y(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
-    ) -> Shaped[Array, " 1 1 1"]: ...
-
-    @overload
     def grad_y(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, "1 1 1"]: ...
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1 1"]: ...
 
     def grad_y(
         self,
         x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            Union[float, int],
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
         y: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            Union[float, int],
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
     ) -> Union[
-        Shaped[Array, " n n d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
+        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
     ]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
@@ -292,19 +265,16 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     ) -> Shaped[Array, " d"]: ...
 
     @overload
-    def grad_x_elementwise(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
-    ) -> Shaped[Array, ""]: ...
-
-    @overload
     def grad_x_elementwise(
-        self, x: Union[float, int], y: Union[float, int]
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
     ) -> Shaped[Array, ""]: ...
 
     def grad_x_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
@@ -328,19 +298,16 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     ) -> Shaped[Array, " d"]: ...
 
     @overload
-    def grad_y_elementwise(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, ""], y: Shaped[Array, ""]
-    ) -> Shaped[Array, ""]: ...
-
-    @overload
     def grad_y_elementwise(
-        self, x: Union[float, int], y: Union[float, int]
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
     ) -> Shaped[Array, ""]: ...
 
     def grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], Union[float, int]],
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
     ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
@@ -360,24 +327,21 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     @overload
     def divergence_x_grad_y(
-        self, x: Shaped[Array, " n d"], y: Shaped[Array, " n d"]
-    ) -> Shaped[Array, " n n"]: ...
-
-    @overload
-    def divergence_x_grad_y(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
-    ) -> Shaped[Array, " 1 1"]: ...
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m"]: ...
 
     @overload
     def divergence_x_grad_y(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, "1 1"]: ...
+        self,
+        x: Union[Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " *d"], float, int],
+    ) -> Shaped[Array, " 1 1"]: ...
 
     def divergence_x_grad_y(
         self,
-        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], Union[float, int]],
-    ) -> Union[Shaped[Array, " n n"], Shaped[Array, " 1 1"]]:
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " m d"], Shaped[Array, " *d"], float, int],
+    ) -> Union[Shaped[Array, " n m"], Shaped[Array, " 1 1"]]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -393,20 +357,10 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         """
         return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
 
-    @overload
-    def divergence_x_grad_y_elementwise(
-        self, x: Shaped[Array, " *d"], y: Shaped[Array, " *d"]
-    ) -> Shaped[Array, ""]: ...
-
-    @overload
-    def divergence_x_grad_y_elementwise(
-        self, x: Union[float, int], y: Union[float, int]
-    ) -> Shaped[Array, ""]: ...
-
     def divergence_x_grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " *d"], Union[float, int]],
-        y: Union[Shaped[Array, " *d"], Union[float, int]],
+        x: Union[Shaped[Array, " *d"], float, int],
+        y: Union[Shaped[Array, " *d"], float, int],
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
@@ -427,12 +381,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
@@ -452,18 +401,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def compute_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
-        y: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " *d"],
-            Union[float, int],
-            Data,
-        ],
+        x: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
+        y: Union[Shaped[Array, " n d"], Shaped[Array, " *d"], float, int, Data],
         axis: Union[int, None] = None,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,

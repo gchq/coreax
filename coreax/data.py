@@ -41,17 +41,14 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload],
 
 
 @overload
-def _atleast_2d_consistent(array: Union[float, int, bool]) -> Shaped[Array, " 1 1"]: ...
+def _atleast_2d_consistent(array: Union[float, int]) -> Shaped[Array, " 1 1"]: ...
 
 
 # Seems like @jit suppresses the @overload hints unfortunately
 @jit
 def _atleast_2d_consistent(
     array: Union[
-        Shaped[Array, " n d"],
-        Shaped[Array, " d"],
-        Shaped[Array, ""],
-        Union[float, int],
+        Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
     ],
 ) -> Union[Shaped[Array, " n d"], Shaped[Array, " d 1"], Shaped[Array, " 1 1"]]:
     r"""
@@ -93,12 +90,12 @@ class Data(eqx.Module):
     """
 
     data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
-    weights: Union[Union[int, float], Shaped[Array, " *n"]]
+    weights: Union[Shaped[Array, " *n"], int, float]
 
     def __init__(
         self,
         data: Shaped[Array, " n *d"],
-        weights: Optional[Union[Union[int, float], Shaped[Array, " *n"]]] = None,
+        weights: Optional[Union[Shaped[Array, " *n"], int, float]] = None,
     ):
         """Initialise `Data` class, handle non-Array weight attribute."""
         self.data = _atleast_2d_consistent(data)
@@ -161,7 +158,7 @@ class SupervisedData(Data):
         self,
         data: Shaped[Array, " n *d"],
         supervision: Shaped[Array, " n *p"],
-        weights: Optional[Shaped[Array, " *n"]] = None,
+        weights: Optional[Union[Shaped[Array, " *n"], int, float]] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
@@ -175,7 +172,7 @@ class SupervisedData(Data):
             )
 
 
-def as_data(x: Any) -> Data:
+def as_data(x: Union[Data, Shaped[Array, " n *d"]]) -> Data:
     """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
@@ -185,7 +182,9 @@ def is_data(x: Any) -> bool:
     return isinstance(x, Data)
 
 
-def as_supervised_data(xy: Any) -> SupervisedData:
+def as_supervised_data(
+    xy: Union[SupervisedData, tuple[Shaped[Array, " n *d"], Shaped[Array, " n *p"]]],
+) -> SupervisedData:
     """Cast ``xy`` to a `SupervisedData` instance."""
     return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)
 

@@ -323,7 +323,7 @@ class SlicedScoreMatching(ScoreMatching):
         params: dict,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
-        sigmas: Array,
+        sigmas: Shaped[Array, " num_noise_models"],
     ) -> float:
         r"""
         Sum objective function with noise perturbations.
@@ -359,7 +359,7 @@ class SlicedScoreMatching(ScoreMatching):
         state: TrainState,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
-        sigmas: Array,
+        sigmas: Shaped[Array, " num_noise_models"],
     ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.

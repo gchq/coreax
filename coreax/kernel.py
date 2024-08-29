@@ -48,35 +48,34 @@ automatic differentiated default.
 
 from typing_extensions import deprecated
 
-from coreax.kernels.base import (
-    AdditiveKernel,
-    DuoCompositeKernel,
-    ProductKernel,
-    ScalarValuedKernel,
-    UniCompositeKernel,
+from coreax.kernels.base import AdditiveKernel as _AdditiveKernel
+from coreax.kernels.base import DuoCompositeKernel as _DuoCompositeKernel
+from coreax.kernels.base import ProductKernel as _ProductKernel
+from coreax.kernels.base import ScalarValuedKernel as _ScalarValuedKernel
+from coreax.kernels.base import UniCompositeKernel as _UniCompositeKernel
+from coreax.kernels.scalar_valued import ExponentialKernel as _ExponentialKernel
+from coreax.kernels.scalar_valued import LaplacianKernel as _LaplacianKernel
+from coreax.kernels.scalar_valued import LinearKernel as _LinearKernel
+from coreax.kernels.scalar_valued import LocallyPeriodicKernel as _LocallyPeriodicKernel
+from coreax.kernels.scalar_valued import PCIMQKernel as _PCIMQKernel
+from coreax.kernels.scalar_valued import PeriodicKernel as _PeriodicKernel
+from coreax.kernels.scalar_valued import PolynomialKernel as _PolynomialKernel
+from coreax.kernels.scalar_valued import (
+    RationalQuadraticKernel as _RationalQuadraticKernel,
 )
 from coreax.kernels.scalar_valued import (
-    ExponentialKernel,
-    LaplacianKernel,
-    LinearKernel,
-    LocallyPeriodicKernel,
-    PCIMQKernel,
-    PeriodicKernel,
-    PolynomialKernel,
-    RationalQuadraticKernel,
-    SquaredExponentialKernel,
-    SteinKernel,
+    SquaredExponentialKernel as _SquaredExponentialKernel,
 )
+from coreax.kernels.scalar_valued import SteinKernel as _SteinKernel
 
 
 # pylint:disable = abstract-method
-# pylint:disable = function-redefined
 @deprecated(
     "Renamed to `ScalarValuedKernel`; "
     + " moved to `coreax.kernels.base.ScalarValuedKernel`; "
     + " will be removed in version 0.3.0"
 )
-class Kernel(ScalarValuedKernel):
+class Kernel(_ScalarValuedKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ScalarValuedKernel`.
 
@@ -89,7 +88,7 @@ class Kernel(ScalarValuedKernel):
     + " moved to `coreax.kernels.base.UniCompositeKernel`; "
     + " will be removed in version 0.3.0"
 )
-class CompositeKernel(UniCompositeKernel):
+class CompositeKernel(_UniCompositeKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.UniCompositeKernel`.
 
@@ -102,7 +101,7 @@ class CompositeKernel(UniCompositeKernel):
     + " moved to `coreax.kernels.base.DuoCompositeKernel`; "
     + " will be removed in version 0.3.0"
 )
-class PairedKernel(DuoCompositeKernel):
+class PairedKernel(_DuoCompositeKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.DuoCompositeKernel`.
 
@@ -116,7 +115,7 @@ class PairedKernel(DuoCompositeKernel):
 @deprecated(
     "Moved to `coreax.kernels.base.AdditiveKernel`;  will be removed in version 0.3.0"
 )
-class AdditiveKernel(AdditiveKernel):
+class AdditiveKernel(_AdditiveKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.AdditiveKernel`.
 
@@ -127,7 +126,7 @@ class AdditiveKernel(AdditiveKernel):
 @deprecated(
     "Moved to `coreax.kernels.base.ProductKernel`;  will be removed in version 0.3.0"
 )
-class ProductKernel(ProductKernel):
+class ProductKernel(_ProductKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ProductKernel`.
 
@@ -139,7 +138,7 @@ class ProductKernel(ProductKernel):
     "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`; "
     + " will be removed in version 0.3.0"
 )
-class LinearKernel(LinearKernel):
+class LinearKernel(_LinearKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.LinearKernel`.
 
@@ -151,7 +150,7 @@ class LinearKernel(LinearKernel):
     "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`; "
     + " will be removed in version 0.3.0"
 )
-class PolynomialKernel(PolynomialKernel):
+class PolynomialKernel(_PolynomialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PolynomialKernel`.
 
@@ -163,7 +162,7 @@ class PolynomialKernel(PolynomialKernel):
     "Moved to `coreax.kernels.base.scalar_valued.SquaredExponentialKernel`; "
     + " will be removed in version 0.3.0"
 )
-class SquaredExponentialKernel(SquaredExponentialKernel):
+class SquaredExponentialKernel(_SquaredExponentialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.SquaredExponentialKernel`.
 
@@ -175,7 +174,7 @@ class SquaredExponentialKernel(SquaredExponentialKernel):
     "Moved to `coreax.kernels.base.scalar_valued.ExponentialKernel`; "
     + " will be removed in version 0.3.0"
 )
-class ExponentialKernel(ExponentialKernel):
+class ExponentialKernel(_ExponentialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ExponentialKernel`.
 
@@ -187,7 +186,7 @@ class ExponentialKernel(ExponentialKernel):
     "Moved to `coreax.kernels.base.scalar_valued.RationalQuadraticKernel`; "
     + " will be removed in version 0.3.0"
 )
-class RationalQuadraticKernel(RationalQuadraticKernel):
+class RationalQuadraticKernel(_RationalQuadraticKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.RationalQuadraticKernel`.
 
@@ -199,7 +198,7 @@ class RationalQuadraticKernel(RationalQuadraticKernel):
     "Moved to `coreax.kernels.base.scalar_valued.PeriodicKernel`; "
     + " will be removed in version 0.3.0"
 )
-class PeriodicKernel(PeriodicKernel):
+class PeriodicKernel(_PeriodicKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PeriodicKernel`.
 
@@ -211,7 +210,7 @@ class PeriodicKernel(PeriodicKernel):
     "Moved to `coreax.kernels.base.scalar_valued.LocallyPeriodicKernel`; "
     + " will be removed in version 0.3.0"
 )
-class LocallyPeriodicKernel(LocallyPeriodicKernel):
+class LocallyPeriodicKernel(_LocallyPeriodicKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.LocallyPeriodicKernel`.
 
@@ -223,7 +222,7 @@ class LocallyPeriodicKernel(LocallyPeriodicKernel):
     "Moved to `coreax.kernels.base.scalar_valued.LaplacianKernel`; "
     + " will be removed in version 0.3.0"
 )
-class LaplacianKernel(LaplacianKernel):
+class LaplacianKernel(_LaplacianKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.SquaredExponentialKernel`.
 
@@ -235,7 +234,7 @@ class LaplacianKernel(LaplacianKernel):
     "Moved to `coreax.kernels.base.scalar_valued.PCIMQKernel`; "
     + " will be removed in version 0.3.0"
 )
-class PCIMQKernel(PCIMQKernel):
+class PCIMQKernel(_PCIMQKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PCIMQKernel`.
 
@@ -247,12 +246,9 @@ class PCIMQKernel(PCIMQKernel):
     "Moved to `coreax.kernels.base.scalar_valued.SteinKernel`; "
     + " will be removed in version 0.3.0"
 )
-class SteinKernel(SteinKernel):
+class SteinKernel(_SteinKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PCIMQKernel`.
 
     Will be removed in version 0.3.0
     """
-
-
-# pylint:enable = function-redefined

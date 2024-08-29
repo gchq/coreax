@@ -505,7 +505,7 @@ def _greedy_kernel_points_loss(
     regularisation_parameter: float,
     identity: Shaped[Array, " coreset_size coreset_size"],
     least_squares_solver: RegularisedLeastSquaresSolver,
-) -> Array:
+) -> Shaped[Array, " batch_size"]:
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
 

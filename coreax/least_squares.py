@@ -84,7 +84,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         regularisation_parameter: float,
         target: Shaped[Array, " n m"],
         identity: Shaped[Array, " n n"],
-    ) -> Array:
+    ) -> Shaped[Array, " n n"]:
         r"""
         Compute the least-squares solution to a regularised linear matrix equation.
 
@@ -103,7 +103,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         targets: Shaped[Array, " l n m"],
         identity: Shaped[Array, " n n"],
         in_axes: Union[int, None, Sequence[Any]] = (0, None, 0, None),
-    ) -> Array:
+    ) -> Shaped[Array, " l n n"]:
         r"""
         Compute least-squares solutions to stack of regularised linear matrix equations.
 
@@ -152,7 +152,7 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
         regularisation_parameter: float,
         target: Shaped[Array, " n m"],
         identity: Shaped[Array, " n n"],
-    ) -> Array:
+    ) -> Shaped[Array, " n n"]:
         return jnp.linalg.lstsq(
             array + abs(regularisation_parameter) * identity,
             target,
@@ -328,7 +328,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         regularisation_parameter: float,
         target: Shaped[Array, " n m"],
         identity: Shaped[Array, " n n"],
-    ) -> Array:
+    ) -> Shaped[Array, " n n"]:
         # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]
         machine_precision = jnp.finfo(array.dtype).eps
