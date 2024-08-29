@@ -177,8 +177,8 @@ class SlicedScoreMatching(ScoreMatching):
         self,
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d d"],
-    ):
+        score_matrix: Shaped[Array, " d"],
+    ) -> float:
         """
         Compute the score matching loss function.
 
@@ -207,8 +207,8 @@ class SlicedScoreMatching(ScoreMatching):
     def _analytic_objective(
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d d"],
-    ) -> Array:
+        score_matrix: Shaped[Array, " d"],
+    ) -> Shaped[Array, ""]:
         """
         Compute reduced variance score matching loss function.
 
@@ -233,8 +233,8 @@ class SlicedScoreMatching(ScoreMatching):
     def _general_objective(
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d d"],
-    ) -> Array:
+        score_matrix: Shaped[Array, " d"],
+    ) -> Shaped[Array, ""]:
         """
         Compute general score matching loss function.
 

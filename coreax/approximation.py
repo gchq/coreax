@@ -81,7 +81,7 @@ def _random_least_squares(
     features: Shaped[Array, " n n"],
     num_indices: int,
     target_map: Callable[[Shaped[Array, " n p"]], Shaped[Array, " n p"]] = lambda x: x,
-) -> Array:
+) -> Shaped[Array, " n p"]:
     r"""
     Solve the least-square problem on a random subset of the system.
 
@@ -251,7 +251,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
 
         def _annchor_body(
             idx: int, _features: Shaped[Array, " n num_kernel_points"]
-        ) -> Array:
+        ) -> Shaped[Array, " n num_kernel_points"]:
             r"""
             Execute main loop of the ANNchor construction.
 
