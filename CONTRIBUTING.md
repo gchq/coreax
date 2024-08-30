@@ -224,7 +224,7 @@ Prioritise overfull lines for mathematical expressions over artificially splitti
 For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
 
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anywhere with `[RefYY]_`.
+The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anywhere with :cite:`RefYY`.
 
 ### Generating docs with Sphinx
 
