@@ -168,28 +168,6 @@ nitpick_ignore = [
     ("py:class", "Array"),
     ("py:class", "typing.Self"),
     ("py:class", "jaxtyping.Shaped"),
-    ("py:class", "jaxtyping.Shaped[Array, '']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'd']"),
-    ("py:class", "jaxtyping.Shaped[Array, '*d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'm']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'oversampling_parameter']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n oversampling_parameter']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'num_batches batch_size']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n n']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n m']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'm m']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'm d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'm 1']"),
-    ("py:class", "jaxtyping.Shaped[Array, '1 1']"),
-    ("py:class", "jaxtyping.Shaped[Array, '1 1 1']"),
-    ("py:class", "jaxtyping.Shaped[Array, '1 1 d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n m d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n m *d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'l n n']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'l n m']"),
     ("py:class", "jax._src.typing.SupportsDType"),
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
@@ -212,6 +190,9 @@ nitpick_ignore = [
     ("py:obj", "coreax.util.T"),
 ]
 
+nitpick_ignore_regex = [
+    ("py:class", r"jaxtyping\.Shaped\[Array, '.*']"),
+]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
