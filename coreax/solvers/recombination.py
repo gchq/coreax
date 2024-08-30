@@ -65,10 +65,11 @@ associated with each zero valued (implicitly removed) weight
     I = \{i \mid \hat{w_i} \neq 0\, \forall i \in \{1, \dots, n\}\}.
     \end{gather}
 
-Due to Tchakaloff's theorem, which follows from Caratheodory's convex hull theorem, we
-know there always exists a basic-feasible solution to the linear-program, with at most
-:math:`m^\prime = \text{dim}(\text{span}(\Phi))` non-zero weights. Hence, we have an
-upper bound on the size of a coresubset, controlled by the choice of test-functions.
+Due to Tchakaloff's theorem :cite:`tchakaloff1957,bayer2006tchakaloff`, which follows
+from Caratheodory's convex hull theorem :cite:`caratheodory1907,loera2018caratheodory`,
+we know there always exists a basic-feasible solution to the linear-program, with at
+most :math:`m^\prime = \text{dim}(\text{span}(\Phi))` non-zero weights. Hence, we have
+an upper bound on the size of a coresubset, controlled by the choice of test-functions.
 
 .. note::
     A basic feasible solution (coresubset produced by recombination) is non-unique. In
