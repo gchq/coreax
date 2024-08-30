@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Generic, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -438,7 +438,7 @@ def speed_comparison_test(
 T = TypeVar("T")
 
 
-class SilentTQDM:
+class SilentTQDM(Generic[T]):
     """
     Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
 
@@ -464,5 +464,7 @@ class SilentTQDM:
         """
         return iter(self.iterable)
 
-    def write(self, *_args, **_kwargs) -> None:
+    @staticmethod
+    def write(*args, **kwargs) -> None:
         """Do nothing instead of writing to output."""
+        del args, kwargs
