@@ -16,7 +16,6 @@
 
 from collections.abc import Callable
 from typing import Optional, TypeVar, Union
-from warnings import warn
 
 import equinox as eqx
 import jax
@@ -45,10 +44,6 @@ from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leadin
 
 _Data = TypeVar("_Data", bound=Data)
 _SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
-
-
-class SizeWarning(Warning):
-    """Custom warning to be raised when some parameter shape is too large."""
 
 
 class HerdingState(eqx.Module):
@@ -225,6 +220,15 @@ class KernelHerding(
         'solver_state', and then iteratively swap points with the initial coreset,
         balancing selecting points in high density regions with selecting points far
         from those already in the coreset.
+
+        .. warning::
+
+            If the input ``coresubset`` is smaller than the requested ``coreset_size``,
+            it will be padded with zero-valued, zero-weighted indices. After the input
+            ``coresubset`` has been refined, new indices will be chosen to fill the
+            padding. If the input ``coresubset`` is larger than the requested
+            ``coreset_size``, the extra indices will not be optimised and will be
+            clipped from the return ``coresubset``.
 
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
@@ -447,6 +451,15 @@ class SteinThinning(
         greedily choose points in the coreset to minimise kernel Stein discrepancy
         (KSD).
 
+        .. warning::
+
+            If the input ``coresubset`` is smaller than the requested ``coreset_size``,
+            it will be padded with zero-valued, zero-weighted indices. After the input
+            ``coresubset`` has been refined, new indices will be chosen to fill the
+            padding. If the input ``coresubset`` is larger than the requested
+            ``coreset_size``, the extra indices will not be optimised and will be
+            clipped from the return ``coresubset``.
+
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
@@ -626,6 +639,15 @@ class GreedyKernelPoints(
         `solver_state`, and then iteratively swap points with the initial coreset,
         selecting points which minimise the loss.
 
+        .. warning::
+
+            If the input ``coresubset`` is smaller than the requested ``coreset_size``,
+            it will be padded with indices that are invariant with respect to the loss.
+            After the input ``coresubset`` has been refined, new indices will be chosen
+            to fill the padding. If the input ``coresubset`` is larger than the
+            requested ``coreset_size``, the extra indices will not be optimised and will
+            be clipped from the return ``coresubset``.
+
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
@@ -649,12 +671,6 @@ class GreedyKernelPoints(
                 )
             )
         elif self.coreset_size < len(coresubset):
-            warn(
-                "Requested coreset size is smaller than input 'coresubset', clipping"
-                + " to the correct size and proceeding...",
-                SizeWarning,
-                stacklevel=2,
-            )
             coreset_indices = coresubset.unweighted_indices[: self.coreset_size]
         else:
             coreset_indices = coresubset.unweighted_indices
