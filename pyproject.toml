@@ -146,4 +146,5 @@ exclude_also = [
     "raise RuntimeError",
     "if TYPE_CHECKING:",
     "raise$",
+    "..."
 ]
