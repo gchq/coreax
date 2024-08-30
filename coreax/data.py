@@ -43,7 +43,9 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload],
 # Seems like @jit suppresses the @overload hints unfortunately
 @jit
 def _atleast_2d_consistent(
-    array: Union[Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""]],
+    array: Union[
+        Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+    ],
 ) -> Union[Shaped[Array, " n d"], Shaped[Array, " d 1"], Shaped[Array, " 1 1"]]:
     r"""
     Given an array, ensure it is at least 2-dimensional.
