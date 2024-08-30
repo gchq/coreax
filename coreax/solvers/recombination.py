@@ -230,19 +230,32 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             :param state: Elimination state information
             :return: Updated `state` information resulting from the elimination step.
             """
+            # Algorithm 6 - Chapter 3.3 of :cite:`tchernychova2016recombination`
+            # Our Notation -> Their Notation
+            # - `basis_index` (loop iteration) -> i
+            # - `elimination_index` -> k^{(i)}
+            # - `elimination_rescaling_factor` -> \alpha_{(i)}
+            # - `updated_weights` -> \underline\Beta^{(i)}
+            # - `null_space_basis_update` -> d_{l+1}^{(i)}\phi_1^{(i-1)}
+            # - `updated_null_space_basis` -> \Psi^{(i))
             _weights, null_space_basis, basis_index = state
             basis_vector = null_space_basis[basis_index]
-            _elimination_condition = _weights / basis_vector
+            # Equation 3: Select the weight to eliminate.
             elimination_condition = jnp.where(
-                basis_vector > 0, _elimination_condition, jnp.inf
+                basis_vector > 0, _weights / basis_vector, jnp.inf
             )
             elimination_index = jnp.argmin(elimination_condition)
             elimination_rescaling_factor = elimination_condition[elimination_index]
+            # Equation 4: Eliminate the selected weight and redistribute its mass.
+            # NOTE: Equation 5 is implicit from Equation 4 and is performed outside
+            # of `_eliminate` via `_coresubset_nodes`.
             updated_weights = _weights - elimination_rescaling_factor * basis_vector
             updated_weights = updated_weights.at[elimination_index].set(0)
-            rescaled_basis_vector = basis_vector / basis_vector[elimination_index]
+            # Equations 6, 7 and 8: Update the Null space basis.
             null_space_basis_update = jnp.tensordot(
-                null_space_basis[:, elimination_index], rescaled_basis_vector, axes=0
+                null_space_basis[:, elimination_index],
+                basis_vector / basis_vector[elimination_index],
+                axes=0,
             )
             updated_null_space_basis = null_space_basis - null_space_basis_update
             updated_null_space_basis = updated_null_space_basis.at[basis_index].set(0)
@@ -517,7 +530,8 @@ class TreeRecombination(RecombinationSolver[Data, None]):
             point the recombination problem has been solved).
 
             :param _: Not used
-            :param state: Tuple of node weights and indices
+            :param state: Tuple of node weights and indices; indices are passed to keep
+                a correspondence between the original data indices and
             :return: Updated tuple of node weights and indices; weights are zeroed
                 (implicitly removed) where appropriate; indices are shuffled to ensure
                 balanced centroids in subsequent iterations (centroids are balanced when
@@ -525,18 +539,24 @@ class TreeRecombination(RecombinationSolver[Data, None]):
                 of non-zero weighted nodes as possible).
             """
             _weights, _indices = state
+            # Index weights to a centroid; argsort ensures that centroids are balanced.
             centroid_indices = jnp.argsort(_weights).reshape(count, -1, order="F")
             centroid_nodes, centroid_weights = _centroid(
                 push_forward_nodes[_indices[centroid_indices]],
                 _weights[centroid_indices],
             )
             centroid_dataset = Data(centroid_nodes, centroid_weights)
+            # Solve the measure reduction problem on the centroid dataset.
             centroid_coresubset, _ = car_recomb_solver.reduce(centroid_dataset)
             coresubset_indices = centroid_coresubset.unweighted_indices
             coresubset_weights = centroid_coresubset.coreset.weights
+            # Propagate centroid coresubset weights to the underlying weights for each
+            # centroid, as defined by `centroid_indices`.
             weight_update_indices = centroid_indices[coresubset_indices]
             weight_update = coresubset_weights / centroid_weights[coresubset_indices]
             updated_weights = _weights[weight_update_indices] * weight_update[..., None]
+            # Maintain a correspondence between the original data indices and the sorted
+            # indices, used to construct the balanced centroids.
             updated_indices = _indices[weight_update_indices.reshape(-1, order="F")]
             return updated_weights.reshape(-1, order="F"), updated_indices
 
