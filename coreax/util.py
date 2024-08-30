@@ -171,7 +171,7 @@ def pairwise(
             Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
     ],
-    Shaped[Array, "n m *d"],
+    Shaped[Array, " n m *d"],
 ]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
@@ -189,7 +189,7 @@ def pairwise(
         y: Union[
             Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
         ],
-    ) -> Shaped[Array, "n m *d"]:
+    ) -> Shaped[Array, " n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
