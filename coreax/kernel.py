@@ -50,47 +50,21 @@ from typing_extensions import deprecated
 
 from coreax.kernels.base import (
     AdditiveKernel as _AdditiveKernel,
-)
-from coreax.kernels.base import (
     DuoCompositeKernel as _DuoCompositeKernel,
-)
-from coreax.kernels.base import (
     ProductKernel as _ProductKernel,
-)
-from coreax.kernels.base import (
     ScalarValuedKernel as _ScalarValuedKernel,
-)
-from coreax.kernels.base import (
     UniCompositeKernel as _UniCompositeKernel,
 )
 from coreax.kernels.scalar_valued import (
     ExponentialKernel as _ExponentialKernel,
-)
-from coreax.kernels.scalar_valued import (
     LaplacianKernel as _LaplacianKernel,
-)
-from coreax.kernels.scalar_valued import (
     LinearKernel as _LinearKernel,
-)
-from coreax.kernels.scalar_valued import (
     LocallyPeriodicKernel as _LocallyPeriodicKernel,
-)
-from coreax.kernels.scalar_valued import (
     PCIMQKernel as _PCIMQKernel,
-)
-from coreax.kernels.scalar_valued import (
     PeriodicKernel as _PeriodicKernel,
-)
-from coreax.kernels.scalar_valued import (
     PolynomialKernel as _PolynomialKernel,
-)
-from coreax.kernels.scalar_valued import (
     RationalQuadraticKernel as _RationalQuadraticKernel,
-)
-from coreax.kernels.scalar_valued import (
     SquaredExponentialKernel as _SquaredExponentialKernel,
-)
-from coreax.kernels.scalar_valued import (
     SteinKernel as _SteinKernel,
 )
 

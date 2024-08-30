@@ -39,8 +39,14 @@ from typing import Union
 import equinox as eqx
 import numpy as np
 from flax.training.train_state import TrainState
-from jax import Array, jvp, random, value_and_grad, vmap
-from jax import numpy as jnp
+from jax import (
+    Array,
+    jvp,
+    numpy as jnp,
+    random,
+    value_and_grad,
+    vmap,
+)
 from jax.lax import cond, fori_loop
 from jax.typing import DTypeLike
 from jaxtyping import Shaped
