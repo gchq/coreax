@@ -196,7 +196,6 @@ nitpick_ignore = [
     ("py:obj", "coreax.weights._Data"),
     ("py:obj", "coreax.metrics._Data"),
     ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
-    ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
 ]
 
 

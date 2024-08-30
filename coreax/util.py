@@ -467,4 +467,3 @@ class SilentTQDM(Generic[T]):
     @staticmethod
     def write(*args, **kwargs) -> None:
         """Do nothing instead of writing to output."""
-        del args, kwargs

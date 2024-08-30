@@ -146,7 +146,7 @@ class SlicedScoreMatching(ScoreMatching):
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
-        print_progress_bar: bool = False,
+        progress_bar: bool = False,
     ):
         """Define a sliced score matching class and update invalid inputs."""
         # JAX will not error if we have num_random_vectors set to 0, but this approach
@@ -170,7 +170,7 @@ class SlicedScoreMatching(ScoreMatching):
         self.num_noise_models = num_noise_models
         self.sigma = sigma
         self.gamma = gamma
-        if print_progress_bar:
+        if progress_bar:
             self.progress_bar = LoudTQDM
         else:
             self.progress_bar = SilentTQDM
