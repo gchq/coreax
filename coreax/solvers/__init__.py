@@ -34,19 +34,19 @@ from coreax.solvers.coresubset import (
 )
 
 __all__ = [
-    "CompositeSolver",
-    "CoresubsetSolver",
     "Solver",
+    "CoresubsetSolver",
     "RefinementSolver",
     "ExplicitSizeSolver",
+    "PaddingInvariantSolver",
+    "CompositeSolver",
+    "MapReduce",
+    "RandomSample",
     "HerdingState",
     "KernelHerding",
-    "RandomSample",
-    "RPCholesky",
-    "RPCholeskyState",
     "SteinThinning",
-    "MapReduce",
-    "PaddingInvariantSolver",
-    "GreedyKernelPoints",
+    "RPCholeskyState",
+    "RPCholesky",
     "GreedyKernelPointsState",
+    "GreedyKernelPoints",
 ]

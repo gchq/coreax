@@ -133,6 +133,117 @@ class PolynomialKernel(ScalarValuedKernel):
         )
 
 
+class ExponentialKernel(ScalarValuedKernel):
+    r"""
+    Define an exponential kernel.
+
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+    exponential kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    .. note::
+        Note that the Exponential kernel is not differentiable when :math:`x=y`.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.exp(
+            -jnp.linalg.norm(jnp.subtract(x, y)) / (2 * self.length_scale**2)
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        sub = jnp.subtract(x, y)
+        dist = jnp.linalg.norm(sub)
+        factor = 2 * self.length_scale**2
+        return self.output_scale * sub * jnp.exp(-dist / factor) / (factor * dist)
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        d = len(jnp.asarray(x))
+        sub = jnp.subtract(x, y)
+        dist = jnp.linalg.norm(sub)
+        factor = 2 * self.length_scale**2
+        exp = jnp.exp(-dist / factor)
+
+        first_term = (-exp * sub / dist**2) * ((1 / dist) + 1 / factor)
+        second_term = exp / dist
+
+        return (self.output_scale / factor) * (
+            jnp.dot(first_term, sub) + d * second_term
+        )
+
+
+class LaplacianKernel(ScalarValuedKernel):
+    r"""
+    Define a Laplacian kernel.
+
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+    Laplacian kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
+    :math:`||\cdot||_1` is the :math:`L_1`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    """
+
+    length_scale: float = eqx.field(default=1.0, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale * jnp.exp(
+            -jnp.linalg.norm(jnp.subtract(x, y), ord=1) / (2 * self.length_scale**2)
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            jnp.sign(jnp.subtract(x, y))
+            / (2 * self.length_scale**2)
+            * self.compute_elementwise(x, y)
+        )
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        k = self.compute_elementwise(x, y)
+        d = len(jnp.asarray(x))
+        return -d * k / (4 * self.length_scale**4)
+
+
 class SquaredExponentialKernel(ScalarValuedKernel):
     r"""
     Define a squared exponential kernel.
@@ -182,45 +293,104 @@ class SquaredExponentialKernel(ScalarValuedKernel):
         return scale * k * (d - scale * squared_distance(x, y))
 
 
-class PoissonKernel(ScalarValuedKernel):
+class PCIMQKernel(ScalarValuedKernel):
     r"""
-    Define a Poisson kernel.
+    Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
 
-    Given :math:`r=` ``index``, :math:`0 < r < 1`, and :math:`\rho =` ``output_scale``,
-    the Poisson kernel is defined as
-    :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}`.
+    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+    PCIMQ kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
+    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    .. warning::
-        Unlike many other kernels in Coreax, the Poisson kernel is not defined on
-        arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
-        :math:`[0, 2\pi)`. We do not check that inputs to methods in this class lie in
-        the correct domain, therefore unexpected behaviour may occur. For example,
-        passing :math:`n`-vectors to the `compute` method will be interpreted as one
-        observation of a `:math:`n`- dimensional vector, and not :math:`n` observations
-        of a one dimensional vector, and therefore would be an invalid use of this
-        kernel function.
-
-    :param index: Kernel parameter indexing the family of Poisson kernel functions
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
     """
 
-    index: float = eqx.field(default=0.5, converter=float)
+    length_scale: float = eqx.field(default=1.0, converter=float)
     output_scale: float = eqx.field(default=1.0, converter=float)
 
     def __check_init__(self):
         """Check attributes are valid."""
-        if self.index <= 0 or self.index >= 1:
-            raise ValueError("'index' must be be between 0 and 1 exclusive")
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
         if self.output_scale <= 0:
             raise ValueError("'output_scale' must be positive")
 
     @override
     def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale / (
-            1
-            - 2 * self.index * jnp.cos(jnp.linalg.norm(jnp.subtract(x, y)))
-            + self.index**2
+        scaling = 2 * self.length_scale**2
+        mq_array = squared_distance(x, y) / scaling
+        return self.output_scale / jnp.sqrt(1 + mq_array)
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.output_scale
+            * jnp.subtract(x, y)
+            / (2 * self.length_scale**2)
+            * (self.compute_elementwise(x, y) / self.output_scale) ** 3
+        )
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        k = self.compute_elementwise(x, y) / self.output_scale
+        scale = 2 * self.length_scale**2
+        d = len(jnp.asarray(x))
+        return (
+            self.output_scale
+            / scale
+            * (d * k**3 - 3 * k**5 * squared_distance(x, y) / scale)
+        )
+
+
+class RationalQuadraticKernel(ScalarValuedKernel):
+    r"""
+    Define a rational quadratic kernel.
+
+    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
+    :math:`\alpha =``relative_weighting`, the rational quadratic kernel is defined as
+    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
+    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+
+    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
+        positive
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    :param relative_weighting: Parameter controlling the relative weighting of
+        large-scale and small-scale variations, :math:`\alpha`. As
+        :math:`alpha \to \infty` the rational quadratic kernel is identical to the
+        squared exponential kernel. Must be non-negative
+    """
+
+    length_scale: float = 1.0
+    output_scale: float = 1.0
+    relative_weighting: float = 1.0
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.length_scale <= 0:
+            raise ValueError("'length_scale' must be positive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+        if self.relative_weighting < 0:
+            raise ValueError("'relative_weighting' must be non-negative")
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return (
+            self.output_scale
+            * (
+                1
+                + squared_distance(x, y)
+                / (2 * self.relative_weighting * self.length_scale**2)
+            )
+            ** -self.relative_weighting
         )
 
     @override
@@ -229,23 +399,24 @@ class PoissonKernel(ScalarValuedKernel):
 
     @override
     def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        # Note that we do not take a norm here in order to maintain the dimensionality
-        # of the vectors x and y, this ensures calls to 'grad_y' and 'grad_x' have
-        # expected dimensionality.
-        distance = jnp.subtract(x, y)
-        return (2 * self.output_scale * self.index * jnp.sin(distance)) / (
-            1 - 2 * self.index * jnp.cos(distance) + self.index**2
-        ) ** 2
+        return (self.output_scale * jnp.subtract(x, y) / self.length_scale**2) * (
+            1
+            + squared_distance(x, y)
+            / (2 * self.relative_weighting * self.length_scale**2)
+        ) ** (-self.relative_weighting - 1)
 
     @override
     def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        distance = jnp.linalg.norm(jnp.subtract(x, y))
-        div = 1 - 2 * self.index * jnp.cos(distance) + self.index**2
-        first_term = (2 * self.output_scale * self.index * jnp.cos(distance)) / div**2
-        second_term = (
-            8 * self.output_scale * self.index**2 * jnp.sin(distance) ** 2
-        ) / div**3
-        return first_term - second_term
+        d = len(jnp.asarray(x))
+        sq_dist = squared_distance(x, y)
+        power = self.relative_weighting + 1
+        div = self.relative_weighting * self.length_scale**2
+        body = 1 + sq_dist / (2 * div)
+        factor = self.output_scale / self.length_scale**2
+
+        first_term = factor * body**-power
+        second_term = -(factor * power * sq_dist / div) * body ** -(power + 1)
+        return d * first_term + second_term
 
 
 class MaternKernel(ScalarValuedKernel):
@@ -320,137 +491,6 @@ class MaternKernel(ScalarValuedKernel):
             mapped_function = vmap(self._compute_summation_term, in_axes=(None, 0))
             summation = mapped_function(body, jnp.arange(self.degree + 1)).sum()
         return factor * summation
-
-
-class ExponentialKernel(ScalarValuedKernel):
-    r"""
-    Define an exponential kernel.
-
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
-    exponential kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
-    :math:`||\cdot||` is the usual :math:`L_2`-norm.
-
-    .. note::
-        Note that the Exponential kernel is not differentiable when :math:`x=y`.
-
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
-        positive
-    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
-    """
-
-    length_scale: float = 1.0
-    output_scale: float = 1.0
-
-    def __check_init__(self):
-        """Check attributes are valid."""
-        if self.length_scale <= 0:
-            raise ValueError("'length_scale' must be positive")
-        if self.output_scale <= 0:
-            raise ValueError("'output_scale' must be positive")
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.exp(
-            -jnp.linalg.norm(jnp.subtract(x, y)) / (2 * self.length_scale**2)
-        )
-
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return -self.grad_y_elementwise(x, y)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        sub = jnp.subtract(x, y)
-        dist = jnp.linalg.norm(sub)
-        factor = 2 * self.length_scale**2
-        return self.output_scale * sub * jnp.exp(-dist / factor) / (factor * dist)
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.asarray(x))
-        sub = jnp.subtract(x, y)
-        dist = jnp.linalg.norm(sub)
-        factor = 2 * self.length_scale**2
-        exp = jnp.exp(-dist / factor)
-
-        first_term = (-exp * sub / dist**2) * ((1 / dist) + 1 / factor)
-        second_term = exp / dist
-
-        return (self.output_scale / factor) * (
-            jnp.dot(first_term, sub) + d * second_term
-        )
-
-
-class RationalQuadraticKernel(ScalarValuedKernel):
-    r"""
-    Define a rational quadratic kernel.
-
-    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
-    :math:`\alpha =``relative_weighting`, the rational quadratic kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * (1 + \frac{||x-y||^2}{2 \alpha \lambda^2})^{-\alpha}` where
-    :math:`||\cdot||` is the usual :math:`L_2`-norm.
-
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
-        positive
-    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
-    :param relative_weighting: Parameter controlling the relative weighting of
-        large-scale and small-scale variations, :math:`\alpha`. As
-        :math:`alpha \to \infty` the rational quadratic kernel is identical to the
-        squared exponential kernel. Must be non-negative
-    """
-
-    length_scale: float = 1.0
-    output_scale: float = 1.0
-    relative_weighting: float = 1.0
-
-    def __check_init__(self):
-        """Check attributes are valid."""
-        if self.length_scale <= 0:
-            raise ValueError("'length_scale' must be positive")
-        if self.output_scale <= 0:
-            raise ValueError("'output_scale' must be positive")
-        if self.relative_weighting < 0:
-            raise ValueError("'relative_weighting' must be non-negative")
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (
-            self.output_scale
-            * (
-                1
-                + squared_distance(x, y)
-                / (2 * self.relative_weighting * self.length_scale**2)
-            )
-            ** -self.relative_weighting
-        )
-
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return -self.grad_y_elementwise(x, y)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (self.output_scale * jnp.subtract(x, y) / self.length_scale**2) * (
-            1
-            + squared_distance(x, y)
-            / (2 * self.relative_weighting * self.length_scale**2)
-        ) ** (-self.relative_weighting - 1)
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        d = len(jnp.asarray(x))
-        sq_dist = squared_distance(x, y)
-        power = self.relative_weighting + 1
-        div = self.relative_weighting * self.length_scale**2
-        body = 1 + sq_dist / (2 * div)
-        factor = self.output_scale / self.length_scale**2
-
-        first_term = factor * body**-power
-        second_term = -(factor * power * sq_dist / div) * body ** -(power + 1)
-        return d * first_term + second_term
 
 
 class PeriodicKernel(ScalarValuedKernel):
@@ -543,112 +583,6 @@ class PeriodicKernel(ScalarValuedKernel):
         return output_factor * (d * first_term + jnp.dot(second_term, sub))
 
 
-class LaplacianKernel(ScalarValuedKernel):
-    r"""
-    Define a Laplacian kernel.
-
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
-    Laplacian kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||_1}{2 \lambda^2})`  where
-    :math:`||\cdot||_1` is the :math:`L_1`-norm.
-
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
-        positive
-    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
-    """
-
-    length_scale: float = eqx.field(default=1.0, converter=float)
-    output_scale: float = eqx.field(default=1.0, converter=float)
-
-    def __check_init__(self):
-        """Check attributes are valid."""
-        if self.length_scale <= 0:
-            raise ValueError("'length_scale' must be positive")
-        if self.output_scale <= 0:
-            raise ValueError("'output_scale' must be positive")
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return self.output_scale * jnp.exp(
-            -jnp.linalg.norm(jnp.subtract(x, y), ord=1) / (2 * self.length_scale**2)
-        )
-
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return -self.grad_y_elementwise(x, y)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (
-            jnp.sign(jnp.subtract(x, y))
-            / (2 * self.length_scale**2)
-            * self.compute_elementwise(x, y)
-        )
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        k = self.compute_elementwise(x, y)
-        d = len(jnp.asarray(x))
-        return -d * k / (4 * self.length_scale**4)
-
-
-class PCIMQKernel(ScalarValuedKernel):
-    r"""
-    Define a pre-conditioned inverse multi-quadric (PCIMQ) kernel.
-
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
-    PCIMQ kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
-    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
-
-    :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
-        positive
-    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
-    """
-
-    length_scale: float = eqx.field(default=1.0, converter=float)
-    output_scale: float = eqx.field(default=1.0, converter=float)
-
-    def __check_init__(self):
-        """Check attributes are valid."""
-        if self.length_scale <= 0:
-            raise ValueError("'length_scale' must be positive")
-        if self.output_scale <= 0:
-            raise ValueError("'output_scale' must be positive")
-
-    @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        scaling = 2 * self.length_scale**2
-        mq_array = squared_distance(x, y) / scaling
-        return self.output_scale / jnp.sqrt(1 + mq_array)
-
-    @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return -self.grad_y_elementwise(x, y)
-
-    @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        return (
-            self.output_scale
-            * jnp.subtract(x, y)
-            / (2 * self.length_scale**2)
-            * (self.compute_elementwise(x, y) / self.output_scale) ** 3
-        )
-
-    @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
-        k = self.compute_elementwise(x, y) / self.output_scale
-        scale = 2 * self.length_scale**2
-        d = len(jnp.asarray(x))
-        return (
-            self.output_scale
-            / scale
-            * (d * k**3 - 3 * k**5 * squared_distance(x, y) / scale)
-        )
-
-
 class LocallyPeriodicKernel(ProductKernel):
     r"""
     Define a locally periodic kernel.
@@ -689,6 +623,72 @@ class LocallyPeriodicKernel(ProductKernel):
             length_scale=squared_exponential_length_scale,
             output_scale=squared_exponential_output_scale,
         )
+
+
+class PoissonKernel(ScalarValuedKernel):
+    r"""
+    Define a Poisson kernel.
+
+    Given :math:`r=` ``index``, :math:`0 < r < 1`, and :math:`\rho =` ``output_scale``,
+    the Poisson kernel is defined as
+    :math:`k: [0, 2\pi) \times [0, 2\pi) \to \mathbb{R}`,
+    :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}`.
+
+    .. warning::
+        Unlike many other kernels in Coreax, the Poisson kernel is not defined on
+        arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
+        :math:`[0, 2\pi)`. We do not check that inputs to methods in this class lie in
+        the correct domain, therefore unexpected behaviour may occur. For example,
+        passing :math:`n`-vectors to the `compute` method will be interpreted as one
+        observation of a `:math:`n`- dimensional vector, and not :math:`n` observations
+        of a one dimensional vector, and therefore would be an invalid use of this
+        kernel function.
+
+    :param index: Kernel parameter indexing the family of Poisson kernel functions
+    :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
+    """
+
+    index: float = eqx.field(default=0.5, converter=float)
+    output_scale: float = eqx.field(default=1.0, converter=float)
+
+    def __check_init__(self):
+        """Check attributes are valid."""
+        if self.index <= 0 or self.index >= 1:
+            raise ValueError("'index' must be be between 0 and 1 exclusive")
+        if self.output_scale <= 0:
+            raise ValueError("'output_scale' must be positive")
+
+    @override
+    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return self.output_scale / (
+            1
+            - 2 * self.index * jnp.cos(jnp.linalg.norm(jnp.subtract(x, y)))
+            + self.index**2
+        )
+
+    @override
+    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        return -self.grad_y_elementwise(x, y)
+
+    @override
+    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        # Note that we do not take a norm here in order to maintain the dimensionality
+        # of the vectors x and y, this ensures calls to 'grad_y' and 'grad_x' have
+        # expected dimensionality.
+        distance = jnp.subtract(x, y)
+        return (2 * self.output_scale * self.index * jnp.sin(distance)) / (
+            1 - 2 * self.index * jnp.cos(distance) + self.index**2
+        ) ** 2
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+        distance = jnp.linalg.norm(jnp.subtract(x, y))
+        div = 1 - 2 * self.index * jnp.cos(distance) + self.index**2
+        first_term = (2 * self.output_scale * self.index * jnp.cos(distance)) / div**2
+        second_term = (
+            8 * self.output_scale * self.index**2 * jnp.sin(distance) ** 2
+        ) / div**3
+        return first_term - second_term
 
 
 class SteinKernel(UniCompositeKernel):

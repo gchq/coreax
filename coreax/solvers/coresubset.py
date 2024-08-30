@@ -51,37 +51,6 @@ class SizeWarning(Warning):
     """Custom warning to be raised when some parameter shape is too large."""
 
 
-class HerdingState(eqx.Module):
-    """
-    Intermediate :class:`KernelHerding` solver state information.
-
-    :param gramian_row_mean: Cached Gramian row-mean.
-    """
-
-    gramian_row_mean: Array
-
-
-class RPCholeskyState(eqx.Module):
-    """
-    Intermediate :class:`RPCholesky` solver state information.
-
-    :param gramian_diagonal: Cached Gramian diagonal.
-    """
-
-    gramian_diagonal: Array
-
-
-class GreedyKernelPointsState(eqx.Module):
-    """
-    Intermediate :class:`GreedyKernelPoints` solver state information.
-
-    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
-        an additional row and column of zeros.
-    """
-
-    feature_gramian: Array
-
-
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
@@ -98,6 +67,50 @@ def _initial_coresubset(
         if len(initial_coresubset_indices) > len(dataset):
             raise ValueError(MSG) from err
         raise
+
+
+class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
+    """
+    Reduce a dataset by randomly sampling a fixed number of points.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param weighted: If to use dataset weights as selection probabilities
+    :param unique: If to sample without replacement
+    """
+
+    random_key: KeyArrayLike
+    weighted: bool = False
+    unique: bool = True
+
+    @override
+    def reduce(
+        self, dataset: _Data, solver_state: None = None
+    ) -> tuple[Coresubset, None]:
+        selection_weights = dataset.weights if self.weighted else None
+        try:
+            random_indices = jr.choice(
+                self.random_key,
+                len(dataset),
+                (self.coreset_size,),
+                p=selection_weights,
+                replace=not self.unique,
+            )
+            return Coresubset(random_indices, dataset), solver_state
+        except ValueError as err:
+            if self.coreset_size > len(dataset) and self.unique:
+                raise ValueError(MSG) from err
+            raise
+
+
+class HerdingState(eqx.Module):
+    """
+    Intermediate :class:`KernelHerding` solver state information.
+
+    :param gramian_row_mean: Cached Gramian row-mean.
+    """
+
+    gramian_row_mean: Array
 
 
 def _greedy_kernel_selection(
@@ -255,129 +268,6 @@ class KernelHerding(
         return refined_coreset, HerdingState(gramian_row_mean)
 
 
-class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
-    """
-    Reduce a dataset by randomly sampling a fixed number of points.
-
-    :param coreset_size: The desired size of the solved coreset
-    :param random_key: Key for random number generation
-    :param weighted: If to use dataset weights as selection probabilities
-    :param unique: If to sample without replacement
-    """
-
-    random_key: KeyArrayLike
-    weighted: bool = False
-    unique: bool = True
-
-    @override
-    def reduce(
-        self, dataset: _Data, solver_state: None = None
-    ) -> tuple[Coresubset, None]:
-        selection_weights = dataset.weights if self.weighted else None
-        try:
-            random_indices = jr.choice(
-                self.random_key,
-                len(dataset),
-                (self.coreset_size,),
-                p=selection_weights,
-                replace=not self.unique,
-            )
-            return Coresubset(random_indices, dataset), solver_state
-        except ValueError as err:
-            if self.coreset_size > len(dataset) and self.unique:
-                raise ValueError(MSG) from err
-            raise
-
-
-class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
-    r"""
-    Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
-
-    Solves the coresubset problem by taking a stochastic, iterative, and greedy approach
-    to approximating the Gramian of a given kernel, evaluated on the original dataset.
-
-    :param coreset_size: The desired size of the solved coreset
-    :param random_key: Key for random number generation
-    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
-        kernel function
-        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param unique: If each index in the resulting coresubset should be unique
-    """
-
-    random_key: KeyArrayLike
-    kernel: ScalarValuedKernel
-    unique: bool = True
-
-    def reduce(
-        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
-    ) -> tuple[Coresubset[_Data], RPCholeskyState]:
-        """
-        Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
-
-        This is done by first computing the kernel Gram matrix of the original data, and
-        isolating the diagonal of this. A 'pivot point' is then sampled, where sampling
-        probabilities correspond to the size of the elements on this diagonal. The
-        data-point corresponding to this pivot point is added to the coreset, and the
-        diagonal of the Gram matrix is updated to add a repulsion term of sorts -
-        encouraging the coreset to select a range of distinct points in the original
-        data. The pivot sampling and diagonal updating steps are repeated until
-        :math:`M` points have been selected.
-
-        :param dataset: The dataset to reduce to a coresubset
-        :param solver_state: Solution state information, primarily used to cache
-            expensive intermediate solution step values.
-        :return: a refined coresubset and relevant intermediate solver state information
-        """
-        x = dataset.data
-        if solver_state is None:
-            gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
-        else:
-            gramian_diagonal = solver_state.gramian_diagonal
-        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
-        coreset_indices = initial_coresubset.unweighted_indices
-        num_data_points = len(x)
-
-        def _greedy_body(
-            i: int, val: tuple[Array, Array, Array]
-        ) -> tuple[Array, Array, Array]:
-            """RPCholesky iteration - Algorithm 1 of :cite:`chen2023randomly`."""
-            residual_diagonal, approximation_matrix, coreset_indices = val
-            key = jr.fold_in(self.random_key, i)
-            pivot_point = jr.choice(
-                key, num_data_points, (), p=residual_diagonal, replace=False
-            )
-            updated_coreset_indices = coreset_indices.at[i].set(pivot_point)
-            # Remove overlap with previously chosen columns
-            g = (
-                self.kernel.compute(x, x[pivot_point])
-                - (approximation_matrix @ approximation_matrix[pivot_point])[:, None]
-            )
-            updated_approximation_matrix = approximation_matrix.at[:, i].set(
-                jnp.ravel(g / jnp.sqrt(g[pivot_point]))
-            )
-            # Track diagonal of residual matrix and ensure it remains non-negative
-            updated_residual_diagonal = jnp.clip(
-                residual_diagonal - jnp.square(approximation_matrix[:, i]), min=0
-            )
-            if self.unique:
-                # Ensures that index selected_pivot_point can't be drawn again in future
-                updated_residual_diagonal = updated_residual_diagonal.at[
-                    pivot_point
-                ].set(0.0)
-            return (
-                updated_residual_diagonal,
-                updated_approximation_matrix,
-                updated_coreset_indices,
-            )
-
-        approximation_matrix = jnp.zeros((num_data_points, self.coreset_size))
-        init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
-        output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
-        _, _, updated_coreset_indices = output_state
-        updated_coreset = Coresubset(updated_coreset_indices, dataset)
-        return updated_coreset, RPCholeskyState(gramian_diagonal)
-
-
 class SteinThinning(
     RefinementSolver[_Data, None], ExplicitSizeSolver, PaddingInvariantSolver
 ):
@@ -492,6 +382,116 @@ class SteinThinning(
             self.unroll,
         )
         return refined_coreset, solver_state
+
+
+class RPCholeskyState(eqx.Module):
+    """
+    Intermediate :class:`RPCholesky` solver state information.
+
+    :param gramian_diagonal: Cached Gramian diagonal.
+    """
+
+    gramian_diagonal: Array
+
+
+class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
+    r"""
+    Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
+
+    Solves the coresubset problem by taking a stochastic, iterative, and greedy approach
+    to approximating the Gramian of a given kernel, evaluated on the original dataset.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param unique: If each index in the resulting coresubset should be unique
+    """
+
+    random_key: KeyArrayLike
+    kernel: ScalarValuedKernel
+    unique: bool = True
+
+    def reduce(
+        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
+    ) -> tuple[Coresubset[_Data], RPCholeskyState]:
+        """
+        Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
+
+        This is done by first computing the kernel Gram matrix of the original data, and
+        isolating the diagonal of this. A 'pivot point' is then sampled, where sampling
+        probabilities correspond to the size of the elements on this diagonal. The
+        data-point corresponding to this pivot point is added to the coreset, and the
+        diagonal of the Gram matrix is updated to add a repulsion term of sorts -
+        encouraging the coreset to select a range of distinct points in the original
+        data. The pivot sampling and diagonal updating steps are repeated until
+        :math:`M` points have been selected.
+
+        :param dataset: The dataset to reduce to a coresubset
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: a refined coresubset and relevant intermediate solver state information
+        """
+        x = dataset.data
+        if solver_state is None:
+            gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
+        else:
+            gramian_diagonal = solver_state.gramian_diagonal
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
+        coreset_indices = initial_coresubset.unweighted_indices
+        num_data_points = len(x)
+
+        def _greedy_body(
+            i: int, val: tuple[Array, Array, Array]
+        ) -> tuple[Array, Array, Array]:
+            """RPCholesky iteration - Algorithm 1 of :cite:`chen2023randomly`."""
+            residual_diagonal, approximation_matrix, coreset_indices = val
+            key = jr.fold_in(self.random_key, i)
+            pivot_point = jr.choice(
+                key, num_data_points, (), p=residual_diagonal, replace=False
+            )
+            updated_coreset_indices = coreset_indices.at[i].set(pivot_point)
+            # Remove overlap with previously chosen columns
+            g = (
+                self.kernel.compute(x, x[pivot_point])
+                - (approximation_matrix @ approximation_matrix[pivot_point])[:, None]
+            )
+            updated_approximation_matrix = approximation_matrix.at[:, i].set(
+                jnp.ravel(g / jnp.sqrt(g[pivot_point]))
+            )
+            # Track diagonal of residual matrix and ensure it remains non-negative
+            updated_residual_diagonal = jnp.clip(
+                residual_diagonal - jnp.square(approximation_matrix[:, i]), min=0
+            )
+            if self.unique:
+                # Ensures that index selected_pivot_point can't be drawn again in future
+                updated_residual_diagonal = updated_residual_diagonal.at[
+                    pivot_point
+                ].set(0.0)
+            return (
+                updated_residual_diagonal,
+                updated_approximation_matrix,
+                updated_coreset_indices,
+            )
+
+        approximation_matrix = jnp.zeros((num_data_points, self.coreset_size))
+        init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
+        output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
+        _, _, updated_coreset_indices = output_state
+        updated_coreset = Coresubset(updated_coreset_indices, dataset)
+        return updated_coreset, RPCholeskyState(gramian_diagonal)
+
+
+class GreedyKernelPointsState(eqx.Module):
+    """
+    Intermediate :class:`GreedyKernelPoints` solver state information.
+
+    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
+        an additional row and column of zeros.
+    """
+
+    feature_gramian: Array
 
 
 def _greedy_kernel_points_loss(
