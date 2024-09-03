@@ -38,20 +38,20 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Shaped[Array, " d"],
-) -> Shaped[Array, " d 1"]: ...
+    arrays: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
 
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Sequence[Shaped[Array, " d"]],
-) -> List[Shaped[Array, " d 1"]]: ...
+    arrays: Sequence[Shaped[Array, " n"]],
+) -> List[Shaped[Array, " n 1"]]: ...
 
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Shaped[Array, " d"],
-) -> Shaped[Array, " d 1"]: ...
+    arrays: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
 
 
 @overload
@@ -65,16 +65,16 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
     *arrays: Union[
         Shaped[Array, " n d *p"],
         Sequence[Shaped[Array, " n d *p"]],
-        Shaped[Array, " d"],
-        Sequence[Shaped[Array, " d"]],
+        Shaped[Array, " n"],
+        Sequence[Shaped[Array, " n"]],
         Shaped[Array, ""],
         Sequence[Shaped[Array, ""]],
     ],
 ) -> Union[
     List[Shaped[Array, " n d *p"]],
     Shaped[Array, " n d *p"],
-    List[Shaped[Array, " d 1"]],
-    Shaped[Array, " d 1"],
+    List[Shaped[Array, " n 1"]],
+    Shaped[Array, " n 1"],
     List[Shaped[Array, " 1 1"]],
     Shaped[Array, " 1 1"],
 ]:
