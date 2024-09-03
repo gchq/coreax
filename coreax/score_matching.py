@@ -53,7 +53,6 @@ from jaxtyping import Shaped
 from optax import adamw
 from tqdm import tqdm
 
-from coreax.data import _atleast_2d_consistent
 from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
 from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
 from coreax.util import KeyArrayLike
@@ -406,7 +405,7 @@ class SlicedScoreMatching(ScoreMatching):
         :return: A function that applies the learned score function to input ``x``
         """
         # Format inputs
-        x = _atleast_2d_consistent(x)
+        x = jnp.atleast_2d(x)
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
@@ -540,7 +539,7 @@ class KernelDensityMatching(ScoreMatching):
             """
             # Check format
             original_number_of_dimensions = jnp.asarray(x_).ndim
-            x_ = _atleast_2d_consistent(x_)
+            x_ = jnp.atleast_2d(x_)
 
             # Get the gram matrix row-mean
             gram_matrix_row_means = self.kernel.compute_mean(x_, kde_data, axis=1)
