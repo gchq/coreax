@@ -14,7 +14,7 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Optional, Union, overload
+from typing import List, Optional, Sequence, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -25,42 +25,83 @@ from typing_extensions import Self
 
 
 @overload
-def _atleast_2d_consistent(array: Shaped[Array, " n d"]) -> Shaped[Array, " n d"]: ...
+def _atleast_2d_consistent(
+    arrays: Shaped[Array, " n d *p"],
+) -> Shaped[Array, " n d *p"]: ...
 
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    array: Shaped[Array, " d"],
+    arrays: Sequence[Shaped[Array, " n d *p"]],
+) -> List[Shaped[Array, " n d *p"]]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " d"],
 ) -> Shaped[Array, " d 1"]: ...
 
 
 @overload
-def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload],
-    array: Union[Shaped[Array, ""], float, int],
-) -> Shaped[Array, " 1 1"]: ...
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Sequence[Shaped[Array, " d"]],
+) -> List[Shaped[Array, " d 1"]]: ...
 
 
-# Seems like @jit suppresses the @overload hints unfortunately
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " d"],
+) -> Shaped[Array, " d 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Sequence[Shaped[Array, ""]],
+) -> List[Shaped[Array, " 1 1"]]: ...
+
+
 @jit
-def _atleast_2d_consistent(
-    array: Union[
-        Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    *arrays: Union[
+        Shaped[Array, " n d *p"],
+        Sequence[Shaped[Array, " n d *p"]],
+        Shaped[Array, " d"],
+        Sequence[Shaped[Array, " d"]],
+        Shaped[Array, ""],
+        Sequence[Shaped[Array, ""]],
     ],
-) -> Union[Shaped[Array, " n d"], Shaped[Array, " d 1"], Shaped[Array, " 1 1"]]:
+) -> Union[
+    List[Shaped[Array, " n d *p"]],
+    Shaped[Array, " n d *p"],
+    List[Shaped[Array, " d 1"]],
+    Shaped[Array, " d 1"],
+    List[Shaped[Array, " 1 1"]],
+    Shaped[Array, " 1 1"],
+]:
     r"""
-    Given an array, ensure it is at least 2-dimensional.
+    Given an array or sequence of arrays ensure they are at least 2-dimensional.
 
     .. note::
         This function differs from `jax.numpy.atleast_2d` in that it converts
         1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
 
-    :param array: An array of arbitrary dimension
-    :return: 2-dimensional array if dimension of ``array` is less than 2, p-dimensional
-        array if ``array`` is p-dimensional
+    :param arrays: Singular array or sequence of arrays
+    :return: 2-dimensional array or sequence of 2-dimensional arrays
     """
-    if len(array.shape) == 1:
-        return jnp.expand_dims(array, 1)
-    return jnp.array(array, copy=False, ndmin=2)
+    # If we have been given just one array, return as an array, not list
+    if len(arrays) == 1:
+        array = jnp.asarray(arrays[0], copy=False)
+        if len(array.shape) == 1:
+            return jnp.expand_dims(array, 1)
+        return jnp.array(array, copy=False, ndmin=2)
+
+    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
+    return [
+        jnp.expand_dims(array, 1)
+        if len(array.shape) == 1
+        else jnp.array(array, copy=False, ndmin=2)
+        for array in _arrays
+    ]
 
 
 class Data(eqx.Module):
