@@ -181,6 +181,8 @@ nitpick_ignore = [
     # https://github.com/gchq/coreax/issues/674
     ("py:class", "numpy.bool_"),
     ("py:class", "equinox._module.Module"),
+    ("py:class", "tqdm.std.tqdm"),
+    ("py:obj", "coreax.util.T"),
     ("py:obj", "coreax.coreset._Data"),
     ("py:obj", "coreax.solvers.composite._Data"),
     ("py:obj", "coreax.solvers.composite._Coreset"),
