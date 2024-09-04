@@ -512,5 +512,6 @@ class SilentTQDM(Generic[T]):
         """
         return iter(self.iterable)
 
-    def write(self, *_args, **_kwargs) -> None:
+    @staticmethod
+    def write(*_args, **_kwargs) -> None:
         """Do nothing instead of writing to output."""

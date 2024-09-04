@@ -176,6 +176,8 @@ nitpick_ignore = [
     ("py:class", "numpy.bool_"),
     ("py:class", "equinox._module.Module"),
     ("py:class", "coreax.coreset._Data"),
+    ("py:class", "tqdm.std.tqdm"),
+    ("py:obj", "coreax.util.T"),
     ("py:obj", "coreax.coreset._Data"),
     ("py:obj", "coreax.solvers.composite._Data"),
     ("py:obj", "coreax.solvers.composite._Coreset"),
