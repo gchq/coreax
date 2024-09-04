@@ -153,7 +153,7 @@ class Data(eqx.Module):
         .. note::
 
             When ``self`` is a `SupervisedData` instance `jnp.asarray` will return
-            a single array where the ``supervision`` columns have been
+            a single array where the ``supervision`` array has been
             right-concatenated onto the``data`` array.
         """
         if isinstance(self, SupervisedData):
