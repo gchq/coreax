@@ -148,7 +148,7 @@ class Data(eqx.Module):
         self: Union["Data", "SupervisedData"],
     ) -> Union[Shaped[Array, " n d"], Shaped[Array, " n d + p"]]:
         """
-        Return of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
+        Return value of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
 
         .. note::
 
