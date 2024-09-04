@@ -26,57 +26,47 @@ from typing_extensions import Self
 
 @overload
 def _atleast_2d_consistent(
+    arrays: Sequence[Shaped[Array, ""]],
+) -> List[Shaped[Array, " 1 1"]]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
     arrays: Shaped[Array, " n d *p"],
 ) -> Shaped[Array, " n d *p"]: ...
 
 
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Sequence[Shaped[Array, " n d *p"]],
-) -> List[Shaped[Array, " n d *p"]]: ...
-
-
-@overload
-def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Shaped[Array, " n"],
-) -> Shaped[Array, " n 1"]: ...
-
-
-@overload
-def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Sequence[Shaped[Array, " n"]],
-) -> List[Shaped[Array, " n 1"]]: ...
-
-
-@overload
-def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Shaped[Array, " n"],
-) -> Shaped[Array, " n 1"]: ...
-
-
-@overload
-def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
-    arrays: Sequence[Shaped[Array, ""]],
-) -> List[Shaped[Array, " 1 1"]]: ...
+    arrays: Sequence[
+        Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+    ],
+) -> List[
+    Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n 1"], Shaped[Array, " 1 1"]]
+]: ...
 
 
 @jit
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
     *arrays: Union[
         Shaped[Array, " n d *p"],
-        Sequence[Shaped[Array, " n d *p"]],
         Shaped[Array, " n"],
-        Sequence[Shaped[Array, " n"]],
         Shaped[Array, ""],
-        Sequence[Shaped[Array, ""]],
+        Sequence[
+            Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+        ],
     ],
 ) -> Union[
-    List[Shaped[Array, " n d *p"]],
     Shaped[Array, " n d *p"],
-    List[Shaped[Array, " n 1"]],
     Shaped[Array, " n 1"],
-    List[Shaped[Array, " 1 1"]],
     Shaped[Array, " 1 1"],
+    List[Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]],
 ]:
     r"""
     Given an array or sequence of arrays ensure they are at least 2-dimensional.
@@ -86,7 +76,7 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
         1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
 
     :param arrays: Singular array or sequence of arrays
-    :return: 2-dimensional array or sequence of 2-dimensional arrays
+    :return: at least 2-dimensional array or list of at least 2-dimensional arrays
     """
     # If we have been given just one array, return as an array, not list
     if len(arrays) == 1:
