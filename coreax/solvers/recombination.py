@@ -93,7 +93,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jaxtyping import Array, DTypeLike, Float, Real, Shaped
+from jaxtyping import Array, Bool, DTypeLike, Float, Integer, Real, Shaped
 from typing_extensions import override
 
 from coreax import Coresubset, Data
@@ -193,7 +193,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             safe_push_forward_nodes, self.rcond
         )
 
-        def _eliminate_cond(state: _EliminationState) -> bool:
+        def _eliminate_cond(state: _EliminationState) -> Bool[Array, ""]:
             """
             If to continue the iterative Gaussian-Elimination procedure.
 
@@ -358,7 +358,7 @@ def _co_linearize(
 def _resolve_null_basis(
     nodes: Shaped[Array, "n m"],
     rcond: Union[float, None] = None,
-) -> tuple[Shaped[Array, "n n"], int]:
+) -> tuple[Shaped[Array, "n n"], Integer[Array, ""]]:
     r"""
     Resolve the largest left null space basis, and its rank, for passed the node matrix.
 
@@ -379,8 +379,7 @@ def _resolve_null_basis(
         _rcond *= jnp.max(s[0])
     mask = s > _rcond
     matrix_rank = sum(mask)
-    # Static cast to `int` ensures trace-time evaluation of the null-space rank.
-    null_space_rank = int(jnp.maximum(0, nodes.shape[0] - matrix_rank))
+    null_space_rank = jnp.maximum(0, nodes.shape[0] - matrix_rank)
     largest_null_space_basis = q.T[::-1]
     return largest_null_space_basis, null_space_rank
 
