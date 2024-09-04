@@ -85,9 +85,9 @@ derivative of the log-density function. This function is required when evaluatin
 kernels. However, it can be difficult to specify analytically in practice.
 
 To resolve this, we have implemented an approximation of the score function using a
-neural network :cite:`ssm`. This approximate score function can then be passed directly
-to a Stein kernel, removing any requirement for analytical derivation. More details on
-score matching methods implemented are found in :mod:`coreax.score_matching`.
+neural network :cite:`song2020ssm`. This approximate score function can then be passed
+directly to a Stein kernel, removing any requirement for analytical derivation. More
+details on score matching methods implemented are found in :mod:`coreax.score_matching`.
 
 .. literalinclude:: snippets/score_matching.py
 

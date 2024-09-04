@@ -27,6 +27,7 @@ kernelized
 KSD
 linewidth
 mapsto
+Matern
 ml.p3.8xlarge
 ndmin
 parsable

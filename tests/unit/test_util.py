@@ -1,14 +1,16 @@
 # © Crown Copyright GCHQ
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
-# file except in compliance with the License. You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software distributed under
-# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 Tests for utility functions.
@@ -18,8 +20,10 @@ expected results on simple examples.
 """
 
 import time
-from contextlib import AbstractContextManager
-from contextlib import nullcontext as does_not_raise
+from contextlib import (
+    AbstractContextManager,
+    nullcontext as does_not_raise,
+)
 from unittest.mock import Mock
 
 import equinox as eqx
@@ -312,8 +316,12 @@ class TestUtil:
         num_runs = 10
         summary_stats, result_dict = speed_comparison_test(
             [
-                JITCompilableFunction(_slow_mean, fn_kwargs={"a": random_vector}),
-                JITCompilableFunction(jnp.mean, fn_kwargs={"a": random_vector}),
+                JITCompilableFunction(
+                    _slow_mean, fn_kwargs={"a": random_vector}, name="slow_mean"
+                ),
+                JITCompilableFunction(
+                    jnp.mean, fn_kwargs={"a": random_vector}, name="jnp_mean"
+                ),
             ],
             num_runs=num_runs,
             log_results=False,
@@ -330,14 +338,14 @@ class TestUtil:
         assert slow_mean_compilation_time > fast_mean_compilation_time > 0
 
         # Check result dictionary has the correct size
-        assert len(result_dict[0]) == num_runs
-        assert len(result_dict[1]) == num_runs
+        assert len(result_dict["slow_mean"]) == num_runs
+        assert len(result_dict["jnp_mean"]) == num_runs
 
         # Check summary stats have been computed correctly
-        assert jnp.all(result_dict[0].mean(axis=0) == summary_stats[0][0])
-        assert jnp.all(result_dict[0].std(axis=0) == summary_stats[0][1])
-        assert jnp.all(result_dict[1].mean(axis=0) == summary_stats[1][0])
-        assert jnp.all(result_dict[1].std(axis=0) == summary_stats[1][1])
+        assert jnp.all(result_dict["slow_mean"].mean(axis=0) == summary_stats[0][0])
+        assert jnp.all(result_dict["slow_mean"].std(axis=0) == summary_stats[0][1])
+        assert jnp.all(result_dict["jnp_mean"].mean(axis=0) == summary_stats[1][0])
+        assert jnp.all(result_dict["jnp_mean"].std(axis=0) == summary_stats[1][1])
 
 
 class TestSilentTQDM:

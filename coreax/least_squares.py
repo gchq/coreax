@@ -59,6 +59,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
+from jaxtyping import Shaped
 from typing_extensions import override
 
 from coreax.util import KeyArrayLike
@@ -73,17 +74,17 @@ class RegularisedLeastSquaresSolver(eqx.Module):
     :math:`B \in \mathbb{R}^{n \times m}` the least-squares solution to the regularised
     linear equation :math:`(A + \lambda I_n)B = X` has solution
     :math:`X = (A + \lambda I_n)^{-1}B` where
-    :math:`\lambda_n \in \mathbb{R}^{n\times n}` is the identity matrix.
+    :math:`I_n \in \mathbb{R}^{n\times n}` is the identity matrix.
     """
 
     @abstractmethod
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
-    ) -> Array:
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         r"""
         Compute the least-squares solution to a regularised linear matrix equation.
 
@@ -97,12 +98,12 @@ class RegularisedLeastSquaresSolver(eqx.Module):
 
     def solve_stack(
         self,
-        arrays: Array,
+        arrays: Shaped[Array, " l n n"],
         regularisation_parameter: float,
-        targets: Array,
-        identity: Array,
+        targets: Shaped[Array, " l n m"],
+        identity: Shaped[Array, " n n"],
         in_axes: Union[int, None, Sequence[Any]] = (0, None, 0, None),
-    ) -> Array:
+    ) -> Shaped[Array, " l n n"]:
         r"""
         Compute least-squares solutions to stack of regularised linear matrix equations.
 
@@ -110,11 +111,11 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         :param regularisation_parameter: Regularisation parameter for stable inversion
             of ``arrays``; negative values will be converted to positive
         :param targets: Horizontal stack of targets with shape
-            :math`l \times n \times m`
+            :math:`l \times n \times m`
         :param identity: Identity matrix
-        :param in_axes: An integer, None, or sequence of values specifying which input
-            array axes to map over. See :func:`jax.vmap` documentation for further
-            information.
+        :param in_axes: An integer, :data:`None`, or sequence of values specifying which
+            array axes of parameters to :meth:`solve` to map over. See :func:`~jax.vmap`
+            documentation for further information.
         :return: Approximation of the regularised least-squares solutions
         """
         _map_solve = jax.vmap(self.solve, in_axes=in_axes)
@@ -138,7 +139,7 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     :param rcond: Cut-off ratio for small singular values of ``array``. For the purposes
         of rank determination, singular values are treated as zero if they are smaller
         than rcond times the largest singular value of ``array``. The default value of
-        data:`None` will use the machine precision multiplied by the largest dimension
+        :data:`None` will use the machine precision multiplied by the largest dimension
         of the ``array``. An alternate value of -1 will use machine precision.
     """
 
@@ -147,11 +148,11 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
     @override
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
-    ) -> Array:
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         return jnp.linalg.lstsq(
             array + abs(regularisation_parameter) * identity,
             target,
@@ -161,19 +162,19 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
 
 def _gaussian_range_finder(
     random_key: KeyArrayLike,
-    array: Array,
+    array: Shaped[Array, " n n"],
     oversampling_parameter: int = 25,
     power_iterations: int = 1,
-) -> Array:
-    """
+) -> Shaped[Array, " n oversampling_parameter"]:
+    r"""
     Produce an orthonormal matrix whose range captures the action of an input ``array``.
 
     :param random_key: Key for random number generation
-    :param array: Array to be decomposed
+    :param array: Array :math:`A \in \mathbb{R}^{n \times n}` to be decomposed
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
-        power_iterations, the more accurate, but slower the method will be
+        ``power_iterations``, the more accurate, but slower the method will be
     :return: Orthonormal array capturing action of input ``array``
     """
     # Input handling
@@ -201,17 +202,21 @@ def _gaussian_range_finder(
     return q
 
 
-def _eigendecomposition_invert(eigenvalues: Array, eigenvectors: Array, rcond: float):
-    """
-    Given an array's eigendecomposition, return the inverse of the array.
+def _eigendecomposition_invert(
+    eigenvalues: Shaped[Array, " n r"],
+    eigenvectors: Shaped[Array, " r"],
+    rcond: float,
+) -> Shaped[Array, " n n"]:
+    r"""
+    Given an array's rank-:math:`r` eigendecomposition, return the inverse of the array.
 
     .. warning::
         We assume the order of the ``eigenvalues`` and ``eigenvectors`` correspond, i.e.
         the first element of ``eigenvalues`` is paired with the first column of
         ``eigenvectors``.
 
-    :param eigenvalues: Vector of eigenvalues
-    :param eigenvectors: Array of eigenvectors as columns
+    :param eigenvalues: Vector of :math:`r` eigenvalues
+    :param eigenvectors: :math:`n \times r` array of eigenvectors
     :param rcond: Cut-off ratio for small eigenvalues
     :return: Approximate inverse of array using its eigendecomposition
     """
@@ -242,10 +247,10 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         behaviour. We do not check this.
 
     Using Algorithm 4.4. and 5.3 from :cite:`halko2009randomness` we approximate the
-    eigendecomposition of a Hermitian matrix. The parameters `oversampling_parameter`
-    and `power_iterations` present a trade-off between speed and approximation quality.
-    See :cite:`halko2009randomness` for discussion on choosing sensible parameters; the
-    defaults chosen here are cautious.
+    eigendecomposition of a Hermitian matrix. The parameters ``oversampling_parameter``
+    and ``power_iterations`` present a trade-off between speed and approximation
+    quality. See :cite:`halko2009randomness` for discussion on choosing sensible
+    parameters; the defaults chosen here are cautious.
 
     :param random_key: Key for random number generation
     :param oversampling_parameter: Number of random columns to sample; the larger the
@@ -276,7 +281,12 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             if self.rcond < 0 and self.rcond != -1:
                 raise ValueError("'rcond' must be non-negative, except for value of -1")
 
-    def randomised_eigendecomposition(self, array: Array) -> tuple[Array, Array]:
+    def randomised_eigendecomposition(
+        self, array: Shaped[Array, " n n"]
+    ) -> tuple[
+        Shaped[Array, " oversampling_parameter"],
+        Shaped[Array, " n oversampling_parameter"],
+    ]:
         r"""
         Approximate the eigendecomposition of Hermitian matrices.
 
@@ -314,11 +324,11 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     @override
     def solve(
         self,
-        array: Array,
+        array: Shaped[Array, " n n"],
         regularisation_parameter: float,
-        target: Array,
-        identity: Array,
-    ) -> Array:
+        target: Shaped[Array, " n m"],
+        identity: Shaped[Array, " n n"],
+    ) -> Shaped[Array, " n n"]:
         # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]
         machine_precision = jnp.finfo(array.dtype).eps
