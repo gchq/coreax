@@ -60,7 +60,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.13.2
+    rev: v8.13.3
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -88,7 +88,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.6.3
     hooks:
       # Run the linter.
       - id: ruff
@@ -112,3 +112,9 @@ repos:
           - "-sn" # Don't display the score
           - "--rcfile=.pylintrc" # pylint configuration file
         exclude: "documentation/source/snippets"
+      - id: check-copyright
+        name: Check for copyright notice
+        description: Ensure a copyright notice is present at the top of each Python file
+        entry: python pre_commit_hooks/check_copyright.py
+        types: [ python ]
+        language: python

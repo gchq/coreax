@@ -27,8 +27,10 @@ from coreax.kernels.scalar_valued import (
     LaplacianKernel,
     LinearKernel,
     LocallyPeriodicKernel,
+    MaternKernel,
     PCIMQKernel,
     PeriodicKernel,
+    PoissonKernel,
     PolynomialKernel,
     RationalQuadraticKernel,
     SquaredExponentialKernel,
@@ -54,4 +56,6 @@ __all__ = [
     "DuoCompositeKernel",
     "UniCompositeKernel",
     "PowerKernel",
+    "PoissonKernel",
+    "MaternKernel",
 ]

@@ -25,7 +25,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import pytest
-from jaxtyping import ArrayLike
+from jax import Array
 
 import coreax.data
 
@@ -40,21 +40,16 @@ def test_as_data():
     assert eqx.tree_equal(coreax.data.as_data(_array), _data)
 
 
-def test_is_data():
-    """Test functionality of `is_data` filter method."""
-    assert not coreax.data.is_data(123)
-    assert coreax.data.is_data(coreax.data.Data(1))
+def test_as_supervised_data():
+    """Test functionality of `as_supervised_data` converter method."""
+    _array = jnp.array([1, 2, 3])
+    _data = coreax.data.SupervisedData(_array, _array)
+    assert eqx.tree_equal(coreax.data.as_supervised_data((_array, _array)), _data)
 
 
 @pytest.mark.parametrize(
     "arrays",
     [
-        (1,),
-        (1, 1),
-        (1.0,),
-        (1.0, 1.0),
-        (True,),
-        (False, True),
         (jnp.array(1),),
         (jnp.array(1), jnp.array(1)),
         (jnp.array([1, 1]),),
@@ -65,12 +60,6 @@ def test_is_data():
         (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
     ],
     ids=[
-        "single_int",
-        "multiple_ints",
-        "single_float",
-        "multiple_floats",
-        "single_bool",
-        "multiple_bools",
         "single_zero_dimensional_array",
         "multiple_zero_dimensional_arrays",
         "single_one_dimensional_array",
@@ -81,7 +70,7 @@ def test_is_data():
         "multiple_three_dimensional_arrays",
     ],
 )
-def test_atleast_2d_consistent(arrays: tuple[ArrayLike]) -> None:
+def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
     """Check ``atleast_2d_consistent`` returns arrays with expected dimension."""
     min_dimension = 2
     num_arrays = len(arrays)
@@ -92,19 +81,19 @@ def test_atleast_2d_consistent(arrays: tuple[ArrayLike]) -> None:
 
     if num_arrays == 1:
         array = jnp.asarray(arrays[0])
-        array_shape = array.shape
-        if len(array_shape) <= min_dimension:
+        if len(array.shape) <= min_dimension:
+            # Check we have expanded to two dimensions
             assert len(arrays_atleast_2d.shape) == min_dimension
         else:
-            assert arrays_atleast_2d.shape == array_shape
+            # Do nothing
+            assert arrays_atleast_2d.shape == array.shape
     else:
         for i in range(num_arrays):
             array = jnp.asarray(arrays[i])
-            array_shape = array.shape
-            if len(array_shape) <= min_dimension:
+            if len(array.shape) <= min_dimension:
                 assert len(arrays_atleast_2d[i].shape) == min_dimension
             else:
-                assert arrays_atleast_2d[i].shape == array_shape
+                assert arrays_atleast_2d[i].shape == array.shape
 
 
 @pytest.mark.parametrize(

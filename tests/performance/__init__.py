@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Tests to evaluate functionality, performance and end-to-end runs of the codebase.
-"""
+"""Module containing tests for performance (i.e. speed) of the package."""
