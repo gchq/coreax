@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
 within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 - Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`
+- Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
+disable tqdm progress bar terminal output. Defaults to disabled (`False`).
 
 
 ### Fixed

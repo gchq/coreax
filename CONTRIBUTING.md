@@ -2,9 +2,12 @@
 
 ## Getting started
 
-If you would like to contribute to the development of coreax, you can do so in a number of ways:
-- Highlight any bugs you encounter during usage, or any feature requests that would improve coreax by raising appropriate issues.
-- Develop solutions to open issues and create pull requests (PRs) for the development team to review.
+If you would like to contribute to the development of coreax, you can do so in a number
+of ways:
+- Highlight any bugs you encounter during usage, or any feature requests that would
+  improve coreax by raising appropriate issues.
+- Develop solutions to open issues and create pull requests (PRs) for the development
+  team to review.
 - Implement optimisations in the codebase to improve performance.
 - Contribute example usages & documentation improvements.
 - Increase awareness of coreax with other potential users.
@@ -21,15 +24,19 @@ Developers should install additional packages required for development using
 - Open a new issue:
   - For bugs use the [bug report issue template][gh-bug-report].
   - For features use the [feature request issue template][gh-feature-request].
-  - This will make the issue a candidate for inclusion in future sprints, as-well as open to the community to address.
-- If you are able to fix the bug or implement the feature, [create a pull request](#pull-requests) with the relevant changes.
+  - This will make the issue a candidate for inclusion in future sprints, as-well as
+    open to the community to address.
+- If you are able to fix the bug or implement the feature,
+  [create a pull request](#pull-requests) with the relevant changes.
 
 ## Pull requests
+
 Currently, we are using a [GitHub Flow][github-flow] development approach.
 
 - To avoid duplicate work, [search existing pull requests][gh-prs].
 - All pull requests should relate to an existing issue.
-  - If the pull request addresses something not currently covered by an issue, create a new issue first.
+  - If the pull request addresses something not currently covered by an issue, create a
+    new issue first.
 - Make changes on a [feature branch][git-feature-branch] instead of the main branch.
 - Branch names should take one of the following forms:
   - `feature/<feature-name>`: for adding, removing or refactoring a feature.
@@ -40,24 +47,31 @@ Currently, we are using a [GitHub Flow][github-flow] development approach.
 - Delete your branch once it has been merged.
 
 ### Pull request process
-- Create a [Draft pull request][pr-draft] while you are working on the changes to allow others to monitor progress and see the issue is being worked on.
+
+- Create a [Draft pull request][pr-draft] while you are working on the changes to allow
+  others to monitor progress and see the issue is being worked on.
 - Pull in changes from upstream often to minimise merge conflicts.
 - Make any required changes.
 - Resolve any conflicts with the target branch.
-- [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert back to Draft at any time.
+- [Change your PR to ready][pr-ready] when the PR is ready for review. You can convert
+  back to Draft at any time.
 
-Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its state.
-Non-Draft PRs are assumed to be open for comments; if you want feedback from specific people, `@`-mention them in a comment.
+Do **not** add labels like `[RFC]` or `[WIP]` to the title of your PR to indicate its
+state.
+Non-Draft PRs are assumed to be open for comments; if you want feedback from specific
+people, `@`-mention them in a comment.
 
 ### Pull request commenting process
+
 - Use a comment thread for each required change.
 - Reviewer closes the thread once the comment has been resolved.
 - Only the reviewer may mark a thread they opened as resolved.
 
 ### Commit messages
 
-Follow the [conventional commits guidelines][conventional_commits] to *make reviews easier* and to make the git logs more valuable.
-An example commit, including reference to some GitHub issue #123, might take the form:
+Follow the [conventional commits guidelines][conventional_commits] to
+*make reviews easier* and to make the git logs more valuable. An example commit,
+including reference to some GitHub issue #123, might take the form:
 
 ```
 feat: add gpu support for matrix multiplication
@@ -109,8 +123,9 @@ def my_new_function(x: int) -> int:
 
 ## Code
 
-Code must be documented, adequately tested and compliant with in style prior to merging into the main branch. To
-facilitate code review, code should meet these standards prior to creating a pull request.
+Code must be documented, adequately tested and compliant with in style prior to merging
+into the main branch. To facilitate code review, code should meet these standards prior
+to creating a pull request.
 
 Some of the following points are checked by pre-commit hooks, although others require
 manual implementation by authors and reviewers. Conversely, further style points that
@@ -121,7 +136,8 @@ need to be aware of them.
 
 A high level overview of the expected style is:
 - Follow [PEP 8][pep-8] style where possible.
-- Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead of k).
+- Use clear naming of variables rather than mathematical shorthand (e.g. kernel instead
+  of k).
 - [Black][black] will be applied by the pre-commit hook but will not reformat strings,
   comments or docstrings. These must be manually checked and limited to 88 characters
   per line starting from the left margin and including any indentation.
@@ -146,22 +162,29 @@ to avoid inadvertently permitting spelling errors elsewhere, e.g. add `Blu-Tack`
 instead of `Blu`.
 
 ### External dependencies
-Use standard library and existing well maintained external libraries where possible. New external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft (e.g. [LGPL][lgpl]).
+
+Use standard library and existing well maintained external libraries where possible. New
+external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyleft
+(e.g. [LGPL][lgpl]).
 
 ### Testing
+
 All tests are ran via the following [Pytest][pytest] command:
 ```bash
   pytest tests/
 ```
 Either [Pytest][pytest] or [Unittest][unittest] can be used to write tests for coreax.
-[Pytest][pytest] is recommended where it would simplify code, such as for parameterized tests. As much effort should be put into developing tests as is put into developing the code.
-Tests should be provided to test functionality and also ensuring exceptions and warnings are raised or managed appropriately. This includes:
+[Pytest][pytest] is recommended where it would simplify code, such as for parameterized
+tests. As much effort should be put into developing tests as is put into developing the
+code.
+Tests should be provided to test functionality and also ensuring exceptions and warnings
+are raised or managed appropriately. This includes:
 - Unit testing of new functions added to the codebase
 - Verifying all existing tests pass with the integrated changes
 
-Keep in mind the impact on runtime when writing your tests. Favour more tests that are smaller rather than a few large
-tests with many assert statements unless it would significantly affect run time, e.g. due to excess set up or duplicated
-function calls.
+Keep in mind the impact on runtime when writing your tests. Favour more tests that are
+smaller rather than a few large tests with many assert statements unless it would
+significantly affect run time, e.g. due to excess set up or duplicated function calls.
 
 Use the form: (actual, expected) in asserts, e.g.
 ```python
@@ -169,29 +192,40 @@ assertEqual(actualValue, expectedValue)
 ```
 
 ### Abstract functions
-Abstract methods, functions and properties should only contain a docstring. They should not contain a `pass` statement.
+
+Abstract methods, functions and properties should only contain a docstring. They should
+not contain a `pass` statement.
 
 ### Exceptions and error messages
-Custom exceptions should be derived from the most specific relevant Exception class. Custom messages should be succinct and, where easy to implement, offer suggestions to the user on how to rectify the exception.
 
-Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will be evident that the program has terminated. This enables the exception to be caught and the program to continue in the future.
+Custom exceptions should be derived from the most specific relevant Exception class.
+Custom messages should be succinct and, where easy to implement, offer suggestions to
+the user on how to rectify the exception.
+
+Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will
+be evident that the program has terminated. This enables the exception to be caught and
+the program to continue in the future.
 
 ### Docstrings
 
 Docstrings must:
-- Be written for private functions, methods and classes where their purpose or usage is not immediately obvious.
-- Be written in [reStructured Text][sphinx-rst] ready to be compiled into documentation via [Sphinx][sphinx].
+- Be written for private functions, methods and classes where their purpose or usage is
+  not immediately obvious.
+- Be written in [reStructured Text][sphinx-rst] ready to be compiled into documentation
+  via [Sphinx][sphinx].
 - Follow the [PEP 257][pep-257] style guide.
-- Not have a blank line inserted after a function or method docstring unless the following statement is a function, method or class definition.
-- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Not have a blank line inserted after a function or method docstring unless the
+  following statement is a function, method or class definition.
+- Start with a capital letter unless referring to the name of an object, in which case
+  match that case sensitively.
 - Have a full stop at the end of the one-line descriptive sentence.
 - Use full stops in extended paragraphs of text.
 - Not have full stops at the end of parameter definitions.
-- If a `:param:` or similar line requires more than the max line length, use multiple lines. Each additional line should
-  be indented by a further 4 spaces.
-- Class `__init__` methods should not have docstrings. All constructor parameters should be listed at the end of the class
-  docstring. `__init__` docstrings will not be rendered by Sphinx. Any developer comments should be contained in a regular
-  comment.
+- If a `:param:` or similar line requires more than the max line length, use multiple
+  lines. Each additional line should be indented by a further 4 spaces.
+- Class `__init__` methods should not have docstrings. All constructor parameters should
+  be listed at the end of the class docstring. `__init__` docstrings will not be
+  rendered by Sphinx. Any developer comments should be contained in a regular comment.
 
 Each docstring for a public object should take the following structure:
 ```
@@ -211,20 +245,27 @@ If the function does not return anything, the return line above can be omitted.
 ### Comments
 
 Comments must:
-- Start with a capital letter unless referring to the name of an object, in which case match that case sensitively.
+- Start with a capital letter unless referring to the name of an object, in which case
+  match that case sensitively.
 - Not end in a full stop for single-line comments in code.
 - End with a full stop for multi-line comments.
 
 ### Maths overflow
 
-Prioritise overfull lines for mathematical expressions over artificially splitting them into multiple equations in both comments and docstrings.
+Prioritise overfull lines for mathematical expressions over artificially splitting them
+into multiple equations in both comments and docstrings.
 
 ### Thousands separators
 
-For hardcoded integers >= 1000, an underscore should be written to separate the thousands, e.g. 10_000 instead of 10000.
+For hardcoded integers >= 1000, an underscore should be written to separate the
+thousands, e.g. 10_000 instead of 10000.
 
 ### Documentation and references
-The coreax documentation should reference papers and mathematical descriptions as appropriate. New references should be placed in the [`references.bib`](references.bib) file. An entry with key word `RefYY` can then be referenced within a docstring anywhere with `[RefYY]_`.
+
+The coreax documentation should reference papers and mathematical descriptions as
+appropriate. New references should be placed in the [`references.bib`](references.bib)
+file. An entry with key word `RefYY` can then be referenced within a docstring anywhere
+with `` :cite:`RefYY` ``.
 
 ### Generating docs with Sphinx
 
