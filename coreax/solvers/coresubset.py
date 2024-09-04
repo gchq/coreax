@@ -148,7 +148,10 @@ def _greedy_kernel_selection(
         unroll=unroll,
     )
 
-    def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, ArrayLike]:
+    def _greedy_body(
+        i: int,
+        val: tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]],
+    ) -> tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]]:
         coreset_indices, kernel_similarity_penalty = val
         valid_kernel_similarity_penalty = jnp.where(
             weights > 0, kernel_similarity_penalty, jnp.nan
