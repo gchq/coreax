@@ -132,10 +132,15 @@ class TestData:
         _expected_indexed_data = jtu.tree_map(lambda x: x[index], _data)
         assert eqx.tree_equal(_data[index], _expected_indexed_data)
 
-    def test_arraylike(self, data_type):
+    def test_asarray(self, data_type):
         """Test interpreting data as a JAX array."""
         _data = data_type()
-        assert eqx.tree_equal(jnp.asarray(_data), _data.data)
+        if isinstance(_data, coreax.data.SupervisedData):
+            assert eqx.tree_equal(
+                jnp.asarray(_data), jnp.hstack((_data.data, _data.supervision))
+            )
+        else:
+            assert eqx.tree_equal(jnp.asarray(_data), _data.data)
 
     def test_len(self, data_type):
         """Test length of data."""
