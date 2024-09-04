@@ -27,7 +27,17 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
 from math import log10
-from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -35,6 +45,7 @@ import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
 
 _logger = logging.getLogger(__name__)
@@ -120,7 +131,7 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
         raise ValueError("'pad_width' must be a positive integer")
     leaves_to_pad, leaves_to_keep = eqx.partition(tree, eqx.is_array)
 
-    def _pad(x: ArrayLike) -> Array:
+    def _pad(x: Shaped[Array, " n"]) -> Shaped[Array, " n + pad_width"]:
         padding = (0, int(pad_width))
         skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
         return jnp.pad(x, (padding, *skip_padding))
@@ -130,8 +141,8 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
 
 
 def apply_negative_precision_threshold(
-    x: ArrayLike, precision_threshold: float = 1e-8
-) -> Array:
+    x: Union[Shaped[Array, ""], float, int], precision_threshold: float = 1e-8
+) -> Shaped[Array, ""]:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -144,8 +155,24 @@ def apply_negative_precision_threshold(
 
 
 def pairwise(
-    fn: Callable[[ArrayLike, ArrayLike], Array],
-) -> Callable[[ArrayLike, ArrayLike], Array]:
+    fn: Callable[
+        [
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        ],
+        Shaped[Array, " *d"],
+    ],
+) -> Callable[
+    [
+        Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ],
+    Shaped[Array, " n m *d"],
+]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -155,7 +182,14 @@ def pairwise(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
+    def pairwise_fn(
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Shaped[Array, " n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
@@ -168,7 +202,10 @@ def pairwise(
 
 
 @jit
-def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate the squared distance between two vectors.
 
@@ -186,7 +223,10 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
     "will be removed in version 0.3.0"
 )
-def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance_pairwise(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     r"""
     Calculate efficient pairwise square distance between two arrays.
 
@@ -199,7 +239,10 @@ def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @jit
-def difference(x: ArrayLike, y: ArrayLike) -> Array:
+def difference(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate vector difference for a pair of vectors.
 
@@ -216,7 +259,9 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
     "Use coreax.kernels.util.median_heuristic; will be removed in version 0.3.0"
 )
 @jit
-def median_heuristic(x: ArrayLike) -> Array:
+def median_heuristic(
+    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Compute the median heuristic for setting kernel bandwidth.
 
@@ -243,7 +288,10 @@ def median_heuristic(x: ArrayLike) -> Array:
     "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
     "will be removed in version 0.3.0"
 )
-def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
+def pairwise_difference(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     r"""
     Calculate efficient pairwise difference between two arrays of vectors.
 
@@ -260,7 +308,7 @@ def sample_batch_indices(
     max_index: int,
     batch_size: int,
     num_batches: int,
-) -> Array:
+) -> Shaped[Array, " num_batches batch_size"]:
     """
     Sample an array of indices of size `num_batches` x `batch_size`.
 
@@ -438,7 +486,7 @@ def speed_comparison_test(
 T = TypeVar("T")
 
 
-class SilentTQDM:
+class SilentTQDM(Generic[T]):
     """
     Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
 
@@ -464,5 +512,6 @@ class SilentTQDM:
         """
         return iter(self.iterable)
 
-    def write(self, *_args, **_kwargs) -> None:
+    @staticmethod
+    def write(*_args, **_kwargs) -> None:
         """Do nothing instead of writing to output."""

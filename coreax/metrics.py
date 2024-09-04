@@ -31,6 +31,7 @@ import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
+from jaxtyping import Shaped
 
 import coreax.kernels
 import coreax.util
@@ -44,7 +45,9 @@ class Metric(eqx.Module, Generic[_Data]):
     """Base class for calculating metrics."""
 
     @abstractmethod
-    def compute(self, reference_data: _Data, comparison_data: _Data, **kwargs) -> Array:
+    def compute(
+        self, reference_data: _Data, comparison_data: _Data, **kwargs
+    ) -> Shaped[Array, ""]:
         r"""
         Compute the metric/distance between the reference and comparison data.
 
@@ -94,7 +97,7 @@ class MMD(Metric[Data]):
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, ""]:
         r"""
         Compute the (weighted) maximum mean discrepancy.
 
@@ -201,7 +204,7 @@ class KSD(Metric[Data]):
         block_size: Optional[int] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, ""]:
         r"""
         Compute the (regularised) (Laplace-corrected) kernel Stein discrepancy.
 
@@ -257,7 +260,7 @@ class KSD(Metric[Data]):
         if laplace_correct:
 
             @vmap
-            def _laplace_positive(x_: Array) -> Array:
+            def _laplace_positive(x_: Shaped[Array, " m d"]) -> Shaped[Array, ""]:
                 r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
                 hessian = jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()

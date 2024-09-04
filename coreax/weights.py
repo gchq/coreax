@@ -37,8 +37,8 @@ from typing import Generic, TypeVar, Union
 import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
-from jax.typing import ArrayLike
 from jaxopt import OSQP
+from jaxtyping import Shaped
 from typing_extensions import deprecated
 
 from coreax.data import Data, as_data
@@ -54,7 +54,11 @@ INVALID_KERNEL_DATA_COMBINATION = (
 )
 
 
-def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -> Array:
+def solve_qp(
+    kernel_mm: Shaped[Array, "m m"],
+    gramian_row_mean: Shaped[Array, " m 1"],
+    **osqp_kwargs,
+) -> Shaped[Array, " m"]:
     r"""
     Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
 
@@ -158,7 +162,7 @@ class WeightsOptimiser(eqx.Module, Generic[_Data]):
         dataset: _Data,
         coreset: _Data,
         epsilon: float = 1e-10,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Solve the optimisation problem, return the optimal weights.
 
@@ -210,14 +214,14 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
 
     def solve(
         self,
-        dataset: Union[Data, ArrayLike],
-        coreset: Union[Data, ArrayLike],
+        dataset: _Data,
+        coreset: _Data,
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Calculate weights from Sequential Bayesian Quadrature (SBQ).
 
@@ -278,14 +282,14 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
 
     def solve(
         self,
-        dataset: Union[Data, ArrayLike],
-        coreset: Union[Data, ArrayLike],
+        dataset: _Data,
+        coreset: _Data,
         epsilon: float = 1e-10,
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
         **solver_kwargs,
-    ) -> Array:
+    ) -> Shaped[Array, " m"]:
         r"""
         Compute optimal weights given the simplex constraint.
 

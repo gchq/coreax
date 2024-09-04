@@ -17,8 +17,10 @@
 import re
 from abc import abstractmethod
 from collections.abc import Callable
-from contextlib import AbstractContextManager
-from contextlib import nullcontext as does_not_raise
+from contextlib import (
+    AbstractContextManager,
+    nullcontext as does_not_raise,
+)
 from typing import NamedTuple, Optional, Union, cast
 from unittest.mock import MagicMock
 
