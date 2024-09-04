@@ -101,7 +101,6 @@ from coreax.solvers.base import CoresubsetSolver
 
 _Data = TypeVar("_Data", bound=Data)
 _State = TypeVar("_State")
-_ElementOfOmega = TypeVar("_ElementOfOmega", bound=Array)
 
 
 class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
@@ -278,8 +277,8 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
 
 
 def _push_forward(
-    nodes: Shaped[_ElementOfOmega, " n"],
-    test_functions: Optional[Callable[[_ElementOfOmega], Real[Array, " m-1"]]],
+    nodes: Shaped[Array, " n"],
+    test_functions: Optional[Callable[[Array], Real[Array, " m-1"]]],
     augment: bool = True,
 ) -> Shaped[Array, "n m"]:
     r"""
