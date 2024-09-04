@@ -39,10 +39,17 @@ from typing import Union
 import equinox as eqx
 import numpy as np
 from flax.training.train_state import TrainState
-from jax import Array, jvp, random, value_and_grad, vmap
-from jax import numpy as jnp
+from jax import (
+    Array,
+    jvp,
+    numpy as jnp,
+    random,
+    value_and_grad,
+    vmap,
+)
 from jax.lax import cond, fori_loop
-from jax.typing import ArrayLike, DTypeLike
+from jax.typing import DTypeLike
+from jaxtyping import Shaped
 from optax import adamw
 from tqdm import tqdm as LoudTQDM  # noqa:N812
 
@@ -64,9 +71,11 @@ class ScoreMatching(ABC, eqx.Module):
     """
 
     @abstractmethod
-    def match(self, x: ArrayLike) -> Callable[[ArrayLike], Array]:
+    def match(
+        self, x: Shaped[Array, " n d"]
+    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
         r"""
-        Match some model score function to that of a dataset ``x``.
+        Match some model score function to dataset :math:`X\in\mathbb{R}^{n \times d}`.
 
         :param x: The :math:`n \times d` data vectors
         """
@@ -75,7 +84,7 @@ class ScoreMatching(ABC, eqx.Module):
 # pylint: disable=too-many-instance-attributes
 class SlicedScoreMatching(ScoreMatching):
     r"""
-    Implementation of slice score matching, defined in :cite:`ssm`.
+    Implementation of slice score matching, defined in :cite:`song2020ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
@@ -84,7 +93,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
-    :cite:`ssm`.
+    :cite:`song2020ssm`.
 
     .. note::
         The inputs `num_random_vectors` and `num_noise_models` are set to 1 if they are
@@ -179,14 +188,14 @@ class SlicedScoreMatching(ScoreMatching):
 
     def _objective_function(
         self,
-        random_direction_vector: ArrayLike,
-        grad_score_times_random_direction_matrix: ArrayLike,
-        score_matrix: ArrayLike,
-    ):
+        random_direction_vector: Shaped[Array, " d"],
+        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
+        score_matrix: Shaped[Array, " d"],
+    ) -> float:
         """
         Compute the score matching loss function.
 
-        Two objectives are proposed in :cite:`ssm`, a general objective, and a
+        Two objectives are proposed in :cite:`song2020ssm`, a general objective, and a
         simplification with reduced variance that holds for particular assumptions. The
         choice between the two is determined by the boolean ``use_analytic`` defined
         when the class is initiated.
@@ -196,7 +205,7 @@ class SlicedScoreMatching(ScoreMatching):
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
         :return: Evaluation of score matching objective, see equations 7 and 8 in
-            :cite:`ssm`
+            :cite:`song2020ssm`
         """
         return cond(
             self.use_analytic,
@@ -209,10 +218,10 @@ class SlicedScoreMatching(ScoreMatching):
 
     @staticmethod
     def _analytic_objective(
-        random_direction_vector: Array,
-        grad_score_times_random_direction_matrix: Array,
-        score_matrix: Array,
-    ) -> Array:
+        random_direction_vector: Shaped[Array, " d"],
+        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
+        score_matrix: Shaped[Array, " d"],
+    ) -> Shaped[Array, ""]:
         """
         Compute reduced variance score matching loss function.
 
@@ -224,7 +233,8 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in :cite:`ssm`
+        :return: Evaluation of score matching objective, see equation 8 in
+            :cite:`song2020ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -234,10 +244,10 @@ class SlicedScoreMatching(ScoreMatching):
 
     @staticmethod
     def _general_objective(
-        random_direction_vector: Array,
-        grad_score_times_random_direction_matrix: Array,
-        score_matrix: Array,
-    ) -> Array:
+        random_direction_vector: Shaped[Array, " d"],
+        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
+        score_matrix: Shaped[Array, " d"],
+    ) -> Shaped[Array, ""]:
         """
         Compute general score matching loss function.
 
@@ -249,7 +259,8 @@ class SlicedScoreMatching(ScoreMatching):
         :param grad_score_times_random_direction_matrix: Product of the gradient of
             score_matrix (w.r.t. ``x``) and the random_direction_vector
         :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 7 in :cite:`ssm`
+        :return: Evaluation of score matching objective, see equation 7 in
+            :cite:`song2020ssm`
         """
         result = (
             random_direction_vector @ grad_score_times_random_direction_matrix
@@ -258,13 +269,13 @@ class SlicedScoreMatching(ScoreMatching):
         return result
 
     def _loss_element(
-        self, x: ArrayLike, v: ArrayLike, score_network: Callable
+        self, x: Shaped[Array, " d"], v: Shaped[Array, " d"], score_network: Callable
     ) -> float:
         """
         Compute element-wise loss function.
 
         Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
-        score matching :cite:`ssm`.
+        score matching :cite:`song2020ssm`.
 
         :param x: :math:`d`-dimensional data vector
         :param v: :math:`d`-dimensional random vector
@@ -294,7 +305,10 @@ class SlicedScoreMatching(ScoreMatching):
 
     @eqx.filter_jit
     def _train_step(
-        self, state: TrainState, x: ArrayLike, random_vectors: ArrayLike
+        self,
+        state: TrainState,
+        x: Shaped[Array, " n d"],
+        random_vectors: Shaped[Array, " n m d"],
     ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
@@ -320,15 +334,15 @@ class SlicedScoreMatching(ScoreMatching):
         obj: float,
         state: TrainState,
         params: dict,
-        x: Array,
-        random_vectors: ArrayLike,
-        sigmas: Array,
+        x: Shaped[Array, " n d"],
+        random_vectors: Shaped[Array, " n m d"],
+        sigmas: Shaped[Array, " num_noise_models"],
     ) -> float:
         r"""
         Sum objective function with noise perturbations.
 
         Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:`improved_sgm` for details.
+        matching. See :cite:`song2020improved_sgm` for details.
 
         :param i: Loop index
         :param obj: Running objective, i.e. the current partial sum
@@ -356,9 +370,9 @@ class SlicedScoreMatching(ScoreMatching):
     def _noise_conditional_train_step(
         self,
         state: TrainState,
-        x: Array,
-        random_vectors: Array,
-        sigmas: Array,
+        x: Shaped[Array, " n d"],
+        random_vectors: Shaped[Array, " n m d"],
+        sigmas: Shaped[Array, " num_noise_models"],
     ) -> tuple[TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
@@ -385,9 +399,11 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
-    def match(self, x: ArrayLike) -> Callable:  # noqa: C901, PLR0912
+    def match(  # noqa: C901, PLR0912
+        self, x: Shaped[Array, " n d"]
+    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
         r"""
-        Learn a sliced score matching function from Song et al.'s paper :cite:`ssm`.
+        Learn a sliced score matching function via :cite:`song2020ssm`.
 
         We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
         approximate the score function. Alternative network architectures can be
@@ -499,7 +515,9 @@ class KernelDensityMatching(ScoreMatching):
         )
         super().__init__()
 
-    def match(self, x: ArrayLike) -> Callable[[ArrayLike], Array]:
+    def match(
+        self, x: Shaped[Array, " n d"]
+    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -516,7 +534,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         kde_data = x
 
-        def score_function(x_: ArrayLike) -> Array:
+        def score_function(x_: Shaped[Array, " n d"]) -> Shaped[Array, " n d"]:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -551,7 +569,7 @@ class KernelDensityMatching(ScoreMatching):
 
 
 def convert_stein_kernel(
-    x: ArrayLike,
+    x: Shaped[Array, " n d"],
     kernel: ScalarValuedKernel,
     score_matching: Union[ScoreMatching, None],
 ) -> SteinKernel:

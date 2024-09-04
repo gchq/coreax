@@ -16,9 +16,11 @@
 
 from typing import Tuple
 
-from jax import Array
-from jax import numpy as jnp
-from jax import random as jr
+from jax import (
+    Array,
+    numpy as jnp,
+    random as jr,
+)
 
 from coreax.util import JITCompilableFunction
 

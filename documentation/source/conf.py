@@ -168,19 +168,14 @@ nitpick_ignore = [
     ("py:class", "Array"),
     ("py:class", "typing.Self"),
     ("py:class", "jaxtyping.Shaped"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n *d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n *p']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
     ("py:class", "jax._src.typing.SupportsDType"),
+    ("py:class", "'n d'"),
+    ("py:class", "'n p'"),
     # TODO: Remove once no longer supporting Numpy < 2
     # https://github.com/gchq/coreax/issues/674
     ("py:class", "numpy.bool_"),
     ("py:class", "equinox._module.Module"),
+    ("py:class", "coreax.coreset._Data"),
     ("py:class", "tqdm.std.tqdm"),
     ("py:obj", "coreax.util.T"),
     ("py:obj", "coreax.coreset._Data"),
@@ -196,8 +191,12 @@ nitpick_ignore = [
     ("py:obj", "coreax.weights._Data"),
     ("py:obj", "coreax.metrics._Data"),
     ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
+    ("py:obj", "coreax.util.T"),
 ]
 
+nitpick_ignore_regex = [
+    ("py:class", r"jaxtyping\.Shaped\[Array, '.*']"),
+]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
