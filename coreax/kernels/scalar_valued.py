@@ -137,14 +137,14 @@ class ExponentialKernel(ScalarValuedKernel):
     r"""
     Define an exponential kernel.
 
-    Given :math:`\lambda =``length_scale` and :math:`\rho =``output_scale`, the
+    Given :math:`\lambda =` ``length_scale`` and :math:`\rho =` ``output_scale``, the
     exponential kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp( -\frac{ ||x-y|| }{ 2 \lambda^2 } )` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    .. note::
-        Note that the Exponential kernel is not differentiable when :math:`x=y`.
+    .. warning::
+        The Exponential kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
