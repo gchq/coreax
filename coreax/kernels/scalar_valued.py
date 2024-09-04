@@ -143,8 +143,9 @@ class ExponentialKernel(ScalarValuedKernel):
     :math:`k(x, y) = \rho * \exp(-\frac{||x-y||}{2 \lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    .. note::
-        Note that the Exponential kernel is not differentiable when :math:`x=y`.
+    .. warning::
+
+        The exponential kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
@@ -430,6 +431,7 @@ class MaternKernel(ScalarValuedKernel):
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
 
     .. math::
+
         k(x, y) = \rho^2 * \exp\left(-\frac{\sqrt{2p+1}||x-y||}{\lambda}\right)
         \frac{p!}{(2p)!}\sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
         \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}
@@ -466,6 +468,7 @@ class MaternKernel(ScalarValuedKernel):
         Given :math:`p`=``degree``:math:`\in\mathbb{N}`, compute
 
         .. math::
+
             \gamma := \sum_{i=0}^p\frac{(p+i)!}{i!(p-i)!}
             \left(2\sqrt{2p+1}\frac{||x-y||}{\lambda}\right)^{p-i}.
 
@@ -503,18 +506,19 @@ class PeriodicKernel(ScalarValuedKernel):
     Define a periodic kernel.
 
     Given :math:`\lambda =` ``length_scale``,  :math:`\rho =` ``output_scale``, and
-    :math:`\p =` ``periodicity``, the periodic kernel is defined as
+    :math:`p =` ``periodicity``, the periodic kernel is defined as
     :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    .. note::
-        Note that the Periodic kernel is not differentiable when :math:`x=y`.
+    .. warning::
+
+        The periodic kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
     :param output_scale: Kernel normalisation constant, :math:`\rho`, must be positive
-    :param periodicity: Parameter controlling the periodicity of the kernel. :\math: `p`
+    :param periodicity: Parameter controlling the periodicity of the kernel :math:`p`
     """
 
     length_scale: float = 1.0
@@ -597,8 +601,9 @@ class LocallyPeriodicKernel(ProductKernel):
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
 
-    .. note::
-        Note that the Periodic kernel is not differentiable when :math:`x=y`.
+    .. warning::
+
+        The locally periodic kernel is not differentiable when :math:`x=y`.
 
     :param periodic_length_scale: Periodic kernel smoothing/bandwidth parameter
     :param periodic_output_scale: Periodic kernel normalisation constant
@@ -640,6 +645,7 @@ class PoissonKernel(ScalarValuedKernel):
     :math:`k(x, y) = \frac{\rho}{1 - 2r\cos(x-y) + r^2}`.
 
     .. warning::
+
         Unlike many other kernels in Coreax, the Poisson kernel is not defined on
         arbitrary :math:`\mathbb{R}^d`, but instead a subset of the positive real line
         :math:`[0, 2\pi)`. We do not check that inputs to methods in this class lie in
