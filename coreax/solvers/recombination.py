@@ -93,7 +93,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jaxtyping import Array, DTypeLike, Real, Shaped
+from jaxtyping import Array, DTypeLike, Float, Real, Shaped
 from typing_extensions import override
 
 from coreax import Coresubset, Data
@@ -101,7 +101,7 @@ from coreax.solvers.base import CoresubsetSolver
 
 _Data = TypeVar("_Data", bound=Data)
 _State = TypeVar("_State")
-Omega = TypeVar("Omega")
+_ElementOfOmega = TypeVar("_ElementOfOmega", bound=Array)
 
 
 class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
@@ -127,7 +127,7 @@ class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State
         compatible as the coreset size :math:`m^\prime` is unknown at compile time.
     """
 
-    test_functions: Optional[Callable[[Omega], Real[Array, " m-1"]]] = None
+    test_functions: Optional[Callable[[Array], Real[Array, " m-1"]]] = None
     mode: Literal["implicit-explicit", "implicit", "explicit"] = "implicit-explicit"
 
     def __check_init__(self):
@@ -140,7 +140,7 @@ class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State
 
 class _EliminationState(NamedTuple):
     weights: Shaped[Array, " n"]
-    nodes: Shaped[Array, " n m"]
+    nodes: Shaped[Array, "n m"]
     iteration: int
 
 
@@ -278,8 +278,8 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
 
 
 def _push_forward(
-    nodes: Shaped[Array, "n d"],
-    test_functions: Optional[Callable[[Omega], Real[Array, " m-1"]]],
+    nodes: Shaped[_ElementOfOmega, " n"],
+    test_functions: Optional[Callable[[_ElementOfOmega], Real[Array, " m-1"]]],
     augment: bool = True,
 ) -> Shaped[Array, "n m"]:
     r"""
@@ -374,12 +374,13 @@ def _resolve_null_basis(
     :return: The largest left null space basis and its rank, for the passed node matrix.
     """
     q, s, _ = jsp.linalg.svd(nodes, full_matrices=True)
-    rcond = _resolve_rcond(nodes.shape, s.dtype, rcond)
+    _rcond = _resolve_rcond(nodes.shape, s.dtype, rcond)
     if s.size > 0:
-        rcond *= jnp.max(s[0])
-    mask = s > rcond
+        _rcond *= jnp.max(s[0])
+    mask = s > _rcond
     matrix_rank = sum(mask)
-    null_space_rank = jnp.maximum(0, nodes.shape[0] - matrix_rank)
+    # Static cast to `int` ensures trace-time evaluation of the null-space rank.
+    null_space_rank = int(jnp.maximum(0, nodes.shape[0] - matrix_rank))
     largest_null_space_basis = q.T[::-1]
     return largest_null_space_basis, null_space_rank
 
@@ -389,7 +390,7 @@ def _resolve_null_basis(
 # pylint: enable=line-too-long
 def _resolve_rcond(
     shape: tuple[int, ...], dtype: DTypeLike, rcond: Optional[float] = None
-) -> float:
+) -> Float[Array, ""]:
     """
     Resolve the relative condition number (rcond).
 
@@ -400,13 +401,14 @@ def _resolve_rcond(
         ``rcond = dtype_floating_point_eps``
     :return: The resolved relative condition number (rcond)
     """
+    epsilon = jnp.asarray(jnp.finfo(dtype).eps, dtype)
     if rcond is None:
-        return jnp.finfo(dtype).eps * max(shape)
-    return jnp.where(rcond < jnp.asarray(0), jnp.finfo(dtype).eps, rcond)
+        return epsilon * max(shape)
+    return jnp.where(rcond < jnp.asarray(0), epsilon, rcond)
 
 
 def _coresubset_nodes(
-    push_forward_nodes: Shaped[Array, " n m"],
+    push_forward_nodes: Shaped[Array, "n m"],
     weights: Shaped[Array, " n"],
     indices: Shaped[Array, " n"],
     mode: Literal["implicit-explicit", "implicit", "explicit"],
