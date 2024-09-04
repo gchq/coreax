@@ -134,8 +134,30 @@ class Data(eqx.Module):
         """Support `Array` style indexing of `Data` objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
-    def __jax_array__(self) -> Shaped[Array, " n d"]:
-        """Register `Array` behaviour - return for `jnp.asarray(Data(...))`."""
+    @overload
+    def __jax_array__(
+        self: "Data",
+    ) -> Shaped[Array, " n d"]: ...
+
+    @overload
+    def __jax_array__(  # pyright:ignore[reportOverlappingOverload]
+        self: "SupervisedData",
+    ) -> Shaped[Array, " n d + p"]: ...
+
+    def __jax_array__(
+        self: Union["Data", "SupervisedData"],
+    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " n d + p"]]:
+        """
+        Return of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
+
+        .. note::
+
+            When ``self`` is a `SupervisedData` instance `jnp.asarray` will return
+            a single array where the ``supervision`` columns have been
+            right-concatenated onto the``data`` array.
+        """
+        if isinstance(self, SupervisedData):
+            return jnp.hstack((self.data, self.supervision))
         return self.data
 
     def __len__(self) -> int:
