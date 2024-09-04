@@ -20,14 +20,12 @@ produce the expected results on simple examples.
 """
 
 from functools import partial
-from typing import Union
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import pytest
 from jax import Array
-from jaxtyping import Shaped
 
 import coreax.data
 
@@ -50,45 +48,52 @@ def test_as_supervised_data():
 
 
 @pytest.mark.parametrize(
-    "array",
+    "arrays",
     [
-        (1,),
-        (1.0,),
         (jnp.array(1),),
+        (jnp.array(1), jnp.array(1)),
         (jnp.array([1, 1]),),
+        (jnp.array([1, 1]), jnp.array([1, 1])),
         (jnp.array([[1], [1]]),),
+        (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
         (jnp.array([[[1]], [[1]]]),),
+        (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
     ],
     ids=[
-        "int",
-        "float",
-        "zero_dimensional_array",
-        "one_dimensional_array",
-        "two_dimensional_array",
-        "three_dimensional_array",
+        "single_zero_dimensional_array",
+        "multiple_zero_dimensional_arrays",
+        "single_one_dimensional_array",
+        "multiple_one_dimensional_arrays",
+        "single_two_dimensional_array",
+        "multiple_two_dimensional_arrays",
+        "single_three_dimensional_array",
+        "multiple_three_dimensional_arrays",
     ],
 )
-def test_atleast_2d_consistent(
-    array: Union[
-        Shaped[Array, " n p"],
-        Shaped[Array, " n"],
-        Shaped[Array, ""],
-        Union[float, int],
-    ],
-) -> None:
+def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
     """Check ``atleast_2d_consistent`` returns arrays with expected dimension."""
     min_dimension = 2
+    num_arrays = len(arrays)
 
     # pylint: disable=protected-access
-    arrays_atleast_2d = coreax.data._atleast_2d_consistent(array)
+    arrays_atleast_2d = coreax.data._atleast_2d_consistent(*arrays)
     # pylint: enable=protected-access
 
-    array = jnp.asarray(array)
-    array_shape = array.shape
-    if len(array_shape) <= min_dimension:
-        assert len(arrays_atleast_2d.shape) == min_dimension
+    if num_arrays == 1:
+        array = jnp.asarray(arrays[0])
+        if len(array.shape) <= min_dimension:
+            # Check we have expanded to two dimensions
+            assert len(arrays_atleast_2d.shape) == min_dimension
+        else:
+            # Do nothing
+            assert arrays_atleast_2d.shape == array.shape
     else:
-        assert arrays_atleast_2d.shape == array_shape
+        for i in range(num_arrays):
+            array = jnp.asarray(arrays[i])
+            if len(array.shape) <= min_dimension:
+                assert len(arrays_atleast_2d[i].shape) == min_dimension
+            else:
+                assert arrays_atleast_2d[i].shape == array.shape
 
 
 @pytest.mark.parametrize(
