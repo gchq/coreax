@@ -20,7 +20,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import jit
-from jaxtyping import Array, ArrayLike, Shaped
+from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
 
@@ -134,8 +134,8 @@ class Data(eqx.Module):
         """Support `Array` style indexing of `Data` objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
-    def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
-        """Register `ArrayLike` behaviour - return for `jnp.asarray(Data(...))`."""
+    def __jax_array__(self) -> Shaped[Array, " n d"]:
+        """Register `Array` behaviour - return for `jnp.asarray(Data(...))`."""
         return self.data
 
     def __len__(self) -> int:
