@@ -34,7 +34,7 @@ and then differentiating a kernel density estimate to the data.
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Union
+from typing import Optional, Union
 
 import equinox as eqx
 import numpy as np
@@ -53,6 +53,7 @@ from jaxtyping import Shaped
 from optax import adamw
 from tqdm import tqdm as LoudTQDM  # noqa:N812
 
+from coreax.data import _atleast_2d_consistent
 from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
 from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
 from coreax.util import KeyArrayLike, SilentTQDM
@@ -73,7 +74,7 @@ class ScoreMatching(ABC, eqx.Module):
     @abstractmethod
     def match(
         self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    ) -> Callable[[Shaped[Array, " d"]], Shaped[Array, " d"]]:
         r"""
         Match some model score function to dataset :math:`X\in\mathbb{R}^{n \times d}`.
 
@@ -401,7 +402,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def match(  # noqa: C901, PLR0912
         self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    ) -> Callable[[Shaped[Array, " d"]], Shaped[Array, " d"]]:
         r"""
         Learn a sliced score matching function via :cite:`song2020ssm`.
 
@@ -410,10 +411,11 @@ class SlicedScoreMatching(ScoreMatching):
         considered.
 
         :param x: The :math:`n \times d` data vectors
-        :return: A function that applies the learned score function to input ``x``
+        :return: A vector-valued callable defining a score function
+            :math:`\mathbb{R}^d \to \mathbb{R}^d`
         """
         # Format inputs
-        x = jnp.atleast_2d(x)
+        x = _atleast_2d_consistent(x)
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
@@ -517,7 +519,7 @@ class KernelDensityMatching(ScoreMatching):
 
     def match(
         self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    ) -> Callable[[Shaped[Array, " d"]], Shaped[Array, " d"]]:
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -532,9 +534,9 @@ class KernelDensityMatching(ScoreMatching):
             that are used to build the kernel density estimate
         :return: A function that applies the learned score function to input ``x``
         """
-        kde_data = x
+        x = _atleast_2d_consistent(x)
 
-        def score_function(x_: Shaped[Array, " n d"]) -> Shaped[Array, " n d"]:
+        def score_function(y: Shaped[Array, " d"]) -> Shaped[Array, " d"]:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -542,26 +544,25 @@ class KernelDensityMatching(ScoreMatching):
             samples from the underlying distribution and then differentiating this. The
             kernel density estimate is create using a Gaussian kernel.
 
-            :param x_: The :math:`n \times d` data vectors we wish to evaluate the score
-                function at
+            :param y: The :math:`d` vector we wish to evaluate the score function at
             """
-            # Check format
-            original_number_of_dimensions = jnp.asarray(x_).ndim
-            x_ = jnp.atleast_2d(x_)
+            # Check format and that the dimension of the input vectors matches the
+            # training data.
+            y = jnp.atleast_2d(y)
+            if y.shape[1] != x.shape[1]:
+                raise ValueError(
+                    "The evaluation data does not lie in the same space as"
+                    + " the training data."
+                )
 
             # Get the gram matrix row-mean
-            gram_matrix_row_means = self.kernel.compute_mean(x_, kde_data, axis=1)
+            gram_matrix_row_means = self.kernel.compute_mean(y, x, axis=1)
 
-            # Compute gradients with respect to x
-            gradients = self.kernel.grad_x(x_, kde_data).mean(axis=1)
+            # Compute gradients with respect to y
+            gradients = self.kernel.grad_x(y, x).mean(axis=1)
 
             # Compute final evaluation of the score function
             score_result = gradients / gram_matrix_row_means[:, None]
-
-            # Ensure output format accounts for 1-dimensional inputs as-well as
-            # multi-dimensional ones
-            if original_number_of_dimensions == 1:
-                score_result = score_result[0, :]
 
             return score_result
 
@@ -571,7 +572,7 @@ class KernelDensityMatching(ScoreMatching):
 def convert_stein_kernel(
     x: Shaped[Array, " n d"],
     kernel: ScalarValuedKernel,
-    score_matching: Union[ScoreMatching, None],
+    score_matching: Optional[ScoreMatching],
 ) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernels.SteinKernel`.
