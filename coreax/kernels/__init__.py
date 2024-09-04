@@ -39,6 +39,7 @@ from coreax.kernels.scalar_valued import (
 from coreax.kernels.util import median_heuristic
 
 __all__ = [
+    "median_heuristic",
     "ScalarValuedKernel",
     "UniCompositeKernel",
     "PowerKernel",
@@ -47,7 +48,6 @@ __all__ = [
     "ProductKernel",
     "LinearKernel",
     "PolynomialKernel",
-    "median_heuristic",
     "ExponentialKernel",
     "LaplacianKernel",
     "SquaredExponentialKernel",
