@@ -36,10 +36,10 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
-from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import TYPE_CHECKING, Literal, override
 
-from coreax.data import Data
+from coreax.data import Data, _atleast_2d_consistent
 from coreax.kernels import UniCompositeKernel
 from coreax.util import KeyArrayLike
 
@@ -77,26 +77,28 @@ def _random_indices(
 
 def _random_least_squares(
     key: KeyArrayLike,
-    data: Array,
-    features: Array,
+    data: Shaped[Array, " n p"],
+    features: Shaped[Array, " n n"],
     num_indices: int,
-    target_map: Callable[[Array], Array] = lambda x: x,
-) -> Array:
+    target_map: Callable[[Shaped[Array, " n p"]], Shaped[Array, " n p"]] = lambda x: x,
+) -> Shaped[Array, " n p"]:
     r"""
     Solve the least-square problem on a random subset of the system.
 
-    A linear system :math:`Ax = b`, solved via least-squares as :math:`x = A^+ b`, can
-    be approximated by random least-square as `x \approx \hat{x} = \hat{A}^+ \hat{b}`,
-    where :math:`\hat{A} = A_i\ \text{and}\ \hat{b} = b_i\, \forall i \in I]`. `I` is a
-    random subset of indices for the original system of equations.
+    A linear system :math:`AX = B`, solved via least-squares as :math:`X = A^+ B`, can
+    be approximated by random least-square as `X \approx \hat{X} = \hat{A}^+ \hat{B}`,
+    where
+    :math:`\hat{A} = A_{i\cdot}\ \text{and}\ \hat{B} = B_{i\cdot}\, \forall i \in I]`.
+    :math:`I` is a random subset of indices for the original system of equations.
 
     :param key: RNG key for seeding the random selection
-    :param data: The data :math:`z`; yields :math:`b` when pushed through the target map
-    :param features: The feature matrix :math:`A`
+    :param data: The data :math:`Z \in \mathbb{R}^{n \times p}`; yields
+        :math:`B \in \mathbb{R}^{n \times p}` when pushed through the target map
+    :param features: The feature matrix :math:`A \in \mathbb{R}^{n \times n}`
     :param num_indices: The size of the random subset of indices :math:`I`
     :param target_map: The target map :math:`\phi` which defines :math:`b := \phi(z)`,
         where :math:`z` is the input ``data``
-    :return: The push-forward of the approximate solution :math:`A\hat{x}`
+    :return: The push-forward of the approximate solution :math:`A\hat{X}`
     """
     num_data_points = len(data)
     train_idx = _random_indices(key, num_data_points, num_indices, mode="train")
@@ -120,19 +122,19 @@ class ApproximateKernel(UniCompositeKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.base_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return self.base_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return self.base_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return self.base_kernel.divergence_x_grad_y_elementwise(x, y)
 
 
@@ -173,7 +175,18 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
+    def gramian_row_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        **kwargs,
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Monte-Carlo sampling.
 
@@ -184,17 +197,22 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
-        num_data_points = len(data)
+        # This method does not support weighted computation of the mean, therefore
+        # we need to handle the case where `x` is passed as a `Data` instance
+        if isinstance(x, Data):
+            x = x.data
+        x = _atleast_2d_consistent(x)
+
+        num_data_points = len(x)
         key = self.random_key
         features_idx = _random_indices(key, num_data_points, self.num_kernel_points - 1)
-        features = self.base_kernel.compute(data, data[features_idx])
+        features = self.base_kernel.compute(x, x[features_idx])
         return _random_least_squares(
             key,
-            data,
+            x,
             features,
             self.num_train_points,
-            partial(self.base_kernel.compute_mean, data, axis=0),
+            partial(self.base_kernel.compute_mean, x, axis=0),
         )
 
 
@@ -212,7 +230,18 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
+    def gramian_row_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        **kwargs,
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by random regression on ANNchor points.
 
@@ -224,12 +253,19 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
-        num_data_points = len(data)
-        features = jnp.zeros((num_data_points, self.num_kernel_points))
-        features = features.at[:, 0].set(self.base_kernel.compute(data, data[0])[:, 0])
+        # This method does not support weighted computation of the mean, therefore
+        # we need to handle the case where `x` is passed as a `Data` instance
+        if isinstance(x, Data):
+            x = x.data
+        x = _atleast_2d_consistent(x)
 
-        def _annchor_body(idx: int, _features: Array) -> Array:
+        num_data_points = len(x)
+        features = jnp.zeros((num_data_points, self.num_kernel_points))
+        features = features.at[:, 0].set(self.base_kernel.compute(x, x[0])[:, 0])
+
+        def _annchor_body(
+            idx: int, _features: Shaped[Array, " n num_kernel_points"]
+        ) -> Shaped[Array, " n num_kernel_points"]:
             r"""
             Execute main loop of the ANNchor construction.
 
@@ -239,17 +275,17 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
             """
             max_entry = _features.max(axis=1).argmin()
             _features = _features.at[:, idx].set(
-                self.base_kernel.compute(data, data[max_entry])[:, 0]
+                self.base_kernel.compute(x, x[max_entry])[:, 0]
             )
             return _features
 
         features = jax.lax.fori_loop(1, self.num_kernel_points, _annchor_body, features)
         return _random_least_squares(
             self.random_key,
-            data,
+            x,
             features,
             self.num_train_points,
-            partial(self.base_kernel.compute_mean, data, axis=0),
+            partial(self.base_kernel.compute_mean, x, axis=0),
         )
 
 
@@ -267,7 +303,18 @@ class NystromApproximateKernel(RandomRegressionKernel):
     :param num_train_points: Number of training points used to fit kernel regression
     """
 
-    def gramian_row_mean(self, x: Union[ArrayLike, Data], **kwargs) -> Array:
+    def gramian_row_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        **kwargs,
+    ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Nystrom approximation.
 
@@ -280,15 +327,20 @@ class NystromApproximateKernel(RandomRegressionKernel):
         :return: Approximation of the base kernel's Gramian row-mean
         """
         del kwargs
-        data = jnp.atleast_2d(jnp.asarray(x))
-        num_data_points = len(data)
+        # This method does not support weighted computation of the mean, therefore
+        # we need to handle the case where `x` is passed as a `Data` instance
+        if isinstance(x, Data):
+            x = x.data
+        x = _atleast_2d_consistent(x)
+
+        num_data_points = len(x)
         feature_idx = _random_indices(
             self.random_key, num_data_points, self.num_kernel_points
         )
-        features = self.base_kernel.compute(data, data[feature_idx])
+        features = self.base_kernel.compute(x, x[feature_idx])
         return _random_least_squares(
             self.random_key,  # intentional key reuse to ensure train_idx = feature_idx
-            data,
+            x,
             features,
             self.num_train_points,
             self.base_kernel.gramian_row_mean,

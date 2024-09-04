@@ -23,11 +23,11 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jaxtyping import Array, ArrayLike
+from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, SupervisedData, as_data
+from coreax.data import Data, SupervisedData, as_data, as_supervised_data
 from coreax.kernels import ScalarValuedKernel
 from coreax.least_squares import (
     MinimalEuclideanNormSolver,
@@ -43,8 +43,6 @@ from coreax.solvers.base import (
 from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
-
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
@@ -91,7 +89,7 @@ class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 p=selection_weights,
                 replace=not self.unique,
             )
-            return Coresubset(random_indices, dataset), solver_state
+            return Coresubset(Data(random_indices), dataset), solver_state
         except ValueError as err:
             if self.coreset_size > len(dataset) and self.unique:
                 raise ValueError(MSG) from err
@@ -110,7 +108,7 @@ class HerdingState(eqx.Module):
 
 def _greedy_kernel_selection(
     coresubset: Coresubset[_Data],
-    selection_function: Callable[[int, ArrayLike], Array],
+    selection_function: Callable[[int, Shaped[Array, " n"]], Shaped[Array, ""]],
     output_size: int,
     kernel: ScalarValuedKernel,
     unique: bool,
@@ -172,7 +170,7 @@ def _greedy_kernel_selection(
 
 
 class KernelHerding(
-    RefinementSolver[_Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
+    RefinementSolver[Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
 ):
     r"""
     Kernel Herding - an explicitly sized coresubset refinement solver.
@@ -215,17 +213,17 @@ class KernelHerding(
     @override
     def reduce(
         self,
-        dataset: _Data,
+        dataset: Data,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[_Data],
+        coresubset: Coresubset[Data],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
+    ) -> tuple[Coresubset[Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
 
@@ -254,7 +252,9 @@ class KernelHerding(
         else:
             gramian_row_mean = solver_state.gramian_row_mean
 
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+        def selection_function(
+            i: int, _kernel_similarity_penalty: Shaped[Array, " n"]
+        ) -> Shaped[Array, ""]:
             """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
             return jnp.nanargmax(
                 gramian_row_mean - _kernel_similarity_penalty / (i + 1)
@@ -398,7 +398,7 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
-class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
+class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
     r"""
     Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
 
@@ -418,8 +418,8 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
-    ) -> tuple[Coresubset[_Data], RPCholeskyState]:
+        self, dataset: Data, solver_state: Optional[RPCholeskyState] = None
+    ) -> tuple[Coresubset[Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
 
@@ -499,13 +499,13 @@ class GreedyKernelPointsState(eqx.Module):
 
 
 def _greedy_kernel_points_loss(
-    candidate_coresets: Array,
-    responses: Array,
-    feature_gramian: Array,
+    candidate_coresets: Shaped[Array, " batch_size coreset_size"],
+    responses: Shaped[Array, " n+1 1"],
+    feature_gramian: Shaped[Array, " n+1 n+1"],
     regularisation_parameter: float,
-    identity: Array,
+    identity: Shaped[Array, " coreset_size coreset_size"],
     least_squares_solver: RegularisedLeastSquaresSolver,
-) -> Array:
+) -> Shaped[Array, " batch_size"]:
     """
     Given an array of candidate coreset indices, compute the greedy KIP loss for each.
 
@@ -550,7 +550,7 @@ def _greedy_kernel_points_loss(
 
 
 class GreedyKernelPoints(
-    RefinementSolver[_SupervisedData, GreedyKernelPointsState],
+    RefinementSolver[SupervisedData, GreedyKernelPointsState],
     ExplicitSizeSolver,
 ):
     r"""
@@ -612,17 +612,17 @@ class GreedyKernelPoints(
     @override
     def reduce(
         self,
-        dataset: _SupervisedData,
+        dataset: SupervisedData,
         solver_state: Union[GreedyKernelPointsState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+    ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(  # noqa: PLR0915
         self,
-        coresubset: Coresubset[_SupervisedData],
+        coresubset: Coresubset[SupervisedData],
         solver_state: Union[GreedyKernelPointsState, None] = None,
-    ) -> tuple[Coresubset[_SupervisedData], GreedyKernelPointsState]:
+    ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         """
         Refine a coresubset with 'GreedyKernelPointsState'.
 
@@ -667,7 +667,7 @@ class GreedyKernelPoints(
             coreset_indices = coresubset.unweighted_indices
 
         # Extract features and responses
-        dataset = coresubset.pre_coreset_data
+        dataset = as_supervised_data(coresubset.pre_coreset_data)
         num_data_pairs = len(dataset)
         x, y = dataset.data, dataset.supervision
 

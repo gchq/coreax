@@ -20,11 +20,12 @@ Neural networks are used throughout the codebase as functional approximators.
 
 from collections.abc import Callable, Sequence
 
+import jax.numpy as jnp
 from flax import linen as nn
 from flax.linen import Module
 from flax.training.train_state import TrainState
-from jax import numpy as jnp
-from jax.typing import ArrayLike
+from jax import Array
+from jaxtyping import Shaped
 from optax import GradientTransformation
 
 from coreax.util import KeyArrayLike
@@ -48,11 +49,11 @@ class ScoreNetwork(nn.Module):
     output_dim: int
 
     @nn.compact
-    def __call__(self, x: ArrayLike) -> ArrayLike:
+    def __call__(self, x: Shaped[Array, " b n d"]) -> Shaped[Array, " b output_dim"]:
         r"""
         Compute forward pass through a three-layer network with softplus activations.
 
-        :param x: Batch input data :math:`b \times m \times n`
+        :param x: Batch input data :math:`b \times n \times d`
         :return: Network output on batch :math:`b \times` ``self.output_dim``
         """
         for dim in self.hidden_dims:

@@ -14,7 +14,7 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Optional, Union
+from typing import List, Optional, Sequence, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -24,8 +24,50 @@ from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import Self
 
 
+@overload
+def _atleast_2d_consistent(
+    arrays: Sequence[Shaped[Array, ""]],
+) -> List[Shaped[Array, " 1 1"]]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " n d *p"],
+) -> Shaped[Array, " n d *p"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Sequence[
+        Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+    ],
+) -> List[
+    Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n 1"], Shaped[Array, " 1 1"]]
+]: ...
+
+
 @jit
-def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    *arrays: Union[
+        Shaped[Array, " n d *p"],
+        Shaped[Array, " n"],
+        Shaped[Array, ""],
+        Sequence[
+            Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+        ],
+    ],
+) -> Union[
+    Shaped[Array, " n d *p"],
+    Shaped[Array, " n 1"],
+    Shaped[Array, " 1 1"],
+    List[Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]],
+]:
     r"""
     Given an array or sequence of arrays ensure they are at least 2-dimensional.
 
@@ -33,14 +75,16 @@ def _atleast_2d_consistent(*arrays: ArrayLike) -> Union[Array, list[Array]]:
         This function differs from `jax.numpy.atleast_2d` in that it converts
         1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
 
-    :param arrays: Singular array or list of arrays
-    :return: 2-dimensional array or list of 2-dimensional arrays
+    :param arrays: Singular array or sequence of arrays
+    :return: at least 2-dimensional array or list of at least 2-dimensional arrays
     """
+    # If we have been given just one array, return as an array, not list
     if len(arrays) == 1:
         array = jnp.asarray(arrays[0], copy=False)
         if len(array.shape) == 1:
             return jnp.expand_dims(array, 1)
         return jnp.array(array, copy=False, ndmin=2)
+
     _arrays = [jnp.asarray(array, copy=False) for array in arrays]
     return [
         jnp.expand_dims(array, 1)
@@ -71,25 +115,27 @@ class Data(eqx.Module):
         the ones vector (implies a scalar weight of one)
     """
 
-    data: Shaped[Array, " n *d"] = eqx.field(converter=_atleast_2d_consistent)
-    weights: Shaped[Array, " n"]
+    data: Shaped[Array, " n d"] = eqx.field(converter=_atleast_2d_consistent)
+    weights: Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n *d"],
-        weights: Optional[Shaped[ArrayLike, " n"]] = None,
+        data: Shaped[Array, " n d"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
-        """Initialise Data class."""
-        self.data = jnp.asarray(data)
-        n = self.data.shape[:1]
+        """Initialise `Data` class, handle non-Array weight attribute."""
+        self.data = _atleast_2d_consistent(data)
+        n = self.data.shape[0]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
     def __getitem__(self, key) -> Self:
-        """Support Array style indexing of 'Data' objects."""
+        """Support `Array` style indexing of `Data` objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
     def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
-        """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
+        """Register `ArrayLike` behaviour - return for `jnp.asarray(Data(...))`."""
         return self.data
 
     def __len__(self) -> int:
@@ -98,7 +144,7 @@ class Data(eqx.Module):
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
         """
-        Return a copy of 'self' with 'weights' that sum to one.
+        Return a copy of ``self`` with ``weights`` that sum to one.
 
         :param preserve_zeros: If to preserve zero valued weights; when all weights are
             zero valued, the 'normalized' copy will **sum to zero, not one**.
@@ -134,13 +180,15 @@ class SupervisedData(Data):
         sets the weights to the ones vector (implies a scalar weight of one)
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=_atleast_2d_consistent)
+    supervision: Shaped[Array, " n p"] = eqx.field(converter=_atleast_2d_consistent)
 
     def __init__(
         self,
         data: Shaped[Array, " n d"],
-        supervision: Shaped[Array, " n *p"],
-        weights: Optional[Shaped[Array, " n"]] = None,
+        supervision: Shaped[Array, " n p"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
@@ -154,11 +202,13 @@ class SupervisedData(Data):
             )
 
 
-def as_data(x: Any) -> Data:
-    """Cast 'x' to a data instance."""
+def as_data(x: Union[Shaped[Array, " n d"], Data]) -> Data:
+    """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
-def is_data(x: Any) -> bool:
-    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
-    return isinstance(x, Data)
+def as_supervised_data(
+    xy: Union[tuple[Shaped[Array, " n d"], Shaped[Array, " n p"]], SupervisedData],
+) -> SupervisedData:
+    """Cast ``xy`` to a `SupervisedData` instance."""
+    return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)

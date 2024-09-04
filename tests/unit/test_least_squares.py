@@ -21,8 +21,10 @@ simple examples.
 """
 
 from abc import ABC, abstractmethod
-from contextlib import AbstractContextManager
-from contextlib import nullcontext as does_not_raise
+from contextlib import (
+    AbstractContextManager,
+    nullcontext as does_not_raise,
+)
 from typing import Generic, NamedTuple, TypeVar, Union
 
 import jax.numpy as jnp
