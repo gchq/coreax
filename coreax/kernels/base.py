@@ -49,31 +49,28 @@ forms of :meth:`ScalarValuedKernel.divergence_x_grad_y` are significantly cheape
 compute than the automatic differentiated default.
 """
 
-# Support class typing annotations inside itself
-from __future__ import annotations
-
 from abc import abstractmethod
-from typing import Union
+from typing import Any, Literal, Optional, Union, overload
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, grad, jacrev
-from jax.typing import ArrayLike
+from jaxtyping import Shaped
 from typing_extensions import override
 
-from coreax.data import Data, is_data
+from coreax.data import Data
 from coreax.kernels.util import _block_data_convert
 from coreax.util import pairwise, tree_leaves_repeat
 
 
-class ScalarValuedKernel(eqx.Module):
+class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     """Abstract base class for scalar-valued kernels."""
 
     def __add__(
-        self, addition: Union[ScalarValuedKernel, int, float]
-    ) -> AdditiveKernel:
+        self, addition: Union["ScalarValuedKernel", int, float]
+    ) -> "AdditiveKernel":
         """Overload `+` operator."""
         if isinstance(addition, (int, float)):
             return AdditiveKernel(self, _Constant(addition))
@@ -85,12 +82,14 @@ class ScalarValuedKernel(eqx.Module):
         )
 
     def __radd__(
-        self, addition: Union[ScalarValuedKernel, int, float]
-    ) -> AdditiveKernel:
+        self, addition: Union["ScalarValuedKernel", int, float]
+    ) -> "AdditiveKernel":
         """Overload right `+` operator, order is mathematically irrelevant."""
         return self.__add__(addition)
 
-    def __mul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
+    def __mul__(
+        self, product: Union["ScalarValuedKernel", int, float]
+    ) -> "ProductKernel":
         """Overload `*` operator."""
         if isinstance(product, (int, float)):
             return ProductKernel(self, _Constant(product))
@@ -101,11 +100,13 @@ class ScalarValuedKernel(eqx.Module):
             + "an integer or a float"
         )
 
-    def __rmul__(self, product: Union[ScalarValuedKernel, int, float]) -> ProductKernel:
+    def __rmul__(
+        self, product: Union["ScalarValuedKernel", int, float]
+    ) -> "ProductKernel":
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 
-    def __pow__(self, power: int) -> PowerKernel:
+    def __pow__(self, power: int) -> "PowerKernel":
         """
         Overload `**` operator.
 
@@ -117,7 +118,27 @@ class ScalarValuedKernel(eqx.Module):
         """
         return PowerKernel(self, power)
 
-    def compute(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def compute(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m"]: ...
+
+    @overload
+    def compute(  # pyright: ignore[reportOverlappingOverload]
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1"]: ...
+
+    def compute(
+        self,
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Union[Shaped[Array, " n m"], Shaped[Array, "1 1"]]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
 
@@ -137,7 +158,11 @@ class ScalarValuedKernel(eqx.Module):
         return pairwise(self.compute_elementwise)(x, y)
 
     @abstractmethod
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
 
@@ -149,7 +174,34 @@ class ScalarValuedKernel(eqx.Module):
         :return: Kernel evaluated at (``x``, ``y``)
         """
 
-    def grad_x(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_x(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m d"]: ...
+
+    @overload
+    def grad_x(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Shaped[Array, " 1 1 d"]: ...
+
+    @overload
+    def grad_x(
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1 1"]: ...
+
+    def grad_x(
+        self,
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Union[
+        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
+    ]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
@@ -165,7 +217,34 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.grad_x_elementwise)(x, y)
 
-    def grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_y(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m d"]: ...
+
+    @overload
+    def grad_y(  # pyright: ignore[reportOverlappingOverload]
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Shaped[Array, " 1 1 d"]: ...
+
+    @overload
+    def grad_y(
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1 1"]: ...
+
+    def grad_y(
+        self,
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Union[
+        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
+    ]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
@@ -181,7 +260,23 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.grad_y_elementwise)(x, y)
 
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_x_elementwise(
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Shaped[Array, " d"]: ...
+
+    @overload
+    def grad_x_elementwise(
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, ""]: ...
+
+    def grad_x_elementwise(
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -198,7 +293,23 @@ class ScalarValuedKernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 0)(x, y)
 
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def grad_y_elementwise(
+        self, x: Shaped[Array, " d"], y: Shaped[Array, " d"]
+    ) -> Shaped[Array, " d"]: ...
+
+    @overload
+    def grad_y_elementwise(
+        self,
+        x: Union[Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, ""]: ...
+
+    def grad_y_elementwise(
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -215,7 +326,27 @@ class ScalarValuedKernel(eqx.Module):
         """
         return grad(self.compute_elementwise, 1)(x, y)
 
-    def divergence_x_grad_y(self, x: ArrayLike, y: ArrayLike) -> Array:
+    @overload
+    def divergence_x_grad_y(
+        self, x: Shaped[Array, " n d"], y: Shaped[Array, " m d"]
+    ) -> Shaped[Array, " n m"]: ...
+
+    @overload
+    def divergence_x_grad_y(
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, " 1 1"]: ...
+
+    def divergence_x_grad_y(
+        self,
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Union[Shaped[Array, " n m"], Shaped[Array, " 1 1"]]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -231,7 +362,11 @@ class ScalarValuedKernel(eqx.Module):
         """
         return pairwise(self.divergence_x_grad_y_elementwise)(x, y)
 
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(
+        self,
+        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    ) -> Shaped[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -251,11 +386,18 @@ class ScalarValuedKernel(eqx.Module):
 
     def gramian_row_mean(
         self,
-        x: Union[ArrayLike, Data],
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[Array, " n"]:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
 
@@ -269,15 +411,104 @@ class ScalarValuedKernel(eqx.Module):
         """
         return self.compute_mean(x, x, axis=0, block_size=block_size, unroll=unroll)
 
+    @overload
     def compute_mean(
         self,
-        x: Union[ArrayLike, Data],
-        y: Union[ArrayLike, Data],
-        axis: Union[int, None] = None,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: Literal[0] = 0,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Array:
+    ) -> Shaped[Array, " #m"]: ...
+
+    @overload
+    def compute_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: Literal[1] = 1,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Shaped[Array, " #n"]: ...
+
+    @overload
+    def compute_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: None = None,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Shaped[Array, ""]: ...
+
+    def compute_mean(
+        self,
+        x: Union[
+            Shaped[Array, " n d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        y: Union[
+            Shaped[Array, " m d"],
+            Shaped[Array, " d"],
+            Shaped[Array, ""],
+            float,
+            int,
+            Data,
+        ],
+        axis: Optional[int] = None,
+        *,
+        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
+        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    ) -> Union[Shaped[Array, " n"], Shaped[Array, " m"], Shaped[Array, ""]]:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 
@@ -329,14 +560,26 @@ class ScalarValuedKernel(eqx.Module):
         if axis == 0:
             operands = operands[::-1]
             _block_size = _block_size[::-1]
+
+        def _is_data(x: Any) -> bool:
+            """Return boolean indicating if ``x`` is an instance of `Data`."""
+            return isinstance(x, Data)
+
         (block_x, unpadded_len_x), (block_y, _) = jtu.tree_map(
-            _block_data_convert, operands, tuple(_block_size), is_leaf=is_data
+            _block_data_convert,
+            operands,
+            tuple(_block_size),
+            is_leaf=_is_data,
         )
 
-        def block_sum(accumulated_sum: Array, x_block: Data) -> tuple[Array, Array]:
+        def block_sum(
+            accumulated_sum: Shaped[Array, ""], x_block: Data
+        ) -> tuple[Array, Array]:
             """Block reduce/accumulate over ``x``."""
 
-            def slice_sum(accumulated_sum: Array, y_block: Data) -> tuple[Array, Array]:
+            def slice_sum(
+                accumulated_sum: Shaped[Array, ""], y_block: Data
+            ) -> tuple[Array, Array]:
                 """Block reduce/accumulate over ``y``."""
                 x_, w_x = x_block.data, x_block.weights
                 y_, w_y = y_block.data, y_block.weights
@@ -373,23 +616,22 @@ class _Constant(ScalarValuedKernel):
             )
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return jnp.asarray(self.constant)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return jnp.asarray(0)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return jnp.asarray(0)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return jnp.asarray(0)
 
 
-# pylint: disable=abstract-method
 class UniCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap one scalar-valued kernel.
@@ -406,9 +648,6 @@ class UniCompositeKernel(ScalarValuedKernel):
                 "'base_kernel' must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
-
-
-# pylint: enable=abstract-method
 
 
 class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
@@ -435,11 +674,11 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
             )
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.base_kernel.compute_elementwise(x, y) ** self.power
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return (
             self.power
             * self.base_kernel.grad_x_elementwise(x, y)
@@ -447,7 +686,7 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return (
             self.power
             * self.base_kernel.grad_y_elementwise(x, y)
@@ -455,7 +694,7 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         n = self.power
         compute = self.base_kernel.compute_elementwise(x, y)
         return n * (
@@ -473,7 +712,6 @@ class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
         )
 
 
-# pylint: disable=abstract-method
 class DuoCompositeKernel(ScalarValuedKernel):
     """
     Abstract base class for kernels that compose/wrap two scalar-valued kernels.
@@ -497,9 +735,6 @@ class DuoCompositeKernel(ScalarValuedKernel):
             )
 
 
-# pylint: enable=abstract-method
-
-
 class AdditiveKernel(DuoCompositeKernel):
     r"""
     Define a kernel which is a summation of two kernels.
@@ -514,25 +749,25 @@ class AdditiveKernel(DuoCompositeKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         return self.first_kernel.compute_elementwise(
             x, y
         ) + self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         return self.first_kernel.grad_x_elementwise(
             x, y
         ) + self.second_kernel.grad_x_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         return self.first_kernel.grad_y_elementwise(
             x, y
         ) + self.second_kernel.grad_y_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         return self.first_kernel.divergence_x_grad_y_elementwise(
             x, y
         ) + self.second_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -552,7 +787,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
     """
 
     @override
-    def compute_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def compute_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return self.first_kernel.compute_elementwise(x, y) ** 2
         return self.first_kernel.compute_elementwise(
@@ -560,7 +795,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.second_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_x_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_x_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -576,7 +811,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def grad_y_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return (
                 2
@@ -592,7 +827,7 @@ class ProductKernel(DuoCompositeKernel, ScalarValuedKernel):
         ) * self.first_kernel.compute_elementwise(x, y)
 
     @override
-    def divergence_x_grad_y_elementwise(self, x: ArrayLike, y: ArrayLike) -> Array:
+    def divergence_x_grad_y_elementwise(self, x, y):
         if self.first_kernel == self.second_kernel:
             return 2 * (
                 self.first_kernel.grad_x_elementwise(x, y).dot(

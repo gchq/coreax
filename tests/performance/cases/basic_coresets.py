@@ -21,8 +21,10 @@ These were adapted from the `test_herding_basic` integration test.
 import functools
 
 import numpy as np
-from jax import numpy as jnp
-from jax import random
+from jax import (
+    numpy as jnp,
+    random,
+)
 from sklearn.datasets import make_blobs
 
 from coreax import (
