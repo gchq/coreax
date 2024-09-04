@@ -144,7 +144,7 @@ class ExponentialKernel(ScalarValuedKernel):
     :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     .. warning::
-        The Exponential kernel is not differentiable when :math:`x=y`.
+        The exponential kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
@@ -497,14 +497,14 @@ class PeriodicKernel(ScalarValuedKernel):
     r"""
     Define a periodic kernel.
 
-    Given :math:`\lambda =``length_scale`,  :math:`\rho =``output_scale`, and
-    :math:`\p =``periodicity`, the periodic kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \rho * \exp(\frac{-2 \sin^2(\pi ||x-y||/p)}{\lambda^2})` where
-    :math:`||\cdot||` is the usual :math:`L_2`-norm.
+    Given :math:`\lambda =` ``length_scale``,  :math:`\rho =` ``output_scale``, and
+    :math:`\p =` ``periodicity``, the periodic kernel is defined as
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k(x, y) = \rho * \exp ( \frac{ -2 \sin^2( \pi ||x-y|| / p ) }{ \lambda^2 } )`
+    where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
-    .. note::
-        Note that the Periodic kernel is not differentiable when :math:`x=y`.
+    .. Warning::
+        The periodic kernel is not differentiable when :math:`x=y`.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
         positive
@@ -588,12 +588,12 @@ class LocallyPeriodicKernel(ProductKernel):
     Define a locally periodic kernel.
 
     The periodic kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
 
-    .. note::
-        Note that the Periodic kernel is not differentiable when :math:`x=y`.
+    .. Warning::
+        The locally periodic kernel is not differentiable when :math:`x=y`.
 
     :param periodic_length_scale: Periodic kernel smoothing/bandwidth parameter
     :param periodic_output_scale: Periodic kernel normalisation constant
