@@ -36,7 +36,15 @@ jobs:
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
         run: |
-          python tests/performance/compare.py $RUNNER_TEMP/performance.json $RUNNER_TEMP/historic > $RUNNER_TEMP/comment.md
+          # save the commit subject to a file in case it contains any shell
+          # special characters
+          git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
+          python tests/performance/compare.py \
+            $RUNNER_TEMP/performance.json \
+            $RUNNER_TEMP/historic \
+            --commit-short-hash $(git log -1 --pretty=%h) \
+            --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
+            > $RUNNER_TEMP/comment.md
           cat $RUNNER_TEMP/comment.md
       - name: Comment performance update on PR
         if: github.event_name == 'pull_request'

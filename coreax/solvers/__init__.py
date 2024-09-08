@@ -32,6 +32,11 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.recombination import (
+    CaratheodoryRecombination,
+    RecombinationSolver,
+    TreeRecombination,
+)
 
 __all__ = [
     "Solver",
@@ -49,4 +54,7 @@ __all__ = [
     "RPCholesky",
     "GreedyKernelPointsState",
     "GreedyKernelPoints",
+    "RecombinationSolver",
+    "CaratheodoryRecombination",
+    "TreeRecombination",
 ]

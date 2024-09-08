@@ -65,7 +65,7 @@ class FullPerformanceData(TypedDict):
     normalisation: NormalisationData
 
 
-def parse_args() -> Tuple[Path, Path]:
+def parse_args() -> Tuple[Path, Path, str, Path]:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -75,8 +75,19 @@ def parse_args() -> Tuple[Path, Path]:
         "reference_directory",
         help="The directory containing historic performance data.",
     )
+    parser.add_argument(
+        "--commit-short-hash", help="The abbreviated hash of the commit."
+    )
+    parser.add_argument(
+        "--commit-subject-file", help="A file containing the commit's subject line."
+    )
     args = parser.parse_args()
-    return Path(args.performance_file), Path(args.reference_directory)
+    return (
+        Path(args.performance_file),
+        Path(args.reference_directory),
+        args.commit_short_hash,
+        Path(args.commit_subject_file),
+    )
 
 
 def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
@@ -171,7 +182,15 @@ def main() -> None:  # noqa: C901
     """Run the command-line script."""
     print("## Performance review")
 
-    performance_file, reference_directory = parse_args()
+    performance_file, reference_directory, commit_short_hash, commit_subject_file = (
+        parse_args()
+    )
+    with open(commit_subject_file, "r", encoding="utf8") as f:
+        # escape any underscores to avoid formatting weirdness
+        commit_subject = f.read().strip().replace("_", r"\_")
+
+    print(f"###### Commit `{commit_short_hash}` - _{commit_subject}_")
+
     with open(performance_file, "r", encoding="utf8") as f:
         current_performance_data: dict = json.load(f)
     historic_performance_data = get_most_recent_historic_data(reference_directory)
