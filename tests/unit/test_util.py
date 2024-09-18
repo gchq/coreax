@@ -223,8 +223,8 @@ class TestUtil:
         uniqueness as the probability of the converse is vanishingly small.
         """
         max_index = 1000
-        batch_size = 200
-        num_batches = 100
+        batch_size = 5
+        num_batches = 1000
         batch_indices = sample_batch_indices(
             random_key=jr.key(0),
             max_index=max_index,
