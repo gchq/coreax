@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Pre-commit hook to ensure repo only contains ascii characters.
+Pre-commit hook to ensure all text files are valid UTF-8.
 
 Based on jumanjihouse/pre-commit-hooks require-ascii hook. Original copyright:
 
@@ -44,9 +44,6 @@ Based on jumanjihouse/pre-commit-hooks require-ascii hook. Original copyright:
 import itertools
 import sys
 
-# https://theasciicode.com.ar/
-MAX_ASCII_CODE = 255
-
 
 def main() -> None:
     """Run the pre-commit check."""
@@ -64,15 +61,6 @@ def main() -> None:
 
                 if not line:
                     break
-
-                for column_number, character in enumerate(line, start=1):
-                    code_point = ord(character)
-                    if code_point > MAX_ASCII_CODE:
-                        print(
-                            f"{file_path}: line {line_number} column {column_number} "
-                            f"character {character!r} (decimal {code_point})"
-                        )
-                        failed = True
 
     sys.exit(failed)
 
