@@ -47,7 +47,7 @@ repos:
       - id: require-utf8
         name: Check file encoding
         description: Ensure file is valid UTF-8
-        entry: python pre_commit_hooks/require_ascii.py
+        entry: python pre_commit_hooks/require_utf8.py
         language: python
         exclude:
           (?x)^(
