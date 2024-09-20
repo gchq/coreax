@@ -43,10 +43,10 @@ repos:
           - --unique
   - repo: local
     hooks:
-      # Check for non-ascii characters in files
-      - id: require-ascii
+      # Check files are valid UTF-8
+      - id: require-utf8
         name: Check file encoding
-        description: Ensure file is ascii-encoded
+        description: Ensure file is valid UTF-8
         entry: python pre_commit_hooks/require_ascii.py
         language: python
         exclude:
