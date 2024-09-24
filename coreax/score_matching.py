@@ -413,12 +413,9 @@ class SlicedScoreMatching(ScoreMatching):
         :return: A function that applies the learned score function to input ``x``
         """
         # Check format of input array. We use atleast_2d from JAX to perform
-        # conversions here. This is faster than using the custom function
-        # _atleast_2d_consistent in coreax.data, and whilst these two functions
-        # differ in output for 1-dimensional arrays, the computations inside of this
-        # function will match even in this case. This speed difference is noticeable
-        # when we use KernelDensityMatching in conjunction with a Stein kernel,
-        # where the score function may be called a huge number of times.
+        # conversions here which provides the desired handling of 1 dimensional arrays,
+        # whereas this handling differs if we instead used the custom function
+        # _atleast_2d_consistent in coreax.data,
         x = jnp.atleast_2d(x)
 
         # Setup neural network that will approximate the score function
@@ -552,12 +549,10 @@ class KernelDensityMatching(ScoreMatching):
                 function at
             """
             # Check format of input array. We use atleast_2d from JAX to perform
-            # conversions here. This is faster than using the custom function
-            # _atleast_2d_consistent in coreax.data, and whilst these two functions
-            # differ in output for 1-dimensional arrays, the computations inside of this
-            # function will match even in this case. This speed difference is noticeable
-            # when we use KernelDensityMatching in conjunction with a Stein kernel,
-            # where the score function may be called a huge number of times.
+            # conversions here. If we instead used the custom function
+            # _atleast_2d_consistent in coreax.data, we would require more
+            # processing when calling the methods on the kernel and the output values
+            # from these methods can differ from the expected outputs.
             original_number_of_dimensions = jnp.asarray(x_).ndim
             x_ = jnp.atleast_2d(x_)
 

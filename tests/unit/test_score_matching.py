@@ -264,6 +264,33 @@ class TestKernelDensityMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
 
+    def test_handling_of_1d_input(self) -> None:
+        """
+        Verify how the score function behaves when given a one-dimensional input.
+        """
+        data = jnp.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        matcher = KernelDensityMatching(length_scale=1)
+        score_function = matcher.match(data)
+
+        # Define data to evaluate the score function at - we consider the same
+        # data-point but given in two different shapes
+        data_1d = jnp.array([1, 2])
+        data_2d = jnp.array([[1, 2]])
+
+        # When we evaluate the score function with a 1 dimensional input, we expect the
+        # resulting score function to be 1 dimensional, which ensures compatibility with
+        # Stein kernel usage
+        np.testing.assert_array_equal(
+            score_function(data_1d), jnp.array([0.03597286, 0.03597286])
+        )
+
+        # When we evaluate the score function with a 2 dimensional input that holds a
+        # single data-point, we expect the resulting score function to be 2 dimensional,
+        # holding exactly the same values as above, but with an extra dimension
+        np.testing.assert_array_equal(
+            score_function(data_2d), jnp.array([[0.03597286, 0.03597286]])
+        )
+
 
 class TestSlicedScoreMatching(unittest.TestCase):
     """
