@@ -139,7 +139,9 @@ class SlicedScoreMatching(ScoreMatching):
     gamma: float
     progress_bar: Union[type[LoudTQDM], type[SilentTQDM]]
 
-    # pylint: disable=too-many-arguments
+    # TODO: refactor this to require use of keyword arguments
+    # https://github.com/gchq/coreax/issues/782
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(  # noqa: PLR0913, PLR0917
         self,
         random_key: KeyArrayLike,

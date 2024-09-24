@@ -455,29 +455,32 @@ def speed_comparison_test(
         if log_results:
             if normalisation:
                 _logger.info(
-                    "Compilation time: "
-                    + f"{mean[0].item():.4g} units ± "
-                    + f"{std[0].item():.4g} units"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Compilation time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[0].item(),
+                    std[0].item(),
+                    num_runs,
                 )
                 _logger.info(
-                    "Execution time: "
-                    + f"{mean[1].item():.4g} units ± "
-                    + f"{std[1].item():.4g} units"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Execution time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[1].item(),
+                    std[1].item(),
+                    num_runs,
                 )
             else:
                 _logger.info(
-                    "Compilation time: "
-                    + f"{format_time(mean[0].item())} ± "
-                    + f"{format_time(std[0].item())}"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Compilation time: %s ± %s per run "
+                    "(mean ± std. dev. of %s runs)",
+                    format_time(mean[0].item()),
+                    format_time(std[0].item()),
+                    num_runs,
                 )
                 _logger.info(
-                    "Execution time: "
-                    + f"{format_time(mean[1].item())} ± "
-                    + f"{format_time(std[1].item())}"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Execution time: %s ± %s per run (mean ± std. dev. of %s runs)",
+                    format_time(mean[1].item()),
+                    format_time(std[1].item()),
+                    num_runs,
                 )
 
     return results, timings_dict
