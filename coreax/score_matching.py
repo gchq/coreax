@@ -414,7 +414,10 @@ class SlicedScoreMatching(ScoreMatching):
         :param x: The :math:`n \times d` data vectors
         :return: A function that applies the learned score function to input ``x``
         """
-        # Format inputs
+        # Check format of input array. We use atleast_2d from JAX to perform
+        # conversions here which provides the desired handling of 1 dimensional arrays,
+        # whereas this handling differs if we instead used the custom function
+        # _atleast_2d_consistent in coreax.data.
         x = jnp.atleast_2d(x)
 
         # Setup neural network that will approximate the score function
@@ -547,7 +550,11 @@ class KernelDensityMatching(ScoreMatching):
             :param x_: The :math:`n \times d` data vectors we wish to evaluate the score
                 function at
             """
-            # Check format
+            # Check format of input array. We use atleast_2d from JAX to perform
+            # conversions here. If we instead used the custom function
+            # _atleast_2d_consistent in coreax.data, we would require more
+            # processing when calling the methods on the kernel and the output values
+            # from these methods can differ from the expected outputs.
             original_number_of_dimensions = jnp.asarray(x_).ndim
             x_ = jnp.atleast_2d(x_)
 
