@@ -45,7 +45,10 @@ disable tqdm progress bar terminal output. Defaults to disabled (`False`).
 
 ### Removed
 
-
+- `coreax.weights.MMD` - deprecated alias for `coreax.weights.MMDWeightsOptimiser`; deprecated since version 0.2.0.
+- `coreax.weights.SBQ` - deprecated alias for `coreax.weights.SBQWeightsOptimiser`; deprecated since version 0.2.0.
+- `coreax.util.squared_distance_pairwise` - deprecated alias for `coreax.util.pairwise(squared_distance)`; deprecated since version 0.2.0.
+- `coreax.util.pairwise_difference` - deprecated alias for `coreax.util.pairwise(difference)`; deprecated since version 0.2.0.
 
 ### Deprecated
 - All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.
