@@ -415,7 +415,7 @@ class SlicedScoreMatching(ScoreMatching):
         # Check format of input array. We use atleast_2d from JAX to perform
         # conversions here which provides the desired handling of 1 dimensional arrays,
         # whereas this handling differs if we instead used the custom function
-        # _atleast_2d_consistent in coreax.data,
+        # _atleast_2d_consistent in coreax.data.
         x = jnp.atleast_2d(x)
 
         # Setup neural network that will approximate the score function
