@@ -71,41 +71,44 @@ from coreax.kernels.scalar_valued import (
 
 # pylint:disable = abstract-method
 @deprecated(
-    "Renamed to `ScalarValuedKernel`; "
-    + " moved to `coreax.kernels.base.ScalarValuedKernel`; "
-    + " will be removed in version 0.4.0"
+    "Renamed to `ScalarValuedKernel`;"
+    + " moved to `coreax.kernels.base.ScalarValuedKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class Kernel(_ScalarValuedKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ScalarValuedKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Renamed to `UniCompositeKernel`; "
-    + " moved to `coreax.kernels.base.UniCompositeKernel`; "
-    + " will be removed in version 0.4.0"
+    "Renamed to `UniCompositeKernel`;"
+    + " moved to `coreax.kernels.base.UniCompositeKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class CompositeKernel(_UniCompositeKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.UniCompositeKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Renamed to `DuoCompositeKernel`; "
-    + " moved to `coreax.kernels.base.DuoCompositeKernel`; "
-    + " will be removed in version 0.4.0"
+    "Renamed to `DuoCompositeKernel`;"
+    + " moved to `coreax.kernels.base.DuoCompositeKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class PairedKernel(_DuoCompositeKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.DuoCompositeKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
@@ -113,142 +116,156 @@ class PairedKernel(_DuoCompositeKernel):
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.AdditiveKernel`;  will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.AdditiveKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class AdditiveKernel(_AdditiveKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.AdditiveKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.ProductKernel`;  will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.ProductKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class ProductKernel(_ProductKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ProductKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class LinearKernel(_LinearKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.LinearKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.LinearKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class PolynomialKernel(_PolynomialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PolynomialKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.SquaredExponentialKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.SquaredExponentialKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class SquaredExponentialKernel(_SquaredExponentialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.SquaredExponentialKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.ExponentialKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.ExponentialKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class ExponentialKernel(_ExponentialKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.ExponentialKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.RationalQuadraticKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.RationalQuadraticKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class RationalQuadraticKernel(_RationalQuadraticKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.RationalQuadraticKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.PeriodicKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.PeriodicKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class PeriodicKernel(_PeriodicKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PeriodicKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.LocallyPeriodicKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.LocallyPeriodicKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class LocallyPeriodicKernel(_LocallyPeriodicKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.LocallyPeriodicKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.LaplacianKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.LaplacianKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class LaplacianKernel(_LaplacianKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.SquaredExponentialKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.PCIMQKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.PCIMQKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class PCIMQKernel(_PCIMQKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PCIMQKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """
 
 
 @deprecated(
-    "Moved to `coreax.kernels.base.scalar_valued.SteinKernel`; "
-    + " will be removed in version 0.4.0"
+    "Moved to `coreax.kernels.base.scalar_valued.SteinKernel`."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 class SteinKernel(_SteinKernel):
     """
     Deprecated reference to :class:`~coreax.kernels.PCIMQKernel`.
 
-    Will be removed in version 0.4.0
+    Deprecated since version 0.3.0. Will be removed in version 0.4.0.
     """

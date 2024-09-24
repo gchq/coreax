@@ -96,7 +96,9 @@ or class entirely, the deprecation period must instead be at least **two minor r
 or two months (whichever is longer).**
 
 Ensure that during the deprecation period, the old behaviour still works, but raises a
-`DeprecationWarning` with an appropriate message. If at all possible, ensure that there
+`DeprecationWarning` with an appropriate message (which should include which version
+the behaviour is deprecated since, and which version the deprecated behaviour is
+expected to be removed in). If at all possible, ensure that there
 is straightforward signposting for how users should change their code to use
 non-deprecated parts of the codebase instead.
 
@@ -112,7 +114,10 @@ def my_old_function(x: int) -> int:
 def my_new_function(x: int) -> int:
     return x*4
 
-@deprecated("Renamed to my_new_function; will be removed in v0.3.0")
+@deprecated(
+    "Renamed to my_new_function."
+    + " Deprecated since v0.2.0; will be removed in v0.3.0."
+)
 def my_old_function(x: int) -> int:
     return my_new_function(x)
 

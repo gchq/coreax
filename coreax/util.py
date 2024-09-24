@@ -237,7 +237,9 @@ def difference(
 
 
 @deprecated(
-    "Use coreax.kernels.util.median_heuristic; will be removed in version 0.4.0"
+    "Use coreax.kernels.util.median_heuristic instead."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 @jit
 def median_heuristic(
