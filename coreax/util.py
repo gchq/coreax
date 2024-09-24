@@ -219,25 +219,6 @@ def squared_distance(
     return jnp.dot(x - y, x - y)
 
 
-@deprecated(
-    "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
-    "will be removed in version 0.3.0"
-)
-def squared_distance_pairwise(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
-    r"""
-    Calculate efficient pairwise square distance between two arrays.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
-        :math:`n \times m` array
-    """
-    return pairwise(squared_distance)(x, y)
-
-
 @jit
 def difference(
     x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
@@ -282,25 +263,6 @@ def median_heuristic(
     )
 
     return jnp.sqrt(median_square_distance / 2.0)
-
-
-@deprecated(
-    "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
-    "will be removed in version 0.3.0"
-)
-def pairwise_difference(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
-    r"""
-    Calculate efficient pairwise difference between two arrays of vectors.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between ``x_array`` and ``y_array`` as an
-        :math:`n \times m \times d` array
-    """
-    return pairwise(difference)(x, y)
 
 
 def sample_batch_indices(
