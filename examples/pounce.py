@@ -175,6 +175,7 @@ def main(
     plt.xlabel("Frame")
     plt.ylabel("Chosen")
     plt.tight_layout()
+    plt.show()
     if out_path is not None:
         plt.savefig(out_path / "pounce_frames.png")
     plt.close()
