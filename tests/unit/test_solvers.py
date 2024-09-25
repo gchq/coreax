@@ -850,6 +850,34 @@ class TestMapReduce(SolverTest):
             solver_factory.keywords["base_solver"] = base_solver
             solver_factory()
 
+    def test_mapreduce_diverse_selection(self):
+        """Check if MapReduce returns indices from multiple partitions."""
+        dataset_size = 40
+        data_dim = 5
+        coreset_size = 6
+        leaf_size = 12
+
+        key = jr.PRNGKey(0)
+        dataset = jr.normal(key, shape=(dataset_size, data_dim))
+
+        kernel = SquaredExponentialKernel()
+        base_solver = KernelHerding(coreset_size=coreset_size, kernel=kernel)
+
+        solver = MapReduce(base_solver=base_solver, leaf_size=leaf_size)
+        coreset, _ = solver.reduce(Data(dataset))
+        selected_indices = coreset.nodes.data
+
+        # Check if there are indices beyond the first few
+        assert jnp.any(
+            selected_indices >= coreset_size
+        ), "MapReduce should select points beyond the first few"
+
+        # Check if there are indices from different partitions
+        partitions_represented = jnp.unique(selected_indices // leaf_size)
+        assert (
+            len(partitions_represented) > 1
+        ), "MapReduce should select points from multiple partitions"
+
 
 class TestCaratheodoryRecombination(RecombinationSolverTest):
     """Tests for :class:`coreax.solvers.recombination.CaratheodoryRecombination`."""
