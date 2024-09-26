@@ -850,7 +850,7 @@ class TestMapReduce(SolverTest):
             solver_factory.keywords["base_solver"] = base_solver
             solver_factory()
 
-    def test_mapreduce_diverse_selection(self):
+    def test_map_reduce_diverse_selection(self):
         """Check if MapReduce returns indices from multiple partitions."""
         dataset_size = 40
         data_dim = 5
