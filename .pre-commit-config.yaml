@@ -43,11 +43,11 @@ repos:
           - --unique
   - repo: local
     hooks:
-      # Check for non-ascii characters in files
-      - id: require-ascii
+      # Check files are valid UTF-8
+      - id: require-utf8
         name: Check file encoding
-        description: Ensure file is ascii-encoded
-        entry: python pre_commit_hooks/require_ascii.py
+        description: Ensure file is valid UTF-8
+        entry: python pre_commit_hooks/require_utf8.py
         language: python
         exclude:
           (?x)^(
@@ -88,7 +88,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.3
+    rev: v0.6.7
     hooks:
       # Run the linter.
       - id: ruff
