@@ -174,8 +174,9 @@ class MapReduce(
         coreset = eqx.tree_at(
             lambda x: x.pre_coreset_data, coreset_wrong_pre_coreset_data, dataset
         )
-        if isinstance(coreset, Coresubset):
-            coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
+        if _indices is not None:
+            if isinstance(coreset, Coresubset):
+                coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
         return coreset, output_solver_state
 
 
@@ -222,4 +223,11 @@ def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _D
         return node_indices.reshape(n_leaves, -1).astype(np.int32)
 
     indices = jax.pure_callback(_binary_tree, result_shape, padded_dataset)
-    return dataset[indices], indices
+    return dataset[indices], jnp.arange(len(dataset))[indices]
+
+
+# If you are dividing a dataset of size 20 to three partitions of size 8,
+# then your indices will exceed the len(dataset) - 1,
+# at the moment the last entry in dataset is chosen for every index
+# that is out of bounds, it might be worth considering
+# if choosing a datapoint randomly makes more sense
