@@ -597,7 +597,7 @@ class LocallyPeriodicKernel(ProductKernel):
     Define a locally periodic kernel.
 
     The periodic kernel is defined as
-    :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
+    :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = r(x,y)l(x,y)` where :math:`r` is the periodic kernel and
     :math:`l` is the squared exponential kernel.
 

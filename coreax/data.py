@@ -142,11 +142,11 @@ class Data(eqx.Module):
     @overload
     def __jax_array__(  # pyright:ignore[reportOverlappingOverload]
         self: "SupervisedData",
-    ) -> Shaped[Array, " n d + p"]: ...
+    ) -> Shaped[Array, " n d+p"]: ...
 
     def __jax_array__(
         self: Union["Data", "SupervisedData"],
-    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " n d + p"]]:
+    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " n d+p"]]:
         """
         Return value of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
 
