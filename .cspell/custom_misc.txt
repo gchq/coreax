@@ -33,6 +33,7 @@ ndmin
 parsable
 PCIMQ
 phdthesis
+pmatrix
 PMLR
 primaryclass
 PRNG
