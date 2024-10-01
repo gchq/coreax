@@ -172,10 +172,17 @@ class RecombinationSolverTest(SolverTest):
 
     @override
     @pytest.fixture(
-        params=["random", "partial-null", "null", "full_rank", "rank_deficient"],
+        params=[
+            "random",
+            "partial-null",
+            "null",
+            "full_rank",
+            "rank_deficient",
+            "excessive_test_functions",
+        ],
         scope="class",
     )
-    def reduce_problem(
+    def reduce_problem(  # noqa: C901 complex-structure
         self, request: pytest.FixtureRequest, solver_factory: Union[Solver, jtu.Partial]
     ) -> _ReduceProblem:
         node_key, weight_key, rng_key = jr.split(self.random_key, num=3)
@@ -202,6 +209,11 @@ class RecombinationSolverTest(SolverTest):
             def test_functions(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
+        elif request.param == "excessive_test_functions":
+
+            def test_functions(x):
+                del x
+                return jnp.zeros((len(nodes) + 1,))
         else:
             raise ValueError("Invalid fixture parametrization")
         solver_factory.keywords["test_functions"] = test_functions
@@ -217,12 +229,12 @@ class RecombinationSolverTest(SolverTest):
 
         In addition to the standard checks in the parent class we also check:
         1. Check 'sum(coreset.weights)' is one.
-        1. Check 'len(coreset)' is less than or equal to the upper bound `m`.
-        2. Check 'len(coreset[idx]) where idx = jnp.nonzero(coreset.weights)' is less
+        2. Check 'len(coreset)' is less than or equal to the upper bound `m`.
+        3. Check 'len(coreset[idx]) where idx = jnp.nonzero(coreset.weights)' is less
             than or equal to the rank, :math:`m^\prime`, of the pushed forward nodes.
-        3. Check the push-forward of the coreset preserves the "centre-of-mass" (CoM) of
+        4. Check the push-forward of the coreset preserves the "centre-of-mass" (CoM) of
             the pushed-forward dataset (with implicit and explicit zero weight removal).
-        4. Check the default value of 'test_functions' is the identity map.
+        5. Check the default value of 'test_functions' is the identity map.
         """
         super().check_solution_invariants(coreset, problem)
         dataset, solver, _ = problem
@@ -244,7 +256,7 @@ class RecombinationSolverTest(SolverTest):
             jnp.ones_like(dataset.weights), pushed_forward_nodes
         ]
         rank = jnp.linalg.matrix_rank(augmented_pushed_forward_nodes)
-        max_rank = augmented_pushed_forward_nodes.shape[-1]
+        max_rank = min(len(dataset.data), augmented_pushed_forward_nodes.shape[-1])
         assert rank <= max_rank
         non_zero = jnp.flatnonzero(coreset_weights)
         if solver.mode == "implicit-explicit":
