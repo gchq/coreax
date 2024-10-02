@@ -149,7 +149,7 @@ intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://jax.readthedocs.io/en/latest/", None),
     "jaxopt": ("https://jaxopt.github.io/stable/", None),
-    "flax": ("https://flax.readthedocs.io/en/latest/", None),
+    "flax": ("https://flax-linen.readthedocs.io/en/latest", None),
     "optax": ("https://optax.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
