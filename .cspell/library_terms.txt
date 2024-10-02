@@ -37,6 +37,7 @@ finfo
 flatnonzero
 fori_loop
 fracv
+fromiter
 furo
 genindex
 hstack
@@ -57,6 +58,7 @@ jaxopt
 jaxtyping
 jumanjihouse
 keepends
+leggauss
 linalg
 linkcheck
 literalinclude
@@ -88,6 +90,7 @@ optax
 OSQP
 params_ineq
 pinv
+polyval
 pvalue
 pybtex
 pycodestyle
