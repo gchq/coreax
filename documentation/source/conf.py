@@ -147,15 +147,15 @@ if RUNNING_IN_GITHUB_ACTIONS:
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
-    "jax": ("https://jax.readthedocs.io/en/latest/", None),
-    "jaxopt": ("https://jaxopt.github.io/stable/", None),
+    "jax": ("https://jax.readthedocs.io/en/latest", None),
+    "jaxopt": ("https://jaxopt.github.io/stable", None),
     "flax": ("https://flax-linen.readthedocs.io/en/latest", None),
-    "optax": ("https://optax.readthedocs.io/en/latest/", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "matplotlib": ("https://matplotlib.org/stable/", None),
-    "sklearn": ("https://scikit-learn.org/stable/", None),
-    "tqdm": ("https://tqdm.github.io/docs/", str(TQDM_CUSTOM_PATH)),
-    "equinox": ("https://docs.kidger.site/equinox/", None),
+    "optax": ("https://optax.readthedocs.io/en/latest", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
+    "tqdm": ("https://tqdm.github.io/docs", str(TQDM_CUSTOM_PATH)),
+    "equinox": ("https://docs.kidger.site/equinox", None),
 }
 
 nitpick_ignore = [
