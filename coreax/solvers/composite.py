@@ -16,7 +16,6 @@
 
 import math
 import warnings
-from types import NoneType
 from typing import Generic, Optional, TypeVar, Union
 
 import equinox as eqx
@@ -37,7 +36,7 @@ BinaryTree: TypeAlias = Union[KDTree, BallTree]
 _Data = TypeVar("_Data", bound=Data)
 _Coreset = TypeVar("_Coreset", Coreset, Coresubset)
 _State = TypeVar("_State")
-_Indices = TypeVar("_Indices", ArrayLike, NoneType)
+_Indices = TypeVar("_Indices", ArrayLike, None)
 
 
 class CompositeSolver(
