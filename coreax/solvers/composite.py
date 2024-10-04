@@ -147,16 +147,13 @@ class MapReduce(
                 x, _ = self.base_solver.reduce(partition)
                 return x.coreset, x.nodes.data
 
-            def get_indices(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
-                return a[b]
-
             partitioned_dataset, partitioned_indices = _jit_tree(
                 data, self.leaf_size, self.tree_type
             )
             # Reduce each partition and get indices from each
             coreset_ensemble, ensemble_indices = jax.vmap(wrapper)(partitioned_dataset)
             # Calculate the indices with respect to the original data
-            concatenated_indices = jax.vmap(get_indices)(
+            concatenated_indices = jax.vmap(lambda x, index: x[index])(
                 partitioned_indices, ensemble_indices
             )
             concatenated_indices = jnp.ravel(concatenated_indices)
@@ -169,7 +166,7 @@ class MapReduce(
             return _reduce_coreset(_coreset, final_indices)
 
         (coreset, output_solver_state, _indices) = _reduce_coreset(dataset)
-        # Replace the pre-coreset data by the original dataset
+        # Correct the pre-coreset data and the indices
         coreset = eqx.tree_at(lambda x: x.pre_coreset_data, coreset, dataset)
         if _indices is not None:
             if isinstance(coreset, Coresubset):
@@ -177,7 +174,9 @@ class MapReduce(
         return coreset, output_solver_state
 
 
-def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _Data:
+def _jit_tree(
+    dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]
+) -> tuple[_Data, _Indices]:
     """
     Return JIT compatible BinaryTree partitioning of 'dataset'.
 
@@ -220,4 +219,4 @@ def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _D
         return node_indices.reshape(n_leaves, -1).astype(np.int32)
 
     indices = jax.pure_callback(_binary_tree, result_shape, padded_dataset)
-    return dataset[indices], jnp.arange(len(dataset))[indices]
+    return padded_dataset[indices], jnp.arange(len(dataset))[indices]
