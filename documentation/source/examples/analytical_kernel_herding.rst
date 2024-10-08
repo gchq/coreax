@@ -17,9 +17,7 @@ and choose a ``length_scale`` of :math:`\frac{1}{\sqrt{2}}` to simplify computat
 with the ``SquaredExponentialKernel``, in particular it becomes:
 
 .. math::
-    k(x, y) = e^{-||x - y||^2}
-
-in this example.
+    k(x, y) = e^{-||x - y||^2}.
 
 Kernel herding should do as follows:
     - Compute the Gramian row mean, that is for each data-point :math:`x` and all other
@@ -135,6 +133,90 @@ This example would be run in coreax using:
     # Generate the coreset, using equinox to JIT compile the code and speed up
     # generation for larger datasets
     data = Data(x)
+    solver = KernelHerding(coreset_size=coreset_size, kernel=kernel, unique=True)
+    coreset, solver_state = eqx.filter_jit(solver.reduce)(data)
+
+    # Inspect results
+    print(coreset.unweighted_indices)  # The coreset_indices
+    print(coreset.coreset.data)  # The data-points in the coreset
+    print(solver_state.gramian_row_mean)  # The stored gramian_row_mean
+
+Coreax also supports weighted data. If we have the same data as described above, but
+weights of:
+
+.. math::
+    w = \begin{pmatrix}
+        0.8 \\
+        0.1 \\
+        0.1
+    \end{pmatrix}
+
+we would expect a different resulting coreset. The computation of the gramian
+row mean, :math:`\mathbb{E}[k(x, x')]`, becomes:
+
+.. math::
+    \mathbb{E}[k(x, x')] = \begin{pmatrix}
+        0.8 \cdot k([0.3, 0.25]', [0.3, 0.25]') + 0.1 \cdot k([0.3, 0.25]', [0.4, 0.2]') + 0.1 \cdot k([0.3, 0.25]', [0.5, 0.125]') \\
+        0.8 \cdot  k([0.4, 0.2]', [0.3, 0.25]') + 0.1 \cdot k([0.4, 0.2]', [0.4, 0.2]') + 0.1 \cdot k([0.4, 0.2]', [0.5, 0.125]') \\
+        0.8 \cdot  k([0.5, 0.125]', [0.3, 0.25]') + 0.1 \cdot k([0.5, 0.125]', [0.4, 0.2]') + 0.1 \cdot k([0.5, 0.125]', [0.5, 0.125]')
+    \end{pmatrix}
+
+resulting in:
+
+.. math::
+    \mathbb{E}[k(x, x')] = \begin{pmatrix}
+        0.9933471580051769 \\
+        0.988511884095646 \\
+        0.9551646673468503
+    \end{pmatrix}
+
+The largest value in this array is 0.9933471580051769, so we expect the first coreset
+point to be [0.3  0.25], that is the data-point at index 0 in the dataset. At this point
+we have ``coreset_indices`` as [0, ?].
+
+We then compute the penalty update term
+:math:`\frac{1}{T+1}\sum_{t=1}^T k(x, x_t)` with :math:`T = 1` and get:
+
+.. math::
+    \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+        0.5 \\
+        0.4937889002469407 \\
+        0.4729468897789434
+    \end{pmatrix}
+
+Finally, we select the next coreset point to maximise:
+
+.. math::
+    \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+        0.4933471580051769 \\
+        0.49472298384870533 \\
+        0.48221777756790696
+    \end{pmatrix}
+
+which means our final ``coreset_indices`` should be [0, 1]. In coreax, this example
+would be run as:
+
+.. code-block::
+
+    from coreax import Data, SquaredExponentialKernel, KernelHerding
+    import equinox as eqx
+
+    # Define the data
+    coreset_size = 2
+    length_scale = 1.0 / jnp.sqrt(2)
+    x = jnp.array([
+        [0.3, 0.25],
+        [0.4, 0.2],
+        [0.5, 0.125],
+    ])
+    weights = jnp.array([0.8, 0.1, 0.1])
+
+    # Define a kernel
+    kernel = SquaredExponentialKernel(length_scale=length_scale)
+
+    # Generate the coreset, using equinox to JIT compile the code and speed up
+    # generation for larger datasets
+    data = Data(x, weights=weights)
     solver = KernelHerding(coreset_size=coreset_size, kernel=kernel, unique=True)
     coreset, solver_state = eqx.filter_jit(solver.reduce)(data)
 
