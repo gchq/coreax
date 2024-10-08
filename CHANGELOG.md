@@ -23,7 +23,7 @@ disable tqdm progress bar terminal output. Defaults to disabled (`False`).
 
 
 ### Fixed
-
+- `MapReduce` in `coreax.solvers.composite.py` now keeps track of the indices.
 
 
 ### Changed
