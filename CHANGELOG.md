@@ -20,6 +20,7 @@ within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 - Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`
 - Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
 disable tqdm progress bar terminal output. Defaults to disabled (`False`).
+- Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.
 
 
 ### Fixed
