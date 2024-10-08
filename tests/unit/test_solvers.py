@@ -190,27 +190,29 @@ class RecombinationSolverTest(SolverTest):
         weights = jr.uniform(weight_key, (self.shape[0],))
         expected_coreset = None
         if request.param == "random":
+            # Random dataset with default test-functions.
             test_functions = None
         elif request.param == "partial-null":
+            # Same as 'random' but with some dataset entries given zero weight.
             zero_weights = jr.choice(rng_key, self.shape[0], (self.shape[0] // 2,))
             weights = weights.at[zero_weights].set(0)
             test_functions = None
         elif request.param == "null":
-
+            # Same as 'random' but with test-functions mapping to the zero vector.
             def test_functions(x):
                 return jnp.zeros(x.shape)
         elif request.param == "full_rank":
-
+            # Same as 'random' but with all test-functions linearly-independent.
             def test_functions(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, norm_x**2, norm_x**3])
         elif request.param == "rank_deficient":
-
+            # Same as 'full_rank' but with some test-functions linearly-dependent.
             def test_functions(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
         elif request.param == "excessive_test_functions":
-
+            # Same as 'random' but with more test-functions than dataset entries.
             def test_functions(x):
                 del x
                 return jnp.zeros((len(nodes) + 1,))
