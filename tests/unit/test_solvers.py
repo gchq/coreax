@@ -858,8 +858,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         .. math::
             k(x, y) = e^{-||x - y||^2}.
 
-        # TODO: Update from here
-
         Kernel herding should do as follows:
             - Compute the Gramian row mean, that is for each data-point :math:`x` and
               all other data-points :math:`x'`, :math:`\sum_{x'} w_{x'} \cdot k(x, x')`
