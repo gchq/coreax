@@ -142,7 +142,7 @@ class MapReduce(
 
                 This is a wrapper for `reduce()` for processing a single partition.
                 The data is partitioned with `_jit_tree()`.
-                The reduction is performed on each partition via `v`map()`.
+                The reduction is performed on each partition via ``vmap()``.
                 """
                 x, _ = self.base_solver.reduce(partition)
                 return x.coreset, x.nodes.data
@@ -165,9 +165,9 @@ class MapReduce(
                 final_indices = concatenated_indices
             return _reduce_coreset(_coreset, final_indices)
 
-        (coreset, output_solver_state, _indices) = _reduce_coreset(dataset)
+        (pre_coreset, output_solver_state, _indices) = _reduce_coreset(dataset)
         # Correct the pre-coreset data and the indices
-        coreset = eqx.tree_at(lambda x: x.pre_coreset_data, coreset, dataset)
+        coreset = eqx.tree_at(lambda x: x.pre_coreset_data, pre_coreset, dataset)
         if _indices is not None:
             if isinstance(coreset, Coresubset):
                 coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
