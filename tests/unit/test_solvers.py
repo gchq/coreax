@@ -867,7 +867,6 @@ class TestMapReduce(SolverTest):
         coreset, _ = solver.reduce(Data(dataset))
         selected_indices = coreset.nodes.data
 
-        # Check if there are indices beyond the first few
         assert jnp.any(
             selected_indices >= coreset_size
         ), "MapReduce should select points beyond the first few"
