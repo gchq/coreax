@@ -877,6 +877,138 @@ class TestMapReduce(SolverTest):
             len(partitions_represented) > 1
         ), "MapReduce should select points from multiple partitions"
 
+    def test_map_reduce_analytic(self):
+        r"""
+        Test ``MapReduce`` on an analytical example, enforcing a unique coreset.
+
+        In this example, We start with the original dataset
+        :math:`[10, 20, 30, 210, 40, 60, 180, 90, 150, 70, 120,
+                    200, 50, 140, 80, 170, 100, 190, 110, 160, 130]`.
+
+        Suppose we want a subset size of 3, and we want maximum leaf size of 6.
+
+        We can see that we have a dataset of size 21. The partitioning scheme
+        only allows for :math:`n` partitions where :math:`n` is a power of 2.
+        Therefore, we can partition into:
+
+        1. 1 partition of size 21
+        2. 2 partitions of size :math:`\lceil 10.5 \rceil = 11` each (with one padded 0)
+        3. 4 partitions of size :math:`\lceil 5.25 \rceil = 6` each (with 3 padded 0's)
+        4. 8 partitions of size :math:`\lceil 2.625 \rceil = 3` each (with 3 padded 0's)
+
+        Since we set the maximum leaf size :math:`m = 6`, we choose the largest
+        partition size that is less than or equal to 6. Thus, we have 4 partitions
+        each of size 6.
+
+        We first pad the dataset by adding 3 zeros, then we arrange the
+        data in ascending order (Make sure to ask if this is another bug,
+        I don't know how exactly binary_tree manages to reorder my dataset every time)
+        This results in
+        the following 4 partitions (see how data is in ascending order):
+
+        1. :math:`[0, 0, 0, 10, 20, 30]`
+        2. :math:`[40, 50, 60, 70, 80, 90]`
+        3. :math:`[100, 110, 120, 130, 140, 150]`
+        4. :math:`[160, 170, 180, 190, 200, 210]`
+
+        Now we want to reduce each partition with our ``interleaved_base_solver``
+        which is designed to choose first, last, second, second-last, third,
+        third-last elements etc. until the coreset of correct size is formed.
+        Hence, we obtain:
+
+        1. :math:`[0, 30, 0]`
+        2. :math:`[40, 90, 50]`
+        3. :math:`[100, 150, 110]`
+        4. :math:`[160, 210, 170]`
+
+        Concatenating we obtain
+        :math:`[0, 30, 0, 40, 90, 50, 100, 150, 110, 160, 210, 170]`.
+        Now we repeat the same process, we check how many partitions
+        (has to be power of 2) we want to divide this new data of size 12 into,
+        our new options for partitioning are:
+
+        1. 1 partition of size 12
+        2. 2 partitions of size 6
+        3. 4 partitions of size 3
+        4. 8 partitions of size 1.5 (rounded up to 2)
+
+        Given our maximum leaf size :math:`m = 6`, we choose the largest partition size
+        that is less than or equal to 6. Therefore, we select 2 partitions of size 6.
+        This time no padding is necessary. The two partitions resulting from this step
+        are (note that it is again in ascending order):
+
+        1. :math:`[0, 0, 30, 40, 50, 90]`
+        2. :math:`[100, 110, 150, 160, 170, 210]`
+
+        Applying our ``interleaved_base_solver`` with `coreset_size` 3 on
+        each partition, we obtain:
+
+        1. :math:`[0, 90, 0]`
+        2. :math:`[100, 210, 110]`
+
+        Now, we concatenate the two subsets and repeat the process to
+        obtain only one partition:
+
+        1. Concatenated subset: :math:`[0, 90, 0, 100, 210, 110]`
+
+        Note that the size of the dataset is 6 so no partitioning is necessary!
+
+        Applying the ``interleaved_base_solver`` one last time we obtain
+         the final coreset of:
+         :math:`[0, 110, 90]`. This is what we will test in this test
+        """
+        interleaved_base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
+        interleaved_base_solver.coreset_size = 3
+
+        def interleaved_mock_reduce(
+            dataset: Data, solver_state: None = None
+        ) -> tuple[Coreset[Data], None]:
+            half_size = interleaved_base_solver.coreset_size // 2
+            indices = jnp.arange(interleaved_base_solver.coreset_size)
+            forward_indices = indices[:half_size]
+            backward_indices = -(indices[:half_size] + 1)
+            interleaved_indices = jnp.stack(
+                [forward_indices, backward_indices], axis=1
+            ).ravel()
+
+            if interleaved_base_solver.coreset_size % 2 != 0:
+                interleaved_indices = jnp.append(interleaved_indices, half_size)
+            return Coreset(dataset[interleaved_indices], dataset), solver_state
+
+        interleaved_base_solver.reduce = interleaved_mock_reduce
+
+        original_data = Data(
+            [
+                10,
+                20,
+                30,
+                210,
+                40,
+                60,
+                180,
+                90,
+                150,
+                70,
+                120,
+                200,
+                50,
+                140,
+                80,
+                170,
+                100,
+                190,
+                110,
+                160,
+                130,
+            ]
+        )
+        expected_coreset_data = Data([0, 110, 90])
+
+        coreset, _ = MapReduce(base_solver=interleaved_base_solver, leaf_size=6).reduce(
+            original_data
+        )
+        assert eqx.tree_equal(coreset.coreset.data == expected_coreset_data.data)
+
 
 class TestCaratheodoryRecombination(RecombinationSolverTest):
     """Tests for :class:`coreax.solvers.recombination.CaratheodoryRecombination`."""
