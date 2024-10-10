@@ -44,21 +44,6 @@ from coreax.solvers import (
     SteinThinning,
 )
 
-SMALL_DATASET_SIZE = 100
-key = jax.random.PRNGKey(0)
-N_COMPONENTS = 16  # for PCA
-
-
-transform = transforms.Compose(
-    [transforms.ToTensor(), transforms.Lambda(lambda x: x.view(-1))]
-)
-train_dataset = torchvision.datasets.MNIST(
-    root="./data", train=True, download=True, transform=transform
-)
-test_dataset = torchvision.datasets.MNIST(
-    root="./data", train=False, download=True, transform=transform
-)
-
 
 # Convert PyTorch dataset to JAX arrays
 def convert_to_jax_arrays(pytorch_data: Dataset) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -84,11 +69,6 @@ def convert_to_jax_arrays(pytorch_data: Dataset) -> Tuple[jnp.ndarray, jnp.ndarr
     data_jax = jnp.array(_data.numpy())  # Convert to NumPy first, then JAX array
     targets_jax = jnp.array(_targets.numpy())
     return data_jax, targets_jax
-
-
-# Usage remains the same
-train_data_jax, train_targets_jax = convert_to_jax_arrays(train_dataset)
-test_data_jax, test_targets_jax = convert_to_jax_arrays(test_dataset)
 
 
 def cross_entropy_loss(logits: jnp.ndarray, labels: jnp.ndarray) -> jnp.ndarray:
@@ -346,97 +326,119 @@ def pca(x: jnp.ndarray, n_components: int) -> jnp.ndarray:
     return x_pca
 
 
-# Perform PCA
-train_data_pca = pca(train_data_jax, N_COMPONENTS)
-dataset = Data(train_data_pca)
+def main() -> None:
+    """Perform the benchmark."""
+    small_dataset_size = 100
+    key = jax.random.PRNGKey(0)
+    n_components = 16  # for PCA
 
-results = []
-
-# Set up different solvers
-# Set up kernel using median heuristic
-num_samples_length_scale = min(300, 1000)
-RANDOM_SEED = 45
-generator = np.random.default_rng(RANDOM_SEED)
-idx = generator.choice(300, num_samples_length_scale, replace=False)
-length_scale = median_heuristic(train_data_pca[idx])
-kernel = SquaredExponentialKernel(length_scale=length_scale)
-
-# Generate small dataset for ScoreMatching for SteinKernel
-indices = jax.random.choice(key, train_data_pca.shape[0], shape=(1000,), replace=False)
-small_dataset = train_data_pca[indices]
-
-
-def _get_herding_solver(_size):
-    herding_solver = KernelHerding(_size, kernel, block_size=64)
-
-    return "KernelHerding", MapReduce(herding_solver, leaf_size=2 * _size)
-
-
-def _get_stein_solver(_size):
-    score_function = KernelDensityMatching(length_scale=length_scale).match(
-        small_dataset
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Lambda(lambda x: x.view(-1))]
     )
-    stein_kernel = SteinKernel(kernel, score_function)
-    stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel, block_size=64)
-    return "SteinThinning", MapReduce(stein_solver, leaf_size=2 * _size)
+    train_dataset = torchvision.datasets.MNIST(
+        root="./data", train=True, download=True, transform=transform
+    )
+    test_dataset = torchvision.datasets.MNIST(
+        root="./data", train=False, download=True, transform=transform
+    )
 
+    train_data_jax, train_targets_jax = convert_to_jax_arrays(train_dataset)
+    test_data_jax, test_targets_jax = convert_to_jax_arrays(test_dataset)
 
-def _get_random_solver(_size):
-    random_solver = RandomSample(_size, key)
-    return "RandomSample", random_solver
+    # Perform PCA
+    train_data_pca = pca(train_data_jax, n_components)
+    dataset = Data(train_data_pca)
 
+    results = []
 
-def _get_rp_solver(_size):
-    rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
-    return "RPCholesky", rp_solver
+    # Set up different solvers
+    # Set up kernel using median heuristic
+    num_samples_length_scale = min(300, 1000)
+    random_seed = 45
+    generator = np.random.default_rng(random_seed)
+    idx = generator.choice(300, num_samples_length_scale, replace=False)
+    length_scale = median_heuristic(train_data_pca[idx])
+    kernel = SquaredExponentialKernel(length_scale=length_scale)
 
+    # Generate small dataset for ScoreMatching for SteinKernel
+    indices = jax.random.choice(key,
+                                train_data_pca.shape[0],
+                                shape=(1000,),
+                                replace=False)
+    small_dataset = train_data_pca[indices]
 
-getters = [_get_stein_solver, _get_rp_solver, _get_random_solver, _get_herding_solver]
-for getter in getters:
-    for size in [25, 26]:
-        name, solver = getter(size)
-        subset, _ = solver.reduce(Data(train_data_jax))
-        print(name, subset)
+    def _get_herding_solver(_size):
+        herding_solver = KernelHerding(_size, kernel, block_size=64)
 
-        indices = subset.nodes.data
+        return "KernelHerding", MapReduce(herding_solver, leaf_size=2 * _size)
 
-        data = train_data_jax[indices]
-        targets = train_targets_jax[indices]
-
-        if size <= SMALL_DATASET_SIZE:
-            BATCH_SIZE = 8
-        else:
-            BATCH_SIZE = 64
-
-        configuration = {
-            "epochs": 100,
-            "batch_size": BATCH_SIZE,
-            "learning_rate": 1e-3,
-            "weight_decay": 1e-5,
-            "patience": 5,
-            "min_delta": 0.001,
-        }
-        model = MLP(hidden_size=64)
-        result = train_and_evaluate(
-            DataSet(data, targets),
-            DataSet(test_data_jax, test_targets_jax),
-            model,
-            key,
-            configuration,
+    def _get_stein_solver(_size):
+        score_function = KernelDensityMatching(length_scale=length_scale).match(
+            small_dataset
         )
-        print(result)
-        results.append((name, size, result["final_test_accuracy"]))
+        stein_kernel = SteinKernel(kernel, score_function)
+        stein_solver = SteinThinning(coreset_size=_size,
+                                     kernel=stein_kernel, block_size=64)
+        return "SteinThinning", MapReduce(stein_solver, leaf_size=2 * _size)
+
+    def _get_random_solver(_size):
+        random_solver = RandomSample(_size, key)
+        return "RandomSample", random_solver
+
+    def _get_rp_solver(_size):
+        rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
+        return "RPCholesky", rp_solver
+
+    getters = [_get_stein_solver, _get_rp_solver,
+               _get_random_solver, _get_herding_solver]
+    for getter in getters:
+        for size in [25, 26]:
+            name, solver = getter(size)
+            subset, _ = solver.reduce(Data(dataset))
+            print(name, subset)
+
+            indices = subset.nodes.data
+
+            data = train_data_jax[indices]
+            targets = train_targets_jax[indices]
+
+            if size <= small_dataset_size:
+                batch_size = 8
+            else:
+                batch_size = 64
+
+            configuration = {
+                "epochs": 100,
+                "batch_size": batch_size,
+                "learning_rate": 1e-3,
+                "weight_decay": 1e-5,
+                "patience": 5,
+                "min_delta": 0.001,
+            }
+            model = MLP(hidden_size=64)
+            result = train_and_evaluate(
+                DataSet(data, targets),
+                DataSet(test_data_jax, test_targets_jax),
+                model,
+                key,
+                configuration,
+            )
+            print(result)
+            results.append((name, size, result["final_test_accuracy"]))
+
+    data_by_solver = {}
+    for solver, coreset_size, accuracy in results:
+        if solver not in data_by_solver:
+            data_by_solver[solver] = {"coreset_size": [], "accuracy": []}
+        data_by_solver[solver]["coreset_size"].append(coreset_size)
+        data_by_solver[solver]["accuracy"].append(float(accuracy))
+
+    # Dump data to JSON
+    with open("benchmark_results.json", "w", encoding="utf-8") as f:
+        json.dump(data_by_solver, f, indent=4)
+
+    print("Data has been saved to 'benchmark_results.json'")
 
 
-data_by_solver = {}
-for solver, coreset_size, accuracy in results:
-    if solver not in data_by_solver:
-        data_by_solver[solver] = {"coreset_size": [], "accuracy": []}
-    data_by_solver[solver]["coreset_size"].append(coreset_size)
-    data_by_solver[solver]["accuracy"].append(float(accuracy))
-
-# Dump data to JSON
-with open("benchmark_results.json", "w", encoding="utf-8") as f:
-    json.dump(data_by_solver, f, indent=4)
-
-print("Data has been saved to 'benchmark_results.json'")
+if __name__ == "__main__":
+    main()
