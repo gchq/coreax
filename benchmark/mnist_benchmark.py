@@ -395,7 +395,7 @@ getters = [_get_stein_solver, _get_rp_solver, _get_random_solver, _get_herding_s
 for getter in getters:
     for size in [25, 26]:
         name, solver = getter(size)
-        subset, _ = solver.reduce(Data(small_dataset))
+        subset, _ = solver.reduce(Data(train_data_jax))
         print(name, subset)
 
         indices = subset.nodes.data
