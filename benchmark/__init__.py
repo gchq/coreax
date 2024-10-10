@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Different benchmarking tasks and algorithms"""
+"""Different benchmarking tests to compare performance of different algorithms."""
