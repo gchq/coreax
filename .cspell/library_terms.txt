@@ -109,6 +109,7 @@ rcond
 rect
 rerunfailures
 rightarrow
+rngs
 rtol
 samp
 scikit

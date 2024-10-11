@@ -29,6 +29,7 @@ linewidth
 mapsto
 Matern
 ml.p3.8xlarge
+MNIST
 ndmin
 parsable
 PCIMQ
@@ -41,6 +42,7 @@ recomb
 refs
 regulariser
 RKHS
+rngs
 RPCHOLESKY
 sigmas
 subseteq

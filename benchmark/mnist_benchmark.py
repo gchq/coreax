@@ -21,7 +21,7 @@ on the testing dataset.
 """
 
 import json
-from typing import Any, Dict, NamedTuple, Tuple
+from typing import Any, Dict, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -50,23 +50,15 @@ def convert_to_jax_arrays(pytorch_data: Dataset) -> Tuple[jnp.ndarray, jnp.ndarr
     """
     Convert a PyTorch dataset to JAX arrays.
 
-    This function takes a PyTorch dataset, loads all the data at once using a
-    DataLoader and converts it to JAX arrays.
-
-    Args:
-    ----
-        pytorch_data (Dataset): A PyTorch dataset to be converted.
-
-    Returns:
-    -------
-        Tuple[jnp.ndarray, jnp.ndarray]: A tuple containing two JAX arrays:
-            - The first array contains the data.
-            - The second array contains the targets (labels).
-
+    :param pytorch_data: PyTorch dataset to convert
+    :return: Tuple of JAX arrays (data, targets)
     """
+    # Load all data in one batch
     data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))
-    _data, _targets = next(iter(data_loader))  # Load all data at once
-    data_jax = jnp.array(_data.numpy())  # Convert to NumPy first, then JAX array
+    # Grab the first batch, which is all data
+    _data, _targets = next(iter(data_loader))
+    # Convert to NumPy first, then JAX array
+    data_jax = jnp.array(_data.numpy())
     targets_jax = jnp.array(_targets.numpy())
     return data_jax, targets_jax
 
@@ -108,8 +100,8 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Any = None
-    dropout_rng: jnp.ndarray = None
+    batch_stats: Optional[Dict[str, jnp.ndarray]] = None
+    dropout_rng: Optional[jnp.ndarray] = None
 
 
 class Metrics(NamedTuple):
@@ -122,7 +114,7 @@ class Metrics(NamedTuple):
 def create_train_state(
     rng: jnp.ndarray, _model: nn.Module, learning_rate: float, weight_decay: float
 ) -> TrainState:
-    """Create and initialize the train state."""
+    """Create and initialise the train state."""
     dropout_rng, params_rng = jax.random.split(rng)
     params = _model.init(
         {"params": params_rng, "dropout": dropout_rng},
@@ -290,25 +282,22 @@ def train_and_evaluate(
     }
 
 
-def pca(x: jnp.ndarray, n_components: int) -> jnp.ndarray:
+def pca(x: jnp.ndarray, n_components: int = 16) -> jnp.ndarray:
     """
     Perform Principal Component Analysis (PCA) on the dataset x.
 
-    Args:
-    ----
-        x (jnp.ndarray): The input data matrix of shape (n_samples, n_features).
-        n_components (int): The number of principal components to return.
+    This function computes the principal components of the input data matrix
+    and returns the projected data.
 
-    Returns:
-    -------
-        jnp.ndarray: The projected data of shape (n_samples, n_components).
-
+    :param x: The input data matrix of shape (n_samples, n_features)
+    :param n_components: The number of principal components to return
+    :return: The projected data of shape (n_samples, n_components)
     """
     # Center the data
-    x_centered = x - jnp.mean(x, axis=0)
+    x_centred = x - jnp.mean(x, axis=0)
 
     # Compute the covariance matrix
-    cov_matrix = jnp.cov(x_centered.T)
+    cov_matrix = jnp.cov(x_centred.T)
 
     # Compute eigenvalues and eigenvectors
     eigenvalues, eigenvectors = jnp.linalg.eigh(cov_matrix)
@@ -321,17 +310,13 @@ def pca(x: jnp.ndarray, n_components: int) -> jnp.ndarray:
     components = eigenvectors[:, :n_components]
 
     # Project the data onto the new subspace
-    x_pca = jnp.dot(x_centered, components)
+    x_pca = jnp.dot(x_centred, components)
 
     return x_pca
 
 
-def main() -> None:
-    """Perform the benchmark."""
-    small_dataset_size = 100
-    key = jax.random.PRNGKey(0)
-    n_components = 16  # for PCA
-
+def prepare_datasets() -> tuple:
+    """Prepare and return training and test datasets."""
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Lambda(lambda x: x.view(-1))]
     )
@@ -345,13 +330,30 @@ def main() -> None:
     train_data_jax, train_targets_jax = convert_to_jax_arrays(train_dataset)
     test_data_jax, test_targets_jax = convert_to_jax_arrays(test_dataset)
 
-    # Perform PCA
-    train_data_pca = pca(train_data_jax, n_components)
-    dataset = Data(train_data_pca)
+    return (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax)
 
-    results = []
 
-    # Set up different solvers
+def initialise_solvers(
+    train_data_pca: jnp.ndarray, key: jax.random.PRNGKey, small_dataset: jnp.ndarray
+) -> list:
+    """
+    Initialise and return a list of solvers for various coreset algorithms.
+
+    Set up solvers for Kernel Herding, Stein Thinning, Random Sampling, and Randomised
+    Cholesky methods. Each solver has different parameter requirements.
+    Some solvers can utilise MapReduce, while others cannot,
+    and some require specific kernels.
+     This setup allows them to be called by passing only the coreset size,
+    enabling easy integration in a loop for benchmarking.
+
+    :param train_data_pca: The PCA-transformed training data used for
+                           length scale estimation for ``SquareExponentialKernel``.
+    :param key: The random key for initialising random solvers.
+    :param small_dataset: A subset of data used for score function
+                          matching in the Stein solver.
+
+    :return: A list of solvers functions for different coreset algorithms.
+    """
     # Set up kernel using median heuristic
     num_samples_length_scale = min(300, 1000)
     random_seed = 45
@@ -360,72 +362,86 @@ def main() -> None:
     length_scale = median_heuristic(train_data_pca[idx])
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
-    # Generate small dataset for ScoreMatching for SteinKernel
-    indices = jax.random.choice(key,
-                                train_data_pca.shape[0],
-                                shape=(1000,),
-                                replace=False)
-    small_dataset = train_data_pca[indices]
+    def _get_herding_solver(_size: int) -> Tuple[str, MapReduce]:
+        """
+        Set up KernelHerding to use ``MapReduce``.
 
-    def _get_herding_solver(_size):
+        Create a KernelHerding solver with the specified size and return
+        it along with a MapReduce object for reducing a large dataset like
+        MNIST dataset.
+
+        :param _size: The size of the coreset to be generated.
+        :return: A tuple containing the solver name and the MapReduce solver.
+        """
         herding_solver = KernelHerding(_size, kernel, block_size=64)
-
         return "KernelHerding", MapReduce(herding_solver, leaf_size=2 * _size)
 
-    def _get_stein_solver(_size):
+    def _get_stein_solver(_size: int) -> Tuple[str, MapReduce]:
+        """
+        Set up Stein Thinning to use ``MapReduce``.
+
+        Create a SteinThinning solver with the specified  coreset size,
+        using ``KernelDensityMatching`` score function for matching on
+        a subset of the dataset.
+
+        :param _size: The size of the coreset to be generated.
+        :return: A tuple containing the solver name and the MapReduce solver.
+        """
         score_function = KernelDensityMatching(length_scale=length_scale).match(
             small_dataset
         )
         stein_kernel = SteinKernel(kernel, score_function)
-        stein_solver = SteinThinning(coreset_size=_size,
-                                     kernel=stein_kernel, block_size=64)
+        stein_solver = SteinThinning(
+            coreset_size=_size, kernel=stein_kernel, block_size=64
+        )
         return "SteinThinning", MapReduce(stein_solver, leaf_size=2 * _size)
 
-    def _get_random_solver(_size):
+    def _get_random_solver(_size: int) -> Tuple[str, MapReduce]:
+        """
+        Set up Random Sampling to generate a coreset.
+
+        :param _size: The size of the coreset to be generated.
+        :return: A tuple containing the solver name and the RandomSample solver.
+        """
         random_solver = RandomSample(_size, key)
         return "RandomSample", random_solver
 
-    def _get_rp_solver(_size):
+    def _get_rp_solver(_size: int) -> Tuple[str, MapReduce]:
+        """
+        Set up Randomised Cholesky solver.
+
+        :param _size: The size of the coreset to be generated.
+        :return: A tuple containing the solver name and the RPCholesky solver.
+        """
         rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
         return "RPCholesky", rp_solver
 
-    getters = [_get_stein_solver, _get_rp_solver,
-               _get_random_solver, _get_herding_solver]
-    for getter in getters:
-        for size in [25, 26]:
-            name, solver = getter(size)
-            subset, _ = solver.reduce(Data(dataset))
-            print(name, subset)
+    return [_get_random_solver, _get_rp_solver, _get_herding_solver, _get_stein_solver]
 
-            indices = subset.nodes.data
 
-            data = train_data_jax[indices]
-            targets = train_targets_jax[indices]
+def train_model(data_bundle: dict, key, config) -> dict:
+    """Train the model and return the results."""
+    model = MLP(hidden_size=64)
 
-            if size <= small_dataset_size:
-                batch_size = 8
-            else:
-                batch_size = 64
+    # Access the values from the data_bundle dictionary
+    data = data_bundle["data"]
+    targets = data_bundle["targets"]
+    test_data = data_bundle["test_data"]
+    test_targets = data_bundle["test_targets"]
 
-            configuration = {
-                "epochs": 100,
-                "batch_size": batch_size,
-                "learning_rate": 1e-3,
-                "weight_decay": 1e-5,
-                "patience": 5,
-                "min_delta": 0.001,
-            }
-            model = MLP(hidden_size=64)
-            result = train_and_evaluate(
-                DataSet(data, targets),
-                DataSet(test_data_jax, test_targets_jax),
-                model,
-                key,
-                configuration,
-            )
-            print(result)
-            results.append((name, size, result["final_test_accuracy"]))
+    result = train_and_evaluate(
+        DataSet(data, targets),
+        DataSet(test_data, test_targets),
+        model,
+        key,
+        config,
+    )
 
+    return result
+
+
+def train_and_save_results(results: list) -> None:
+    """Save results to JSON."""
     data_by_solver = {}
     for solver, coreset_size, accuracy in results:
         if solver not in data_by_solver:
@@ -438,6 +454,67 @@ def main() -> None:
         json.dump(data_by_solver, f, indent=4)
 
     print("Data has been saved to 'benchmark_results.json'")
+
+
+def main() -> None:
+    """Perform the benchmark."""
+    key = jax.random.PRNGKey(0)
+
+    # Prepare datasets
+    (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax) = (
+        prepare_datasets()
+    )
+
+    # Perform PCA
+    train_data_pca = pca(train_data_jax)
+
+    results = []
+
+    # Generate small dataset for ScoreMatching for SteinKernel
+    small_dataset = train_data_pca[
+        jax.random.choice(key, train_data_pca.shape[0], shape=(1000,), replace=False)
+    ]
+
+    # Initialise solvers
+    solvers = initialise_solvers(train_data_pca, key, small_dataset)
+
+    config = {
+        "epochs": 100,
+        "batch_size": 8,
+        "learning_rate": 1e-3,
+        "weight_decay": 1e-5,
+        "patience": 5,
+        "min_delta": 0.001,
+    }
+
+    for getter in solvers:
+        for size in [25, 26, 50, 100]:
+            name, solver = getter(size)
+            print("This much works")
+            subset, _ = solver.reduce(Data(train_data_pca))
+            print(name, subset)
+
+            indices = subset.nodes.data
+
+            data = train_data_jax[indices]
+            targets = train_targets_jax[indices]
+
+            # Adjust batch size based on size
+            config["batch_size"] = min(len(indices) // 2, 64)
+
+            data_bundle = {
+                "data": data,
+                "targets": targets,
+                "test_data": test_data_jax,
+                "test_targets": test_targets_jax,
+            }
+
+            result = train_model(data_bundle, key, config)
+            print(result)
+            results.append((name, size, result["final_test_accuracy"]))
+
+    # Save results to JSON
+    train_and_save_results(results)
 
 
 if __name__ == "__main__":
