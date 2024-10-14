@@ -18,18 +18,32 @@ jobs:
       gist_id: 3707a122b3697109068a3e55487de4fc
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Set up base Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-      - name: Install package and dependencies
-        run: pip install -e .
+          # Note that this is just the version of Python that we use to run `uv` with.
+          # `uv` manages its own version of Python.
+          # For speed, we use the same version for both, but in principle these could differ.
+          python-version: 3.12
+      - name: Set up uv cache directory location
+        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-none
+          restore-keys: |
+            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}
+            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+            uv-${{ runner.os }}
+      - name: Install latest versions of pip and uv
+        run: python -m pip install --upgrade pip uv
+      - name: Install test dependencies
+        run: uv sync --no-dev --locked
+      - name: Debug - uv pip freeze
+        run: uv pip freeze
       - name: Assess performance
-        run: python tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
+        run: uv run tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
       - name: Download historic performance data
         if: github.event_name == 'pull_request'
         run: gh gist clone ${{ env.gist_id }} $RUNNER_TEMP/historic
@@ -39,7 +53,7 @@ jobs:
           # save the commit subject to a file in case it contains any shell
           # special characters
           git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
-          python tests/performance/compare.py \
+          uv run tests/performance/compare.py \
             $RUNNER_TEMP/performance.json \
             $RUNNER_TEMP/historic \
             --commit-short-hash $(git log -1 --pretty=%h) \
