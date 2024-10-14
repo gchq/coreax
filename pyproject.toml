@@ -44,7 +44,6 @@ test = [
     "matplotlib",
     "numpy",
     "opencv-python",
-    "pyqt5",
     "pytest-cov",
     "pytest-rerunfailures",
     "scipy",
