@@ -25,6 +25,7 @@ kdtree
 kernelised
 kernelized
 KSD
+linestyle
 linewidth
 mapsto
 Matern
