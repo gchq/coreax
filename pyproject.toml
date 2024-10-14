@@ -69,7 +69,7 @@ dev-dependencies = [
     "ruff",
 ]
 
-# ensure we get the latest package versions available for each Python version
+# Ensure we get the latest package versions available for each Python version
 environments = [
     "python_version>='3.12'",
     "python_version=='3.11.*'",
