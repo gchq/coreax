@@ -37,7 +37,7 @@ jobs:
             uv-${{ runner.os }}
       - name: Install latest versions of pip and uv
         run: python -m pip install --upgrade pip uv
-      - name: Install test dependencies
+      - name: Install development dependencies
         run: uv sync --dev --locked
       - name: Debug - uv pip freeze
         run: uv pip freeze
