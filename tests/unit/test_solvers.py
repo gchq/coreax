@@ -881,7 +881,7 @@ class TestMapReduce(SolverTest):
         r"""
         Test ``MapReduce`` on an analytical example, enforcing a unique coreset.
 
-        In this example, We start with the original dataset
+        In this example, we start with the original dataset
         :math:`[10, 20, 30, 210, 40, 60, 180, 90, 150, 70, 120,
                     200, 50, 140, 80, 170, 100, 190, 110, 160, 130]`.
 
@@ -900,11 +900,8 @@ class TestMapReduce(SolverTest):
         partition size that is less than or equal to 6. Thus, we have 4 partitions
         each of size 6.
 
-        We first pad the dataset by adding 3 zeros, then we arrange the
-        data in ascending order (Make sure to ask if this is another bug,
-        I don't know how exactly binary_tree manages to reorder my dataset every time)
-        This results in
-        the following 4 partitions (see how data is in ascending order):
+        This results in the following 4 partitions (see how
+         data is in ascending order):
 
         1. :math:`[0, 0, 0, 10, 20, 30]`
         2. :math:`[40, 50, 60, 70, 80, 90]`
@@ -923,9 +920,10 @@ class TestMapReduce(SolverTest):
 
         Concatenating we obtain
         :math:`[0, 30, 0, 40, 90, 50, 100, 150, 110, 160, 210, 170]`.
-        Now we repeat the same process, we check how many partitions
-        (has to be power of 2) we want to divide this new data of size 12 into,
-        our new options for partitioning are:
+        We repeat the process, checking how many partitions we want
+         to divide this intermediate dataset (of size 12) into.
+        Recall, this number of partitions must be a power of 2.
+        Our options are::
 
         1. 1 partition of size 12
         2. 2 partitions of size 6
@@ -951,11 +949,12 @@ class TestMapReduce(SolverTest):
 
         1. Concatenated subset: :math:`[0, 90, 0, 100, 210, 110]`
 
-        Note that the size of the dataset is 6 so no partitioning is necessary!
+        Note that the size of the dataset is 6,
+        therefore, no more partitioning is necessary.
 
         Applying the ``interleaved_base_solver`` one last time we obtain
-         the final coreset of:
-         :math:`[0, 110, 90]`. This is what we will test in this test
+         the final coreset:
+                :math:`[0, 110, 90]`.
         """
         interleaved_base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
         interleaved_base_solver.coreset_size = 3
@@ -978,31 +977,33 @@ class TestMapReduce(SolverTest):
         interleaved_base_solver.reduce = interleaved_mock_reduce
 
         original_data = Data(
-            [
-                10,
-                20,
-                30,
-                210,
-                40,
-                60,
-                180,
-                90,
-                150,
-                70,
-                120,
-                200,
-                50,
-                140,
-                80,
-                170,
-                100,
-                190,
-                110,
-                160,
-                130,
-            ]
+            jnp.array(
+                [
+                    10,
+                    20,
+                    30,
+                    210,
+                    40,
+                    60,
+                    180,
+                    90,
+                    150,
+                    70,
+                    120,
+                    200,
+                    50,
+                    140,
+                    80,
+                    170,
+                    100,
+                    190,
+                    110,
+                    160,
+                    130,
+                ]
+            )
         )
-        expected_coreset_data = Data([0, 110, 90])
+        expected_coreset_data = Data(jnp.array([0, 110, 90]))
 
         coreset, _ = MapReduce(base_solver=interleaved_base_solver, leaf_size=6).reduce(
             original_data
