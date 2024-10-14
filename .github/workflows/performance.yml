@@ -25,8 +25,12 @@ jobs:
           # `uv` manages its own version of Python.
           # For speed, we use the same version for both, but in principle these could differ.
           python-version: 3.12
-      - name: Set up uv cache directory location
+      - name: Set up uv cache directory location (Linux/Mac)
         run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
+        if: runner.os != 'Windows'
+      - name: Set up uv cache directory location (Windows)
+        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $env:GITHUB_ENV
+        if: runner.os == 'Windows'
       - name: Restore uv cache
         uses: actions/cache@v4
         with:
