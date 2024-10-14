@@ -48,3 +48,6 @@ jobs:
       - name: Check external links
         run: |
           uv run -m sphinx -b linkcheck documentation/source documentation/build
+      - name: Minimize UV cache
+        run: uv cache prune --ci
+        if: always()

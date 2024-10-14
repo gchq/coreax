@@ -50,6 +50,9 @@ jobs:
       - name: Extract total coverage percentage
         id: cov
         run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+      - name: Minimize UV cache
+        run: uv cache prune --ci
+        if: always()
   coverage-badge:
     name: Update coverage badge
     if: github.event_name == 'push'

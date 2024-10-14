@@ -45,3 +45,6 @@ jobs:
         run: sed -e "/fail_fast/d" .pre-commit-config.yaml > /tmp/.pre-commit-config-ci.yaml
       - name: Run Pre-commit checks
         run: SKIP=no-commit-to-branch uv run pre-commit run --all-files --show-diff-on-failure --config /tmp/.pre-commit-config-ci.yaml
+      - name: Minimize UV cache
+        run: uv cache prune --ci
+        if: always()
