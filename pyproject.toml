@@ -58,8 +58,10 @@ doc = [
     "sphinxcontrib-bibtex",
     "sphobjinv",
 ]
+
+[tool.uv]
 # All tools for a developer including those for running pylint
-dev = [
+dev-dependencies = [
     "coreax[doc, test]",
     "pre-commit>=3.7",
     "pylint",
