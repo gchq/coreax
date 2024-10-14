@@ -470,7 +470,7 @@ def main() -> None:
 
     results = []
 
-    # Generate small dataset for ScoreMatching for SteinKernel
+    # Generate small dataset for ScoreMatching for Stein Kernel
     small_dataset = train_data_pca[
         jax.random.choice(key, train_data_pca.shape[0], shape=(1000,), replace=False)
     ]

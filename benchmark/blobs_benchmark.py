@@ -58,7 +58,7 @@ def setup_kernel(x: np.ndarray) -> SquaredExponentialKernel:
 def setup_stein_kernel(
     sq_exp_kernel: SquaredExponentialKernel, dataset: Data
 ) -> SteinKernel:
-    """Set up SteinKernel."""
+    """Set up Stein Kernel."""
     sliced_score_matcher = SlicedScoreMatching(
         jax.random.PRNGKey(45),
         jax.random.rademacher,
@@ -182,7 +182,7 @@ def main() -> None:
     # Set up kernel
     sq_exp_kernel = setup_kernel(x)
 
-    # Set up SteinKernel
+    # Set up Stein Kernel
     stein_kernel = setup_stein_kernel(sq_exp_kernel, dataset)
 
     # Set up metrics
