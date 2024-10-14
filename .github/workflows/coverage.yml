@@ -46,7 +46,7 @@ jobs:
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Assess coverage of unit tests
-        run: pytest tests/unit --cov
+        run: uv run pytest tests/unit --cov
       - name: Extract total coverage percentage
         id: cov
         run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
