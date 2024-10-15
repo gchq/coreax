@@ -71,7 +71,8 @@ dev-dependencies = [
 
 # Ensure we get the latest package versions available for each Python version
 environments = [
-    "python_version>='3.12'",
+    "python_version>='3.13'",
+    "python_version=='3.12.*'",
     "python_version=='3.11.*'",
     "python_version=='3.10.*'",
     "python_version=='3.9.*'",
