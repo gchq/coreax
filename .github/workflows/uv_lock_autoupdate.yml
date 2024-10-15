@@ -9,6 +9,7 @@ jobs:
   uv_lock_autoupdate:
     env:
       lockfile_path: uv.lock
+      requirements_doc_path: requirements-doc.txt
       update_message_path: /tmp/message.txt
       update_branch: chore/uv-lock-autoupdate
     runs-on: ubuntu-latest
@@ -55,27 +56,44 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install uv
         run: pip install uv
-      - name: Store hash of baseline lockfile for comparison
-        id: old_file
-        run: echo "hash=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+      - name: Store hash of baseline files for comparison
+        id: old_hash
+        run: |
+          echo "lockfile=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+          echo "requirements_doc=$( sha256sum $requirements_doc_path )" >> $GITHUB_OUTPUT
       - name: Overwrite config on branch with version from main
-        run: git checkout main ${{ env.lockfile_path }}
-      - name: Store hash of main lockfile for comparison
-        id: main_file
-        run: echo "hash=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+        run: |
+          git checkout main ${{ env.lockfile_path }}
+          git checkout main ${{ env.requirements_doc_path }}
+      - name: Store hash of main files for comparison
+        id: main_hash
+        run: |
+          echo "lockfile=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+          echo "requirements_doc=$( sha256sum $requirements_doc_path )" >> $GITHUB_OUTPUT
       - name: Run `uv lock --upgrade` on main lockfile
         id: autoupdate
         run: |
           uv lock --upgrade > ${{ env.update_message_path }}
           cat ${{ env.update_message_path }}
           sed -i "/updated/!d" ${{ env.update_message_path }}
-      - name: Store hash of new lockfile for comparison
-        id: new_file
-        run: echo "hash=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+      - name: Update requirements-docs.txt
+        run: >
+          uv export
+          --frozen
+          --format requirements-txt
+          --no-dev
+          --no-emit-project
+          --extra doc
+          --output-file requirements-doc.txt
+      - name: Store hash of new files for comparison
+        id: new_hash
+        run: |
+          echo "lockfile=$( sha256sum $lockfile_path )" >> $GITHUB_OUTPUT
+          echo "requirements_doc=$( sha256sum $requirements_doc_path )" >> $GITHUB_OUTPUT
       # Commit authoring and pull-request creation/updating
       - name: Commit (with signature) lockfile
-        id: commit
-        if: steps.old_file.outputs.hash != steps.new_file.outputs.hash
+        id: commit_lockfile
+        if: steps.old_hash.outputs.lockfile != steps.new_hash.outputs.lockfile
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
@@ -87,8 +105,24 @@ jobs:
             --field content="$content" \
             --field branch=${{ env.update_branch }} \
             --field sha="$sha"
+      - name: Commit (with signature) new requirements-doc
+        id: commit_requirements_doc
+        if: steps.old_hash.outputs.requirements_doc != steps.new_hash.outputs.requirements_doc
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore(deps): autoupdate requirements-doc"
+          export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.requirements_doc_path }} )
+          export content=$( base64 -i ${{ env.requirements_doc_path }} )
+          gh api --method PUT /repos/:owner/:repo/contents/${{ env.requirements_doc_path }} \
+            --field message="$message" \
+            --field content="$content" \
+            --field branch=${{ env.update_branch }} \
+            --field sha="$sha"
       - name: Create or update lockfile-autoupdate pull-request
-        if: steps.commit.conclusion == 'success' || ( steps.main_file.outputs.hash != steps.new_file.outputs.hash )
+        # note that we don't check whether requirements-doc was updated, as
+        # requirements-doc should only change if the lockfile also changes
+        if: steps.commit_lockfile.conclusion == 'success' || ( steps.main_lockfile.outputs.hash != steps.new_lockfile.outputs.hash )
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run : |
