@@ -62,6 +62,7 @@ repos:
           --frozen
           --quiet
           --format requirements-txt
+          --no-hashes
           --no-dev
           --no-emit-project
           --extra doc
