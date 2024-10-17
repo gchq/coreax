@@ -50,7 +50,7 @@ def print_metrics_table(data: dict, sample_size: str) -> None:
 def main() -> None:
     """Load the data and print metrics in table format per sample size."""
     # Load the JSON data
-    with open("coreset_comparison_results.json", encoding="utf-8") as f:
+    with open("blobs_benchmark_results.json", encoding="utf-8") as f:
         data = json.load(f)
 
     # Print tables for each sample size
