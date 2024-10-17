@@ -444,7 +444,7 @@ def train_model(data_bundle: dict, key, config) -> dict:
 
 def save_results(results: dict) -> None:
     """Save results to JSON."""
-    with open("benchmark_results.json", "w", encoding="utf-8") as f:
+    with open("mnist_benchmark_results.json", "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4)
 
     print("Data has been saved to 'benchmark_results.json'")
@@ -500,7 +500,7 @@ def main() -> None:
                     results[name][size] = {}
 
                     # Store accuracy result in nested structure
-                results[name][size][i] = result["final_test_accuracy"]
+                results[name][size][i] = float(result["final_test_accuracy"])
 
     save_results(results)
 
