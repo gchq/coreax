@@ -219,25 +219,6 @@ def squared_distance(
     return jnp.dot(x - y, x - y)
 
 
-@deprecated(
-    "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
-    "will be removed in version 0.3.0"
-)
-def squared_distance_pairwise(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
-    r"""
-    Calculate efficient pairwise square distance between two arrays.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
-        :math:`n \times m` array
-    """
-    return pairwise(squared_distance)(x, y)
-
-
 @jit
 def difference(
     x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
@@ -256,7 +237,9 @@ def difference(
 
 
 @deprecated(
-    "Use coreax.kernels.util.median_heuristic; will be removed in version 0.3.0"
+    "Use coreax.kernels.util.median_heuristic instead."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
 @jit
 def median_heuristic(
@@ -282,25 +265,6 @@ def median_heuristic(
     )
 
     return jnp.sqrt(median_square_distance / 2.0)
-
-
-@deprecated(
-    "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
-    "will be removed in version 0.3.0"
-)
-def pairwise_difference(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
-    r"""
-    Calculate efficient pairwise difference between two arrays of vectors.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between ``x_array`` and ``y_array`` as an
-        :math:`n \times m \times d` array
-    """
-    return pairwise(difference)(x, y)
 
 
 def sample_batch_indices(
@@ -455,29 +419,32 @@ def speed_comparison_test(
         if log_results:
             if normalisation:
                 _logger.info(
-                    "Compilation time: "
-                    + f"{mean[0].item():.4g} units ± "
-                    + f"{std[0].item():.4g} units"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Compilation time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[0].item(),
+                    std[0].item(),
+                    num_runs,
                 )
                 _logger.info(
-                    "Execution time: "
-                    + f"{mean[1].item():.4g} units ± "
-                    + f"{std[1].item():.4g} units"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Execution time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[1].item(),
+                    std[1].item(),
+                    num_runs,
                 )
             else:
                 _logger.info(
-                    "Compilation time: "
-                    + f"{format_time(mean[0].item())} ± "
-                    + f"{format_time(std[0].item())}"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Compilation time: %s ± %s per run "
+                    "(mean ± std. dev. of %s runs)",
+                    format_time(mean[0].item()),
+                    format_time(std[0].item()),
+                    num_runs,
                 )
                 _logger.info(
-                    "Execution time: "
-                    + f"{format_time(mean[1].item())} ± "
-                    + f"{format_time(std[1].item())}"
-                    + f" per run (mean ± std. dev. of {num_runs} runs)"
+                    "Execution time: %s ± %s per run (mean ± std. dev. of %s runs)",
+                    format_time(mean[1].item()),
+                    format_time(std[1].item()),
+                    num_runs,
                 )
 
     return results, timings_dict

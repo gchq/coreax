@@ -43,39 +43,6 @@ from coreax.solvers.base import (
 from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", bound=Data)
-_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
-
-
-class HerdingState(eqx.Module):
-    """
-    Intermediate :class:`KernelHerding` solver state information.
-
-    :param gramian_row_mean: Cached Gramian row-mean.
-    """
-
-    gramian_row_mean: Shaped[Array, " n"]
-
-
-class RPCholeskyState(eqx.Module):
-    """
-    Intermediate :class:`RPCholesky` solver state information.
-
-    :param gramian_diagonal: Cached Gramian diagonal.
-    """
-
-    gramian_diagonal: Shaped[Array, " n"]
-
-
-class GreedyKernelPointsState(eqx.Module):
-    """
-    Intermediate :class:`GreedyKernelPoints` solver state information.
-
-    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
-        an additional row and column of zeros.
-    """
-
-    feature_gramian: Shaped[Array, " n n"]
-
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
@@ -93,6 +60,50 @@ def _initial_coresubset(
         if len(initial_coresubset_indices) > len(dataset):
             raise ValueError(MSG) from err
         raise
+
+
+class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
+    """
+    Reduce a dataset by randomly sampling a fixed number of points.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param weighted: If to use dataset weights as selection probabilities
+    :param unique: If to sample without replacement
+    """
+
+    random_key: KeyArrayLike
+    weighted: bool = False
+    unique: bool = True
+
+    @override
+    def reduce(
+        self, dataset: _Data, solver_state: None = None
+    ) -> tuple[Coresubset, None]:
+        selection_weights = dataset.weights if self.weighted else None
+        try:
+            random_indices = jr.choice(
+                self.random_key,
+                len(dataset),
+                (self.coreset_size,),
+                p=selection_weights,
+                replace=not self.unique,
+            )
+            return Coresubset(Data(random_indices), dataset), solver_state
+        except ValueError as err:
+            if self.coreset_size > len(dataset) and self.unique:
+                raise ValueError(MSG) from err
+            raise
+
+
+class HerdingState(eqx.Module):
+    """
+    Intermediate :class:`KernelHerding` solver state information.
+
+    :param gramian_row_mean: Cached Gramian row-mean.
+    """
+
+    gramian_row_mean: Array
 
 
 def _greedy_kernel_selection(
@@ -137,7 +148,10 @@ def _greedy_kernel_selection(
         unroll=unroll,
     )
 
-    def _greedy_body(i: int, val: tuple[Array, Array]) -> tuple[Array, ArrayLike]:
+    def _greedy_body(
+        i: int,
+        val: tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]],
+    ) -> tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]]:
         coreset_indices, kernel_similarity_penalty = val
         valid_kernel_similarity_penalty = jnp.where(
             weights > 0, kernel_similarity_penalty, jnp.nan
@@ -261,38 +275,130 @@ class KernelHerding(
         return refined_coreset, HerdingState(gramian_row_mean)
 
 
-class RandomSample(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
-    """
-    Reduce a dataset by randomly sampling a fixed number of points.
+class SteinThinning(
+    RefinementSolver[_Data, None], ExplicitSizeSolver, PaddingInvariantSolver
+):
+    r"""
+    Stein Thinning - an explicitly sized coresubset refinement solver.
+
+    Solves the coresubset problem by taking a deterministic, iterative, and greedy
+    approach to minimizing the Kernelised Stein Discrepancy (KSD) between the empirical
+    distribution of the coresubset (the solution) and the distribution of the problem
+    dataset, as characterised by the score function of the Stein Kernel.
+
+    Given one has selected :math:`T` data points for their compressed representation of
+    the original dataset, (regularised) Stein thinning selects the next point using the
+    equations in Section 3.1 of :cite:`benard2023kernel`:
+
+    .. math::
+
+        x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
+            \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
+
+    where :math:`k` is the Stein kernel induced by the supplied base kernel,
+    :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
+    regularisation parameter, and the search is over the entire dataset.
 
     :param coreset_size: The desired size of the solved coreset
-    :param random_key: Key for random number generation
-    :param weighted: If to use dataset weights as selection probabilities
-    :param unique: If to sample without replacement
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`; if 'kernel'
+        is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching is not
+        data:`None`, a new instance of the kernel will be generated where the score
+        function is given by :code:`score_matching.match(...)`
+    :param score_matching: Specifies/overwrite the score function of the implied/passed
+       :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
+       :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
+       :class:`~coreax.kernels.SteinKernel`, in which case the kernel's existing score
+       function is used.
+    :param unique: If each index in the resulting coresubset should be unique
+    :param regularise: Boolean that enforces regularisation, see Section 3.1 of
+        :cite:`benard2023kernel`.
+    :param block_size: Block size passed to
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+    :param unroll: Unroll parameter passed to
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
     """
 
-    random_key: KeyArrayLike
-    weighted: bool = False
+    kernel: ScalarValuedKernel
+    score_matching: Optional[ScoreMatching] = None
     unique: bool = True
+    regularise: bool = True
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
+    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
     @override
     def reduce(
         self, dataset: _Data, solver_state: None = None
-    ) -> tuple[Coresubset, None]:
-        selection_weights = dataset.weights if self.weighted else None
-        try:
-            random_indices = jr.choice(
-                self.random_key,
-                len(dataset),
-                (self.coreset_size,),
-                p=selection_weights,
-                replace=not self.unique,
-            )
-            return Coresubset(Data(random_indices), dataset), solver_state
-        except ValueError as err:
-            if self.coreset_size > len(dataset) and self.unique:
-                raise ValueError(MSG) from err
-            raise
+    ) -> tuple[Coresubset[_Data], None]:
+        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
+        return self.refine(initial_coresubset, solver_state)
+
+    def refine(
+        self, coresubset: Coresubset[_Data], solver_state: None = None
+    ) -> tuple[Coresubset[_Data], None]:
+        r"""
+        Refine a coresubset with 'Stein thinning'.
+
+        We first compute a score function, and then the Stein kernel. This is used to
+        greedily choose points in the coreset to minimise kernel Stein discrepancy
+        (KSD).
+
+        :param coresubset: The coresubset to refine
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: a refined coresubset and relevant intermediate solver state information
+        """
+        x, w_x = jtu.tree_leaves(coresubset.pre_coreset_data)
+        kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
+        stein_kernel_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
+        if self.regularise:
+            # Cannot guarantee that kernel.base_kernel has a 'length_scale' attribute
+            bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
+            kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
+            # Use regularisation parameter suggested in :cite:`benard2023kernel`
+            regulariser_lambda = 1 / len(coresubset)
+            regularised_log_pdf = regulariser_lambda * kde.logpdf(x.T)
+
+            @jax.vmap
+            def _laplace_positive(x_):
+                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
+                hessian = jax.jacfwd(kernel.score_function)(x_)
+                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
+
+            laplace_correction = _laplace_positive(x)
+        else:
+            laplace_correction, regularised_log_pdf = 0.0, 0.0
+
+        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+            """
+            Greedy selection criterion - Section 3.1 :cite:`benard2023kernel`.
+
+            Argmin of the Laplace corrected and regularised Kernel Stein Discrepancy.
+            """
+            ksd = stein_kernel_diagonal + 2.0 * _kernel_similarity_penalty
+            return jnp.nanargmin(ksd + laplace_correction - i * regularised_log_pdf)
+
+        refined_coreset = _greedy_kernel_selection(
+            coresubset,
+            selection_function,
+            self.coreset_size,
+            self.kernel,
+            self.unique,
+            self.block_size,
+            self.unroll,
+        )
+        return refined_coreset, solver_state
+
+
+class RPCholeskyState(eqx.Module):
+    """
+    Intermediate :class:`RPCholesky` solver state information.
+
+    :param gramian_diagonal: Cached Gramian diagonal.
+    """
+
+    gramian_diagonal: Array
 
 
 class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
@@ -384,131 +490,15 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
         return updated_coreset, RPCholeskyState(gramian_diagonal)
 
 
-class SteinThinning(
-    RefinementSolver[Data, None], ExplicitSizeSolver, PaddingInvariantSolver
-):
-    r"""
-    Stein Thinning - an explicitly sized coresubset refinement solver.
+class GreedyKernelPointsState(eqx.Module):
+    """
+    Intermediate :class:`GreedyKernelPoints` solver state information.
 
-    Solves the coresubset problem by taking a deterministic, iterative, and greedy
-    approach to minimizing the Kernelised Stein Discrepancy (KSD) between the empirical
-    distribution of the coresubset (the solution) and the distribution of the problem
-    dataset, as characterised by the score function of the Stein Kernel.
-
-    Given one has selected :math:`T` data points for their compressed representation of
-    the original dataset, (regularised) Stein thinning selects the next point using the
-    equations in Section 3.1 of :cite:`benard2023kernel`:
-
-    .. math::
-
-        x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
-            \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
-
-    where :math:`k` is the Stein kernel induced by the supplied base kernel,
-    :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
-    regularisation parameter, and the search is over the entire dataset.
-
-    :param coreset_size: The desired size of the solved coreset
-    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
-        kernel function
-        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`; if 'kernel'
-        is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching is not
-        data:`None`, a new instance of the kernel will be generated where the score
-        function is given by :code:`score_matching.match(...)`
-    :param score_matching: Specifies/overwrite the score function of the implied/passed
-       :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
-       :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
-       :class:`~coreax.kernels.SteinKernel`, in which case the kernel's existing score
-       function is used.
-    :param unique: If each index in the resulting coresubset should be unique
-    :param regularise: Boolean that enforces regularisation, see Section 3.1 of
-        :cite:`benard2023kernel`.
-    :param block_size: Block size passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
-    :param unroll: Unroll parameter passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+    :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
+        an additional row and column of zeros.
     """
 
-    kernel: ScalarValuedKernel
-    score_matching: Optional[ScoreMatching] = None
-    unique: bool = True
-    regularise: bool = True
-    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
-
-    @override
-    def reduce(
-        self, dataset: Data, solver_state: None = None
-    ) -> tuple[Coresubset[Data], None]:
-        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
-        return self.refine(initial_coresubset, solver_state)
-
-    def refine(
-        self, coresubset: Coresubset[Data], solver_state: None = None
-    ) -> tuple[Coresubset[Data], None]:
-        r"""
-        Refine a coresubset with 'Stein thinning'.
-
-        We first compute a score function, and then the Stein kernel. This is used to
-        greedily choose points in the coreset to minimise kernel Stein discrepancy
-        (KSD).
-
-        .. warning::
-
-            If the input ``coresubset`` is smaller than the requested ``coreset_size``,
-            it will be padded with zero-valued, zero-weighted indices. After the input
-            ``coresubset`` has been refined, new indices will be chosen to fill the
-            padding. If the input ``coresubset`` is larger than the requested
-            ``coreset_size``, the extra indices will not be optimised and will be
-            clipped from the return ``coresubset``.
-
-        :param coresubset: The coresubset to refine
-        :param solver_state: Solution state information, primarily used to cache
-            expensive intermediate solution step values.
-        :return: a refined coresubset and relevant intermediate solver state information
-        """
-        x, w_x = jtu.tree_leaves(coresubset.pre_coreset_data)
-        kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
-        stein_kernel_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
-        if self.regularise:
-            # Cannot guarantee that kernel.base_kernel has a 'length_scale' attribute
-            bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
-            kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
-            # Use regularisation parameter suggested in :cite:`benard2023kernel`
-            regulariser_lambda = 1 / len(coresubset)
-            regularised_log_pdf = regulariser_lambda * kde.logpdf(x.T)
-
-            @jax.vmap
-            def _laplace_positive(x_):
-                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
-                hessian = jax.jacfwd(kernel.score_function)(x_)
-                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
-
-            laplace_correction = _laplace_positive(x)
-        else:
-            laplace_correction, regularised_log_pdf = 0.0, 0.0
-
-        def selection_function(
-            i: int, _kernel_similarity_penalty: Shaped[Array, " n"]
-        ) -> Shaped[Array, ""]:
-            """
-            Greedy selection criterion - Section 3.1 :cite:`benard2023kernel`.
-
-            Argmin of the Laplace corrected and regularised Kernel Stein Discrepancy.
-            """
-            ksd = stein_kernel_diagonal + 2.0 * _kernel_similarity_penalty
-            return jnp.nanargmin(ksd + laplace_correction - i * regularised_log_pdf)
-
-        refined_coreset = _greedy_kernel_selection(
-            coresubset,
-            selection_function,
-            self.coreset_size,
-            self.kernel,
-            self.unique,
-            self.block_size,
-            self.unroll,
-        )
-        return refined_coreset, solver_state
+    feature_gramian: Array
 
 
 def _greedy_kernel_points_loss(

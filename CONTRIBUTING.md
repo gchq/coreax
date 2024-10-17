@@ -96,7 +96,9 @@ or class entirely, the deprecation period must instead be at least **two minor r
 or two months (whichever is longer).**
 
 Ensure that during the deprecation period, the old behaviour still works, but raises a
-`DeprecationWarning` with an appropriate message. If at all possible, ensure that there
+`DeprecationWarning` with an appropriate message (which should include which version
+the behaviour is deprecated since, and which version the deprecated behaviour is
+expected to be removed in). If at all possible, ensure that there
 is straightforward signposting for how users should change their code to use
 non-deprecated parts of the codebase instead.
 
@@ -112,7 +114,10 @@ def my_old_function(x: int) -> int:
 def my_new_function(x: int) -> int:
     return x*4
 
-@deprecated("Renamed to my_new_function; will be removed in v0.3.0")
+@deprecated(
+    "Renamed to my_new_function."
+    + " Deprecated since v0.2.0; will be removed in v0.3.0."
+)
 def my_old_function(x: int) -> int:
     return my_new_function(x)
 
@@ -169,7 +174,7 @@ external libraries should be licensed permissive (e.g [MIT][mit]) or weak copyle
 
 ### Testing
 
-All tests are ran via the following [Pytest][pytest] command:
+All tests are run via the following [Pytest][pytest] command:
 ```bash
   pytest tests/
 ```
@@ -191,6 +196,15 @@ Use the form: (actual, expected) in asserts, e.g.
 assertEqual(actualValue, expectedValue)
 ```
 
+#### Testing before releases to PyPI
+
+Before a release is issued on PyPI, all tests for Coreax will be run on a GPU machine.
+This avoids having to incorporate GPU runners into the CI/CD.
+However, note that code pushed to `main` may not necessarily have been tested on a
+GPU machine until a release to PyPI is made.
+If you observe any issues on GPU machines using the code, please raise an issue
+detailing the behaviour, and create a PR with the relevant fix if possible.
+
 ### Abstract functions
 
 Abstract methods, functions and properties should only contain a docstring. They should
@@ -202,9 +216,9 @@ Custom exceptions should be derived from the most specific relevant Exception cl
 Custom messages should be succinct and, where easy to implement, offer suggestions to
 the user on how to rectify the exception.
 
-Avoid stating how the program will handle the error, e.g. avoid Aborting, since it will
-be evident that the program has terminated. This enables the exception to be caught and
-the program to continue in the future.
+Avoid stating how the program will handle the error, e.g. avoid `Aborting`, since it
+will be evident that the program has terminated. This enables the exception to be caught
+and the program to continue in the future.
 
 ### Docstrings
 
@@ -280,21 +294,24 @@ Releases are made on an ad-hoc basis, not on every merge into `main`. When the
 maintainers decide the codebase is ready for another release:
 
 1. Create an issue for the release.
-2. Identify a commit on `main` that is ready for release, except for housekeeping that
-   does not affect the functionality of the code.
-3. Create a branch `release/#.#.#` off the identified commit, populating with the target
+2. Run additional release tests on `main` including GPU testing, as described in
+   [Testing before releases to PyPI](#Testing-before-releases-to-PyPI).
+3. Fix any issues and merge into `main`, iterating until we have a commit on
+   `main` that is ready for release, except for housekeeping that does not affect the
+   functionality of the code.
+4. Create a branch `release/#.#.#` off the identified commit, populating with the target
    version number.
-4. Tidy `CHANGELOG.md` including:
+5. Tidy `CHANGELOG.md` including:
    - Move the content under `Unreleased` to a section under the target version number.
    - Create a new unpopulated `Unreleased` section at the top.
    - Update the hyperlinks to Git diffs at the bottom of the file so that they compare
      the relevant versions.
-5. Update the version number in `coreax/__init.py__`.
-6. Create and review a pull request.
-7. Once approved, create a release in GitHub pointing at the final commit on the release
+6. Update the version number in `coreax/__init.py__`.
+7. Create and review a pull request.
+8. Once approved, create a release in GitHub pointing at the final commit on the release
    branch.
-8. Build and publish to PyPI and ReadTheDocs.
-9. Merge the release branch into `main`.
+9. Build and publish to PyPI and ReadTheDocs.
+10. Merge the release branch into `main`.
 
 [github-issues]: https://github.com/gchq/coreax/issues?q=
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
