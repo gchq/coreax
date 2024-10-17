@@ -45,7 +45,12 @@ from coreax.weights import MMDWeightsOptimiser
 
 
 def setup_kernel(x: np.ndarray) -> SquaredExponentialKernel:
-    """Set up kernel using median heuristic."""
+    """
+    Set up a squared exponential kernel using the median heuristic.
+
+    :param x: Input data array used to compute the kernel length scale.
+    :return: A SquaredExponentialKernel with the computed length scale.
+    """
     num_samples_length_scale = min(300, 1000)
     random_seed = 45
     generator = np.random.default_rng(random_seed)
@@ -174,7 +179,7 @@ def compute_metrics(
                     respective solver objects.
     :param dataset: The dataset.
     :param mmd_metric: The MMD metric object for computing Maximum Mean Discrepancy.
-    :param ksd_metric: The KSD metric object for computing Kernelised Stein Discrepancy.
+    :param ksd_metric: The KSD metric object for computing Kernel Stein Discrepancy.
     :param weights_optimiser: The optimizer object for weights for the coresubset.
 
     :return: A dictionary where the keys are the solver names, and the values are
@@ -190,7 +195,13 @@ def compute_metrics(
 
 
 def main() -> None:
-    """Perform the benchmark."""
+    """
+    Perform a benchmark comparing different coreset algorithms on a synthetic dataset.
+
+    Generate a synthetic dataset using `sklearn.datasets.make_blobs`,set up various
+    solvers, generate coreset of different sizes, and compute performance metrics
+    (MMD and KSD) for each solver at different. Then, save the results into a JSON file.
+    """
     # Generate data
     x, *_ = make_blobs(n_samples=1000, n_features=2, centers=10, random_state=45)
     dataset = Data(jnp.array(x))
