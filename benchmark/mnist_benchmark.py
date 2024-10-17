@@ -340,10 +340,9 @@ def initialise_solvers(
     Initialise and return a list of solvers for various coreset algorithms.
 
     Set up solvers for Kernel Herding, Stein Thinning, Random Sampling, and Randomised
-    Cholesky methods. Each solver has different parameter requirements.
-    Some solvers can utilise MapReduce, while others cannot,
-    and some require specific kernels.
-     This setup allows them to be called by passing only the coreset size,
+    Cholesky methods. Each solver has different parameter requirements. Some solvers
+    can utilise MapReduce, while others cannot,and some require specific kernels.
+    This setup allows them to be called by passing only the coreset size,
     enabling easy integration in a loop for benchmarking.
 
     :param train_data_pca: The PCA-transformed training data used for
@@ -465,7 +464,6 @@ def main() -> None:
         prepare_datasets()
     )
 
-    # Perform PCA
     train_data_pca = pca(train_data_jax)
 
     results = []
@@ -475,7 +473,6 @@ def main() -> None:
         jax.random.choice(key, train_data_pca.shape[0], shape=(1000,), replace=False)
     ]
 
-    # Initialise solvers
     solvers = initialise_solvers(train_data_pca, key, small_dataset)
 
     config = {
@@ -513,7 +510,6 @@ def main() -> None:
             print(result)
             results.append((name, size, result["final_test_accuracy"]))
 
-    # Save results to JSON
     train_and_save_results(results)
 
 
