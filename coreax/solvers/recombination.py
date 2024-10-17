@@ -426,7 +426,7 @@ def _coresubset_nodes(
         compatible as the coreset size :math:`m^\prime` is unknown at compile time.
     :param is_affine_augmented: If the 'push_forward_nodes' include the :math:`\phi_1`
         affine-augmentation map.
-    :return: The coresubset nodes as defined by the 'mode.
+    :return: The coresubset nodes as defined by the 'mode'.
     """
     n, m = push_forward_nodes.shape
     m = m if is_affine_augmented else m + 1
@@ -472,7 +472,7 @@ class TreeRecombination(RecombinationSolver[Data, None]):
     equivalently expressed as :math:`\mathcal{O}(m^3)`, using the same arguments as used
     in :class:`CaratheodoryRecombination`.
 
-    ..note::
+    .. note::
         As the ratio of :math:`n / m` grows, the constant factor for the time complexity
         of :class:`TreeRecombination` increases at a logarithmic rate, rather than at a
         quadratic rate for plain :class:`CaratheodoryRecombination`. Hence, in general,
@@ -584,7 +584,7 @@ def _prepare_tree(
         (number of tree_reduction iterations required to complete tree recombination)
     """
     tree_count = tree_reduction_factor * m
-    max_tree_depth = math.ceil(math.log(n / m, tree_reduction_factor))
+    max_tree_depth = max(1, math.ceil(math.log(n / m, tree_reduction_factor)))
     padding = m * tree_reduction_factor**max_tree_depth - n
     return padding, tree_count, max_tree_depth
 

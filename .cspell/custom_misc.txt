@@ -15,6 +15,7 @@ diag
 docstrings
 eigendecomposition
 elementwise
+fontsize
 forall
 GCHQ
 Gramian
@@ -29,12 +30,14 @@ linestyle
 linewidth
 mapsto
 Matern
+maxs
 ml.p3.8xlarge
 MNIST
 ndmin
 parsable
 PCIMQ
 phdthesis
+pmatrix
 PMLR
 primaryclass
 PRNG
@@ -51,3 +54,5 @@ supp
 TLDR
 typecheck
 WMMD
+xticks
+yerr
