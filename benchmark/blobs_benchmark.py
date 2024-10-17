@@ -13,10 +13,19 @@
 # limitations under the License.
 
 """
-Evaluate performance of different coreset algorithms on the synthetic dataset.
+Benchmark performance of different coreset algorithms on a synthetic dataset.
 
-We generate synthetic data using :func: `sklearn.datasets.make_blobs`
-and generate coresets using different coreset algorithms.
+The benchmarking process follows these steps:
+1. Generate a synthetic dataset of 1000 two-dimensional points using
+   `sklearn.datasets.make_blobs`.
+2. Generate coresets of varying sizes: 10, 50, 100, and 200 points using different
+   coreset algorithms.
+3. Compute two metrics to evaluate the coresets' quality:
+   - Maximum Mean Discrepancy (MMD)
+   - Kernel Stein Discrepancy (KSD)
+4. Optimize weights for the coresets to minimize the MMD score and recompute both
+   the MMD and KSD metrics.
+5. Measure and report the time taken for each step of the benchmarking process.
 """
 
 import json

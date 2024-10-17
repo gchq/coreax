@@ -13,11 +13,25 @@
 # limitations under the License.
 
 """
-Performance of different coreset algorithms on the MNIST dataset.
+Benchmark performance of coreset algorithms on the MNIST dataset with a neural network.
 
-We generate coresubsets of the MNIST training dataset using different
-coreset algorithms and train a MLP classifier and compare the accuracy
-on the testing dataset.
+The benchmarking process follows these steps:
+1. Start with the MNIST dataset, which consists of 60,000 training images and 10,000
+   test images.
+2. Use a simple MLP neural network with a single hidden layer of 64 nodes to classify
+   the images. The images are flattened into vectors.
+3. To reduce dimensionality, apply PCA to project the 28x28 images into 15 components
+   before applying coreset algorithms.
+4. Generate coresets of different sizes using various coreset algorithms.
+   - For Kernel Herding and Stein Thinning, use MapReduce to handle larger-scale data.
+5. Use the coreset indices to select the original images from the training set, and
+   train the model on these selected coresets.
+6. Evaluate the model's accuracy on the test set of 10,000 images.
+7. Due to the inherent randomness in both coreset algorithms and the machine learning
+   training process, repeat the experiment multiple times with different random seeds.
+8. Store the results from each run and visualise them using
+   `coreset.benchmark.mnist_benchmark_visualiser.py`, which plots error bars (min,
+   max, mean) for accuracy across different coreset sizes.
 """
 
 import json
