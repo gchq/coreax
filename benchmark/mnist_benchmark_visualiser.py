@@ -41,6 +41,5 @@ def main() -> None:
     plt.show()
 
 
-# Check if this script is executed as the main module
 if __name__ == "__main__":
     main()
