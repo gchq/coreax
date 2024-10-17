@@ -39,7 +39,6 @@ import jax.numpy as jnp
 from jax import Array
 from jaxopt import OSQP
 from jaxtyping import Shaped
-from typing_extensions import deprecated
 
 from coreax.data import Data, as_data
 from coreax.kernels import ScalarValuedKernel
@@ -313,21 +312,3 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
             unroll=unroll,
         )
         return solve_qp(kernel_cc, kernel_cd, **solver_kwargs)
-
-
-@deprecated("Renamed to SBQWeightsOptimiser; will be removed in version 0.3.0")
-class SBQ(SBQWeightsOptimiser):
-    """
-    Deprecated reference to :class:`~coreax.weights.SBQWeightsOptimiser`.
-
-    Will be removed in version 0.3.0
-    """
-
-
-@deprecated("Renamed to `MMDWeightsOptimiser`; will be removed in version 0.3.0")
-class MMD(MMDWeightsOptimiser):
-    """
-    Deprecated reference to :class:`~coreax.weights.MMDWeightsOptimiser`.
-
-    Will be removed in version 0.3.0
-    """
