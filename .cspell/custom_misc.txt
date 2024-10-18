@@ -15,6 +15,7 @@ diag
 docstrings
 eigendecomposition
 elementwise
+fontsize
 forall
 GCHQ
 Gramian
@@ -25,10 +26,13 @@ kdtree
 kernelised
 kernelized
 KSD
+linestyle
 linewidth
 mapsto
 Matern
+maxs
 ml.p3.8xlarge
+MNIST
 ndmin
 parsable
 PCIMQ
@@ -42,6 +46,7 @@ recomb
 refs
 regulariser
 RKHS
+rngs
 RPCHOLESKY
 sigmas
 subseteq
@@ -49,3 +54,5 @@ supp
 TLDR
 typecheck
 WMMD
+xticks
+yerr
