@@ -21,57 +21,13 @@ class Coreset(eqx.Module, Generic[_Data]):
     r"""
     Data structure for representing a coreset.
 
-    **TLDR:** a coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data
-    points that, in some sense, best represent the "important" properties of a larger
-    set of :math:`n > \hat{n}` (potentially weighted) data points.
+    A coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data points,
+    :math:`\hat{X} := \{(\hat{x}_i, \hat{w}_i)\}_{i=1}^\hat{n}` that, in some sense,
+    best represent the "important" properties of a larger set of :math:`n > \hat{n}`
+    (potentially weighted) data points :math:`X := \{(x_i, w_i)\}_{i=1}^n`,.
 
-    For a dataset :math:`\{(x_i, w_i)\}_{i=1}^n`, where each node :math:`x_i \in \Omega`
-    is paired with a non-negative weight :math:`w_i \in \mathbb{R} \ge 0`, there exists
-    an implied (discrete) measure :math:`\nu_n = \sum_{i=1}^{n} w_i \delta_{x_i}` on
-    :math:`\Omega`. While not very useful on its own, when combined with a set of
-    :math:`\nu_n`-integrable test-functions :math:`\Phi = \{ \phi_1, \dots, \phi_M \}`,
-    where :math:`\phi_i\ \colon\ \Omega \to \mathbb{R}`, the measure :math:`\nu_n`
-    implies the following push-forward measure over :math:`\mathbb{R}^M`
-
-    .. math::
-        \begin{align}
-            \mu_n &:= \Phi_* \nu_n,\\
-            \mu_n &= \sum_{i=1}^{n} w_i \delta_{\Phi(x_i)}.
-        \end{align}
-
-    We assume, that for some choice of test-functions, the "important" properties of
-    :math:`\nu_n` (the original dataset) are encoded in the "centre-of-mass" of the
-    pushed-forward measure :math:`\mu_n`
-
-    .. math::
-        \begin{align}
-            \text{CoM}(\mu_n) &:= \sum_{i}^{n} w_i \Phi(x_i),\\
-            \text{CoM}(\mu_n) &= \int_\Omega \phi_j(\omega) d\mu_n.\
-        \end{align}
-
-    .. note::
-        Depending on the coreset solver, the test-functions may be explicitly specified
-        by the user (the user makes a choice about what properties are "important"), or
-        implicitly defined by the solvers's specific objectives (the solver specifies
-        what properties are "important").
-
-    A coreset is simply a reduced measure :math:`\hat{\nu}_\hat{n}`, whose push-forward
-    :math:`\hat{\mu}_\hat{n} := \Phi_* \hat{\nu}_\hat{n}` has, approximately in some
-    cases, the same "centre-of-mass" as the push-forward measure of the original dataset
-
-    .. math::
-        \hat{\nu}_\hat{n} := \sum_{i=1}^\hat{n} \hat{w}_i \delta_{\hat{x}_i}, \quad
-        \text{CoM}(\hat{\mu}_\hat{n}) = \text{CoM}(\mu_n),
-
-    where :math:`\hat{x}_i \in \Omega` and :math:`\hat{w}_i \in \mathbb{R} \ge 0`. In
-    preserving the "centre-of-mass", the coreset satisfies
-
-    .. math::
-        \int_\Omega f(\omega)\ d\mu_n = \int_\Omega f(\omega)\ d\hat{\mu}_\hat{n},
-
-    for all functions :math:`f \in \text{span}(\Phi)`. I.E. integration against the
-    push-forward of the original dataset and the push-forward of the coreset is
-    identical for all functions in the span of the test-functions.
+    :math:`\hat{x}_i, x_i \in \Omega` represent the data points/nodes and
+    :math:`\hat{w}_i, w_i \in \mathbb{R}` represent the associated weights.
 
     :param nodes: The (weighted) coreset nodes, :math:`\hat{x}_i`; once instantiated,
         the nodes should only be accessed via :meth:`Coresubset.coreset`
@@ -112,27 +68,24 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     r"""
     Data structure for representing a coresubset.
 
-    A coresubset is a :class`Coreset`, with the additional condition that the support of
-    the reduced measure (the coreset), must be a subset of the support of the original
-    measure (the original data), such that
+    A coresubset is a :class`Coreset`, with the additional condition that the coreset
+    data points/nodes must be a subset of the the original data points/nodes, such that
 
     .. math::
         \hat{x}_i = x_i, \forall i \in I,
         I \subset \{1, \dots, n\}, text{card}(I) = \hat{n}.
 
     Thus, a coresubset, unlike a coreset, ensures that feasibility constraints on the
-    support of the measure are maintained :cite:`litterer2012recombination`. This is
-    vital if, for example, the test-functions are only defined on the support of the
-    original measure/nodes, rather than all of :math:`\Omega`.
+    support of the measure are maintained :cite:`litterer2012recombination`.
 
-    In coresubsets, the measure reduction can be implicit (setting weights/nodes to
-    zero for all :math:`i \in I \ {1, \dots, n}`) or explicit (removing entries from the
+    In coresubsets, the dataset reduction can be implicit (setting weights/nodes to zero
+    for all :math:`i \in I \ {1, \dots, n}`) or explicit (removing entries from the
     weight/node arrays). The implicit approach is useful when input/output array shape
     stability is required (E.G. for some JAX transformations); the explicit approach is
     more similar to a standard coreset.
 
     :param nodes: The (weighted) coresubset node indices, :math:`I`; the materialised
-        coresubset nodes should be accessed via :meth:`Coresubset.coreset`.
+        coresubset nodes should only be accessed via :meth:`Coresubset.coreset`.
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
