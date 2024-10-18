@@ -23,18 +23,20 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
+from jax import Array
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import TypeAlias, override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
 from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
-from coreax.util import tree_zero_pad_leading_axis
+from coreax.util import ArrayLike, tree_zero_pad_leading_axis
 
 BinaryTree: TypeAlias = Union[KDTree, BallTree]
 _Data = TypeVar("_Data", bound=Data)
 _Coreset = TypeVar("_Coreset", Coreset, Coresubset)
 _State = TypeVar("_State")
+_Indices = TypeVar("_Indices", ArrayLike, None)
 
 
 class CompositeSolver(
@@ -125,22 +127,56 @@ class MapReduce(
         # There is no obvious way to use state information here.
         del solver_state
 
-        def _reduce_coreset(data: _Data) -> tuple[_Coreset, _State]:
+        def _reduce_coreset(
+            data: _Data, _indices: Optional[_Indices] = None
+        ) -> tuple[_Coreset, _State, _Indices]:
             if len(data) <= self.leaf_size:
-                return self.base_solver.reduce(data)
-            partitioned_dataset = _jit_tree(data, self.leaf_size, self.tree_type)
-            coreset_ensemble, _ = jax.vmap(self.base_solver.reduce)(partitioned_dataset)
-            _coreset = jtu.tree_map(jnp.concatenate, coreset_ensemble)
-            return _reduce_coreset(_coreset.coreset)
+                coreset, state = self.base_solver.reduce(data)
+                if _indices is not None:
+                    _indices = _indices[coreset.nodes.data]
+                return coreset, state, _indices
 
-        coreset_wrong_pre_coreset_data, output_solver_state = _reduce_coreset(dataset)
-        coreset = eqx.tree_at(
-            lambda x: x.pre_coreset_data, coreset_wrong_pre_coreset_data, dataset
-        )
+            def wrapper(partition: _Data) -> tuple[_Data, Array]:
+                """
+                Apply the `reduce` method of the base solver on a partition.
+
+                This is a wrapper for `reduce()` for processing a single partition.
+                The data is partitioned with `_jit_tree()`.
+                The reduction is performed on each partition via ``vmap()``.
+                """
+                x, _ = self.base_solver.reduce(partition)
+                return x.coreset, x.nodes.data
+
+            partitioned_dataset, partitioned_indices = _jit_tree(
+                data, self.leaf_size, self.tree_type
+            )
+            # Reduce each partition and get indices from each
+            coreset_ensemble, ensemble_indices = jax.vmap(wrapper)(partitioned_dataset)
+            # Calculate the indices with respect to the original data
+            concatenated_indices = jax.vmap(lambda x, index: x[index])(
+                partitioned_indices, ensemble_indices
+            )
+            concatenated_indices = jnp.ravel(concatenated_indices)
+            _coreset = jtu.tree_map(jnp.concatenate, coreset_ensemble)
+
+            if _indices is not None:
+                final_indices = _indices[concatenated_indices]
+            else:
+                final_indices = concatenated_indices
+            return _reduce_coreset(_coreset, final_indices)
+
+        (pre_coreset, output_solver_state, _indices) = _reduce_coreset(dataset)
+        # Correct the pre-coreset data and the indices
+        coreset = eqx.tree_at(lambda x: x.pre_coreset_data, pre_coreset, dataset)
+        if _indices is not None:
+            if isinstance(coreset, Coresubset):
+                coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
         return coreset, output_solver_state
 
 
-def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _Data:
+def _jit_tree(
+    dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]
+) -> tuple[_Data, _Indices]:
     """
     Return JIT compatible BinaryTree partitioning of 'dataset'.
 
@@ -183,4 +219,4 @@ def _jit_tree(dataset: _Data, leaf_size: int, tree_type: type[BinaryTree]) -> _D
         return node_indices.reshape(n_leaves, -1).astype(np.int32)
 
     indices = jax.pure_callback(_binary_tree, result_shape, padded_dataset)
-    return dataset[indices]
+    return padded_dataset[indices], jnp.arange(len(dataset))[indices]
