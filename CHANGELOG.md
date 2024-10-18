@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+-
+
+### Fixed
+-
+
+### Changed
+-
+
+### Removed
+-
+
+### Deprecated
+-
+
+## [0.3.0]
+
+### Added
 - Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
 - Added the `coreax.solvers.recombination` module, which provides the following new solvers:
   - `RecombinationSolver`: an abstract base class for recombination solvers.
@@ -24,7 +41,8 @@ disable tqdm progress bar terminal output. Defaults to disabled (`False`).
 
 
 ### Fixed
-- `MapReduce` in `coreax.solvers.composite.py` now keeps track of the indices.
+- Fixed `MapReduce` in `coreax.solvers.composite.py` to keep track of the indices.
+-
 
 
 ### Changed
