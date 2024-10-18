@@ -244,7 +244,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/gchq/coreax/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/gchq/coreax/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gchq/coreax/releases/tag/v0.1.0
