@@ -53,6 +53,22 @@ repos:
           (?x)^(
             examples/.+/.+.(gif|png)
           )$
+      # Keep requirements-docs.txt in sync with uv.lock
+      - id: check-requirements-docs
+        name: Keep requirements-docs.txt in sync with uv.lock
+        language: system
+        entry: >
+          uv export
+          --frozen
+          --quiet
+          --format requirements-txt
+          --no-hashes
+          --no-dev
+          --no-emit-project
+          --extra doc
+          --output-file requirements-doc.txt
+        pass_filenames: false
+        files: ^uv\.lock$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.5
     hooks:
