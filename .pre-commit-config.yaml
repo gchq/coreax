@@ -53,7 +53,7 @@ repos:
           (?x)^(
             examples/.+/.+.(gif|png)
           )$
-      # Keep requirements-docs is up to date
+      # Keep requirements-docs.txt in sync with uv.lock
       - id: check-requirements-docs
         name: Keep requirements-docs.txt in sync with uv.lock
         language: system

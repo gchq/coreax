@@ -126,7 +126,7 @@ jobs:
         if: steps.commit_lockfile.conclusion == 'success' || ( steps.main_lockfile.outputs.hash != steps.new_lockfile.outputs.hash )
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run : |
+        run: |
           export title="chore(deps): autoupdate uv.lock"
           export body=$( cat ${{ env.update_message_path }} )
           export pr_number=${{ steps.create_branch.outputs.pr_number }}
