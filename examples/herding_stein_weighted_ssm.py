@@ -20,7 +20,7 @@ points sampled from ``k`` clusters in space.
 
 A coreset is generated using Stein kernel herding, with a PCIMQ base kernel. The score
 function (gradient of the log-density function) for the Stein kernel is estimated by
-applying sliced score matching from :cite:`ssm`. This trains a neural network to
+applying sliced score matching from :cite:`song2020ssm`. This trains a neural network to
 approximate the score function, and then passes the trained neural network to the Stein
 kernel. The initial coreset generated from this procedure is then weighted, with weights
 determined such that the weighted coreset achieves a better maximum mean discrepancy
@@ -41,14 +41,15 @@ import numpy as np
 from jax import random
 from sklearn.datasets import make_blobs
 
-from coreax import (
-    MMD,
-    Data,
-    SlicedScoreMatching,
+from coreax.data import Data
+from coreax.kernels import (
+    PCIMQKernel,
     SquaredExponentialKernel,
     SteinKernel,
+    median_heuristic,
 )
-from coreax.kernel import PCIMQKernel, median_heuristic
+from coreax.metrics import MMD
+from coreax.score_matching import SlicedScoreMatching
 from coreax.solvers import KernelHerding, RandomSample
 from coreax.weights import MMDWeightsOptimiser
 

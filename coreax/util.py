@@ -21,10 +21,23 @@ codebase. Examples of this include computation of squared distances, definition 
 class factories and checks for numerical precision.
 """
 
+import logging
+import sys
 import time
 from collections.abc import Callable, Iterable, Iterator
 from functools import partial, wraps
-from typing import Any, Optional, TypeVar
+from math import log10
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -32,8 +45,11 @@ import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jax.typing import ArrayLike
-from jaxopt import OSQP
+from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
+
+_logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PyTreeDef: TypeAlias = Any
 Leaf: TypeAlias = Any
@@ -45,6 +61,30 @@ KeyArrayLike: TypeAlias = ArrayLike
 
 class NotCalculatedError(Exception):
     """Raise when trying to use a variable that has not been calculated yet."""
+
+
+class JITCompilableFunction(NamedTuple):
+    """
+    Parameters for :func:`jit_test`.
+
+    :param fn: JIT-compilable function callable to test
+    :param fn_args: Arguments passed during the calls to the passed function
+    :param fn_kwargs: Keyword arguments passed during the calls to the passed function
+    :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
+        before being called to compile the passed function
+    """
+
+    fn: Callable
+    fn_args: tuple = ()
+    fn_kwargs: Optional[Dict[str, Any]] = None
+    jit_kwargs: Optional[Dict[str, Any]] = None
+    name: Optional[str] = None
+
+    def without_name(
+        self,
+    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
+        return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
 
 class InvalidKernel:
@@ -91,7 +131,7 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
         raise ValueError("'pad_width' must be a positive integer")
     leaves_to_pad, leaves_to_keep = eqx.partition(tree, eqx.is_array)
 
-    def _pad(x: ArrayLike) -> Array:
+    def _pad(x: Shaped[Array, " n"]) -> Shaped[Array, " n + pad_width"]:
         padding = (0, int(pad_width))
         skip_padding = ((0, 0),) * (jnp.ndim(x) - 1)
         return jnp.pad(x, (padding, *skip_padding))
@@ -101,8 +141,8 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
 
 
 def apply_negative_precision_threshold(
-    x: ArrayLike, precision_threshold: float = 1e-8
-) -> Array:
+    x: Union[Shaped[Array, ""], float, int], precision_threshold: float = 1e-8
+) -> Shaped[Array, ""]:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -115,8 +155,24 @@ def apply_negative_precision_threshold(
 
 
 def pairwise(
-    fn: Callable[[ArrayLike, ArrayLike], Array],
-) -> Callable[[ArrayLike, ArrayLike], Array]:
+    fn: Callable[
+        [
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        ],
+        Shaped[Array, " *d"],
+    ],
+) -> Callable[
+    [
+        Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ],
+    Shaped[Array, " n m *d"],
+]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
 
@@ -126,7 +182,14 @@ def pairwise(
     """
 
     @wraps(fn)
-    def pairwise_fn(x: ArrayLike, y: ArrayLike) -> Array:
+    def pairwise_fn(
+        x: Union[
+            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+        y: Union[
+            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
+        ],
+    ) -> Shaped[Array, " n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
         return vmap(
@@ -139,7 +202,10 @@ def pairwise(
 
 
 @jit
-def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
+def squared_distance(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate the squared distance between two vectors.
 
@@ -153,24 +219,11 @@ def squared_distance(x: ArrayLike, y: ArrayLike) -> Array:
     return jnp.dot(x - y, x - y)
 
 
-@deprecated(
-    "Use coreax.util.pairwise(coreax.util.squared_distance)(x, y);"
-    "will be removed in version 0.3.0"
-)
-def squared_distance_pairwise(x: ArrayLike, y: ArrayLike) -> Array:
-    r"""
-    Calculate efficient pairwise square distance between two arrays.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise squared distances between ``x_array`` and ``y_array`` as an
-        :math:`n \times m` array
-    """
-    return pairwise(squared_distance)(x, y)
-
-
 @jit
-def difference(x: ArrayLike, y: ArrayLike) -> Array:
+def difference(
+    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
     Calculate vector difference for a pair of vectors.
 
@@ -184,62 +237,34 @@ def difference(x: ArrayLike, y: ArrayLike) -> Array:
 
 
 @deprecated(
-    "Use coreax.util.pairwise(coreax.util.difference)(x, y);"
-    "will be removed in version 0.3.0"
+    "Use coreax.kernels.util.median_heuristic instead."
+    + " Deprecated since version 0.3.0."
+    + " Will be removed in version 0.4.0."
 )
-def pairwise_difference(x: ArrayLike, y: ArrayLike) -> Array:
-    r"""
-    Calculate efficient pairwise difference between two arrays of vectors.
-
-    :param x: First set of vectors as a :math:`n \times d` array
-    :param y: Second set of vectors as a :math:`m \times d` array
-    :return: Pairwise differences between ``x_array`` and ``y_array`` as an
-        :math:`n \times m \times d` array
+@jit
+def median_heuristic(
+    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
+) -> Shaped[Array, ""]:
     """
-    return pairwise(difference)(x, y)
+    Compute the median heuristic for setting kernel bandwidth.
 
+    Analysis of the performance of the median heuristic can be found in
+    :cite:`garreau2018median`.
 
-def solve_qp(kernel_mm: ArrayLike, gramian_row_mean: ArrayLike, **osqp_kwargs) -> Array:
-    r"""
-    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
-
-    Solves simplex weight problems of the form:
-
-    .. math::
-
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
-        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
-
-    subject to
-
-    .. math::
-
-        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
-
-    :param kernel_mm: :math:`m \times m` coreset Gram matrix
-    :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
-    :return: Optimised solution for the quadratic program
+    :param x: Input array of vectors
+    :return: Bandwidth parameter, computed from the median heuristic, as a
+        zero-dimensional array
     """
-    # Setup optimisation problem - all variable names are consistent with the OSQP
-    # terminology. Begin with the objective parameters.
-    q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(gramian_row_mean)
+    # Format inputs
+    x = jnp.atleast_2d(x)
+    # Calculate square distances as an upper triangular matrix
+    square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
+    # Calculate the median of the square distances
+    median_square_distance = jnp.median(
+        square_distances[jnp.triu_indices_from(square_distances, k=1)]
+    )
 
-    # Define the equality constraint parameters
-    num_points = q_array.shape[0]
-    a_array = jnp.ones((1, num_points))
-    b = jnp.array([1.0])
-
-    # Define the inequality constraint parameters
-    g_array = jnp.eye(num_points) * -1.0
-    h = jnp.zeros(num_points)
-
-    # Define solver object and run solver
-    qp = OSQP(**osqp_kwargs)
-    sol = qp.run(
-        params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
-    ).params
-    return sol.primal
+    return jnp.sqrt(median_square_distance / 2.0)
 
 
 def sample_batch_indices(
@@ -247,7 +272,7 @@ def sample_batch_indices(
     max_index: int,
     batch_size: int,
     num_batches: int,
-) -> Array:
+) -> Shaped[Array, " num_batches batch_size"]:
     """
     Sample an array of indices of size `num_batches` x `batch_size`.
 
@@ -277,17 +302,18 @@ def jit_test(
     jit_kwargs: Optional[dict] = None,
 ) -> tuple[float, float]:
     """
-    Verify JIT performance by comparing timings of a before and after run of a function.
+    Measure execution times of two runs of a JIT-compilable function.
 
     The function is called with supplied arguments twice, and timed for each run. These
-    timings are returned in a 2-tuple.
+    timings are returned in a 2-tuple. These timings can help verify the JIT performance
+    by comparing timings of a before and after run of a function.
 
-    :param fn: Function callable to test
+    :param fn: JIT-compilable function callable to test
     :param fn_args: Arguments passed during the calls to the passed function
     :param fn_kwargs: Keyword arguments passed during the calls to the passed function
     :param jit_kwargs: Keyword arguments that are partially applied to :func:`jax.jit`
-        before being called to compile the passed function.
-    :return: (First run time, Second run time)
+        before being called to compile the passed function
+    :return: (First run time, Second run time), in seconds
     """
     # Avoid dangerous default values - Pylint W0102
     if fn_kwargs is None:
@@ -299,23 +325,135 @@ def jit_test(
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
 
-    assert hash(_fn) != hash(fn), "Cannot guarantee recompilation of `fn`."
-
-    start_time = time.time()
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     pre_delta = end_time - start_time
-    start_time = time.time()
+
+    start_time = time.perf_counter()
     block_until_ready(_fn(*fn_args, **fn_kwargs))
-    end_time = time.time()
+    end_time = time.perf_counter()
     post_delta = end_time - start_time
+
     return pre_delta, post_delta
+
+
+def format_time(num: float) -> str:
+    """
+    Standardise the format of the input time.
+
+    Floats will be converted to a standard format, e.g. 0.4531 -> "453.1 ms".
+
+    :param num: Float to be converted
+    :return: Formatted time as a string
+    """
+    try:
+        order = log10(abs(num))
+    except ValueError:
+        return "0 s"
+
+    if order >= 2:  # noqa: PLR2004
+        scaled_time = num / 60
+        unit_string = "mins"
+    elif order < -9:  # noqa: PLR2004
+        scaled_time = 1e12 * num
+        unit_string = "ps"
+    elif order < -6:  # noqa: PLR2004
+        scaled_time = 1e9 * num
+        unit_string = "ns"
+    elif order < -3:  # noqa: PLR2004
+        scaled_time = 1e6 * num
+        unit_string = "\u03bcs"
+    elif order < 0:  # noqa: PLR2004
+        scaled_time = 1e3 * num
+        unit_string = "ms"
+    else:
+        scaled_time = num
+        unit_string = "s"
+
+    return f"{round(scaled_time, 2)} {unit_string}"
+
+
+def speed_comparison_test(
+    function_setups: Sequence[JITCompilableFunction],
+    num_runs: int = 10,
+    log_results: bool = False,
+    normalisation: Optional[Tuple[float, float]] = None,
+) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
+    """
+    Compare compilation time and runtime of a list of JIT-able functions.
+
+    :param function_setups: Sequence of instances of :class:`JITCompilableFunction`
+    :param num_runs: Number of times to average function timings over
+    :param log_results: If :data:`True`, the results are formatted and logged
+    :param normalisation: Tuple (compilation normalisation, execution normalisation).
+        If provided, returned compilation/execution times are normalised so that this
+        time is 1 time unit.
+    :return: List of tuples (means, standard deviations) for each function containing
+        JIT compilation and execution times as array components; Dictionary with
+        key function name and value array of estimated compilation times in first
+        column and execution time in second column
+    """
+    timings_dict = {}
+    results = []
+    for i, function in enumerate(function_setups):
+        name = function.name
+        name = name if name is not None else f"function_{i + 1}"
+        if log_results:
+            _logger.info("------------------- %s -------------------", name)
+        timings = jnp.zeros((num_runs, 2))
+        for j in range(num_runs):
+            timings = timings.at[j, :].set(jit_test(*function.without_name()))
+        # Compute the time just spent on compilation
+        timings = timings.at[:, 0].set(timings[:, 0] - timings[:, 1])
+        # Normalise, if necessary
+        if normalisation is not None:
+            timings = timings.at[:, 0].set(timings[:, 0] / normalisation[0])
+            timings = timings.at[:, 1].set(timings[:, 1] / normalisation[1])
+        timings_dict[name] = timings
+        # Compute summary statistics
+        mean = timings.mean(axis=0)
+        std = timings.std(axis=0)
+        results.append((mean, std))
+
+        if log_results:
+            if normalisation:
+                _logger.info(
+                    "Compilation time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[0].item(),
+                    std[0].item(),
+                    num_runs,
+                )
+                _logger.info(
+                    "Execution time: %.4g units ± %.4g units per run "
+                    "(mean ± std. dev. of %s runs)",
+                    mean[1].item(),
+                    std[1].item(),
+                    num_runs,
+                )
+            else:
+                _logger.info(
+                    "Compilation time: %s ± %s per run "
+                    "(mean ± std. dev. of %s runs)",
+                    format_time(mean[0].item()),
+                    format_time(std[0].item()),
+                    num_runs,
+                )
+                _logger.info(
+                    "Execution time: %s ± %s per run (mean ± std. dev. of %s runs)",
+                    format_time(mean[1].item()),
+                    format_time(std[1].item()),
+                    num_runs,
+                )
+
+    return results, timings_dict
 
 
 T = TypeVar("T")
 
 
-class SilentTQDM:
+class SilentTQDM(Generic[T]):
     """
     Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
 
@@ -341,5 +479,6 @@ class SilentTQDM:
         """
         return iter(self.iterable)
 
-    def write(self, *_args, **_kwargs) -> None:
+    @staticmethod
+    def write(*_args, **_kwargs) -> None:
         """Do nothing instead of writing to output."""

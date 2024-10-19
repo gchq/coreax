@@ -1,14 +1,16 @@
 # © Crown Copyright GCHQ
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
-# file except in compliance with the License. You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software distributed under
-# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 Example coreset generation using a video of a pouncing cat and sliced score matching.
@@ -20,8 +22,8 @@ Firstly, principal component analysis (PCA) is applied to the video data to redu
 dimensionality. Then, a coreset is generated using Stein kernel herding, with a
 SquaredExponentialKernel base kernel. The score function (gradient of the log-density
 function) for the Stein kernel is estimated by applying sliced score matching from
-:cite:`ssm`. This trains a neural network to approximate the score function, and then
-passes the trained neural network to the Stein kernel.
+:cite:`song2020ssm`. This trains a neural network to approximate the score function, and
+then passes the trained neural network to the Stein kernel.
 
 The coreset attained from Stein kernel herding is compared to a coreset generated via
 uniform random sampling. Coreset quality is measured using maximum mean discrepancy
@@ -39,14 +41,10 @@ import numpy as np
 from jax import random
 from sklearn.decomposition import PCA
 
-from coreax import (
-    MMD,
-    Data,
-    SlicedScoreMatching,
-    SquaredExponentialKernel,
-    SteinKernel,
-)
-from coreax.kernel import median_heuristic
+from coreax.data import Data
+from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
+from coreax.metrics import MMD
+from coreax.score_matching import SlicedScoreMatching
 from coreax.solvers import KernelHerding, MapReduce, RandomSample
 
 

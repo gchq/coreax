@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration test for kernel herding example with a paired kernel.
+Integration test showing how coresets can be included in a machine learning pipeline.
 """
 
 import tempfile
@@ -21,7 +21,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-from examples.herding_paired_kernel import main as herding_paired_kernel_main
+from examples.coreset_in_model_pipeline import main as coreset_in_model_pipeline_main
 
 # Integration tests are split across several files, to allow serial calls and avoid
 # sharing of JIT caches between tests. As a result, ignore the pylint warnings for
@@ -29,16 +29,16 @@ from examples.herding_paired_kernel import main as herding_paired_kernel_main
 # pylint: disable=duplicate-code
 
 
-class TestHerdingPairedKernel(unittest.TestCase):
+class TestCoresetInModelPipeline(unittest.TestCase):
     """
-    Test end-to-end code run using a PairedKernel.
+    Test end-to-end code run with a coresets machine learning pipeline example.
     """
 
-    def test_herding_basic(self) -> None:
+    def test_coreset_in_model_pipeline(self) -> None:
         """
-        Test herding_paired_kernel.py example.
+        Test coreset_in_model_pipeline.py example.
 
-        An end-to-end test to check herding_paired_kernel.py runs without error.
+        An end-to-end test to check coreset_in_model_pipeline.py runs without error.
         """
         with (
             tempfile.TemporaryDirectory() as tmp_dir,
@@ -46,10 +46,19 @@ class TestHerdingPairedKernel(unittest.TestCase):
             patch("matplotlib.pyplot.show") as mock_show,
         ):
             # Run weighted herding example
-            out_path = Path(tmp_dir) / "herding_paired_kernel.png"
-            herding_paired_kernel_main(out_path=out_path)
+            out_path = Path(tmp_dir) / "coreset_in_model_pipeline.png"
+            full_data_results, coreset_results, random_results = (
+                coreset_in_model_pipeline_main(out_path=out_path)
+            )
 
-            mock_show.assert_has_calls([call(), call()])
+            # Check that the coreset beats random in terms of MSE
+            self.assertTrue(coreset_results[0] < random_results[0])
+
+            # Check that the coreset build and fit time is faster than full dataset fit
+            # time.
+            self.assertTrue(full_data_results[1] > coreset_results[1])
+
+            mock_show.assert_has_calls([call(), call(), call(), call()])
 
             self.assertTrue(Path(out_path).resolve().is_file())
 

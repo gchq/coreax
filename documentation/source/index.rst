@@ -53,6 +53,7 @@ Contents
    examples/pounce
    examples/pounce_map_reduce
    examples/david_map_reduce_weighted
+   examples/analytical_kernel_herding
 
 .. toctree::
     :maxdepth: 2
@@ -61,8 +62,8 @@ Contents
     coreax/approximations
     coreax/coresets
     coreax/data
-    coreax/inverses
     coreax/kernel
+    coreax/least_squares
     coreax/metrics
     coreax/networks
     coreax/score_matching

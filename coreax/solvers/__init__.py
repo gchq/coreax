@@ -23,6 +23,8 @@ from coreax.solvers.base import (
 )
 from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
+    GreedyKernelPoints,
+    GreedyKernelPointsState,
     HerdingState,
     KernelHerding,
     RandomSample,
@@ -30,19 +32,29 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.recombination import (
+    CaratheodoryRecombination,
+    RecombinationSolver,
+    TreeRecombination,
+)
 
 __all__ = [
-    "CompositeSolver",
-    "CoresubsetSolver",
     "Solver",
+    "CoresubsetSolver",
     "RefinementSolver",
     "ExplicitSizeSolver",
+    "PaddingInvariantSolver",
+    "CompositeSolver",
+    "MapReduce",
+    "RandomSample",
     "HerdingState",
     "KernelHerding",
-    "RandomSample",
-    "RPCholesky",
-    "RPCholeskyState",
     "SteinThinning",
-    "MapReduce",
-    "PaddingInvariantSolver",
+    "RPCholeskyState",
+    "RPCholesky",
+    "GreedyKernelPointsState",
+    "GreedyKernelPoints",
+    "RecombinationSolver",
+    "CaratheodoryRecombination",
+    "TreeRecombination",
 ]

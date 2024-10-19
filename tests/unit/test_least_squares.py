@@ -21,8 +21,10 @@ simple examples.
 """
 
 from abc import ABC, abstractmethod
-from contextlib import AbstractContextManager
-from contextlib import nullcontext as does_not_raise
+from contextlib import (
+    AbstractContextManager,
+    nullcontext as does_not_raise,
+)
 from typing import Generic, NamedTuple, TypeVar, Union
 
 import jax.numpy as jnp
@@ -31,88 +33,100 @@ import pytest
 from jax import Array
 from typing_extensions import override
 
-from coreax.inverses import (
-    LeastSquareApproximator,
-    RandomisedEigendecompositionApproximator,
-    RegularisedInverseApproximator,
-    randomised_eigendecomposition,
+from coreax.kernels import SquaredExponentialKernel
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RandomisedEigendecompositionSolver,
+    RegularisedLeastSquaresSolver,
 )
-from coreax.kernel import SquaredExponentialKernel
 from coreax.util import KeyArrayLike
 
-_RegularisedInverseApproximator = TypeVar(
-    "_RegularisedInverseApproximator", bound=RegularisedInverseApproximator
+_RegularisedLeastSquaresSolver = TypeVar(
+    "_RegularisedLeastSquaresSolver", bound=RegularisedLeastSquaresSolver
 )
 
 
-class _Problem(NamedTuple):
+class _InverseProblem(NamedTuple):
     random_key: KeyArrayLike
     array: Array
     regularisation_parameter: float
+    target: Array
     identity: Array
-    expected_inv: Array
+    expected_inverse: Array
 
 
-class InverseApproximationTest(ABC, Generic[_RegularisedInverseApproximator]):
-    """Tests related to kernel inverse approximations in approximation.py."""
-
-    @abstractmethod
-    def approximator(self) -> _RegularisedInverseApproximator:
-        """Abstract pytest fixture which initialises an inverse approximator."""
+class InverseApproximationTest(ABC, Generic[_RegularisedLeastSquaresSolver]):
+    """Tests related to inverting kernel gramians via methods in least_squares.py."""
 
     @abstractmethod
-    def problem(self) -> _Problem:
-        """Abstract pytest fixture which returns a problem for inverse approximation."""
+    def approximator(self) -> _RegularisedLeastSquaresSolver:
+        """Abstract pytest fixture which initialises a least-squares approximator."""
+
+    @abstractmethod
+    def problem(self) -> _InverseProblem:
+        """Abstract fixture which returns a problem for least-squares approximation."""
 
     def test_approximation_accuracy(
-        self, problem: _Problem, approximator: _RegularisedInverseApproximator
+        self, problem: _InverseProblem, approximator: _RegularisedLeastSquaresSolver
     ) -> None:
-        """Verify approximator performance on toy problem."""
-        _, array, regularisation_parameter, identity, expected_inverse = problem
+        """
+        Verify approximator performance on toy problem.
 
-        approximate_inverse = approximator.approximate(
+        Here we focus on checking how accurately we can recover the inverse of arrays.
+        """
+        _, array, regularisation_parameter, target, identity, expected_inverse = problem
+
+        approximate_inverse = approximator.solve(
             array=array,
             regularisation_parameter=regularisation_parameter,
+            target=target,
             identity=identity,
         )
 
         assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
-            0.0, abs=1
+            0.0, abs=1e-1
         )
 
-        # Approximate stacks of kernel inverses
-        approximate_inverses = approximator.approximate_stack(
+        # Approximate stacks of kernel matrix inverses
+        approximate_inverses = approximator.solve_stack(
             arrays=jnp.array((array, array)),
             regularisation_parameter=regularisation_parameter,
+            targets=jnp.array((identity, identity)),
             identity=identity,
         )
 
         expected_inverses = jnp.array((expected_inverse, expected_inverse))
         assert jnp.linalg.norm(
             expected_inverses - approximate_inverses
-        ) == pytest.approx(0.0, abs=1)
+        ) == pytest.approx(0.0, abs=1e-1)
 
 
-class TestLeastSquareApproximator:
-    """Test LeastSquareApproximator."""
+class TestMinimalEuclideanNormSolver:
+    """Test `MinimalEuclideanNormSolver`."""
 
     @pytest.fixture(scope="class")
-    def approximator(self) -> LeastSquareApproximator:
-        """Abstract pytest fixture returns an initialised inverse approximator."""
-        random_seed = 2_024
-        return LeastSquareApproximator(random_key=jr.key(random_seed), rcond=None)
+    def approximator(self) -> MinimalEuclideanNormSolver:
+        """Pytest fixture returns an initialised `MinimalEuclideanNormSolver`."""
+        return MinimalEuclideanNormSolver(rcond=None)
 
-    def test_approximator_accuracy(self, approximator: LeastSquareApproximator) -> None:
-        """Test LeastSquareApproximator is accurate with an analytical example."""
+    def test_approximator_accuracy(
+        self, approximator: MinimalEuclideanNormSolver
+    ) -> None:
+        """
+        Test `MinimalEuclideanNormSolver` is accurate via an analytical example.
+
+        We focus on recovering the inverse of an array.
+        """
         regularisation_parameter = 1
         identity = jnp.eye(2)
         array = jnp.ones((2, 2))
 
         expected_output = jnp.array([[2 / 3, -1 / 3], [-1 / 3, 2 / 3]])
 
-        output = approximator.approximate(
+        output = approximator.solve(
             array=array,
             regularisation_parameter=regularisation_parameter,
+            target=identity,
             identity=identity,
         )
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
@@ -122,12 +136,10 @@ class TestLeastSquareApproximator:
         [
             (jnp.eye(2), jnp.eye(2), 1e-6, does_not_raise()),
             (jnp.eye(2), jnp.eye(2), -1, does_not_raise()),
-            (jnp.eye(2), jnp.eye(3), None, pytest.raises(ValueError)),
         ],
         ids=[
             "valid_rcond_not_negative_one_or_none",
             "valid_rcond_negative_one",
-            "invalid_array_shapes",
         ],
     )
     def test_approximator_inputs(
@@ -137,30 +149,27 @@ class TestLeastSquareApproximator:
         rcond: Union[int, float, None],
         context: AbstractContextManager,
     ) -> None:
-        """Test LeastSquareApproximator handles inputs as expected."""
+        """Test `MinimalEuclideanNormSolver` handles inputs as expected."""
         with context:
-            approximator = LeastSquareApproximator(
-                random_key=jr.key(0),
-                rcond=rcond,
-            )
-            approximator.approximate(
+            approximator = MinimalEuclideanNormSolver(rcond=rcond)
+            approximator.solve(
                 array=array,
-                regularisation_parameter=1e-6,
+                regularisation_parameter=1e-3,
+                target=identity,
                 identity=identity,
             )
 
 
-class TestRandomisedEigendecompositionApproximator(
-    InverseApproximationTest[RandomisedEigendecompositionApproximator],
+class TestRandomisedEigendecompositionSolver(
+    InverseApproximationTest[RandomisedEigendecompositionSolver],
 ):
-    """Test RandomisedEigendecompositionApproximator."""
+    """Test `RandomisedEigendecompositionSolver`."""
 
     @override
     @pytest.fixture(scope="class")
-    def approximator(self) -> RandomisedEigendecompositionApproximator:
-        """Abstract pytest fixture returns an initialised inverse approximator."""
+    def approximator(self) -> RandomisedEigendecompositionSolver:
         random_seed = 2_024
-        return RandomisedEigendecompositionApproximator(
+        return RandomisedEigendecompositionSolver(
             random_key=jr.key(random_seed),
             oversampling_parameter=100,
             power_iterations=1,
@@ -170,27 +179,27 @@ class TestRandomisedEigendecompositionApproximator(
     @override
     @pytest.fixture(scope="class")
     def problem(self):
-        """Define data shared across tests."""
         random_key = jr.key(2_024)
-        num_data_points = 1000
+        num_data_points = 2000
         dimension = 2
         identity = jnp.eye(num_data_points)
-        regularisation_parameter = 1e-6
+        regularisation_parameter = 1e-3
 
         # Compute kernel matrix from standard normal data
         x = jr.normal(random_key, (num_data_points, dimension))
         array = SquaredExponentialKernel().compute(x, x)
 
         # Compute "exact" inverse
-        exact_inverter = LeastSquareApproximator(random_key, rcond=None)
-        expected_inverse = exact_inverter.approximate(
-            array, regularisation_parameter, identity
+        exact_inverter = MinimalEuclideanNormSolver(rcond=None)
+        expected_inverse = exact_inverter.solve(
+            array, regularisation_parameter, identity, identity
         )
 
-        return _Problem(
+        return _InverseProblem(
             random_key,
             array,
             regularisation_parameter,
+            identity,
             identity,
             expected_inverse,
         )
@@ -199,13 +208,11 @@ class TestRandomisedEigendecompositionApproximator(
         "array, identity, rcond, context",
         [
             (jnp.eye(2), jnp.eye(2), -10, pytest.raises(ValueError)),
-            (jnp.eye(2), jnp.eye(3), None, pytest.raises(ValueError)),
             (jnp.eye(2), jnp.eye(2), 1e-6, does_not_raise()),
             (jnp.eye(2), jnp.eye(2), -1, does_not_raise()),
         ],
         ids=[
             "rcond_negative_not_negative_one",
-            "unequal_array_dimensions",
             "valid_rcond_not_negative_one_or_none",
             "valid_rcond_negative_one",
         ],
@@ -219,31 +226,32 @@ class TestRandomisedEigendecompositionApproximator(
     ) -> None:
         """Test `RandomisedEigendecompositionApproximator` handles invalid inputs."""
         with context:
-            approximator = RandomisedEigendecompositionApproximator(
+            approximator = RandomisedEigendecompositionSolver(
                 random_key=jr.key(0),
                 oversampling_parameter=1,
                 power_iterations=1,
                 rcond=rcond,
             )
-            approximator.approximate(
+            approximator.solve(
                 array=array,
                 regularisation_parameter=1e-6,
+                target=identity,
                 identity=identity,
             )
 
     def test_randomised_eigendecomposition_accuracy(self, problem) -> None:
-        """Test that the `randomised_eigendecomposition` is accurate."""
+        """Test that the `randomised_eigendecomposition` method is accurate."""
         # Unpack problem data
-        random_key, array, _, _, _ = problem
+        random_key, array, _, _, _, _ = problem
         oversampling_parameter = 100
         power_iterations = 1
-
-        eigenvalues, eigenvectors = randomised_eigendecomposition(
+        solver = RandomisedEigendecompositionSolver(
             random_key=random_key,
-            array=array,
             oversampling_parameter=oversampling_parameter,
             power_iterations=power_iterations,
         )
+
+        eigenvalues, eigenvectors = solver.randomised_eigendecomposition(array)
         assert jnp.linalg.norm(
             array - (eigenvectors @ jnp.diag(eigenvalues) @ eigenvectors.T)
         ) == pytest.approx(0.0, abs=1)
@@ -275,9 +283,10 @@ class TestRandomisedEigendecompositionApproximator(
     ) -> None:
         """Test that `randomised_eigendecomposition` handles invalid inputs."""
         with pytest.raises(ValueError):
-            randomised_eigendecomposition(
-                random_key=jr.key(0),
-                array=array,
+            solver = RandomisedEigendecompositionSolver(
+                random_key=jr.key(2_024),
                 oversampling_parameter=oversampling_parameter,
                 power_iterations=power_iterations,
             )
+
+            solver.randomised_eigendecomposition(array)
