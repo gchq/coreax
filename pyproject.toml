@@ -125,8 +125,6 @@ ignore = [
     "F722",   # forward-annotation-syntax-error
     # Opinionated ignores
     "PLR6301", # no-self-use (opinionated)
-    # Incompatible with jaxtyping
-    "F722",   # forward-annotation-syntax-error
 ]
 
 [tool.ruff.lint.per-file-ignores]
