@@ -22,6 +22,7 @@ brightgreen
 bysource
 cmap
 color
+Concretization
 dispname
 dollarmath
 dtype
@@ -30,10 +31,13 @@ dunder
 eigh
 emibcn
 eprint
+errstate
 figsize
 finfo
+flatnonzero
 fori_loop
 fracv
+fromiter
 furo
 genindex
 hstack
@@ -53,6 +57,8 @@ jaxlib
 jaxopt
 jaxtyping
 jumanjihouse
+keepends
+leggauss
 linalg
 linkcheck
 literalinclude
@@ -62,9 +68,11 @@ mathbb
 mathbf
 mathrm
 matplotlib
+maxval
 meshgrid
 mimread
 mimsave
+minval
 modindex
 myst
 nabla
@@ -73,6 +81,7 @@ nanargmin
 ndarray
 ndim
 newaxis
+nobs
 nonzero
 numpy
 opencv
@@ -81,6 +90,7 @@ optax
 OSQP
 params_ineq
 pinv
+polyval
 pvalue
 pybtex
 pycodestyle
@@ -112,11 +122,14 @@ sklearn
 softplus
 sphinxcontrib
 sphobjinv
+tensordot
 texttt
 toctree
 tomli
 tqdm
 triu
+ttest
+tuplegetter
 typehints
 undoc
 unflatten
@@ -124,6 +137,7 @@ unsrt
 vars
 viewcode
 vmap
+vmaps
 writebytes
 xlabel
 ylabel

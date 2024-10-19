@@ -22,7 +22,7 @@ dataset as possible. The generated dataset is often called a coreset.
 
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.1"
 
 # pylint: disable=unused-import
 from coreax.approximation import (
@@ -33,14 +33,14 @@ from coreax.approximation import (
 )
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.kernel import (
-    CompositeKernel,
-    Kernel,
+from coreax.kernels import (
     LaplacianKernel,
     PCIMQKernel,
+    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
+    UniCompositeKernel,
 )
-from coreax.metrics import MMD
+from coreax.metrics import KSD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 # pylint: enable=unused-import

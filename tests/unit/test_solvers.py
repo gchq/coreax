@@ -17,9 +17,11 @@
 import re
 from abc import abstractmethod
 from collections.abc import Callable
-from contextlib import AbstractContextManager
-from contextlib import nullcontext as does_not_raise
-from typing import NamedTuple, Optional, Union, cast
+from contextlib import (
+    AbstractContextManager,
+    nullcontext as does_not_raise,
+)
+from typing import Literal, NamedTuple, Optional, Union, cast
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -32,27 +34,33 @@ import pytest
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
-from coreax.kernel import Kernel, PCIMQKernel
+from coreax.data import Data, SupervisedData
+from coreax.kernels import PCIMQKernel, ScalarValuedKernel, SquaredExponentialKernel
+from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
+    CaratheodoryRecombination,
+    GreedyKernelPoints,
+    GreedyKernelPointsState,
+    HerdingState,
     KernelHerding,
     MapReduce,
     RandomSample,
     RPCholesky,
+    RPCholeskyState,
     Solver,
     SteinThinning,
+    TreeRecombination,
 )
 from coreax.solvers.base import (
     ExplicitSizeSolver,
     PaddingInvariantSolver,
     RefinementSolver,
 )
-from coreax.solvers.coresubset import HerdingState, RPCholeskyState
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
 
 class _ReduceProblem(NamedTuple):
-    dataset: Data
+    dataset: Union[Data, SupervisedData]
     solver: Solver
     expected_coreset: Optional[Coreset] = None
 
@@ -103,13 +111,14 @@ class SolverTest:
 
         1. Check 'coreset.pre_coreset_data' is equal to 'dataset'
         2. Check 'coreset' is equal to 'expected_coreset' (if expected is not 'None')
-        3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset'
-        4. If 'not hasattr(solver, random_key))', check that the
+        3. If 'isinstance(coreset, Coresubset)', check coreset is a subset of 'dataset';
+            note: 'coreset.weights' doesn't need to be a subset of dataset.weights
+        4. If 'isinstance(problem.solver, PaddingInvariantSolver)', check that the
             addition of zero weighted data-points to the leading axis of the input
             'dataset' does not modify the resulting coreset when the solver is a
             'PaddingInvariantSolver'.
         """
-        dataset, _, expected_coreset = problem
+        dataset, solver, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
             dataset = problem.initial_coresubset.pre_coreset_data
         assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
@@ -117,10 +126,10 @@ class SolverTest:
             assert isinstance(coreset, type(expected_coreset))
             assert eqx.tree_equal(coreset, expected_coreset)
         if isinstance(coreset, Coresubset):
-            membership = jtu.tree_map(jnp.isin, coreset.coreset, dataset)
+            membership = jtu.tree_map(jnp.isin, coreset.coreset.data, dataset.data)
             all_membership = jtu.tree_map(jnp.all, membership)
             assert jtu.tree_all(all_membership)
-        if isinstance(problem.solver, PaddingInvariantSolver):
+        if isinstance(solver, PaddingInvariantSolver):
             padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
             if isinstance(problem, _RefineProblem):
                 padded_initial_coreset = eqx.tree_at(
@@ -128,9 +137,9 @@ class SolverTest:
                     problem.initial_coresubset,
                     padded_dataset,
                 )
-                coreset_from_padded, _ = problem.solver.refine(padded_initial_coreset)
+                coreset_from_padded, _ = solver.refine(padded_initial_coreset)
             else:
-                coreset_from_padded, _ = problem.solver.reduce(padded_dataset)
+                coreset_from_padded, _ = solver.reduce(padded_dataset)
             assert eqx.tree_equal(coreset_from_padded.coreset, coreset.coreset)
 
     @pytest.mark.parametrize("use_cached_state", (False, True))
@@ -156,6 +165,177 @@ class SolverTest:
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
         self.check_solution_invariants(coreset, reduce_problem)
+
+
+class RecombinationSolverTest(SolverTest):
+    """Test cases for coresubset solvers that perform recombination."""
+
+    @override
+    @pytest.fixture(
+        params=[
+            "random",
+            "partial-null",
+            "null",
+            "full_rank",
+            "rank_deficient",
+            "excessive_test_functions",
+        ],
+        scope="class",
+    )
+    def reduce_problem(  # noqa: C901 complex-structure
+        self, request: pytest.FixtureRequest, solver_factory: Union[Solver, jtu.Partial]
+    ) -> _ReduceProblem:
+        node_key, weight_key, rng_key = jr.split(self.random_key, num=3)
+        nodes = jr.uniform(node_key, self.shape)
+        weights = jr.uniform(weight_key, (self.shape[0],))
+        expected_coreset = None
+        if request.param == "random":
+            # Random dataset with default test-functions.
+            test_functions = None
+        elif request.param == "partial-null":
+            # Same as 'random' but with some dataset entries given zero weight.
+            zero_weights = jr.choice(rng_key, self.shape[0], (self.shape[0] // 2,))
+            weights = weights.at[zero_weights].set(0)
+            test_functions = None
+        elif request.param == "null":
+            # Same as 'random' but with test-functions mapping to the zero vector.
+            def test_functions(x):
+                return jnp.zeros(x.shape)
+        elif request.param == "full_rank":
+            # Same as 'random' but with all test-functions linearly-independent.
+            def test_functions(x):
+                norm_x = jnp.linalg.norm(x)
+                return jnp.array([norm_x, norm_x**2, norm_x**3])
+        elif request.param == "rank_deficient":
+            # Same as 'full_rank' but with some test-functions linearly-dependent.
+            def test_functions(x):
+                norm_x = jnp.linalg.norm(x)
+                return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
+        elif request.param == "excessive_test_functions":
+            # Same as 'random' but with more test-functions than dataset entries.
+            def test_functions(x):
+                del x
+                return jnp.zeros((len(nodes) + 1,))
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        solver_factory.keywords["test_functions"] = test_functions
+        solver = solver_factory()
+        return _ReduceProblem(Data(nodes, weights), solver, expected_coreset)
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        r"""
+        Check that a coreset obeys certain expected invariant properties.
+
+        In addition to the standard checks in the parent class we also check:
+        1. Check 'sum(coreset.weights)' is one.
+        2. Check 'len(coreset)' is less than or equal to the upper bound `m`.
+        3. Check 'len(coreset[idx]) where idx = jnp.nonzero(coreset.weights)' is less
+            than or equal to the rank, :math:`m^\prime`, of the pushed forward nodes.
+        4. Check the push-forward of the coreset preserves the "centre-of-mass" (CoM) of
+            the pushed-forward dataset (with implicit and explicit zero weight removal).
+        5. Check the default value of 'test_functions' is the identity map.
+        """
+        super().check_solution_invariants(coreset, problem)
+        dataset, solver, _ = problem
+        coreset_nodes, coreset_weights = coreset.coreset.data, coreset.coreset.weights
+        assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
+        if solver.test_functions is None:
+            solver = eqx.tree_at(
+                lambda x: x.test_functions,
+                solver,
+                lambda x: x,
+                is_leaf=lambda x: x is None,
+            )
+            expected_default_coreset, _ = solver.reduce(dataset)
+            assert eqx.tree_equal(coreset, expected_default_coreset)
+
+        vmap_test_functions = jax.vmap(solver.test_functions)
+        pushed_forward_nodes = vmap_test_functions(dataset.data)
+        augmented_pushed_forward_nodes = jnp.c_[
+            jnp.ones_like(dataset.weights), pushed_forward_nodes
+        ]
+        rank = jnp.linalg.matrix_rank(augmented_pushed_forward_nodes)
+        max_rank = min(len(dataset.data), augmented_pushed_forward_nodes.shape[-1])
+        assert rank <= max_rank
+        non_zero = jnp.flatnonzero(coreset_weights)
+        if solver.mode == "implicit-explicit":
+            assert len(coreset) <= max_rank
+            assert len(non_zero) <= len(coreset) - (max_rank - rank)
+        if solver.mode == "implicit":
+            assert len(coreset) == len(augmented_pushed_forward_nodes)
+            assert len(non_zero) <= len(coreset) - (max_rank - rank)
+        if solver.mode == "explicit":
+            assert len(non_zero) == len(coreset)
+            assert len(coreset) <= rank
+        pushed_forward_com = jnp.average(
+            pushed_forward_nodes, 0, weights=dataset.weights
+        )
+        pushed_forward_coreset_nodes = vmap_test_functions(
+            jnp.atleast_2d(coreset_nodes)
+        )
+        coreset_pushed_forward_com = jnp.average(
+            pushed_forward_coreset_nodes, 0, weights=coreset_weights
+        )
+        assert eqx.tree_equal(pushed_forward_com, coreset_pushed_forward_com, rtol=1e-5)
+        explicit_coreset_pushed_forward_com = jnp.average(
+            pushed_forward_coreset_nodes[non_zero], 0, weights=coreset_weights[non_zero]
+        )
+        assert eqx.tree_equal(
+            coreset_pushed_forward_com, explicit_coreset_pushed_forward_com, rtol=1e-5
+        )
+
+    @override
+    @pytest.mark.parametrize("use_cached_state", (False, True))
+    @pytest.mark.parametrize(
+        "recombination_mode, context",
+        (
+            ("implicit-explicit", does_not_raise()),
+            ("implicit", does_not_raise()),
+            (
+                "explicit",
+                pytest.raises(ValueError, match="'explicit' mode is incompatible"),
+            ),
+            (None, pytest.raises(ValueError, match="Invalid mode")),
+        ),
+    )
+    # We don't care too much that arguments differ as this is required to override the
+    # parametrization. Nevertheless, this should probably be revisited in the future.
+    def test_reduce(  # pylint: disable=arguments-differ
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        reduce_problem: _ReduceProblem,
+        use_cached_state: bool,
+        recombination_mode: Literal["implicit-explicit", "implicit", "explicit"],
+        context: AbstractContextManager,
+    ) -> None:
+        """
+        Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
+
+        Overrides the default implementation to provide handling of different modes of
+        recombination.
+
+        By resultant 'solver_state' invariant we mean the following procedure succeeds:
+        1. Call 'reduce' with the default 'solver_state' to get the resultant state
+        2. Call 'reduce' again, this time passing the 'solver_state' from the previous
+            run, and keeping all other arguments the same.
+        3. Check the two calls to 'refine' yield that same result.
+        """
+        dataset, base_solver, expected_coreset = reduce_problem
+        solver = eqx.tree_at(lambda x: x.mode, base_solver, recombination_mode)
+        updated_problem = _ReduceProblem(dataset, solver, expected_coreset)
+        # Explicit should only raise if jit_variant is eqx.filter_jit (or jax.jit).
+        if jit_variant is not eqx.filter_jit and recombination_mode == "explicit":
+            context = does_not_raise()
+        with context:
+            coreset, state = jit_variant(solver.reduce)(dataset)
+            if use_cached_state:
+                coreset_with_state, recycled_state = solver.reduce(dataset, state)
+                assert eqx.tree_equal(recycled_state, state)
+                assert eqx.tree_equal(coreset_with_state, coreset)
+            self.check_solution_invariants(coreset, updated_problem)
 
 
 class RefinementSolverTest(SolverTest):
@@ -325,7 +505,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             dataset = jnp.array([[0, 0], [1, 1], [2, 2]])
             # Set the kernel such that a simple analytic solution exists.
             kernel_matrix = jnp.asarray([[1, 1, 1], [1, 1, 1], [0.5, 0.5, 0.5]])
-            kernel = MagicMock(Kernel)
+            kernel = MagicMock(ScalarValuedKernel)
             kernel.compute = lambda x, y: jnp.hstack(
                 [kernel_matrix[:, y[0]], jnp.zeros((len(x) - 3,))]
             )
@@ -357,6 +537,468 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         _, state = solver.reduce(dataset)
         expected_state = HerdingState(solver.kernel.gramian_row_mean(dataset))
         assert eqx.tree_equal(state, expected_state)
+
+    def test_kernel_herding_analytic_unique(self) -> None:
+        # pylint: disable=line-too-long
+        r"""
+        Test kernel herding on an analytical example, enforcing a unique coreset.
+
+        In this example, we have data of:
+
+        .. math::
+            x = \begin{pmatrix}
+                0.3 & 0.25 \\
+                0.4 & 0.2 \\
+                0.5 & 0.125
+            \end{pmatrix}
+
+        and choose a ``length_scale`` of :math:`\frac{1}{\sqrt{2}}` to simplify
+        computations with the ``SquaredExponentialKernel``, in particular it becomes:
+
+        .. math::
+            k(x, y) = e^{-||x - y||^2}.
+
+        Kernel herding should do as follows:
+            - Compute the Gramian row mean, that is for each data-point :math:`x` and
+              all other data-points :math:`x'`, :math:`\frac{1}{N} \sum_{x'} k(x, x')`
+              where we have :math:`N` data-points in total.
+            - Select the first coreset point :math:`x_{1}` as the data-point where the
+              Gramian row mean is highest.
+            - Compute all future coreset points as
+              :math:`x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)`
+              where we currently have :math:`T` points in the coreset.
+
+        We ask for a coreset of size 2 in this example. With an empty coreset, we first
+        compute :math:`\mathbb{E}[k(x, x')]` as:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \frac{1}{3} \cdot \begin{pmatrix}
+                k([0.3, 0.25]', [0.3, 0.25]') + k([0.3, 0.25]', [0.4, 0.2]') + k([0.3, 0.25]', [0.5, 0.125]') \\
+                k([0.4, 0.2]', [0.3, 0.25]') + k([0.4, 0.2]', [0.4, 0.2]') + k([0.4, 0.2]', [0.5, 0.125]') \\
+                k([0.5, 0.125]', [0.3, 0.25]') + k([0.5, 0.125]', [0.4, 0.2]') + k([0.5, 0.125]', [0.5, 0.125]')
+            \end{pmatrix}
+
+        resulting in:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9778238600172561 \\
+                0.9906914124997632 \\
+                0.9767967388544317
+            \end{pmatrix}
+
+        The largest value in this array is 0.9906914124997632, so we expect the first
+        coreset point to be [0.4, 0.2], that is the data-point at index 1 in the
+        dataset. At this point we have ``coreset_indices`` as [1, ?].
+
+        We then compute the penalty update term
+        :math:`\frac{1}{T+1}\sum_{t=1}^T k(x, x_t)` with :math:`T = 1`:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \frac{1}{2} \cdot \begin{pmatrix}
+                k([0.3, 0.25]', [0.4, 0.2]') \\
+                k([0.4, 0.2]', [0.4, 0.2]') \\
+                k([0.5, 0.125]', [0.4, 0.2]')
+            \end{pmatrix}
+
+        which evaluates to:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.4937889002469407 \\
+                0.5 \\
+                0.4922482185027042
+            \end{pmatrix}
+
+        We now select the data-point that maximises
+        :math:`\mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t)`, which
+        evaluates to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.9778238600172561 - 0.4937889002469407 \\
+                0.9906914124997632 - 0.5 \\
+                0.9767967388544317 - 0.4922482185027042
+            \end{pmatrix}
+
+        giving a final result of:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.4840349597703154 \\
+                0.4906914124997632 \\
+                0.4845485203517275
+            \end{pmatrix}
+
+        The largest value in this array is at index 1, which would be to again choose
+        the point [0.4, 0.2] for the coreset. However, in this example we enforce the
+        coreset to be unique, that is not to select the same data-point twice, which
+        means we should take the next highest value in the above result to include in
+        our coreset. This happens to be 0.4845485203517275, the data-point at index 2.
+        This means our final ``coreset_indices`` should be [1, 2].
+
+        Finally, the solver state tracks variables we need not compute repeatedly. In
+        the case of kernel herding, we don't need to recompute
+        :math:`\mathbb{E}[k(x, x')]` at every single step - so the solver state from the
+        coreset reduce method should be set to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9778238600172561 \\
+                0.9906914124997632 \\
+                0.9767967388544317
+            \end{pmatrix}
+        """  # noqa: E501
+        # pylint: enable=line-too-long
+        # Setup example data - note we have specifically selected points that are very
+        # close to manipulate the penalty applied for nearby points, and hence enable
+        # a check of unique points using the same data.
+        coreset_size = 2
+        length_scale = 1.0 / jnp.sqrt(2)
+        x = jnp.array(
+            [
+                [0.3, 0.25],
+                [0.4, 0.2],
+                [0.5, 0.125],
+            ]
+        )
+
+        # Define a kernel
+        kernel = SquaredExponentialKernel(length_scale=length_scale)
+
+        # Generate the coreset
+        data = Data(x)
+        solver = KernelHerding(coreset_size=coreset_size, kernel=kernel, unique=True)
+        coreset, solver_state = solver.reduce(data)
+
+        # Define the expected outputs, following the arguments in the docstring
+        expected_coreset_indices = jnp.array([1, 2])
+        expected_gramian_row_mean = jnp.array(
+            [
+                0.9778238600172561,
+                0.9906914124997632,
+                0.9767967388544317,
+            ]
+        )
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+        np.testing.assert_array_almost_equal(
+            solver_state.gramian_row_mean, expected_gramian_row_mean
+        )
+
+    def test_kernel_herding_analytic_not_unique(self) -> None:
+        # pylint: disable=line-too-long
+        r"""
+        Test kernel herding on an analytical example, enforcing a non-unique coreset.
+
+        In this example, we have data of:
+
+        .. math::
+            x = \begin{pmatrix}
+                0.3 & 0.25 \\
+                0.4 & 0.2 \\
+                0.5 & 0.125
+            \end{pmatrix}
+
+        and choose a ``length_scale`` of :math:`\frac{1}{\sqrt{2}}` to simplify
+        computations with the ``SquaredExponentialKernel``, in particular it becomes:
+
+        .. math::
+            k(x, y) = e^{-||x - y||^2}.
+
+        Kernel herding should do as follows:
+            - Compute the Gramian row mean, that is for each data-point :math:`x` and
+              all other data-points :math:`x'`, :math:`\frac{1}{N} \sum_{x'} k(x, x')`
+              where we have :math:`N` data-points in total.
+            - Select the first coreset point :math:`x_{1}` as the data-point where the
+              Gramian row mean is highest.
+            - Compute all future coreset points as
+              :math:`x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) \right)`
+              where we currently have :math:`T` points in the coreset.
+
+        We ask for a coreset of size 2 in this example. With an empty coreset, we first
+        compute :math:`\mathbb{E}[k(x, x')]` as:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \frac{1}{3} \cdot \begin{pmatrix}
+                k([0.3, 0.25]', [0.3, 0.25]') + k([0.3, 0.25]', [0.4, 0.2]') + k([0.3, 0.25]', [0.5, 0.125]') \\
+                k([0.4, 0.2]', [0.3, 0.25]') + k([0.4, 0.2]', [0.4, 0.2]') + k([0.4, 0.2]', [0.5, 0.125]') \\
+                k([0.5, 0.125]', [0.3, 0.25]') + k([0.5, 0.125]', [0.4, 0.2]') + k([0.5, 0.125]', [0.5, 0.125]')
+            \end{pmatrix}
+
+        resulting in:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9778238600172561 \\
+                0.9906914124997632 \\
+                0.9767967388544317
+            \end{pmatrix}
+
+        The largest value in this array is 0.9906914124997632, so we expect the first
+        coreset point to be [0.4, 0.2], that is the data-point at index 1 in the
+        dataset. At this point we have ``coreset_indices`` as [1, ?].
+
+        We then compute the penalty update term
+        :math:`\frac{1}{T+1}\sum_{t=1}^T k(x, x_t)` with :math:`T = 1`:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \frac{1}{2} \cdot \begin{pmatrix}
+                k([0.3, 0.25]', [0.4, 0.2]') \\
+                k([0.4, 0.2]', [0.4, 0.2]') \\
+                k([0.5, 0.125]', [0.4, 0.2]')
+            \end{pmatrix}
+
+        which evaluates to:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.4937889002469407 \\
+                0.5 \\
+                0.4922482185027042
+            \end{pmatrix}
+
+        We now select the data-point that maximises
+        :math:`\mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t)`, which
+        evaluates to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.9778238600172561 - 0.4937889002469407 \\
+                0.9906914124997632 - 0.5 \\
+                0.9767967388544317 - 0.4922482185027042
+            \end{pmatrix}
+
+        giving a final result of:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.4840349597703154 \\
+                0.4906914124997632 \\
+                0.4845485203517275
+            \end{pmatrix}
+
+        The largest value in this array is at index 1, which would be to again choose
+        the point [0.4, 0.2] for the coreset. Since we don't enforce the coreset points
+        selected to be unique here, our final ``coreset_indices`` should be [1, 1].
+
+        Finally, the solver state tracks variables we need not compute repeatedly. In
+        the case of kernel herding, we don't need to recompute
+        :math:`\mathbb{E}[k(x, x')]` at every single step - so the solver state from the
+        coreset reduce method should be set to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9778238600172561 \\
+                0.9906914124997632 \\
+                0.9767967388544317
+            \end{pmatrix}
+        """  # noqa: E501
+        # pylint: enable=line-too-long
+        # Setup example data - note we have specifically selected points that are very
+        # close to manipulate the penalty applied for nearby points, and hence enable
+        # a check of unique points using the same data.
+        coreset_size = 2
+        length_scale = 1.0 / jnp.sqrt(2)
+        x = jnp.array(
+            [
+                [0.3, 0.25],
+                [0.4, 0.2],
+                [0.5, 0.125],
+            ]
+        )
+
+        # Define a kernel
+        kernel = SquaredExponentialKernel(length_scale=length_scale)
+
+        # Generate the coreset
+        data = Data(x)
+        solver = KernelHerding(coreset_size=coreset_size, kernel=kernel, unique=False)
+        coreset, solver_state = solver.reduce(data)
+
+        # Define the expected outputs, following the arguments in the docstring
+        expected_coreset_indices = jnp.array([1, 1])
+        expected_gramian_row_mean = jnp.array(
+            [
+                0.9778238600172561,
+                0.9906914124997632,
+                0.9767967388544317,
+            ]
+        )
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+        np.testing.assert_array_almost_equal(
+            solver_state.gramian_row_mean, expected_gramian_row_mean
+        )
+
+    def test_kernel_herding_analytic_unique_weighted_data(self) -> None:
+        # pylint: disable=line-too-long
+        r"""
+        Test kernel herding on a weighted analytical example, with a unique coreset.
+
+        In this example, we have data of:
+
+        .. math::
+            x = \begin{pmatrix}
+                0.3 & 0.25 \\
+                0.4 & 0.2 \\
+                0.5 & 0.125
+            \end{pmatrix}
+
+        with weights:
+
+        .. math::
+            w = \begin{pmatrix}
+                0.8 \\
+                0.1 \\
+                0.1
+            \end{pmatrix}
+
+        and choose a ``length_scale`` of :math:`\frac{1}{\sqrt{2}}` to simplify
+        computations with the ``SquaredExponentialKernel``, in particular it becomes:
+
+        .. math::
+            k(x, y) = e^{-||x - y||^2}.
+
+        Kernel herding should do as follows:
+            - Compute the Gramian row mean, that is for each data-point :math:`x` and
+              all other data-points :math:`x'`, :math:`\sum_{x'} w_{x'} \cdot k(x, x')`
+              where we sum over all :math:`N` data-points.
+            - Select the first coreset point :math:`x_{1}` as the data-point where the
+              Gramian row mean is highest.
+            - Compute all future coreset points as
+              :math:`x_{T+1} = \arg\max_{x} \left( \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T w_{x_t} \cdot k(x, x_t) \right)`
+              where we currently have :math:`T` points in the coreset.
+
+        We ask for a coreset of size 2 in this example. With an empty coreset, we first
+        compute :math:`\mathbb{E}[k(x, x')]` as:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.8 \cdot k([0.3, 0.25]', [0.3, 0.25]') + 0.1 \cdot k([0.3, 0.25]', [0.4, 0.2]') + 0.1 \cdot k([0.3, 0.25]', [0.5, 0.125]') \\
+                0.8 \cdot  k([0.4, 0.2]', [0.3, 0.25]') + 0.1 \cdot k([0.4, 0.2]', [0.4, 0.2]') + 0.1 \cdot k([0.4, 0.2]', [0.5, 0.125]') \\
+                0.8 \cdot  k([0.5, 0.125]', [0.3, 0.25]') + 0.1 \cdot k([0.5, 0.125]', [0.4, 0.2]') + 0.1 \cdot k([0.5, 0.125]', [0.5, 0.125]')
+            \end{pmatrix}
+
+        resulting in:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9933471580051769 \\
+                0.988511884095646 \\
+                0.9551646673468503
+            \end{pmatrix}
+
+        The largest value in this array is 0.9933471580051769, so we expect the first
+        coreset point to be [0.3  0.25], that is the data-point at index 0 in the
+        dataset. At this point we have ``coreset_indices`` as [0, ?].
+
+        We then compute the penalty update term
+        :math:`\frac{1}{T+1}\sum_{t=1}^T k(x, x_t)` with :math:`T = 1`:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \frac{1}{2} \cdot \begin{pmatrix}
+                k([0.3, 0.25]', [0.3, 0.25]') \\
+                k([0.4, 0.2]', [0.3, 0.25]') \\
+                k([0.5, 0.125]', [0.3, 0.25]')
+            \end{pmatrix}
+
+        which evaluates to:
+
+        .. math::
+            \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.5 \\
+                0.4937889002469407 \\
+                0.4729468897789434
+            \end{pmatrix}
+
+        We now select the data-point that maximises
+        :math:`\mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t)`,
+        which evaluates to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.9933471580051769 - 0.5 \\
+                0.988511884095646 - 0.4937889002469407 \\
+                0.9551646673468503 - 0.4729468897789434
+            \end{pmatrix}
+
+        giving a final result of:
+
+        .. math::
+            \mathbb{E}[k(x, x')] - \frac{1}{T+1}\sum_{t=1}^T k(x, x_t) = \begin{pmatrix}
+                0.4933471580051769 \\
+                0.49472298384870533 \\
+                0.48221777756790696
+            \end{pmatrix}
+
+        The largest value in this array is at index 1, which means we choose
+        the point [0.4, 0.2] for the coreset. This means our final ``coreset_indices``
+        should be [0, 1].
+
+        Finally, the solver state tracks variables we need not compute repeatedly. In
+        the case of kernel herding, we don't need to recompute
+        :math:`\mathbb{E}[k(x, x')]` at every single step - so the solver state from the
+        coreset reduce method should be set to:
+
+        .. math::
+            \mathbb{E}[k(x, x')] = \begin{pmatrix}
+                0.9933471580051769 \\
+                0.988511884095646 \\
+                0.9551646673468503
+            \end{pmatrix}
+        """  # noqa: E501
+        # pylint: enable=line-too-long
+        # Setup example data - note we have specifically selected points that are very
+        # close to manipulate the penalty applied for nearby points, and hence enable
+        # a check of unique points using the same data.
+        coreset_size = 2
+        length_scale = 1.0 / jnp.sqrt(2)
+        x = jnp.array(
+            [
+                [0.3, 0.25],
+                [0.4, 0.2],
+                [0.5, 0.125],
+            ]
+        )
+        weights = jnp.array([0.8, 0.1, 0.1])
+
+        # Define a kernel
+        kernel = SquaredExponentialKernel(length_scale=length_scale)
+
+        # Generate the coreset
+        data = Data(data=x, weights=weights)
+        solver = KernelHerding(coreset_size=coreset_size, kernel=kernel, unique=True)
+        coreset, solver_state = solver.reduce(data)
+
+        # Define the expected outputs, following the arguments in the docstring
+        expected_coreset_indices = jnp.array([0, 1])
+        expected_gramian_row_mean = jnp.array(
+            [0.9933471580051769, 0.988511884095646, 0.9551646673468503]
+        )
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+        np.testing.assert_array_almost_equal(
+            solver_state.gramian_row_mean, expected_gramian_row_mean
+        )
 
 
 class TestRandomSample(ExplicitSizeSolverTest):
@@ -426,6 +1068,153 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
+
+
+class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelPoints`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        feature_kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            GreedyKernelPoints,
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=feature_kernel,
+        )
+
+    @override
+    @pytest.fixture(params=["random"], scope="class")
+    def reduce_problem(
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
+    ) -> _ReduceProblem:
+        if request.param == "random":
+            data_key, supervision_key = jr.split(self.random_key)
+            data = jr.uniform(data_key, self.shape)
+            supervision = jr.uniform(supervision_key, (self.shape[0], 1))
+            solver = solver_factory()
+            expected_coreset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        return _ReduceProblem(
+            SupervisedData(data=data, supervision=supervision), solver, expected_coreset
+        )
+
+    @override
+    def check_solution_invariants(
+        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+    ) -> None:
+        """Check functionality of 'unique' in addition to the default checks."""
+        super().check_solution_invariants(coreset, problem)
+        solver = cast(GreedyKernelPoints, problem.solver)
+        if solver.unique:
+            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            assert max(counts) <= 1
+
+    @pytest.fixture(
+        params=[
+            "well-sized",
+            "under-sized",
+            "over-sized",
+            "random-unweighted",
+            "random-weighted",
+        ],
+        scope="class",
+    )
+    def refine_problem(
+        self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
+    ) -> _RefineProblem:
+        """
+        Pytest fixture that returns a problem dataset and the expected coreset.
+
+        An expected coreset of 'None' implies the expected coreset for this solver and
+        dataset combination is unknown.
+
+        We expect the '{well,under,over}-sized' cases to return the same result as a
+        call to 'reduce'. The 'random-unweighted' and 'random-weighted' case we only
+        expect to pass without raising an error.
+        """
+        dataset, solver, expected_coreset = reduce_problem
+        indices_key, weights_key = jr.split(self.random_key)
+        solver = cast(GreedyKernelPoints, solver)
+        coreset_size = min(len(dataset), solver.coreset_size)
+        # We expect 'refine' to produce the same result as 'reduce' when the initial
+        # coresubset has all its indices equal to negative one.
+        expected_coresubset = None
+        if expected_coreset is None:
+            expected_coresubset, _ = solver.reduce(dataset)
+        elif isinstance(expected_coreset, Coresubset):
+            expected_coresubset = expected_coreset
+        if request.param == "well-sized":
+            indices = Data(-1 * jnp.ones(coreset_size, jnp.int32))
+        elif request.param == "under-sized":
+            indices = Data(-1 * jnp.ones(coreset_size - 1, jnp.int32))
+        elif request.param == "over-sized":
+            indices = Data(-1 * jnp.ones(coreset_size + 1, jnp.int32))
+        elif request.param == "random-unweighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            indices = Data(random_indices)
+            expected_coresubset = None
+        elif request.param == "random-weighted":
+            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
+            random_weights = jr.uniform(weights_key, (coreset_size,))
+            indices = Data(random_indices, random_weights)
+            expected_coresubset = None
+        else:
+            raise ValueError("Invalid fixture parametrization")
+        initial_coresubset = Coresubset(indices, dataset)
+        return _RefineProblem(initial_coresubset, solver, expected_coresubset)
+
+    def test_greedy_kernel_inducing_point_state(
+        self, reduce_problem: _ReduceProblem
+    ) -> None:
+        """Check that the cached herding state is as expected."""
+        dataset, solver, _ = reduce_problem
+        solver = cast(GreedyKernelPoints, solver)
+        _, state = solver.reduce(dataset)
+
+        x = dataset.data
+        expected_state = GreedyKernelPointsState(
+            jnp.pad(solver.feature_kernel.compute(x, x), [(0, 1)], mode="constant")
+        )
+        assert eqx.tree_equal(state, expected_state)
+
+    def test_non_uniqueness(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting `unique` to be false produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            unique=False,
+        )
+        solver.reduce(dataset)
+
+    def test_approximate_inverse(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that using an approximate least squares solver produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            least_squares_solver=RandomisedEigendecompositionSolver(self.random_key),
+        )
+        solver.reduce(dataset)
+
+    def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
+        """Test that setting a not `None` `batch_size` produces no errors."""
+        dataset, _, _ = reduce_problem
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=10,
+            feature_kernel=SquaredExponentialKernel(),
+            batch_size=10,
+        )
+        solver.reduce(dataset)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
@@ -536,3 +1325,181 @@ class TestMapReduce(SolverTest):
             solver_factory.keywords["leaf_size"] = self.leaf_size
             solver_factory.keywords["base_solver"] = base_solver
             solver_factory()
+
+    def test_map_reduce_diverse_selection(self):
+        """Check if MapReduce returns indices from multiple partitions."""
+        dataset_size = 40
+        data_dim = 5
+        coreset_size = 6
+        leaf_size = 12
+
+        key = jr.PRNGKey(0)
+        dataset = jr.normal(key, shape=(dataset_size, data_dim))
+
+        kernel = SquaredExponentialKernel()
+        base_solver = KernelHerding(coreset_size=coreset_size, kernel=kernel)
+
+        solver = MapReduce(base_solver=base_solver, leaf_size=leaf_size)
+        coreset, _ = solver.reduce(Data(dataset))
+        selected_indices = coreset.nodes.data
+
+        assert jnp.any(
+            selected_indices >= coreset_size
+        ), "MapReduce should select points beyond the first few"
+
+        # Check if there are indices from different partitions
+        partitions_represented = jnp.unique(selected_indices // leaf_size)
+        assert (
+            len(partitions_represented) > 1
+        ), "MapReduce should select points from multiple partitions"
+
+    def test_map_reduce_analytic(self):
+        r"""
+        Test ``MapReduce`` on an analytical example, enforcing a unique coreset.
+
+        In this example, we start with the original dataset
+        :math:`[10, 20, 30, 210, 40, 60, 180, 90, 150, 70, 120,
+                    200, 50, 140, 80, 170, 100, 190, 110, 160, 130]`.
+
+        Suppose we want a subset size of 3, and we want maximum leaf size of 6.
+
+        We can see that we have a dataset of size 21. The partitioning scheme
+        only allows for :math:`n` partitions where :math:`n` is a power of 2.
+        Therefore, we can partition into:
+
+        1. 1 partition of size 21
+        2. 2 partitions of size :math:`\lceil 10.5 \rceil = 11` each (with one padded 0)
+        3. 4 partitions of size :math:`\lceil 5.25 \rceil = 6` each (with 3 padded 0's)
+        4. 8 partitions of size :math:`\lceil 2.625 \rceil = 3` each (with 3 padded 0's)
+
+        Since we set the maximum leaf size :math:`m = 6`, we choose the largest
+        partition size that is less than or equal to 6. Thus, we have 4 partitions
+        each of size 6.
+
+        This results in the following 4 partitions (see how
+         data is in ascending order):
+
+        1. :math:`[0, 0, 0, 10, 20, 30]`
+        2. :math:`[40, 50, 60, 70, 80, 90]`
+        3. :math:`[100, 110, 120, 130, 140, 150]`
+        4. :math:`[160, 170, 180, 190, 200, 210]`
+
+        Now we want to reduce each partition with our ``interleaved_base_solver``
+        which is designed to choose first, last, second, second-last, third,
+        third-last elements etc. until the coreset of correct size is formed.
+        Hence, we obtain:
+
+        1. :math:`[0, 30, 0]`
+        2. :math:`[40, 90, 50]`
+        3. :math:`[100, 150, 110]`
+        4. :math:`[160, 210, 170]`
+
+        Concatenating we obtain
+        :math:`[0, 30, 0, 40, 90, 50, 100, 150, 110, 160, 210, 170]`.
+        We repeat the process, checking how many partitions we want to divide this
+        intermediate dataset (of size 12) into. Recall, this number of partitions must
+        be a power of 2. Our options are:
+
+        1. 1 partition of size 12
+        2. 2 partitions of size 6
+        3. 4 partitions of size 3
+        4. 8 partitions of size 1.5 (rounded up to 2)
+
+        Given our maximum leaf size :math:`m = 6`, we choose the largest partition size
+        that is less than or equal to 6. Therefore, we select 2 partitions of size 6.
+        This time no padding is necessary. The two partitions resulting from this step
+        are (note that it is again in ascending order):
+
+        1. :math:`[0, 0, 30, 40, 50, 90]`
+        2. :math:`[100, 110, 150, 160, 170, 210]`
+
+        Applying our ``interleaved_base_solver`` with `coreset_size` 3 on
+        each partition, we obtain:
+
+        1. :math:`[0, 90, 0]`
+        2. :math:`[100, 210, 110]`
+
+        Now, we concatenate the two subsets and repeat the process to
+        obtain only one partition:
+
+        1. Concatenated subset: :math:`[0, 90, 0, 100, 210, 110]`
+
+        Note that the size of the dataset is 6,
+        therefore, no more partitioning is necessary.
+
+        Applying ``interleaved_base_solver`` one last time we obtain the final coreset:
+            :math:`[0, 110, 90]`.
+        """
+        interleaved_base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
+        interleaved_base_solver.coreset_size = 3
+
+        def interleaved_mock_reduce(
+            dataset: Data, solver_state: None = None
+        ) -> tuple[Coreset[Data], None]:
+            half_size = interleaved_base_solver.coreset_size // 2
+            indices = jnp.arange(interleaved_base_solver.coreset_size)
+            forward_indices = indices[:half_size]
+            backward_indices = -(indices[:half_size] + 1)
+            interleaved_indices = jnp.stack(
+                [forward_indices, backward_indices], axis=1
+            ).ravel()
+
+            if interleaved_base_solver.coreset_size % 2 != 0:
+                interleaved_indices = jnp.append(interleaved_indices, half_size)
+            return Coreset(dataset[interleaved_indices], dataset), solver_state
+
+        interleaved_base_solver.reduce = interleaved_mock_reduce
+
+        original_data = Data(
+            jnp.array(
+                [
+                    10,
+                    20,
+                    30,
+                    210,
+                    40,
+                    60,
+                    180,
+                    90,
+                    150,
+                    70,
+                    120,
+                    200,
+                    50,
+                    140,
+                    80,
+                    170,
+                    100,
+                    190,
+                    110,
+                    160,
+                    130,
+                ]
+            )
+        )
+        expected_coreset_data = Data(jnp.array([0, 110, 90]))
+
+        coreset, _ = MapReduce(base_solver=interleaved_base_solver, leaf_size=6).reduce(
+            original_data
+        )
+        assert eqx.tree_equal(coreset.coreset.data == expected_coreset_data.data)
+
+
+class TestCaratheodoryRecombination(RecombinationSolverTest):
+    """Tests for :class:`coreax.solvers.recombination.CaratheodoryRecombination`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+        return jtu.Partial(CaratheodoryRecombination, test_functions=None, rcond=None)
+
+
+class TestTreeRecombination(RecombinationSolverTest):
+    """Tests for :class:`coreax.solvers.recombination.TreeRecombination`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+        return jtu.Partial(
+            TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
+        )

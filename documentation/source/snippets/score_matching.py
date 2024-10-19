@@ -16,7 +16,7 @@ import jax
 import numpy as np
 
 from coreax import SlicedScoreMatching, SteinKernel
-from coreax.kernel import PCIMQKernel
+from coreax.kernels import PCIMQKernel
 
 # Select a subset of data from which to learn score function
 generator = np.random.default_rng(random_seed)

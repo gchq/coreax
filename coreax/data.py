@@ -14,13 +14,84 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Any, Optional
+from typing import List, Optional, Sequence, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jaxtyping import Array, ArrayLike, Shaped
+from jax import jit
+from jaxtyping import Array, Shaped
 from typing_extensions import Self
+
+
+@overload
+def _atleast_2d_consistent(
+    arrays: Sequence[Shaped[Array, ""]],
+) -> List[Shaped[Array, " 1 1"]]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " n"],
+) -> Shaped[Array, " n 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Shaped[Array, " n d *p"],
+) -> Shaped[Array, " n d *p"]: ...
+
+
+@overload
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    arrays: Sequence[
+        Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+    ],
+) -> List[
+    Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n 1"], Shaped[Array, " 1 1"]]
+]: ...
+
+
+@jit
+def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
+    *arrays: Union[
+        Shaped[Array, " n d *p"],
+        Shaped[Array, " n"],
+        Shaped[Array, ""],
+        Sequence[
+            Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+        ],
+    ],
+) -> Union[
+    Shaped[Array, " n d *p"],
+    Shaped[Array, " n 1"],
+    Shaped[Array, " 1 1"],
+    List[Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]],
+]:
+    r"""
+    Given an array or sequence of arrays ensure they are at least 2-dimensional.
+
+    .. note::
+        This function differs from `jax.numpy.atleast_2d` in that it converts
+        1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
+
+    :param arrays: Singular array or sequence of arrays
+    :return: at least 2-dimensional array or list of at least 2-dimensional arrays
+    """
+    # If we have been given just one array, return as an array, not list
+    if len(arrays) == 1:
+        array = jnp.asarray(arrays[0], copy=False)
+        if len(array.shape) == 1:
+            return jnp.expand_dims(array, 1)
+        return jnp.array(array, copy=False, ndmin=2)
+
+    _arrays = [jnp.asarray(array, copy=False) for array in arrays]
+    return [
+        jnp.expand_dims(array, 1)
+        if len(array.shape) == 1
+        else jnp.array(array, copy=False, ndmin=2)
+        for array in _arrays
+    ]
 
 
 class Data(eqx.Module):
@@ -28,7 +99,12 @@ class Data(eqx.Module):
     Class for representing unsupervised data.
 
     A dataset of size `n` consists of a set of pairs :math:`\{(x_i, w_i)\}_{i=1}^n`
-    where :math`x_i` are the features or inputs and :math:`w_i` are weights.
+    where :math:`x_i\in\mathbb{R}^d` are the features or inputs and :math:`w_i` are
+    weights.
+
+    .. note::
+        `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
+        converted to a `(n, 1)` array.
 
     :param data: An :math:`n \times d` array defining the features of the unsupervised
         dataset
@@ -36,28 +112,52 @@ class Data(eqx.Module):
         vector is paired with the corresponding index of the data array, forming the
         pair :math:`(x_i, w_i)`; if passed a scalar weight, it will be broadcast to an
         :math:`n`-vector. the default value of :data:`None` sets the weights to
-        the ones vector (implies a scalar weight of one);
+        the ones vector (implies a scalar weight of one)
     """
 
-    data: Shaped[Array, " n *d"]
-    weights: Shaped[Array, " n"]
+    data: Shaped[Array, " n d"] = eqx.field(converter=_atleast_2d_consistent)
+    weights: Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
 
     def __init__(
         self,
-        data: Shaped[ArrayLike, " n *d"],
-        weights: Optional[Shaped[ArrayLike, " n"]] = None,
+        data: Shaped[Array, " n d"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
-        """Initialise Data class."""
-        self.data = jnp.asarray(data)
-        n = self.data.shape[:1]
+        """Initialise `Data` class, handle non-Array weight attribute."""
+        self.data = _atleast_2d_consistent(data)
+        n = self.data.shape[0]
         self.weights = jnp.broadcast_to(1 if weights is None else weights, n)
 
     def __getitem__(self, key) -> Self:
-        """Support Array style indexing of 'Data' objects."""
+        """Support `Array` style indexing of `Data` objects."""
         return jtu.tree_map(lambda x: x[key], self)
 
-    def __jax_array__(self) -> Shaped[ArrayLike, " n d"]:
-        """Register ArrayLike behaviour - return value for `jnp.asarray(Data(...))`."""
+    @overload
+    def __jax_array__(
+        self: "Data",
+    ) -> Shaped[Array, " n d"]: ...
+
+    @overload
+    def __jax_array__(  # pyright:ignore[reportOverlappingOverload]
+        self: "SupervisedData",
+    ) -> Shaped[Array, " n d+p"]: ...
+
+    def __jax_array__(
+        self: Union["Data", "SupervisedData"],
+    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " n d+p"]]:
+        """
+        Return value of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
+
+        .. note::
+
+            When ``self`` is a `SupervisedData` instance `jnp.asarray` will return
+            a single array where the ``supervision`` array has been
+            right-concatenated onto the``data`` array.
+        """
+        if isinstance(self, SupervisedData):
+            return jnp.hstack((self.data, self.supervision))
         return self.data
 
     def __len__(self) -> int:
@@ -66,7 +166,7 @@ class Data(eqx.Module):
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
         """
-        Return a copy of 'self' with 'weights' that sum to one.
+        Return a copy of ``self`` with ``weights`` that sum to one.
 
         :param preserve_zeros: If to preserve zero valued weights; when all weights are
             zero valued, the 'normalized' copy will **sum to zero, not one**.
@@ -83,9 +183,13 @@ class SupervisedData(Data):
     Class for representing supervised data.
 
     A supervised dataset of size `n` consists of a set of triples
-    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math`x_i` are the features or inputs,
-    :math:`y_i` are the responses or outputs, and :math:`w_i` are weights which
-    correspond to the pairs :math:`(x_i, y_i)`.
+    :math:`\{(x_i, y_i, w_i)\}_{i=1}^n` where :math:`x_i\in\mathbb{R}^d` are the
+    features or inputs, :math:`y_i\in\mathbb{R}^p` are the responses or outputs, and
+    :math:`w_i` are weights which correspond to the pairs :math:`(x_i, y_i)`.
+
+    .. note::
+        `n`-vector inputs for `data` and `supervision` are interpreted as `n` points in
+        1-dimension and converted to a `(n, 1)` array.
 
     :param data: An :math:`n \times d` array defining the features of the supervised
         dataset paired with the corresponding index of the supervision
@@ -95,16 +199,18 @@ class SupervisedData(Data):
         vector is is paired with the corresponding index of the data and supervision
         array, forming the triple :math:`(x_i, y_i, w_i)`; if passed a scalar weight,
         it will be broadcast to an :math:`n`-vector. the default value of :data:`None`
-        sets the weights to the ones vector (implies a scalar weight of one);
+        sets the weights to the ones vector (implies a scalar weight of one)
     """
 
-    supervision: Shaped[Array, " n *p"] = eqx.field(converter=jnp.atleast_2d)
+    supervision: Shaped[Array, " n p"] = eqx.field(converter=_atleast_2d_consistent)
 
     def __init__(
         self,
         data: Shaped[Array, " n d"],
-        supervision: Shaped[Array, " n *p"],
-        weights: Optional[Shaped[Array, " n"]] = None,
+        supervision: Shaped[Array, " n p"],
+        weights: Optional[
+            Union[Shaped[Array, " n"], Shaped[Array, ""], int, float]
+        ] = None,
     ):
         """Initialise SupervisedData class."""
         self.supervision = supervision
@@ -118,11 +224,13 @@ class SupervisedData(Data):
             )
 
 
-def as_data(x: Any) -> Data:
-    """Cast 'x' to a data instance."""
+def as_data(x: Union[Shaped[Array, " n d"], Data]) -> Data:
+    """Cast ``x`` to a `Data` instance."""
     return x if isinstance(x, Data) else Data(x)
 
 
-def is_data(x: Any) -> bool:
-    """Return boolean indicating if 'x' is an instance of 'coreax.data.Data'."""
-    return isinstance(x, Data)
+def as_supervised_data(
+    xy: Union[tuple[Shaped[Array, " n d"], Shaped[Array, " n p"]], SupervisedData],
+) -> SupervisedData:
+    """Cast ``xy`` to a `SupervisedData` instance."""
+    return xy if isinstance(xy, SupervisedData) else SupervisedData(*xy)

@@ -17,21 +17,42 @@ jobs:
       percentage: ${{ steps.cov.outputs.percentage }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Set up base Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+          # Note that this is just the version of Python that we use to run `uv` with.
+          # `uv` manages its own version of Python.
+          # For speed, we use the same version for both, but in principle these could differ.
+          python-version: 3.12
+      - name: Set up uv cache directory location (Linux/Mac)
+        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
+        if: runner.os != 'Windows'
+      - name: Set up uv cache directory location (Windows)
+        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $env:GITHUB_ENV
+        if: runner.os == 'Windows'
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-test
+          restore-keys: |
+            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}
+            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+            uv-${{ runner.os }}
+      - name: Install latest versions of pip and uv
+        run: python -m pip install --upgrade pip uv
       - name: Install test dependencies
-        run: pip install -e .[test]
+        run: uv sync --extra test --no-dev --locked
+      - name: Debug - uv pip freeze
+        run: uv pip freeze
       - name: Assess coverage of unit tests
-        run: pytest tests/unit --cov
+        run: uv run pytest tests/unit --cov
       - name: Extract total coverage percentage
         id: cov
         run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+      - name: Minimize UV cache
+        run: uv cache prune --ci
+        if: always()
   coverage-badge:
     name: Update coverage badge
     if: github.event_name == 'push'
@@ -68,4 +89,7 @@ jobs:
             echo "}"
           } > badge.json
       - name: Write Gist
-        run: gh gist edit 51dd332be75961a7dc903c67718028e1 -f coreax.json badge.json
+        env:
+          gist_id: 51dd332be75961a7dc903c67718028e1
+          out_name: coreax_coverage.json
+        run: gh gist edit ${{ env.gist_id }} -a ${{ env.out_name }} badge.json

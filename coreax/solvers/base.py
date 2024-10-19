@@ -51,7 +51,9 @@ class Solver(eqx.Module, Generic[_Coreset, _Data, _State]):
         """
 
 
-class CoresubsetSolver(Solver[Coresubset, _Data, _State], Generic[_Data, _State]):
+class CoresubsetSolver(
+    Solver[Coresubset[_Data], _Data, _State], Generic[_Data, _State]
+):
     """
     Solver which returns a :class:`coreax.coreset.Coresubset`.
 
@@ -80,8 +82,8 @@ class RefinementSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
 
     @abstractmethod
     def refine(
-        self, coresubset: Coresubset, solver_state: Optional[_State] = None
-    ) -> tuple[Coresubset, _State]:
+        self, coresubset: Coresubset[_Data], solver_state: Optional[_State] = None
+    ) -> tuple[Coresubset[_Data], _State]:
         """
         Refine a coresubset - swap/update coresubset indices.
 
@@ -112,7 +114,7 @@ class PaddingInvariantSolver(Solver):
     A :class:`Solver` whose results are invariant to zero weighted data.
 
     In some cases, such as in :class:`coreax.solvers.MapReduce`, there is a need to pad
-    data to ensure shape stability. In some cases, we may assign zero weight to the
+    data to ensure shape stability. In these cases, we may assign zero weight to the
     padded data points, which allows certain 'padding invariant' solvers to return the
     same values on a call to :meth:`~coreax.solvers.Solver.reduce` as would have been
     returned if no padding were present.

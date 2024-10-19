@@ -1,14 +1,16 @@
 # © Crown Copyright GCHQ
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
-# file except in compliance with the License. You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software distributed under
-# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 Tests for score matching implementations.
@@ -36,11 +38,11 @@ from optax import sgd
 
 import coreax.networks
 import coreax.score_matching
-from coreax.kernel import (
-    Kernel,
+from coreax.kernels import (
     LaplacianKernel,
     LinearKernel,
     PCIMQKernel,
+    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
     median_heuristic,
@@ -261,6 +263,33 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.5)
+
+    def test_handling_of_1d_input(self) -> None:
+        """
+        Verify how the score function behaves when given a one-dimensional input.
+        """
+        data = jnp.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+        matcher = KernelDensityMatching(length_scale=1)
+        score_function = matcher.match(data)
+
+        # Define data to evaluate the score function at - we consider the same
+        # data-point but given in two different shapes
+        data_1d = jnp.array([1, 2])
+        data_2d = jnp.array([[1, 2]])
+
+        # When we evaluate the score function with a 1 dimensional input, we expect the
+        # resulting score function to be 1 dimensional, which ensures compatibility with
+        # Stein kernel usage
+        np.testing.assert_array_equal(
+            score_function(data_1d), jnp.array([0.03597286, 0.03597286])
+        )
+
+        # When we evaluate the score function with a 2 dimensional input that holds a
+        # single data-point, we expect the resulting score function to be 2 dimensional,
+        # holding exactly the same values as above, but with an extra dimension
+        np.testing.assert_array_equal(
+            score_function(data_2d), jnp.array([[0.03597286, 0.03597286]])
+        )
 
 
 class TestSlicedScoreMatching(unittest.TestCase):
@@ -1071,7 +1100,7 @@ class TestConvertSteinKernel:
         [LinearKernel(), SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_convert_stein_kernel(
-        self, score_matching: Union[None, MagicMock], kernel: Kernel
+        self, score_matching: Union[None, MagicMock], kernel: ScalarValuedKernel
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""
         random_key = jr.key(2_024)
