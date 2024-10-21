@@ -38,7 +38,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     A coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data points,
     :math:`\hat{X} := \{(\hat{x}_i, \hat{w}_i)\}_{i=1}^\hat{n}` that, in some sense,
     best represent the "important" properties of a larger set of :math:`n > \hat{n}`
-    (potentially weighted) data points :math:`X := \{(x_i, w_i)\}_{i=1}^n`,.
+    (potentially weighted) data points :math:`X := \{(x_i, w_i)\}_{i=1}^n`.
 
     :math:`\hat{x}_i, x_i \in \Omega` represent the data points/nodes and
     :math:`\hat{w}_i, w_i \in \mathbb{R}` represent the associated weights.
@@ -100,21 +100,21 @@ class Coresubset(Coreset[Data], Generic[_Data]):
     r"""
     Data structure for representing a coresubset.
 
-    A coresubset is a :class`Coreset`, with the additional condition that the coreset
-    data points/nodes must be a subset of the the original data points/nodes, such that
+    A coresubset is a :class:`Coreset`, with the additional condition that the coreset
+    data points/nodes must be a subset of the original data points/nodes, such that
 
     .. math::
         \hat{x}_i = x_i, \forall i \in I,
-        I \subset \{1, \dots, n\}, text{card}(I) = \hat{n}.
+        I \subset \{1, \dots, n\}, \text{card}(I) = \hat{n}.
 
     Thus, a coresubset, unlike a coreset, ensures that feasibility constraints on the
     support of the measure are maintained :cite:`litterer2012recombination`.
 
     In coresubsets, the dataset reduction can be implicit (setting weights/nodes to zero
-    for all :math:`i \in I \ {1, \dots, n}`) or explicit (removing entries from the
-    weight/node arrays). The implicit approach is useful when input/output array shape
-    stability is required (E.G. for some JAX transformations); the explicit approach is
-    more similar to a standard coreset.
+    for all :math:`i \notin I`) or explicit (removing entries from the weight/node
+    arrays). The implicit approach is useful when input/output array shape stability is
+    required (E.G. for some JAX transformations); the explicit approach is more similar
+    to a standard coreset.
 
     :param nodes: The (weighted) coresubset node indices, :math:`I`; the materialised
         coresubset nodes should only be accessed via :meth:`Coresubset.coreset`.
