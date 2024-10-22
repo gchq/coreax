@@ -130,6 +130,7 @@ After this iteration, the final state is:
 This completes the coreset of size :math:`k = 2`.
 
 .. code-block::
+
     import jax.numpy as jnp
     import jax.random as jr
     from unittest.mock import patch
