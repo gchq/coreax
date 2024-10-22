@@ -469,7 +469,8 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
             )
             # Track diagonal of residual matrix and ensure it remains non-negative
             updated_residual_diagonal = jnp.clip(
-                residual_diagonal - jnp.square(approximation_matrix[:, i]), min=0
+                residual_diagonal - jnp.square(updated_approximation_matrix[:, i]),
+                min=0,
             )
             if self.unique:
                 # Ensures that index selected_pivot_point can't be drawn again in future
