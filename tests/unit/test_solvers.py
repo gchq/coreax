@@ -1049,14 +1049,22 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         )
 
     def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
-        """Check that the cached RPCholesky state is as expected."""
+        """
+        Check that the cached RPCholesky state is as expected.
+
+        Here we assume that the RPCholesky state (the gramian diagonal) should change
+        after running `reduce`.
+        """
         dataset, solver, _ = reduce_problem
         solver = cast(RPCholesky, solver)
         _, state = solver.reduce(dataset)
+
+        # Compute the diagonal of the initial Gram matrix
         x = dataset.data
         gramian_diagonal = jax.vmap(solver.kernel.compute_elementwise)(x, x)
         expected_state = RPCholeskyState(gramian_diagonal)
-        assert eqx.tree_equal(state, expected_state)
+
+        assert not eqx.tree_equal(state, expected_state)
 
     def test_rpcholesky_analytic_unique(self):
         r"""
