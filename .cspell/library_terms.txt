@@ -101,6 +101,7 @@ pyqt
 pyright
 pyroma
 pytest
+pytorch
 pytree
 pytrees
 quickstart
@@ -109,7 +110,6 @@ rcond
 rect
 rerunfailures
 rightarrow
-rngs
 rtol
 samp
 scikit
@@ -124,6 +124,7 @@ tensordot
 texttt
 toctree
 tomli
+torchvision
 tqdm
 triu
 ttest
