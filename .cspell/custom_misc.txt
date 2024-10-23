@@ -11,6 +11,7 @@ coresets
 coresubset
 coresubsets
 cubature
+datatype
 diag
 docstrings
 eigendecomposition
