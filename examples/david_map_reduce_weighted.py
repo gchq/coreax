@@ -227,7 +227,9 @@ def main(
         -herding_coreset.coreset.data[:, 0],
         c=herding_coreset.coreset.data[:, 2],
         cmap="gray",
-        s=(5.0 * coreset_size * random_weights * downsampling_factor**2).reshape(1, -1),
+        s=(5.0 * coreset_size * herding_weights * downsampling_factor**2).reshape(
+            1, -1
+        ),
         marker="h",
         alpha=0.8,
     )
@@ -241,9 +243,7 @@ def main(
         random_coreset.coreset.data[:, 1],
         -random_coreset.coreset.data[:, 0],
         c=random_coreset.coreset.data[:, 2],
-        s=(5.0 * coreset_size * herding_weights * downsampling_factor**2).reshape(
-            1, -1
-        ),
+        s=(5.0 * coreset_size * random_weights * downsampling_factor**2).reshape(1, -1),
         cmap="gray",
         marker="h",
         alpha=0.8,
