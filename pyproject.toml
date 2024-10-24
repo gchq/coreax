@@ -35,6 +35,8 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "typing-extensions",
+    "pytorch",
+    "torchvision"
 ]
 
 [project.optional-dependencies]

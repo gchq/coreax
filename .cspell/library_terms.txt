@@ -105,6 +105,7 @@ pyqt
 pyright
 pyroma
 pytest
+pytorch
 pytree
 pytrees
 quickstart
@@ -127,6 +128,7 @@ tensordot
 texttt
 toctree
 tomli
+torchvision
 tqdm
 triu
 ttest
