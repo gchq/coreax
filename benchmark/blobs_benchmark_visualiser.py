@@ -22,6 +22,30 @@ def print_metrics_table(data: dict, sample_size: str) -> None:
     """
     Print a table for the given sample size with methods as rows and metrics as columns.
 
+    :param data: A dictionary where keys are sample sizes (as strings) and values are
+                 dictionaries containing the metrics for each algorithm. Each method's
+                 dictionary contains the following keys:
+                 - 'unweighted_mmd': Unweighted maximum mean discrepancy (MMD).
+                 - 'unweighted_ksd': Unweighted kernel Stein discrepancy (KSD).
+                 - 'weighted_mmd': Weighted maximum mean discrepancy (MMD).
+                 - 'weighted_ksd': Weighted kernel Stein discrepancy (KSD).
+                 - 'time': Time taken to compute the coreset and metrics (in seconds).
+                 Example format:
+                 {
+                     '100': {
+                         'KernelHerding': {
+                             'unweighted_mmd': 0.12345678,
+                             'unweighted_ksd': 0.23456789,
+                             'weighted_mmd': 0.34567890,
+                             'weighted_ksd': 0.45678901,
+                             'time': 0.123
+                         },
+                         'Algorithm B': { ... },
+                         ...
+                     },
+                     '1000': { ... },
+                     ...
+                 }
     :param sample_size: The sample size for which to print the table.
     """
     # Define header

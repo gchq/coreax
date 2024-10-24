@@ -17,7 +17,7 @@ Benchmark performance of different coreset algorithms on a synthetic dataset.
 
 The benchmarking process follows these steps:
 1. Generate a synthetic dataset of 1000 two-dimensional points using
-   `sklearn.datasets.make_blobs`.
+   :func:`sklearn.datasets.make_blobs`.
 2. Generate coresets of varying sizes: 10, 50, 100, and 200 points using different
    coreset algorithms.
 3. Compute two metrics to evaluate the coresets' quality:
@@ -30,7 +30,7 @@ The benchmarking process follows these steps:
 
 import json
 import time
-from typing import Any, Tuple
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -71,7 +71,13 @@ def setup_kernel(x: np.ndarray) -> SquaredExponentialKernel:
 def setup_stein_kernel(
     sq_exp_kernel: SquaredExponentialKernel, dataset: Data
 ) -> SteinKernel:
-    """Set up Stein Kernel."""
+    """
+    Set up a Stein Kernel for Stein Thinning.
+
+    :param sq_exp_kernel: A SquaredExponential base kernel for the Stein Kernel.
+    :param dataset: Dataset for score matching.
+    :return: A SteinKernel object.
+    """
     sliced_score_matcher = SlicedScoreMatching(
         jax.random.PRNGKey(45),
         jax.random.rademacher,
@@ -90,7 +96,7 @@ def setup_solvers(
     coreset_size: int,
     sq_exp_kernel: SquaredExponentialKernel,
     stein_kernel: SteinKernel,
-) -> list[Tuple[str, Any]]:
+) -> list[tuple[str, Any]]:
     """
     Set up and return a list of solver configurations for reducing a dataset.
 
@@ -175,7 +181,7 @@ def compute_solver_metrics(
 
 
 def compute_metrics(
-    solvers: list[Tuple[str, Any]],
+    solvers: list[tuple[str, Any]],
     dataset: Data,
     mmd_metric: MMD,
     ksd_metric: KSD,
@@ -205,11 +211,12 @@ def compute_metrics(
 
 def main() -> None:
     """
-    Perform a benchmark comparing different coreset algorithms on a synthetic dataset.
+    Benchmark different algorithms against on a synthetic dataset.
 
-    Generate a synthetic dataset using `sklearn.datasets.make_blobs`,set up various
-    solvers, generate coreset of different sizes, and compute performance metrics
-    (MMD and KSD) for each solver at different. Then, save the results into a JSON file.
+    Compare the performance of different coreset algorithms using a synthetic dataset,
+    generated using :func:`sklearn.datasets.make_blobs`. We set up various solvers,
+    generate coresets of multiple sizes, and compute performance metrics (MMD and KSD)
+    for each solver at each coreset size. Results are saved to a JSON file.
     """
     # Generate data
     x, *_ = make_blobs(n_samples=1000, n_features=2, centers=10, random_state=45)
@@ -243,7 +250,7 @@ def main() -> None:
         all_results[size] = results
 
     # Save results to JSON file
-    with open("coreset_comparison_results.json", "w", encoding="utf-8") as f:
+    with open("blobs_benchmark_results.json", "w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=2)
 
 
