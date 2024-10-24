@@ -26,34 +26,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
+- Added Kernel Stein Discrepancy divergence in `coreax.metrics.KSD`.[#659]
 - Added the `coreax.solvers.recombination` module, which provides the following new solvers:
   - `RecombinationSolver`: an abstract base class for recombination solvers.
   - `CaratheodoryRecombination`: a simple deterministic approach to solving recombination problems.
   - `TreeRecombination`: an advanced deterministic approach that utilises `CaratheodoryRecombination`,
-    but is faster for solving all but the smallest recombination problems.
-- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`.
-- Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`.
-within the `**` magic method of `coreax.kernel.ScalarValuedKernel`.
-- Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`.
+    but is faster for solving all but the smallest recombination problems.[#504]
+- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`.[#686]
+- Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
+within the `**` magic method of `coreax.kernel.ScalarValuedKernel`.[#708]
+- Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`.[#742]
 - Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
-disable tqdm progress bar terminal output. Defaults to disabled (`False`).
-- Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.
-- Added a custom version of `jnp.atleast_2d` that converts one dimensional n-vectors to shape (n,1).
+disable tqdm progress bar terminal output. Defaults to disabled (`False`).[#761]
+- Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.[#794]
 - Added CI workflow for performance testing.
-- Added array dimensions to type annotations using jaxtyping.
-- Added integration test for `coreax.solver.recombination.TreeRecombination`.
+- Added array dimensions to type annotations using jaxtyping.[#746]
+- Added integration test for `coreax.solver.recombination.TreeRecombination`.[#798]
 
 ### Fixed
-- Fixed `MapReduce` in `coreax.solvers.composite.py` to keep track of the indices.
-- Fixed negative weights on `coreax.weights.qp`.
+- Fixed `MapReduce` in `coreax.solvers.composite.py` to keep track of the indices.[#779]
+- Fixed negative weights on `coreax.weights.qp`.[#698]
 
 ### Changed
 
 - Refactored `coreax.inverses.py` functionality into `coreax.least_squares.py`:
   - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`.
   - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`.
-  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`.
+  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by
+    `coreax.least_squares.RandomisedEigendecompositionSolver`.[#700]
 - Refactoring of `coreax.kernel.py` into `coreax.kernels` sub-package:
   - `kernels.util.py` holds utility functions relating to kernels e.g. `median_heuristic`.
   - `kernels.base.py` holds the base kernel class `ScalarValuedKernel` (renamed from `Kernel`),
@@ -61,34 +61,34 @@ disable tqdm progress bar terminal output. Defaults to disabled (`False`).
     `DuoCompositeKernel` (renamed from `PairedKernel`) and the derived duo-composite kernels
     `AdditiveKernel` and `ProductKernel`
   - `coreax.kernels.scalar_valued.py` holds all currently implemented scalar valued kernels e.g.
-    `SquaredExponentialKernel`.
-  - Refactored `coreax.weights.py` to make weight solvers generic on datatype.
+    `SquaredExponentialKernel`. [#708]
+- Refactored `coreax.weights.py` to make weight solvers generic on data type.[#709]
 
 ### Removed
 
-- `coreax.weights.MMD` - deprecated alias for `coreax.weights.MMDWeightsOptimiser`; deprecated since version 0.2.0.
-- `coreax.weights.SBQ` - deprecated alias for `coreax.weights.SBQWeightsOptimiser`; deprecated since version 0.2.0.
-- `coreax.util.squared_distance_pairwise` - deprecated alias for `coreax.util.pairwise(squared_distance)`; deprecated since version 0.2.0.
-- `coreax.util.pairwise_difference` - deprecated alias for `coreax.util.pairwise(difference)`; deprecated since version 0.2.0.
+- `coreax.weights.MMD` - deprecated alias for `coreax.weights.MMDWeightsOptimiser`; deprecated since version 0.2.0.[#784]
+- `coreax.weights.SBQ` - deprecated alias for `coreax.weights.SBQWeightsOptimiser`; deprecated since version 0.2.0.[#784]
+- `coreax.util.squared_distance_pairwise` - deprecated alias for `coreax.util.pairwise(squared_distance)`; deprecated since version 0.2.0.[#784]
+- `coreax.util.pairwise_difference` - deprecated alias for `coreax.util.pairwise(difference)`; deprecated since version 0.2.0.[#784]
 
 ### Deprecated
 
-- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.
-- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.
-- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.
-- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.
-- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.
-- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.
-- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.
-- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.
-- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.
-- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.
-- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.
-- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.
-- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.
-- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.
-- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.
-- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.
+- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.[#708]
+- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.[#708]
+- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.[#708]
+- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.[#708]
+- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.[#708]
+- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.[#708]
+- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.[#708]
+- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.[#708]
+- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.[#708]
+- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.[#708]
+- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.[#708]
+- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.[#708]
+- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.[#708]
+- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.[#708]
+- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.[#708]
+- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.[#708]
 
 
 
