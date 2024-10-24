@@ -1050,6 +1050,24 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             kernel=kernel,
         )
 
+    @override
+    @pytest.mark.parametrize("use_cached_state", (False,))
+    def test_reduce(
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        reduce_problem: _ReduceProblem,
+        use_cached_state: bool,
+    ) -> None:
+        """
+        Check `reduce` raises no errors.
+
+        Note:
+            This overrides `SolverTest.test_reduce` since that assumes that `reduce`
+            is `solver_state` invariant, which is not true for RPCholesky.
+
+        """
+        super().test_reduce(jit_variant, reduce_problem, use_cached_state)
+
     def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
         """
         Check that the cached RPCholesky state is as expected.
