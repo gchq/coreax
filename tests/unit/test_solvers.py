@@ -14,6 +14,7 @@
 
 """Test all solvers in :module:`coreax.solvers`."""
 
+import copy
 import re
 from abc import abstractmethod
 from collections.abc import Callable
@@ -458,6 +459,7 @@ class ExplicitSizeSolverTest(SolverTest):
 
         A 'coreset_size' is infeasible if it can't be cast to a positive integer.
         """
+        solver_factory = copy.deepcopy(solver_factory)
         solver_factory.keywords["coreset_size"] = coreset_size
         with context:
             solver = solver_factory()
