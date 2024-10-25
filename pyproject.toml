@@ -25,7 +25,8 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    "equinox",
+    "equinox<0.11.8",  # 0.11.8 raises TypeErrors of the form
+                       #   `__class__ assignment: 'x' object layout differs from 'x'`.
     "flax",
     "jax",
     "jaxopt",
@@ -46,7 +47,6 @@ test = [
     "matplotlib",
     "numpy",
     "opencv-python",
-    "pyqt5",
     "pytest-cov",
     "pytest-rerunfailures",
     "scipy",
@@ -60,14 +60,25 @@ doc = [
     "sphinxcontrib-bibtex",
     "sphobjinv",
 ]
+
+[tool.uv]
 # All tools for a developer including those for running pylint
-dev = [
+dev-dependencies = [
     "coreax[doc, test]",
     "pre-commit>=3.7",
     "pylint",
     "pyroma",
     "pyright",
     "ruff",
+]
+
+# Ensure we get the latest package versions available for each Python version
+environments = [
+    "python_version>='3.13'",
+    "python_version=='3.12.*'",
+    "python_version=='3.11.*'",
+    "python_version=='3.10.*'",
+    "python_version=='3.9.*'",
 ]
 
 [project.urls]
@@ -117,8 +128,6 @@ ignore = [
     "F722",   # forward-annotation-syntax-error
     # Opinionated ignores
     "PLR6301", # no-self-use (opinionated)
-    # Incompatible with jaxtyping
-    "F722",   # forward-annotation-syntax-error
 ]
 
 [tool.ruff.lint.per-file-ignores]

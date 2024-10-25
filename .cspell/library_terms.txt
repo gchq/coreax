@@ -83,6 +83,7 @@ ndim
 newaxis
 nobs
 nonzero
+notin
 numpy
 opencv
 operatorname
