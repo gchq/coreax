@@ -29,6 +29,7 @@ The benchmarking process follows these steps:
 """
 
 import json
+import os
 import time
 from typing import Any
 
@@ -250,7 +251,10 @@ def main() -> None:
         all_results[size] = results
 
     # Save results to JSON file
-    with open("blobs_benchmark_results.json", "w", encoding="utf-8") as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(
+        os.path.join(base_dir, "blobs_benchmark_results.json"), "w", encoding="utf-8"
+    ) as f:
         json.dump(all_results, f, indent=2)
 
 
