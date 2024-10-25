@@ -14,30 +14,25 @@
 
 ### Description
 <!--
-    Please include a summary of the changes and the related issue. Please also include relevant motivation and context.
+    Summarise the changes and the related issue. Please include relevant motivation and context.
 -->
 
-(Write your answer here.)
+(Write your answer here. Include screenshots if relevant.)
 
 ### How Has This Been Tested?
 <!--
-    Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration.
+    Describe the tests that you ran to verify the changes. List any relevant details for your test configuration.
 -->
 
- Test A: (Write your answer here.)
- Test B: (Write your answer here.)
- Test C: (Write your answer here.)
+(Write your answer here, or delete as appropriate.)
+
+Existing tests pass as expected.
+
+New tests introduced with this change verify that...
 
 ### Does this PR introduce a breaking change?
 <!--
     What changes might users need to make in their application due to this PR?.
--->
-
-(Write your answer here.)
-
-### Screenshots
-<!--
-    Include the before and after if your changes include differences in HTML/CSS
 -->
 
 (Write your answer here.)
@@ -49,6 +44,6 @@
 - [ ] I have performed a self-review of my code.
 - [ ] I have made corresponding changes to the documentation.
 - [ ] My changes generate no new warnings.
-- [ ] I have added tests that prove my fix is effective or that my feature works.
 - [ ] New and existing unit tests pass locally with my changes.
 - [ ] Any dependent changes have been merged and published in downstream modules.
+- [ ] I have updated CHANGELOG.md, if appropriate.
