@@ -35,6 +35,7 @@ The benchmarking process follows these steps:
 """
 
 import json
+import os
 from typing import Any, NamedTuple, Optional
 
 import jax
@@ -587,7 +588,10 @@ def save_results(results: dict) -> None:
                     Each algorithm contains coreset sizes as keys, with values being
                     dictionaries of accuracy results from different runs.
     """
-    with open("mnist_benchmark_results.json", "w", encoding="utf-8") as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(
+        os.path.join(base_dir, "mnist_benchmark_results.json"), "w", encoding="utf-8"
+    ) as f:
         json.dump(results, f, indent=4)
 
     print("Data has been saved to 'benchmark_results.json'")
