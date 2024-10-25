@@ -100,10 +100,10 @@ jobs:
         run: |
           export message="chore(deps): autoupdate uv.lock"
           export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.lockfile_path }} )
-          export content=$( base64 -i ${{ env.lockfile_path }} )
+          base64 -i ${{ env.lockfile_path }} > $RUNNER_TEMP/base64_lockfile
           gh api --method PUT /repos/:owner/:repo/contents/${{ env.lockfile_path }} \
             --field message="$message" \
-            --field content="$content" \
+            --field content="@$RUNNER_TEMP/base64_lockfile" \
             --field branch=${{ env.update_branch }} \
             --field sha="$sha"
       - name: Commit (with signature) new requirements-doc
@@ -114,10 +114,10 @@ jobs:
         run: |
           export message="chore(deps): autoupdate requirements-doc"
           export sha=$( git rev-parse ${{ env.update_branch }}:${{ env.requirements_doc_path }} )
-          export content=$( base64 -i ${{ env.requirements_doc_path }} )
+          base64 -i ${{ env.requirements_doc_path }} > $RUNNER_TEMP/base64_requirements_doc
           gh api --method PUT /repos/:owner/:repo/contents/${{ env.requirements_doc_path }} \
             --field message="$message" \
-            --field content="$content" \
+            --field content="@$RUNNER_TEMP/base64_requirements_doc" \
             --field branch=${{ env.update_branch }} \
             --field sha="$sha"
       - name: Create or update lockfile-autoupdate pull-request
