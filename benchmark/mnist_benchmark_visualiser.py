@@ -15,6 +15,7 @@
 """Visualise the results of ``mnist_benchmark.py``."""
 
 import json
+import os
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -22,7 +23,10 @@ from matplotlib import pyplot as plt
 
 def main() -> None:
     """Load benchmark results and visualise the algorithm performance."""
-    with open("mnist_benchmark_results.json", "r", encoding="utf-8") as file:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(
+        os.path.join(base_dir, "mnist_benchmark_results.json"), "r", encoding="utf-8"
+    ) as file:
         # Load the JSON data into a Python object
         data_by_solver = json.load(file)
 
