@@ -15,6 +15,7 @@
 """Visualise the results of ``blobs_benchmark.py``."""
 
 import json
+import os
 
 
 # Function to print metrics table for each sample size
@@ -74,7 +75,10 @@ def print_metrics_table(data: dict, sample_size: str) -> None:
 def main() -> None:
     """Load the data and print metrics in table format per sample size."""
     # Load the JSON data
-    with open("blobs_benchmark_results.json", encoding="utf-8") as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(
+        os.path.join(base_dir, "blobs_benchmark_results.json"), encoding="utf-8"
+    ) as f:
         data = json.load(f)
 
     # Print tables for each sample size
