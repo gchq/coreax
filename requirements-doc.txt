@@ -18,7 +18,7 @@ cssutils==2.11.1
 dict2css==0.3.0.post1
 docutils==0.21.2
 domdf-python-tools==3.9.0
-equinox==0.11.8
+equinox==0.11.7
 etils==1.5.2 ; python_full_version < '3.10'
 etils==1.10.0 ; python_full_version >= '3.10'
 filelock==3.16.1
