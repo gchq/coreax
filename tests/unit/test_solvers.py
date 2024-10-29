@@ -1059,7 +1059,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         use_cached_state: bool,
     ) -> None:
         """
-        Check `reduce` raises no errors.
+        Check `coreax.solvers.RPCholesky.reduce` raises no errors.
 
         Note:
             This overrides `SolverTest.test_reduce` since that assumes that `reduce`
