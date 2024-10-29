@@ -1087,55 +1087,56 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         assert not eqx.tree_equal(state, expected_state)
 
     def test_rpcholesky_analytic_unique(self):
+        # pylint: disable=line-too-long
         r"""
-        Test RPCholesky with a unique coreset on a small verified instance.
+        Analytical example with RPCholesky.
 
-        In this example, we have data of:
+        Step-by-step usage of the RPCholesky algorithm (Algorithm 1 in
+        :cite:`chen2023randomly`) on a small example with 3 data points in 2 dimensions and a
+        coreset of size 2, i.e., :math:`N=3, m=2`.
+
+        In this example, we have the following data:
 
         .. math::
-            x = \begin{pmatrix}
+            X = \begin{pmatrix}
                 0.5 & 0.2 \\
                 0.4 & 0.6 \\
                 0.8 & 0.3
             \end{pmatrix}
 
         We choose a ``SquaredExponentialKernel`` with ``length_scale`` of
-        :math:`\frac{1}{\sqrt{2}}`, which produces the following Gram matrix:
+        :math:`\frac{1}{\sqrt{2}}`: for two points :math:`x, y \in X`, :math:`k(x, y) =
+        e^{-||x - y||^2}`. We now compute the Gram matrix, :math:`A`, of the dataset
+        :math:`X` with respect to the kernel :math:`k` as :math:`A_{ij} = k(X_i, X_j)`:
 
         .. math::
-            \begin{pmatrix}
+            A = \begin{pmatrix}
                 1.0 & 0.84366477 & 0.90483737 \\
                 0.84366477 & 1.0 & 0.7788007 \\
                 0.90483737 & 0.7788007 & 1.0
             \end{pmatrix}
 
-        Note that we do not need to precompute the full Gram matrix, the algorithm
+        Note that, in practice, we do not need to precompute the full Gram matrix, the algorithm
         only needs to evaluate the pivot column at each iteration.
 
-        The RPCholesky algorithm iteratively builds a coreset by:
-            - Sampling pivot points based on the residual diagonal of the Gram matrix
-            - Updating an approximation matrix and the residual diagonal
+        To apply the RPCholesky algorithm, we first initialise the *residual diagonal*
+        :math:`d = \text{diag}(A)` and the *approximation matrix* :math:`F = \mathbf{0}_{N
+        \times m}`, where :math:`N = 3, m = 2` in our case.
 
-        We ask for a coreset of size 2 in this example. We start with an empty coreset
-        and an approximation matrix :math:`F = \mathbf{0}_{N \times k}`,
-        where :math:`N = 3, k = 2` in our case.
-
-        We first compute the diagonal of the Gram matrix as:
-
-        .. math::
-            d = \begin{pmatrix}
-                1 \\
-                1 \\
-                1
-            \end{pmatrix}
+        We now build a coreset iteratively by applying the following steps at each iteration i:
+            - Sample a datapoint index (called a pivot) proportional to :math:`d`
+            - Compute/extract column :math:`g` corresponding to the pivot index from :math:`A`
+            - Remove the overlap with previously selected columns from :math:`g`
+            - Normalize the column and add it to the approximation matrix :math:`F`
+            - Update the residual diagonal: :math:`d = d - |F[:,i]|^2`
 
         For the first iteration (i=0):
 
-        1. We sample a pivot point proportional to their value on the diagonal.
-        All choices are equally likely, so let us suppose we choose the pivot with
-        index = 2.
+        1. We sample a pivot point proportional to their value on the diagonal. Since
+        :math:`d` is initialised as :math:`(1, 1, 1)` in our case, all choices are equally
+        likely, so let us suppose we choose the pivot with index = 2.
 
-        2. We now compute g, the column at index 2, as:
+        2. We now compute :math:`g`, the column at index 2, as:
 
         .. math::
             g = \begin{pmatrix}
@@ -1144,8 +1145,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             1.0
             \end{pmatrix}
 
-        3. Remove overlap with previously chosen columns (not needed on the first
-        iteration).
+        3. Remove overlap with previously chosen columns (not needed on the first iteration).
 
         4. Update the approximation matrix:
 
@@ -1167,9 +1167,8 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
         For the second iteration (i=1):
 
-        1. We again sample a pivot point proportional to their value on the updated
-        residual diagonal, :math:`d`. Let's suppose we choose the most likely pivot here
-        (index=1).
+        1. We again sample a pivot point proportional to their value on the updated residual
+        diagonal, :math:`d`. Let's suppose we choose the most likely pivot here (index=1).
 
         2. We now compute g, the column at index 1, as:
 
@@ -1183,7 +1182,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         3. Remove overlap with previously chosen columns:
 
         .. math::
-            g = g - F[:, 0] F[1, 0] = \begin{pmatrix}
+            g = g - F[:, 0] F[1, 0]^T = \begin{pmatrix}
             0.13897679 \\
             0.39346947 \\
             0
@@ -1220,10 +1219,24 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             0 \\
             0
             \end{pmatrix}, \quad
-            S = \{2, 1\}
+            S = \{2, 1\} \, .
 
-        This completes the coreset of size :math:`k = 2`.
-        """
+        This completes the coreset of size :math:`m = 2`. We can also use the :math:`F` to
+        compute an approximation to the original Gram matrix:
+
+        .. math::
+
+            F \cdot F^T = \begin{pmatrix}
+            0.86781846 & 0.84366477 & 0.90483737 \\
+            0.84366477 & 1.0 & 0.7788007 \\
+            0.90483737 & 0.7788007 & 1.0
+            \end{pmatrix}
+
+        Note that we have recovered the original matrix except for :math:`A_{00}`, which was not
+        covered by any of the chosen pivots.
+        """  # noqa: E501
+        # pylint: enable=line-too-long
+
         # Setup example data
         coreset_size = 2
         x = jnp.array(
