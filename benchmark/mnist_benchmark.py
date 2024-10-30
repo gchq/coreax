@@ -465,7 +465,7 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
         :param _size: The size of the coreset to be generated.
         :return: A tuple containing the solver name and the MapReduce solver.
         """
-        herding_solver = KernelHerding(_size, kernel, block_size=64)
+        herding_solver = KernelHerding(_size, kernel, block_size=128)
         return "KernelHerding", MapReduce(herding_solver, leaf_size=2 * _size)
 
     def _get_stein_solver(_size: int) -> tuple[str, MapReduce]:
@@ -490,7 +490,7 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
         )
         stein_kernel = SteinKernel(kernel, score_function)
         stein_solver = SteinThinning(
-            coreset_size=_size, kernel=stein_kernel, block_size=64
+            coreset_size=_size, kernel=stein_kernel, block_size=128
         )
         return "SteinThinning", MapReduce(stein_solver, leaf_size=2 * _size)
 
@@ -627,11 +627,12 @@ def main() -> None:
         "min_delta": 0.001,
     }
 
-    for i in range(2):
+    # Run the experiment with 5 different random keys
+    for i in range(5):
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_pca, key)
         for getter in solvers:
-            for size in [25, 26, 50, 100]:
+            for size in [25, 50, 100, 500, 1000, 5000]:
                 name, solver = getter(size)
                 subset, _ = solver.reduce(Data(train_data_pca))
                 print(name, subset)
@@ -657,7 +658,7 @@ def main() -> None:
                 if size not in results[name]:
                     results[name][size] = {}
 
-                    # Store accuracy result in nested structure
+                # Store accuracy result in nested structure
                 results[name][size][i] = float(result["final_test_accuracy"])
 
     save_results(results)
