@@ -308,10 +308,12 @@ maintainers decide the codebase is ready for another release:
      the relevant versions.
 6. Update the version number in `coreax/__init.py__`.
 7. Create and review a pull request.
-8. Once approved, create a release in GitHub pointing at the final commit on the release
-   branch.
-9. Build and publish to PyPI and ReadTheDocs.
-10. Merge the release branch into `main`.
+8. Once approved, merge the release branch into `main` as soon as possible.
+9. Create a release in GitHub pointing at the final commit on the release branch (that
+   is, the commit _before_ merging into `main`). If the release branch was deleted, you
+   may need to target the commit by its hash.
+10. Build and publish to PyPI and ReadTheDocs, ensuring that the code is published from
+   the same commit as the GitHub release.
 
 [github-issues]: https://github.com/gchq/coreax/issues?q=
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
