@@ -44,6 +44,9 @@ Currently, we are using a [GitHub Flow][github-flow] development approach.
 - Avoid changes to unrelated files in the same commit.
 - Changes must conform to the [code](#code) guidelines.
 - Changes must have sufficient [test coverage][run-tests].
+- Ensure your changes are recorded in `CHANGELOG.md`, and ensure that the changelog
+  entry links to each issue that is closed by your PR. (When the next version is
+  released, these links will be replaced by a link to your PR.)
 - Delete your branch once it has been merged.
 
 ### Pull request process
@@ -306,6 +309,8 @@ maintainers decide the codebase is ready for another release:
    - Create a new unpopulated `Unreleased` section at the top.
    - Update the hyperlinks to Git diffs at the bottom of the file so that they compare
      the relevant versions.
+   - Replace all issue links in the new version's sections with links to the PRs that
+     closed them.
 6. Update the version number in `coreax/__init.py__`.
 7. Create and review a pull request.
 8. Once approved, create a release in GitHub pointing at the final commit on the release
