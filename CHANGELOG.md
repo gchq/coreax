@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an analytical test for RPCholesky, and associated documentation in `tests.
   unit.test_solvers`.(https://github.com/gchq/coreax/pull/822)
 
-
 ### Fixed
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
   correctly.(https://github.com/gchq/coreax/pull/825)
@@ -40,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 within the `**` magic method of `coreax.kernel.ScalarValuedKernel`.(https://github.com/gchq/coreax/pull/708)
 - Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`.([#742](https://github.com/gchq/coreax/pull/742))
 - Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
-disable tqdm progress bar terminal output. Defaults to disabled (`False`).(https://github.com/gchq/coreax/pull/761)
+  disable tqdm progress bar terminal output. Defaults to disabled (`False`).(https://github.com/gchq/coreax/pull/761)
 - Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.(https://github.com/gchq/coreax/pull/794)
 - Added CI workflow for performance testing.
 - Added array dimensions to type annotations using jaxtyping.(https://github.com/gchq/coreax/pull/746)
