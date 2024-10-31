@@ -1296,6 +1296,28 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             solver_state.gramian_diagonal, expected_gramian_diagonal
         )
 
+    def test_rpcholesky_unique_points(self):
+        """
+        Test whether a coreset contains no duplicates when running RPCholesky.
+
+        We use a relatively large dataset (N=1_000) and set `coreset_size = N` to
+        make sure RPCholesky adds no duplicates to the coreset even after convergence.
+        """
+        shape = (1_000, 2)
+        data = Data(jr.uniform(self.random_key, shape))
+        kernel = PCIMQKernel()
+        solver = RPCholesky(
+            coreset_size=shape[0],
+            random_key=jax.random.PRNGKey(0),
+            kernel=kernel,
+            unique=True,
+        )
+
+        rpc_coreset, _ = solver.reduce(data)
+
+        coreset_indices = rpc_coreset.unweighted_indices
+        assert len(coreset_indices) == len(np.unique(coreset_indices))
+
 
 class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.SteinThinning`."""
