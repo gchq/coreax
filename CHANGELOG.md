@@ -8,10 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
--
+- Added an analytical test for RPCholesky, and associated documentation in `tests.
+  unit.test_solvers`.(https://github.com/gchq/coreax/pull/822)
+
 
 ### Fixed
--
+- `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
+  correctly.(https://github.com/gchq/coreax/pull/825)
 
 ### Changed
 -
