@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added an analytical test for RPCholesky, and associated documentation in `tests.
   unit.test_solvers`.(https://github.com/gchq/coreax/pull/822)
+- Added a unit test for RPCholesky to check whether the coreset has duplicates.(https://github.com/gchq/coreax/pull/836)
 
 ### Fixed
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
   correctly.(https://github.com/gchq/coreax/pull/825)
+- `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
+  points in the coreset.(https://github.com/gchq/coreax/pull/836)
 
 ### Changed
 -
