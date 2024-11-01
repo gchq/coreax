@@ -21,10 +21,14 @@ within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
 - Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
 disable tqdm progress bar terminal output. Defaults to disabled (`False`).
 - Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.
+- Added an analytical test for RPCholesky, and associated documentation in `tests.
+unit.test_solvers`.
 
 
 ### Fixed
 - `MapReduce` in `coreax.solvers.composite.py` now keeps track of the indices.
+- `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
+  correctly.
 
 
 ### Changed
