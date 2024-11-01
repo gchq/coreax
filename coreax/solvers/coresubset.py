@@ -435,19 +435,28 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
         data. The pivot sampling and diagonal updating steps are repeated until
         :math:`M` points have been selected.
 
+        .. note::
+            The RPCholesky algorithm sometimes converges before reaching
+            ``self.coreset_size``. In this case, the other coreset points are chosen
+            uniformly at random, avoiding repetition.
+
+
         :param dataset: The dataset to reduce to a coresubset
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
         :return: a refined coresubset and relevant intermediate solver state information
         """
         x = dataset.data
+        num_data_points = len(x)
         if solver_state is None:
             gramian_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         else:
             gramian_diagonal = solver_state.gramian_diagonal
-        initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
+        # Initialise with an index outside of the possible coreset indices
+        initial_coresubset = _initial_coresubset(
+            num_data_points + 1, self.coreset_size, dataset
+        )
         coreset_indices = initial_coresubset.unweighted_indices
-        num_data_points = len(x)
 
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
@@ -455,9 +464,24 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
             """RPCholesky iteration - Algorithm 1 of :cite:`chen2023randomly`."""
             residual_diagonal, approximation_matrix, coreset_indices = val
             key = jr.fold_in(self.random_key, i)
-            pivot_point = jr.choice(
-                key, num_data_points, (), p=residual_diagonal, replace=False
+
+            # Fall back on uniform probability if residual_diagonal is invalid
+            available_mask = (
+                jnp.ones(num_data_points, dtype=bool).at[coreset_indices].set(False)
             )
+            uniform_probs = available_mask / jnp.sum(available_mask)
+            valid_residuals = jnp.where(
+                jnp.logical_or(
+                    jnp.all(residual_diagonal == 0),
+                    jnp.any(jnp.isnan(residual_diagonal)),
+                ),
+                uniform_probs,
+                residual_diagonal,
+            )
+            pivot_point = jr.choice(
+                key, num_data_points, (), p=valid_residuals, replace=False
+            )
+
             updated_coreset_indices = coreset_indices.at[i].set(pivot_point)
             # Remove overlap with previously chosen columns
             g = (
