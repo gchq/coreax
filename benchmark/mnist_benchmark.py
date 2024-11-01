@@ -447,10 +447,10 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
     :return: A list of solvers functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
-    num_samples_length_scale = min(300, 1000)
+    num_samples_length_scale = min(3000, len(train_data_pca))
     random_seed = 45
     generator = np.random.default_rng(random_seed)
-    idx = generator.choice(300, num_samples_length_scale, replace=False)
+    idx = generator.choice(len(train_data_pca), num_samples_length_scale, replace=False)
     length_scale = median_heuristic(train_data_pca[idx])
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
@@ -480,13 +480,8 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
         :return: A tuple containing the solver name and the MapReduce solver.
         """
         # Generate small dataset for ScoreMatching for Stein Kernel
-        small_dataset = train_data_pca[
-            jax.random.choice(
-                key, train_data_pca.shape[0], shape=(1000,), replace=False
-            )
-        ]
         score_function = KernelDensityMatching(length_scale=length_scale).match(
-            small_dataset
+            train_data_pca[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
         stein_solver = SteinThinning(
@@ -501,7 +496,6 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
         :param _size: The size of the coreset to be generated.
         :return: A tuple containing the solver name and the RandomSample solver.
         """
-        print("Random solver called with a key")
         random_solver = RandomSample(_size, key)
         return "RandomSample", random_solver
 
