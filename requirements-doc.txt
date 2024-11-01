@@ -23,7 +23,7 @@ etils==1.5.2 ; python_full_version < '3.10'
 etils==1.10.0 ; python_full_version >= '3.10'
 filelock==3.16.1
 flax==0.8.5 ; python_full_version < '3.10'
-flax==0.10.0 ; python_full_version >= '3.10'
+flax==0.10.1 ; python_full_version >= '3.10'
 fsspec==2024.10.0
 furo==2024.8.6
 html5lib==1.1
@@ -71,7 +71,7 @@ nvidia-nvtx-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system ==
 opt-einsum==3.4.0
 optax==0.2.3
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.7.0 ; python_full_version >= '3.10'
+orbax-checkpoint==0.8.0 ; python_full_version >= '3.10'
 packaging==24.1
 pillow==11.0.0
 platformdirs==4.3.6
@@ -83,13 +83,13 @@ pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
 rich==13.9.3
-rpds-py==0.20.0
+rpds-py==0.20.1
 ruamel-yaml==0.18.6
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'
 scikit-learn==1.5.2
 scipy==1.13.1 ; python_full_version < '3.10'
 scipy==1.14.1 ; python_full_version >= '3.10'
-setuptools==75.2.0 ; python_full_version >= '3.12'
+setuptools==75.3.0 ; python_full_version >= '3.12'
 six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.6
@@ -118,9 +118,9 @@ tensorstore==0.1.67
 threadpoolctl==3.5.0
 tomli==2.0.2 ; python_full_version < '3.11'
 toolz==1.0.0
-torch==2.5.0
-torchvision==0.20.0
-tqdm==4.66.5
+torch==2.5.1
+torchvision==0.20.1
+tqdm==4.66.6
 triton==3.1.0 ; python_full_version < '3.13' and platform_machine == 'x86_64' and platform_system == 'Linux'
 typeguard==2.13.3
 typing-extensions==4.12.2
