@@ -348,6 +348,12 @@ class SteinThinning(
         greedily choose points in the coreset to minimise kernel Stein discrepancy
         (KSD).
 
+        .. note::
+            Only the score function, :math:`\nabla \log p(x)`, is provided to the
+            solver. Since the lambda regularisation term relies on the density,
+            :math:`p(x)`, directly, it is estimated using a Gaussian kernel density
+            estimator.
+
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
