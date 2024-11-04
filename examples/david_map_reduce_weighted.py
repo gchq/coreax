@@ -211,8 +211,18 @@ def main(
     print(f"Herding coreset MMD: {herding_mmd}")
 
     def transform_marker_size(
-        weights, scale_factor=15, min_size=4 * downsampling_factor
-    ):
+        weights: np.ndarray,
+        scale_factor: int = 15,
+        min_size: int = 4 * downsampling_factor,
+    ) -> np.ndarray:
+        """
+        Transform coreset weights to marker sizes for plotting.
+
+        :param weights: Array of coreset weights to be transformed.
+        :param scale_factor: Ratio of the largest and the smallest marker sizes.
+        :param min_size: Smallest marker size.
+        :return: Array of transformed marker sizes for plotting.
+        """
         # Define threshold percentiles
         lower_percentile, upper_percentile = 1, 99
 
