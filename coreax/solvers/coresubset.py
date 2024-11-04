@@ -377,7 +377,9 @@ class SteinThinning(
             Argmin of the Laplace corrected and regularised Kernel Stein Discrepancy.
             """
             ksd = stein_kernel_diagonal + 2.0 * _kernel_similarity_penalty
-            return jnp.nanargmin(ksd + laplace_correction - i * regularised_log_pdf)
+            return jnp.nanargmin(
+                ksd + laplace_correction - (i + 1) * regularised_log_pdf
+            )
 
         refined_coreset = _greedy_kernel_selection(
             coresubset,
