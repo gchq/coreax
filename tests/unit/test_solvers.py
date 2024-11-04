@@ -1329,6 +1329,59 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
 
+    @pytest.mark.parametrize(
+        "test_lambda",
+        [
+            None,
+            0.1,
+            10.0,
+            2,
+        ],
+    )
+    def test_regulariser_lambda(
+        self, test_lambda: Optional[Union[float, int]], reduce_problem: _ReduceProblem
+    ) -> None:
+        """Basic checks for the regularisation parameter, lambda."""
+        dataset, base_solver, _ = reduce_problem
+        solver = SteinThinning(
+            coreset_size=base_solver.coreset_size,
+            kernel=base_solver.kernel,
+            regulariser_lambda=test_lambda,
+        )
+        coreset, _ = solver.reduce(dataset)
+
+        # None should be equivalent to coreset_size
+        if test_lambda is None:
+            equiv_value = 1.0 / solver.coreset_size
+            solver_equiv = SteinThinning(
+                coreset_size=base_solver.coreset_size,
+                kernel=base_solver.kernel,
+                regulariser_lambda=equiv_value,
+            )
+            coreset_equiv, _ = solver_equiv.reduce(dataset)
+
+            np.testing.assert_array_equal(
+                coreset.unweighted_indices, coreset_equiv.unweighted_indices
+            )
+            np.testing.assert_array_equal(
+                coreset.coreset.data, coreset_equiv.coreset.data
+            )
+        # Check that int is cast to float
+        elif isinstance(test_lambda, int):
+            solver_float = SteinThinning(
+                coreset_size=base_solver.coreset_size,
+                kernel=base_solver.kernel,
+                regulariser_lambda=float(test_lambda),
+            )
+            coreset_float, _ = solver_float.reduce(dataset)
+
+            np.testing.assert_array_equal(
+                coreset.unweighted_indices, coreset_float.unweighted_indices
+            )
+            np.testing.assert_array_equal(
+                coreset.coreset.data, coreset_float.coreset.data
+            )
+
 
 class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelPoints`."""
