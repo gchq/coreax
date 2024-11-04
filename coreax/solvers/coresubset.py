@@ -314,6 +314,9 @@ class SteinThinning(
     :param unique: If each index in the resulting coresubset should be unique
     :param regularise: Boolean that enforces regularisation, see Section 3.1 of
         :cite:`benard2023kernel`.
+    :param regulariser_lambda: The entropic regularisation parameter, :math:`\lambda`.
+        If :data:`None`, defaults to :math:`1/\text{coreset_size}` following
+        :cite:`benard2023kernel`.
     :param block_size: Block size passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
     :param unroll: Unroll parameter passed to
@@ -324,6 +327,7 @@ class SteinThinning(
     score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
+    regulariser_lambda: float = None
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
@@ -356,8 +360,13 @@ class SteinThinning(
             # Cannot guarantee that kernel.base_kernel has a 'length_scale' attribute
             bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
             kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
-            # Use regularisation parameter suggested in :cite:`benard2023kernel`
-            regulariser_lambda = 1 / len(coresubset)
+
+            if self.regulariser_lambda is None:
+                # Use regularisation parameter suggested in :cite:`benard2023kernel`
+                regulariser_lambda = 1 / len(coresubset)
+            else:
+                regulariser_lambda = self.regulariser_lambda
+
             regularised_log_pdf = regulariser_lambda * kde.logpdf(x.T)
 
             @jax.vmap
