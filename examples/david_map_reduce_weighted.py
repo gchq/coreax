@@ -189,7 +189,6 @@ def main(
     # Generate a coreset via uniform random sampling for comparison
     random_solver = RandomSample(coreset_size, sample_key, unique=True)
     random_coreset, _ = eqx.filter_jit(random_solver.reduce)(data)
-    random_weights = weights_optimiser.solve(data, random_coreset.coreset)
 
     # Define a reference kernel to use for comparisons of MMD. We'll use a normalised
     # SquaredExponentialKernel (which is also a Gaussian kernel)
@@ -211,6 +210,29 @@ def main(
     print(f"Random sampling coreset MMD: {random_mmd}")
     print(f"Herding coreset MMD: {herding_mmd}")
 
+    def transform_marker_size(
+        weights, scale_factor=15, min_size=4 * downsampling_factor
+    ):
+        # Define threshold percentiles
+        lower_percentile, upper_percentile = 1, 99
+
+        # Clip weights to reduce the effect of outliers
+        clipped_weights = np.clip(
+            weights,
+            np.percentile(weights, lower_percentile),
+            np.percentile(weights, upper_percentile),
+        )
+
+        # Normalize weights to a [0, 1] range
+        normalized_weights = (clipped_weights - clipped_weights.min()) / (
+            clipped_weights.max() - clipped_weights.min()
+        )
+
+        # Apply exponential scaling to get the desired spread
+        transformed_sizes = min_size + (scale_factor**normalized_weights - 1) * min_size
+
+        return transformed_sizes
+
     print("Plotting")
     # Plot the pre-coreset image
     plt.figure(figsize=(10, 5))
@@ -227,9 +249,7 @@ def main(
         -herding_coreset.coreset.data[:, 0],
         c=herding_coreset.coreset.data[:, 2],
         cmap="gray",
-        s=(5.0 * coreset_size * herding_weights * downsampling_factor**2).reshape(
-            1, -1
-        ),
+        s=(transform_marker_size(herding_weights)).reshape(1, -1),
         marker="h",
         alpha=0.8,
     )
@@ -243,7 +263,7 @@ def main(
         random_coreset.coreset.data[:, 1],
         -random_coreset.coreset.data[:, 0],
         c=random_coreset.coreset.data[:, 2],
-        s=(5.0 * coreset_size * random_weights * downsampling_factor**2).reshape(1, -1),
+        s=25 * downsampling_factor,
         cmap="gray",
         marker="h",
         alpha=0.8,
@@ -269,4 +289,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    main(out_path=Path("data/david_coreset_2.png"))
