@@ -8,30 +8,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added Kernelised Stein Discrepancy divergence in `coreax.metrics.KSD`.
+- Added an analytical test for RPCholesky, and associated documentation in `tests.
+  unit.test_solvers`.(https://github.com/gchq/coreax/pull/822)
+- Added a unit test for RPCholesky to check whether the coreset has duplicates.(https://github.com/gchq/coreax/pull/836)
+
+### Fixed
+- `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
+  correctly.(https://github.com/gchq/coreax/pull/825)
+- `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
+  points in the coreset.(https://github.com/gchq/coreax/pull/836)
+
+### Changed
+-
+
+### Removed
+-
+
+### Deprecated
+-
+
+## [0.3.0]
+
+### Added
+
+- Added Kernel Stein Discrepancy divergence in `coreax.metrics.KSD`.(https://github.com/gchq/coreax/pull/659)
 - Added the `coreax.solvers.recombination` module, which provides the following new solvers:
   - `RecombinationSolver`: an abstract base class for recombination solvers.
   - `CaratheodoryRecombination`: a simple deterministic approach to solving recombination problems.
   - `TreeRecombination`: an advanced deterministic approach that utilises `CaratheodoryRecombination`,
-    but is faster for solving all but the smallest recombination problems.
-- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`
+    but is faster for solving all but the smallest recombination problems.(https://github.com/gchq/coreax/pull/504)
+- Added supervised coreset construction algorithm in `coreax.solvers.GreedyKernelPoints`.(https://github.com/gchq/coreax/pull/686)
 - Added `coreax.kernels.PowerKernel` to replace repeated calls of `coreax.kernels.ProductKernel`
-within the `**` magic method of `coreax.kernel.ScalarValuedKernel`
-- Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`
+within the `**` magic method of `coreax.kernel.ScalarValuedKernel`.(https://github.com/gchq/coreax/pull/708)
+- Added scalar-valued kernel functions `coreax.kernels.PoissonKernel` and `coreax.kernels.MaternKernel`.([#742](https://github.com/gchq/coreax/pull/742))
 - Added `progress_bar` attribute to `coreax.score_matching.SlicedScoreMatching` to enable or
-disable tqdm progress bar terminal output. Defaults to disabled (`False`).
-- Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.
-
+  disable tqdm progress bar terminal output. Defaults to disabled (`False`).(https://github.com/gchq/coreax/pull/761)
+- Added analytical tests for kernel herding, and associated documentation in `tests.unit.test_solvers`.(https://github.com/gchq/coreax/pull/794)
+- Added CI workflow for performance testing.
+- Added array dimensions to type annotations using jaxtyping.(https://github.com/gchq/coreax/pull/746)
+- Added integration test for `coreax.solver.recombination.TreeRecombination`.(https://github.com/gchq/coreax/pull/798)
 
 ### Fixed
-- `MapReduce` in `coreax.solvers.composite.py` now keeps track of the indices.
-
+- Fixed `MapReduce` in `coreax.solvers.composite.py` to keep track of the indices.(https://github.com/gchq/coreax/pull/779)
+- Fixed negative weights on `coreax.weights.qp`.(https://github.com/gchq/coreax/pull/698)
 
 ### Changed
+
 - Refactored `coreax.inverses.py` functionality into `coreax.least_squares.py`:
-  - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`
-  - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`
-  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by `coreax.least_squares.RandomisedEigendecompositionSolver`
+  - `coreax.inverses.RegularisedInverseApproximator` replaced by `coreax.least_squares.RegularisedLeastSquaresSolver`.
+  - `coreax.inverses.LeastSquaresApproximator` replaced by `coreax.least_squares.MinimalEuclideanNormSolver`.
+  - `coreax.inverses.RandomisedEigendecompositionApproximator` replaced by
+    `coreax.least_squares.RandomisedEigendecompositionSolver`.(https://github.com/gchq/coreax/pull/700)
 - Refactoring of `coreax.kernel.py` into `coreax.kernels` sub-package:
   - `kernels.util.py` holds utility functions relating to kernels e.g. `median_heuristic`.
   - `kernels.base.py` holds the base kernel class `ScalarValuedKernel` (renamed from `Kernel`),
@@ -39,35 +66,34 @@ disable tqdm progress bar terminal output. Defaults to disabled (`False`).
     `DuoCompositeKernel` (renamed from `PairedKernel`) and the derived duo-composite kernels
     `AdditiveKernel` and `ProductKernel`
   - `coreax.kernels.scalar_valued.py` holds all currently implemented scalar valued kernels e.g.
-    `SquaredExponentialKernel`.
-
-
-
+    `SquaredExponentialKernel`. (https://github.com/gchq/coreax/pull/708)
+- Refactored `coreax.weights.py` to make weight solvers generic on data type.(https://github.com/gchq/coreax/pull/709)
 
 ### Removed
 
-- `coreax.weights.MMD` - deprecated alias for `coreax.weights.MMDWeightsOptimiser`; deprecated since version 0.2.0.
-- `coreax.weights.SBQ` - deprecated alias for `coreax.weights.SBQWeightsOptimiser`; deprecated since version 0.2.0.
-- `coreax.util.squared_distance_pairwise` - deprecated alias for `coreax.util.pairwise(squared_distance)`; deprecated since version 0.2.0.
-- `coreax.util.pairwise_difference` - deprecated alias for `coreax.util.pairwise(difference)`; deprecated since version 0.2.0.
+- `coreax.weights.MMD` - deprecated alias for `coreax.weights.MMDWeightsOptimiser`; deprecated since version 0.2.0.(https://github.com/gchq/coreax/pull/784)
+- `coreax.weights.SBQ` - deprecated alias for `coreax.weights.SBQWeightsOptimiser`; deprecated since version 0.2.0.(https://github.com/gchq/coreax/pull/784)
+- `coreax.util.squared_distance_pairwise` - deprecated alias for `coreax.util.pairwise(squared_distance)`; deprecated since version 0.2.0.(https://github.com/gchq/coreax/pull/784)
+- `coreax.util.pairwise_difference` - deprecated alias for `coreax.util.pairwise(difference)`; deprecated since version 0.2.0.(https://github.com/gchq/coreax/pull/784)
 
 ### Deprecated
-- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.
-- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.
-- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.
-- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.
-- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.
-- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.
-- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.
-- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.
-- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.
-- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.
-- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.
-- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.
-- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.
-- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.
-- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.
-- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.
+
+- All uses of `coreax.kernel.Kernel` should be replaced with `coreax.kernels.base.ScalarValuedKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.UniCompositeKernel` should be replaced with `coreax.kernels.base.CompositeKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.PairedKernel` should be replaced with `coreax.kernels.base.DuoCompositeKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.AdditiveKernel` should be replaced with `coreax.kernels.base.AdditiveKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.ProductKernel` should be replaced with `coreax.kernels.base.ProductKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.LinearKernel` should be replaced with `coreax.kernels.scalar_valued.LinearKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.PolynomialKernel` should be replaced with `coreax.kernels.scalar_valued.PolynomialKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.SquaredExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.SquaredExponentialKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.ExponentialKernel` should be replaced with `coreax.kernels.scalar_valued.ExponentialKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.RationalQuadraticKernel` should be replaced with `coreax.kernels.scalar_valued.RationalQuadraticKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.PeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.PeriodicKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.LocallyPeriodicKernel` should be replaced with `coreax.kernels.scalar_valued.LocallyPeriodicKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.LaplacianKernel` should be replaced with `coreax.kernels.scalar_valued.LaplacianKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.SteinKernel` should be replaced with `coreax.kernels.scalar_valued.SteinKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.kernel.PCIMQKernel` should be replaced with `coreax.kernels.scalar_valued.PCIMQKernel`.(https://github.com/gchq/coreax/pull/708)
+- All uses of `coreax.util.median_heuristic` should be replaced with `coreax.kernels.util.median_heuristic`.(https://github.com/gchq/coreax/pull/708)
 
 
 
@@ -226,7 +252,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/gchq/coreax/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/gchq/coreax/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gchq/coreax/releases/tag/v0.1.0
