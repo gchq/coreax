@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   points in the coreset.(https://github.com/gchq/coreax/pull/836)
 
 ### Changed
--
+- Adjusted `examples.david_map_reduce_weighted`: increased leaf size to
+  double the coreset size, and set marker sizes of the random and herding
+  coresets to a common scale for fairer comparison.
 
 ### Removed
 -
