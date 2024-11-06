@@ -8,26 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added an analytical test for RPCholesky, and associated documentation in `tests.
-  unit.test_solvers`.(https://github.com/gchq/coreax/pull/822)
-- Added a unit test for RPCholesky to check whether the coreset has duplicates.(https://github.com/gchq/coreax/pull/836)
+
+- Added an analytical test for RPCholesky, and associated documentation in
+  `tests. unit.test_solvers`. (https://github.com/gchq/coreax/pull/822)
+- Added a unit test for RPCholesky to check whether the coreset has duplicates.
+  (https://github.com/gchq/coreax/pull/836)
 
 ### Fixed
+
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
-  correctly.(https://github.com/gchq/coreax/pull/825)
+  correctly. (https://github.com/gchq/coreax/pull/825)
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
-  points in the coreset.(https://github.com/gchq/coreax/pull/836)
+  points in the coreset. (https://github.com/gchq/coreax/pull/836)
+- Build includes sub-packages. (https://github.com/gchq/coreax/pull/845)
 
 ### Changed
+
 -
 
 ### Removed
+
 -
 
 ### Deprecated
+
 -
 
-## [0.3.0]
+
+## [0.3.0] - [YANKED]
+
+Yanked due to build failure.
 
 ### Added
 
@@ -49,6 +59,7 @@ within the `**` magic method of `coreax.kernel.ScalarValuedKernel`.(https://gith
 - Added integration test for `coreax.solver.recombination.TreeRecombination`.(https://github.com/gchq/coreax/pull/798)
 
 ### Fixed
+
 - Fixed `MapReduce` in `coreax.solvers.composite.py` to keep track of the indices.(https://github.com/gchq/coreax/pull/779)
 - Fixed negative weights on `coreax.weights.qp`.(https://github.com/gchq/coreax/pull/698)
 
