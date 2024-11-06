@@ -1392,6 +1392,11 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         r"""
         Analytical example with SteinThinning.
 
+        .. note::
+            We only compute the first 3 iterations of the algorithm below for
+            illustration purposes. The test uses `coreset_size` of 10 to make sure
+            all points are picked in the correct order.
+
         Step-by-step usage of the Stein Thinning algorithm (:cite:`liu2016kernelized`,
         :cite:`benard2023kernel`) on a small example with 10 data points in 2 dimensions
         and selecting a 2 point coreset, i.e., :math:`N=10, m=2`.
@@ -1531,7 +1536,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         # pylint: enable=line-too-long
 
         # Setup example data
-        coreset_size = 3
+        coreset_size = 10
         x = jnp.array(
             [
                 [-0.1, -0.1],
@@ -1562,7 +1567,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         coreset, _ = solver.reduce(data)
 
         # Expected selections based on our analytical calculations
-        expected_coreset_indices = jnp.array([0, 3, 2])
+        expected_coreset_indices = jnp.array([0, 3, 2, 7, 8, 5, 4, 1, 6, 9])
 
         # Check output matches expected
         np.testing.assert_array_equal(
