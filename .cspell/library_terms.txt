@@ -23,6 +23,7 @@ bysource
 cmap
 color
 Concretization
+cuda
 dispname
 dollarmath
 dtype
