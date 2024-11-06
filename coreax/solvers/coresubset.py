@@ -292,8 +292,8 @@ class SteinThinning(
 
     .. math::
 
-        x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
-            \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
+        x_{t} = \arg\min_{x} \left( k_p(x, x) + \Delta^+ \log p(x) -
+            \lambda t \log p(x) + 2 \sum_{j=1}^{t-1} k_p(x, x_j) \right)
 
     where :math:`k` is the Stein kernel induced by the supplied base kernel,
     :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
