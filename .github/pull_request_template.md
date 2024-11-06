@@ -36,7 +36,7 @@ New tests introduced with this change verify that...
 ### Checklist before requesting a review
 - [ ] I have made sure that my PR is not a duplicate.
 - [ ] My code follows the style guidelines of this project.
-- [ ] I have ensured my code is easy to understand, including docstrings and comments where necessary
+- [ ] I have ensured my code is easy to understand, including docstrings and comments where necessary.
 - [ ] I have performed a self-review of my code.
 - [ ] I have made corresponding changes to the documentation.
 - [ ] My changes generate no new warnings.
