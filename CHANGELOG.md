@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -
 
 
-## [0.3.0]
+## [0.3.0] - [YANKED]
 
 Yanked due to build failure.
 
