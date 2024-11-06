@@ -1626,6 +1626,62 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.coreset.data, data.data[expected_coreset_indices]
         )
 
+    def test_stein_thinning_analytic_reg(self):
+        r"""
+        Analytical example for SteinThinning with regularisation.
+
+        The example data is the same as for the other analytic tests. When
+        `regularise=True`, regularisation terms are added when computing the metric
+        for each point. In particular, in our example, the additional term is
+        :math:`-\lambda t \log p(x)` where p is the density and lambda is the
+        regularisation parameter.
+
+        Note that the `SteinThinning` solver uses a Gaussian KDE estimate of p,
+        which we also use in our calculations to stay consistent.
+        """
+        # Setup example data
+        coreset_size = 10
+        x = jnp.array(
+            [
+                [-0.1, -0.1],
+                [-0.3, -0.2],
+                [-0.2, 0.6],
+                [0.8, 0.2],
+                [-0.0, 0.3],
+                [0.9, -0.7],
+                [0.2, -0.1],
+                [0.7, -1.0],
+                [-0.4, -0.4],
+                [0.0, -0.3],
+            ]
+        )
+        data = Data(x)
+
+        # Initialise and run the SteinThinning solver
+        stein_kernel = SteinKernel(
+            base_kernel=PCIMQKernel(length_scale=1 / np.sqrt(2)),
+            score_function=jnp.negative,
+        )
+        solver = SteinThinning(
+            coreset_size=coreset_size,
+            kernel=stein_kernel,
+            unique=True,
+            regularise=True,
+            regulariser_lambda=1,
+        )
+        coreset, _ = solver.reduce(data)
+
+        # Expected selections based on our analytical calculations
+        expected_coreset_indices = jnp.array([0, 2, 5, 8, 6, 3, 1, 4, 7, 9])
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+
 
 class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.GreedyKernelPoints`."""
