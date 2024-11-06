@@ -87,11 +87,18 @@ wish to use an alternative version, remove `opencv-python-headless` and select a
 alternative from the
 [OpenCV documentation](https://pypi.org/project/opencv-python-headless/).
 
-Should the installation of Coreax fail, try again using stable pinned package versions
-provided in `uv.lock`. First,
-[install UV](https://docs.astral.sh/uv/getting-started/installation/). Then, run
+Should the installation of Coreax fail, you can see the versions used by the Coreax
+development team in `uv.lock`. You can transfer these to your own project as follows.
+First, [install UV](https://docs.astral.sh/uv/getting-started/installation/). Then,
+clone the repo from [GitHub](https://github.com/gchq/coreax). Next, run
 ```shell
-uv sync
+uv export --format requirements-txt
+```
+which will generate a `requirements.txt`. Install this in your own project before trying
+to install Coreax itself,
+```shell
+pip install -r requirements.txt
+pip install coreax
 ```
 
 # Release cycle
