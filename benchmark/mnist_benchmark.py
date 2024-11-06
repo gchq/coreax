@@ -36,6 +36,7 @@ The benchmarking process follows these steps:
 
 import json
 import os
+import time
 from typing import Any, NamedTuple, Optional
 
 import jax
@@ -447,10 +448,10 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
     :return: A list of solvers functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
-    num_samples_length_scale = min(300, 1000)
+    num_samples_length_scale = min(3000, len(train_data_pca))
     random_seed = 45
     generator = np.random.default_rng(random_seed)
-    idx = generator.choice(300, num_samples_length_scale, replace=False)
+    idx = generator.choice(len(train_data_pca), num_samples_length_scale, replace=False)
     length_scale = median_heuristic(train_data_pca[idx])
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
@@ -465,8 +466,8 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
         :param _size: The size of the coreset to be generated.
         :return: A tuple containing the solver name and the MapReduce solver.
         """
-        herding_solver = KernelHerding(_size, kernel, block_size=128)
-        return "KernelHerding", MapReduce(herding_solver, leaf_size=2 * _size)
+        herding_solver = KernelHerding(_size, kernel)
+        return "KernelHerding", MapReduce(herding_solver, leaf_size=3 * _size)
 
     def _get_stein_solver(_size: int) -> tuple[str, MapReduce]:
         """
@@ -489,10 +490,8 @@ def initialise_solvers(train_data_pca: jnp.ndarray, key: jax.random.PRNGKey) -> 
             small_dataset
         )
         stein_kernel = SteinKernel(kernel, score_function)
-        stein_solver = SteinThinning(
-            coreset_size=_size, kernel=stein_kernel, block_size=128
-        )
-        return "SteinThinning", MapReduce(stein_solver, leaf_size=2 * _size)
+        stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel)
+        return "SteinThinning", MapReduce(stein_solver, leaf_size=3 * _size)
 
     def _get_random_solver(_size: int) -> tuple[str, MapReduce]:
         """
@@ -597,6 +596,7 @@ def save_results(results: dict) -> None:
     print("Data has been saved to 'benchmark_results.json'")
 
 
+# pylint: disable=too-many-locals
 def main() -> None:
     """
     Perform the benchmark for multiple solvers, coreset sizes, and random seeds.
@@ -613,7 +613,6 @@ def main() -> None:
     (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax) = (
         prepare_datasets()
     )
-
     train_data_pca = pca(train_data_jax)
 
     results = {}
@@ -634,6 +633,7 @@ def main() -> None:
         for getter in solvers:
             for size in [25, 50, 100, 500, 1000, 5000]:
                 name, solver = getter(size)
+                start_time = time.perf_counter()
                 subset, _ = solver.reduce(Data(train_data_pca))
                 print(name, subset)
 
@@ -659,7 +659,10 @@ def main() -> None:
                     results[name][size] = {}
 
                 # Store accuracy result in nested structure
-                results[name][size][i] = float(result["final_test_accuracy"])
+                results[name][size][i] = {
+                    "accuracy": float(result["final_test_accuracy"]),
+                    "time_taken": time.perf_counter() - start_time,
+                }
 
     save_results(results)
 
