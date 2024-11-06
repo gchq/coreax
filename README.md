@@ -61,41 +61,48 @@ Run `examples/pounce.py` to replicate.
 
 
 # Setup
-Before installing coreax, make sure JAX is installed. Be sure to install the preferred
-version of JAX for your system.
 
-Install [JAX](https://jax.readthedocs.io/en/latest/installation.html) noting that there
-are (currently) different setup paths for CPU and GPU use:
+Install Coreax from PyPI by adding `coreax` to your project dependencies or running
 ```shell
-$ python3 -m pip install jax
+pip install coreax
 ```
 
-Install Coreax:
+Coreax uses JAX. It installs the CPU version by default, but if you have a GPU or TPU,
+see the
+[JAX installation instructions](https://jax.readthedocs.io/en/latest/installation.html)
+for options available to take advantage of the power of your system. For example, if you
+have an NVIDIA GPU on Linux, add `jax[cuda12]` to your project dependencies or run
 ```shell
-$ python3 -m pip install coreax
+pip install jax[cuda12]
 ```
 
-Optionally, install additional dependencies required to run the examples:
-```shell
-$ python3 -m pip install coreax[test]
-```
+There are optional sets of additional dependencies:
+* `coreax[test]` is required to run the tests and examples;
+* `coreax[doc]` is for compiling the Sphinx documentation;
+* `coreax[dev]` includes all tools and packages a developer of Coreax might need.
 
-Should the installation fail, try again using stable pinned package versions. Note that
-these versions may be rather outdated, although we endeavour to avoid versions with
-known vulnerabilities. To install Coreax:
-```shell
-$ python3 -m pip install --no-dependencies -r requirements.txt
-```
+Note that the `test` and `dev` dependencies include `opencv-python-headless`, which is
+the headless version of OpenCV and is incompatible with other versions of OpenCV. If you
+wish to use an alternative version, remove `opencv-python-headless` and select an
+alternative from the
+[OpenCV documentation](https://pypi.org/project/opencv-python-headless/).
 
-To run the examples, use `requirements-test.txt` instead.
+Should the installation of Coreax fail, try again using stable pinned package versions
+provided in `uv.lock`. First,
+[install UV](https://docs.astral.sh/uv/getting-started/installation/). Then, run
+```shell
+uv sync
+```
 
 # Release cycle
+
 We anticipate two release types: feature releases and security releases. Security
 releases will be issued as needed in accordance with the
 [security policy](https://github.com/gchq/coreax/security/policy). Feature releases will
 be issued as appropriate, dependent on the feature pipeline and development priorities.
 
 # Coming soon
+
 Some features coming soon include:
 * Coordinate bootstrapping for high-dimensional data.
 * Other coreset-style algorithms, including recombination, as means
