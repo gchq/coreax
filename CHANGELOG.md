@@ -17,11 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   correctly.(https://github.com/gchq/coreax/pull/825)
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
   points in the coreset.(https://github.com/gchq/coreax/pull/836)
+- Fixed the example `examples.david_map_reduce_weighted` so that it no longer errors if
+  downsampling is enabled and it runs faster, set marker sizes of the random and herding
+  coresets to a common scale for fairer comparison.(https://github.com/gchq/coreax/pull/821)
 
 ### Changed
-- Adjusted `examples.david_map_reduce_weighted`: increased leaf size to
-  double the coreset size, and set marker sizes of the random and herding
-  coresets to a common scale for fairer comparison.
+-
 
 ### Removed
 -
