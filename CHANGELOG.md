@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Test dependency from `opencv-python` to `opencv-python-headless`.
+  (https://github.com/gchq/coreax/pull/848)
+- Updated installation instructions in README. (https://github.com/gchq/coreax/pull/848)
 
 ### Removed
 
