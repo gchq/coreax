@@ -9,8 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+-
+
+### Fixed
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
+
+### Deprecated
+
+-
+
+
+## [0.3.1]
+
+### Added
+
 - Added an analytical test for RPCholesky, and associated documentation in
-  `tests. unit.test_solvers`. (https://github.com/gchq/coreax/pull/822)
+  `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/822)
 - Added a unit test for RPCholesky to check whether the coreset has duplicates.
   (https://github.com/gchq/coreax/pull/836)
 
@@ -21,23 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
   points in the coreset.(https://github.com/gchq/coreax/pull/836)
 - Fixed the example `examples.david_map_reduce_weighted` to prevent errors when
-  downsampling is enabled, and to make it run faster.(https://github.com/gchq/coreax/pull/821)
+  downsampling is enabled, and to make it run faster.
+  (https://github.com/gchq/coreax/pull/821)
 - Build includes sub-packages. (https://github.com/gchq/coreax/pull/845)
-
 
 ### Changed
 
 - Test dependency from `opencv-python` to `opencv-python-headless`.
   (https://github.com/gchq/coreax/pull/848)
 - Updated installation instructions in README. (https://github.com/gchq/coreax/pull/848)
-
-### Removed
-
--
-
-### Deprecated
-
--
 
 
 ## [0.3.0] - [YANKED]
@@ -268,7 +283,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/gchq/coreax/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/gchq/coreax/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/gchq/coreax/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gchq/coreax/compare/v0.1.0...v0.2.0
