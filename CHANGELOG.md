@@ -19,8 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now computes the iteration step
   correctly. (https://github.com/gchq/coreax/pull/825)
 - `RPCholesky.reduce` in `coreax.solvers.coresubset` now does not produce duplicate
-  points in the coreset. (https://github.com/gchq/coreax/pull/836)
+  points in the coreset.(https://github.com/gchq/coreax/pull/836)
+- Fixed the example `examples.david_map_reduce_weighted` to prevent errors when
+  downsampling is enabled, and to make it run faster.(https://github.com/gchq/coreax/pull/821)
 - Build includes sub-packages. (https://github.com/gchq/coreax/pull/845)
+
 
 ### Changed
 
