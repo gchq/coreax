@@ -22,7 +22,7 @@ dataset as possible. The generated dataset is often called a coreset.
 
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # pylint: disable=unused-import
 from coreax.approximation import (
