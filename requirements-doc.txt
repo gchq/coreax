@@ -9,7 +9,7 @@ attrs==24.2.0
 autodocsumm==0.2.14
 babel==2.16.0
 beautifulsoup4==4.12.3
-cachecontrol==0.14.0
+cachecontrol==0.14.1
 certifi==2024.8.30
 charset-normalizer==3.4.0
 chex==0.1.87
@@ -67,7 +67,7 @@ pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
 rich==13.9.4
-rpds-py==0.20.1
+rpds-py==0.21.0
 ruamel-yaml==0.18.6
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'
 scikit-learn==1.5.2
