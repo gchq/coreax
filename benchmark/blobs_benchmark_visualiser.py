@@ -17,22 +17,20 @@
 import json
 import os
 
+from matplotlib import pyplot as plt
 
-# Function to print metrics table for each sample size
-def print_metrics_table(data: dict, sample_size: str) -> None:
+
+def plot_benchmarking_results(data):
     """
-    Print a table for the given sample size with methods as rows and metrics as columns.
+    Visualise the benchmarking results.
 
-    :param data: A dictionary where keys are sample sizes (as strings) and values are
-                 dictionaries containing the metrics for each algorithm. Each method's
-                 dictionary contains the following keys:
-                 - 'unweighted_mmd': Unweighted maximum mean discrepancy (MMD).
-                 - 'unweighted_ksd': Unweighted kernel Stein discrepancy (KSD).
-                 - 'weighted_mmd': Weighted maximum mean discrepancy (MMD).
-                 - 'weighted_ksd': Weighted kernel Stein discrepancy (KSD).
-                 - 'time': Time taken to compute the coreset and metrics (in seconds).
-                 Example format:
+    :param data: A dictionary where the first key is the original sample size
+                 and the rest of the keys are the coreset sizes (as strings) and values
+                 that are dictionaries containing the metrics for each algorithm.
+
+    Example:
                  {
+                    'n_samples': 1000,
                      '100': {
                          'KernelHerding': {
                              'unweighted_mmd': 0.12345678,
@@ -47,27 +45,98 @@ def print_metrics_table(data: dict, sample_size: str) -> None:
                      '1000': { ... },
                      ...
                  }
-    :param sample_size: The sample size for which to print the table.
+
+    """
+    # Extract n_samples
+    n_samples = data.pop("n_samples")
+
+    first_algorithm = next(
+        iter(data["10"].values())
+    )  # Get one example algorithm from the dataset
+    metrics = list(first_algorithm.keys())
+    n_metrics = len(metrics)
+
+    n_rows = (n_metrics + 1) // 2
+    fig, axs = plt.subplots(n_rows, 2, figsize=(14, 6 * n_rows))
+    fig.delaxes(axs[2, 1])
+    axs = axs.flatten()
+
+    # Iterate over each metric and create its subplot
+    for i, metric in enumerate(metrics):
+        ax = axs[i]
+        ax.set_title(
+            f'{metric.replace("_", " ").title()} vs '
+            f'Coreset Size (n_samples = {n_samples})',
+            fontsize=14,
+        )
+
+        # For each algorithm, plot its performance across different subset sizes
+        for algo in data[list(data.keys())[0]].keys():  # Iterating through algorithms
+            # Create lists of subset sizes (10, 50, 100, 200)
+            coreset_sizes = sorted(map(int, data.keys()))
+            metric_values = [
+                data[str(subset_size)][algo].get(metric, float("nan"))
+                for subset_size in coreset_sizes
+            ]
+
+            ax.plot(coreset_sizes, metric_values, marker="o", label=algo)
+
+        ax.set_xlabel("Coreset Size")
+        ax.set_ylabel(f'{metric.replace("_", " ").title()}')
+        ax.set_yscale("log")  # log scale for better visualization
+        ax.legend()
+
+    # Adjust layout to avoid overlap
+    plt.subplots_adjust(hspace=15.0, wspace=1.0)
+    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.96])
+    plt.show()
+
+
+# Function to print metrics table for each sample size
+def print_metrics_table(data: dict, coreset_size: str) -> None:
+    """
+    Print a table for the given sample size with methods as rows and metrics as columns.
+
+    :param data: A dictionary where the first key is the original sample size
+                 and the rest of the keys are the coreset sizes (as strings) and values
+                 that are dictionaries containing the metrics for each algorithm.
+
+    Example:
+                 {
+                    'n_samples': 1000,
+                     '100': {
+                         'KernelHerding': {
+                             'unweighted_mmd': 0.12345678,
+                             'unweighted_ksd': 0.23456789,
+                             'weighted_mmd': 0.34567890,
+                             'weighted_ksd': 0.45678901,
+                             'time': 0.123
+                         },
+                         'Algorithm B': { ... },
+                         ...
+                     },
+                     '1000': { ... },
+                     ...
+                 }
+    :param coreset_size: The coreset size for which to print the table.
+
     """
     # Define header
-    header = (
-        f"| {'Method':^15} | {'unweighted_mmd':^15} | {'unweighted_ksd':^15} | "
-        f"{'weighted_mmd':^15} | {'weighted_ksd':^15} | {'time':^10} |"
-    )
-    separator = "-" * len(header)
+    methods = data[coreset_size]
+    header = ["Method"] + list(next(iter(methods.values())).keys())
+    formatted_header = " | ".join(f"{method:15}" for method in header)
+    separator = "-" * len(formatted_header)
 
-    # Print table for the current sample size
-    print(f"\nSample Size: {sample_size}")
+    # Print table for the current coreset size
+    print(f"\nCoreset Size: {coreset_size} (Original Sample Size: {data['n_samples']})")
     print(separator)
-    print(header)
+    print(formatted_header)
     print(separator)
 
-    for method, metrics in data[sample_size].items():
-        print(
-            f"| {method:^15} | {metrics['unweighted_mmd']:^15.8f} | "
-            f"{metrics['unweighted_ksd']:^15.8f} | {metrics['weighted_mmd']:^15.8f} | "
-            f"{metrics['weighted_ksd']:^15.8f} | {metrics['time']:^10.3f} |"
-        )
+    for method, metrics in methods.items():
+        row = [method] + [f"{value:.6f}" for value in metrics.values()]
+        formatted_row = " | ".join(f"{r:^15}" for r in row)
+        print(formatted_row)
 
     print(separator)
 
@@ -81,9 +150,13 @@ def main() -> None:
     ) as f:
         data = json.load(f)
 
-    # Print tables for each sample size
-    for sample_size in data.keys():
-        print_metrics_table(data, sample_size)
+    # Print tables for each coreset size
+    for coreset_size in data:
+        if coreset_size == "n_samples":
+            continue
+        print_metrics_table(data, coreset_size)
+
+    plot_benchmarking_results(data)
 
 
 if __name__ == "__main__":
