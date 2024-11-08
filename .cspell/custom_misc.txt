@@ -56,3 +56,4 @@ typecheck
 WMMD
 xticks
 yerr
+yscale
