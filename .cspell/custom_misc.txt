@@ -11,6 +11,7 @@ coresets
 coresubset
 coresubsets
 cubature
+delaxes
 diag
 docstrings
 eigendecomposition
@@ -20,6 +21,7 @@ forall
 GCHQ
 Gramian
 gramians
+hspace
 infty
 kbar
 kdtree
@@ -54,6 +56,7 @@ supp
 TLDR
 typecheck
 WMMD
+wspace
 xticks
 yerr
 yscale
