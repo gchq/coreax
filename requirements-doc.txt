@@ -56,8 +56,8 @@ numpy==2.1.3 ; python_full_version >= '3.10'
 opt-einsum==3.4.0
 optax==0.2.3
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.8.0 ; python_full_version >= '3.10'
-packaging==24.1
+orbax-checkpoint==0.9.0 ; python_full_version >= '3.10'
+packaging==24.2
 platformdirs==4.3.6
 protobuf==5.28.3
 pybtex==0.24.0
@@ -101,7 +101,7 @@ tensorstore==0.1.67
 threadpoolctl==3.5.0
 tomli==2.0.2 ; python_full_version < '3.11'
 toolz==1.0.0
-tqdm==4.66.6
+tqdm==4.67.0
 typeguard==2.13.3
 typing-extensions==4.12.2
 urllib3==2.2.3
