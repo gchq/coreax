@@ -79,9 +79,6 @@ protobuf==5.28.3
 pybtex==0.24.0
 pybtex-docutils==1.0.3
 pygments==2.18.0
-pyqt5==5.15.11
-pyqt5-qt5==5.15.2
-pyqt5-sip==12.15.0
 pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
@@ -129,4 +126,4 @@ typeguard==2.13.3
 typing-extensions==4.12.2
 urllib3==2.2.3
 webencodings==0.5.1
-zipp==3.20.2
+zipp==3.21.0
