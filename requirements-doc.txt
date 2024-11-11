@@ -71,8 +71,8 @@ nvidia-nvtx-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system ==
 opt-einsum==3.4.0
 optax==0.2.3
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.8.0 ; python_full_version >= '3.10'
-packaging==24.1
+orbax-checkpoint==0.9.0 ; python_full_version >= '3.10'
+packaging==24.2
 pillow==11.0.0
 platformdirs==4.3.6
 protobuf==5.28.3
@@ -86,7 +86,7 @@ pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
 rich==13.9.4
-rpds-py==0.20.1
+rpds-py==0.21.0
 ruamel-yaml==0.18.6
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'
 scikit-learn==1.5.2
@@ -123,7 +123,7 @@ tomli==2.0.2 ; python_full_version < '3.11'
 toolz==1.0.0
 torch==2.5.1
 torchvision==0.20.1
-tqdm==4.66.6
+tqdm==4.67.0
 triton==3.1.0 ; python_full_version < '3.13' and platform_machine == 'x86_64' and platform_system == 'Linux'
 typeguard==2.13.3
 typing-extensions==4.12.2
