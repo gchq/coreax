@@ -32,6 +32,7 @@ dependencies = [
     "jaxopt",
     "jaxtyping",
     "optax",
+    "PyQt5>=5.15.11", # This version is not installable on windows.
     "scikit-learn",
     "tqdm",
     "typing-extensions",
@@ -62,6 +63,9 @@ doc = [
 ]
 
 [tool.uv]
+constraint-dependencies = [
+    "pyqt5-qt5==5.15.2", #TODO: Update this periodically.
+]
 # All tools for a developer including those for running pylint
 dev-dependencies = [
     "coreax[doc, test]",
