@@ -75,29 +75,18 @@ jobs:
           # Don't check out any files other than those specified above. (If this is
           # set to true, it checks out files in the repo root as well.)
           sparse-checkout-cone-mode: false
-      - name: "Debug: print directory info"
-        run: |
-          pwd
-          ls -Rl
-          ls -Rl $RUNNER_TEMP
       - name: Download built package
         uses: actions/download-artifact@v4
         with:
          name: build-latest
          path: ${{ runner.temp }}/dist
-      - name: "Debug: print directory info"
-        run: |
-          pwd
-          ls -Rl
-          ls -Rl $RUNNER_TEMP
       - name: Get wheel filename to install
         run: |
           # Save a list of all wheel files found in the downloaded artifact
           find $RUNNER_TEMP/dist -type f -name '*.whl' > $RUNNER_TEMP/wheel_filename.txt
           cat $RUNNER_TEMP/wheel_filename.txt
-          # Check that we only found one wheel file
-          # (we go via standard input to avoid printing the file name as well)
-          cat $RUNNER_TEMP/wheel_filename.txt | wc -l
+          # Check that we only found one wheel file (we pipe the input in via cat to
+          # avoid printing the file name, so we can test against it)
           test $(cat $RUNNER_TEMP/wheel_filename.txt | wc -l) -eq 1
           # Save its location to an environment variable
           echo "WHEEL_FILENAME=$(<$RUNNER_TEMP/wheel_filename.txt)" >> $GITHUB_ENV
@@ -127,10 +116,9 @@ jobs:
       # Integration tests are slow, so only run if all other tests pass.
       - name: Test integration tests
         run: uv run pytest tests/integration
-  release:
+  release-github:
+    name: Create GitHub draft release
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: TODO
-        run: |
-          echo "TODO: Create a GitHub release"
+      - run: echo TODO
