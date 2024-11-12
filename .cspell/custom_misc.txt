@@ -43,6 +43,7 @@ refs
 regulariser
 RKHS
 RPCHOLESKY
+sdist
 sigmas
 subseteq
 supp

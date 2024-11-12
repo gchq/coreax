@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Contributor-facing features:
+  - Automated testing of the built package before release (https://github.com/gchq/coreax/issues/854)
 
 ### Fixed
 
