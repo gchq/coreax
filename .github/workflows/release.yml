@@ -68,12 +68,15 @@ jobs:
           # cross-contamination from the source code.
           sparse-checkout: |
             test
-
+      - name: "Debug: ls -Rl"
+        run: ls -Rl
       - name: Download built package
         uses: actions/download-artifact@v4
         with:
          name: build-latest
          path: ${{ runner.temp }}/dist
+      - name: "Debug: ls -Rl"
+        run: ls -Rl
       - name: Get wheel filename to install
         run: |
           # Save a list of all wheel files found in the downloaded artifact
