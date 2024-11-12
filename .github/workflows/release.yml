@@ -71,22 +71,32 @@ jobs:
           # Only check out the test files; this ensures we don't get any
           # cross-contamination from the source code.
           sparse-checkout: |
-            test
-      - name: "Debug: ls -Rl"
-        run: ls -Rl
+            tests/**
+          # Don't check out any files other than those specified above. (If this is
+          # set to true, it checks out files in the repo root as well.)
+          sparse-checkout-cone-mode: false
+      - name: "Debug: print directory info"
+        run: |
+          pwd
+          ls -Rl
+          ls -Rl $RUNNER_TEMP
       - name: Download built package
         uses: actions/download-artifact@v4
         with:
          name: build-latest
          path: ${{ runner.temp }}/dist
-      - name: "Debug: ls -Rl"
-        run: ls -Rl
+      - name: "Debug: print directory info"
+        run: |
+          pwd
+          ls -Rl
+          ls -Rl $RUNNER_TEMP
       - name: Get wheel filename to install
         run: |
           # Save a list of all wheel files found in the downloaded artifact
           find $RUNNER_TEMP/dist -type f -name '*.whl' > $RUNNER_TEMP/wheel_filename.txt
           cat $RUNNER_TEMP/wheel_filename.txt
           # Check that we only found one wheel file
+          wc -l $RUNNER_TEMP/wheel_filename.txt
           test $(wc -l $RUNNER_TEMP/wheel_filename.txt) -eq 1
           # Save its location to an environment variable
           echo "WHEEL_FILENAME=$(<$RUNNER_TEMP/wheel_filename.txt)" >> $GITHUB_ENV
