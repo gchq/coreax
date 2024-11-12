@@ -117,7 +117,9 @@ jobs:
       - name: Install latest versions of pip and uv
         run: python -m pip install --upgrade pip uv
       - name: Install test dependencies
-        run: uv pip install $WHEEL_FILENAME[test]
+        run: |
+          uv venv
+          uv pip install $WHEEL_FILENAME[test]
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Test with pytest
