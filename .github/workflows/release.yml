@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  # Anyone with write access can manually trigger this workflow. As this workflow only
-  # creates a GitHub release, which anyone with write access can do manually anyway,
-  # there is no privilege escalation risk here.
   workflow_dispatch:
     inputs:
       branch:
