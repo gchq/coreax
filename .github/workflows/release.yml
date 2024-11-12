@@ -38,6 +38,7 @@ jobs:
           overwrite: true
   test:
     name: Test package
+    needs: build
     defaults:
       run:
         # Use Bash by default to avoid complications - PowerShell and Bash have
@@ -114,6 +115,7 @@ jobs:
       - name: Test integration tests
         run: uv run pytest tests/integration
   release:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: TODO
