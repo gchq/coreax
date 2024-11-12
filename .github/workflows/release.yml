@@ -96,8 +96,9 @@ jobs:
           find $RUNNER_TEMP/dist -type f -name '*.whl' > $RUNNER_TEMP/wheel_filename.txt
           cat $RUNNER_TEMP/wheel_filename.txt
           # Check that we only found one wheel file
-          wc -l $RUNNER_TEMP/wheel_filename.txt
-          test $(wc -l $RUNNER_TEMP/wheel_filename.txt) -eq 1
+          # (we go via standard input to avoid printing the file name as well)
+          cat $RUNNER_TEMP/wheel_filename.txt | wc -l
+          test $(cat $RUNNER_TEMP/wheel_filename.txt | wc -l) -eq 1
           # Save its location to an environment variable
           echo "WHEEL_FILENAME=$(<$RUNNER_TEMP/wheel_filename.txt)" >> $GITHUB_ENV
       - name: Set up uv cache directory location
