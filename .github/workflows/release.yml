@@ -72,6 +72,7 @@ jobs:
           # cross-contamination from the source code.
           sparse-checkout: |
             tests/**
+            examples/**
           # Don't check out any files other than those specified above. (If this is
           # set to true, it checks out files in the repo root as well.)
           sparse-checkout-cone-mode: false
