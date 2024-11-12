@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
       - name: Set up base Python
         uses: actions/setup-python@v5
         with:
@@ -64,6 +66,7 @@ jobs:
       - name: Check out only the test files
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.branch }}
           # Only check out the test files; this ensures we don't get any
           # cross-contamination from the source code.
           sparse-checkout: |
