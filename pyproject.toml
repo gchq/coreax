@@ -38,13 +38,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# These match the suffixes on the various requirements-*.txt files
 # Run unit tests with coverage assessment
 test = [
     "imageio",
     "matplotlib",
     "numpy",
-    "opencv-python",
+    "opencv-python-headless",  # WARNING: Incompatible with other versions of opencv
     "pytest-cov",
     "pytest-rerunfailures",
     "scipy",
@@ -87,7 +86,11 @@ Issues = "https://github.com/gchq/coreax/issues"
 Changelog = "https://github.com/gchq/coreax/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["coreax"]
+packages = [
+    "coreax",
+    "coreax.kernels",
+    "coreax.solvers",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "coreax.__version__"}
