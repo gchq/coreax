@@ -36,7 +36,12 @@ from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data, SupervisedData
-from coreax.kernels import PCIMQKernel, ScalarValuedKernel, SquaredExponentialKernel
+from coreax.kernels import (
+    PCIMQKernel,
+    ScalarValuedKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
+)
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     CaratheodoryRecombination,
@@ -1328,6 +1333,361 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
+
+    @pytest.mark.parametrize(
+        "test_lambda",
+        [
+            None,
+            0.1,
+            10.0,
+            2,
+        ],
+    )
+    def test_regulariser_lambda(
+        self, test_lambda: Optional[Union[float, int]], reduce_problem: _ReduceProblem
+    ) -> None:
+        """Basic checks for the regularisation parameter, lambda."""
+        dataset, base_solver, _ = reduce_problem
+        solver = SteinThinning(
+            coreset_size=base_solver.coreset_size,
+            kernel=base_solver.kernel,
+            regulariser_lambda=test_lambda,
+        )
+        coreset, _ = solver.reduce(dataset)
+
+        # None should be equivalent to coreset_size
+        if test_lambda is None:
+            equiv_value = 1.0 / solver.coreset_size
+            solver_equiv = SteinThinning(
+                coreset_size=base_solver.coreset_size,
+                kernel=base_solver.kernel,
+                regulariser_lambda=equiv_value,
+            )
+            coreset_equiv, _ = solver_equiv.reduce(dataset)
+
+            np.testing.assert_array_equal(
+                coreset.unweighted_indices, coreset_equiv.unweighted_indices
+            )
+            np.testing.assert_array_equal(
+                coreset.coreset.data, coreset_equiv.coreset.data
+            )
+        # Check that int is cast to float
+        elif isinstance(test_lambda, int):
+            solver_float = SteinThinning(
+                coreset_size=base_solver.coreset_size,
+                kernel=base_solver.kernel,
+                regulariser_lambda=float(test_lambda),
+            )
+            coreset_float, _ = solver_float.reduce(dataset)
+
+            np.testing.assert_array_equal(
+                coreset.unweighted_indices, coreset_float.unweighted_indices
+            )
+            np.testing.assert_array_equal(
+                coreset.coreset.data, coreset_float.coreset.data
+            )
+
+    def test_stein_thinning_analytic_unique(self):
+        # pylint: disable=line-too-long
+        r"""
+        Analytical example with SteinThinning.
+
+        .. note::
+            We only compute the first 3 iterations of the algorithm below for
+            illustration purposes. The test uses `coreset_size` of 10 to make sure
+            all points are picked in the correct order.
+
+        Step-by-step usage of the Stein Thinning algorithm (:cite:`liu2016kernelized`,
+        :cite:`benard2023kernel`) on a small example with 10 data points in 2 dimensions
+        and selecting a 2 point coreset, i.e., :math:`N=10, m=2`.
+
+        For Stein Thinning, we need to provide a kernel and a score function, :math:`\nabla
+        \log p(x)`, where :math:`p` is the underlying distribution of the data. In practice,
+        we can estimate this using methods such as kernel density estimation and sliced score
+        matching :cite:`song2020ssm`.
+
+        In this example we will use ``PCIMQ`` kernel with ``length_scale`` of
+        :math:`\frac{1}{\sqrt{2}}`: for two points :math:`x, y \in X`, :math:`k(x, y) =
+        \frac{1}{\sqrt{1+\| x - y \|^2}}`. We use the standard normal density :math:`p(x)
+        \propto e^{-\|x\|^2/2}`, so the score function is :math:`s_p(x) = -x`.
+
+        The first step of the algorithm is to convert the given kernel into a Stein kernel
+        using the given score function. The Stein kernel between points :math:`x` and
+        :math:`y` is given as:
+
+        .. math::
+            k_p(x,y) &= \langle \nabla_\mathbf{x}, \nabla_{\mathbf{y}} k(\mathbf{x},
+            \mathbf{y}) \rangle + \langle s_p(\mathbf{x}), \nabla_{\mathbf{y}} k(\mathbf{x}, \mathbf{y}) \rangle + \langle s_p(\mathbf{y}), \nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \rangle + \langle s_p(\mathbf{x}), s_p(\mathbf{y}) \rangle k(\mathbf{x}, \mathbf{y}) \\
+            & = -3\|x-y\|^2(1 + \|x-y\|^2)^{-5/2} + (d - \|x-y\|^2)(1 + \|x-y\|^2)
+            ^{-3/2} + (x\cdot y)(1 + \|x-y\|^2)^{-1/2}
+
+        Now the algorithm proceeds iteratively, selecting the next point greedily by
+        minimising the regularised KSD metric:
+
+        .. math::
+            x_{t} = \arg\min_{x} \left( k_p(x, x)  + \Delta^+ \log p(x) -
+                \lambda t \log p(x) + 2\sum_{j=1}^{t-1} k_p(x, x_j) \right)
+
+        Note that the Laplacian regularisation term (:math:`\Delta^+ \log p(x)`) vanishes for
+        the given score function. Hence, using :math:`k_p(x,y)` and :math:`p(x)` given above,
+        we have:
+
+        .. math::
+            k_p(x, x) &= d + \|x\|^2 \\
+            \Delta^+ \log p(x) &= 0 \\
+            - \lambda t \log p(x) &= \frac{\lambda t}{2} \|x\|^2 \\
+
+        We can now simplify the metric at iteration :math:`t` in this example:
+
+        .. math::
+            d + \|x\|^2(1 + \lambda t/2) + 2\sum_{j=1}^{t-1} k_p(x_{j}, x)
+
+        For now let's suppose no regularisation (:math:`\lambda = 0`) and selecting a unique
+        point at each iteration. We now select points iteratively by minimizing the metric
+        at each step.
+
+        Let's suppose we have the following data:
+
+        .. math::
+           X = \begin{pmatrix}
+               -0.1 & -0.1 \\
+               -0.3 & -0.2 \\
+               -0.2 & 0.6 \\
+               0.8 & 0.2 \\
+               -0.0 & 0.3 \\
+               0.9 & -0.7 \\
+               0.2 & -0.1 \\
+               0.7 & -1.0 \\
+               -0.4 & -0.4 \\
+               0.0 & -0.3
+           \end{pmatrix}
+
+        First iteration (t=1):
+
+        In the first iteration there are no previously selected points, hence we simply
+        compute :math:`k_p(x, x) = d + \| x \|^2` for each point:
+
+        .. math::
+           \text{KSD}(X) = \begin{pmatrix}
+               2.020 \\
+               2.130 \\
+               2.400 \\
+               2.680 \\
+               2.090 \\
+               3.300 \\
+               2.050 \\
+               3.490 \\
+               2.320 \\
+               2.090
+           \end{pmatrix}
+
+        We select point at index 0 (assuming 0-indexing), :math:`(-0.1, -0.1)`, as it has the
+        minimum score of 2.020.
+
+        Second iteration (t=2):
+
+        We now have to additionally compute :math:`k_p(x, X[0])` for each point since
+        :math:`X[0]` was selected in the first iteration:
+
+        .. math::
+           \text{KSD}(X) = \begin{pmatrix}
+               6.060 \\
+               5.587 \\
+               2.879 \\
+               2.290 \\
+               4.238 \\
+               2.673 \\
+               4.952 \\
+               2.889 \\
+               4.593 \\
+               5.508
+           \end{pmatrix}
+
+        We now select the point at index 3, :math:`(0.8, 0.2)`, with the corresponding score of
+        2.290.
+
+        Third iteration (t=3):
+
+        We now compute :math:`k_p(x, X[3])` for each point and update the scores:
+
+        .. math::
+           \text{KSD}(X) = \begin{pmatrix}
+               5.670 \\
+               4.618 \\
+               2.339 \\
+               7.650 \\
+               4.490 \\
+               3.393 \\
+               5.894 \\
+               2.710 \\
+               3.377 \\
+               5.187
+           \end{pmatrix}
+
+        We select the point at index 2, :math:`(-0.2, 0.6)`, with the corresponding score of
+        2.339.
+
+        Note that selecting a particular point changes the metric significantly at each
+        iteration, emphasising that the algorithm attempts to move away from the already
+        selected points and explore the rest of the space.
+
+        The final selected points are :math:`\{0, 3, 2\}` with corresponding data points:
+
+        .. math::
+           X_{\text{coreset}} = \begin{pmatrix}
+               -0.1 & -0.1 \\
+               0.8 & 0.2 \\
+               -0.2 & 0.6
+           \end{pmatrix}
+        """  # noqa: E501
+        # pylint: enable=line-too-long
+
+        # Setup example data
+        coreset_size = 10
+        x = jnp.array(
+            [
+                [-0.1, -0.1],
+                [-0.3, -0.2],
+                [-0.2, 0.6],
+                [0.8, 0.2],
+                [-0.0, 0.3],
+                [0.9, -0.7],
+                [0.2, -0.1],
+                [0.7, -1.0],
+                [-0.4, -0.4],
+                [0.0, -0.3],
+            ]
+        )
+        data = Data(x)
+
+        # Initialise and run the SteinThinning solver
+        stein_kernel = SteinKernel(
+            base_kernel=PCIMQKernel(length_scale=1 / np.sqrt(2)),
+            score_function=jnp.negative,
+        )
+        solver = SteinThinning(
+            coreset_size=coreset_size,
+            kernel=stein_kernel,
+            unique=True,
+            regularise=False,
+        )
+        coreset, _ = solver.reduce(data)
+
+        # Expected selections based on our analytical calculations
+        expected_coreset_indices = jnp.array([0, 3, 2, 7, 8, 5, 4, 1, 6, 9])
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+
+    def test_stein_thinning_analytic_non_unique(self):
+        """
+        Analytical example for SteinThinning with repeating points.
+
+        The example data is the same as in the unique case. If the solver is set to
+        `unique=False`, some points will be repeated multiple times.
+        """
+        # Setup example data
+        coreset_size = 10
+        x = jnp.array(
+            [
+                [-0.1, -0.1],
+                [-0.3, -0.2],
+                [-0.2, 0.6],
+                [0.8, 0.2],
+                [-0.0, 0.3],
+                [0.9, -0.7],
+                [0.2, -0.1],
+                [0.7, -1.0],
+                [-0.4, -0.4],
+                [0.0, -0.3],
+            ]
+        )
+        data = Data(x)
+
+        # Initialise and run the SteinThinning solver
+        stein_kernel = SteinKernel(
+            base_kernel=PCIMQKernel(length_scale=1 / np.sqrt(2)),
+            score_function=jnp.negative,
+        )
+        solver = SteinThinning(
+            coreset_size=coreset_size,
+            kernel=stein_kernel,
+            unique=False,
+            regularise=False,
+        )
+        coreset, _ = solver.reduce(data)
+
+        # Expected selections based on our analytical calculations
+        expected_coreset_indices = jnp.array([0, 3, 2, 7, 8, 2, 5, 8, 3, 2])
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
+
+    def test_stein_thinning_analytic_reg(self):
+        r"""
+        Analytical example for SteinThinning with regularisation.
+
+        The example data is the same as for the other analytic tests. When
+        `regularise=True`, regularisation terms are added when computing the metric
+        for each point. In particular, in our example, the additional term is
+        :math:`-\lambda t \log p(x)` where p is the density and lambda is the
+        regularisation parameter.
+
+        Note that the `SteinThinning` solver uses a Gaussian KDE estimate of p,
+        which we also use in our calculations to stay consistent.
+        """
+        # Setup example data
+        coreset_size = 10
+        x = jnp.array(
+            [
+                [-0.1, -0.1],
+                [-0.3, -0.2],
+                [-0.2, 0.6],
+                [0.8, 0.2],
+                [-0.0, 0.3],
+                [0.9, -0.7],
+                [0.2, -0.1],
+                [0.7, -1.0],
+                [-0.4, -0.4],
+                [0.0, -0.3],
+            ]
+        )
+        data = Data(x)
+
+        # Initialise and run the SteinThinning solver
+        stein_kernel = SteinKernel(
+            base_kernel=PCIMQKernel(length_scale=1 / np.sqrt(2)),
+            score_function=jnp.negative,
+        )
+        solver = SteinThinning(
+            coreset_size=coreset_size,
+            kernel=stein_kernel,
+            unique=True,
+            regularise=True,
+            regulariser_lambda=1,
+        )
+        coreset, _ = solver.reduce(data)
+
+        # Expected selections based on our analytical calculations
+        expected_coreset_indices = jnp.array([0, 2, 5, 8, 6, 3, 1, 4, 7, 9])
+
+        # Check output matches expected
+        np.testing.assert_array_equal(
+            coreset.unweighted_indices, expected_coreset_indices
+        )
+        np.testing.assert_array_equal(
+            coreset.coreset.data, data.data[expected_coreset_indices]
+        )
 
 
 class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
