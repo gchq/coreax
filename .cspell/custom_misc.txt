@@ -44,9 +44,11 @@ refs
 regulariser
 RKHS
 RPCHOLESKY
+sdist
 sigmas
 subseteq
 supp
 TLDR
 typecheck
+venv
 WMMD
