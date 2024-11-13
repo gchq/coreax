@@ -286,9 +286,9 @@ class SteinThinning(
     distribution of the coresubset (the solution) and the distribution of the problem
     dataset, as characterised by the score function of the Stein Kernel.
 
-    Given one has selected :math:`T` data points for their compressed representation of
-    the original dataset, (regularised) Stein thinning selects the next point using the
-    equations in Section 3.1 of :cite:`benard2023kernel`:
+    Given one has selected :math:`t-1` data points for their compressed representation
+    of the original dataset, (regularised) Stein thinning selects the next point using
+    the equations in Section 3.1 of :cite:`benard2023kernel`:
 
     .. math::
 

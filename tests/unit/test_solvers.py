@@ -1425,12 +1425,19 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         minimising the regularised KSD metric:
 
         .. math::
-            x_{t} = \arg\min_{x} \left( k_P(x, x)  + \Delta^+ \log p(x) -
-                \lambda t \log p(x) + 2\sum_{j=1}^{t-1} k_P(x, x_j) \right)
+            x_{t} = \arg\min_{x} \left( k_p(x, x)  + \Delta^+ \log p(x) -
+                \lambda t \log p(x) + 2\sum_{j=1}^{t-1} k_p(x, x_j) \right)
 
         Note that the Laplacian regularisation term (:math:`\Delta^+ \log p(x)`) vanishes for
-        the given score function. We can now simplify the metric at iteration :math:`t` in
-        this example:
+        the given score function. Hence, using :math:`k_p(x,y)` and :math:`p(x)` given above,
+        we have:
+
+        .. math::
+            k_p(x, x) &= d + \|x\|^2 \\
+            \Delta^+ \log p(x) &= 0 \\
+            - \lambda t \log p(x) &= \frac{\lambda t}{2} \|x\|^2 \\
+
+        We can now simplify the metric at iteration :math:`t` in this example:
 
         .. math::
             d + \|x\|^2(1 + \lambda t/2) + 2\sum_{j=1}^{t-1} k_p(x_{j}, x)
