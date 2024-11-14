@@ -74,6 +74,7 @@ meshgrid
 mimread
 mimsave
 minval
+mmd
 modindex
 myst
 nabla
