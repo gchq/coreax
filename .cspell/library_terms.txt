@@ -74,7 +74,6 @@ meshgrid
 mimread
 mimsave
 minval
-MMD
 mmd
 modindex
 myst
