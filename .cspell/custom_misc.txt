@@ -43,6 +43,7 @@ pmatrix
 PMLR
 primaryclass
 PRNG
+propto
 rcond
 recomb
 refs
@@ -50,11 +51,13 @@ regulariser
 RKHS
 rngs
 RPCHOLESKY
+sdist
 sigmas
 subseteq
 supp
 TLDR
 typecheck
+venv
 WMMD
 wspace
 xticks

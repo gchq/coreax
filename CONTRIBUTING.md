@@ -210,6 +210,9 @@ GPU machine until a release to PyPI is made.
 If you observe any issues on GPU machines using the code, please raise an issue
 detailing the behaviour, and create a PR with the relevant fix if possible.
 
+In addition, the "Release" GitHub action will test the built package, to ensure that
+the build process has included all the correct files (to avoid a repeat of https://github.com/gchq/coreax/issues/843!)
+
 ### Abstract functions
 
 Abstract methods, functions and properties should only contain a docstring. They should
@@ -315,12 +318,17 @@ maintainers decide the codebase is ready for another release:
      closed them.
 6. Update the version number in `coreax/__init.py__`.
 7. Create and review a pull request.
-8. Once approved, merge the release branch into `main` as soon as possible.
-9. Create a release in GitHub pointing at the final commit on the release branch (that
-   is, the commit _before_ merging into `main`). If the release branch was deleted, you
-   may need to target the commit by its hash.
-10. Build and publish to PyPI and ReadTheDocs, ensuring that the code is published from
-   the same commit as the GitHub release.
+8. Once approved, merge the release branch into `main` as soon as possible. Do _not_
+   delete the release branch when you merge the PR - only delete it once the full
+   release process has been completed.
+9. Manually trigger the "Release" action, inputting the name of the release branch.
+10. Create a release in GitHub pointing at the final commit on the release branch (that
+   is, the commit _before_ merging into `main`). Add the wheel file produced by the
+   Release action to the GitHub release as an artifact.
+11. Publish to PyPI. Ensure that the wheel and sdist uploaded are those produced by
+   the Release action.
+12. Publish to ReadTheDocs, ensuring that the documentation is built from the same
+   commit as in step 10.
 
 [github-issues]: https://github.com/gchq/coreax/issues?q=
 [gh-bug-report]: https://github.com/gchq/coreax/issues/new?assignees=&labels=bug%2Cnew&projects=&template=bug_report.yml&title=%5BBug%5D%3A+
