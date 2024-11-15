@@ -36,9 +36,11 @@ def load_benchmark_data(filename: str) -> dict:
         raise RuntimeError(f"Failed to load benchmark data: {e}") from e
 
 
-def compute_statistics(data_by_solver: dict, coreset_sizes: list[int]) -> tuple[dict]:
+def compute_statistics(
+    data_by_solver: dict, coreset_sizes: list[int]
+) -> tuple[dict[str, dict[str, list[float]]], dict[str, dict[str, list[float]]]]:
     """
-    Compute statistical summaries (mean, minimum, and maximum).
+    Compute statistical summary (mean).
 
     :param data_by_solver: A dictionary where each key is an algorithm name,
                            and each value is a dictionary mapping coreset size
@@ -47,9 +49,9 @@ def compute_statistics(data_by_solver: dict, coreset_sizes: list[int]) -> tuple[
     :param coreset_sizes: A list of integer coreset sizes to evaluate.
     :return: A tuple containing two dictionaries:
              - The first dictionary maps each algorithm name to its accuracy statistics,
-               with keys 'means', 'mins', and 'maxs'.
+               with keys 'means' and 'points'.
              - The second dictionary maps each algorithm name to its time statistics,
-               also with keys 'means', 'mins', and 'maxs'.
+               also with keys 'means' and 'points'.
     """
     accuracy_stats = {
         algo: {"means": [], "points": {size: [] for size in coreset_sizes}}
@@ -107,6 +109,7 @@ def plot_performance(
             bar_width,
             label=algo,
             color=f"C{i}",
+            alpha=0.7,
         )
 
         # Overlay individual points as dots
@@ -122,8 +125,7 @@ def plot_performance(
                 x_positions,
                 stats[algo]["points"][size],
                 color=f"C{i}",
-                alpha=0.8,
-                s=20,
+                s=40,
             )
 
     # Add labels, titles, and other plot formatting
