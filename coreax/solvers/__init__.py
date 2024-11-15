@@ -27,6 +27,7 @@ from coreax.solvers.coresubset import (
     GreedyKernelPointsState,
     HerdingState,
     KernelHerding,
+    KernelThinning,
     RandomSample,
     RPCholesky,
     RPCholeskyState,
@@ -57,4 +58,5 @@ __all__ = [
     "RecombinationSolver",
     "CaratheodoryRecombination",
     "TreeRecombination",
+    "KernelThinning",
 ]
