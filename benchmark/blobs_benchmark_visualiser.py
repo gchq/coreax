@@ -50,9 +50,10 @@ def plot_benchmarking_results(data):
     # Extract n_samples
     n_samples = data.pop("n_samples")
 
+    first_coreset_size = next(iter(data.keys()))
     first_algorithm = next(
-        iter(data["10"].values())
-    )  # Get one example algorithm from the dataset
+        iter(data[first_coreset_size].values())
+    )  # Get one example algorithm
     metrics = list(first_algorithm.keys())
     n_metrics = len(metrics)
 
