@@ -16,7 +16,7 @@
 Benchmark performance of coreset algorithms on the MNIST dataset with a neural network.
 
 The benchmarking process follows these steps:
-1. Start with the MNIST dataset, which consists of 60,000 training images and 10,000
+1. Start with the MNIST dataset, which consists of 60_000 training images and 10_000
    test images.
 2. Use a simple MLP neural network with a single hidden layer of 64 nodes to classify
    the images. The images are flattened into vectors.
@@ -26,9 +26,9 @@ The benchmarking process follows these steps:
    - For Kernel Herding and Stein Thinning, use MapReduce to handle larger-scale data.
 5. Use the coreset indices to select the original images from the training set, and
    train the model on these selected coresets.
-6. Evaluate the model's accuracy on the test set of 10,000 images.
+6. Evaluate the model's accuracy on the test set of 10_000 images.
 7. Due to the inherent randomness in both coreset algorithms and the machine learning
-   training process, repeat the experiment multiple times with different random seeds.
+   training process, repeat the experiment 5 times with different random seeds.
 8. Store the results from each run and visualise them using
    `coreset.benchmark.mnist_benchmark_visualiser.py`, which plots error bars (min,
    max, mean) for accuracy across different coreset sizes.
@@ -37,8 +37,9 @@ The benchmarking process follows these steps:
 import json
 import os
 import time
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -420,10 +421,10 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
     train_data_jax, train_targets_jax = convert_to_jax_arrays(train_dataset)
     test_data_jax, test_targets_jax = convert_to_jax_arrays(test_dataset)
 
-    return (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax)
+    return train_data_jax, train_targets_jax, test_data_jax, test_targets_jax
 
 
-def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
+def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list[Callable]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
 
@@ -440,14 +441,15 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
     :return: A list of solvers functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
-    num_samples_length_scale = min(3000, len(train_data_pca))
+    num_data_points = len(train_data_pca)
+    num_samples_length_scale = min(num_data_points, 1_000)
     random_seed = 45
     generator = np.random.default_rng(random_seed)
-    idx = generator.choice(len(train_data_pca), num_samples_length_scale, replace=False)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(train_data_pca[idx])
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
-    def _get_herding_solver(_size: int) -> tuple[str, MapReduce]:
+    def _get_herding_solver(_size: int) -> MapReduce:
         """
         Set up KernelHerding to use ``MapReduce``.
 
@@ -459,9 +461,9 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
         :return: A tuple containing the solver name and the MapReduce solver.
         """
         herding_solver = KernelHerding(_size, kernel)
-        return "KernelHerding", MapReduce(herding_solver, leaf_size=3 * _size)
+        return MapReduce(herding_solver, leaf_size=3 * _size)
 
-    def _get_stein_solver(_size: int) -> tuple[str, MapReduce]:
+    def _get_stein_solver(_size: int) -> MapReduce:
         """
         Set up Stein Thinning to use ``MapReduce``.
 
@@ -479,9 +481,9 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
         )
         stein_kernel = SteinKernel(kernel, score_function)
         stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel)
-        return "SteinThinning", MapReduce(stein_solver, leaf_size=3 * _size)
+        return MapReduce(stein_solver, leaf_size=3 * _size)
 
-    def _get_random_solver(_size: int) -> tuple[str, RandomSample]:
+    def _get_random_solver(_size: int) -> RandomSample:
         """
         Set up Random Sampling to generate a coreset.
 
@@ -489,9 +491,9 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
         :return: A tuple containing the solver name and the RandomSample solver.
         """
         random_solver = RandomSample(_size, key)
-        return "RandomSample", random_solver
+        return random_solver
 
-    def _get_rp_solver(_size: int) -> tuple[str, RPCholesky]:
+    def _get_rp_solver(_size: int) -> RPCholesky:
         """
         Set up Randomised Cholesky solver.
 
@@ -499,7 +501,7 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list:
         :return: A tuple containing the solver name and the RPCholesky solver.
         """
         rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
-        return "RPCholesky", rp_solver
+        return rp_solver
 
     return [_get_random_solver, _get_rp_solver, _get_herding_solver, _get_stein_solver]
 
@@ -605,7 +607,7 @@ def main() -> None:
     )
     train_data_pca = Data(pca(train_data_jax))
 
-    results = {}
+    all_results = {}
 
     config = {
         "epochs": 100,
@@ -622,10 +624,15 @@ def main() -> None:
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_pca, key)
         for getter in solvers:
-            for size in [25, 50, 100, 500, 1000, 5000]:
-                name, solver = getter(size)
+            for size in [25, 50, 100, 500, 1_000, 5_000]:
+                solver = getter(size)
+                solver_name = (
+                    solver.base_solver.__class__.__name__
+                    if solver.__class__.__name__ == "MapReduce"
+                    else solver.__class__.__name__
+                )
                 start_time = time.perf_counter()
-                coreset, _ = solver.reduce(train_data_pca)
+                coreset, _ = eqx.filter_jit(solver.reduce)(train_data_pca)
 
                 coreset_indices = coreset.nodes.data
 
@@ -641,19 +648,27 @@ def main() -> None:
                     "test_data": test_data_jax,
                     "test_targets": test_targets_jax,
                 }
-                result = train_model(data_bundle, key, config)
-                if name not in results:
-                    results[name] = {}
-                if size not in results[name]:
-                    results[name][size] = {}
+                # Train the model and get the evaluation metrics for this run
+                run_metrics = train_model(data_bundle, key, config)
+
+                # Ensure that there is a dictionary for this solver
+                # If not, initialise with an empty dictionary
+                if solver_name not in all_results:
+                    all_results[solver_name] = {}
+
+                # Populate the dictionary created above with coreset_size as keys
+                # The values themselves will be dictionaries, so initialise with an
+                # empty dictionary
+                if size not in all_results[solver_name]:
+                    all_results[solver_name][size] = {}
 
                 # Store accuracy result in nested structure
-                results[name][size][i] = {
-                    "accuracy": float(result["final_test_accuracy"]),
+                all_results[solver_name][size][i] = {
+                    "accuracy": float(run_metrics["final_test_accuracy"]),
                     "time_taken": time.perf_counter() - start_time,
                 }
 
-    save_results(results)
+    save_results(all_results)
 
 
 if __name__ == "__main__":
