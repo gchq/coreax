@@ -55,7 +55,6 @@ Contents
    examples/david_map_reduce_weighted
    examples/analytical_kernel_herding
    examples/analytical_rpcholesky
-   examples/analytical_stein_thinning
 
 .. toctree::
     :maxdepth: 2

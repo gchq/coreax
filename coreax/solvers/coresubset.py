@@ -286,14 +286,14 @@ class SteinThinning(
     distribution of the coresubset (the solution) and the distribution of the problem
     dataset, as characterised by the score function of the Stein Kernel.
 
-    Given one has selected :math:`t-1` data points for their compressed representation
-    of the original dataset, (regularised) Stein thinning selects the next point using
-    the equations in Section 3.1 of :cite:`benard2023kernel`:
+    Given one has selected :math:`T` data points for their compressed representation of
+    the original dataset, (regularised) Stein thinning selects the next point using the
+    equations in Section 3.1 of :cite:`benard2023kernel`:
 
     .. math::
 
-        x_{t} = \arg\min_{x} \left( k_p(x, x) + \Delta^+ \log p(x) -
-            \lambda t \log p(x) + 2 \sum_{j=1}^{t-1} k_p(x, x_j) \right)
+        x_{T+1} = \arg\min_{x} \left( k_P(x, x) / 2 + \Delta^+ \log p(x) -
+            \lambda T \log p(x) + \frac{1}{T+1}\sum_{t=1}^T k_P(x, x_t) \right)
 
     where :math:`k` is the Stein kernel induced by the supplied base kernel,
     :math:`\Delta^+` is the non-negative Laplace operator, :math:`\lambda` is a
@@ -303,9 +303,9 @@ class SteinThinning(
     :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
         kernel function
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`; if 'kernel'
-        is a :class:`~coreax.kernels.SteinKernel` and
-        :code:`score_matching is not`:data:`None`, a new instance of the kernel will be
-        generated where the score function is given by :code:`score_matching.match(...)`
+        is a :class:`~coreax.kernels.SteinKernel` and :code:`score_matching is not
+        data:`None`, a new instance of the kernel will be generated where the score
+        function is given by :code:`score_matching.match(...)`
     :param score_matching: Specifies/overwrite the score function of the implied/passed
        :class:`~coreax.kernels.SteinKernel`; if :data:`None`, default to
        :class:`~coreax.score_matching.KernelDensityMatching` unless 'kernel' is a
@@ -313,9 +313,6 @@ class SteinThinning(
        function is used.
     :param unique: If each index in the resulting coresubset should be unique
     :param regularise: Boolean that enforces regularisation, see Section 3.1 of
-        :cite:`benard2023kernel`.
-    :param regulariser_lambda: The entropic regularisation parameter, :math:`\lambda`.
-        If :data:`None`, defaults to :math:`1/\text{coreset_size}` following
         :cite:`benard2023kernel`.
     :param block_size: Block size passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
@@ -327,7 +324,6 @@ class SteinThinning(
     score_matching: Optional[ScoreMatching] = None
     unique: bool = True
     regularise: bool = True
-    regulariser_lambda: float = None
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
 
@@ -348,12 +344,6 @@ class SteinThinning(
         greedily choose points in the coreset to minimise kernel Stein discrepancy
         (KSD).
 
-        .. note::
-            Only the score function, :math:`\nabla \log p(x)`, is provided to the
-            solver. Since the lambda regularisation term relies on the density,
-            :math:`p(x)`, directly, it is estimated using a Gaussian kernel density
-            estimator.
-
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
@@ -366,13 +356,8 @@ class SteinThinning(
             # Cannot guarantee that kernel.base_kernel has a 'length_scale' attribute
             bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
             kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
-
-            if self.regulariser_lambda is None:
-                # Use regularisation parameter suggested in :cite:`benard2023kernel`
-                regulariser_lambda = 1 / len(coresubset)
-            else:
-                regulariser_lambda = self.regulariser_lambda
-
+            # Use regularisation parameter suggested in :cite:`benard2023kernel`
+            regulariser_lambda = 1 / len(coresubset)
             regularised_log_pdf = regulariser_lambda * kde.logpdf(x.T)
 
             @jax.vmap
@@ -392,9 +377,7 @@ class SteinThinning(
             Argmin of the Laplace corrected and regularised Kernel Stein Discrepancy.
             """
             ksd = stein_kernel_diagonal + 2.0 * _kernel_similarity_penalty
-            return jnp.nanargmin(
-                ksd + laplace_correction - (i + 1) * regularised_log_pdf
-            )
+            return jnp.nanargmin(ksd + laplace_correction - i * regularised_log_pdf)
 
         refined_coreset = _greedy_kernel_selection(
             coresubset,
