@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
+- Contributor-facing features:
+  - Automated testing of the built package before release (https://github.com/gchq/coreax/issues/854)
+- Added an analytical test for SteinThinning, and associated documentation in
+  `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
+
 
 ### Fixed
 
--
+- `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
 
 ### Changed
 
