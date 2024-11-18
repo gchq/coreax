@@ -118,8 +118,7 @@ def test_train_and_evaluate() -> None:
 
     assert "final_test_loss" in result
     assert "final_test_accuracy" in result
-    assert result["final_test_accuracy"] >= 0.0
-    assert result["final_test_accuracy"] <= 1.0
+    assert 0.0 <= result["final_test_accuracy"] <= 1.0
 
 
 if __name__ == "__main__":
