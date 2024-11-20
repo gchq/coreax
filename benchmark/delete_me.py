@@ -442,7 +442,7 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list[Ca
     """
     # Set up kernel using median heuristic
     num_data_points = len(train_data_pca)
-    num_samples_length_scale = min(num_data_points, 1_000)
+    num_samples_length_scale = min(num_data_points, 300)
     random_seed = 45
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
