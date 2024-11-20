@@ -14,13 +14,17 @@ cubature
 delaxes
 diag
 docstrings
+ecolor
 eigendecomposition
 elementwise
+errorbar
+figtext
 fontsize
 forall
 GCHQ
 Gramian
 gramians
+horizontalalignment
 hspace
 infty
 kbar

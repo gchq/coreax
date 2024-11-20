@@ -40,7 +40,7 @@ def compute_statistics(
     data_by_solver: dict, coreset_sizes: list[int]
 ) -> tuple[dict[str, dict[str, list[float]]], dict[str, dict[str, list[float]]]]:
     """
-    Compute statistical summary (mean).
+    Compute statistical summary (mean, min, max).
 
     :param data_by_solver: A dictionary where each key is an algorithm name,
                            and each value is a dictionary mapping coreset size
@@ -49,16 +49,26 @@ def compute_statistics(
     :param coreset_sizes: A list of integer coreset sizes to evaluate.
     :return: A tuple containing two dictionaries:
              - The first dictionary maps each algorithm name to its accuracy statistics,
-               with keys 'means' and 'points'.
+               with keys 'means', 'min', 'max' and 'points'.
              - The second dictionary maps each algorithm name to its time statistics,
-               also with keys 'means' and 'points'.
+               also with keys 'means', 'min', 'max' and 'points'.
     """
     accuracy_stats = {
-        algo: {"means": [], "points": {size: [] for size in coreset_sizes}}
+        algo: {
+            "means": [],
+            "min": [],
+            "max": [],
+            "points": {size: [] for size in coreset_sizes},
+        }
         for algo in data_by_solver
     }
     time_stats = {
-        algo: {"means": [], "points": {size: [] for size in coreset_sizes}}
+        algo: {
+            "means": [],
+            "min": [],
+            "max": [],
+            "points": {size: [] for size in coreset_sizes},
+        }
         for algo in data_by_solver
     }
 
@@ -73,9 +83,13 @@ def compute_statistics(
                     accuracy_stats[algo]["points"][size].append(run_data["accuracy"])
                     time_stats[algo]["points"][size].append(run_data["time_taken"])
 
-            # Compute means
             accuracy_stats[algo]["means"].append(np.mean(accuracies))
+            accuracy_stats[algo]["min"].append(np.min(accuracies))
+            accuracy_stats[algo]["max"].append(np.max(accuracies))
+
             time_stats[algo]["means"].append(np.mean(times))
+            time_stats[algo]["min"].append(np.min(times))
+            time_stats[algo]["max"].append(np.max(times))
 
     return accuracy_stats, time_stats
 
@@ -112,20 +126,35 @@ def plot_performance(
             alpha=0.7,
         )
 
+        plt.errorbar(
+            index + i * bar_width,
+            stats[algo]["means"],
+            yerr=[
+                np.array(stats[algo]["means"]) - np.array(stats[algo]["min"]),
+                np.array(stats[algo]["max"]) - np.array(stats[algo]["means"]),
+            ],
+            fmt="none",
+            ecolor="black",
+            capsize=5,
+            alpha=0.9,
+        )
+
         # Overlay individual points as dots
         for j, size in enumerate(coreset_sizes):
             x_positions = (
                 index[j]
                 + i * bar_width
                 + np.random.uniform(
-                    -0.1 * bar_width, 0.1 * bar_width, len(stats[algo]["points"][size])
+                    -0.01 * bar_width,
+                    0.01 * bar_width,
+                    len(stats[algo]["points"][size]),
                 )
             )
             plt.scatter(
                 x_positions,
                 stats[algo]["points"][size],
                 color=f"C{i}",
-                s=40,
+                s=10,
             )
 
     # Add labels, titles, and other plot formatting
@@ -161,6 +190,16 @@ def main() -> None:
         "Algorithm Performance (Accuracy) for Different Coreset Sizes",
     )
 
+    plt.figtext(
+        0.5,
+        0.01,
+        "Plot showing the mean performance of algorithms with error bars"
+        " representing min-max ranges",
+        wrap=True,
+        horizontalalignment="center",
+        fontsize=8,
+    )
+
     plt.show()
 
     # Plot time taken results
@@ -170,6 +209,16 @@ def main() -> None:
         coreset_sizes,
         "Time Taken (seconds)",
         "Algorithm Performance (Time Taken) for Different Coreset Sizes",
+    )
+
+    plt.figtext(
+        0.5,
+        0.01,
+        "Plot showing the mean time taken to generate coresets of different"
+        " coreset sizes with error bars representing min-max ranges",
+        wrap=True,
+        horizontalalignment="center",
+        fontsize=8,
     )
 
     plt.show()
