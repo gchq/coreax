@@ -32,6 +32,9 @@ The benchmarking process follows these steps:
 8. Store the results from each run and visualise them using
    `coreset.benchmark.mnist_benchmark_visualiser.py`, which plots error bars (min,
    max, mean) for accuracy across different coreset sizes.
+
+The benchmark is run on amazon g4dn.12xlarge instance with 4 nvidia t4 tensor core
+GPUs, 48 virtual CPUs and 192 GiB memory.
 """
 
 import json

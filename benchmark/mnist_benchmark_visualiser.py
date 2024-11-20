@@ -94,6 +94,42 @@ def compute_statistics(
     return accuracy_stats, time_stats
 
 
+def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
+    """
+    Compute statistical summary (mean, min, max) for standalone time data.
+
+    :param data: A dictionary containing time data for different algorithms
+                 and coreset sizes.
+    :param coreset_sizes: A list of integer coreset sizes to evaluate.
+    :return: A dictionary containing the statistics (mean, min, max)
+             and raw points for each algorithm.
+    """
+    stats = {
+        algo: {
+            "means": [],
+            "min": [],
+            "max": [],
+            "points": {size: [] for size in coreset_sizes},
+        }
+        for algo in data
+    }
+
+    for algo, sizes in data.items():
+        for size in coreset_sizes:
+            size_str = str(size)
+            times = []
+            if size_str in sizes:
+                for time in sizes[size_str].values():
+                    times.append(time)
+                    stats[algo]["points"][size].append(time)
+
+            stats[algo]["means"].append(np.mean(times))
+            stats[algo]["min"].append(np.min(times))
+            stats[algo]["max"].append(np.max(times))
+
+    return stats
+
+
 def plot_performance(
     stats: dict,
     coreset_sizes: list[int],
@@ -176,10 +212,22 @@ def main() -> None:
         os.path.join(base_dir, "mnist_benchmark_results.json")
     )
 
+    time_only_data = load_benchmark_data(
+        os.path.join(base_dir, "mnist_time_results.json")
+    )
+
     coreset_sizes = sorted(
         {int(size) for sizes in data_by_solver.values() for size in sizes.keys()}
     )
     accuracy_stats, time_stats = compute_statistics(data_by_solver, coreset_sizes)
+
+    coreset_sizes_time_only = sorted(
+        {int(size) for sizes in time_only_data.values() for size in sizes.keys()}
+    )
+
+    time_stats_time_only = compute_time_statistics(
+        time_only_data, coreset_sizes_time_only
+    )
 
     # Plot accuracy results
     plt.figure(figsize=(12, 6))
@@ -209,6 +257,27 @@ def main() -> None:
         coreset_sizes,
         "Time Taken (seconds)",
         "Algorithm Performance (Time Taken) for Different Coreset Sizes",
+    )
+
+    plt.figtext(
+        0.5,
+        0.01,
+        "Plot showing the mean time taken to generate coresets and train MNIST"
+        "classifier with coreset sizes with error bars representing min-max ranges",
+        wrap=True,
+        horizontalalignment="center",
+        fontsize=8,
+    )
+
+    plt.show()
+
+    # Plot time taken results
+    plt.figure(figsize=(12, 6))
+    plot_performance(
+        time_stats_time_only,
+        coreset_sizes_time_only,
+        "Time Taken (seconds)",
+        "Time Taken to generate coresets for Different Coreset Sizes",
     )
 
     plt.figtext(
