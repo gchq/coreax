@@ -248,7 +248,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
                 basis_vector > 0, _weights / basis_vector, jnp.inf
             )
             elimination_index = jnp.argmin(elimination_condition)
-            eliminated = eliminated.at[elimination_index].set(1)
+            eliminated = eliminated.at[elimination_index].set(True)
             elimination_rescaling_factor = elimination_condition[elimination_index]
             # Equation 4: Eliminate the selected weight and redistribute its mass.
             # NOTE: Equation 5 is implicit from Equation 4 and is performed outside
