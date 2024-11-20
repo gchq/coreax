@@ -65,9 +65,10 @@ def setup_kernel(x: jnp.array, random_seed: int = 45) -> SquaredExponentialKerne
     :param random_seed: An integer seed for the random number generator.
     :return: A SquaredExponentialKernel with the computed length scale.
     """
-    num_samples_length_scale = min(len(x), 1000)
+    num_data_points = len(x)
+    num_samples_length_scale = min(num_data_points, 1000)
     generator = np.random.default_rng(random_seed)
-    idx = generator.choice(len(x), num_samples_length_scale, replace=False)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
     return SquaredExponentialKernel(length_scale=length_scale)
 
