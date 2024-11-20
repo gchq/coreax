@@ -141,6 +141,7 @@ class _EliminationState(NamedTuple):
     weights: Shaped[Array, " n"]
     nodes: Shaped[Array, "n m"]
     iteration: int
+    eliminated: Shaped[Array, " n"]
 
 
 class CaratheodoryRecombination(RecombinationSolver[Data, None]):
@@ -192,6 +193,10 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             safe_push_forward_nodes, self.rcond
         )
 
+        # Array to keep track of which nodes have been eliminated (not described by
+        # the base algorithm, but needed to combat numerical errors on GPU systems)
+        eliminated_array = jnp.zeros_like(weights, dtype=bool)
+
         def _eliminate_cond(state: _EliminationState) -> Bool[Array, ""]:
             """
             If to continue the iterative Gaussian-Elimination procedure.
@@ -210,8 +215,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             :param state: Elimination state information
             :return: Boolean indicating if to continue/exit the elimination loop.
             """
-            *_, basis_index = state
-            return basis_index < null_space_rank
+            return state.iteration < null_space_rank
 
         def _eliminate(state: _EliminationState) -> _EliminationState:
             """
@@ -237,13 +241,14 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             # - `updated_weights` -> \underline\Beta^{(i)}
             # - `null_space_basis_update` -> d_{l+1}^{(i)}\phi_1^{(i-1)}
             # - `updated_null_space_basis` -> \Psi^{(i))
-            _weights, null_space_basis, basis_index = state
+            _weights, null_space_basis, basis_index, eliminated = state
             basis_vector = null_space_basis[basis_index]
             # Equation 3: Select the weight to eliminate.
             elimination_condition = jnp.where(
                 basis_vector > 0, _weights / basis_vector, jnp.inf
             )
             elimination_index = jnp.argmin(elimination_condition)
+            eliminated = eliminated.at[elimination_index].set(1)
             elimination_rescaling_factor = elimination_condition[elimination_index]
             # Equation 4: Eliminate the selected weight and redistribute its mass.
             # NOTE: Equation 5 is implicit from Equation 4 and is performed outside
@@ -258,13 +263,20 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             )
             updated_null_space_basis = null_space_basis - null_space_basis_update
             updated_null_space_basis = updated_null_space_basis.at[basis_index].set(0)
+            # Ensure eliminated rows *stay* eliminated.
+            # On GPU systems, small numerical errors can cause previously eliminated
+            # rows to have small but positive values in the basis vector. This line
+            # ensures that this does not happen.
+            updated_null_space_basis = jnp.where(
+                jnp.expand_dims(eliminated, 0), 0, updated_null_space_basis
+            )
             return _EliminationState(
-                updated_weights,
-                updated_null_space_basis,
-                basis_index + 1,
+                updated_weights, updated_null_space_basis, basis_index + 1, eliminated
             )
 
-        in_state = _EliminationState(safe_weights, largest_null_space_basis, 0)
+        in_state = _EliminationState(
+            safe_weights, largest_null_space_basis, 0, eliminated_array
+        )
         out_weights, *_ = jax.lax.while_loop(_eliminate_cond, _eliminate, in_state)
         coresubset_nodes = _coresubset_nodes(
             safe_push_forward_nodes,
