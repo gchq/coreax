@@ -85,7 +85,7 @@ def plot_performance(
     coreset_sizes: list[int],
     ylabel: str,
     title: str,
-    log_scale: bool = True,
+    log_scale: bool = False,
 ) -> None:
     """
     Plot performance statistics for each algorithm over varying coreset sizes.
