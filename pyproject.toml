@@ -30,7 +30,7 @@ dependencies = [
     "flax",
     "jax",
     "jaxopt",
-    "jaxtyping",
+    "jaxtyping>0.2.31",
     "optax",
     "scikit-learn",
     "tqdm",

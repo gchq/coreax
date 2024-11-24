@@ -19,13 +19,16 @@ The tests within this file verify that approaches to handling and processing dat
 produce the expected results on simple examples.
 """
 
-from functools import partial
+from contextlib import nullcontext
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
+import jaxtyping
 import pytest
 from jax import Array
+from jaxtyping import Float, Shaped, jaxtyped
+from typeguard import typechecked
 
 import coreax.data
 
@@ -99,8 +102,8 @@ def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
 @pytest.mark.parametrize(
     "data_type",
     [
-        partial(coreax.data.Data, DATA_ARRAY),
-        partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
+        jtu.Partial(coreax.data.Data, DATA_ARRAY),
+        jtu.Partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
     ],
 )
 class TestData:
@@ -147,6 +150,16 @@ class TestData:
         _data = data_type()
         assert len(_data) == len(_data.data)
 
+    def dtype(self, data_type):
+        """Test dtype property; required for jaxtyping annotations."""
+        _data = data_type()
+        assert _data.data.dtype == _data.dtype
+
+    def shape(self, data_type):
+        """Test shape property; required for jaxtyping annotations."""
+        _data = data_type()
+        assert _data.data.shape == _data.shape
+
     @pytest.mark.parametrize("weights", (None, 0, 3, DATA_ARRAY.reshape(-1)))
     def test_normalize(self, data_type, weights):
         """Test weight normalization."""
@@ -159,6 +172,53 @@ class TestData:
         assert eqx.tree_equal(
             normalized_with_zeros.weights, jnp.nan_to_num(expected_weights)
         )
+
+    def test_jaxtyping_compatibility(self, data_type):
+        """
+        Test `Data` compatibility with jaxtyping annotations.
+
+        Checks the following cases:
+            - Correct shape and data type,
+            - Correct shape and incorrect data type,
+            - Incorrect shape and correct data type.
+        """
+        float_data_type = eqx.tree_at(
+            lambda x: x.args,
+            data_type,
+            replace=jtu.tree_map(lambda y: jnp.astype(y, jnp.float32), data_type.args),
+        )
+        int_data_type = eqx.tree_at(
+            lambda x: x.args,
+            data_type,
+            replace=jtu.tree_map(lambda y: jnp.astype(y, jnp.int32), data_type.args),
+        )
+        float_data = float_data_type()
+        int_data = int_data_type()
+
+        @jaxtyped(typechecker=typechecked)
+        def good_shape_check(x: Shaped[coreax.data.Data, "3 1"]):
+            del x
+
+        @jaxtyped(typechecker=typechecked)
+        def float_dtype_check(x: Float[coreax.data.Data, "..."]):
+            del x
+
+        @jaxtyped(typechecker=typechecked)
+        def bad_shape_check(x: Shaped[coreax.data.Data, "3"]):
+            del x
+
+        float_check_context = pytest.raises(jaxtyping.TypeCheckError)
+        bad_shape_check_context = pytest.raises(jaxtyping.TypeCheckError)
+        for data in [int_data, float_data]:
+            good_shape_check(data)
+            with bad_shape_check_context:
+                bad_shape_check(data)
+            # We don't expect an error to be raised in the `float_data`` case, on a call
+            # to float_dtype_check(...)
+            if data is float_data:
+                float_check_context = nullcontext()
+            with float_check_context:
+                float_dtype_check(data)
 
 
 class TestSupervisedData:

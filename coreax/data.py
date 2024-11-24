@@ -106,6 +106,13 @@ class Data(eqx.Module):
         `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
         converted to a `(n, 1)` array.
 
+    Compatible with :mod:`jaxtyping` -- :class:`Data` is interpreted as an array type,
+    whose shape is the expected shape of :attr:`Data.data`.
+
+    .. example::
+        A `Data` object whose :attr:`Data.data` is expected to be a floating point array
+        with shape `a b`, can be type hinted as `x: Float[Data, " a b"] = ...`.
+
     :param data: An :math:`n \times d` array defining the features of the unsupervised
         dataset
     :param weights: An :math:`n`-vector of weights where each element of the weights
@@ -163,6 +170,16 @@ class Data(eqx.Module):
     def __len__(self) -> int:
         """Return data length."""
         return len(self.data)
+
+    @property
+    def dtype(self):
+        """Return dtype of data; used for jaxtyping annotations."""
+        return self.data.dtype
+
+    @property
+    def shape(self):
+        """Return shape of data; used for jaxtyping annotations."""
+        return self.data.shape
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
         """
