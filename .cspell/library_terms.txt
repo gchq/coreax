@@ -24,6 +24,7 @@ cmap
 color
 Concretization
 cuda
+densmap
 dispname
 dollarmath
 dtype
@@ -63,6 +64,7 @@ leggauss
 linalg
 linkcheck
 literalinclude
+llvmlite
 logpdf
 lstsq
 mathbb
@@ -137,6 +139,7 @@ triu
 ttest
 tuplegetter
 typehints
+umap
 undoc
 unflatten
 unsrt
