@@ -48,6 +48,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import torchvision
+import umap
 from flax import linen as nn
 from flax.training import train_state
 from torch.utils.data import DataLoader, Dataset
@@ -371,37 +372,25 @@ def train_and_evaluate(
     }
 
 
-def pca(x: jnp.ndarray, n_components: int = 16) -> jnp.ndarray:
+def density_preserving_umap(x: jnp.ndarray, n_components: int = 16) -> jnp.ndarray:
     """
-    Perform Principal Component Analysis (PCA) on the dataset x.
-
-    This function computes the principal components of the input data matrix
-    and returns the projected data.
+    Perform Density-Preserving UMAP to reduce dimensionality.
 
     :param x: The input data matrix of shape (n_samples, n_features).
-    :param n_components: The number of principal components to return.
+    :param n_components: The number of components to return.
     :return: The projected data of shape (n_samples, n_components).
     """
-    # Center the data
-    x_centred = x - jnp.mean(x, axis=0)
+    # Convert jax array to numpy array for UMAP compatibility
+    x_np = np.array(x)
 
-    # Compute the covariance matrix
-    cov_matrix = jnp.cov(x_centred.T)
+    # Initialize UMAP with density-preserving option
+    umap_model = umap.UMAP(densmap=True, n_components=n_components)
 
-    # Compute eigenvalues and eigenvectors
-    eigenvalues, eigenvectors = jnp.linalg.eigh(cov_matrix)
+    # Fit and transform the data
+    x_umap = umap_model.fit_transform(x_np)
 
-    # Sort eigenvectors by descending eigenvalues
-    _idx = jnp.argsort(eigenvalues)[::-1]
-    eigenvectors = eigenvectors[:, _idx]
-
-    # Select top n_components eigenvectors
-    components = eigenvectors[:, :n_components]
-
-    # Project the data onto the new subspace
-    x_pca = jnp.dot(x_centred, components)
-
-    return x_pca
+    # Convert the result back to jax array (optional)
+    return jnp.array(x_umap)
 
 
 def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
@@ -427,7 +416,9 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
     return train_data_jax, train_targets_jax, test_data_jax, test_targets_jax
 
 
-def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list[Callable]:
+def initialise_solvers(
+    train_data_umap: Data, key: jax.random.PRNGKey
+) -> list[Callable]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
 
@@ -437,19 +428,19 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list[Ca
     This setup allows them to be called by passing only the coreset size,
     enabling easy integration in a loop for benchmarking.
 
-    :param train_data_pca: The PCA-transformed training data used for
+    :param train_data_umap: The UMAP-transformed training data used for
                            length scale estimation for ``SquareExponentialKernel``.
     :param key: The random key for initialising random solvers.
 
     :return: A list of solvers functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
-    num_data_points = len(train_data_pca)
+    num_data_points = len(train_data_umap)
     num_samples_length_scale = min(num_data_points, 300)
     random_seed = 45
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(train_data_pca[idx])
+    length_scale = median_heuristic(train_data_umap[idx])
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
     def _get_herding_solver(_size: int) -> MapReduce:
@@ -480,7 +471,7 @@ def initialise_solvers(train_data_pca: Data, key: jax.random.PRNGKey) -> list[Ca
         # Generate small dataset for ScoreMatching for Stein Kernel
 
         score_function = KernelDensityMatching(length_scale=length_scale).match(
-            train_data_pca[idx]
+            train_data_umap[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
         stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel)
@@ -608,7 +599,7 @@ def main() -> None:
     (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax) = (
         prepare_datasets()
     )
-    train_data_pca = Data(pca(train_data_jax))
+    train_data_umap = Data(density_preserving_umap(train_data_jax))
 
     all_results = {}
 
@@ -625,7 +616,7 @@ def main() -> None:
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solvers = initialise_solvers(train_data_pca, key)
+        solvers = initialise_solvers(train_data_umap, key)
         for getter in solvers:
             for size in [25, 50, 100, 500, 1_000, 5_000]:
                 solver = getter(size)
@@ -635,7 +626,7 @@ def main() -> None:
                     else solver.__class__.__name__
                 )
                 start_time = time.perf_counter()
-                coreset, _ = eqx.filter_jit(solver.reduce)(train_data_pca)
+                coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 
                 coreset_indices = coreset.nodes.data
 
