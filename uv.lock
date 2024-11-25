@@ -741,7 +741,7 @@ requires-dist = [
     { name = "imageio", marker = "extra == 'test'" },
     { name = "jax" },
     { name = "jaxopt" },
-    { name = "jaxtyping" },
+    { name = "jaxtyping", specifier = ">0.2.31" },
     { name = "matplotlib", marker = "extra == 'test'" },
     { name = "numpy", marker = "extra == 'test'" },
     { name = "opencv-python-headless", marker = "extra == 'test'" },
