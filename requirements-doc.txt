@@ -23,7 +23,7 @@ etils==1.5.2 ; python_full_version < '3.10'
 etils==1.10.0 ; python_full_version >= '3.10'
 filelock==3.16.1
 flax==0.8.5 ; python_full_version < '3.10'
-flax==0.10.1 ; python_full_version >= '3.10'
+flax==0.10.2 ; python_full_version >= '3.10'
 fsspec==2024.10.0
 furo==2024.8.6
 html5lib==1.1
@@ -37,7 +37,7 @@ jax==0.4.35 ; python_full_version >= '3.10'
 jaxlib==0.4.30 ; python_full_version < '3.10'
 jaxlib==0.4.35 ; python_full_version >= '3.10'
 jaxopt==0.8.3
-jaxtyping==0.2.34
+jaxtyping==0.2.36
 jinja2==3.1.4
 joblib==1.4.2
 jsonschema==4.23.0
@@ -56,7 +56,7 @@ numpy==2.1.3 ; python_full_version >= '3.10'
 opt-einsum==3.4.0
 optax==0.2.4
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.9.1 ; python_full_version >= '3.10'
+orbax-checkpoint==0.10.1 ; python_full_version >= '3.10'
 packaging==24.2
 platformdirs==4.3.6
 protobuf==5.28.3
@@ -73,7 +73,8 @@ ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_impl
 scikit-learn==1.5.2
 scipy==1.13.1 ; python_full_version < '3.10'
 scipy==1.14.1 ; python_full_version >= '3.10'
-setuptools==75.5.0 ; python_full_version >= '3.12'
+setuptools==75.6.0 ; python_full_version >= '3.12'
+simplejson==3.19.3 ; python_full_version >= '3.10'
 six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.6
@@ -102,7 +103,6 @@ threadpoolctl==3.5.0
 tomli==2.1.0 ; python_full_version < '3.11'
 toolz==1.0.0
 tqdm==4.67.0
-typeguard==2.13.3
 typing-extensions==4.12.2
 urllib3==2.2.3
 webencodings==0.5.1
