@@ -134,6 +134,7 @@ tqdm
 triu
 ttest
 tuplegetter
+typeguard
 typehints
 undoc
 unflatten

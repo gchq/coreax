@@ -47,6 +47,7 @@ test = [
     "pytest-cov",
     "pytest-rerunfailures",
     "scipy",
+    "typeguard",
 ]
 # Compile documentation
 doc = [
