@@ -237,6 +237,15 @@ wheels = [
 ]
 
 [[package]]
+name = "beartype"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/e1/00515b97afa3993b4a314e4bc168fbde0917fd5845435cb6f16a19770746/beartype-0.19.0.tar.gz", hash = "sha256:de42dfc1ba5c3710fde6c3002e3bd2cad236ed4d2aabe876345ab0b4234a6573", size = 1294480 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/69/f6db6e4cb2fe2f887dead40b76caa91af4844cb647dd2c7223bb010aa416/beartype-0.19.0-py3-none-any.whl", hash = "sha256:33b2694eda0daf052eb2aff623ed9a8a586703bbf0a90bbc475a83bbf427f699", size = 1039760 },
+]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.12.3"
 source = { registry = "https://pypi.org/simple" }
@@ -695,6 +704,7 @@ doc = [
     { name = "sphobjinv" },
 ]
 test = [
+    { name = "beartype" },
     { name = "imageio" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -708,6 +718,7 @@ test = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "beartype" },
     { name = "furo" },
     { name = "imageio" },
     { name = "jupyter" },
@@ -735,13 +746,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beartype", marker = "extra == 'test'" },
     { name = "equinox", specifier = "<0.11.8" },
     { name = "flax" },
     { name = "furo", marker = "extra == 'doc'" },
     { name = "imageio", marker = "extra == 'test'" },
     { name = "jax" },
     { name = "jaxopt" },
-    { name = "jaxtyping" },
+    { name = "jaxtyping", specifier = ">0.2.31" },
     { name = "matplotlib", marker = "extra == 'test'" },
     { name = "numpy", marker = "extra == 'test'" },
     { name = "opencv-python-headless", marker = "extra == 'test'" },

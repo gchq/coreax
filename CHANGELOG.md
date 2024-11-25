@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/822)
 - Added a unit test for RPCholesky to check whether the coreset has duplicates.
   (https://github.com/gchq/coreax/pull/836)
+- Enabled `jaxtyping` compatible type hinting for `coreax.data.Data`, to indicate the
+  expected type and shape of a `Data` objects `Data.data` array attribute. For example
+  `Bool[Data, "n d"]` indicates `Data.data` should be an `n d` array of bools.
 
 ### Fixed
 
