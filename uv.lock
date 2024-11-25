@@ -237,6 +237,15 @@ wheels = [
 ]
 
 [[package]]
+name = "beartype"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/e1/00515b97afa3993b4a314e4bc168fbde0917fd5845435cb6f16a19770746/beartype-0.19.0.tar.gz", hash = "sha256:de42dfc1ba5c3710fde6c3002e3bd2cad236ed4d2aabe876345ab0b4234a6573", size = 1294480 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/69/f6db6e4cb2fe2f887dead40b76caa91af4844cb647dd2c7223bb010aa416/beartype-0.19.0-py3-none-any.whl", hash = "sha256:33b2694eda0daf052eb2aff623ed9a8a586703bbf0a90bbc475a83bbf427f699", size = 1039760 },
+]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.12.3"
 source = { registry = "https://pypi.org/simple" }
@@ -695,6 +704,7 @@ doc = [
     { name = "sphobjinv" },
 ]
 test = [
+    { name = "beartype" },
     { name = "imageio" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -704,11 +714,11 @@ test = [
     { name = "pytest-rerunfailures" },
     { name = "scipy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scipy", version = "1.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "typeguard" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "beartype" },
     { name = "furo" },
     { name = "imageio" },
     { name = "jupyter" },
@@ -732,11 +742,11 @@ dev = [
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
     { name = "sphobjinv" },
-    { name = "typeguard" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "beartype", marker = "extra == 'test'" },
     { name = "equinox", specifier = "<0.11.8" },
     { name = "flax" },
     { name = "furo", marker = "extra == 'doc'" },
@@ -758,7 +768,6 @@ requires-dist = [
     { name = "sphinxcontrib-bibtex", marker = "extra == 'doc'" },
     { name = "sphobjinv", marker = "extra == 'doc'" },
     { name = "tqdm" },
-    { name = "typeguard", marker = "extra == 'test'" },
     { name = "typing-extensions" },
 ]
 
@@ -4293,19 +4302,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/99/85/92c2667cf221b37648041ce9319427f92fa76cbec634aad844e67e284706/trove_classifiers-2024.10.21.16.tar.gz", hash = "sha256:17cbd055d67d5e9d9de63293a8732943fabc21574e4c7b74edf112b4928cf5f3", size = 16153 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/35/35/5055ab8d215af853d07bbff1a74edf48f91ed308f037380a5ca52dd73348/trove_classifiers-2024.10.21.16-py3-none-any.whl", hash = "sha256:0fb11f1e995a757807a8ef1c03829fbd4998d817319abcef1f33165750f103be", size = 13546 },
-]
-
-[[package]]
-name = "typeguard"
-version = "4.4.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/62/c3/400917dd37d7b8c07e9723f3046818530423e1e759a56a22133362adab00/typeguard-4.4.1.tar.gz", hash = "sha256:0d22a89d00b453b47c49875f42b6601b961757541a2e1e0ef517b6e24213c21b", size = 74959 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/53/9465dedf2d69fe26008e7732cf6e0a385e387c240869e7d54eed49782a3c/typeguard-4.4.1-py3-none-any.whl", hash = "sha256:9324ec07a27ec67fc54a9c063020ca4c0ae6abad5e9f0f9804ca59aee68c6e21", size = 35635 },
 ]
 
 [[package]]

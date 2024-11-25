@@ -26,9 +26,9 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import jaxtyping
 import pytest
+from beartype import beartype
 from jax import Array
 from jaxtyping import Float, Shaped, jaxtyped
-from typeguard import typechecked
 
 import coreax.data
 
@@ -195,15 +195,15 @@ class TestData:
         float_data = float_data_type()
         int_data = int_data_type()
 
-        @jaxtyped(typechecker=typechecked)
+        @jaxtyped(typechecker=beartype)
         def good_shape_check(x: Shaped[coreax.data.Data, "3 1"]):
             del x
 
-        @jaxtyped(typechecker=typechecked)
+        @jaxtyped(typechecker=beartype)
         def float_dtype_check(x: Float[coreax.data.Data, "..."]):
             del x
 
-        @jaxtyped(typechecker=typechecked)
+        @jaxtyped(typechecker=beartype)
         def bad_shape_check(x: Shaped[coreax.data.Data, "3"]):
             del x
 

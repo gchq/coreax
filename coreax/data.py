@@ -106,10 +106,10 @@ class Data(eqx.Module):
         `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
         converted to a `(n, 1)` array.
 
-    Compatible with :mod:`jaxtyping` -- :class:`Data` is interpreted as an array type,
-    whose shape is the expected shape of :attr:`Data.data`.
+    Compatible with :func:`jaxtyping.jaxtyped` -- :class:`Data` is interpreted as an
+    array type, whose shape is the expected shape of :attr:`Data.data`.
 
-    .. example::
+    .. note::
         A `Data` object whose :attr:`Data.data` is expected to be a floating point array
         with shape `a b`, can be type hinted as `x: Float[Data, " a b"] = ...`.
 
