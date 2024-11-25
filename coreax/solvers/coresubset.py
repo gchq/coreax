@@ -891,7 +891,7 @@ class KernelThinning(CoresubsetSolver):
         :param points: The current coreset or dataset being partitioned.
         :param m: The remaining depth of recursion.
         :param original_dataset: The original dataset.
-        :return: Fully partitioned list of :class:`Coresubset` instances.
+        :return: Fully partitioned list of coresets.
         """
         if m == 0:
             return [points]
@@ -930,7 +930,7 @@ class KernelThinning(CoresubsetSolver):
         Partition the given dataset into two subsets.
 
         :param points: The input dataset to be halved.
-        :return: A tuple containing two :class:`Coresubset` instances.
+        :return: A tuple containing two the partitioned coresets.
         """
         n = len(points) // 2
         original_array = points.data
