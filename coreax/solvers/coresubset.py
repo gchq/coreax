@@ -23,6 +23,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
+from jax import lax
 from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import override
 
@@ -882,6 +883,152 @@ class KernelThinning(CoresubsetSolver):
         """
         final_coresets = self.kt_split(dataset)
         return self.kt_refine(self.kt_choose(final_coresets, dataset)), solver_state
+
+    def kt_half_recursive(self, points, m, original_dataset):
+        r"""
+        Recursively halve the original dataset into coresets.
+
+        :param points: The current coreset or dataset being partitioned.
+        :param m: The remaining depth of recursion.
+        :param original_dataset: The original dataset.
+        :return: Fully partitioned list of :class:`Coresubset` instances.
+        """
+        if m == 0:
+            return [points]
+
+        # Recursively call self.kt_half on the coreset (or the dataset)
+        if hasattr(points, "coreset"):
+            subset1, subset2 = self.kt_half(points.coreset)
+        else:
+            subset1, subset2 = self.kt_half(points)
+
+        # Update pre_coreset_data for both subsets to point to the original dataset
+        subset1 = eqx.tree_at(lambda x: x.pre_coreset_data, subset1, original_dataset)
+        subset2 = eqx.tree_at(lambda x: x.pre_coreset_data, subset2, original_dataset)
+
+        # Update indices: map current subset's indices to original dataset
+        if hasattr(points, "nodes") and hasattr(points.nodes, "data"):
+            parent_indices = points.nodes.data  # Parent subset's indices
+            subset1_indices = subset1.nodes.data  # Indices relative to parent
+            subset2_indices = subset2.nodes.data  # Indices relative to parent
+
+            # Map subset indices back to original dataset
+            subset1_indices = parent_indices[subset1_indices]
+            subset2_indices = parent_indices[subset2_indices]
+
+            # Update the subsets with the remapped indices
+            subset1 = eqx.tree_at(lambda x: x.nodes.data, subset1, subset1_indices)
+            subset2 = eqx.tree_at(lambda x: x.nodes.data, subset2, subset2_indices)
+
+        # Recur for both subsets and concatenate results
+        return self.kt_half_recursive(
+            subset1, m - 1, original_dataset
+        ) + self.kt_half_recursive(subset2, m - 1, original_dataset)
+
+    def kt_half(self, points: _Data) -> list[Coresubset[_Data]]:
+        """
+        Partition the given dataset into two subsets.
+
+        :param points: The input dataset to be halved.
+        :return: A tuple containing two :class:`Coresubset` instances.
+        """
+        n = len(points) // 2
+        original_array = points.data
+        arr1 = jnp.zeros(n, dtype=jnp.int32)
+        arr2 = jnp.zeros(n, dtype=jnp.int32)
+
+        bool_arr_1 = jnp.zeros(2 * n)
+        bool_arr_2 = jnp.zeros(n)
+
+        # Initialize parameter
+        param = jnp.float32(0)
+        k = self.sqrt_kernel.compute_elementwise
+
+        def compute_b(x1, x2):
+            """
+            Compute b.
+
+            :param x1: The first data point.
+            :param x2: The second data point.
+            :return: The kernel distance between `x1` and `x2`.
+            """
+            return jnp.sqrt(k(x1, x1) + k(x2, x2) - 2 * k(x1, x2))
+
+        def get_a_and_param(b, sigma):
+            """Compute 'a' and new parameter."""
+            a = jnp.maximum(b * sigma * jnp.sqrt(2 * jnp.log(2 / self.delta)), b**2)
+
+            # Update sigma
+            new_sigma = jnp.sqrt(
+                sigma**2 + jnp.maximum(b**2 * (1 + (b**2 - 2 * a) * sigma**2 / a**2), 0)
+            )
+
+            return a, new_sigma
+
+        def get_alpha(x1, x2, i, bool_arr_1, bool_arr_2):
+            k_vec_x1 = jax.vmap(lambda y: k(y, x1))
+            k_vec_x2 = jax.vmap(lambda y: k(y, x2))
+
+            k_vec_x1_idx = jax.vmap(lambda y: k(original_array[y], x1))
+            k_vec_x2_idx = jax.vmap(lambda y: k(original_array[y], x2))
+            # Apply to original array and sum
+            term1 = jnp.dot(
+                (k_vec_x1(original_array) - k_vec_x2(original_array)), bool_arr_1
+            )
+            term2 = -2 * jnp.dot((k_vec_x1_idx(arr1) - k_vec_x2_idx(arr1)), bool_arr_2)
+            # For bool_arr_1, set 2i and 2i+1 positions to 1
+            bool_arr_1 = bool_arr_1.at[2 * i].set(1)
+            bool_arr_1 = bool_arr_1.at[2 * i + 1].set(1)
+            # For bool_arr_2, set i-th position to 1
+            bool_arr_2 = bool_arr_2.at[i].set(1)
+            # Combine all terms
+            alpha = term1 + term2
+            return alpha, bool_arr_1, bool_arr_2
+
+        def final_function(i, a, alpha, random_key):
+            key1, key2 = jax.random.split(random_key)
+
+            prob = jax.random.uniform(key1)
+            return lax.cond(
+                prob < 1 / 2 * (1 - alpha / a),
+                lambda _: (2 * i, 2 * i + 1),  # first case: val1 = x1, val2 = x2
+                lambda _: (2 * i + 1, 2 * i),  # second case: val1 = x2, val2 = x1
+                None,
+            ), key2
+
+        def body_fun(i, state):
+            arr1, arr2, param, bool_arr_1, bool_arr_2, random_key = state
+            # Step 1: Get values from original array
+            x1 = original_array[i * 2]
+            x2 = original_array[i * 2 + 1]
+            # Step 2: Get a and new parameter
+            a, new_param = get_a_and_param(compute_b(x1, x2), param)
+            # Step 3: Compute alpha
+            alpha, new_bool_arr_1, new_bool_arr_2 = get_alpha(
+                x1, x2, i, bool_arr_1, bool_arr_2
+            )
+            # Step 4: Get final values
+            (val1, val2), new_random_key = final_function(i, a, alpha, random_key)
+            # Step 5: Update arrays
+            new_arr1 = arr1.at[i].set(val1)
+            new_arr2 = arr2.at[i].set(val2)
+            return (
+                new_arr1,
+                new_arr2,
+                new_param,
+                new_bool_arr_1,
+                new_bool_arr_2,
+                new_random_key,
+            )
+
+        (final_arr1, final_arr2, _, _, _, _) = lax.fori_loop(
+            0,  # start index
+            n,  # end index
+            body_fun,  # body function
+            (arr1, arr2, param, bool_arr_1, bool_arr_2, self.random_key),
+        )
+
+        return Coresubset(final_arr1, points), Coresubset(final_arr2, points)
 
     def kt_split(self, points: _Data) -> list[Coresubset[_Data]]:
         r"""

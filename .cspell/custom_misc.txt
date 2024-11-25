@@ -37,6 +37,7 @@ pmatrix
 PMLR
 primaryclass
 PRNG
+prob
 propto
 rcond
 recomb
