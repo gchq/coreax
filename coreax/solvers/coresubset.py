@@ -853,7 +853,7 @@ class KernelThinning(CoresubsetSolver):
     def get_swap_params(
         cls, sigma: Array, b: Array, delta: float
     ) -> tuple[Array, Array]:
-        r"""
+        """
         Compute the swap threshold and update the scaling parameter for swapping.
 
         :param sigma: The current scaling parameter used in the swapping process.
@@ -873,7 +873,7 @@ class KernelThinning(CoresubsetSolver):
     def reduce(
         self, dataset: _Data, solver_state: None = None
     ) -> tuple[Coresubset[_Data], None]:
-        r"""
+        """
         Reduce the input dataset to a single refined coreset.
 
         :param dataset: The original dataset to be reduced.
@@ -885,7 +885,7 @@ class KernelThinning(CoresubsetSolver):
         return self.kt_refine(self.kt_choose(final_coresets, dataset)), solver_state
 
     def kt_half_recursive(self, points, m, original_dataset):
-        r"""
+        """
         Recursively halve the original dataset into coresets.
 
         :param points: The current coreset or dataset being partitioned.
@@ -940,7 +940,7 @@ class KernelThinning(CoresubsetSolver):
         bool_arr_1 = jnp.zeros(2 * n)
         bool_arr_2 = jnp.zeros(n)
 
-        # Initialize parameter
+        # Initialise parameter
         param = jnp.float32(0)
         k = self.sqrt_kernel.compute_elementwise
 
@@ -965,7 +965,26 @@ class KernelThinning(CoresubsetSolver):
 
             return a, new_sigma
 
-        def get_alpha(x1, x2, i, bool_arr_1, bool_arr_2):
+        def get_alpha(
+            x1: jnp.ndarray,
+            x2: jnp.ndarray,
+            i: int,
+            bool_arr_1: jnp.ndarray,
+            bool_arr_2: jnp.ndarray,
+        ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+            """
+            Calculate the value of alpha and update the boolean arrays.
+
+            :param x1: The first data point in the kernel evaluation.
+            :param x2: The second data point in the kernel evaluation.
+            :param i: The current index in the iteration.
+            :param bool_arr_1: A boolean array that tracks indices.
+            :param bool_arr_2: A boolean array that tracks indices.
+            :return: A tuple containing:
+                     - `alpha`: The computed value of alpha.
+                     - `bool_arr_1`: Updated boolean array for the original dataset.
+                     - `bool_arr_2`: Updated boolean array for the subset.
+            """
             k_vec_x1 = jax.vmap(lambda y: k(y, x1))
             k_vec_x2 = jax.vmap(lambda y: k(y, x2))
 
@@ -985,7 +1004,20 @@ class KernelThinning(CoresubsetSolver):
             alpha = term1 + term2
             return alpha, bool_arr_1, bool_arr_2
 
-        def final_function(i, a, alpha, random_key):
+        def final_function(
+            i: int, a: jnp.ndarray, alpha: jnp.ndarray, random_key: KeyArrayLike
+        ) -> tuple[tuple[int, int], KeyArrayLike]:
+            """
+            Perform a probabilistic swap based on the given parameters.
+
+            :param i: The current index in the dataset.
+            :param a: The swap threshold computed based on kernel parameters.
+            :param alpha: The calculated value for probabilistic swapping.
+            :param random_key: A random key for generating random numbers.
+            :return: A tuple containing:
+                     - A tuple of indices indicating the swapped values.
+                     - The updated random key.
+            """
             key1, key2 = jax.random.split(random_key)
 
             prob = jax.random.uniform(key1)
@@ -996,7 +1028,37 @@ class KernelThinning(CoresubsetSolver):
                 None,
             ), key2
 
-        def body_fun(i, state):
+        def body_fun(
+            i: int,
+            state: tuple[
+                jnp.ndarray,
+                jnp.ndarray,
+                jnp.ndarray,
+                jnp.ndarray,
+                jnp.ndarray,
+                KeyArrayLike,
+            ],
+        ) -> tuple[
+            jnp.ndarray,
+            jnp.ndarray,
+            jnp.ndarray,
+            jnp.ndarray,
+            jnp.ndarray,
+            KeyArrayLike,
+        ]:
+            """
+            Perform one iteration of the halving process.
+
+            :param i: The current iteration index.
+            :param state: A tuple containing:
+                          - arr1: The first array of indices.
+                          - arr2: The second array of indices.
+                          - param: The scaling parameter.
+                          - bool_arr_1: Boolean array indicating selected indices.
+                          - bool_arr_2: Boolean array indicating selected indices.
+                          - random_key: A JAX random key.
+            :return: The updated state tuple after processing the current iteration.
+            """
             arr1, arr2, param, bool_arr_1, bool_arr_2, random_key = state
             # Step 1: Get values from original array
             x1 = original_array[i * 2]
@@ -1031,7 +1093,7 @@ class KernelThinning(CoresubsetSolver):
         return Coresubset(final_arr1, points), Coresubset(final_arr2, points)
 
     def kt_split(self, points: _Data) -> list[Coresubset[_Data]]:
-        r"""
+        """
         Perform hierarchical splitting of the input dataset into multiple coresets.
 
         This method splits the dataset recursively halving at each level. At each step,
@@ -1049,7 +1111,7 @@ class KernelThinning(CoresubsetSolver):
             for k in range(1, 2 ** (j - 1) + 1)
         }
 
-        # Step 1: Initialize with pairs of indices in the lowest level coreset S(0,1)
+        # Step 1: Initialise with pairs of indices in the lowest level coreset S(0,1)
         for i in range(1, n // 2 + 1):
             idx1, idx2 = 2 * i - 2, 2 * i - 1
             coresets[(0, 1)].extend([idx1, idx2])
@@ -1122,7 +1184,7 @@ class KernelThinning(CoresubsetSolver):
     def kt_choose(
         self, candidate_coresets: list[Coresubset[_Data]], points: _Data
     ) -> Coresubset[_Data]:
-        r"""
+        """
         Select the best coreset from a list of candidate coresets based on MMD.
 
         :param candidate_coresets: A list of candidate coresets to be evaluated.
@@ -1138,7 +1200,7 @@ class KernelThinning(CoresubsetSolver):
         return best_coreset
 
     def kt_refine(self, candidate_coreset: Coresubset[_Data]) -> Coresubset[_Data]:
-        r"""
+        """
         Refine the selected candidate coreset.
 
         It is not yet implemented and serves as a placeholder for future implementation.
