@@ -1007,6 +1007,36 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             solver_state.gramian_row_mean, expected_gramian_row_mean
         )
 
+    def test_kernel_herding_refine_analytic(self):
+        """
+        Test whether `KernelHerding.refine` works correctly on an existing coreset.
+
+        The test case has been verified independently to minimise MMD at every
+        iteration.
+        """
+        # Small testing dataset with a fixed seed
+        np.random.seed(1)
+        x = np.random.uniform(size=(100, 2))
+        data = Data(x)
+
+        # Initialise the solver using a simple kernel
+        kernel = PCIMQKernel()
+        herding_solver = KernelHerding(coreset_size=10, kernel=kernel, unique=True)
+
+        # Run reduce and then refine the output
+        herding_coreset, herding_state = herding_solver.reduce(data)
+        herding_coreset_ref, _ = herding_solver.refine(herding_coreset, herding_state)
+
+        # Check output matches expected
+        expected_reduce_indices = jnp.array([8, 86, 73, 31, 89, 97, 55, 63, 76, 45])
+        np.testing.assert_array_equal(
+            herding_coreset.unweighted_indices, expected_reduce_indices
+        )
+        expected_refine_indices = jnp.array([17, 86, 57, 68, 1, 97, 9, 63, 76, 14])
+        np.testing.assert_array_equal(
+            herding_coreset_ref.unweighted_indices, expected_refine_indices
+        )
+
 
 class TestRandomSample(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
