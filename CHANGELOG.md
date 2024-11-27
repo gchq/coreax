@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
 - CaratheodoryRecombination now generates correct coresets on GPU machines
-  (https://github.com/gchq/coreax/issues/853)
+  (https://github.com/gchq/coreax/pull/874)
 
 ### Changed
 
