@@ -18,11 +18,9 @@ Benchmark time taken to generate coresets from a large dataset.
 The benchmarking process follows these steps:
 1. Start with the MNIST dataset, which consists of 60_000 training images and 10_000
    test images.
-2. Use a simple MLP neural network with a single hidden layer of 64 nodes to classify
-   the images. The images are flattened into vectors.
-3. To reduce dimensionality, apply PCA to project the 28x28 images into 16 components
-   before applying coreset algorithms.
-4. Generate coresets of different sizes using various coreset algorithms and record the
+2. To reduce dimensionality, apply density preserving UMAP to project the 28x28 60_000
+   images into 16 components before applying coreset algorithms.
+3. Generate coresets of different sizes using various coreset algorithms and record the
    time taken.
 
 The benchmark is run on amazon g4dn.12xlarge instance with 4 nvidia t4 tensor core
@@ -36,8 +34,8 @@ import time
 import equinox as eqx
 import jax
 from mnist_benchmark import (
+    density_preserving_umap,
     initialise_solvers,
-    pca,
     prepare_datasets,
 )
 
@@ -89,13 +87,13 @@ def main() -> None:
     Perform the benchmark for multiple solvers, coreset sizes, and random seeds.
 
     The function follows these steps:
-    1. Prepare and load the MNIST datasets (training and test).
-    2. Perform dimensionality reduction on the training data using PCA.
+    1. Prepare and load the MNIST dataset (training set).
+    2. Perform dimensionality reduction on the training data using UMAP.
     3. Initialise solvers for data reduction.
     4. For each solver and coreset size, reduce the dataset and store the time taken.
     """
     train_data_jax, _, _, _ = prepare_datasets()
-    train_data_pca = Data(pca(train_data_jax))
+    train_data_umap = Data(density_preserving_umap(train_data_jax))
 
     coreset_times = {}
 
@@ -103,7 +101,7 @@ def main() -> None:
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solvers = initialise_solvers(train_data_pca, key)
+        solvers = initialise_solvers(train_data_umap, key)
         for getter in solvers:
             for size in [25, 50, 100, 500, 1_000]:
                 solver = getter(size)
@@ -113,7 +111,7 @@ def main() -> None:
                     else solver.__class__.__name__
                 )
                 start_time = time.perf_counter()
-                _, _ = eqx.filter_jit(solver.reduce)(train_data_pca)
+                _, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
                 time_taken = time.perf_counter() - start_time
 
                 # Ensure that there is a dictionary for this solver
