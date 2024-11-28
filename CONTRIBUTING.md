@@ -316,7 +316,8 @@ maintainers decide the codebase is ready for another release:
      the relevant versions.
    - Replace all issue links in the new version's sections with links to the PRs that
      closed them.
-6. Update the version number in `coreax/__init.py__`.
+6. Update the version number in `coreax/__init.py__` and
+   `.github/ISSUE_TEMPLATE/bug_report.yml`.
 7. Create and review a pull request.
 8. Once approved, merge the release branch into `main` as soon as possible. Do _not_
    delete the release branch when you merge the PR - only delete it once the full
