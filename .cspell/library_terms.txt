@@ -24,6 +24,7 @@ cmap
 color
 Concretization
 cuda
+densmap
 dispname
 dollarmath
 dtype
@@ -63,6 +64,7 @@ leggauss
 linalg
 linkcheck
 literalinclude
+llvmlite
 logpdf
 lstsq
 mathbb
@@ -107,6 +109,7 @@ pyqt
 pyright
 pyroma
 pytest
+pytorch
 pytree
 pytrees
 quickstart
@@ -129,11 +132,14 @@ tensordot
 texttt
 toctree
 tomli
+torch
+torchvision
 tqdm
 triu
 ttest
 tuplegetter
 typehints
+umap
 undoc
 unflatten
 unsrt
