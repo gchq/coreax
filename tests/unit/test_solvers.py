@@ -1015,8 +1015,9 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         iteration.
         """
         # Small testing dataset with a fixed seed
-        np.random.seed(1)
-        x = np.random.uniform(size=(100, 2))
+        generator = np.random.default_rng(97)
+        x = generator.uniform(size=(100, 2))
+        jax.debug.print(f"{x}")
         data = Data(x)
 
         # Initialise the solver using a simple kernel
@@ -1028,11 +1029,11 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         herding_coreset_ref, _ = herding_solver.refine(herding_coreset, herding_state)
 
         # Check output matches expected
-        expected_reduce_indices = jnp.array([8, 86, 73, 31, 89, 97, 55, 63, 76, 45])
+        expected_reduce_indices = jnp.array([94, 62, 54, 15, 85, 72, 1, 31, 32, 86])
         np.testing.assert_array_equal(
             herding_coreset.unweighted_indices, expected_reduce_indices
         )
-        expected_refine_indices = jnp.array([17, 86, 57, 68, 1, 97, 9, 63, 76, 14])
+        expected_refine_indices = jnp.array([97, 73, 10, 15, 85, 40, 1, 70, 32, 86])
         np.testing.assert_array_equal(
             herding_coreset_ref.unweighted_indices, expected_refine_indices
         )
