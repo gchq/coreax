@@ -20,7 +20,7 @@ The benchmarking process follows these steps:
    test images.
 2. Use a simple MLP neural network with a single hidden layer of 64 nodes to classify
    the images. The images are flattened into vectors.
-3. To reduce dimensionality, apply PCA to project the 28x28 images into 16 components
+3. To reduce dimensionality, apply UMAP to project the 28x28 images into 16 components
    before applying coreset algorithms.
 4. Generate coresets of different sizes using various coreset algorithms.
    - For Kernel Herding and Stein Thinning, use MapReduce to handle larger-scale data.
@@ -589,7 +589,7 @@ def main() -> None:
 
     The function follows these steps:
     1. Prepare and load the MNIST datasets (training and test).
-    2. Perform dimensionality reduction on the training data using PCA.
+    2. Perform dimensionality reduction on the training data using UMAP.
     3. Initialise solvers for data reduction.
     4. For each solver and coreset size, reduce the dataset and train the model
        on the reduced set.
