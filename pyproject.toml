@@ -39,6 +39,7 @@ dependencies = [
     "torchvision",
     "llvmlite>=0.40.0",
     "umap-learn",
+    "opencv-python",
 ]
 
 [project.optional-dependencies]
