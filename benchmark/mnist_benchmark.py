@@ -582,6 +582,25 @@ def save_results(results: dict) -> None:
     print(f"Data has been saved to {file_name}")
 
 
+def get_solver_name(_solver: Callable) -> str:
+    """
+    Get the name of the solver.
+
+    This function extracts and returns the name of the solver class.
+    If the `_solver` is an instance of the `MapReduce` class, it retrieves the
+    name of the `base_solver` class instead.
+
+    :param _solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
+    :return: The name of the solver class.
+    """
+    solver_name = (
+        _solver.base_solver.__class__.__name__
+        if _solver.__class__.__name__ == "MapReduce"
+        else _solver.__class__.__name__
+    )
+    return solver_name
+
+
 # pylint: disable=too-many-locals
 def main() -> None:
     """
@@ -620,11 +639,7 @@ def main() -> None:
         for getter in solvers:
             for size in [25, 50, 100, 500, 1_000, 5_000]:
                 solver = getter(size)
-                solver_name = (
-                    solver.base_solver.__class__.__name__
-                    if solver.__class__.__name__ == "MapReduce"
-                    else solver.__class__.__name__
-                )
+                solver_name = get_solver_name(solver)
                 start_time = time.perf_counter()
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 

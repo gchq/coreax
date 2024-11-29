@@ -36,7 +36,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax import random
-from mnist_benchmark import initialise_solvers
+from mnist_benchmark import get_solver_name, initialise_solvers
 
 from coreax import Data
 
@@ -112,11 +112,7 @@ def benchmark_coreset_algorithms(
 
     for get_solver in solvers:
         solver = get_solver(coreset_size)
-        solver_name = (
-            solver.base_solver.__class__.__name__
-            if solver.__class__.__name__ == "MapReduce"
-            else solver.__class__.__name__
-        )
+        solver_name = get_solver_name(solver)
         start_time = time.perf_counter()
         coreset, _ = eqx.filter_jit(solver.reduce)(data)
         duration = time.perf_counter() - start_time
