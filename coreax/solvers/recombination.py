@@ -210,8 +210,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
             :param state: Elimination state information
             :return: Boolean indicating if to continue/exit the elimination loop.
             """
-            *_, basis_index = state
-            return basis_index < null_space_rank
+            return state.iteration < null_space_rank
 
         def _eliminate(state: _EliminationState) -> _EliminationState:
             """
@@ -257,11 +256,11 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
                 axes=0,
             )
             updated_null_space_basis = null_space_basis - null_space_basis_update
-            updated_null_space_basis = updated_null_space_basis.at[basis_index].set(0)
+            updated_null_space_basis = updated_null_space_basis.at[
+                :, elimination_index
+            ].set(0)
             return _EliminationState(
-                updated_weights,
-                updated_null_space_basis,
-                basis_index + 1,
+                updated_weights, updated_null_space_basis, basis_index + 1
             )
 
         in_state = _EliminationState(safe_weights, largest_null_space_basis, 0)
