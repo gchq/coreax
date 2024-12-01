@@ -20,7 +20,7 @@ docutils==0.21.2
 domdf-python-tools==3.9.0
 equinox==0.11.7
 etils==1.5.2 ; python_full_version < '3.10'
-etils==1.10.0 ; python_full_version >= '3.10'
+etils==1.11.0 ; python_full_version >= '3.10'
 filelock==3.16.1
 flax==0.8.5 ; python_full_version < '3.10'
 flax==0.10.2 ; python_full_version >= '3.10'
@@ -47,8 +47,8 @@ llvmlite==0.43.0
 markdown-it-py==3.0.0
 markupsafe==3.0.2
 mdurl==0.1.2
-ml-dtypes==0.4.1 ; (python_full_version >= '3.13' and platform_system == 'Darwin') or (python_full_version >= '3.13' and platform_machine == 'aarch64' and platform_system == 'Linux')
-ml-dtypes==0.5.0 ; python_full_version < '3.13' or (platform_machine != 'aarch64' and platform_system != 'Darwin') or (platform_system != 'Darwin' and platform_system != 'Linux')
+ml-dtypes==0.4.1 ; python_full_version >= '3.13' and platform_system != 'Darwin'
+ml-dtypes==0.5.0 ; python_full_version < '3.13' or platform_system == 'Darwin'
 more-itertools==10.5.0
 mpmath==1.3.0
 msgpack==1.1.0
@@ -56,10 +56,10 @@ natsort==8.4.0
 nest-asyncio==1.6.0
 networkx==3.2.1 ; python_full_version < '3.10'
 networkx==3.4.2 ; python_full_version >= '3.10'
-numba==0.46.0 ; (python_full_version >= '3.13' and platform_machine != 'aarch64' and platform_system != 'Darwin') or (python_full_version >= '3.13' and platform_system != 'Darwin' and platform_system != 'Linux')
-numba==0.60.0 ; python_full_version < '3.13' or platform_system == 'Darwin' or (platform_machine == 'aarch64' and platform_system == 'Linux')
-numpy==2.0.2 ; python_full_version < '3.13' or platform_system == 'Darwin' or (platform_machine == 'aarch64' and platform_system == 'Linux')
-numpy==2.1.3 ; (python_full_version >= '3.13' and platform_machine != 'aarch64' and platform_system != 'Darwin') or (python_full_version >= '3.13' and platform_system != 'Darwin' and platform_system != 'Linux')
+numba==0.46.0 ; python_full_version < '3.13' or platform_system == 'Darwin'
+numba==0.60.0 ; python_full_version >= '3.13' and platform_system != 'Darwin'
+numpy==2.0.2 ; python_full_version < '3.10' or (python_full_version >= '3.13' and platform_system != 'Darwin')
+numpy==2.1.3 ; (python_full_version >= '3.10' and python_full_version < '3.13') or (python_full_version >= '3.13' and platform_system == 'Darwin')
 nvidia-cublas-cu12==12.4.5.8 ; platform_machine == 'x86_64' and platform_system == 'Linux'
 nvidia-cuda-cupti-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
 nvidia-cuda-nvrtc-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
@@ -79,11 +79,11 @@ orbax-checkpoint==0.10.1 ; python_full_version >= '3.10'
 packaging==24.2
 pillow==11.0.0
 platformdirs==4.3.6
-protobuf==5.28.3
+protobuf==5.29.0
 pybtex==0.24.0
 pybtex-docutils==1.0.3
 pygments==2.18.0
-pynndescent==0.5.13 ; python_full_version < '3.13' or platform_system == 'Darwin' or (platform_machine == 'aarch64' and platform_system == 'Linux')
+pynndescent==0.5.13 ; python_full_version >= '3.13' and platform_system != 'Darwin'
 pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
@@ -120,17 +120,17 @@ sphobjinv==2.3.1.1
 standard-imghdr==3.10.14 ; python_full_version >= '3.13'
 sympy==1.13.1
 tabulate==0.9.0
-tensorstore==0.1.68
+tensorstore==0.1.69
 threadpoolctl==3.5.0
-tomli==2.1.0 ; python_full_version < '3.11'
+tomli==2.2.1 ; python_full_version < '3.11'
 toolz==1.0.0
 torch==2.5.1
 torchvision==0.20.1
-tqdm==4.67.0
+tqdm==4.67.1
 triton==3.1.0 ; python_full_version < '3.13' and platform_machine == 'x86_64' and platform_system == 'Linux'
 typing-extensions==4.12.2
-umap-learn==0.4.6 ; (python_full_version >= '3.13' and platform_machine != 'aarch64' and platform_system != 'Darwin') or (python_full_version >= '3.13' and platform_system != 'Darwin' and platform_system != 'Linux')
-umap-learn==0.5.7 ; python_full_version < '3.13' or platform_system == 'Darwin' or (platform_machine == 'aarch64' and platform_system == 'Linux')
+umap-learn==0.4.6 ; python_full_version < '3.13' or platform_system == 'Darwin'
+umap-learn==0.5.7 ; python_full_version >= '3.13' and platform_system != 'Darwin'
 urllib3==2.2.3
 webencodings==0.5.1
 zipp==3.21.0
