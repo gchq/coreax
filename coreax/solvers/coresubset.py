@@ -1090,7 +1090,7 @@ class KernelThinning(CoresubsetSolver):
             (arr1, arr2, param, bool_arr_1, bool_arr_2, self.random_key),
         )
 
-        return Coresubset(final_arr1, points), Coresubset(final_arr2, points)
+        return [Coresubset(final_arr1, points), Coresubset(final_arr2, points)]
 
     def kt_split(self, points: _Data) -> list[Coresubset[_Data]]:
         """
