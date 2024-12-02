@@ -820,7 +820,7 @@ class GreedyKernelPoints(
         )
 
 
-class KernelThinning(CoresubsetSolver):
+class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     r"""
     Kernel Thinning - a hierarchical coreset construction solver.
 
@@ -848,6 +848,16 @@ class KernelThinning(CoresubsetSolver):
     m: int
     delta: float
     random_key: KeyArrayLike
+
+    def __post_init__(self):
+        """
+        Initialise square-root kernel.
+
+        If square-root kernel is not provided, check if square-root kernel of the given
+        kernel is implemented and set that as the square root, otherwise raise an error.
+        """
+        if not hasattr(self, "sqrt_kernel"):
+            self.sqrt_kernel = self.kernel
 
     @classmethod
     def get_swap_params(
