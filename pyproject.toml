@@ -35,6 +35,10 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "typing-extensions",
+    "torch",
+    "torchvision",
+    "llvmlite>=0.40.0",
+    "umap-learn",
 ]
 
 [project.optional-dependencies]

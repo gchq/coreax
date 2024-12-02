@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Contributor-facing features:
-  - Automated testing of the built package before release (https://github.com/gchq/coreax/issues/854)
+  - Automated testing of the built package before release
+    (https://github.com/gchq/coreax/issues/854)
 - Added an analytical test for SteinThinning, and associated documentation in
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
+- Added benchmarking scripts:
+  - MNIST (train a classifier on coreset of training data, test on testing data)
+    (https://github.com/gchq/coreax/pull/802)
+  - Blobs (generate synthetic data using `sklearn.datasets.make_blobs` and compare MMD
+    and KSD metrics) (https://github.com/gchq/coreax/pull/802)
 
 
 ### Fixed
 
--
+- `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
 
 ### Changed
 

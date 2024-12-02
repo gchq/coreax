@@ -82,12 +82,9 @@ class MMD(Metric[Data]):
 
     :param kernel: Kernel object with compute method defined mapping
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
-    :param precision_threshold: Threshold above which negative values of the squared MMD
-        are rounded to zero (accommodates precision loss)
     """
 
     kernel: coreax.kernels.ScalarValuedKernel
-    precision_threshold: float = 1e-12
 
     def compute(
         self,
@@ -105,6 +102,13 @@ class MMD(Metric[Data]):
             \text{MMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
             \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
             - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
+
+        .. warning::
+            Computing :math:`\text{MMD}^2` may yield small negative values due to
+            numerical imprecision when using JAX single precision (float32). These
+            values are clamped to non-negative, indicating the true MMD is likely near
+            zero. For higher precision, enable double precision using the
+            `jax_enable_x64` flag.
 
         :param reference_data: An instance of the class :class:`coreax.data.Data`,
             containing an :math:`n \times d` array of data
@@ -132,9 +136,9 @@ class MMD(Metric[Data]):
         kernel_xx_mean = self.kernel.compute_mean(x, x, block_size=bs_xx, unroll=u_xx)
         kernel_yy_mean = self.kernel.compute_mean(y, y, block_size=bs_yy, unroll=u_yy)
         kernel_xy_mean = self.kernel.compute_mean(x, y, block_size=bs_xy, unroll=u_xy)
-        squared_mmd_threshold_applied = coreax.util.apply_negative_precision_threshold(
+        squared_mmd_threshold_applied = jnp.maximum(
             kernel_xx_mean + kernel_yy_mean - 2 * kernel_xy_mean,
-            self.precision_threshold,
+            0.0,
         )
         return jnp.sqrt(squared_mmd_threshold_applied)
 
