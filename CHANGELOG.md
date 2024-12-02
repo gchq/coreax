@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (https://github.com/gchq/coreax/issues/854)
 - Added an analytical test for SteinThinning, and associated documentation in
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
+- Added an analytical test for `KernelHerding.refine` on an existing coreset. (https://github.com/gchq/coreax/issues/870)
 - Added benchmarking scripts:
   - MNIST (train a classifier on coreset of training data, test on testing data)
     (https://github.com/gchq/coreax/pull/802)
@@ -24,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
+- Corrected an implementation error in `coreax.solvers.CaratheodoryRecombination`
+  which caused numerical instability when using either `CaratheodoryRecombination`
+  or `TreeRecombination` on GPU machines. (https://github.com/gchq/coreax/pull/874, see
+  also https://github.com/gchq/coreax/issues/852 and
+  https://github.com/gchq/coreax/issues/853)
+- `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
 
 ### Changed
 
