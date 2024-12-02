@@ -601,8 +601,12 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         column_sum_padded = column_sum_blocks.reshape(num_rows_padded, -1).sum(axis=1)
         return column_sum_padded[:unpadded_len_x]
 
-    def get_sqrt_kernel(self, *args):
-        """Return the square root kernel for the given kernel."""
+    def get_sqrt_kernel(self, dim: int):
+        """
+        Return the square root kernel for the given kernel.
+
+        :param dim: Dimension of the data.
+        """
         raise NotImplementedError(
             f"{self.__class__.__name__} does not currently have a square root kernel "
             f"implemented."
