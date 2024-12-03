@@ -293,7 +293,6 @@ class SquaredExponentialKernel(ScalarValuedKernel):
         d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
 
-    @override
     def get_sqrt_kernel(self, dim: int) -> "SquaredExponentialKernel":
         r"""
         Return the square root kernel for this kernel.
