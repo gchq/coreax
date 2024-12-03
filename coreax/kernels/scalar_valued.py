@@ -449,7 +449,7 @@ class MaternKernel(ScalarValuedKernel):
     Given :math:`\lambda =` ``length_scale`` and :math:`\rho =` ``output_scale``, the
     Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
     :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
-    :math:`p`=` ``degree`` `:`math:`\in\mathbb{N}`, is defined as
+    :math:`p=` ``degree`` :math:`\in\mathbb{N}`, is defined as
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
 
     .. math::
