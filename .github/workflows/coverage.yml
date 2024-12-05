@@ -119,10 +119,10 @@ jobs:
               export sha=$(echo "$response" | grep -oP '"sha": "\K[^"]*')
               gh api --method PUT \
                 /repos/:owner/:repo/contents/${{ env.badge_path }} \
-                --f message="$message" \
-                --f content="$content" \
-                --f branch=${{ env.update_branch }} \
-                --f sha="$sha"
+                -f message="$message" \
+                -f content="$content" \
+                -f branch=${{ env.update_branch }} \
+                -f sha="$sha"
               if [ $? -eq 0 ]; then
                 echo "Coverage badge updated."
                 exit 0
@@ -134,7 +134,7 @@ jobs:
           # Else: create new file on remote
           gh api --method PUT \
             /repos/:owner/:repo/contents/${{ env.badge_path }} \
-            --f message="$message" \
-            --f content="$content" \
-            --f branch=${{ env.update_branch }}
+            -f message="$message" \
+            -f content="$content" \
+            -f branch=${{ env.update_branch }}
           echo "Coverage badge created."
