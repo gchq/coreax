@@ -13,9 +13,6 @@ jobs:
   performance-check:
     name: Check performance
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      gist_id: 3707a122b3697109068a3e55487de4fc
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
@@ -50,16 +47,23 @@ jobs:
         run: uv run tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
       - name: Download historic performance data
         if: github.event_name == 'pull_request'
-        run: gh gist clone ${{ env.gist_id }} $RUNNER_TEMP/historic
+        uses: actions/checkout@v4
+        with:
+          repository: gchq/coreax-metadata
+          path: tmp_coreax-metadata
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
+        env:
+          HISTORIC: tmp_coreax-metadata/performance
         run: |
           # save the commit subject to a file in case it contains any shell
           # special characters
           git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
+          # Create directory if it doesn't exist yet
+          mkdir -p $HISTORIC
           uv run tests/performance/compare.py \
             $RUNNER_TEMP/performance.json \
-            $RUNNER_TEMP/historic \
+            $HISTORIC \
             --commit-short-hash $(git log -1 --pretty=%h) \
             --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
             > $RUNNER_TEMP/comment.md
@@ -77,14 +81,26 @@ jobs:
               repo: context.repo.repo,
               body: fs.readFileSync(`${RUNNER_TEMP}/comment.md`, "utf8")
             })
+      - name: Generate a token for saving performance data
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
+          repositories: coreax-metadata
       - name: Save performance data to Gist
         if: github.event_name == 'push'
         env:
           # this is the only step that should actually need write permissions
-          GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          OUT_NAME="performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          gh gist edit ${{ env.gist_id }} -a $OUT_NAME $RUNNER_TEMP/performance.json
+          export message="chore: update performance for $GITHUB_SHA"
+          export content=$( base64 -i $RUNNER_TEMP/performance.json )
+          OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          gh api --method PUT \
+            /repos/:owner/coreax-metadata/contents/$OUT_NAME \
+            -f message="$message" \
+            -f content="$content"
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()

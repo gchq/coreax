@@ -56,17 +56,24 @@ jobs:
   coverage-badge:
     name: Update coverage badge
     if: github.event_name == 'push'
-    # Push coverage badge config to a GitHub Gist. The Gist can currently only be hosted
-    # by a user rather than an organisation. A PAT with write Gist permissions needs to
-    # be saved as a secret of this repo. The PAT and Gist ID need updating if the host
-    # user changes.
+    # Push coverage badge config to coreax-metadata repo.
     needs:
       - coverage
     env:
       percentage: ${{ needs.coverage.outputs.percentage }}
-      GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
     runs-on: ubuntu-latest
     steps:
+      - name: Generate a GitHub token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
+          repositories: coreax-metadata
+      - name: Check out metadata repo
+        uses: actions/checkout@v4
+        with:
+          repository: gchq/coreax-metadata
       - name: Choose badge colour
         id: design
         run: |
@@ -87,9 +94,46 @@ jobs:
             echo "  \"message\": \"${{ env.percentage }}%\","
             echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
             echo "}"
-          } > badge.json
-      - name: Write Gist
+          } > $RUNNER_TEMP/badge.json
+      - name: Commit badge (with signature)
+        # If another workflow is running in parallel, a race condition may occur. Try to
+        # push the updated badge three times before failing.
         env:
-          gist_id: 51dd332be75961a7dc903c67718028e1
-          out_name: coreax_coverage.json
-        run: gh gist edit ${{ env.gist_id }} -a ${{ env.out_name }} badge.json
+          BADGE_PATH: coverage/coreax_coverage.json
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore: update coverage for $GITHUB_SHA"
+          export content=$( base64 -i $RUNNER_TEMP/badge.json )
+          # Create new file if does not exist yet (or did not exist at checkout)
+          if [ ! -f $BADGE_PATH ]; then
+            gh api --method PUT repos/:owner/coreax-metadata/contents/$BADGE_PATH \
+              -f message="$message" \
+              -f content="$content"
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge created."
+              exit 0
+            fi
+          fi
+          # Update existing file, trying 3 times
+          for i in {1..3}; do
+            # Check whether file has changed
+            diff $BADGE_PATH $RUNNER_TEMP/badge.json
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge unchanged."
+              exit 0
+            fi
+            # Changed: replace existing file, trying 3 times
+            export sha=$( git rev-parse main:$BADGE_PATH )
+            gh api --method PUT $BADGE_PATH \
+              -f message="$message" \
+              -f content="$content" \
+              -f sha="$sha"
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge updated."
+              exit 0
+            fi
+            # Failed: remote has probably updated, so pull latest again
+            git pull
+          done
+          echo "Failed to update coverage badge after 3 attempts."
+          exit 1
