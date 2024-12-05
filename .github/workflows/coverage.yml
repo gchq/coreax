@@ -56,15 +56,11 @@ jobs:
   coverage-badge:
     name: Update coverage badge
     if: github.event_name == 'push'
-    # Push coverage badge config to a GitHub Gist. The Gist can currently only be hosted
-    # by a user rather than an organisation. A PAT with write Gist permissions needs to
-    # be saved as a secret of this repo. The PAT and Gist ID need updating if the host
-    # user changes.
+    # Push coverage badge config to coreax-metadata repo.
     needs:
       - coverage
     env:
       percentage: ${{ needs.coverage.outputs.percentage }}
-      GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
     runs-on: ubuntu-latest
     steps:
       - name: Choose badge colour
@@ -88,8 +84,56 @@ jobs:
             echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
             echo "}"
           } > badge.json
-      - name: Write Gist
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
+      - name: Commit badge (with signature)
+        # If another workflow is running in parallel, a race condition may occur. Try to
+        # push the updated badge three times before failing.
         env:
-          gist_id: 51dd332be75961a7dc903c67718028e1
-          out_name: coreax_coverage.json
-        run: gh gist edit ${{ env.gist_id }} -a ${{ env.out_name }} badge.json
+          badge_path: coverage/coreax_coverage.json
+          meta_repo: coreax-metadata
+          update_branch: main
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore: update coverage for PR ${{ github.event.number }}"
+          export content=$( base64 -i badge.json )
+          # Try to fetch existing file
+          response=$(gh api -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/:owner/${{ env.meta_repo }}/contents/${{ env.badge_path }})
+          if [ $? -eq 0 ]; then
+            # File found
+            # Check whether file has changed
+            export old=$( echo $response | grep -oP '"content": "\K[^"]*' )
+            if [ $content == $old ]; then
+              echo "Coverage badge unchanged."
+              exit 0
+            fi
+            # Changed: replace existing file, trying 3 times
+            for i in {1..3}; do
+              export sha=$(echo "$response" | grep -oP '"sha": "\K[^"]*')
+              gh api --method PUT \
+                /repos/:owner/${{ env.meta_repo }}/contents/${{ env.badge_path }} \
+                --f message="$message" \
+                --f content="$content" \
+                --f branch=${{ env.update_branch }} \
+                --f sha="$sha"
+              if [ $? -eq 0 ]; then
+                echo "Coverage badge updated."
+                exit 0
+              fi
+            done
+            echo "Failed to update coverage badge after 3 attempts."
+            exit 1
+          fi
+          # Else: create new file on remote
+          gh api --method PUT \
+            /repos/:owner/${{ env.meta_repo }}/contents/${{ env.badge_path }} \
+            --f message="$message" \
+            --f content="$content" \
+            --f branch=${{ env.update_branch }}
+          echo "Coverage badge created."
