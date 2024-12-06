@@ -57,6 +57,8 @@ jobs:
           # save the commit subject to a file in case it contains any shell
           # special characters
           git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
+          # Create directory if it doesn't exist yet
+          mkdir -p $RUNNER_TEMP/historic/performance
           uv run tests/performance/compare.py \
             $RUNNER_TEMP/performance.json \
             $RUNNER_TEMP/historic/performance \
