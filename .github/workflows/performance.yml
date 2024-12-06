@@ -50,11 +50,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
-          path: ${{ env.RUNNER_TEMP }}/coreax-metadata
+          path: tmp_coreax-metadata
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
         env:
-          HISTORIC: ${{ env.RUNNER_TEMP }}/coreax-metadata/performance
+          HISTORIC: tmp_coreax-metadata/performance
         run: |
           # save the commit subject to a file in case it contains any shell
           # special characters
@@ -98,11 +98,12 @@ jobs:
           export content=$( base64 -i $RUNNER_TEMP/performance.json )
           # OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
           OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          cd $RUNNER_TEMP/coreax-metadata
+          cd tmp_coreax-metadata
           mv $RUNNER_TEMP/performance.json $OUT_NAME
           git add $OUT_NAME
           git commit -m $message
           git push
+          cd ..
           # gh api --method PUT \
           #   /repos/:owner/:repo/contents/$OUT_NAME \
           #   -f message="$message" \
