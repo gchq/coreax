@@ -97,12 +97,6 @@ jobs:
           export message="chore: update performance for $GITHUB_SHA"
           export content=$( base64 -i $RUNNER_TEMP/performance.json )
           OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          # cd tmp_coreax-metadata
-          # mv $RUNNER_TEMP/performance.json $OUT_NAME
-          # git add $OUT_NAME
-          # git commit -m "$message"
-          # git push
-          # cd ..
           gh api --method PUT \
             /repos/gchq/coreax-metadata/contents/$OUT_NAME \
             -f message="$message" \
