@@ -99,6 +99,7 @@ jobs:
             /repos/:owner/:repo/contents/$OUT_NAME \
             -f message="$message" \
             -f content="$content"
+          echo $?
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
