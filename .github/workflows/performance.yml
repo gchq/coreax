@@ -98,7 +98,7 @@ jobs:
           export content=$( base64 -i $RUNNER_TEMP/performance.json )
           OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
           gh api --method PUT \
-            /repos/gchq/coreax-metadata/contents/$OUT_NAME \
+            /repos/:owner/coreax-metadata/contents/$OUT_NAME \
             -f message="$message" \
             -f content="$content"
           echo $?
