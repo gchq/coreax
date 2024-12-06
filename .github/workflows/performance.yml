@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: coreax
       - name: Set up base Python
         uses: actions/setup-python@v5
         with:
@@ -52,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
-          path: coreax-metadata
+          path: ../coreax-metadata
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
         run: |
