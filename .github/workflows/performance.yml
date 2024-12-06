@@ -50,7 +50,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
-          path: $RUNNER_TEMP/historic
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
         run: |
@@ -58,10 +57,11 @@ jobs:
           # special characters
           git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
           # Create directory if it doesn't exist yet
-          mkdir -p $RUNNER_TEMP/historic/performance
+          HISTORIC = ../coreax-metadata/performance
+          mkdir -p .$HISTORIC
           uv run tests/performance/compare.py \
             $RUNNER_TEMP/performance.json \
-            $RUNNER_TEMP/historic/performance \
+            $HISTORIC \
             --commit-short-hash $(git log -1 --pretty=%h) \
             --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
             > $RUNNER_TEMP/comment.md
@@ -95,11 +95,13 @@ jobs:
           export message="chore: update performance for PR ${{ github.event.number }}"
           export content=$( base64 -i $RUNNER_TEMP/performance.json )
           # OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          OUT_NAME="$RUNNER_TEMP/historic/performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          cd ../coreax-metadata
           mv $RUNNER_TEMP/performance.json $OUT_NAME
           git add $OUT_NAME
           git commit -m $message
           git push
+          cd ../coreax
           # gh api --method PUT \
           #   /repos/:owner/:repo/contents/$OUT_NAME \
           #   -f message="$message" \
