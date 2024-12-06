@@ -50,16 +50,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
-          path: $RUNNER_TEMP/coreax-metadata
+          path: ${{ env.RUNNER_TEMP }}/coreax-metadata
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
+        env:
+          HISTORIC: ${{ env.RUNNER_TEMP }}/coreax-metadata/performance
         run: |
           # save the commit subject to a file in case it contains any shell
           # special characters
           git log -1 --pretty=%s > $RUNNER_TEMP/commit_subject.txt
           # Create directory if it doesn't exist yet
-          HISTORIC = $RUNNER_TEMP/coreax-metadata/performance
-          mkdir -p .$HISTORIC
+          mkdir -p $HISTORIC
           uv run tests/performance/compare.py \
             $RUNNER_TEMP/performance.json \
             $HISTORIC \
