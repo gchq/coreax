@@ -94,11 +94,16 @@ jobs:
         run: |
           export message="chore: update performance for PR ${{ github.event.number }}"
           export content=$( base64 -i $RUNNER_TEMP/performance.json )
-          OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          gh api --method PUT \
-            /repos/:owner/:repo/contents/$OUT_NAME \
-            -f message="$message" \
-            -f content="$content"
+          # OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          OUT_NAME="$RUNNER_TEMP/historic/performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          mv $RUNNER_TEMP/performance.json $OUT_NAME
+          git add $OUT_NAME
+          git commit -m $message
+          git push
+          # gh api --method PUT \
+          #   /repos/:owner/:repo/contents/$OUT_NAME \
+          #   -f message="$message" \
+          #   -f content="$content"
           echo $?
       - name: Minimize UV cache
         run: uv cache prune --ci
