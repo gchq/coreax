@@ -101,7 +101,7 @@ jobs:
           cd tmp_coreax-metadata
           mv $RUNNER_TEMP/performance.json $OUT_NAME
           git add $OUT_NAME
-          git commit -m $message
+          git commit -m "$message"
           git push
           cd ..
           # gh api --method PUT \
