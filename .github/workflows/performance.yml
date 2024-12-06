@@ -87,7 +87,7 @@ jobs:
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
           repositories: coreax-metadata
       - name: Save performance data to Gist
-        if: github.event_name == 'push'
+#        if: github.event_name == 'push'
         env:
           # this is the only step that should actually need write permissions
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
