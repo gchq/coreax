@@ -100,7 +100,7 @@ jobs:
           update_branch: main
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          export message="chore: update coverage for PR ${{ github.event.number }}"
+          export message="chore: update coverage for $GITHUB_SHA"
           export content=$( base64 -i badge.json )
           # Try to fetch existing file
           response=$(gh api -H "Accept: application/vnd.github+json" \
