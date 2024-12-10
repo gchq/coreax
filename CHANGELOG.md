@@ -36,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Moved coverage and performance data from GitHub gist to coreax-metadata repo.
+  (https://github.com/gchq/coreax/pull/887)
 
 ### Removed
 
