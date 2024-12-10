@@ -38,7 +38,7 @@ dependencies = [
     "torch",
     "torchvision",
     "llvmlite>=0.40.0",
-    "umap-learn",
+    "umap-learn>=0.5.7",
     "setuptools", #this is needed to install numba correctly
 ]
 
