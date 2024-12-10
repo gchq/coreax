@@ -35,16 +35,20 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "typing-extensions",
-    "torch",
-    "torchvision",
-    "llvmlite>=0.40.0",
-    "umap-learn>=0.5.7",
-    "setuptools", #this is needed to install numba correctly
 ]
 
 [project.optional-dependencies]
+# Benchmarking
+benchmark = [
+    "torch",
+    "torchvision",
+    "umap-learn>=0.5.7",
+    # Required for umap-learn
+    "llvmlite>=0.40.0",
+]
 # Run unit tests with coverage assessment
 test = [
+    "coreax[benchmark]",
     "imageio",
     "matplotlib",
     "numpy",
@@ -66,7 +70,7 @@ doc = [
 [dependency-groups]
 # All tools for a developer including those for running pylint
 dev = [
-    "coreax[doc, test]",
+    "coreax[benchmark, doc, test]",
     "pre-commit>=3.7",
     "pylint",
     "pyroma",
