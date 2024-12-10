@@ -71,12 +71,12 @@ doc = [
 # All tools for a developer including those for running pylint
 dev = [
     "coreax[benchmark, doc, test]",
+    "jupyter",
+    "ruff",
     "pre-commit>=3.7",
     "pylint",
-    "pyroma",
     "pyright",
-    "ruff",
-    "jupyter",
+    "pyroma",
 ]
 
 [tool.uv]
