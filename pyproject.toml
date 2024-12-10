@@ -63,9 +63,9 @@ doc = [
     "sphobjinv",
 ]
 
-[tool.uv]
+[dependency-groups]
 # All tools for a developer including those for running pylint
-dev-dependencies = [
+dev = [
     "coreax[doc, test]",
     "pre-commit>=3.7",
     "pylint",
@@ -75,6 +75,7 @@ dev-dependencies = [
     "jupyter",
 ]
 
+[tool.uv]
 # Ensure we get the latest package versions available for each Python version
 environments = [
     "python_version>='3.13'",
