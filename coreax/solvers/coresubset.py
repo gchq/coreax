@@ -14,6 +14,7 @@
 
 """Solvers for constructing coresubsets."""
 
+import math
 from collections.abc import Callable
 from typing import Optional, TypeVar, Union
 
@@ -869,27 +870,27 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     `Kernel Thinning` is a hierarchical, and probabilistic algorithm for coreset
     construction. It builds a coreset by splitting the dataset into several candidate
     coresets by repeatedly halving the dataset and applying probabilistic swapping.
-    The method the best of these candidate coresets which is further refined to minimise
+    The best of these candidates is chosen which is further refined to minimise
     the Maximum Mean Discrepancy (MMD) between the original dataset and the coreset.
 
     :param kernel: A `~coreax.kernels.ScalarValuedKernel` instance defining the primary
         kernel function used for choosing the best coreset and refining it.
-    :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance representing the
-        square root kernel used for splitting the original dataset.
+
     :param m: An integer specifying the number of hierarchical halving steps in the
         coreset construction.
+    :param random_key: Key for random number generation, enabling reproducibility of
+        probabilistic components in the algorithm.
     :param delta: A float between 0 and 1 used to compute the swapping probability
         during the splitting process. A recommended value is :math:`1 / \log(\log(n))`,
         where :math:`n` is the length of the original dataset.
-    :param random_key: Key for random number generation, enabling reproducibility of
-        probabilistic components in the algorithm.
+    :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance representing the
+        square root kernel used for splitting the original dataset.
     """
 
     kernel: ScalarValuedKernel
-    sqrt_kernel: ScalarValuedKernel
-    m: int
-    delta: float
     random_key: KeyArrayLike
+    delta: Optional[float] = None
+    sqrt_kernel: Optional[ScalarValuedKernel] = None
 
     def __post_init__(self):
         """
@@ -898,7 +899,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         If square-root kernel is not provided, check if square-root kernel of the given
         kernel is implemented and set that as the square root, otherwise raise an error.
         """
-        if not hasattr(self, "sqrt_kernel"):
+        if self.sqrt_kernel is None:
             self.sqrt_kernel = self.kernel
 
     @classmethod
@@ -933,8 +934,24 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         :return: A tuple containing the final coreset and the solver state (None).
         """
-        final_coresets = self.kt_split(dataset)
-        return self.kt_refine(self.kt_choose(final_coresets, dataset)), solver_state
+        n = len(dataset)
+        if self.delta is None:
+            log_n = math.log(n)
+            if log_n > 0:
+                log_log_n = math.log(log_n)
+                if log_log_n > 0:
+                    self.delta = 1 / (n * log_log_n)
+                else:
+                    self.delta = 1 / (n * log_n)
+            else:
+                self.delta = 1 / n
+        m = math.floor(math.log2(n) - math.log2(self.coreset_size))
+        clipped_original_dataset = dataset[: self.coreset_size * 2**m]
+        partition = self.kt_half_recursive(clipped_original_dataset, m, dataset)
+        baseline_coreset = self.get_baseline_coreset(dataset, self.coreset_size)
+        partition.append(baseline_coreset)
+        best_coreset_indices = self.kt_choose(partition, dataset)
+        return self.kt_refine(Coresubset(best_coreset_indices, dataset))
 
     def kt_half_recursive(self, points, m, original_dataset):
         """
@@ -946,7 +963,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: Fully partitioned list of coresets.
         """
         if m == 0:
-            return [points]
+            return [Coresubset(Data(jnp.arange(len(points))), original_dataset)]
 
         # Recursively call self.kt_half on the coreset (or the dataset)
         if hasattr(points, "coreset"):
@@ -961,8 +978,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         # Update indices: map current subset's indices to original dataset
         if hasattr(points, "nodes") and hasattr(points.nodes, "data"):
             parent_indices = points.nodes.data  # Parent subset's indices
-            subset1_indices = subset1.nodes.data  # Indices relative to parent
-            subset2_indices = subset2.nodes.data  # Indices relative to parent
+            subset1_indices = subset1.nodes.data.flatten()  # Indices relative to parent
+            subset2_indices = subset2.nodes.data.flatten()  # Indices relative to parent
 
             # Map subset indices back to original dataset
             subset1_indices = parent_indices[subset1_indices]
@@ -1141,101 +1158,26 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             body_fun,  # body function
             (arr1, arr2, param, bool_arr_1, bool_arr_2, self.random_key),
         )
-
         return [Coresubset(final_arr1, points), Coresubset(final_arr2, points)]
 
-    def kt_split(self, points: _Data) -> list[Coresubset[_Data]]:
+    def get_baseline_coreset(
+        self, dataset: Data, baseline_coreset_size: int
+    ) -> Coresubset[_Data]:
         """
-        Perform hierarchical splitting of the input dataset into multiple coresets.
+        Generate a baseline coreset by randomly sampling from the dataset.
 
-        This method splits the dataset recursively halving at each level. At each step,
-        a probabilistic swapping is applied to refine the distribution of points across
-        the coresets.
-
-        :param points: The dataset to be split into coresets.
-        :return: A list of refined coresets representing different hierarchical levels.
+        :param dataset: The input dataset from which the baseline coreset is sampled.
+        :param baseline_coreset_size: The number of points in the baseline coreset.
+        :return: A randomly sampled baseline coreset with the specified size.
         """
-        n = len(points)
-        coresets = {(j, k): [] for j in range(self.m + 1) for k in range(1, 2**j + 1)}
-        sigma = {
-            (j, k): jnp.zeros(1)
-            for j in range(1, self.m + 1)
-            for k in range(1, 2 ** (j - 1) + 1)
-        }
-
-        # Step 1: Initialise with pairs of indices in the lowest level coreset S(0,1)
-        for i in range(1, n // 2 + 1):
-            idx1, idx2 = 2 * i - 2, 2 * i - 1
-            coresets[(0, 1)].extend([idx1, idx2])
-
-            # Step 2: Distribute indices hierarchically across levels
-            for j in range(1, self.m + 1):
-                if i % (2 ** (j - 1)) == 0:
-                    for k in range(1, 2 ** (j - 1) + 1):
-                        parent_set = coresets[(j - 1, k)]
-                        if len(parent_set) <= 1:
-                            continue
-
-                        idx_x, idx_x_prime = parent_set[-2], parent_set[-1]
-                        x, x_prime = points[idx_x], points[idx_x_prime]
-
-                        # Calculate kernel values and b^2
-                        b_squared = (
-                            self.sqrt_kernel.compute_elementwise(x, x)
-                            + self.sqrt_kernel.compute_elementwise(x_prime, x_prime)
-                            - 2 * self.sqrt_kernel.compute_elementwise(x, x_prime)
-                        )
-
-                        # Compute swap threshold a and update sigma
-                        a, sigma[(j, k)] = self.get_swap_params(
-                            sigma[(j, k)], b_squared, self.delta
-                        )
-
-                        # Calculate alpha for probabilistic swapping
-                        alpha = (
-                            self.sqrt_kernel.compute_elementwise(x_prime, x_prime)
-                            - self.sqrt_kernel.compute_elementwise(x, x)
-                            + sum(
-                                self.sqrt_kernel.compute_elementwise(points[y], x)
-                                - self.sqrt_kernel.compute_elementwise(
-                                    points[y], x_prime
-                                )
-                                for y in parent_set
-                            )
-                            - 2
-                            * sum(
-                                self.sqrt_kernel.compute_elementwise(points[z], x)
-                                - self.sqrt_kernel.compute_elementwise(
-                                    points[z], x_prime
-                                )
-                                for z in coresets[(j, 2 * k - 1)]
-                            )
-                        )
-
-                        # Compute swap probability
-                        swap_probability = min(
-                            1, max(0.5 * (1 - (alpha / a).item()), 0)
-                        )
-
-                        # Apply probabilistic swap
-                        if jax.random.uniform(self.random_key) < swap_probability:
-                            idx_x, idx_x_prime = idx_x_prime, idx_x
-
-                        # Assign indices to child coresets
-                        coresets[(j, 2 * k - 1)].append(idx_x)
-                        coresets[(j, 2 * k)].append(idx_x_prime)
-
-        # Collect the indices of the final level's coresets
-        final_coresets = [
-            Coresubset(Data(jnp.array(coresets[(self.m, k)])), points)
-            for k in range(1, 2**self.m + 1)
-        ]
-
-        return final_coresets
+        baseline_coreset, _ = RandomSample(
+            coreset_size=baseline_coreset_size, random_key=self.random_key
+        ).reduce(dataset)
+        return baseline_coreset
 
     def kt_choose(
         self, candidate_coresets: list[Coresubset[_Data]], points: _Data
-    ) -> Coresubset[_Data]:
+    ) -> Shaped[Array, " coreset_size"]:
         """
         Select the best coreset from a list of candidate coresets based on MMD.
 
@@ -1244,20 +1186,28 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: The coreset with the smallest MMD relative to the input dataset.
         """
         mmd = MMD(kernel=self.kernel)
+        candidate_coresets_jax = jnp.array([c.coreset.data for c in candidate_coresets])
+        candidate_coresets_indices = jnp.array([c.nodes for c in candidate_coresets])
+        mmd_values = jax.vmap(lambda c: mmd.compute(c, points))(candidate_coresets_jax)
 
-        best_coreset = min(
-            candidate_coresets, key=lambda coreset: mmd.compute(points, coreset.coreset)
-        )
+        best_index = jnp.argmin(mmd_values)
 
-        return best_coreset
+        return candidate_coresets_indices[best_index]
 
     def kt_refine(self, candidate_coreset: Coresubset[_Data]) -> Coresubset[_Data]:
         """
         Refine the selected candidate coreset.
 
-        It is not yet implemented and serves as a placeholder for future implementation.
+        Use meth:`~coreax.solvers.KernelHerding.refine` which achieves the result of
+        looping through each element in coreset replacing that element with a point in
+        the original dataset to minimise MMD in each step.
 
         :param candidate_coreset: The candidate coreset to be refined.
         :return: The refined coreset.
         """
-        return candidate_coreset
+        print("before refine", candidate_coreset.nodes.data)
+        refined_coreset, _ = KernelHerding(
+            coreset_size=self.coreset_size, kernel=self.kernel
+        ).refine(candidate_coreset)
+        print("after refine", refined_coreset.nodes.data)
+        return refined_coreset, None
