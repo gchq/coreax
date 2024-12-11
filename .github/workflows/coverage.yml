@@ -106,15 +106,18 @@ jobs:
           export content=$( base64 -i $RUNNER_TEMP/badge.json )
           # Create new file if does not exist yet (or did not exist at checkout)
           if [ ! -f $BADGE_PATH ]; then
-            gh api --method PUT repos/:owner/coreax-metadata/contents/$BADGE_PATH \
+            gh api --method PUT /repos/:owner/coreax-metadata/contents/$BADGE_PATH \
               -f message="$message" \
               -f content="$content"
             if [ $? -eq 0 ]; then
               echo "Coverage badge created."
               exit 0
             fi
+            # Failed to create, probably because a file of this name now exists, so
+            # continue
           fi
-          # Update existing file, trying 3 times
+          # Update existing file, trying 3 times in case another job updates the
+          # coverage badge almost concurrently, which invalidates old SHA
           for i in {1..3}; do
             # Check whether file has changed
             diff $BADGE_PATH $RUNNER_TEMP/badge.json
@@ -122,9 +125,9 @@ jobs:
               echo "Coverage badge unchanged."
               exit 0
             fi
-            # Changed: replace existing file, trying 3 times
+            # Changed: replace existing file
             export sha=$( git rev-parse main:$BADGE_PATH )
-            gh api --method PUT $BADGE_PATH \
+            gh api --method PUT /repos/:owner/coreax-metadata/contents/$BADGE_PATH \
               -f message="$message" \
               -f content="$content" \
               -f sha="$sha"

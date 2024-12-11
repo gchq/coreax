@@ -50,6 +50,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
+          # GitHub Actions require check out destination to be within coreax/coreax. To
+          # save checking out the main repo into coreax/coreax/coreax, check out the
+          # metadata repo to a nested location inside coreax/coreax. Pick a folder name
+          # that is very unlikely to clash with any current or future folder name
+          # committed to the main coreax repo.
           path: tmp_coreax-metadata
       - name: Compare performance against historic data
         if: github.event_name == 'pull_request'
