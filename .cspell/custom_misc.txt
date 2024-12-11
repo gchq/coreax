@@ -31,6 +31,7 @@ kbar
 kdtree
 kernelised
 kernelized
+kernelthinning
 KSD
 linestyle
 linewidth
