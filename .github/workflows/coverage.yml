@@ -49,7 +49,7 @@ jobs:
         run: uv run pytest tests/unit --cov
       - name: Extract total coverage percentage
         id: cov
-        run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+        run: echo "percentage=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
