@@ -78,6 +78,7 @@ pip install jax[cuda12]
 
 There are optional sets of additional dependencies:
 * `coreax[test]` is required to run the tests and examples;
+* `coreax[benchmark]` is required to run benchmarking;
 * `coreax[doc]` is for compiling the Sphinx documentation;
 * `coreax[dev]` includes all tools and packages a developer of Coreax might need.
 
