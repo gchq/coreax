@@ -98,6 +98,8 @@ jobs:
       - name: Commit badge (with signature)
         # If another workflow is running in parallel, a race condition may occur. Try to
         # push the updated badge three times before failing.
+        # Disable fail fast on shell and ensure script always returns an exit code.
+        shell: bash {0}
         env:
           BADGE_PATH: coverage/coreax_coverage.json
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
