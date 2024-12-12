@@ -1448,6 +1448,20 @@ class TestSquaredExponentialKernel(
         with pytest.raises(ValueError, match=error_msg):
             SquaredExponentialKernel(*parameters)
 
+    def test_get_sqrt_kernel(self):
+        """Test that `get_sqrt_kernel` returns an appropriate kernel."""
+        dim = 4
+        kernel = SquaredExponentialKernel(length_scale=2.0, output_scale=3.0)
+        sqrt_kernel = kernel.get_sqrt_kernel(dim=dim)
+
+        assert isinstance(sqrt_kernel, SquaredExponentialKernel)
+        assert jnp.allclose(sqrt_kernel.length_scale, kernel.length_scale / jnp.sqrt(2))
+        assert jnp.allclose(
+            sqrt_kernel.output_scale,
+            jnp.sqrt(kernel.output_scale)
+            * (2 / (jnp.pi * kernel.length_scale**2)) ** (dim / 4),
+        )
+
 
 class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel]):
     """Test ``coreax.kernels.MaternKernel``."""
