@@ -93,7 +93,7 @@ jobs:
           app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
           repositories: coreax-metadata
-      - name: Save performance data to Gist
+      - name: Save performance data
         if: github.event_name == 'push'
         env:
           # this is the only step that should actually need write permissions
