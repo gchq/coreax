@@ -49,18 +49,43 @@ jobs:
         run: uv run pytest tests/unit --cov
       - name: Extract total coverage percentage
         id: cov
-        run: echo "percentage=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
+        run: |
+          echo "percentage_int=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
+          echo "percentage_float=$( uv run coverage report --format=total --precision=8 )" >> $GITHUB_OUTPUT
+      - name: Check out metadata repo
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          repository: gchq/coreax-metadata
+          # GitHub Actions require check out destination to be within coreax/coreax. To
+          # save checking out the main repo into coreax/coreax/coreax, check out the
+          # metadata repo to a nested location inside coreax/coreax. Pick a folder name
+          # that is very unlikely to clash with any current or future folder name
+          # committed to the main coreax repo.
+          path: tmp_coreax-metadata
+      - name: Check for reduction in coverage
+        if: github.event_name == 'pull_request'
+        env:
+          HISTORIC: tmp_coreax-metadata/coverage
+        run: |
+          # Create directory if it doesn't exist yet
+          mkdir -p $HISTORIC
+          uv run tests/coverage/compare.py \
+            ${{ steps.cov.outputs.percentage_float }} \
+            $HISTORIC
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
   coverage-badge:
     name: Update coverage badge
+    # Keep as a separate job to avoid clashes between meta and main repos
     if: github.event_name == 'push'
     # Push coverage badge config to coreax-metadata repo.
     needs:
       - coverage
     env:
-      percentage: ${{ needs.coverage.outputs.percentage }}
+      percentage_int: ${{ needs.coverage.outputs.percentage_int }}
+      percentage_float: ${{ needs.coverage.outputs.percentage_float }}
     runs-on: ubuntu-latest
     steps:
       - name: Generate a GitHub token
@@ -74,24 +99,39 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gchq/coreax-metadata
+      - name: Generate high-precision coverage JSON
+        run: |
+          echo "{\"total\": ${{ env.percentage_float }}}" > $RUNNER_TEMP/coverage.json
+      - name: Save high-precision coverage data
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore: update precise coverage data for $GITHUB_SHA"
+          export content=$( base64 -i $RUNNER_TEMP/coverage.json )
+          OUT_NAME="coverage/coverage-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          gh api --method PUT \
+            /repos/:owner/coreax-metadata/contents/$OUT_NAME \
+            -f message="$message" \
+            -f content="$content"
       - name: Choose badge colour
         id: design
         run: |
           echo "colour=${{
-            env.percentage >= 90 && 'brightgreen' ||
-            env.percentage >= 70 && 'yellow' ||
-            env.percentage >= 50 && 'orange' ||
+            env.percentage_int >= 90 && 'brightgreen' ||
+            env.percentage_int >= 70 && 'yellow' ||
+            env.percentage_int >= 50 && 'orange' ||
             'red'
           }}" >> $GITHUB_OUTPUT
       - name: Generate badge config JSON
+        # Display an integer percentage
         run: |
-          echo "coverage = ${{ env.percentage }}%"
+          echo "coverage = ${{ env.percentage_int }}%"
           echo "colour = ${{ steps.design.outputs.colour }}"
           {
             echo "{"
             echo "  \"schemaVersion\": 1,"
             echo "  \"label\": \"Coverage\","
-            echo "  \"message\": \"${{ env.percentage }}%\","
+            echo "  \"message\": \"${{ env.percentage_int }}%\","
             echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
             echo "}"
           } > $RUNNER_TEMP/badge.json
@@ -104,7 +144,7 @@ jobs:
           BADGE_PATH: coverage/coreax_coverage.json
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          export message="chore: update coverage for $GITHUB_SHA"
+          export message="chore: update coverage badge for $GITHUB_SHA"
           export content=$( base64 -i $RUNNER_TEMP/badge.json )
           # Create new file if does not exist yet (or did not exist at checkout)
           if [ ! -f $BADGE_PATH ]; then
