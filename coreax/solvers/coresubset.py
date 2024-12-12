@@ -872,12 +872,11 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     coresets by repeatedly halving the dataset and applying probabilistic swapping.
     The best of these candidates is chosen which is further refined to minimise
     the Maximum Mean Discrepancy (MMD) between the original dataset and the coreset.
+    This implementation is a modification of the Kernel Thinning algorithm in
+    :cite:`dwivedi2024kernelthinning` to make it an ExplicitSizeSolver.
 
     :param kernel: A `~coreax.kernels.ScalarValuedKernel` instance defining the primary
         kernel function used for choosing the best coreset and refining it.
-
-    :param m: An integer specifying the number of hierarchical halving steps in the
-        coreset construction.
     :param random_key: Key for random number generation, enabling reproducibility of
         probabilistic components in the algorithm.
     :param delta: A float between 0 and 1 used to compute the swapping probability
@@ -892,92 +891,115 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     delta: Optional[float] = None
     sqrt_kernel: Optional[ScalarValuedKernel] = None
 
-    def __post_init__(self):
-        """
-        Initialise square-root kernel.
-
-        If square-root kernel is not provided, check if square-root kernel of the given
-        kernel is implemented and set that as the square root, otherwise raise an error.
-        """
-        if self.sqrt_kernel is None:
-            self.sqrt_kernel = self.kernel
-
-    @classmethod
-    def get_swap_params(
-        cls, sigma: Array, b: Array, delta: float
-    ) -> tuple[Array, Array]:
-        """
-        Compute the swap threshold and update the scaling parameter for swapping.
-
-        :param sigma: The current scaling parameter used in the swapping process.
-        :param b: The kernel-based distance between two points in the dataset.
-        :param delta: A parameter used in calculation of the swapping probability.
-        :return: The swap threshold and the updated scaling parameter.
-        """
-        a = jnp.maximum(b * sigma * jnp.sqrt(2 * jnp.log(2 / delta)), b**2)
-
-        # Update sigma
-        new_sigma = jnp.sqrt(
-            sigma**2 + jnp.maximum(b**2 * (1 + (b**2 - 2 * a) * sigma**2 / a**2), 0)
-        )
-
-        return a, new_sigma
-
     def reduce(
         self, dataset: _Data, solver_state: None = None
     ) -> tuple[Coresubset[_Data], None]:
         """
-        Reduce the input dataset to a single refined coreset.
+        Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'KernelThinning'.
+
+        This is done by first computing the square root kernel if not already provided,
+        then using the recommended value for the delta parameter according to
+        :cite:`dwivedi2024kernelthinning` if not specified. Next, the number of halving
+        steps required, referred to as `m`, is calculated. The original data is clipped
+        so that it is divisible by a power of two. The kernel halving algorithm is then
+        recursively applied to halve the data.
+
+        Subsequently, a `baseline_coreset` is added to the ensemble of coresets. The
+        best coreset is selected to minimise the Maximum Mean Discrepancy (MMD) and
+        finally, it is refined further for optimal results.
+
 
         :param dataset: The original dataset to be reduced.
-        :param solver_state: The state of the solver (currently not used).
+        :param solver_state: The state of the solver.
 
         :return: A tuple containing the final coreset and the solver state (None).
         """
         n = len(dataset)
-        if self.delta is None:
+
+        sqrt_kernel = self.sqrt_kernel
+        if sqrt_kernel is None:
+            if hasattr(self.kernel, "get_sqrt_kernel"):
+                sqrt_kernel = self.kernel.get_sqrt_kernel(dataset.data.ndim)
+            else:
+                raise NotImplementedError(
+                    f"The square root of the "
+                    f"{self.kernel.__class__.__name__} is not"
+                    f" implemented. Please provide the square"
+                    f" root kernel if known."
+                )
+
+        delta = self.delta
+        if delta is None:
             log_n = math.log(n)
             if log_n > 0:
                 log_log_n = math.log(log_n)
                 if log_log_n > 0:
-                    self.delta = 1 / (n * log_log_n)
+                    delta = 1 / (n * log_log_n)
                 else:
-                    self.delta = 1 / (n * log_n)
+                    delta = 1 / (n * log_n)
             else:
-                self.delta = 1 / n
+                delta = 1 / n
+
+        # Create a new instance with updated parameters
+        new_instance = KernelThinning(
+            coreset_size=self.coreset_size,
+            kernel=self.kernel,
+            random_key=self.random_key,
+            delta=delta,
+            sqrt_kernel=sqrt_kernel,
+        )
+
+        return new_instance.reduce_internal(dataset)
+
+    def reduce_internal(
+        self,
+        dataset: _Data,
+    ) -> tuple[Coresubset[_Data], None]:
+        """
+        Implement `reduce` method for the new instance with set parameters.
+
+        :param dataset: The original dataset to be reduced.
+
+        :return: A tuple containing the final coreset and the solver state (None).
+        """
+        n = len(dataset)
         m = math.floor(math.log2(n) - math.log2(self.coreset_size))
         clipped_original_dataset = dataset[: self.coreset_size * 2**m]
+
         partition = self.kt_half_recursive(clipped_original_dataset, m, dataset)
         baseline_coreset = self.get_baseline_coreset(dataset, self.coreset_size)
         partition.append(baseline_coreset)
+
         best_coreset_indices = self.kt_choose(partition, dataset)
         return self.kt_refine(Coresubset(best_coreset_indices, dataset))
 
-    def kt_half_recursive(self, points, m, original_dataset):
+    def kt_half_recursive(self, current_coreset, m, original_dataset):
         """
         Recursively halve the original dataset into coresets.
 
-        :param points: The current coreset or dataset being partitioned.
+        :param current_coreset: The current coreset or dataset being partitioned.
         :param m: The remaining depth of recursion.
         :param original_dataset: The original dataset.
         :return: Fully partitioned list of coresets.
         """
         if m == 0:
-            return [Coresubset(Data(jnp.arange(len(points))), original_dataset)]
+            return [
+                Coresubset(Data(jnp.arange(len(current_coreset))), original_dataset)
+            ]
 
         # Recursively call self.kt_half on the coreset (or the dataset)
-        if hasattr(points, "coreset"):
-            subset1, subset2 = self.kt_half(points.coreset)
+        if hasattr(current_coreset, "coreset"):
+            subset1, subset2 = self.kt_half(current_coreset.coreset)
         else:
-            subset1, subset2 = self.kt_half(points)
+            subset1, subset2 = self.kt_half(current_coreset)
 
         # Update pre_coreset_data for both subsets to point to the original dataset
         subset1 = eqx.tree_at(lambda x: x.pre_coreset_data, subset1, original_dataset)
         subset2 = eqx.tree_at(lambda x: x.pre_coreset_data, subset2, original_dataset)
 
         # Update indices: map current subset's indices to original dataset
-        if hasattr(points, "nodes") and hasattr(points.nodes, "data"):
-            parent_indices = points.nodes.data  # Parent subset's indices
+        if hasattr(current_coreset, "nodes") and hasattr(current_coreset.nodes, "data"):
+            parent_indices = current_coreset.nodes.data  # Parent subset's indices
             subset1_indices = subset1.nodes.data.flatten()  # Indices relative to parent
             subset2_indices = subset2.nodes.data.flatten()  # Indices relative to parent
 
@@ -1194,7 +1216,9 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         return candidate_coresets_indices[best_index]
 
-    def kt_refine(self, candidate_coreset: Coresubset[_Data]) -> Coresubset[_Data]:
+    def kt_refine(
+        self, candidate_coreset: Coresubset[_Data]
+    ) -> tuple[Coresubset[_Data], None]:
         """
         Refine the selected candidate coreset.
 
@@ -1205,9 +1229,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param candidate_coreset: The candidate coreset to be refined.
         :return: The refined coreset.
         """
-        print("before refine", candidate_coreset.nodes.data)
         refined_coreset, _ = KernelHerding(
             coreset_size=self.coreset_size, kernel=self.kernel
         ).refine(candidate_coreset)
-        print("after refine", refined_coreset.nodes.data)
         return refined_coreset, None
