@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (https://github.com/gchq/coreax/pull/802)
   - Blobs (generate synthetic data using `sklearn.datasets.make_blobs` and compare MMD
     and KSD metrics) (https://github.com/gchq/coreax/pull/802)
+  - David (extract pixel locations and values from an image and plot coresets side by
+    side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
