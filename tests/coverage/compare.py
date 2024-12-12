@@ -57,7 +57,7 @@ def parse_args() -> tuple[float, Path]:
 
 def date_from_filename(path: Path) -> Optional[tuple[datetime.datetime, str]]:
     """
-    Extract the date from a performance data file name.
+    Extract the date from a coverage data file name.
 
     The current filename format is::
 
@@ -68,7 +68,7 @@ def date_from_filename(path: Path) -> Optional[tuple[datetime.datetime, str]]:
     against, and the vX at the end is a version number specifier, in case we need to
     change the format at a later date.
 
-    :param path: The path to the performance data file. Only the filename component
+    :param path: The path to the coverage data file. Only the filename component
         (`path.name`) is used.
     :return: Tuple (date_time, commit_hash) if the filename matched the expected format,
         or :data:`None` if it did not match.
@@ -132,6 +132,9 @@ def check_significant_difference(
     """
     Check if the coverage has reduced significantly.
 
+    Print console messages with coverage change. Display full precision for differences
+    but round absolute percentages to two decimal places.
+
     :param current_coverage: Current coverage total
     :param historic_coverage: Most recent historic coverage total
     :return: Is there a significant reduction in coverage?
@@ -139,11 +142,37 @@ def check_significant_difference(
     absolute_loss = historic_coverage - current_coverage
     relative_loss = absolute_loss / historic_coverage if historic_coverage > 0 else 0
 
-    if absolute_loss > ABSOLUTE_TOLERANCE or relative_loss > RELATIVE_TOLERANCE:
-        print(f"Code coverage has reduced by {absolute_loss}%.")
+    if absolute_loss == 0:
+        print(f"PASS: Coverage remained the same at {current_coverage:.2f}%.")
+        return False
+    if absolute_loss < 0:
+        print(
+            f"PASS: Coverage increased by {-absolute_loss}% from "
+            f"{historic_coverage:.2f}% to "
+            f"{current_coverage:.2f}%."
+        )
+        return False
+
+    exceed_absolute = absolute_loss > ABSOLUTE_TOLERANCE
+    exceed_relative = relative_loss > RELATIVE_TOLERANCE
+
+    if exceed_absolute or exceed_relative:
+        if exceed_absolute and exceed_relative:
+            tolerance_msg = "absolute and relative tolerances"
+        elif exceed_absolute:
+            tolerance_msg = "absolute tolerance"
+        else:
+            tolerance_msg = "relative tolerance"
+        print(
+            f"FAIL: Coverage reduced by {absolute_loss}% from {historic_coverage:.2f}% "
+            f"to {current_coverage:.2f}%, exceeding {tolerance_msg}."
+        )
         return True
 
-    print("No significant reduction in coverage.")
+    print(
+        f"PASS: Coverage reduced slightly by {absolute_loss}% from "
+        f"{historic_coverage:.2f}% to {current_coverage:.2f}%."
+    )
     return False
 
 
