@@ -35,16 +35,20 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "typing-extensions",
-    "torch",
-    "torchvision",
-    "llvmlite>=0.40.0",
-    "umap-learn",
-    "opencv-python",
 ]
 
 [project.optional-dependencies]
+# Benchmarking
+benchmark = [
+    "torch",
+    "torchvision",
+    "umap-learn>=0.5.7",
+    # Required for umap-learn
+    "llvmlite>=0.40.0",
+]
 # Run unit tests with coverage assessment
 test = [
+    "coreax[benchmark]",
     "imageio",
     "matplotlib",
     "numpy",
@@ -63,18 +67,19 @@ doc = [
     "sphobjinv",
 ]
 
-[tool.uv]
+[dependency-groups]
 # All tools for a developer including those for running pylint
-dev-dependencies = [
-    "coreax[doc, test]",
+dev = [
+    "coreax[benchmark, doc, test]",
+    "jupyter",
+    "ruff",
     "pre-commit>=3.7",
     "pylint",
-    "pyroma",
     "pyright",
-    "ruff",
-    "jupyter",
+    "pyroma",
 ]
 
+[tool.uv]
 # Ensure we get the latest package versions available for each Python version
 environments = [
     "python_version>='3.13'",

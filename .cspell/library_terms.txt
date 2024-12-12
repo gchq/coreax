@@ -88,6 +88,7 @@ newaxis
 nobs
 nonzero
 notin
+numba
 numpy
 opencv
 operatorname
