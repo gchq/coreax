@@ -67,6 +67,33 @@ MIN_LENGTH_SCALE = 1e-6
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 # pylint: disable=duplicate-code
+
+
+def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
+    """
+    Downsample an image using `func: cv2.resize` and convert it to grayscale.
+
+    :param image_path: Path to the input image file.
+    :param downsampling_factor: Factor by which to downsample the image.
+    :return: Grayscale image after downsampling.
+    """
+    img = cv2.imread(image_path)
+
+    # Calculate new dimensions based on downsampling factor
+    scale_factor = 1 / downsampling_factor
+    width = int(img.shape[1] * scale_factor)
+    height = int(img.shape[0] * scale_factor)
+    dim = (width, height)
+
+    # Resize using INTER_AREA for better downsampling
+    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+
+    # Convert to grayscale after resizing
+    grayscale_resized = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+
+    return grayscale_resized
+
+
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
     out_path: Optional[Path] = None,
@@ -102,30 +129,6 @@ def main(
         in_path = Path(__file__).parent.joinpath(in_path)
     if out_path is not None and not out_path.is_absolute():
         out_path = Path(__file__).parent.joinpath(out_path)
-
-    def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
-        """
-        Downsample an image using `func: cv2.resize` and convert it to grayscale.
-
-        :param image_path: Path to the input image file.
-        :param downsampling_factor: Factor by which to downsample the image.
-        :return: Grayscale image after downsampling.
-        """
-        img = cv2.imread(image_path)
-
-        # Calculate new dimensions based on downsampling factor
-        scale_factor = 1 / downsampling_factor
-        width = int(img.shape[1] * scale_factor)
-        height = int(img.shape[0] * scale_factor)
-        dim = (width, height)
-
-        # Resize using INTER_AREA for better downsampling
-        resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-
-        # Convert to grayscale after resizing
-        grayscale_resized = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-
-        return grayscale_resized
 
     # Path to original image
     original_data = downsample_opencv(str(in_path), downsampling_factor)
