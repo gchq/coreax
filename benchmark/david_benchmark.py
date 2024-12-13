@@ -33,7 +33,6 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import cv2
 import equinox as eqx
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -42,30 +41,9 @@ from jax import random
 from mnist_benchmark import get_solver_name, initialise_solvers
 
 from coreax import Data
+from examples.david_map_reduce_weighted import downsample_opencv
 
 MAX_8BIT = 255
-
-
-def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
-    """
-    Downsample an image using OpenCV resize and convert it to grayscale.
-
-    :param image_path: Path to the input image file.
-    :param downsampling_factor: Factor by which to downsample the image.
-    :return: Grayscale image after downsampling.
-    """
-    img = cv2.imread(image_path)
-
-    # Calculate new dimensions based on downsampling factor
-    scale_factor = 1 / downsampling_factor
-    width = int(img.shape[1] * scale_factor)
-    height = int(img.shape[0] * scale_factor)
-    dim = (width, height)
-    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-    # Convert to grayscale after resizing
-    grayscale_resized = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-
-    return grayscale_resized
 
 
 # pylint: disable=too-many-locals
