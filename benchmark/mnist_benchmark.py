@@ -20,7 +20,7 @@ The benchmarking process follows these steps:
    test images.
 2. Use a simple MLP neural network with a single hidden layer of 64 nodes to classify
    the images. The images are flattened into vectors.
-3. To reduce dimensionality, apply PCA to project the 28x28 images into 16 components
+3. To reduce dimensionality, apply UMAP to project the 28x28 images into 16 components
    before applying coreset algorithms.
 4. Generate coresets of different sizes using various coreset algorithms.
    - For Kernel Herding and Stein Thinning, use MapReduce to handle larger-scale data.
@@ -582,6 +582,25 @@ def save_results(results: dict) -> None:
     print(f"Data has been saved to {file_name}")
 
 
+def get_solver_name(_solver: Callable) -> str:
+    """
+    Get the name of the solver.
+
+    This function extracts and returns the name of the solver class.
+    If the `_solver` is an instance of the `MapReduce` class, it retrieves the
+    name of the `base_solver` class instead.
+
+    :param _solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
+    :return: The name of the solver class.
+    """
+    solver_name = (
+        _solver.base_solver.__class__.__name__
+        if _solver.__class__.__name__ == "MapReduce"
+        else _solver.__class__.__name__
+    )
+    return solver_name
+
+
 # pylint: disable=too-many-locals
 def main() -> None:
     """
@@ -589,7 +608,7 @@ def main() -> None:
 
     The function follows these steps:
     1. Prepare and load the MNIST datasets (training and test).
-    2. Perform dimensionality reduction on the training data using PCA.
+    2. Perform dimensionality reduction on the training data using UMAP.
     3. Initialise solvers for data reduction.
     4. For each solver and coreset size, reduce the dataset and train the model
        on the reduced set.
@@ -620,11 +639,7 @@ def main() -> None:
         for getter in solvers:
             for size in [25, 50, 100, 500, 1_000, 5_000]:
                 solver = getter(size)
-                solver_name = (
-                    solver.base_solver.__class__.__name__
-                    if solver.__class__.__name__ == "MapReduce"
-                    else solver.__class__.__name__
-                )
+                solver_name = get_solver_name(solver)
                 start_time = time.perf_counter()
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 
