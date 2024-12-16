@@ -626,14 +626,14 @@ def main() -> None:
         "epochs": 100,
         "batch_size": 8,
         "learning_rate": 1e-3,
-        "weight_decay": 1e-5,
-        "patience": 5,
+        "weight_decay": 1e-4,
+        "patience": 15,
         "min_delta": 0.001,
     }
 
     # Run the experiment with 5 different random keys
     # pylint: disable=duplicate-code
-    for i in range(5):
+    for i in range(2):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_umap, key)
