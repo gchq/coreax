@@ -25,8 +25,7 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    "equinox<0.11.8",  # 0.11.8 raises TypeErrors of the form
-                       #   `__class__ assignment: 'x' object layout differs from 'x'`.
+    "equinox>=0.11.9",
     "flax",
     "jax",
     "jaxopt",
