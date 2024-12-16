@@ -31,7 +31,7 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
 from typing import Union
@@ -60,7 +60,7 @@ from coreax.util import KeyArrayLike, SilentTQDM
 _RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
 
 
-class ScoreMatching(ABC, eqx.Module):
+class ScoreMatching(eqx.Module):
     """
     Base class for score matching algorithms.
 
