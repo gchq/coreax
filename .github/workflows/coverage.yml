@@ -14,7 +14,8 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     outputs:
-      percentage: ${{ steps.cov.outputs.percentage }}
+      percentage_int: ${{ steps.cov.outputs.percentage_int }}
+      percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
@@ -52,6 +53,7 @@ jobs:
         run: |
           echo "percentage_int=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
           echo "percentage_float=$( uv run coverage report --format=total --precision=8 )" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
       - name: Check out metadata repo
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
