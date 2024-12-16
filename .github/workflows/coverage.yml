@@ -14,7 +14,8 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     outputs:
-      percentage: ${{ steps.cov.outputs.percentage }}
+      percentage_int: ${{ steps.cov.outputs.percentage_int }}
+      percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
