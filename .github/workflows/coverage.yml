@@ -52,6 +52,7 @@ jobs:
         run: |
           echo "percentage_int=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
           echo "percentage_float=$( uv run coverage report --format=total --precision=8 )" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
       - name: Check out metadata repo
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
