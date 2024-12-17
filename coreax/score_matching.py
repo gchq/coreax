@@ -62,12 +62,15 @@ _RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
 
 class ScoreMatching(eqx.Module):
     """
-    Base class for score matching algorithms.
+    Abstract base class for score matching algorithms.
 
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
     of the data. Exactly how the score function is modelled is specific to each
     child class of this base class.
+
+    This class should only contain abstract methods. Subclasses must implement all
+    abstract methods to create concrete score matching algorithms.
     """
 
     @abstractmethod
