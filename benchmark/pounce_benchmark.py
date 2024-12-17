@@ -63,7 +63,11 @@ def benchmark_coreset_algorithms(
     umap_data = umap_model.fit_transform(reshaped_data)
 
     solvers = initialise_solvers(umap_data, random.PRNGKey(45))
-
+    # There is no need to use MapReduce as the data-size is small
+    solvers = [
+        solver.base_solver if solver.__class__.__name__ == "MapReduce" else solver
+        for solver in solvers
+    ]
     for get_solver in solvers:
         solver = get_solver(coreset_size)
         solver_name = get_solver_name(solver)
@@ -78,7 +82,7 @@ def benchmark_coreset_algorithms(
         # Extract corresponding frames from original data and save GIF
         coreset_frames = raw_data[selected_indices]
         output_gif_path = out_dir / f"{solver_name}_coreset.gif"
-        imageio.mimsave(output_gif_path, coreset_frames)
+        imageio.mimsave(output_gif_path, coreset_frames, loop=0)
         print(f"Saved {solver_name} coreset GIF to {output_gif_path}")
         print(f"time taken: {solver_name:<25} {duration:<30.4f}")
 
