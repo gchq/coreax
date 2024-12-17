@@ -25,7 +25,7 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    "equinox>=0.11.9",
+    "equinox>=0.11.5",
     "flax",
     "jax",
     "jaxopt",
