@@ -121,7 +121,7 @@ repos:
         name: pylint
         entry: pylint
         language: system
-        require_serial: true  # ensure only on Pylint process is used
+        require_serial: true  # ensure only one Pylint process is used
         types:
           - python
         args:
