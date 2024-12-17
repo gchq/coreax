@@ -63,7 +63,6 @@ MIN_LENGTH_SCALE = 1e-6
 
 # Examples are written to be easy to read, copy and paste by users, so we ignore the
 # pylint warnings raised that go against this approach
-# pylint: disable=no-member
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 # pylint: disable=duplicate-code

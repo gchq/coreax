@@ -474,7 +474,9 @@ def initialise_solvers(
             train_data_umap[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
-        stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel)
+        stein_solver = SteinThinning(
+            coreset_size=_size, kernel=stein_kernel, regularise=False
+        )
         return MapReduce(stein_solver, leaf_size=3 * _size)
 
     def _get_random_solver(_size: int) -> RandomSample:
