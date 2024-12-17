@@ -90,6 +90,7 @@ def parse_args() -> Tuple[Path, Path, str, Path]:
     )
 
 
+# pylint: disable=R0801
 def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
     """
     Extract the date from a performance data file name.
@@ -129,6 +130,7 @@ def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
     ), git_hash
 
 
+# pylint: disable=R0801
 def get_most_recent_historic_data(
     reference_directory: Path,
 ) -> FullPerformanceData:
