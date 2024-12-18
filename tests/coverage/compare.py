@@ -22,6 +22,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# A good amount of this code is duplicated in the performance comparison script, but we
+# ignore this so that both scripts can be standalone.
+# pylint: disable=duplicate-code
 COVERAGE_FILENAME_REGEX = re.compile(
     r"^coverage"
     r"-(\d{4})-(\d{2})-(\d{2})"
@@ -187,3 +190,4 @@ def main() -> None:  # noqa: C901
 
 if __name__ == "__main__":
     main()
+# pylint: enable=duplicate-code

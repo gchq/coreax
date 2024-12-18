@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also https://github.com/gchq/coreax/issues/852 and
   https://github.com/gchq/coreax/issues/853)
 - `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
+- Pylint pre-commit hook is now configured as the Pylint docs recommend (https://github.com/gchq/coreax/pull/899)
 
 ### Changed
 
