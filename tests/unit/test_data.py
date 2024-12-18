@@ -205,7 +205,7 @@ class TestData:
         assert not is_bearable(data, Shaped[coreax.data.Data, invalid_shape])
         if not isinstance(data, coreax.data.SupervisedData):
             incorrect_instance_type = Shaped[coreax.data.SupervisedData, "..."]
-            assert is_bearable(data, incorrect_instance_type)
+            assert not is_bearable(data, incorrect_instance_type)
 
 
 class TestSupervisedData:
