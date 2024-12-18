@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Moved coverage and performance data from GitHub gist to coreax-metadata repo.
   (https://github.com/gchq/coreax/pull/887)
+- **[BREAKING CHANGE]** Equinox dependency version is changed from `<0.11.8` to `>=0.
+11.5`. (https://github.com/gchq/coreax/pull/898)
 
 ### Removed
 
