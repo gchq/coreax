@@ -293,6 +293,27 @@ class SquaredExponentialKernel(ScalarValuedKernel):
         d = len(jnp.asarray(x))
         return scale * k * (d - scale * squared_distance(x, y))
 
+    def get_sqrt_kernel(self, dim: int) -> "SquaredExponentialKernel":
+        r"""
+        Return the square root kernel for this kernel.
+
+        The square root kernel for the squared exponential kernel is given in Table 1 of
+        :cite:`dwivedi2024kernelthinning` (it is equivalent to the Gaussian kernel).
+        Since the definition in the table does not support an arbitrary
+        `output_scale` for the original kernel, it has been derived from Definition
+        5: if the original kernel has an output scale of :math:`\rho`, the output
+        scale for the resulting square root kernel is multiplied by :math:`\sqrt{\rho}`.
+
+        :param dim: Dimension of the data.
+        """
+        new_length_scale = self.length_scale / jnp.sqrt(2)
+        new_output_scale = jnp.sqrt(self.output_scale) * jnp.power(
+            2 / (jnp.pi * jnp.square(self.length_scale)), dim / 4
+        )
+        return SquaredExponentialKernel(
+            length_scale=new_length_scale, output_scale=new_output_scale
+        )
+
 
 class PCIMQKernel(ScalarValuedKernel):
     r"""
@@ -301,7 +322,7 @@ class PCIMQKernel(ScalarValuedKernel):
     Given :math:`\lambda =` ``length_scale`` and :math:`\rho =` ``output_scale``, the
     PCIMQ kernel is defined as
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
-    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}
+    :math:`k(x, y) = \frac{\rho}{\sqrt{1 + \frac{||x-y||^2}{2 \lambda^2}}}`
     where :math:`||\cdot||` is the usual :math:`L_2`-norm.
 
     :param length_scale: Kernel smoothing/bandwidth parameter, :math:`\lambda`, must be
@@ -427,7 +448,7 @@ class MaternKernel(ScalarValuedKernel):
     Given :math:`\lambda =` ``length_scale`` and :math:`\rho =` ``output_scale``, the
     Matérn kernel with smoothness parameter :math:`\nu` set to be a multiple of
     :math:`\frac{1}{2}`, i.e. :math:`\nu = p + \frac{1}{2}` where
-    :math:`p`=` ``degree`` `:`math:`\in\mathbb{N}`, is defined as
+    :math:`p=` ``degree`` :math:`\in\mathbb{N}`, is defined as
     :math:`k: \mathbb{R}^d \times \mathbb{R}^d \to \mathbb{R}`,
 
     .. math::

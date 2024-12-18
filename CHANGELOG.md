@@ -10,17 +10,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Contributor-facing features:
-  - Automated testing of the built package before release (https://github.com/gchq/coreax/issues/854)
+  - Automated testing of the built package before release
+    (https://github.com/gchq/coreax/issues/854)
 - Added an analytical test for SteinThinning, and associated documentation in
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
-
+- Added an analytical test for `KernelHerding.refine` on an existing coreset. (https://github.com/gchq/coreax/issues/870)
+- Added benchmarking scripts:
+  - MNIST (train a classifier on coreset of training data, test on testing data)
+    (https://github.com/gchq/coreax/pull/802)
+  - Blobs (generate synthetic data using `sklearn.datasets.make_blobs` and compare MMD
+    and KSD metrics) (https://github.com/gchq/coreax/pull/802)
+  - David (extract pixel locations and values from an image and plot coresets side by
+    side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
+- `benchmark` dependency group for benchmarking dependencies.
+  (https://github.com/gchq/coreax/pull/888)
+- Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
+  root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
 
 ### Fixed
 
 - `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
+- Corrected an implementation error in `coreax.solvers.CaratheodoryRecombination`
+  which caused numerical instability when using either `CaratheodoryRecombination`
+  or `TreeRecombination` on GPU machines. (https://github.com/gchq/coreax/pull/874, see
+  also https://github.com/gchq/coreax/issues/852 and
+  https://github.com/gchq/coreax/issues/853)
+- `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
+- Pylint pre-commit hook is now configured as the Pylint docs recommend (https://github.com/gchq/coreax/pull/899)
 
 ### Changed
 
+- Moved coverage and performance data from GitHub gist to coreax-metadata repo.
+  (https://github.com/gchq/coreax/pull/887)
+- **[BREAKING CHANGE]** Equinox dependency version is changed from `<0.11.8` to `>=0.
+11.5`. (https://github.com/gchq/coreax/pull/898)
 - **[BREAKING CHANGE]** The `jaxtyping` version is now lower bounded at `v0.2.31` to enable `coreax.data.Data` jaxtyping compatibility.
 
 ### Removed

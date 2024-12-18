@@ -23,7 +23,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jaxtyping import Array, ArrayLike, Shaped
+from jaxtyping import Array, ArrayLike, Scalar, Shaped
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
@@ -108,7 +108,7 @@ class HerdingState(eqx.Module):
 
 def _greedy_kernel_selection(
     coresubset: Coresubset[_Data],
-    selection_function: Callable[[int, Shaped[Array, " n"]], Shaped[Array, ""]],
+    selection_function: Callable[[int, Shaped[Array, " n"], Scalar], Scalar],
     output_size: int,
     kernel: ScalarValuedKernel,
     unique: bool,
@@ -136,11 +136,17 @@ def _greedy_kernel_selection(
     padding = max(0, output_size - len(coresubset))
     padded_indices = tree_zero_pad_leading_axis(coresubset.nodes, padding)
     padded_coresubset = eqx.tree_at(lambda x: x.nodes, coresubset, padded_indices)
+
+    # Calculate the actual size of the provided `coresubset` assuming 0-weighted
+    # indices are not included
+    coreset_weights = padded_coresubset.nodes.weights
+    init_coreset_size = jnp.sum(jnp.greater(coreset_weights, 0))
+
     # The kernel similarity penalty must be computed for the initial coreset. If we did
     # not support refinement, the penalty could be initialised to the zeros vector, and
     # the result would be invariant to the initial coresubset.
-    data, weights = jtu.tree_leaves(coresubset.pre_coreset_data)
-    kernel_similarity_penalty = kernel.compute_mean(
+    data, data_weights = jtu.tree_leaves(coresubset.pre_coreset_data)
+    init_kernel_similarity_penalty = init_coreset_size * kernel.compute_mean(
         data,
         padded_coresubset.coreset,
         axis=1,
@@ -150,26 +156,58 @@ def _greedy_kernel_selection(
 
     def _greedy_body(
         i: int,
-        val: tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]],
-    ) -> tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"]]:
-        coreset_indices, kernel_similarity_penalty = val
-        valid_kernel_similarity_penalty = jnp.where(
-            weights > 0, kernel_similarity_penalty, jnp.nan
+        val: tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"], Scalar],
+    ) -> tuple[Shaped[Array, " coreset_size"], Shaped[Array, " n"], Scalar]:
+        coreset_indices, kernel_similarity_penalty, coreset_size = val
+
+        # If the current coreset element is being replaced (non-zero weight),
+        # subtract its contribution to the penalty
+        penalty_update = jnp.ravel(kernel.compute(data, data[coreset_indices[i]]))
+        kernel_similarity_penalty = jnp.where(
+            coreset_weights[i] > 0,
+            kernel_similarity_penalty - penalty_update,
+            kernel_similarity_penalty,
         )
-        updated_coreset_index = selection_function(i, valid_kernel_similarity_penalty)
+
+        # Increment the coreset size if we are adding new elements
+        coreset_size = jnp.where(coreset_weights[i] > 0, coreset_size, coreset_size + 1)
+
+        # Select the next coreset element and update penalty
+        valid_kernel_similarity_penalty = jnp.where(
+            data_weights > 0, kernel_similarity_penalty, jnp.nan
+        )
+        if unique:  # Temporarily exclude other coreset members from being selected
+            valid_kernel_similarity_penalty = valid_kernel_similarity_penalty.at[
+                coreset_indices
+            ].set(
+                jnp.where(
+                    (coreset_indices != coreset_indices[i]) & (coreset_weights > 0),
+                    jnp.inf,
+                    valid_kernel_similarity_penalty[coreset_indices],
+                )
+            )
+        updated_coreset_index = selection_function(
+            i, valid_kernel_similarity_penalty, coreset_size
+        )
         updated_coreset_indices = coreset_indices.at[i].set(updated_coreset_index)
+
         penalty_update = jnp.ravel(kernel.compute(data, data[updated_coreset_index]))
         updated_penalty = kernel_similarity_penalty + penalty_update
         if unique:
             # Prevent the same 'updated_coreset_index' from being selected on a
             # subsequent iteration, by setting the penalty to infinity.
             updated_penalty = updated_penalty.at[updated_coreset_index].set(jnp.inf)
-        return updated_coreset_indices, updated_penalty
 
-    init_state = (padded_coresubset.unweighted_indices, kernel_similarity_penalty)
+        return updated_coreset_indices, updated_penalty, coreset_size
+
+    init_state = (
+        padded_coresubset.unweighted_indices,
+        init_kernel_similarity_penalty,
+        init_coreset_size,
+    )
     output_state = jax.lax.fori_loop(0, output_size, _greedy_body, init_state)
-    updated_coreset_indices = output_state[0][:output_size]
-    return eqx.tree_at(lambda x: x.nodes, coresubset, as_data(updated_coreset_indices))
+    new_coreset_indices = output_state[0][:output_size]
+    return eqx.tree_at(lambda x: x.nodes, coresubset, as_data(new_coreset_indices))
 
 
 class KernelHerding(
@@ -256,11 +294,13 @@ class KernelHerding(
             gramian_row_mean = solver_state.gramian_row_mean
 
         def selection_function(
-            i: int, _kernel_similarity_penalty: Shaped[Array, " n"]
+            _i: int,
+            _kernel_similarity_penalty: Shaped[Array, " n"],
+            coreset_size: Scalar,
         ) -> Shaped[Array, ""]:
             """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
             return jnp.nanargmax(
-                gramian_row_mean - _kernel_similarity_penalty / (i + 1)
+                gramian_row_mean - _kernel_similarity_penalty / coreset_size
             )
 
         refined_coreset = _greedy_kernel_selection(
@@ -385,7 +425,9 @@ class SteinThinning(
         else:
             laplace_correction, regularised_log_pdf = 0.0, 0.0
 
-        def selection_function(i: int, _kernel_similarity_penalty: ArrayLike) -> Array:
+        def selection_function(
+            i: int, _kernel_similarity_penalty: ArrayLike, _coreset_size: Scalar
+        ) -> Array:
             """
             Greedy selection criterion - Section 3.1 :cite:`benard2023kernel`.
 

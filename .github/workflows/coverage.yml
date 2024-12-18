@@ -14,7 +14,8 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     outputs:
-      percentage: ${{ steps.cov.outputs.percentage }}
+      percentage_int: ${{ steps.cov.outputs.percentage_int }}
+      percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
@@ -49,47 +50,137 @@ jobs:
         run: uv run pytest tests/unit --cov
       - name: Extract total coverage percentage
         id: cov
-        run: echo "percentage=$( coverage report --format=total )" >> $GITHUB_OUTPUT
+        run: |
+          echo "percentage_int=$( uv run coverage report --format=total )" >> $GITHUB_OUTPUT
+          echo "percentage_float=$( uv run coverage report --format=total --precision=8 )" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+      - name: Check out metadata repo
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          repository: gchq/coreax-metadata
+          # GitHub Actions require check out destination to be within coreax/coreax. To
+          # save checking out the main repo into coreax/coreax/coreax, check out the
+          # metadata repo to a nested location inside coreax/coreax. Pick a folder name
+          # that is very unlikely to clash with any current or future folder name
+          # committed to the main coreax repo.
+          path: tmp_coreax-metadata
+      - name: Check for reduction in coverage
+        if: github.event_name == 'pull_request'
+        env:
+          HISTORIC: tmp_coreax-metadata/coverage
+        run: |
+          # Create directory if it doesn't exist yet
+          mkdir -p $HISTORIC
+          uv run tests/coverage/compare.py \
+            ${{ steps.cov.outputs.percentage_float }} \
+            $HISTORIC
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
   coverage-badge:
     name: Update coverage badge
+    # Keep as a separate job to avoid clashes between meta and main repos
     if: github.event_name == 'push'
-    # Push coverage badge config to a GitHub Gist. The Gist can currently only be hosted
-    # by a user rather than an organisation. A PAT with write Gist permissions needs to
-    # be saved as a secret of this repo. The PAT and Gist ID need updating if the host
-    # user changes.
+    # Push coverage badge config to coreax-metadata repo.
     needs:
       - coverage
     env:
-      percentage: ${{ needs.coverage.outputs.percentage }}
-      GITHUB_TOKEN: ${{ secrets.COVERAGE_GIST_KEY }}
+      percentage_int: ${{ needs.coverage.outputs.percentage_int }}
+      percentage_float: ${{ needs.coverage.outputs.percentage_float }}
     runs-on: ubuntu-latest
     steps:
+      - name: Generate a GitHub token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
+          repositories: coreax-metadata
+      - name: Check out metadata repo
+        uses: actions/checkout@v4
+        with:
+          repository: gchq/coreax-metadata
+      - name: Generate high-precision coverage JSON
+        run: |
+          echo "{\"total\": ${{ env.percentage_float }}}" > $RUNNER_TEMP/coverage.json
+      - name: Save high-precision coverage data
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore: update precise coverage data for $GITHUB_SHA"
+          export content=$( base64 -i $RUNNER_TEMP/coverage.json )
+          OUT_NAME="coverage/coverage-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+          gh api --method PUT \
+            /repos/:owner/coreax-metadata/contents/$OUT_NAME \
+            -f message="$message" \
+            -f content="$content"
       - name: Choose badge colour
         id: design
         run: |
           echo "colour=${{
-            env.percentage >= 90 && 'brightgreen' ||
-            env.percentage >= 70 && 'yellow' ||
-            env.percentage >= 50 && 'orange' ||
+            env.percentage_int >= 90 && 'brightgreen' ||
+            env.percentage_int >= 70 && 'yellow' ||
+            env.percentage_int >= 50 && 'orange' ||
             'red'
           }}" >> $GITHUB_OUTPUT
       - name: Generate badge config JSON
+        # Display an integer percentage
         run: |
-          echo "coverage = ${{ env.percentage }}%"
+          echo "coverage = ${{ env.percentage_int }}%"
           echo "colour = ${{ steps.design.outputs.colour }}"
           {
             echo "{"
             echo "  \"schemaVersion\": 1,"
             echo "  \"label\": \"Coverage\","
-            echo "  \"message\": \"${{ env.percentage }}%\","
+            echo "  \"message\": \"${{ env.percentage_int }}%\","
             echo "  \"color\": \"${{ steps.design.outputs.colour }}\""
             echo "}"
-          } > badge.json
-      - name: Write Gist
+          } > $RUNNER_TEMP/badge.json
+      - name: Commit badge (with signature)
+        # If another workflow is running in parallel, a race condition may occur. Try to
+        # push the updated badge three times before failing.
+        # Disable fail fast on shell and ensure script always returns an exit code.
+        shell: bash {0}
         env:
-          gist_id: 51dd332be75961a7dc903c67718028e1
-          out_name: coreax_coverage.json
-        run: gh gist edit ${{ env.gist_id }} -a ${{ env.out_name }} badge.json
+          BADGE_PATH: coverage/coreax_coverage.json
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          export message="chore: update coverage badge for $GITHUB_SHA"
+          export content=$( base64 -i $RUNNER_TEMP/badge.json )
+          # Create new file if does not exist yet (or did not exist at checkout)
+          if [ ! -f $BADGE_PATH ]; then
+            gh api --method PUT /repos/:owner/coreax-metadata/contents/$BADGE_PATH \
+              -f message="$message" \
+              -f content="$content"
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge created."
+              exit 0
+            fi
+            # Failed to create, probably because a file of this name now exists, so
+            # continue
+          fi
+          # Update existing file, trying 3 times in case another job updates the
+          # coverage badge almost concurrently, which invalidates old SHA
+          for i in {1..3}; do
+            # Check whether file has changed
+            diff $BADGE_PATH $RUNNER_TEMP/badge.json
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge unchanged."
+              exit 0
+            fi
+            # Changed: replace existing file
+            export sha=$( git rev-parse main:$BADGE_PATH )
+            gh api --method PUT /repos/:owner/coreax-metadata/contents/$BADGE_PATH \
+              -f message="$message" \
+              -f content="$content" \
+              -f sha="$sha"
+            if [ $? -eq 0 ]; then
+              echo "Coverage badge updated."
+              exit 0
+            fi
+            # Failed: remote has probably updated, so pull latest again
+            git pull
+          done
+          echo "Failed to update coverage badge after 3 attempts."
+          exit 1

@@ -2,6 +2,7 @@ Benard
 Caratheodory
 Chatalic
 Duvenaud
+Dwivedi
 Epperly
 Ermon
 Ferenc
@@ -19,6 +20,7 @@ Kanagawa
 Litterer
 Loera
 Lyons
+Mackey
 Martinsson
 Matérn
 Meunier
@@ -27,6 +29,7 @@ Nabil
 Nystr
 Nystrom
 Qiang
+Raaz
 Rademacher
 Rosasco
 Rudi
