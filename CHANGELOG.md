@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- **[BREAKING CHANGE]** The `jaxtyping` version is now lower bounded at `v0.2.31` to enable `coreax.data.Data` jaxtyping compatibility.
 
 ### Removed
 
