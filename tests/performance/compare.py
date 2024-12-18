@@ -26,6 +26,10 @@ from typing_extensions import TypedDict
 
 from coreax.util import format_time
 
+# A good amount of this code is duplicated in the coverage comparison script, but we
+# ignore this so that both scripts can be standalone.
+# pylint: disable=duplicate-code
+
 PERFORMANCE_FILENAME_REGEX = re.compile(
     r"^performance"
     r"-(\d{4})-(\d{2})-(\d{2})"
@@ -359,3 +363,5 @@ def get_significant_differences(
 
 if __name__ == "__main__":
     main()
+
+# pylint: enable=duplicate-code
