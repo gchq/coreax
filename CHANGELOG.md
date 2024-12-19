@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     and KSD metrics) (https://github.com/gchq/coreax/pull/802)
   - David (extract pixel locations and values from an image and plot coresets side by
     side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
+  - Pounce (extract frames from a video and use coreset algorithms to select the best
+    frames) (https://github.com/gchq/coreax/issues/892)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
