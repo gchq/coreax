@@ -99,7 +99,6 @@ def main() -> None:
 
     # Run the experiment with 5 different random keys
     for i in range(5):
-        print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_umap, key)
         for getter in solvers:

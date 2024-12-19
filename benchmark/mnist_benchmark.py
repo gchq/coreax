@@ -111,12 +111,19 @@ def compute_metrics(logits: jnp.ndarray, labels: jnp.ndarray) -> dict[str, jnp.n
 
 
 class MLP(nn.Module):
-    """Multi-layer perceptron with optional batch normalization and dropout."""
+    """
+    Multi-layer perceptron with optional batch normalisation and dropout.
+
+    :param hidden_size: Number of units in the hidden layer.
+    :param output_size: Number of output units.
+    :param use_batchnorm: Whether to apply batch norm.
+    :param dropout_rate: Dropout rate to use during training.
+    """
 
     hidden_size: int
     output_size: int = 10
     use_batchnorm: bool = True
-    dropout_rate: float = 0.5
+    dropout_rate: float = 0.2
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, training: bool = True) -> jnp.ndarray:
@@ -128,10 +135,11 @@ class MLP(nn.Module):
         :return: Output logits of the network.
         """
         x = nn.Dense(self.hidden_size)(x)
+        if training:
+            x = nn.Dropout(rate=self.dropout_rate, deterministic=False)(x)
         if self.use_batchnorm:
             x = nn.BatchNorm(use_running_average=not training)(x)
         x = nn.relu(x)
-        x = nn.Dropout(rate=self.dropout_rate, deterministic=not training)(x)
         x = nn.Dense(self.output_size)(x)
         return x
 
@@ -474,7 +482,9 @@ def initialise_solvers(
             train_data_umap[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
-        stein_solver = SteinThinning(coreset_size=_size, kernel=stein_kernel)
+        stein_solver = SteinThinning(
+            coreset_size=_size, kernel=stein_kernel, regularise=False
+        )
         return MapReduce(stein_solver, leaf_size=3 * _size)
 
     def _get_random_solver(_size: int) -> RandomSample:
