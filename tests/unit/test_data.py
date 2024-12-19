@@ -19,13 +19,13 @@ The tests within this file verify that approaches to handling and processing dat
 produce the expected results on simple examples.
 """
 
-from functools import partial
-
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import pytest
+from beartype.door import is_bearable
 from jax import Array
+from jaxtyping import Float, Int, Shaped
 
 import coreax.data
 
@@ -99,8 +99,11 @@ def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
 @pytest.mark.parametrize(
     "data_type",
     [
-        partial(coreax.data.Data, DATA_ARRAY),
-        partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
+        pytest.param(jtu.Partial(coreax.data.Data, DATA_ARRAY), id="Data"),
+        pytest.param(
+            jtu.Partial(coreax.data.SupervisedData, DATA_ARRAY, SUPERVISION),
+            id="SupervisedData",
+        ),
     ],
 )
 class TestData:
@@ -147,6 +150,16 @@ class TestData:
         _data = data_type()
         assert len(_data) == len(_data.data)
 
+    def test_dtype(self, data_type):
+        """Test dtype property; required for jaxtyping annotations."""
+        _data = data_type()
+        assert _data.data.dtype == _data.dtype
+
+    def test_shape(self, data_type):
+        """Test shape property; required for jaxtyping annotations."""
+        _data = data_type()
+        assert _data.data.shape == _data.shape
+
     @pytest.mark.parametrize("weights", (None, 0, 3, DATA_ARRAY.reshape(-1)))
     def test_normalize(self, data_type, weights):
         """Test weight normalization."""
@@ -159,6 +172,40 @@ class TestData:
         assert eqx.tree_equal(
             normalized_with_zeros.weights, jnp.nan_to_num(expected_weights)
         )
+
+    @pytest.mark.parametrize(
+        "dtype, valid_jax_type, invalid_jax_type",
+        [(jnp.int32, Int, Float), (jnp.float32, Float, Int)],
+    )
+    def test_jaxtyping_compatibility(
+        self, data_type, dtype, valid_jax_type, invalid_jax_type
+    ):
+        """
+        Test `Data` compatibility with jaxtyping annotations.
+
+        Checks the following cases:
+            - Correct narrowed shape,
+            - Correct narrowed shape and narrowed data type,
+            - Correct narrowed shape and incorrect narrowed data type,
+            - Incorrect narrowed shape
+            - Incorrectly narrowed instance type
+        """
+        data_factory = eqx.tree_at(
+            lambda x: x.args,
+            data_type,
+            replace=jtu.tree_map(lambda y: jnp.astype(y, dtype), data_type.args),
+        )
+        data = data_factory()
+        valid_shape = " ".join(str(dim) for dim in data.shape)
+        invalid_shape = " ".join(str(dim + 1) for dim in data.shape)
+
+        assert is_bearable(data, Shaped[coreax.data.Data, valid_shape])
+        assert is_bearable(data, valid_jax_type[coreax.data.Data, valid_shape])
+        assert not is_bearable(data, invalid_jax_type[coreax.data.Data, invalid_shape])
+        assert not is_bearable(data, Shaped[coreax.data.Data, invalid_shape])
+        if not isinstance(data, coreax.data.SupervisedData):
+            incorrect_instance_type = Shaped[coreax.data.SupervisedData, "..."]
+            assert not is_bearable(data, incorrect_instance_type)
 
 
 class TestSupervisedData:

@@ -29,7 +29,7 @@ dependencies = [
     "flax",
     "jax",
     "jaxopt",
-    "jaxtyping",
+    "jaxtyping>0.2.31",
     "optax",
     "scikit-learn",
     "tqdm",
@@ -48,6 +48,7 @@ benchmark = [
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
+    "beartype",
     "imageio",
     "matplotlib",
     "numpy",
