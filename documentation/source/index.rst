@@ -44,6 +44,7 @@ Contents
    coresets
    quickstart
    faq
+   benchmark
 
 .. toctree::
    :hidden:
