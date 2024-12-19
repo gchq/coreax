@@ -888,8 +888,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
     kernel: ScalarValuedKernel
     random_key: KeyArrayLike
-    delta: Optional[float] = None
-    sqrt_kernel: Optional[ScalarValuedKernel] = None
+    delta: float
+    sqrt_kernel: ScalarValuedKernel
 
     def reduce(
         self, dataset: _Data, solver_state: None = None
@@ -915,41 +915,15 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: A tuple containing the final coreset and the solver state (None).
         """
         n = len(dataset)
+        m = math.floor(math.log2(n) - math.log2(self.coreset_size))
+        clipped_original_dataset = dataset[: self.coreset_size * 2**m]
 
-        sqrt_kernel = self.sqrt_kernel
-        if sqrt_kernel is None:
-            if hasattr(self.kernel, "get_sqrt_kernel"):
-                sqrt_kernel = self.kernel.get_sqrt_kernel(dataset.data.ndim)
-            else:
-                raise NotImplementedError(
-                    f"The square root of the "
-                    f"{self.kernel.__class__.__name__} is not"
-                    f" implemented. Please provide the square"
-                    f" root kernel if known."
-                )
+        partition = self.kt_half_recursive(clipped_original_dataset, m, dataset)
+        baseline_coreset = self.get_baseline_coreset(dataset, self.coreset_size)
+        partition.append(baseline_coreset)
 
-        delta = self.delta
-        if delta is None:
-            log_n = math.log(n)
-            if log_n > 0:
-                log_log_n = math.log(log_n)
-                if log_log_n > 0:
-                    delta = 1 / (n * log_log_n)
-                else:
-                    delta = 1 / (n * log_n)
-            else:
-                delta = 1 / n
-
-        # Create a new instance with updated parameters
-        new_instance = KernelThinning(
-            coreset_size=self.coreset_size,
-            kernel=self.kernel,
-            random_key=self.random_key,
-            delta=delta,
-            sqrt_kernel=sqrt_kernel,
-        )
-
-        return new_instance.reduce_internal(dataset)
+        best_coreset_indices = self.kt_choose(partition, dataset)
+        return self.kt_refine(Coresubset(best_coreset_indices, dataset))
 
     def reduce_internal(
         self,
