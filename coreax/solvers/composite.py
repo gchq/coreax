@@ -24,13 +24,14 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
 from jax import Array
+from jax.typing import ArrayLike
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import TypeAlias, override
 
 from coreax.coreset import Coreset, Coresubset
 from coreax.data import Data
 from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
-from coreax.util import ArrayLike, tree_zero_pad_leading_axis
+from coreax.util import tree_zero_pad_leading_axis
 
 BinaryTree: TypeAlias = Union[KDTree, BallTree]
 _Data = TypeVar("_Data", bound=Data)
