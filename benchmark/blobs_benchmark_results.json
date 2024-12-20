@@ -1,0 +1,123 @@
+{
+  "n_samples": 1000,
+  "10": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.07150361686944962,
+      "Unweighted_KSD": 0.08750460296869278,
+      "Weighted_MMD": 0.0379306860268116,
+      "Weighted_KSD": 0.0829031690955162,
+      "Time": 5.884511301000202
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.275138258934021,
+      "Unweighted_KSD": 0.10646775364875793,
+      "Weighted_MMD": 0.08032745867967606,
+      "Weighted_KSD": 0.08259668201208115,
+      "Time": 2.70524780300002
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.1823418289422989,
+      "Unweighted_KSD": 0.07925429940223694,
+      "Weighted_MMD": 0.03242294117808342,
+      "Weighted_KSD": 0.08562125265598297,
+      "Time": 3.1777004279997527
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.1860635131597519,
+      "Unweighted_KSD": 0.07877305150032043,
+      "Weighted_MMD": 0.08734742552042007,
+      "Weighted_KSD": 0.08519437164068222,
+      "Time": 4.4501253389998965
+    }
+  },
+  "50": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.0166015625,
+      "Unweighted_KSD": 0.0807996466755867,
+      "Weighted_MMD": 0.003821405116468668,
+      "Weighted_KSD": 0.07987463474273682,
+      "Time": 5.309066925000025
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.0836576297879219,
+      "Unweighted_KSD": 0.08484388142824173,
+      "Weighted_MMD": 0.005009346641600132,
+      "Weighted_KSD": 0.0799480602145195,
+      "Time": 2.63616042700005
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.13318200409412384,
+      "Unweighted_KSD": 0.06197633594274521,
+      "Weighted_MMD": 0.001859319512732327,
+      "Weighted_KSD": 0.07993459701538086,
+      "Time": 3.2017984009999054
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.07902805507183075,
+      "Unweighted_KSD": 0.07476294785737991,
+      "Weighted_MMD": 0.009652049280703068,
+      "Weighted_KSD": 0.08011894673109055,
+      "Time": 3.7358099509997373
+    }
+  },
+  "100": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.007747378665953875,
+      "Unweighted_KSD": 0.08028040081262589,
+      "Weighted_MMD": 0.00158221204765141,
+      "Weighted_KSD": 0.080024354159832,
+      "Time": 5.425807007000003
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.032532136887311935,
+      "Unweighted_KSD": 0.0770806148648262,
+      "Weighted_MMD": 0.0016377450665459037,
+      "Weighted_KSD": 0.08007266372442245,
+      "Time": 3.0098705740001606
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.06990867853164673,
+      "Unweighted_KSD": 0.07202305644750595,
+      "Weighted_MMD": 0.0009765625,
+      "Weighted_KSD": 0.07999508082866669,
+      "Time": 3.497632235999845
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.11845249682664871,
+      "Unweighted_KSD": 0.08185310661792755,
+      "Weighted_MMD": 0.002652046037837863,
+      "Weighted_KSD": 0.07983608543872833,
+      "Time": 3.7666220569999496
+    }
+  },
+  "200": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.003936649300158024,
+      "Unweighted_KSD": 0.07993190735578537,
+      "Weighted_MMD": 0.00106418423820287,
+      "Weighted_KSD": 0.08001235872507095,
+      "Time": 5.786332599000161
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.048701006919145584,
+      "Unweighted_KSD": 0.07752222567796707,
+      "Weighted_MMD": 0.000913490541279316,
+      "Weighted_KSD": 0.08005911111831665,
+      "Time": 2.9644361489999937
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.05208498612046242,
+      "Unweighted_KSD": 0.07570838183164597,
+      "Weighted_MMD": 0.0007720404537394643,
+      "Weighted_KSD": 0.08004967868328094,
+      "Time": 3.7225564089999352
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.12907283008098602,
+      "Unweighted_KSD": 0.08488345146179199,
+      "Weighted_MMD": 0.002328953007236123,
+      "Weighted_KSD": 0.07984744757413864,
+      "Time": 4.004352928000117
+    }
+  }
+}
