@@ -58,6 +58,10 @@ def test_as_supervised_data():
         (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
         (jnp.array([[[1]], [[1]]]),),
         (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
+        (1.0,),
+        (1.0, 1.0),
+        (1,),
+        (1, 1),
     ],
     ids=[
         "single_zero_dimensional_array",
@@ -68,6 +72,10 @@ def test_as_supervised_data():
         "multiple_two_dimensional_arrays",
         "single_three_dimensional_array",
         "multiple_three_dimensional_arrays",
+        "single_float",
+        "multiple_floats",
+        "single_int",
+        "multiple_ints",
     ],
 )
 def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
