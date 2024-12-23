@@ -21,11 +21,11 @@ The benchmarking process follows these steps:
 4. Print the time taken to generate each coreset.
 """
 
-import os
 import time
 from pathlib import Path
 
 import imageio
+import jax.numpy as jnp
 import numpy as np
 import umap
 from jax import random
@@ -46,18 +46,17 @@ def benchmark_coreset_algorithms(
     :param out_dir: Directory to save the output GIFs for each coreset algorithm.
     :param coreset_size: The size of the coreset.
     """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = Path(__file__).resolve().parent
 
     # Ensure paths are absolute and output directory exists
-    in_path = Path(os.path.join(base_dir, in_path)).resolve()
-    out_dir = Path(os.path.join(base_dir, out_dir)).resolve()
+    in_path = (base_dir / in_path).resolve()
+    out_dir = (base_dir / out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Load and preprocess video frames
     _, *image_data = imageio.v2.mimread(in_path)
     raw_data = np.asarray(image_data)
     reshaped_data = raw_data.reshape(raw_data.shape[0], -1)
-    print(type(reshaped_data))
 
     umap_model = umap.UMAP(densmap=True, n_components=25)
     umap_data = umap_model.fit_transform(reshaped_data)
@@ -71,7 +70,7 @@ def benchmark_coreset_algorithms(
     for get_solver in solvers:
         solver = get_solver(coreset_size)
         solver_name = get_solver_name(solver)
-        data = Data(umap_data)
+        data = Data(jnp.array(umap_data))
 
         start_time = time.perf_counter()
         coreset, _ = solver.reduce(data)
