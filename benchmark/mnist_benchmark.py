@@ -636,14 +636,13 @@ def main() -> None:
         "epochs": 100,
         "batch_size": 8,
         "learning_rate": 1e-3,
-        "weight_decay": 1e-4,
-        "patience": 15,
+        "weight_decay": 1e-5,
+        "patience": 5,
         "min_delta": 0.001,
     }
 
     # Run the experiment with 5 different random keys
-    # pylint: disable=duplicate-code
-    for i in range(2):
+    for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_umap, key)
@@ -652,7 +651,6 @@ def main() -> None:
                 solver = getter(size)
                 solver_name = get_solver_name(solver)
                 start_time = time.perf_counter()
-                # pylint: enable=duplicate-code
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 
                 coreset_indices = coreset.nodes.data
