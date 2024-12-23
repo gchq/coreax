@@ -44,7 +44,6 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
-from jax.typing import ArrayLike
 from jaxtyping import Shaped
 from typing_extensions import TypeAlias, deprecated
 
@@ -56,7 +55,8 @@ Leaf: TypeAlias = Any
 
 #: JAX random key type annotations.
 KeyArray: TypeAlias = Array
-KeyArrayLike: TypeAlias = ArrayLike
+# jax.random functions crash if passed a scalar, so can't use ArrayLike
+KeyArrayLike: TypeAlias = Array
 
 
 class NotCalculatedError(Exception):

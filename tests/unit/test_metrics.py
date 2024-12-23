@@ -28,6 +28,7 @@ import jax.tree_util as jtu
 import numpy as np
 import pytest
 from jax import Array, jacfwd, vmap
+from jax.typing import ArrayLike
 
 from coreax.data import Data
 from coreax.kernels import (
@@ -40,7 +41,7 @@ from coreax.kernels import (
 )
 from coreax.metrics import KSD, MMD
 from coreax.score_matching import convert_stein_kernel
-from coreax.util import ArrayLike, pairwise
+from coreax.util import pairwise
 
 
 class _MetricProblem(NamedTuple):

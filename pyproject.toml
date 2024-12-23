@@ -25,12 +25,11 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    "equinox<0.11.8",  # 0.11.8 raises TypeErrors of the form
-                       #   `__class__ assignment: 'x' object layout differs from 'x'`.
+    "equinox>=0.11.5",
     "flax",
     "jax",
     "jaxopt",
-    "jaxtyping",
+    "jaxtyping>0.2.31",
     "optax",
     "scikit-learn",
     "tqdm",
@@ -49,6 +48,7 @@ benchmark = [
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
+    "beartype",
     "imageio",
     "matplotlib",
     "numpy",

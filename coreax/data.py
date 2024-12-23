@@ -14,7 +14,7 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import List, Optional, Sequence, Union, overload
+from typing import Optional, Sequence, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -26,8 +26,14 @@ from typing_extensions import Self
 
 @overload
 def _atleast_2d_consistent(
-    arrays: Sequence[Shaped[Array, ""]],
-) -> List[Shaped[Array, " 1 1"]]: ...
+    arrays: Union[Shaped[Array, ""], float, int],
+) -> Shaped[Array, " 1 1"]: ...
+
+
+@overload
+def _atleast_2d_consistent(
+    arrays: Sequence[Union[Shaped[Array, ""], float, int]],
+) -> list[Shaped[Array, " 1 1"]]: ...
 
 
 @overload
@@ -45,9 +51,15 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
 @overload
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
     arrays: Sequence[
-        Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+        Union[
+            Shaped[Array, " _n _d _*p"],
+            Shaped[Array, " _n"],
+            Shaped[Array, ""],
+            float,
+            int,
+        ]
     ],
-) -> List[
+) -> list[
     Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n 1"], Shaped[Array, " 1 1"]]
 ]: ...
 
@@ -58,25 +70,38 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
         Shaped[Array, " n d *p"],
         Shaped[Array, " n"],
         Shaped[Array, ""],
+        float,
+        int,
         Sequence[
-            Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]
+            Union[
+                Shaped[Array, " _n _d _*p"],
+                Shaped[Array, " _n"],
+                Shaped[Array, ""],
+                float,
+                int,
+            ]
         ],
     ],
 ) -> Union[
     Shaped[Array, " n d *p"],
     Shaped[Array, " n 1"],
     Shaped[Array, " 1 1"],
-    List[Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]],
+    list[Union[Shaped[Array, " _n _d _*p"], Shaped[Array, " _n"], Shaped[Array, ""]]],
 ]:
     r"""
     Given an array or sequence of arrays ensure they are at least 2-dimensional.
 
+    Float and integer types are cast as zero-dimensional input arrays, giving 1x1
+    output.
+
     .. note::
-        This function differs from `jax.numpy.atleast_2d` in that it converts
-        1-dimensional `n`-vectors into arrays of shape `(n, 1)` rather than `(1, n)`.
+
+        This function differs from :func:`jax.numpy.atleast_2d` in that it converts
+        1-dimensional ``n``-vectors into arrays of shape ``(n, 1)`` rather than
+        ``(1, n)``.
 
     :param arrays: Singular array or sequence of arrays
-    :return: at least 2-dimensional array or list of at least 2-dimensional arrays
+    :return: At least 2-dimensional array or list of at least 2-dimensional arrays
     """
     # If we have been given just one array, return as an array, not list
     if len(arrays) == 1:
@@ -105,6 +130,13 @@ class Data(eqx.Module):
     .. note::
         `n`-vector inputs for `data` are interpreted as `n` points in 1-dimension and
         converted to a `(n, 1)` array.
+
+    Compatible with :func:`jaxtyping.jaxtyped` -- :class:`Data` is interpreted as an
+    array type, whose shape is the expected shape of :attr:`Data.data`.
+
+    .. note::
+        A `Data` object whose :attr:`Data.data` is expected to be a floating point array
+        with shape `a b`, can be type hinted as `x: Float[Data, " a b"] = ...`.
 
     :param data: An :math:`n \times d` array defining the features of the unsupervised
         dataset
@@ -163,6 +195,16 @@ class Data(eqx.Module):
     def __len__(self) -> int:
         """Return data length."""
         return len(self.data)
+
+    @property
+    def dtype(self):
+        """Return dtype of data; used for jaxtyping annotations."""
+        return self.data.dtype
+
+    @property
+    def shape(self):
+        """Return shape of data; used for jaxtyping annotations."""
+        return self.data.shape
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
         """
