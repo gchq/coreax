@@ -634,12 +634,21 @@ def main() -> None:
 
     config = {
         "epochs": 100,
-        "batch_size": 8,
+        "batch_size": 64,
         "learning_rate": 1e-3,
         "weight_decay": 1e-5,
         "patience": 5,
         "min_delta": 0.001,
     }
+
+    full_data_bundle = {
+        "data": train_data_jax,
+        "targets": train_targets_jax,
+        "test_data": test_data_jax,
+        "test_targets": test_targets_jax,
+    }
+    print("Training using the full training set...")
+    print(train_model(full_data_bundle, jax.random.PRNGKey(0), config))
 
     # Run the experiment with 5 different random keys
     for i in range(5):

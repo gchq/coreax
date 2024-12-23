@@ -42,8 +42,9 @@ def benchmark_coreset_algorithms(
     """
     Benchmark coreset algorithms by processing a video GIF.
 
-    :param in_path: Path to the input GIF file.
-    :param out_dir: Directory to save the output GIFs for each coreset algorithm.
+    :param in_path: Path to the input GIF file, relative to the script's location.
+    :param out_dir: Directory to save the output GIFs for each coreset algorithm,
+                    relative to the script's location.
     :param coreset_size: The size of the coreset.
     """
     base_dir = Path(__file__).resolve().parent
