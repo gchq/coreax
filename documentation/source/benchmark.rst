@@ -46,14 +46,14 @@ of the coreset algorithms.
 - Plots showing the accuracy (with error bars) of the MLP's predictions on the test set,
   along with the time taken generate coreset for each coreset size and algorithm.
 
-  .. image:: ../_images/benchmarking_images/mnist_benchmark_accuracy.png
+  .. image:: ../../examples/benchmarking_images//mnist_benchmark_accuracy.png
      :alt: Benchmark Results for MNIST Coreset Algorithms
 
   **Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
   represent the average accuracy. Error bars represent the min-max range for accuracy
   for each coreset size across 5 runs.
 
-  .. image:: ../_images/benchmarking_images/mnist_benchmark_time_taken.png
+  .. image:: ../../examples/benchmarking_images//mnist_benchmark_time_taken.png
      :alt: Time Taken Benchmark Results for MNIST Coreset Algorithms
 
   **Figure 2**: Time taken to generate coreset for each coreset algorithm. Bar heights
@@ -228,7 +228,7 @@ For each metric and coreset size, the best performance score is highlighted in b
 
 **Visualisation**: The results in this table can be visualised as follows:
 
-  .. image:: ../_images/benchmarking_images/blobs_benchmark_results.png
+  .. image:: ../../examples/benchmarking_images//blobs_benchmark_results.png
      :alt: Benchmark Results for Synthetic Dataset
 
   **Figure 3**: Line graphs depicting the average performance metrics across 5 runs of
@@ -252,7 +252,7 @@ from an input image. The process follows these steps:
 
 **Results**: The following plot visualises the pixels chosen by each coreset algorithm.
 
-  .. image:: ../_images/benchmarking_images/david_benchmark_results.png
+  .. image:: ../../examples/benchmarking_images//david_benchmark_results.png
      :alt: Coreset Visualisation on Image
 
   **Figure 4**: The original image and pixels selected by each coreset algorithm
@@ -281,27 +281,27 @@ extracted from an input **GIF**. This test involves the following steps:
 
   **Gif 1**: Original gif file.
 
-  .. image:: ../_images/benchmarking_images/RandomSample_coreset.gif
+  .. image:: ../../examples/benchmarking_images//RandomSample_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
   **Gif 2**: Frames selected by Random Sample.
 
-  .. image:: ../_images/benchmarking_images/SteinThinning_coreset.gif
+  .. image:: ../../examples/benchmarking_images//SteinThinning_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
   **Gif 3**: Frames selected by Stein Thinning.
 
-  .. image:: ../_images/benchmarking_images/RPCholesky_coreset.gif
+  .. image:: ../../examples/benchmarking_images//RPCholesky_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
   **Gif 4**: Frames selected by RP Cholesky.
 
-  .. image:: ../_images/benchmarking_images/KernelHerding_coreset.gif
+  .. image:: ../../examples/benchmarking_images//KernelHerding_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
   **Gif 5**: Frames selected by Kernel Herding.
 
-  .. image:: ../_images/benchmarking_images/pounce_frames.png
+  .. image:: ../../examples/benchmarking_images//pounce_frames.png
      :alt: Coreset Visualisation on GIF Frames
 
   **Figure 5**:Frames chosen by each each coreset algorithm with action frames (the
