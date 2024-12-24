@@ -98,6 +98,7 @@ def main() -> None:
     coreset_times = {}
 
     # Run the experiment with 5 different random keys
+    # pylint: disable=R0801
     for i in range(5):
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_umap, key)
