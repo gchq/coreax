@@ -216,52 +216,68 @@ def compute_metrics(
     }
 
 
-def main() -> None:
-    """
-    Benchmark various algorithms on a synthetic dataset.
+def main() -> None:  # pylint: disable=too-many-locals
+    """Benchmark various algorithms on a synthetic dataset over multiple seeds."""
+    n_samples = 1_000
+    seeds = [42, 45, 46, 47, 48]  # List of seeds to average over
+    coreset_sizes = [25, 50, 100, 200]
 
-    Compare the performance of different coreset algorithms on a synthetic dataset,
-    generated using :func:`sklearn.datasets.make_blobs`. We set up various solvers,
-    generate coresets of multiple sizes, and compute performance metrics (MMD and KSD)
-    for each solver at each coreset size. Results are saved to a JSON file.
-    """
-    n_samples = 1000
-    # Generate data
-    x, *_ = make_blobs(n_samples=n_samples, n_features=2, centers=10, random_state=45)
-    dataset = Data(jnp.array(x))
+    # Initialize storage for aggregated results
+    aggregated_results = {size: {} for size in coreset_sizes}
 
-    # Set up kernel
-    sq_exp_kernel = setup_kernel(jnp.array(x))
-
-    # Set up Stein Kernel
-    stein_kernel = setup_stein_kernel(sq_exp_kernel, dataset)
-
-    # Set up metrics
-    mmd_metric = MMD(kernel=sq_exp_kernel)
-    ksd_metric = KSD(kernel=sq_exp_kernel)
-
-    # Set up weights optimiser
-    weights_optimiser = MMDWeightsOptimiser(kernel=sq_exp_kernel)
-
-    # Define coreset sizes
-    coreset_sizes = [10, 50, 100, 200]
-
-    all_results = {"n_samples": n_samples}
-    for size in coreset_sizes:
-        solvers = setup_solvers(size, sq_exp_kernel, stein_kernel)
-
-        # Compute metrics
-        results = compute_metrics(
-            solvers, dataset, mmd_metric, ksd_metric, weights_optimiser
+    for seed in seeds:
+        # Generate data for this seed
+        x, *_ = make_blobs(
+            n_samples=n_samples, n_features=2, centers=10, random_state=seed
         )
-        all_results[size] = results
+        dataset = Data(jnp.array(x))
 
-    # Save results to JSON file
+        # Set up kernel
+        sq_exp_kernel = setup_kernel(jnp.array(x))
+
+        # Set up Stein Kernel
+        stein_kernel = setup_stein_kernel(sq_exp_kernel, dataset)
+
+        # Set up metrics
+        mmd_metric = MMD(kernel=sq_exp_kernel)
+        ksd_metric = KSD(kernel=sq_exp_kernel)
+
+        # Set up weights optimiser
+        weights_optimiser = MMDWeightsOptimiser(kernel=sq_exp_kernel)
+
+        for size in coreset_sizes:
+            solvers = setup_solvers(size, sq_exp_kernel, stein_kernel, seed)
+
+            # Compute metrics for this size and seed
+            results = compute_metrics(
+                solvers, dataset, mmd_metric, ksd_metric, weights_optimiser
+            )
+
+            # Aggregate results across seeds
+            for solver_name, metrics in results.items():
+                if solver_name not in aggregated_results[size]:
+                    aggregated_results[size][solver_name] = {
+                        metric: [] for metric in metrics
+                    }
+
+                for metric, value in metrics.items():
+                    aggregated_results[size][solver_name][metric].append(value)
+
+    # Average results across seeds
+    final_results = {"n_samples": n_samples}
+    for size, solvers in aggregated_results.items():
+        final_results[size] = {}
+        for solver_name, metrics in solvers.items():
+            final_results[size][solver_name] = {
+                metric: sum(values) / len(values) for metric, values in metrics.items()
+            }
+
+    # Save final results to JSON file
     base_dir = os.path.dirname(os.path.abspath(__file__))
     with open(
         os.path.join(base_dir, "blobs_benchmark_results.json"), "w", encoding="utf-8"
     ) as f:
-        json.dump(all_results, f, indent=2)
+        json.dump(final_results, f, indent=2)
 
 
 if __name__ == "__main__":

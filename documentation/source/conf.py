@@ -157,6 +157,7 @@ intersphinx_mapping = {  # linking to external documentation
     "sklearn": ("https://scikit-learn.org/stable", None),
     "tqdm": ("https://tqdm.github.io/docs", str(TQDM_CUSTOM_PATH)),
     "equinox": ("https://docs.kidger.site/equinox", None),
+    "umap": ("https://umap-learn.readthedocs.io/en/latest", None),
 }
 
 nitpick_ignore = [

@@ -278,6 +278,7 @@ def main() -> None:
         coreset_sizes_time_only,
         "Time Taken (seconds)",
         "Time Taken to generate coresets for Different Coreset Sizes",
+        True,
     )
 
     plt.figtext(
