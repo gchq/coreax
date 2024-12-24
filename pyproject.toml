@@ -39,6 +39,9 @@ dependencies = [
 [project.optional-dependencies]
 # Benchmarking
 benchmark = [
+    "imageio",
+    "matplotlib",
+    "numpy",
     "torch",
     "torchvision",
     "umap-learn>=0.5.7",
@@ -49,9 +52,6 @@ benchmark = [
 test = [
     "coreax[benchmark]",
     "beartype",
-    "imageio",
-    "matplotlib",
-    "numpy",
     "opencv-python-headless",  # WARNING: Incompatible with other versions of opencv
     "pytest-cov",
     "pytest-rerunfailures",
