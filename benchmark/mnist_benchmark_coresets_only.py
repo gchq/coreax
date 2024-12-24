@@ -105,7 +105,7 @@ def main() -> None:
         for solver_creator in solver_factories:
             for size in [25, 50, 100, 500, 1_000]:
                 solver = solver_creator(size)
-                solver_name = get_solver_name(solver)
+                solver_name = get_solver_name(solver_creator)
                 start_time = time.perf_counter()
                 _, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
                 time_taken = time.perf_counter() - start_time

@@ -646,11 +646,11 @@ def main() -> None:
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solvers = initialise_solvers(train_data_umap, key)
-        for getter in solvers:
+        solver_factories = initialise_solvers(train_data_umap, key)
+        for solver_creator in solver_factories:
             for size in [25, 50, 100, 500, 1_000, 5_000]:
-                solver = getter(size)
-                solver_name = get_solver_name(solver)
+                solver = solver_creator(size)
+                solver_name = get_solver_name(solver_creator)
                 start_time = time.perf_counter()
                 # pylint: enable=duplicate-code
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
