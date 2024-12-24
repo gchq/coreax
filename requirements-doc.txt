@@ -5,7 +5,7 @@ alabaster==0.7.16 ; python_full_version < '3.10'
 alabaster==1.0.0 ; python_full_version >= '3.10'
 apeye==1.4.1
 apeye-core==1.1.5
-attrs==24.2.0
+attrs==24.3.0
 autodocsumm==0.2.14
 babel==2.16.0
 beautifulsoup4==4.12.3
@@ -24,7 +24,7 @@ etils==1.11.0 ; python_full_version >= '3.10'
 filelock==3.16.1
 flax==0.8.5 ; python_full_version < '3.10'
 flax==0.10.2 ; python_full_version >= '3.10'
-fsspec==2024.10.0
+fsspec==2024.12.0
 furo==2024.8.6
 html5lib==1.1
 humanize==4.11.0
@@ -33,12 +33,12 @@ imagesize==1.4.1
 importlib-metadata==8.5.0 ; python_full_version < '3.10'
 importlib-resources==6.4.5
 jax==0.4.30 ; python_full_version < '3.10'
-jax==0.4.37 ; python_full_version >= '3.10'
+jax==0.4.38 ; python_full_version >= '3.10'
 jaxlib==0.4.30 ; python_full_version < '3.10'
-jaxlib==0.4.36 ; python_full_version >= '3.10'
+jaxlib==0.4.38 ; python_full_version >= '3.10'
 jaxopt==0.8.3
 jaxtyping==0.2.36
-jinja2==3.1.4
+jinja2==3.1.5
 joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
@@ -55,10 +55,10 @@ numpy==2.0.2
 opt-einsum==3.4.0
 optax==0.2.4
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.10.2 ; python_full_version >= '3.10'
+orbax-checkpoint==0.10.3 ; python_full_version >= '3.10'
 packaging==24.2
 platformdirs==4.3.6
-protobuf==5.29.1
+protobuf==5.29.2
 pybtex==0.24.0
 pybtex-docutils==1.0.3
 pygments==2.18.0
@@ -94,7 +94,7 @@ sphinxcontrib-htmlhelp==2.1.0
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==2.0.0
 sphinxcontrib-serializinghtml==2.0.0
-sphobjinv==2.3.1.1
+sphobjinv==2.3.1.2
 standard-imghdr==3.10.14 ; python_full_version >= '3.13'
 tabulate==0.9.0
 tensorstore==0.1.69 ; python_full_version < '3.10'
@@ -104,6 +104,6 @@ tomli==2.2.1 ; python_full_version < '3.11'
 toolz==1.0.0
 tqdm==4.67.1
 typing-extensions==4.12.2
-urllib3==2.2.3
+urllib3==2.3.0
 webencodings==0.5.1
 zipp==3.21.0
