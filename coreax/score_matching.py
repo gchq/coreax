@@ -34,7 +34,7 @@ and then differentiating a kernel density estimate to the data.
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Union
+from typing import Union, overload
 
 import equinox as eqx
 import numpy as np
@@ -52,6 +52,7 @@ from jax.typing import DTypeLike
 from jaxtyping import Shaped
 from optax import adamw
 from tqdm import tqdm as LoudTQDM  # noqa:N812
+from typing_extensions import override
 
 from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
 from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
@@ -74,9 +75,30 @@ class ScoreMatching(eqx.Module):
     """
 
     @abstractmethod
+    @overload
     def match(
+        self, x: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]
+    ) -> Callable[
+        [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
+        Shaped[Array, " 1 1"],
+    ]: ...
+
+    @abstractmethod
+    @overload
+    def match(  # pyright: ignore[reportOverlappingOverload]
         self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]: ...
+
+    @abstractmethod
+    def match(
+        self, x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int]
+    ) -> Union[
+        Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]],
+        Callable[
+            [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
+            Shaped[Array, " 1 1"],
+        ],
+    ]:
         r"""
         Match some model score function to dataset :math:`X\in\mathbb{R}^{n \times d}`.
 
@@ -404,9 +426,8 @@ class SlicedScoreMatching(ScoreMatching):
         state = state.apply_gradients(grads=grads)
         return state, val
 
-    def match(  # noqa: C901, PLR0912
-        self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    @override
+    def match(self, x):  # noqa: C901, PLR0912
         r"""
         Learn a sliced score matching function via :cite:`song2020ssm`.
 
@@ -523,9 +544,8 @@ class KernelDensityMatching(ScoreMatching):
         )
         super().__init__()
 
-    def match(
-        self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]:
+    @override
+    def match(self, x):
         r"""
         Learn a score function using kernel density estimation to model a distribution.
 
@@ -542,7 +562,19 @@ class KernelDensityMatching(ScoreMatching):
         """
         kde_data = x
 
-        def score_function(x_: Shaped[Array, " n d"]) -> Shaped[Array, " n d"]:
+        @overload
+        def score_function(
+            x_: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int],
+        ) -> Shaped[Array, " 1 1"]: ...
+
+        @overload
+        def score_function(  # pyright: ignore[reportOverlappingOverload]
+            x_: Shaped[Array, " n d"],
+        ) -> Shaped[Array, " n d"]: ...
+
+        def score_function(
+            x_: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
+        ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
             r"""
             Compute the score function using a kernel density estimation.
 

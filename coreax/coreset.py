@@ -51,7 +51,7 @@ class Coreset(eqx.Module, Generic[_Data]):
     nodes: _Data
     pre_coreset_data: _Data
 
-    def __init__(self, nodes: _Data, pre_coreset_data: _Data):
+    def __init__(self, nodes: _Data, pre_coreset_data: _Data) -> None:
         """Handle type conversion of ``nodes`` and ``pre_coreset_data``."""
         if isinstance(nodes, Array):
             self.nodes = as_data(nodes)
@@ -67,7 +67,7 @@ class Coreset(eqx.Module, Generic[_Data]):
         else:
             self.pre_coreset_data = pre_coreset_data
 
-    def __check_init__(self):
+    def __check_init__(self) -> None:
         """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
         if len(self.nodes) > len(self.pre_coreset_data):
             raise ValueError(
@@ -75,7 +75,7 @@ class Coreset(eqx.Module, Generic[_Data]):
                 "by definition of a Coreset"
             )
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return Coreset size/length."""
         return len(self.nodes)
 
@@ -96,7 +96,7 @@ class Coreset(eqx.Module, Generic[_Data]):
         return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
 
 
-class Coresubset(Coreset[Data], Generic[_Data]):
+class Coresubset(Coreset[_Data], Generic[_Data]):
     r"""
     Data structure for representing a coresubset.
 
@@ -121,9 +121,17 @@ class Coresubset(Coreset[Data], Generic[_Data]):
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
+    # Unlike on Coreset, contains indices of coreset rather than coreset itself
+    nodes: Data
+
     def __init__(self, nodes: Data, pre_coreset_data: _Data):
         """Handle typing of ``nodes`` being a `Data` instance."""
-        super().__init__(nodes, pre_coreset_data)
+        # nodes type can't technically be cast to _Data but do so anyway to avoid a
+        # significant amount of boilerplate just for type checking
+        super().__init__(
+            nodes,  # pyright: ignore [reportArgumentType]
+            pre_coreset_data,
+        )
 
     @property
     def coreset(self) -> _Data:

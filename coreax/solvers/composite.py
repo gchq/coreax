@@ -16,7 +16,7 @@
 
 import math
 import warnings
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, Optional, TypeVar, Union, overload
 
 import equinox as eqx
 import jax
@@ -24,7 +24,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
 from jax import Array
-from jax.typing import ArrayLike
+from jaxtyping import Integer
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import TypeAlias, override
 
@@ -37,7 +37,7 @@ BinaryTree: TypeAlias = Union[KDTree, BallTree]
 _Data = TypeVar("_Data", bound=Data)
 _Coreset = TypeVar("_Coreset", Coreset, Coresubset)
 _State = TypeVar("_State")
-_Indices = TypeVar("_Indices", ArrayLike, None)
+_Indices = Integer[Array, "..."]
 
 
 class CompositeSolver(
@@ -128,9 +128,19 @@ class MapReduce(
         # There is no obvious way to use state information here.
         del solver_state
 
+        @overload
+        def _reduce_coreset(
+            data: _Data, _indices: _Indices
+        ) -> tuple[_Coreset, _State, _Indices]: ...
+
+        @overload
         def _reduce_coreset(
             data: _Data, _indices: Optional[_Indices] = None
-        ) -> tuple[_Coreset, _State, _Indices]:
+        ) -> tuple[_Coreset, _State, Optional[_Indices]]: ...
+
+        def _reduce_coreset(
+            data: _Data, _indices: Optional[_Indices] = None
+        ) -> tuple[_Coreset, _State, Optional[_Indices]]:
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
                 if _indices is not None:
