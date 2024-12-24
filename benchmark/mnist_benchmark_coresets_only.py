@@ -98,11 +98,12 @@ def main() -> None:
     coreset_times = {}
 
     # Run the experiment with 5 different random keys
-    # pylint: disable=R0801
+    # pylint: disable=duplicate-code
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
         solvers = initialise_solvers(train_data_umap, key)
+        # pylint: enable=duplicate-code
         for getter in solvers:
             for size in [25, 50, 100, 500, 1_000]:
                 solver = getter(size)

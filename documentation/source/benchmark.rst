@@ -22,8 +22,8 @@ these steps:
    Images are flattened into vectors for input.
 
 3. **Dimensionality Reduction**: To speed up computation and reduce dimensionality, a
-   density preserving :class:`~umap.umap_.UMAP` is applied to project the 28x28 images into 16 components
-   before applying any coreset algorithm.
+   density preserving :class:`~umap.umap_.UMAP` is applied to project the 28x28 images
+   into 16 components before applying any coreset algorithm.
 
 4. **Coreset Generation**: Coresets of various sizes are generated using the
    different coreset algorithms. For :class:`~coreax.solvers.KernelHerding` and
@@ -35,30 +35,29 @@ these steps:
 
 6. **Evaluation**: Due to randomness in the coreset algorithms and training process,
    the experiment is repeated 5 times with different random seeds. The benchmark is run
-   on an **Amazon g4dn.12xlarge instance** with 4 NVIDIA T4 Tensor Core GPUs, 48 vCPUs,
-   and 192 GiB memory.
+   on an **Amazon Web Services EC2 g4dn.12xlarge instance** with 4 NVIDIA T4 Tensor Core
+   GPUs, 48 vCPUs, and 192 GiB memory.
 
 **Results**:
 The accuracy of the MLP classifier when trained using the full MNIST dataset
-(60,000 training images) was 97.31%, serving as a baseline for evaluating the performance
-of the coreset algorithms.
+(60,000 training images) was 97.31%, serving as a baseline for evaluating the
+performance of the coreset algorithms.
 
-- Plots showing the accuracy (with error bars) of the MLP's predictions on the test set,
-  along with the time taken generate coreset for each coreset size and algorithm.
 
-  .. image:: ../../examples/benchmarking_images/mnist_benchmark_accuracy.png
-     :alt: Benchmark Results for MNIST Coreset Algorithms
 
-  **Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
-  represent the average accuracy. Error bars represent the min-max range for accuracy
-  for each coreset size across 5 runs.
+.. image:: ../../examples/benchmarking_images/mnist_benchmark_accuracy.png
+ :alt: Benchmark Results for MNIST Coreset Algorithms
 
-  .. image:: ../../examples/benchmarking_images/mnist_benchmark_time_taken.png
-     :alt: Time Taken Benchmark Results for MNIST Coreset Algorithms
+**Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
+represent the average accuracy. Error bars represent the min-max range for accuracy
+for each coreset size across 5 runs.
 
-  **Figure 2**: Time taken to generate coreset for each coreset algorithm. Bar heights
-  represent the average time taken. Error bars represent the min-max range for each
-  coreset size across 5 runs.
+.. image:: ../../examples/benchmarking_images/mnist_benchmark_time_taken.png
+ :alt: Time Taken Benchmark Results for MNIST Coreset Algorithms
+
+**Figure 2**: Time taken to generate coreset for each coreset algorithm. Bar heights
+represent the average time taken. Error bars represent the min-max range for each
+coreset size across 5 runs.
 
 Test 2: Benchmarking Coreset Algorithms on a Synthetic Dataset
 --------------------------------------------------------------
@@ -78,7 +77,7 @@ generated using :func:`sklearn.datasets.make_blobs`. The process follows these s
 
 4. **Optimisation**: We optimise the weights for coresets to minimise the MMD score
    and recompute both MMD and KSD metrics. These entire process is repeated 5 times with
-   5 random seeds and the metrics are averaged.
+   a different random seed each time and the metrics are averaged.
 
 **Results**:
 The tables below show the performance metrics (Unweighted MMD, Unweighted KSD,
@@ -168,7 +167,7 @@ For each metric and coreset size, the best performance score is highlighted in b
    * - KernelHerding
      - **0.007747**
      - 0.080280
-     - **0.001582**
+     - 0.001582
      - 0.080024
      - 5.425807
    * - RandomSample
@@ -180,7 +179,7 @@ For each metric and coreset size, the best performance score is highlighted in b
    * - RPCholesky
      - 0.069909
      - **0.072023**
-     - 0.000977
+     - **0.000977**
      - 0.079995
      - 3.497632
    * - SteinThinning
@@ -289,7 +288,7 @@ extracted from an input **GIF**. This test involves the following steps:
   .. image:: ../../examples/benchmarking_images/SteinThinning_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
-  **Gif 3**: Frames selected by Stein Thinning.
+  **Gif 3**: Frames selected by Stein thinning.
 
   .. image:: ../../examples/benchmarking_images/RPCholesky_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
@@ -299,7 +298,7 @@ extracted from an input **GIF**. This test involves the following steps:
   .. image:: ../../examples/benchmarking_images/KernelHerding_coreset.gif
      :alt: Coreset Visualisation on GIF Frames
 
-  **Gif 5**: Frames selected by Kernel Herding.
+  **Gif 5**: Frames selected by kernel herding.
 
   .. image:: ../../examples/benchmarking_images/pounce_frames.png
      :alt: Coreset Visualisation on GIF Frames
@@ -312,12 +311,12 @@ Conclusion
 
 In this benchmark, we evaluated four coreset algorithms across various datasets and
 tasks, including image classification, synthetic datasets, and pixel/frame data
-processing. Based on the results, **Kernel Herding** emerges as the preferred choice
+processing. Based on the results, **kernel herding** emerges as the preferred choice
 for most tasks due to its consistent performance. For larger datasets,
-combining Kernel Herding with distributed frameworks like **Map Reduce** is
+combining kernel herding with distributed frameworks like **map reduce** is
 recommended to ensure scalability and efficiency.
 
-For specialised tasks, such as frame selection from GIFs (Test 4), **Stein Thinning**
+For specialised tasks, such as frame selection from GIFs (Test 4), **Stein thinning**
 demonstrated superior performance and may be the optimal choice.
 
 Ultimately, this conclusion reflects one interpretation of the results, and readers are
