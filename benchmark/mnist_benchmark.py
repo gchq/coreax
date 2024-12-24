@@ -40,7 +40,9 @@ GPUs, 48 virtual CPUs and 192 GiB memory.
 import json
 import os
 import time
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from inspect import signature
+from typing import Any, NamedTuple, Optional, Union
 
 import equinox as eqx
 import jax
@@ -62,6 +64,7 @@ from coreax.solvers import (
     MapReduce,
     RandomSample,
     RPCholesky,
+    Solver,
     SteinThinning,
 )
 
@@ -426,7 +429,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
 
 def initialise_solvers(
     train_data_umap: Data, key: jax.random.PRNGKey
-) -> list[Callable]:
+) -> list[Callable[[int], Solver]]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
 
@@ -437,9 +440,8 @@ def initialise_solvers(
     enabling easy integration in a loop for benchmarking.
 
     :param train_data_umap: The UMAP-transformed training data used for
-                           length scale estimation for ``SquareExponentialKernel``.
+        length scale estimation for ``SquareExponentialKernel``.
     :param key: The random key for initialising random solvers.
-
     :return: A list of solvers functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
@@ -592,23 +594,21 @@ def save_results(results: dict) -> None:
     print(f"Data has been saved to {file_name}")
 
 
-def get_solver_name(_solver: Callable) -> str:
+def get_solver_name(solver: Callable[[int], Solver]) -> str:
     """
     Get the name of the solver.
 
     This function extracts and returns the name of the solver class.
-    If the `_solver` is an instance of the `MapReduce` class, it retrieves the
-    name of the `base_solver` class instead.
+    If ``_solver`` is an instance of :class:`~coreax.solvers.MapReduce`, it retrieves
+    the name of the :class:`~coreax.solvers.MapReduce.base_solver` class instead.
 
-    :param _solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
+    :param solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
     :return: The name of the solver class.
     """
-    solver_name = (
-        _solver.base_solver.__class__.__name__
-        if _solver.__class__.__name__ == "MapReduce"
-        else _solver.__class__.__name__
-    )
-    return solver_name
+    if (rtn_type := signature(solver).return_annotation) is MapReduce:
+        # Evaluate solver function to get MapReduce instance
+        return solver(1).base_solver.__class__.__name__
+    return rtn_type.__class__.__name__
 
 
 # pylint: disable=too-many-locals
