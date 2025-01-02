@@ -37,11 +37,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Benchmarking
-benchmark = [
+# Example scripts
+example = [
     "imageio",
     "matplotlib",
     "numpy",
+    "opencv-python-headless",  # WARNING: Incompatible with other versions of opencv
+]
+# Benchmarking - runs very similar code to examples with same dependencies plus more
+benchmark = [
+    "coreax[example]",
     "torch",
     "torchvision",
     "umap-learn>=0.5.7",
@@ -52,7 +57,6 @@ benchmark = [
 test = [
     "coreax[benchmark]",
     "beartype",
-    "opencv-python-headless",  # WARNING: Incompatible with other versions of opencv
     "pytest-cov",
     "pytest-rerunfailures",
     "scipy",
@@ -70,8 +74,8 @@ doc = [
 [dependency-groups]
 # All tools for a developer including those for running pylint
 dev = [
-    "coreax[benchmark, doc, test]",
-    "jupyter",
+    "coreax[example, benchmark, test, doc]",
+    "jupyter",  # Include as developers may wish to write their own notebooks
     "ruff",
     "pre-commit>=3.7",
     "pylint",
