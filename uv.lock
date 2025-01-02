@@ -681,7 +681,12 @@ dependencies = [
 
 [package.optional-dependencies]
 benchmark = [
+    { name = "imageio" },
     { name = "llvmlite" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "matplotlib", version = "3.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "numpy" },
+    { name = "opencv-python-headless" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "umap-learn" },
@@ -695,6 +700,13 @@ doc = [
     { name = "sphinx-toolbox" },
     { name = "sphinxcontrib-bibtex" },
     { name = "sphobjinv" },
+]
+example = [
+    { name = "imageio" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "matplotlib", version = "3.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "numpy" },
+    { name = "opencv-python-headless" },
 ]
 test = [
     { name = "beartype" },
@@ -715,7 +727,7 @@ test = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "coreax", extra = ["benchmark", "doc", "test"] },
+    { name = "coreax", extra = ["benchmark", "doc", "example", "test"] },
     { name = "jupyter" },
     { name = "pre-commit" },
     { name = "pylint" },
@@ -728,17 +740,18 @@ dev = [
 requires-dist = [
     { name = "beartype", marker = "extra == 'test'" },
     { name = "coreax", extras = ["benchmark"], marker = "extra == 'test'" },
+    { name = "coreax", extras = ["example"], marker = "extra == 'benchmark'" },
     { name = "equinox", specifier = ">=0.11.5" },
     { name = "flax" },
     { name = "furo", marker = "extra == 'doc'" },
-    { name = "imageio", marker = "extra == 'test'" },
+    { name = "imageio", marker = "extra == 'example'" },
     { name = "jax" },
     { name = "jaxopt" },
     { name = "jaxtyping", specifier = ">0.2.31" },
     { name = "llvmlite", marker = "extra == 'benchmark'", specifier = ">=0.40.0" },
-    { name = "matplotlib", marker = "extra == 'test'" },
-    { name = "numpy", marker = "extra == 'test'" },
-    { name = "opencv-python-headless", marker = "extra == 'test'" },
+    { name = "matplotlib", marker = "extra == 'example'" },
+    { name = "numpy", marker = "extra == 'example'" },
+    { name = "opencv-python-headless", marker = "extra == 'example'" },
     { name = "optax" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "pytest-rerunfailures", marker = "extra == 'test'" },
@@ -758,7 +771,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "coreax", extras = ["benchmark", "doc", "test"] },
+    { name = "coreax", extras = ["example", "benchmark", "test", "doc"] },
     { name = "jupyter" },
     { name = "pre-commit", specifier = ">=3.7" },
     { name = "pylint" },

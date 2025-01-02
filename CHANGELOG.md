@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     frames) (https://github.com/gchq/coreax/issues/892)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
+- `example` dependency group for running example scripts.
+  (https://github.com/gchq/coreax/pull/909)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
   root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
 
