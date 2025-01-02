@@ -211,7 +211,7 @@ def _greedy_kernel_selection(
 
 
 class KernelHerding(
-    RefinementSolver[Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
+    RefinementSolver[_Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
 ):
     r"""
     Kernel Herding - an explicitly sized coresubset refinement solver.
@@ -254,17 +254,17 @@ class KernelHerding(
     @override
     def reduce(
         self,
-        dataset: Data,
+        dataset: _Data,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[Data], HerdingState]:
+    ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[Data],
+        coresubset: Coresubset[_Data],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[Data], HerdingState]:
+    ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
 
