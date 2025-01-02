@@ -41,7 +41,6 @@ import json
 import os
 import time
 from collections.abc import Callable
-from inspect import signature
 from typing import Any, NamedTuple, Optional, Union
 
 import equinox as eqx
@@ -605,10 +604,12 @@ def get_solver_name(solver: Callable[[int], Solver]) -> str:
     :param solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
     :return: The name of the solver class.
     """
-    if (rtn_type := signature(solver).return_annotation) is MapReduce:
-        # Evaluate solver function to get MapReduce instance
-        return solver(1).base_solver.__class__.__name__
-    return rtn_type.__class__.__name__
+    # Evaluate solver function to get an instance to interrogate
+    # Don't just inspect type annotations, as they may be incorrect - not robust
+    solver_instance = solver(1)
+    if isinstance(solver_instance, MapReduce):
+        return type(solver_instance.base_solver).__name__
+    return type(solver_instance).__name__
 
 
 # pylint: disable=too-many-locals
