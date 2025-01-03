@@ -211,7 +211,7 @@ def _greedy_kernel_selection(
 
 
 class KernelHerding(
-    RefinementSolver[Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
+    RefinementSolver[_Data, HerdingState], ExplicitSizeSolver, PaddingInvariantSolver
 ):
     r"""
     Kernel Herding - an explicitly sized coresubset refinement solver.
@@ -254,17 +254,17 @@ class KernelHerding(
     @override
     def reduce(
         self,
-        dataset: Data,
+        dataset: _Data,
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[Data], HerdingState]:
+    ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
-        coresubset: Coresubset[Data],
+        coresubset: Coresubset[_Data],
         solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[Data], HerdingState]:
+    ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
 
@@ -460,7 +460,7 @@ class RPCholeskyState(eqx.Module):
     gramian_diagonal: Array
 
 
-class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
+class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     r"""
     Randomly Pivoted Cholesky - an explicitly sized coresubset refinement solver.
 
@@ -480,8 +480,8 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: Data, solver_state: Optional[RPCholeskyState] = None
-    ) -> tuple[Coresubset[Data], RPCholeskyState]:
+        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
+    ) -> tuple[Coresubset[_Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
 
@@ -495,15 +495,16 @@ class RPCholesky(CoresubsetSolver[Data, RPCholeskyState], ExplicitSizeSolver):
         :math:`M` points have been selected.
 
         .. note::
+
             The RPCholesky algorithm sometimes converges before reaching
             ``self.coreset_size``. In this case, the other coreset points are chosen
             uniformly at random, avoiding repetition.
 
 
-        :param dataset: The dataset to reduce to a coresubset
+        :param dataset: Dataset to reduce to a coresubset.
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :return: a refined coresubset and relevant intermediate solver state information
+        :return: Refined coresubset and relevant intermediate solver state information.
         """
         x = dataset.data
         num_data_points = len(x)

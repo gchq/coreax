@@ -27,19 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Benchmarking results added on documentation.(https://github.com/gchq/coreax/issues/803)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
+- `example` dependency group for running example scripts.
+  (https://github.com/gchq/coreax/pull/909)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
   root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
 
 ### Fixed
 
 - `MMD.compute` no longer returns `nan`. (https://github.com/gchq/coreax/issues/855)
-- Corrected an implementation error in `coreax.solvers.CaratheodoryRecombination`
+- Corrected an implementation error in `coreax.solvers.CaratheodoryRecombination`,
   which caused numerical instability when using either `CaratheodoryRecombination`
   or `TreeRecombination` on GPU machines. (https://github.com/gchq/coreax/pull/874, see
   also https://github.com/gchq/coreax/issues/852 and
   https://github.com/gchq/coreax/issues/853)
 - `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
-- Pylint pre-commit hook is now configured as the Pylint docs recommend (https://github.com/gchq/coreax/pull/899)
+- Pylint pre-commit hook is now configured as the Pylint docs recommend. (https://github.com/gchq/coreax/pull/899)
+- Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
 
 ### Changed
 
