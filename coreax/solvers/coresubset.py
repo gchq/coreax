@@ -914,8 +914,11 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         :return: A tuple containing the final coreset and the solver state (None).
         """
+        if self.coreset_size > len(dataset):
+            raise ValueError(MSG)
         n = len(dataset)
         m = math.floor(math.log2(n) - math.log2(self.coreset_size))
+        print("self.coreset_size * 2**m", self.coreset_size * 2**m)
         clipped_original_dataset = dataset[: self.coreset_size * 2**m]
 
         partition = self.kt_half_recursive(clipped_original_dataset, m, dataset)
