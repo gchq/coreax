@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
   - Pounce (extract frames from a video and use coreset algorithms to select the best
     frames) (https://github.com/gchq/coreax/issues/892)
+- Benchmarking results added on documentation.(https://github.com/gchq/coreax/issues/803)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
 - `example` dependency group for running example scripts.
