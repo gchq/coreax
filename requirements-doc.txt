@@ -13,7 +13,7 @@ cachecontrol==0.14.1
 certifi==2024.12.14
 charset-normalizer==3.4.1
 chex==0.1.88
-colorama==0.4.6 ; sys_platform == 'win32'
+colorama==0.4.6 ; (platform_system != 'Darwin' and platform_system != 'Linux' and sys_platform == 'win32') or (platform_system == 'Windows' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')
 cssutils==2.11.1
 dict2css==0.3.0.post1
 docutils==0.21.2
