@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (https://github.com/gchq/coreax/pull/909)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
   root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
+- Added (loose) lower bounds to all direct dependencies. (https://github.com/gchq/coreax/pull/920)
 
 ### Fixed
 
