@@ -1021,6 +1021,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             x1: jnp.ndarray,
             x2: jnp.ndarray,
             i: int,
+            current_first_coreset: jnp.ndarray,
             original_dataset_masking: jnp.ndarray,
             coreset_masking: jnp.ndarray,
         ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
@@ -1030,6 +1031,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             :param x1: The first data point in the kernel evaluation.
             :param x2: The second data point in the kernel evaluation.
             :param i: The current index in the iteration.
+            :param current_first_coreset: Current first_coreset_indices.
             :param original_dataset_masking: A boolean array that tracks indices.
             :param coreset_masking: A boolean array that tracks indices.
             :return: A tuple containing:
@@ -1049,8 +1051,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             )
             term2 = -2 * jnp.dot(
                 (
-                    k_vec_x1_idx(first_coreset_indices)
-                    - k_vec_x2_idx(first_coreset_indices)
+                    k_vec_x1_idx(current_first_coreset)
+                    - k_vec_x2_idx(current_first_coreset)
                 ),
                 coreset_masking,
             )
@@ -1126,7 +1128,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             a, new_param = get_a_and_param(compute_kernel_distance(x1, x2), param)
             # Step 3: Compute alpha
             alpha, new_bool_arr_1, new_bool_arr_2 = get_alpha(
-                x1, x2, i, bool_arr_1, bool_arr_2
+                x1, x2, i, arr1, bool_arr_1, bool_arr_2
             )
             # Step 4: Get final values
             (val1, val2), new_random_key = probabilistic_swap(i, a, alpha, random_key)
