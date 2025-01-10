@@ -81,6 +81,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         random_state=random_seed,
         return_centers=True,
     )
+    x = jnp.asarray(x)
 
     # Request 100 coreset points
     coreset_size = 100
@@ -98,7 +99,9 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     # Find a coreset using kernel herding with a stein kernel.
     # Learn a score function via kernel density estimation (this is required for
     # evaluation of the Stein kernel)
-    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    kernel_density_score_matcher = KernelDensityMatching(
+        length_scale=length_scale.item()
+    )
     score_function = kernel_density_score_matcher.match(x[idx, :])
 
     # Define a kernel to use for herding

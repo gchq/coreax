@@ -41,7 +41,7 @@ import imageio
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
+from jax import Array, random
 from sklearn.decomposition import PCA
 
 from coreax.data import Data
@@ -117,10 +117,12 @@ def main(
         num_points_length_scale_selection,
         replace=False,
     )
-    length_scale = median_heuristic(principle_components_data[idx])
+    length_scale: Array = median_heuristic(principle_components_data[idx])
 
     # Learn a score function via kernel density estimation
-    kernel_density_score_matcher = KernelDensityMatching(length_scale=length_scale)
+    kernel_density_score_matcher = KernelDensityMatching(
+        length_scale=length_scale.item()
+    )
     score_function = kernel_density_score_matcher.match(
         principle_components_data[idx, :]
     )

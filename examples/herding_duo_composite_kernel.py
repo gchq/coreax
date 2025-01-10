@@ -49,7 +49,7 @@ from coreax.solvers import KernelHerding, RandomSample
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
+def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     """
     Run the basic herding on tabular data example.
 
@@ -74,6 +74,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
         random_state=random_seed,
         return_centers=True,
     )
+    x = jnp.asarray(x)
 
     # Request 100 coreset points
     coreset_size = 100

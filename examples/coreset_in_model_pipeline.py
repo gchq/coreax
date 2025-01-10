@@ -105,9 +105,12 @@ def main(
 
     print("Estimating kernel ridge regression model with full data...")
     full_data_fit_time = time()
-    full_data_model = KernelRidge(kernel="rbf", gamma=length_scale, alpha=1e-2).fit(
-        x, y
-    )
+    full_data_model = KernelRidge(
+        kernel="rbf",
+        gamma=length_scale,
+        # Pyright is wrong here - this can be a float, not just an int
+        alpha=1e-1,  # pyright: ignore[reportArgumentType]
+    ).fit(x, y)
     full_data_fit_time = time() - full_data_fit_time
     full_data_rmse = jnp.sqrt(
         ((y_test - full_data_model.predict(x_test)) ** 2).sum() / num_data_pairs
@@ -125,7 +128,10 @@ def main(
     coreset_indices = coreset.unweighted_indices
     coreset_fit_time = time()
     coreset_model = KernelRidge(
-        kernel="rbf", gamma=float(median_heuristic(x[coreset_indices])), alpha=1e-1
+        kernel="rbf",
+        gamma=float(median_heuristic(x[coreset_indices])),
+        # Pyright is wrong here - this can be a float, not just an int
+        alpha=1e-1,  # pyright: ignore[reportArgumentType]
     ).fit(x[coreset_indices], y[coreset_indices])
     coreset_fit_time = time() - coreset_fit_time
     coreset_overall_time = coreset_build_time + coreset_fit_time
@@ -139,7 +145,10 @@ def main(
     random_indices = random_set.unweighted_indices
     random_fit_time = time()
     random_model = KernelRidge(
-        kernel="rbf", gamma=float(median_heuristic(x[random_indices])), alpha=1e-1
+        kernel="rbf",
+        gamma=float(median_heuristic(x[random_indices])),
+        # Pyright is wrong here - this can be a float, not just an int
+        alpha=1e-1,  # pyright: ignore[reportArgumentType]
     ).fit(x[random_indices], y[random_indices])
     random_fit_time = time() - random_fit_time
     random_rmse = jnp.sqrt(
