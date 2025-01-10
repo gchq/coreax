@@ -73,7 +73,7 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.7.0"
+version = "4.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
@@ -81,9 +81,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/40/318e58f669b1a9e00f5c4453910682e2d9dd594334539c7b7817dabb765f/anyio-4.7.0.tar.gz", hash = "sha256:2f834749c602966b7d456a7567cafcb309f96482b5081d14ac93ccd457f9dd48", size = 177076 }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/73/199a98fc2dae33535d6b8e8e6ec01f8c1d76c9adb096c6b7d64823038cde/anyio-4.8.0.tar.gz", hash = "sha256:1d9fe889df5212298c0c0723fa20479d1b94883a2df44bd3897aa91083316f7a", size = 181126 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/7a/4daaf3b6c08ad7ceffea4634ec206faeff697526421c20f07628c7372156/anyio-4.7.0-py3-none-any.whl", hash = "sha256:ea60c3723ab42ba6fff7e8ccb0488c898ec538ff4df1f1d5e642c3601d07e352", size = 93052 },
+    { url = "https://files.pythonhosted.org/packages/46/eb/e7f063ad1fec6b3178a3cd82d1a3c4de82cccf283fc42746168188e1cdd5/anyio-4.8.0-py3-none-any.whl", hash = "sha256:b5011f270ab5eb0abf13385f851315585cc37ef330dd88e27ec3d34d651fd47a", size = 96041 },
 ]
 
 [[package]]
@@ -721,6 +721,7 @@ test = [
     { name = "matplotlib", version = "3.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "numpy" },
     { name = "opencv-python-headless" },
+    { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-rerunfailures" },
     { name = "scipy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -743,46 +744,47 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beartype", marker = "extra == 'test'" },
+    { name = "beartype", marker = "extra == 'test'", specifier = ">=0.19" },
     { name = "coreax", extras = ["benchmark"], marker = "extra == 'test'" },
     { name = "coreax", extras = ["example"], marker = "extra == 'benchmark'" },
     { name = "equinox", specifier = ">=0.11.5" },
-    { name = "flax" },
-    { name = "furo", marker = "extra == 'doc'" },
-    { name = "imageio", marker = "extra == 'example'" },
-    { name = "jax" },
-    { name = "jaxopt" },
+    { name = "flax", specifier = ">=0.8" },
+    { name = "furo", marker = "extra == 'doc'", specifier = ">=2024" },
+    { name = "imageio", marker = "extra == 'example'", specifier = ">=2" },
+    { name = "jax", specifier = ">=0.4" },
+    { name = "jaxopt", specifier = ">=0.8" },
     { name = "jaxtyping", specifier = ">0.2.31" },
     { name = "llvmlite", marker = "extra == 'benchmark'", specifier = ">=0.40.0" },
-    { name = "matplotlib", marker = "extra == 'example'" },
-    { name = "numpy", marker = "extra == 'example'" },
-    { name = "opencv-python-headless", marker = "extra == 'example'" },
-    { name = "optax" },
-    { name = "pytest-cov", marker = "extra == 'test'" },
-    { name = "pytest-rerunfailures", marker = "extra == 'test'" },
-    { name = "scikit-learn" },
-    { name = "scipy", marker = "extra == 'test'" },
-    { name = "sphinx", marker = "extra == 'doc'" },
-    { name = "sphinx-autodoc-typehints", marker = "extra == 'doc'" },
-    { name = "sphinx-toolbox", marker = "extra == 'doc'" },
-    { name = "sphinxcontrib-bibtex", marker = "extra == 'doc'" },
-    { name = "sphobjinv", marker = "extra == 'doc'" },
-    { name = "torch", marker = "extra == 'benchmark'" },
-    { name = "torchvision", marker = "extra == 'benchmark'" },
-    { name = "tqdm" },
-    { name = "typing-extensions" },
+    { name = "matplotlib", marker = "extra == 'example'", specifier = ">=3" },
+    { name = "numpy", marker = "extra == 'example'", specifier = ">=2" },
+    { name = "opencv-python-headless", marker = "extra == 'example'", specifier = ">=4" },
+    { name = "optax", specifier = ">=0.2" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6" },
+    { name = "pytest-rerunfailures", marker = "extra == 'test'", specifier = ">=15" },
+    { name = "scikit-learn", specifier = ">=1" },
+    { name = "scipy", marker = "extra == 'test'", specifier = ">=1.13" },
+    { name = "sphinx", marker = "extra == 'doc'", specifier = ">=7" },
+    { name = "sphinx-autodoc-typehints", marker = "extra == 'doc'", specifier = ">=2" },
+    { name = "sphinx-toolbox", marker = "extra == 'doc'", specifier = ">=3" },
+    { name = "sphinxcontrib-bibtex", marker = "extra == 'doc'", specifier = ">=2" },
+    { name = "sphobjinv", marker = "extra == 'doc'", specifier = ">=2" },
+    { name = "torch", marker = "extra == 'benchmark'", specifier = ">=2.5" },
+    { name = "torchvision", marker = "extra == 'benchmark'", specifier = ">=0.20" },
+    { name = "tqdm", specifier = ">=4" },
+    { name = "typing-extensions", specifier = ">=4.12" },
     { name = "umap-learn", marker = "extra == 'benchmark'", specifier = ">=0.5.7" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "coreax", extras = ["example", "benchmark", "test", "doc"] },
-    { name = "jupyter" },
-    { name = "pre-commit", specifier = ">=3.7" },
-    { name = "pylint" },
-    { name = "pyright" },
-    { name = "pyroma" },
-    { name = "ruff" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "pre-commit", specifier = ">=4.0.1" },
+    { name = "pylint", specifier = ">=3.3.3" },
+    { name = "pyright", specifier = ">=1.1.391" },
+    { name = "pyroma", specifier = ">=4.2" },
+    { name = "ruff", specifier = ">=0.8.6" },
 ]
 
 [[package]]
@@ -3317,11 +3319,11 @@ wheels = [
 
 [[package]]
 name = "pygments"
-version = "2.18.0"
+version = "2.19.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8e/62/8336eff65bcbc8e4cb5d05b55faf041285951b6e80f33e2bff2024788f31/pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199", size = 4891905 }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/2d/c3338d48ea6cc0feb8446d8e6937e1408088a72a39937982cc6111d17f84/pygments-2.19.1.tar.gz", hash = "sha256:61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f", size = 4968581 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a", size = 1205513 },
+    { url = "https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c", size = 1225293 },
 ]
 
 [[package]]
@@ -3829,14 +3831,14 @@ wheels = [
 
 [[package]]
 name = "ruamel-yaml"
-version = "0.18.8"
+version = "0.18.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ruamel-yaml-clib", marker = "python_full_version < '3.13' and platform_python_implementation == 'CPython'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/9f/a073b2c0d916045c3decf885b6fea12d2d1b02f235e89a02606140111138/ruamel.yaml-0.18.8.tar.gz", hash = "sha256:1b7e14f28a4b8d09f8cd40dca158852db9b22ac84f22da5bb711def35cb5c548", size = 143528 }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/46/f44d8be06b85bc7c4d8c95d658be2b68f27711f279bf9dd0612a5e4794f5/ruamel.yaml-0.18.10.tar.gz", hash = "sha256:20c86ab29ac2153f80a428e1254a8adf686d3383df04490514ca3b79a362db58", size = 143447 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/01/bb9350e3446a3b31658054a1e254fb9d5ace2f931c4edad5cda2a8c991b8/ruamel.yaml-0.18.8-py3-none-any.whl", hash = "sha256:a7c02af6ec9789495b4d19335addabc4d04ab1e0dad3e491c0c9457bbc881100", size = 117497 },
+    { url = "https://files.pythonhosted.org/packages/c2/36/dfc1ebc0081e6d39924a2cc53654497f967a084a436bb64402dfce4254d9/ruamel.yaml-0.18.10-py3-none-any.whl", hash = "sha256:30f22513ab2301b3d2b577adc121c6471f28734d3d9728581245f1e76468b4f1", size = 117729 },
 ]
 
 [[package]]
@@ -4076,11 +4078,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "75.6.0"
+version = "75.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/43/54/292f26c208734e9a7f067aea4a7e282c080750c4546559b58e2e45413ca0/setuptools-75.6.0.tar.gz", hash = "sha256:8199222558df7c86216af4f84c30e9b34a61d8ba19366cc914424cdbd28252f6", size = 1337429 }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/57/e6f0bde5a2c333a32fbcce201f906c1fd0b3a7144138712a5e9d9598c5ec/setuptools-75.7.0.tar.gz", hash = "sha256:886ff7b16cd342f1d1defc16fc98c9ce3fde69e087a4e1983d7ab634e5f41f4f", size = 1338616 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/21/47d163f615df1d30c094f6c8bbb353619274edccf0327b185cc2493c2c33/setuptools-75.6.0-py3-none-any.whl", hash = "sha256:ce74b49e8f7110f9bf04883b730f4765b774ef3ef28f722cce7c273d253aaf7d", size = 1224032 },
+    { url = "https://files.pythonhosted.org/packages/4e/6e/abdfaaf5c294c553e7a81cf5d801fbb4f53f5c5b6646de651f92a2667547/setuptools-75.7.0-py3-none-any.whl", hash = "sha256:84fb203f278ebcf5cd08f97d3fb96d3fbed4b629d500b29ad60d11e00769b183", size = 1224467 },
 ]
 
 [[package]]
@@ -4870,11 +4872,11 @@ wheels = [
 
 [[package]]
 name = "trove-classifiers"
-version = "2024.10.21.16"
+version = "2025.1.6.15"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/99/85/92c2667cf221b37648041ce9319427f92fa76cbec634aad844e67e284706/trove_classifiers-2024.10.21.16.tar.gz", hash = "sha256:17cbd055d67d5e9d9de63293a8732943fabc21574e4c7b74edf112b4928cf5f3", size = 16153 }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/86/32d098b84898064c7a70563ec60891ceb7465d6ce2491733b5a1bb509177/trove_classifiers-2025.1.6.15.tar.gz", hash = "sha256:49ab0326e000c54be6adc945d8fd618265c27de1296cf17caf9106fef96d2da4", size = 16151 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/35/5055ab8d215af853d07bbff1a74edf48f91ed308f037380a5ca52dd73348/trove_classifiers-2024.10.21.16-py3-none-any.whl", hash = "sha256:0fb11f1e995a757807a8ef1c03829fbd4998d817319abcef1f33165750f103be", size = 13546 },
+    { url = "https://files.pythonhosted.org/packages/cb/1f/3216fd02c2949d3311033788b3fcfdde15fc804b719e1bae3a5570f0b7cf/trove_classifiers-2025.1.6.15-py3-none-any.whl", hash = "sha256:cd8e14d53158c72b68f7adcd119e3b4c7271d282999d3a8ec7486733a6202e4d", size = 13533 },
 ]
 
 [[package]]
