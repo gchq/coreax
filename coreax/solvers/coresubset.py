@@ -25,7 +25,7 @@ import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import lax
-from jaxtyping import Array, ArrayLike, Scalar, Shaped
+from jaxtyping import Array, ArrayLike, Bool, Float, Scalar, Shaped
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
@@ -900,9 +900,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'KernelThinning'.
 
         This is done by first computing the number of halving steps required, referred
-        to as `m`, is calculated. The original data is clipped so that it is divisible
-        by a power of two. The kernel halving algorithm is then recursively applied to
-        halve the data.
+        to as `m`. The original data is clipped so that it is divisible by a power of
+        two. The kernel halving algorithm is then recursively applied to halve the data.
 
         Subsequently, a `baseline_coreset` is added to the ensemble of coresets. The
         best coreset is selected to minimise the Maximum Mean Discrepancy (MMD) and
@@ -927,7 +926,12 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         best_coreset_indices = self.kt_choose(partition, dataset)
         return self.kt_refine(Coresubset(Data(best_coreset_indices), dataset))
 
-    def kt_half_recursive(self, current_coreset, m, original_dataset):
+    def kt_half_recursive(
+        self,
+        current_coreset: Union[_Data, Coresubset[_Data]],
+        m: int,
+        original_dataset: _Data,
+    ) -> list[Coresubset[_Data]]:
         """
         Recursively halve the original dataset into coresets.
 
@@ -936,13 +940,14 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param original_dataset: The original dataset.
         :return: Fully partitioned list of coresets.
         """
+        # If m == 0, do not do anything just convert to original data to type Coresubset
         if m == 0:
             return [
                 Coresubset(Data(jnp.arange(len(current_coreset))), original_dataset)
             ]
 
         # Recursively call self.kt_half on the coreset (or the dataset)
-        if hasattr(current_coreset, "coreset"):
+        if isinstance(current_coreset, Coresubset):
             subset1, subset2 = self.kt_half(current_coreset.coreset)
         else:
             subset1, subset2 = self.kt_half(current_coreset)
@@ -952,7 +957,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         subset2 = eqx.tree_at(lambda x: x.pre_coreset_data, subset2, original_dataset)
 
         # Update indices: map current subset's indices to original dataset
-        if hasattr(current_coreset, "nodes") and hasattr(current_coreset.nodes, "data"):
+        if isinstance(current_coreset, Coresubset):
             parent_indices = current_coreset.nodes.data  # Parent subset's indices
             subset1_indices = subset1.nodes.data.flatten()  # Indices relative to parent
             subset2_indices = subset2.nodes.data.flatten()  # Indices relative to parent
@@ -965,7 +970,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             subset1 = eqx.tree_at(lambda x: x.nodes.data, subset1, subset1_indices)
             subset2 = eqx.tree_at(lambda x: x.nodes.data, subset2, subset2_indices)
 
-        # Recur for both subsets and concatenate results
+        # Recurse for both subsets and concatenate results
         return self.kt_half_recursive(
             subset1, m - 1, original_dataset
         ) + self.kt_half_recursive(subset2, m - 1, original_dataset)
@@ -993,7 +998,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         coresets_masking = jnp.zeros(n)
 
         # Initialise parameter
-        param = jnp.float32(0)
+        sigma = jnp.float32(0)
         k = self.sqrt_kernel.compute_elementwise
 
         def compute_kernel_distance(x1, x2):
@@ -1006,7 +1011,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             """
             return jnp.sqrt(k(x1, x1) + k(x2, x2) - 2 * k(x1, x2))
 
-        def get_a_and_param(b, sigma):
+        def get_a_and_sigma(b, sigma):
             """Compute 'a' and new sigma parameter."""
             a = jnp.maximum(b * sigma * jnp.sqrt(2 * jnp.log(2 / self.delta)), b**2)
 
@@ -1018,15 +1023,22 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             return a, new_sigma
 
         def get_alpha(
-            x1: jnp.ndarray,
-            x2: jnp.ndarray,
+            x1: Float[Array, "1 d"],
+            x2: Float[Array, "1 d"],
             i: int,
-            current_first_coreset: jnp.ndarray,
-            original_dataset_masking: jnp.ndarray,
-            coreset_masking: jnp.ndarray,
-        ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-            """
+            current_first_coreset: Float[Array, "n d"],
+            original_dataset_masking: Bool[Array, "2n d"],
+            coreset_masking: Bool[Array, "n d"],
+        ) -> tuple[Float[Array, ""], Bool[Array, "2n d"], Bool[Array, "n d"]]:
+            r"""
             Calculate the value of alpha and update the boolean arrays.
+
+            .. math::
+              \\alpha(x, y, S, S1) =
+              \\sum_{s \\in S}\\left(k(s, x) - k(s, y)\\right) - 2
+              \\sum_{s \\in S1}\\left(k(s, x) - k(s, y)\\right), where S is the current
+              data-points already considered and S1 is the current state of the first
+              coreset
 
             :param x1: The first data point in the kernel evaluation.
             :param x2: The second data point in the kernel evaluation.
@@ -1039,12 +1051,18 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                      - `original_array_masking`: Updated boolean array for the dataset.
                      - `coresets_masking`: Updated boolean array for the coresets.
             """
+            # Define the vectorised functions: k(.,x_1), k(.x_2)
             k_vec_x1 = jax.vmap(lambda y: k(y, x1))
             k_vec_x2 = jax.vmap(lambda y: k(y, x2))
 
+            # Define the indexed versions of the above functions were, we can pass
+            # the index set k(original_array[], x_1) and k(original_array[], x_1)
             k_vec_x1_idx = jax.vmap(lambda y: k(original_array[y], x1))
             k_vec_x2_idx = jax.vmap(lambda y: k(original_array[y], x2))
-            # Apply to original array and sum
+
+            # Because the size of jax arrays are pre-fixed, we have to only sum the
+            # first few elements and ignore the rest of elements, this is achieved by
+            # dotting with a boolean array
             term1 = jnp.dot(
                 (k_vec_x1(original_array) - k_vec_x2(original_array)),
                 original_dataset_masking,
@@ -1092,19 +1110,19 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         def kernel_thinning_body_fun(
             i: int,
             state: tuple[
-                jnp.ndarray,
-                jnp.ndarray,
-                jnp.ndarray,
-                jnp.ndarray,
-                jnp.ndarray,
+                Float[Array, "n"],  # first_coreset_indices
+                Float[Array, "n"],  # second_coreset_indices
+                Float[Array, "1"],  # sigma parameter
+                Bool[Array, "2n"],  # original_array_masking
+                Bool[Array, "n"],  # coresets_masking
                 KeyArrayLike,
             ],
         ) -> tuple[
-            jnp.ndarray,
-            jnp.ndarray,
-            jnp.ndarray,
-            jnp.ndarray,
-            jnp.ndarray,
+            Float[Array, "n"],
+            Float[Array, "n"],
+            Float[Array, "1"],
+            Bool[Array, "2n"],
+            Bool[Array, "n"],
             KeyArrayLike,
         ]:
             """
@@ -1114,31 +1132,43 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             :param state: A tuple containing:
                           - first_coreset_indices: The first array of indices.
                           - second_coreset_indices: The second array of indices.
-                          - param: The scaling parameter.
+                          - param: The sigma parameter.
                           - original_array_masking: Boolean array for masking.
                           - coresets_masking: Boolean array for masking coresets.
                           - random_key: A JAX random key.
             :return: The updated state tuple after processing the current iteration.
             """
-            arr1, arr2, param, bool_arr_1, bool_arr_2, random_key = state
+            (
+                first_coreset_indices,
+                second_coreset_indices,
+                sigma,
+                original_array_masking,
+                coresets_masking,
+                random_key,
+            ) = state
             # Step 1: Get values from original array
             x1 = original_array[i * 2]
             x2 = original_array[i * 2 + 1]
             # Step 2: Get a and new parameter
-            a, new_param = get_a_and_param(compute_kernel_distance(x1, x2), param)
+            a, new_sigma = get_a_and_sigma(compute_kernel_distance(x1, x2), sigma)
             # Step 3: Compute alpha
             alpha, new_bool_arr_1, new_bool_arr_2 = get_alpha(
-                x1, x2, i, arr1, bool_arr_1, bool_arr_2
+                x1,
+                x2,
+                i,
+                first_coreset_indices,
+                original_array_masking,
+                coresets_masking,
             )
             # Step 4: Get final values
             (val1, val2), new_random_key = probabilistic_swap(i, a, alpha, random_key)
             # Step 5: Update arrays
-            new_arr1 = arr1.at[i].set(val1)
-            new_arr2 = arr2.at[i].set(val2)
+            new_arr1 = first_coreset_indices.at[i].set(val1)
+            new_arr2 = second_coreset_indices.at[i].set(val2)
             return (
                 new_arr1,
                 new_arr2,
-                new_param,
+                new_sigma,
                 new_bool_arr_1,
                 new_bool_arr_2,
                 new_random_key,
@@ -1151,7 +1181,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             (
                 first_coreset_indices,
                 second_coreset_indices,
-                param,
+                sigma,
                 original_array_masking,
                 coresets_masking,
                 self.random_key,

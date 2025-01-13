@@ -2208,6 +2208,44 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         - Compute probability, update the sets, and proceed to the next pair,
           using the updated :math:`\\sigma`.
 
+        Functions:
+
+        - :func:`b(x, y)` computes the distance measure between two points based
+          on the kernel:
+          .. math::
+              b(x, y) = \\sqrt{k(x, x) + k(y, y) - 2 \\cdot k(x, y)}
+
+        - :func:`get_swap_params(sigma, b_value, delta)` computes the parameters
+          required to update :math:`a` and :math:`\\sigma`:
+          .. math::
+              a = \\max\\left(b \\cdot \\sigma \\cdot \\sqrt{2 \\ln(2 / \\delta)},
+                              b^2\\right)
+          .. math::
+              \\sigma^2_{new} = \\sigma^2 + \\max\\left(
+                              \\frac{b^2 (1 + (b^2 - 2a) \\cdot \\sigma^2 / a^2)}{a^2},
+                              0\\right)
+          .. math::
+              \\sigma_{new} = \\sqrt{\\sigma^2_{new}}
+
+        - :func:`alpha(x, y, S, S1)` computes the difference between the total
+          kernel sum for all elements in S and the subset S1:
+          .. math::
+              \\alpha(x, y, S, S1) =
+              \\sum_{s \\in S}\\left(k(s, x) - k(s, y)\\right) - 2
+              \\sum_{s \\in S1}\\left(k(s, x) - k(s, y)\\right)
+
+        - :func:`get_probability(alpha_val, a)` computes the probability that
+          determines the assignment of points to the coresets:
+          .. math::
+              P = \\min\\left(1, \\max\\left(0, 0.5 \\cdot \\left(1 - \\frac{\\alpha}{a}\\right)\\right)\\right)
+
+        and for square-root-kernel, choose a ``length_scale`` of
+        :math:`\frac{1}{\sqrt{2}}` to simplify computations with the
+        ``SquaredExponentialKernel``, in particular it becomes:
+
+        .. math::
+            k(x, y) = e^{-||x - y||^2}
+
         Calculations for each pair:
 
         Pair (1, 2):
