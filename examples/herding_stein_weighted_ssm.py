@@ -165,8 +165,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     )
     plt.axis("off")
     plt.title(
-        f"Stein kernel herding, m={coreset_size}, "
-        f"MMD={round(float(herding_mmd), 6)}"
+        f"Stein kernel herding, m={coreset_size}, MMD={round(float(herding_mmd), 6)}"
     )
     plt.show()
 
@@ -177,7 +176,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         s=10,
         color="red",
     )
-    plt.title(f"Random, m={coreset_size}, " f"MMD={round(float(random_mmd), 6)}")
+    plt.title(f"Random, m={coreset_size}, MMD={round(float(random_mmd), 6)}")
     plt.axis("off")
 
     if out_path is not None:

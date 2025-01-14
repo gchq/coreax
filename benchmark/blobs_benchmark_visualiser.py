@@ -66,8 +66,8 @@ def plot_benchmarking_results(data):
     for i, metric in enumerate(metrics):
         ax = axs[i]
         ax.set_title(
-            f'{metric.replace("_", " ").title()} vs '
-            f'Coreset Size (n_samples = {n_samples})',
+            f"{metric.replace('_', ' ').title()} vs "
+            f"Coreset Size (n_samples = {n_samples})",
             fontsize=14,
         )
 
@@ -83,7 +83,7 @@ def plot_benchmarking_results(data):
             ax.plot(coreset_sizes, metric_values, marker="o", label=algo)
 
         ax.set_xlabel("Coreset Size")
-        ax.set_ylabel(f'{metric.replace("_", " ").title()}')
+        ax.set_ylabel(f"{metric.replace('_', ' ').title()}")
         ax.set_yscale("log")  # log scale for better visualization
         ax.legend()
 

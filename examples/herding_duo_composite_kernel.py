@@ -133,9 +133,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
         color="red",
     )
     plt.axis("off")
-    plt.title(
-        f"Kernel herding, m={coreset_size}, " f"MMD={round(float(herding_mmd), 6)}"
-    )
+    plt.title(f"Kernel herding, m={coreset_size}, MMD={round(float(herding_mmd), 6)}")
     plt.show()
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
@@ -145,7 +143,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
         s=10,
         color="red",
     )
-    plt.title(f"Random, m={coreset_size}, " f"MMD={round(float(random_mmd), 6)}")
+    plt.title(f"Random, m={coreset_size}, MMD={round(float(random_mmd), 6)}")
     plt.axis("off")
 
     if out_path is not None:
