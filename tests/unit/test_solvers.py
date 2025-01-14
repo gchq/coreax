@@ -1994,15 +1994,15 @@ class TestMapReduce(SolverTest):
         coreset, _ = solver.reduce(Data(dataset))
         selected_indices = coreset.nodes.data
 
-        assert jnp.any(
-            selected_indices >= coreset_size
-        ), "MapReduce should select points beyond the first few"
+        assert jnp.any(selected_indices >= coreset_size), (
+            "MapReduce should select points beyond the first few"
+        )
 
         # Check if there are indices from different partitions
         partitions_represented = jnp.unique(selected_indices // leaf_size)
-        assert (
-            len(partitions_represented) > 1
-        ), "MapReduce should select points from multiple partitions"
+        assert len(partitions_represented) > 1, (
+            "MapReduce should select points from multiple partitions"
+        )
 
     def test_map_reduce_analytic(self):
         r"""

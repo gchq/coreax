@@ -434,8 +434,7 @@ def speed_comparison_test(
                 )
             else:
                 _logger.info(
-                    "Compilation time: %s ± %s per run "
-                    "(mean ± std. dev. of %s runs)",
+                    "Compilation time: %s ± %s per run (mean ± std. dev. of %s runs)",
                     format_time(mean[0].item()),
                     format_time(std[0].item()),
                     num_runs,
