@@ -66,6 +66,7 @@ typecheck
 venv
 WMMD
 wspace
+xlarge
 xticks
 yerr
 yscale

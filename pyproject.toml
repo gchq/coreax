@@ -25,58 +25,70 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    "equinox>=0.11.5",
-    "flax",
-    "jax",
-    "jaxopt",
-    "jaxtyping>0.2.31",
-    "optax",
-    "scikit-learn",
-    "tqdm",
-    "typing-extensions",
+    # Unless explicitly noted, lower bounds on these dependencies are guesses, and
+    # should not be taken to imply that Coreax is *known* to be incompatible with
+    # earlier versions; they are just there to prevent extremely out-of-date versions
+    # of dependencies being used (which would almost certainly have incompatibilities).
+    "equinox>=0.11.5",  # Earlier versions are incompatible.
+    "flax>=0.8",
+    "jax>=0.4",
+    "jaxopt>=0.8",
+    "jaxtyping>0.2.31",  # Earlier versions are incompatible.
+    "optax>=0.2",
+    "scikit-learn>=1",
+    "tqdm>=4",
+    "typing-extensions>=4.12",
 ]
 
 [project.optional-dependencies]
-# Benchmarking
+# Example scripts
+example = [
+    "imageio>=2",
+    "matplotlib>=3",
+    "numpy>=2",
+    "opencv-python-headless>=4",  # WARNING: Incompatible with other versions of opencv
+]
+# Benchmarking - runs very similar code to examples with same dependencies plus more
 benchmark = [
-    "torch",
-    "torchvision",
-    "umap-learn>=0.5.7",
-    # Required for umap-learn
+    "coreax[example]",
+    "torch>=2.5",
+    "torchvision>=0.20",
+    "umap-learn>=0.5.7",  # Earlier versions are incompatible.
+    # Required for umap-learn - we constrain this so dependency solvers don't
+    # erroneously backtrack.
     "llvmlite>=0.40.0",
 ]
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
-    "beartype",
-    "imageio",
-    "matplotlib",
-    "numpy",
-    "opencv-python-headless",  # WARNING: Incompatible with other versions of opencv
-    "pytest-cov",
-    "pytest-rerunfailures",
-    "scipy",
+    "beartype>=0.19",
+    "pytest>=8",
+    "pytest-cov>=6",
+    "pytest-rerunfailures>=15",
+    "scipy>=1.13",
 ]
 # Compile documentation
 doc = [
-    "furo",
-    "sphinx",
-    "sphinx-autodoc-typehints",
-    "sphinx-toolbox",
-    "sphinxcontrib-bibtex",
-    "sphobjinv",
+    "furo>=2024",
+    "sphinx>=7",
+    "sphinx-autodoc-typehints>=2",
+    "sphinx-toolbox>=3",
+    "sphinxcontrib-bibtex>=2",
+    "sphobjinv>=2",
 ]
 
 [dependency-groups]
 # All tools for a developer including those for running pylint
 dev = [
-    "coreax[benchmark, doc, test]",
-    "jupyter",
-    "ruff",
-    "pre-commit>=3.7",
-    "pylint",
-    "pyright",
-    "pyroma",
+    # These dependencies are constrained more tightly as they're only used by package
+    # developers, so compatibility is less of a concern
+    "coreax[example, benchmark, test, doc]",
+    "jupyter>=1.1.1",  # Include as developers may wish to write their own notebooks
+    "ruff>=0.8.6",
+    "pre-commit>=4.0.1",
+    "pylint>=3.3.3",
+    "pyright>=1.1.391",
+    "pyroma>=4.2",
 ]
 
 [tool.uv]

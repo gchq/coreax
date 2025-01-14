@@ -24,11 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
   - Pounce (extract frames from a video and use coreset algorithms to select the best
     frames) (https://github.com/gchq/coreax/issues/892)
+- Benchmarking results added on documentation.(https://github.com/gchq/coreax/issues/803)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
+- `example` dependency group for running example scripts.
+  (https://github.com/gchq/coreax/pull/909)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
   root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
 - Added a new coreset algorithm Kernel Thinning. (https://github.com/gchq/coreax/pull/915)
+- Added (loose) lower bounds to all direct dependencies. (https://github.com/gchq/coreax/pull/920)
 
 ### Fixed
 

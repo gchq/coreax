@@ -33,12 +33,13 @@ import time
 
 import equinox as eqx
 import jax
-from mnist_benchmark import (
+
+from benchmark.mnist_benchmark import (
     density_preserving_umap,
+    get_solver_name,
     initialise_solvers,
     prepare_datasets,
 )
-
 from coreax import Data
 
 
@@ -98,17 +99,15 @@ def main() -> None:
     coreset_times = {}
 
     # Run the experiment with 5 different random keys
+    # pylint: disable=duplicate-code
     for i in range(5):
+        print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solvers = initialise_solvers(train_data_umap, key)
-        for getter in solvers:
+        solver_factories = initialise_solvers(train_data_umap, key)
+        for solver_creator in solver_factories:
             for size in [25, 50, 100, 500, 1_000]:
-                solver = getter(size)
-                solver_name = (
-                    solver.base_solver.__class__.__name__
-                    if solver.__class__.__name__ == "MapReduce"
-                    else solver.__class__.__name__
-                )
+                solver = solver_creator(size)
+                solver_name = get_solver_name(solver_creator)
                 start_time = time.perf_counter()
                 _, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
                 time_taken = time.perf_counter() - start_time
