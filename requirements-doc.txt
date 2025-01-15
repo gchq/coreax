@@ -32,7 +32,7 @@ humanize==4.11.0
 idna==3.10
 imagesize==1.4.1
 importlib-metadata==8.5.0 ; python_full_version < '3.10'
-importlib-resources==6.4.5
+importlib-resources==6.5.2
 jax==0.4.30 ; python_full_version < '3.10'
 jax==0.4.38 ; python_full_version >= '3.10'
 jaxlib==0.4.30 ; python_full_version < '3.10'
@@ -56,24 +56,24 @@ numpy==2.0.2
 opt-einsum==3.4.0
 optax==0.2.4
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
-orbax-checkpoint==0.10.3 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.0 ; python_full_version >= '3.10'
 packaging==24.2
 platformdirs==4.3.6
 protobuf==5.29.2
 pybtex==0.24.0
 pybtex-docutils==1.0.3
-pygments==2.18.0
+pygments==2.19.1
 pyyaml==6.0.2
 referencing==0.35.1
 requests==2.32.3
 rich==13.9.4
 rpds-py==0.22.3
-ruamel-yaml==0.18.6
+ruamel-yaml==0.18.10
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'
 scikit-learn==1.6.0
 scipy==1.13.1 ; python_full_version < '3.10'
-scipy==1.14.1 ; python_full_version >= '3.10'
-setuptools==75.6.0 ; python_full_version >= '3.12'
+scipy==1.15.0 ; python_full_version >= '3.10'
+setuptools==75.7.0 ; python_full_version >= '3.12'
 simplejson==3.19.3 ; python_full_version >= '3.10'
 six==1.17.0
 snowballstemmer==2.2.0
@@ -81,7 +81,7 @@ soupsieve==2.6
 sphinx==7.4.7 ; python_full_version < '3.10'
 sphinx==8.1.3 ; python_full_version >= '3.10'
 sphinx-autodoc-typehints==2.3.0 ; python_full_version < '3.10'
-sphinx-autodoc-typehints==2.5.0 ; python_full_version >= '3.10'
+sphinx-autodoc-typehints==3.0.0 ; python_full_version >= '3.10'
 sphinx-basic-ng==1.0.0b2
 sphinx-jinja2-compat==0.3.0
 sphinx-prompt==1.8.0 ; python_full_version < '3.10'

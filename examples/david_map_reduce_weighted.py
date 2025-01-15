@@ -70,7 +70,7 @@ MIN_LENGTH_SCALE = 1e-6
 
 def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
     """
-    Downsample an image using `func: cv2.resize` and convert it to grayscale.
+    Downsample an image using func:`~cv2.resize` and convert it to grayscale.
 
     :param image_path: Path to the input image file.
     :param downsampling_factor: Factor by which to downsample the image.
@@ -99,7 +99,7 @@ def main(
     downsampling_factor: int = 1,
 ) -> tuple[float, float]:
     """
-    Run the 'david' example for image sampling.
+    Run the 'David' example for image sampling.
 
     Take an image of the statue of David and then generate a coreset using
     scalable Stein kernel herding.

@@ -29,9 +29,10 @@ import jax.numpy as jnp
 import numpy as np
 import umap
 from jax import random
-from mnist_benchmark import get_solver_name, initialise_solvers
 
+from benchmark.mnist_benchmark import get_solver_name, initialise_solvers
 from coreax.data import Data
+from coreax.solvers import MapReduce
 
 
 def benchmark_coreset_algorithms(
@@ -42,8 +43,9 @@ def benchmark_coreset_algorithms(
     """
     Benchmark coreset algorithms by processing a video GIF.
 
-    :param in_path: Path to the input GIF file.
-    :param out_dir: Directory to save the output GIFs for each coreset algorithm.
+    :param in_path: Path to the input GIF file, relative to the script's location.
+    :param out_dir: Directory to save the output GIFs for each coreset algorithm,
+        relative to the script's location.
     :param coreset_size: The size of the coreset.
     """
     base_dir = Path(__file__).resolve().parent
@@ -61,15 +63,15 @@ def benchmark_coreset_algorithms(
     umap_model = umap.UMAP(densmap=True, n_components=25)
     umap_data = umap_model.fit_transform(reshaped_data)
 
-    solvers = initialise_solvers(umap_data, random.PRNGKey(45))
-    # There is no need to use MapReduce as the data-size is small
-    solvers = [
-        solver.base_solver if solver.__class__.__name__ == "MapReduce" else solver
-        for solver in solvers
-    ]
-    for get_solver in solvers:
-        solver = get_solver(coreset_size)
-        solver_name = get_solver_name(solver)
+    solver_factories = initialise_solvers(umap_data, random.PRNGKey(45))
+    for solver_creator in solver_factories:
+        solver = solver_creator(coreset_size)
+
+        # There is no need to use MapReduce as the data-size is small
+        if isinstance(solver, MapReduce):
+            solver = solver.base_solver
+
+        solver_name = get_solver_name(solver_creator)
         data = Data(jnp.array(umap_data))
 
         start_time = time.perf_counter()
