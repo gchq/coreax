@@ -2179,8 +2179,8 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         r"""
         Test the halving step of kernel thinning on analytical example.
 
-        We aim to split [1, 2, 3, 4, 5, 6, 7, 8] into two coresets,
-        S1 and S2, each containing 4 elements.
+        We aim to split [1, 2, 3, 4, 5, 6, 7, 8] into two coresets, S1 and S2, each
+        containing 4 elements, enforcing two unique coresets.
 
         First, let S be the full dataset, with S1 and S2 as subsets. S1 will contain
         half the elements, and S2 will contain the other half. Let :math:`k` represent
