@@ -1056,7 +1056,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             k_vec_x2 = jax.vmap(lambda y: k(y, x2))
 
             # Define the indexed versions of the above functions were, we can pass
-            # the index set k(original_array[], x_1) and k(original_array[], x_1)
+            # the index set k(original_array[], x_1) and k(original_array[], x_2)
             k_vec_x1_idx = jax.vmap(lambda y: k(original_array[y], x1))
             k_vec_x2_idx = jax.vmap(lambda y: k(original_array[y], x2))
 
