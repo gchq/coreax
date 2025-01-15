@@ -2174,16 +2174,10 @@ class TestKernelThinning(ExplicitSizeSolverTest):
             sqrt_kernel=kernel,
         )
 
-    @override
-    def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_ReduceProblem]
-    ) -> None:
-        super().check_solution_invariants(coreset, problem)
-
     def test_kt_half_analytic(self) -> None:
         # pylint: disable=line-too-long
         r"""
-        Test kt half.
+        Test the halving step of kernel thinning on analytical example.
 
         We aim to split [1, 2, 3, 4, 5, 6, 7, 8] into two coresets,
         S1 and S2, each containing 4 elements.
@@ -2198,6 +2192,9 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         :math:`(5, 6)`, and :math:`(7, 8)`. For each pair, we compute a probability
         that determines whether :math:`x` goes to S1 and :math:`y` to S2, or vice
         versa. In either case, both :math:`x` and :math:`y` are added to S.
+
+        If this probability is greater than 0.5, we add the x and y to S1 and S2
+        respectively, otherwise we swap x and y and then add x to S1 and y to S2.
 
         The process is as follows:
 

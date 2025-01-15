@@ -1038,7 +1038,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
               \\sum_{s \\in S}\\left(k(s, x) - k(s, y)\\right) - 2
               \\sum_{s \\in S1}\\left(k(s, x) - k(s, y)\\right), where S is the current
               data-points already considered and S1 is the current state of the first
-              coreset
+              coreset.
 
             :param x1: The first data point in the kernel evaluation.
             :param x2: The second data point in the kernel evaluation.
@@ -1051,7 +1051,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                      - `original_array_masking`: Updated boolean array for the dataset.
                      - `coresets_masking`: Updated boolean array for the coresets.
             """
-            # Define the vectorised functions: k(.,x_1), k(.x_2)
+            # Define the vectorised functions: k(.,x_1), k(.,x_2)
             k_vec_x1 = jax.vmap(lambda y: k(y, x1))
             k_vec_x2 = jax.vmap(lambda y: k(y, x2))
 
@@ -1163,11 +1163,11 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             # Step 4: Get final values
             (val1, val2), new_random_key = probabilistic_swap(i, a, alpha, random_key)
             # Step 5: Update arrays
-            new_arr1 = first_coreset_indices.at[i].set(val1)
-            new_arr2 = second_coreset_indices.at[i].set(val2)
+            updated_first_coreset_indices = first_coreset_indices.at[i].set(val1)
+            updated_second_coreset_indices = second_coreset_indices.at[i].set(val2)
             return (
-                new_arr1,
-                new_arr2,
+                updated_first_coreset_indices,
+                updated_second_coreset_indices,
                 new_sigma,
                 new_bool_arr_1,
                 new_bool_arr_2,
@@ -1229,7 +1229,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         """
         Refine the selected candidate coreset.
 
-        Use meth:`~coreax.solvers.KernelHerding.refine` which achieves the result of
+        Use :meth:`~coreax.solvers.KernelHerding.refine` which achieves the result of
         looping through each element in coreset replacing that element with a point in
         the original dataset to minimise MMD in each step.
 
