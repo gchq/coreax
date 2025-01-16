@@ -122,7 +122,7 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     """
 
     # Unlike on Coreset, contains indices of coreset rather than coreset itself
-    nodes: Data
+    nodes: _Data
 
     def __init__(self, nodes: Data, pre_coreset_data: _Data):
         """Handle typing of ``nodes`` being a `Data` instance."""
