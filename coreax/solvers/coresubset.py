@@ -1101,7 +1101,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
             prob = jax.random.uniform(key1)
             return lax.cond(
-                prob < 1 / 2 * (1 - alpha / a),
+                prob > 1 / 2 * (1 - alpha / a),
                 lambda _: (2 * i, 2 * i + 1),  # first case: val1 = x1, val2 = x2
                 lambda _: (2 * i + 1, 2 * i),  # second case: val1 = x2, val2 = x1
                 None,
