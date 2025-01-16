@@ -41,6 +41,7 @@ from typing import Optional
 
 import cv2
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -137,8 +138,8 @@ def main(
     print(f"Image dimensions: {original_data.shape}")
     pre_coreset_data = np.column_stack(np.nonzero(original_data < MAX_8BIT))
     pixel_values = original_data[original_data < MAX_8BIT]
-    pre_coreset_data = np.column_stack((pre_coreset_data, pixel_values)).astype(
-        np.float32
+    pre_coreset_data = jnp.column_stack((pre_coreset_data, pixel_values)).astype(
+        jnp.float32
     )
     num_data_points = pre_coreset_data.shape[0]
 
@@ -213,7 +214,7 @@ def main(
     print(f"Herding coreset MMD: {herding_mmd}")
 
     def transform_marker_size(
-        weights: np.ndarray,
+        weights: jax.Array,
         scale_factor: int = 15,
         min_size: int = 4 * downsampling_factor,
     ) -> np.ndarray:

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contributor-facing features:
   - Automated testing of the built package before release
     (https://github.com/gchq/coreax/issues/854)
+  - Automated static type checking in CI with Pyright
+    (https://github.com/gchq/coreax/pull/921)
 - Added an analytical test for SteinThinning, and associated documentation in
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
 - Added an analytical test for `KernelHerding.refine` on an existing coreset. (https://github.com/gchq/coreax/issues/870)
@@ -45,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
 - Pylint pre-commit hook is now configured as the Pylint docs recommend. (https://github.com/gchq/coreax/pull/899)
 - Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
+- Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
 
 ### Changed
 

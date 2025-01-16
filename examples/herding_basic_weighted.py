@@ -76,6 +76,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
         random_state=random_seed,
         return_centers=True,
     )
+    x = jnp.asarray(x)
 
     # Request 100 coreset points
     coreset_size = 100

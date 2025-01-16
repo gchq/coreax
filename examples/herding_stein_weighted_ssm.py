@@ -84,6 +84,7 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         random_state=random_seed,
         return_centers=True,
     )
+    x = jnp.asarray(x)
 
     # Request 100 coreset points
     coreset_size = 100
@@ -168,7 +169,6 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
         f"Stein kernel herding, m={coreset_size}, MMD={round(float(herding_mmd), 6)}"
     )
     plt.show()
-
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
         random_coreset.coreset.data[:, 0],
