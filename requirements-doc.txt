@@ -48,7 +48,7 @@ markdown-it-py==3.0.0
 markupsafe==3.0.2
 mdurl==0.1.2
 ml-dtypes==0.4.1
-more-itertools==10.5.0
+more-itertools==10.6.0
 msgpack==1.1.0
 natsort==8.4.0
 nest-asyncio==1.6.0
