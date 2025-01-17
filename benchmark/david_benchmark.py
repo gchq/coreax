@@ -42,7 +42,6 @@ from jax import random
 from mnist_benchmark import get_solver_name, initialise_solvers
 
 from coreax import Data
-from coreax.solvers import MapReduce
 from examples.david_map_reduce_weighted import downsample_opencv
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -97,9 +96,6 @@ def benchmark_coreset_algorithms(
 
     for solver_creator in solver_factories:
         solver = solver_creator(coreset_size)
-        # There is no need to use MapReduce as the data-size is small
-        if isinstance(solver, MapReduce):
-            solver = solver.base_solver
         solver_name = get_solver_name(solver_creator)
         start_time = time.perf_counter()
         coreset, _ = eqx.filter_jit(solver.reduce)(data)
