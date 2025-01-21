@@ -52,7 +52,7 @@ import torchvision
 import umap
 from flax import linen as nn
 from flax.training import train_state
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
@@ -430,7 +430,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
     return train_data_jax, train_targets_jax, test_data_jax, test_targets_jax
 
 
-def calculate_delta(n: Int[Array, "1"]) -> Float[Array, "1"]:
+def calculate_delta(n: int) -> Float[Array, "1"]:
     """
     Calculate the delta parameter for kernel thinning.
 
@@ -451,7 +451,7 @@ def calculate_delta(n: Int[Array, "1"]) -> Float[Array, "1"]:
         if log_log_n > 0:
             return 1 / (n * log_log_n)
         return 1 / (n * log_n)
-    return 1 / n
+    return jnp.array(1 / n)
 
 
 def initialise_solvers(
@@ -496,7 +496,7 @@ def initialise_solvers(
             coreset_size=_size,
             kernel=kernel,
             random_key=key,
-            delta=calculate_delta(num_data_points),
+            delta=calculate_delta(num_data_points).item(),
             sqrt_kernel=sqrt_kernel,
         )
 

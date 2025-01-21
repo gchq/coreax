@@ -39,7 +39,6 @@ from sklearn.datasets import make_blobs
 
 from coreax import Data, SlicedScoreMatching
 from coreax.kernels import (
-    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
     median_heuristic,
@@ -56,7 +55,7 @@ from coreax.solvers import (
 from coreax.weights import MMDWeightsOptimiser
 
 
-def setup_kernel(x: jax.Array, random_seed: int = 45) -> ScalarValuedKernel:
+def setup_kernel(x: jax.Array, random_seed: int = 45) -> SquaredExponentialKernel:
     """
     Set up a squared exponential kernel using the median heuristic.
 
@@ -73,7 +72,7 @@ def setup_kernel(x: jax.Array, random_seed: int = 45) -> ScalarValuedKernel:
 
 
 def setup_stein_kernel(
-    sq_exp_kernel: ScalarValuedKernel, dataset: Data, random_seed: int = 45
+    sq_exp_kernel: SquaredExponentialKernel, dataset: Data, random_seed: int = 45
 ) -> SteinKernel:
     """
     Set up a Stein Kernel for Stein Thinning.
@@ -99,7 +98,7 @@ def setup_stein_kernel(
 
 def setup_solvers(
     coreset_size: int,
-    sq_exp_kernel: ScalarValuedKernel,
+    sq_exp_kernel: SquaredExponentialKernel,
     stein_kernel: SteinKernel,
     delta: float,
     random_seed: int = 45,
