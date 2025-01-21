@@ -52,6 +52,7 @@ import torchvision
 import umap
 from flax import linen as nn
 from flax.training import train_state
+from jaxtyping import Array, Float, Int
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
@@ -60,6 +61,7 @@ from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heurist
 from coreax.score_matching import KernelDensityMatching
 from coreax.solvers import (
     KernelHerding,
+    KernelThinning,
     MapReduce,
     RandomSample,
     RPCholesky,
@@ -428,6 +430,30 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
     return train_data_jax, train_targets_jax, test_data_jax, test_targets_jax
 
 
+def calculate_delta(n: Int[Array, "1"]) -> Float[Array, "1"]:
+    """
+    Calculate the delta parameter for kernel thinning.
+
+    The function evaluates the following cases:
+    1. If `jnp.log(n)` is positive:
+       - Further evaluates `jnp.log(jnp.log(n))`.
+         * If this is also positive, returns `1 / n * jnp.log(jnp.log(n))`.
+         * Otherwise, returns `1 / n * jnp.log(n)`.
+    2. If `jnp.log(n)` is negative:
+       - Returns `1 / n`.
+
+    :param n: The size of the dataset we wish to reduce.
+    :return: The calculated delta value based on the described conditions.
+    """
+    log_n = jnp.log(n)
+    if log_n > 0:
+        log_log_n = jnp.log(log_n)
+        if log_log_n > 0:
+            return 1 / (n * log_log_n)
+        return 1 / (n * log_n)
+    return 1 / n
+
+
 def initialise_solvers(
     train_data_umap: Data, key: KeyArrayLike
 ) -> list[Callable[[int], Solver]]:
@@ -453,6 +479,28 @@ def initialise_solvers(
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(jnp.asarray(train_data_umap[idx]))
     kernel = SquaredExponentialKernel(length_scale=length_scale)
+    sqrt_kernel = kernel.get_sqrt_kernel(16)
+
+    def _get_thinning_solver(_size: int) -> MapReduce:
+        """
+        Set up KernelThinning to use ``MapReduce``.
+
+        Create a KernelThinning solver with the specified size and return
+        it along with a MapReduce object for reducing a large dataset like
+        MNIST dataset.
+
+        :param _size: The size of the coreset to be generated.
+        :return: MapReduce solver with KernelThinning as the base solver.
+        """
+        thinning_solver = KernelThinning(
+            coreset_size=_size,
+            kernel=kernel,
+            random_key=key,
+            delta=calculate_delta(num_data_points),
+            sqrt_kernel=sqrt_kernel,
+        )
+
+        return MapReduce(thinning_solver, leaf_size=15_000)
 
     def _get_herding_solver(_size: int) -> MapReduce:
         """
@@ -463,10 +511,10 @@ def initialise_solvers(
         MNIST dataset.
 
         :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the MapReduce solver.
+        :return: MapReduce solver with KernelHerding as the base solver.
         """
         herding_solver = KernelHerding(_size, kernel)
-        return MapReduce(herding_solver, leaf_size=3 * _size)
+        return MapReduce(herding_solver, leaf_size=15_000)
 
     def _get_stein_solver(_size: int) -> MapReduce:
         """
@@ -477,7 +525,7 @@ def initialise_solvers(
         a subset of the dataset.
 
         :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the MapReduce solver.
+        :return: MapReduce solver with SteinThinning as the base solver.
         """
         # Generate small dataset for ScoreMatching for Stein Kernel
 
@@ -488,14 +536,14 @@ def initialise_solvers(
         stein_solver = SteinThinning(
             coreset_size=_size, kernel=stein_kernel, regularise=False
         )
-        return MapReduce(stein_solver, leaf_size=3 * _size)
+        return MapReduce(stein_solver, leaf_size=15_000)
 
     def _get_random_solver(_size: int) -> RandomSample:
         """
         Set up Random Sampling to generate a coreset.
 
         :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the RandomSample solver.
+        :return: A RandomSample solver.
         """
         random_solver = RandomSample(_size, key)
         return random_solver
@@ -505,12 +553,18 @@ def initialise_solvers(
         Set up Randomised Cholesky solver.
 
         :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the RPCholesky solver.
+        :return: A RPCholesky solver.
         """
         rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
         return rp_solver
 
-    return [_get_random_solver, _get_rp_solver, _get_herding_solver, _get_stein_solver]
+    return [
+        _get_random_solver,
+        _get_rp_solver,
+        _get_herding_solver,
+        _get_stein_solver,
+        _get_thinning_solver,
+    ]
 
 
 def train_model(
