@@ -199,7 +199,10 @@ def plot_performance(
     if log_scale:
         plt.yscale("log")
     plt.title(title)
-    plt.xticks(index + bar_width * (n_algorithms - 1) / 2, coreset_sizes)
+    plt.xticks(
+        index + bar_width * (n_algorithms - 1) / 2,
+        [str(size) for size in coreset_sizes],
+    )
     plt.legend()
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.tight_layout()

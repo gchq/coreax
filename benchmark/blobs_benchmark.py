@@ -31,7 +31,6 @@ The benchmarking process follows these steps:
 import json
 import os
 import time
-from typing import TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -40,6 +39,7 @@ from sklearn.datasets import make_blobs
 
 from coreax import Data, SlicedScoreMatching
 from coreax.kernels import (
+    ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
     median_heuristic,
@@ -54,10 +54,8 @@ from coreax.solvers import (
 )
 from coreax.weights import MMDWeightsOptimiser
 
-_Solver = TypeVar("_Solver", bound=Solver)
 
-
-def setup_kernel(x: jnp.array, random_seed: int = 45) -> SquaredExponentialKernel:
+def setup_kernel(x: jax.Array, random_seed: int = 45) -> ScalarValuedKernel:
     """
     Set up a squared exponential kernel using the median heuristic.
 
@@ -74,7 +72,7 @@ def setup_kernel(x: jnp.array, random_seed: int = 45) -> SquaredExponentialKerne
 
 
 def setup_stein_kernel(
-    sq_exp_kernel: SquaredExponentialKernel, dataset: Data, random_seed: int = 45
+    sq_exp_kernel: ScalarValuedKernel, dataset: Data, random_seed: int = 45
 ) -> SteinKernel:
     """
     Set up a Stein Kernel for Stein Thinning.
@@ -100,10 +98,10 @@ def setup_stein_kernel(
 
 def setup_solvers(
     coreset_size: int,
-    sq_exp_kernel: SquaredExponentialKernel,
+    sq_exp_kernel: ScalarValuedKernel,
     stein_kernel: SteinKernel,
     random_seed: int = 45,
-) -> list[tuple[str, _Solver]]:
+) -> list[tuple[str, Solver]]:
     """
     Set up and return a list of solver configurations for reducing a dataset.
 
@@ -145,7 +143,7 @@ def setup_solvers(
 
 
 def compute_solver_metrics(
-    solver: _Solver,
+    solver: Solver,
     dataset: Data,
     mmd_metric: MMD,
     ksd_metric: KSD,
@@ -188,7 +186,7 @@ def compute_solver_metrics(
 
 
 def compute_metrics(
-    solvers: list[tuple[str, _Solver]],
+    solvers: list[tuple[str, Solver]],
     dataset: Data,
     mmd_metric: MMD,
     ksd_metric: KSD,
@@ -264,7 +262,7 @@ def main() -> None:  # pylint: disable=too-many-locals
                     aggregated_results[size][solver_name][metric].append(value)
 
     # Average results across seeds
-    final_results = {"n_samples": n_samples}
+    final_results: dict = {"n_samples": n_samples}
     for size, solvers in aggregated_results.items():
         final_results[size] = {}
         for solver_name, metrics in solvers.items():

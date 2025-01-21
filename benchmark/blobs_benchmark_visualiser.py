@@ -89,7 +89,7 @@ def plot_benchmarking_results(data):
 
     # Adjust layout to avoid overlap
     plt.subplots_adjust(hspace=15.0, wspace=1.0)
-    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.96])
+    plt.tight_layout(pad=3.0, rect=(0.0, 0.0, 1.0, 0.96))
     plt.show()
 
 

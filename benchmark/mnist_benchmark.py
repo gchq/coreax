@@ -66,6 +66,7 @@ from coreax.solvers import (
     Solver,
     SteinThinning,
 )
+from coreax.util import KeyArrayLike
 
 
 # Convert PyTorch dataset to JAX arrays
@@ -77,7 +78,8 @@ def convert_to_jax_arrays(pytorch_data: Dataset) -> tuple[jnp.ndarray, jnp.ndarr
     :return: Tuple of JAX arrays (data, targets).
     """
     # Load all data in one batch
-    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))
+    # pyright is wrong here, a Dataset object does have __len__ method
+    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))  # type: ignore
     # Grab the first batch, which is all data
     _data, _targets = next(iter(data_loader))
     # Convert to NumPy first, then JAX array
@@ -149,8 +151,8 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Optional[dict[str, jnp.ndarray]] = None
-    dropout_rng: Optional[jnp.ndarray] = None
+    batch_stats: Optional[dict[str, jnp.ndarray]]
+    dropout_rng: KeyArrayLike
 
 
 class Metrics(NamedTuple):
@@ -161,7 +163,7 @@ class Metrics(NamedTuple):
 
 
 def create_train_state(
-    rng: jnp.ndarray, _model: nn.Module, learning_rate: float, weight_decay: float
+    rng: KeyArrayLike, _model: nn.Module, learning_rate: float, weight_decay: float
 ) -> TrainState:
     """
     Create and initialise the train state.
@@ -323,7 +325,7 @@ def train_and_evaluate(
     train_set: DataSet,
     test_set: DataSet,
     _model: nn.Module,
-    rng: jnp.ndarray,
+    rng: KeyArrayLike,
     config: dict[str, Any],
 ) -> dict[str, float]:
     """
@@ -427,7 +429,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
 
 
 def initialise_solvers(
-    train_data_umap: Data, key: jax.random.PRNGKey
+    train_data_umap: Data, key: KeyArrayLike
 ) -> list[Callable[[int], Solver]]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
@@ -449,7 +451,7 @@ def initialise_solvers(
     random_seed = 45
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(train_data_umap[idx])
+    length_scale = median_heuristic(jnp.asarray(train_data_umap[idx]))
     kernel = SquaredExponentialKernel(length_scale=length_scale)
 
     def _get_herding_solver(_size: int) -> MapReduce:
@@ -479,7 +481,7 @@ def initialise_solvers(
         """
         # Generate small dataset for ScoreMatching for Stein Kernel
 
-        score_function = KernelDensityMatching(length_scale=length_scale).match(
+        score_function = KernelDensityMatching(length_scale=length_scale.item()).match(
             train_data_umap[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
@@ -513,7 +515,7 @@ def initialise_solvers(
 
 def train_model(
     data_bundle: dict[str, jnp.ndarray],
-    key: jax.random.PRNGKey,
+    key: KeyArrayLike,
     config: dict[str, Union[int, float]],
 ) -> dict[str, float]:
     """
