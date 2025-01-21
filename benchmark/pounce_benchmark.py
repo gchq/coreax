@@ -60,8 +60,7 @@ def benchmark_coreset_algorithms(
     raw_data = np.asarray(image_data)
     reshaped_data = raw_data.reshape(raw_data.shape[0], -1)
 
-    # TODO: Change n_components back to 20 something
-    umap_model = umap.UMAP(densmap=True, n_components=5)
+    umap_model = umap.UMAP(densmap=True, n_components=25)
     umap_data = jnp.asarray(umap_model.fit_transform(reshaped_data))
 
     solver_factories = initialise_solvers(Data(umap_data), random.PRNGKey(45))
