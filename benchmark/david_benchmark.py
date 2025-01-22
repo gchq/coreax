@@ -29,7 +29,6 @@ Each coreset algorithm is timed to measure and report the time taken for each st
 """
 
 import os
-import sys
 import time
 from pathlib import Path
 from typing import Optional
@@ -43,9 +42,6 @@ from mnist_benchmark import get_solver_name, initialise_solvers
 
 from coreax import Data
 from examples.david_map_reduce_weighted import downsample_opencv
-
-sys.path.append(str(Path(__file__).parent.parent))
-
 
 MAX_8BIT = 255
 

@@ -498,7 +498,7 @@ def initialise_solvers(
             sqrt_kernel=sqrt_kernel,
         )
 
-        return MapReduce(thinning_solver, leaf_size=15_000)
+        return MapReduce(thinning_solver, leaf_size=3 * _size)
 
     def _get_herding_solver(_size: int) -> MapReduce:
         """
@@ -512,7 +512,7 @@ def initialise_solvers(
         :return: MapReduce solver with KernelHerding as the base solver.
         """
         herding_solver = KernelHerding(_size, kernel)
-        return MapReduce(herding_solver, leaf_size=15_000)
+        return MapReduce(herding_solver, leaf_size=3 * _size)
 
     def _get_stein_solver(_size: int) -> MapReduce:
         """
@@ -534,7 +534,7 @@ def initialise_solvers(
         stein_solver = SteinThinning(
             coreset_size=_size, kernel=stein_kernel, regularise=False
         )
-        return MapReduce(stein_solver, leaf_size=15_000)
+        return MapReduce(stein_solver, leaf_size=3 * _size)
 
     def _get_random_solver(_size: int) -> RandomSample:
         """

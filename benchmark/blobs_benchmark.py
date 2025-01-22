@@ -119,7 +119,7 @@ def setup_solvers(
              and the corresponding solver object.
     """
     random_key = jax.random.PRNGKey(random_seed)
-    sqrt_kernel = sq_exp_kernel.get_sqrt_kernel(2)
+    sqrt_kernel = sq_exp_kernel.get_sqrt_kernel(dim=2)
     return [
         (
             "KernelHerding",
