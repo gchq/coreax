@@ -1971,7 +1971,7 @@ class TestPeriodicKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
-    def expected_grad_x(
+    def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
         x = np.atleast_2d(x)
@@ -1998,10 +1998,10 @@ class TestPeriodicKernel(
                 )
         return expected_gradients
 
-    def expected_grad_y(
+    def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
-        return -self.expected_grad_x(x, y, kernel)
+        return -self.expected_grad_y(x, y, kernel)
 
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
