@@ -16,7 +16,7 @@
 
 import math
 from collections.abc import Callable
-from typing import Optional, TypeVar, Union
+from typing import Optional, TypeVar, Union, cast
 
 import equinox as eqx
 import jax
@@ -1240,3 +1240,245 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             coreset_size=self.coreset_size, kernel=self.kernel
         ).refine(candidate_coreset)
         return refined_coreset, None
+
+
+class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
+    r"""
+    Compress++: A hierarchical coreset construction solver.
+
+    `CompressPlusPlus` is an efficient method for building coresets without
+    compromising performance significantly. It operates in two steps: recursively
+    halving and thinning.
+
+    In the recursive halving step, the dataset is partitioned into four subsets.
+    Each subset is further divided into four subsets, repeated a predefined number
+    of times. After this, each subset is halved using `~coreax.solvers.KernelThinning`.
+    The halved subsets are concatenated bottom-up to form a coreset.
+
+    Finally, the resulting coreset is thinned again using
+    `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+
+    :param depth: The number of recursive divisions of the dataset into four subsets.
+    :param kernel: A `~coreax.kernels.ScalarValuedKernel` for kernel thinning.
+    :param random_key: A random number generator key for the kernel thinning solver,
+        ensuring reproducibility of probabilistic components in the algorithm.
+    :param delta: A float between 0 and 1, representing the swapping probability during
+        the dataset splitting. A recommended value is :math:`1 / \log(\log(n))`, where
+        :math:`n` is the size of the original dataset.
+    :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance defining the
+        square root kernel used in the kernel thinning solver.
+    """
+
+    depth: int
+    kernel: ScalarValuedKernel
+    random_key: KeyArrayLike
+    delta: float
+    sqrt_kernel: ScalarValuedKernel
+
+    def reduce(
+        self, dataset: _Data, solver_state: None = None
+    ) -> tuple[Coresubset[_Data], None]:
+        """
+        Reduce a dataset to a coreset of the desired size using a hierarchical approach.
+
+        This method reduces the dataset by recursively partitioning it and applying
+        kernel thinning. The dataset is clipped to the nearest power of four before
+        processing. The dataset is partitioned into four subsets. Each subset is further
+        divided into four subsets, repeated a predefined number of times. After this,
+        each subset is halved using `~coreax.solvers.KernelThinning` and concatenated
+        recursively. Finally, the resulting coreset is thinned again using
+        `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+
+        :param dataset: The original dataset to be reduced.
+        :param solver_state: The state of the solver.
+        :return: A tuple containing the final coreset and the solver state (None).
+        """
+        n = len(dataset)
+        if self.coreset_size > len(dataset):
+            raise ValueError(MSG)
+
+        # check that depth and coreset_size are compatible
+        nearest_power_of_4 = math.floor(math.log(n, 4))
+        effective_data_size = 4**nearest_power_of_4
+        if not 0 <= self.depth < nearest_power_of_4:
+            raise ValueError(
+                f"depth should be between 0 and {nearest_power_of_4 - 1}, inclusive."
+            )
+
+        if not self.coreset_size * 2**self.depth <= effective_data_size:
+            raise ValueError(
+                "depth and coreset size are not compatible with the dataset size."
+            )
+        # clip the dataset to the nearest power of 4
+        clipped_indices = jax.random.choice(
+            self.random_key, n, shape=(effective_data_size,), replace=False
+        )
+        clipped_dataset = dataset[clipped_indices]
+        # apply reduce_plus_plus
+        plus_plus_coreset, _ = self.reduce_plus_plus(clipped_dataset)
+        # reset pre_coreset_data
+        coreset = eqx.tree_at(lambda x: x.pre_coreset_data, plus_plus_coreset, dataset)
+        return coreset, None
+
+    def compress_half(self, dataset: _Data) -> tuple[Coresubset[_Data], None]:
+        """
+        Compress the dataset to half its size using kernel thinning.
+
+        :param dataset: The input dataset to be compressed.
+        :return: A tuple containing the compressed coreset and `None`.
+        """
+        n = len(dataset)
+        thinning_solver = KernelThinning(
+            coreset_size=n // 2,
+            delta=self.delta,
+            kernel=self.kernel,
+            sqrt_kernel=self.sqrt_kernel,
+            random_key=self.random_key,
+        )
+        return thinning_solver.reduce(dataset)
+
+    def recursive_partition_and_halve(
+        self, partitioned_data: jax.Array, partitioned_indices: jax.Array, depth: int
+    ) -> tuple[jax.Array, jax.Array]:
+        """
+        Recursively partition and halve the dataset to construct a coreset.
+
+        The dataset is partitioned as follows, each node has 4 children. Each child
+        is halved and then all the halved children are concatenated, this is done
+        bottom up, so that we end up with a single reduced dataset at the end.
+
+        :param partitioned_data: The dataset, partitioned by depth.
+        :param partitioned_indices: Indices corresponding to the partitioned data.
+        :param depth: The depth of the recursion for halving the dataset.
+        :return: A tuple of reduced data and indices.
+        """
+        # Base case: at the leaves
+        if depth == 1:
+
+            def wrapper(partition: jax.Array) -> tuple[jax.Array, jax.Array]:
+                """
+                Apply `compress_half` on a dataset and return coreset and indices.
+
+                The function is then vectorised and applied to the partitioned data.
+
+                :param partition: The partition to be halved.
+                :return: The reduced coreset and the corresponding indices.
+                """
+                partition_data = cast(_Data, Data(partition))
+                coreset_of_partition, _ = self.compress_half(partition_data)
+                return (
+                    coreset_of_partition.coreset.data,
+                    coreset_of_partition.nodes.data,
+                )
+
+            ensemble_data, ensemble_indices = jax.vmap(wrapper)(partitioned_data)
+            concatenated_data = jtu.tree_map(jnp.concatenate, ensemble_data)
+            concatenated_indices = jax.vmap(lambda x, index: x[index])(
+                partitioned_indices, ensemble_indices
+            )
+            concatenated_indices = jnp.ravel(concatenated_indices)
+            return concatenated_data, concatenated_indices
+
+        # Recursive case
+        data_list = []
+        indices_list = []
+
+        # Process each partition recursively
+        for i, data in enumerate(partitioned_data):
+            reduced_data, reduced_indices = self.recursive_partition_and_halve(
+                data, partitioned_indices[i], depth - 1
+            )
+            data_list.append(reduced_data)
+            indices_list.append(jnp.asarray(reduced_indices))
+
+        # Convert lists to arrays
+        data_array = jnp.asarray(data_list)
+        indices_array = jnp.asarray(indices_list)
+
+        # Apply the base case to the combined results
+        return self.recursive_partition_and_halve(data_array, indices_array, 1)
+
+    def reduce_no_plus(self, dataset: _Data) -> tuple[Coresubset[_Data], None]:
+        """
+        Reduce the dataset to a coreset without PlusPlus refinement.
+
+        :param dataset: The input dataset to be reduced.
+        :return: A tuple containing the reduced coreset and `None`.
+        """
+        partitioned_data, indices = partition_with_indices(dataset, self.depth)
+        (_reduced_coreset_data, reduced_coreset_indices) = (
+            self.recursive_partition_and_halve(
+                jnp.asarray(partitioned_data), indices, self.depth
+            )
+        )
+        return Coresubset(Data(reduced_coreset_indices), dataset), None
+
+    def reduce_plus_plus(self, dataset: _Data) -> tuple[Coresubset[_Data], None]:
+        """
+        Refine a reduced dataset to a coreset using the PlusPlus refinement method.
+
+        This method first reduces the dataset to a preliminary coreset by applying
+        `reduce_no_plus`. This coreset is then further refined using
+        `~coreax.solvers.KernelThinning`.
+
+        :param dataset: The dataset to be reduced and refined.
+        :return: A tuple containing the refined coreset and `None`.
+        """
+        reduced_coreset, _ = self.reduce_no_plus(dataset)
+        reduced_indices = reduced_coreset.nodes.data.ravel()
+        thinning_solver = KernelThinning(
+            coreset_size=self.coreset_size,
+            delta=self.delta,
+            kernel=self.kernel,
+            sqrt_kernel=self.sqrt_kernel,
+            random_key=self.random_key,
+        )
+        thinning_coreset, _ = thinning_solver.reduce(reduced_coreset.coreset)
+        print("thinning coreset", thinning_coreset)
+        return Coresubset(
+            Data(reduced_indices[thinning_coreset.nodes.data]), dataset
+        ), None
+
+
+def partition_indices(data_size: int, depth: int) -> jax.Array:
+    """
+    Partition data indices into a hierarchical structure.
+
+    If depth = 1, the dataset is partitioned into 4 datasets of size one-fourth each
+
+    :param data_size: The total size of the data to be partitioned.
+    :param depth: The depth of the partitioning hierarchy.
+    :return: A JAX array of partitioned indices.
+    """
+    if depth == 1:
+        chunk_size = data_size // 4
+        return jnp.array(
+            [
+                jnp.arange(0, chunk_size),
+                jnp.arange(chunk_size, 2 * chunk_size),
+                jnp.arange(2 * chunk_size, 3 * chunk_size),
+                jnp.arange(3 * chunk_size, data_size),
+            ]
+        )
+
+    chunk_size = data_size // 4
+    return jnp.array(
+        [
+            partition_indices(chunk_size, depth - 1) + (0 * chunk_size),
+            partition_indices(chunk_size, depth - 1) + (1 * chunk_size),
+            partition_indices(chunk_size, depth - 1) + (2 * chunk_size),
+            partition_indices(chunk_size, depth - 1) + (3 * chunk_size),
+        ]
+    )
+
+
+def partition_with_indices(data: _Data, depth: int) -> tuple[_Data, jax.Array]:
+    """
+    Partition data and return the partitioned data with corresponding indices.
+
+    :param data: The data to be partitioned.
+    :param depth: The depth of the partitioning hierarchy.
+    :return: A tuple containing the partitioned data and indices.
+    """
+    indices = partition_indices(len(data), depth)
+    return data[indices], indices
