@@ -2370,7 +2370,7 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
-        kernel = PCIMQKernel()
+        kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 8
         return jtu.Partial(
             CompressPlusPlus,
