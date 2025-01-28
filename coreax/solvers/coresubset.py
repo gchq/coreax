@@ -1434,7 +1434,6 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             random_key=self.random_key,
         )
         thinning_coreset, _ = thinning_solver.reduce(reduced_coreset.coreset)
-        print("thinning coreset", thinning_coreset)
         return Coresubset(
             Data(reduced_indices[thinning_coreset.nodes.data]), dataset
         ), None
