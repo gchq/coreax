@@ -45,6 +45,7 @@ from coreax.kernels import (
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     CaratheodoryRecombination,
+    CompressPlusPlus,
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
@@ -2358,3 +2359,41 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         np.testing.assert_array_equal(
             coresets[1], jnp.array([[0.7], [0.6], [0.1], [0.12]])
         )
+
+
+class TestCompressPlusPlus(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+        kernel = PCIMQKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            CompressPlusPlus,
+            depth=2,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            kernel=kernel,
+            delta=0.01,
+            sqrt_kernel=kernel,
+        )
+
+    def test_reduce_incompatible_depth(self, reduce_problem: _ReduceProblem) -> None:
+        """
+        Test that `reduce` raises an error if the depth is not compatible.
+        """
+        dataset, solver, _ = reduce_problem
+        modified_solver = eqx.tree_at(lambda x: x.depth, solver, 10)  # Too deep
+        with pytest.raises(
+            ValueError, match="depth should be between 0 and .* inclusive"
+        ):
+            modified_solver.reduce(dataset)
+
+    def test_compress_half(self, reduce_problem: _ReduceProblem) -> None:
+        """
+        Test that `compress_half` reduces the dataset to half its size.
+        """
+        dataset, solver, _ = reduce_problem
+        coreset, _ = solver.compress_half(dataset)
+        assert len(coreset.coreset.data) == len(dataset.data) // 2
