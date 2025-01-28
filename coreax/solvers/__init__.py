@@ -23,6 +23,7 @@ from coreax.solvers.base import (
 )
 from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
+    CompressPlusPlus,
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
@@ -59,4 +60,5 @@ __all__ = [
     "RecombinationSolver",
     "CaratheodoryRecombination",
     "TreeRecombination",
+    "CompressPlusPlus",
 ]
