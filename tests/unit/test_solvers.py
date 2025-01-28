@@ -2371,7 +2371,7 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
     @pytest.fixture(scope="class")
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
         kernel = PCIMQKernel()
-        coreset_size = self.shape[0] // 10
+        coreset_size = self.shape[0] // 8
         return jtu.Partial(
             CompressPlusPlus,
             depth=2,
