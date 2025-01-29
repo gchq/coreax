@@ -4,7 +4,7 @@ Benchmarking Coreset Algorithms
 In this benchmark, we assess the performance of four different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
 :class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky` and
-:class:`~coreax.solvers.KernelThinning`.Each of these algorithms is evaluated across
+:class:`~coreax.solvers.KernelThinning`. Each of these algorithms is evaluated across
 four different tests, providing a comparison of their performance and applicability to
 various datasets.
 
@@ -35,7 +35,7 @@ these steps:
    measured on the test set of 10,000 images.
 
 6. **Evaluation**: Due to randomness in the coreset algorithms and training process,
-   the experiment is repeated 5 times with different random seeds. The benchmark is run
+   the experiment is repeated 4 times with different random seeds. The benchmark is run
    on an **Amazon Web Services EC2 g4dn.12xlarge instance** with 4 NVIDIA T4 Tensor Core
    GPUs, 48 vCPUs, and 192 GiB memory.
 

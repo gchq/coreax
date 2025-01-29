@@ -169,7 +169,7 @@ def initialise_solvers(
         Set up Randomised Cholesky solver.
 
         :param _size: The size of the coreset to be generated.
-        :return: A RPCholesky solver.
+        :return: An RPCholesky solver.
         """
         rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
         return rp_solver

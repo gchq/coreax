@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pylint pre-commit hook is now configured as the Pylint docs recommend. (https://github.com/gchq/coreax/pull/899)
 - Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
 - Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
+- `KernelThinning` now computes swap probability correctly. (https://github.com/gchq/coreax/pull/932)
 
 ### Changed
 

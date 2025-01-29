@@ -77,7 +77,8 @@ def compute_statistics(
             size_str = str(size)
             accuracies, times = [], []
             if size_str in sizes:
-                for run_data in sizes[size_str].values():
+                run_list = list(sizes[size_str].values())[1:]  # Skip the first run
+                for run_data in run_list:
                     accuracies.append(run_data["accuracy"])
                     times.append(run_data["time_taken"])
                     accuracy_stats[algo]["points"][size].append(run_data["accuracy"])
@@ -119,7 +120,8 @@ def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
             size_str = str(size)
             times = []
             if size_str in sizes:
-                for time in sizes[size_str].values():
+                run_list = list(sizes[size_str].values())[1:]  # Skip the first run
+                for time in run_list:
                     times.append(time)
                     stats[algo]["points"][size].append(time)
 
