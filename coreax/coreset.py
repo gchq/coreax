@@ -14,7 +14,7 @@
 
 """Module for defining coreset data structures."""
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -51,7 +51,9 @@ class Coreset(eqx.Module, Generic[_Data]):
     nodes: _Data
     pre_coreset_data: _Data
 
-    def __init__(self, nodes: _Data, pre_coreset_data: _Data) -> None:
+    def __init__(
+        self, nodes: Union[_Data, Array], pre_coreset_data: Union[_Data, Array]
+    ) -> None:
         """Handle type conversion of ``nodes`` and ``pre_coreset_data``."""
         if isinstance(nodes, Array):
             self.nodes = as_data(nodes)
@@ -124,7 +126,9 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     # Unlike on Coreset, contains indices of coreset rather than coreset itself
     nodes: _Data
 
-    def __init__(self, nodes: Data, pre_coreset_data: _Data):
+    def __init__(
+        self, nodes: Union[Data, Array], pre_coreset_data: Union[_Data, Array]
+    ):
         """Handle typing of ``nodes`` being a `Data` instance."""
         # nodes type can't technically be cast to _Data but do so anyway to avoid a
         # significant amount of boilerplate just for type checking

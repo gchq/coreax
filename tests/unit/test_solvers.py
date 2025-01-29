@@ -22,7 +22,7 @@ from contextlib import (
     AbstractContextManager,
     nullcontext as does_not_raise,
 )
-from typing import Literal, NamedTuple, Optional, Union, cast
+from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union, cast
 from unittest.mock import MagicMock, patch
 
 import equinox as eqx
@@ -32,6 +32,7 @@ import jax.random as jr
 import jax.tree_util as jtu
 import numpy as np
 import pytest
+from jax import Array
 from typing_extensions import override
 
 from coreax.coreset import Coreset, Coresubset
@@ -65,10 +66,13 @@ from coreax.solvers.base import (
 )
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
+_Data = TypeVar("_Data", bound=Data)
+_Solver = TypeVar("_Solver", bound=Solver)
 
-class _ReduceProblem(NamedTuple):
-    dataset: Union[Data, SupervisedData]
-    solver: Solver
+
+class _ReduceProblem(NamedTuple, Generic[_Data, _Solver]):
+    dataset: _Data
+    solver: _Solver
     expected_coreset: Optional[Coreset] = None
 
 
@@ -133,12 +137,14 @@ class SolverTest:
             assert isinstance(coreset, type(expected_coreset))
             assert eqx.tree_equal(coreset, expected_coreset)
         if isinstance(coreset, Coresubset):
+            assert isinstance(dataset, Data)
             membership = jtu.tree_map(jnp.isin, coreset.coreset.data, dataset.data)
             all_membership = jtu.tree_map(jnp.all, membership)
             assert jtu.tree_all(all_membership)
         if isinstance(solver, PaddingInvariantSolver):
             padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
             if isinstance(problem, _RefineProblem):
+                assert isinstance(solver, RefinementSolver)
                 padded_initial_coreset = eqx.tree_at(
                     lambda x: x.pre_coreset_data,
                     problem.initial_coresubset,
@@ -190,12 +196,18 @@ class RecombinationSolverTest(SolverTest):
         scope="class",
     )
     def reduce_problem(  # noqa: C901 complex-structure
-        self, request: pytest.FixtureRequest, solver_factory: Union[Solver, jtu.Partial]
+        self,
+        request: pytest.FixtureRequest,
+        solver_factory: Union[type[Solver], jtu.Partial],
     ) -> _ReduceProblem:
+        if not isinstance(solver_factory, jtu.Partial):
+            raise NotImplementedError()
+
         node_key, weight_key, rng_key = jr.split(self.random_key, num=3)
         nodes = jr.uniform(node_key, self.shape)
         weights = jr.uniform(weight_key, (self.shape[0],))
         expected_coreset = None
+        test_functions: Optional[Callable[[Array], Array]]
         if request.param == "random":
             # Random dataset with default test-functions.
             test_functions = None
@@ -206,23 +218,31 @@ class RecombinationSolverTest(SolverTest):
             test_functions = None
         elif request.param == "null":
             # Same as 'random' but with test-functions mapping to the zero vector.
-            def test_functions(x):
+            def test_functions_impl(x):
                 return jnp.zeros(x.shape)
+
+            test_functions = test_functions_impl
         elif request.param == "full_rank":
             # Same as 'random' but with all test-functions linearly-independent.
-            def test_functions(x):
+            def test_functions_impl(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, norm_x**2, norm_x**3])
+
+            test_functions = test_functions_impl
         elif request.param == "rank_deficient":
             # Same as 'full_rank' but with some test-functions linearly-dependent.
-            def test_functions(x):
+            def test_functions_impl(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
+
+            test_functions = test_functions_impl
         elif request.param == "excessive_test_functions":
             # Same as 'random' but with more test-functions than dataset entries.
-            def test_functions(x):
+            def test_functions_impl(x):
                 del x
                 return jnp.zeros((len(nodes) + 1,))
+
+            test_functions = test_functions_impl
         else:
             raise ValueError("Invalid fixture parametrization")
         solver_factory.keywords["test_functions"] = test_functions
@@ -246,6 +266,8 @@ class RecombinationSolverTest(SolverTest):
         5. Check the default value of 'test_functions' is the identity map.
         """
         super().check_solution_invariants(coreset, problem)
+        if isinstance(problem, _RefineProblem):
+            raise NotImplementedError()
         dataset, solver, _ = problem
         coreset_nodes, coreset_weights = coreset.coreset.data, coreset.coreset.weights
         assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
@@ -310,7 +332,8 @@ class RecombinationSolverTest(SolverTest):
     )
     # We don't care too much that arguments differ as this is required to override the
     # parametrization. Nevertheless, this should probably be revisited in the future.
-    def test_reduce(  # pylint: disable=arguments-differ
+    # pylint: disable-next=arguments-differ
+    def test_reduce(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
@@ -1017,7 +1040,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         """
         # Small testing dataset with a fixed seed
         generator = np.random.default_rng(97)
-        x = generator.uniform(size=(100, 2))
+        x = jnp.asarray(generator.uniform(size=(100, 2)))
         jax.debug.print(f"{x}")
         data = Data(x)
 
@@ -2142,7 +2165,7 @@ class TestCaratheodoryRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         return jtu.Partial(CaratheodoryRecombination, test_functions=None, rcond=None)
 
 
@@ -2151,7 +2174,7 @@ class TestTreeRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         return jtu.Partial(
             TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
         )
