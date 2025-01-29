@@ -67,7 +67,7 @@ class TestUtil:
         """Test the pairwise transform on the squared distance function."""
         # create an orthonormal matrix
         dimension = 3
-        orthonormal_matrix = ortho_group.rvs(dim=dimension)
+        orthonormal_matrix = jnp.array(ortho_group.rvs(dim=dimension))
         inner_distance = pairwise(squared_distance)(
             orthonormal_matrix, orthonormal_matrix
         )
@@ -84,10 +84,10 @@ class TestUtil:
         num_points_x = 10
         num_points_y = 10
         dimension = 3
-        generator = np.random.default_rng(1_989)
-        x_array = generator.random((num_points_x, dimension))
-        y_array = generator.random((num_points_y, dimension))
-        expected_output = np.array([[x - y for y in y_array] for x in x_array])
+        key1, key2 = jr.split(jr.PRNGKey(1_989), 2)
+        x_array = jr.uniform(key1, (num_points_x, dimension))
+        y_array = jr.uniform(key2, (num_points_y, dimension))
+        expected_output = jnp.array([[x - y for y in y_array] for x in x_array])
         output = pairwise(difference)(x_array, y_array)
         assert jnp.linalg.norm(output - expected_output) == pytest.approx(0.0, abs=1e-3)
 

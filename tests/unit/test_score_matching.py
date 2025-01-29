@@ -76,8 +76,8 @@ class TestKernelDensityMatching(unittest.TestCase):
         self.std_dev = 1.0
         self.num_data_points = 250
         generator = np.random.default_rng(1_989)
-        self.samples = generator.normal(
-            self.mu, self.std_dev, size=(self.num_data_points, 1)
+        self.samples = jnp.asarray(
+            generator.normal(self.mu, self.std_dev, size=(self.num_data_points, 1))
         )
 
     def test_univariate_gaussian_score(self) -> None:
@@ -94,7 +94,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=median_heuristic(self.samples)
+            length_scale=median_heuristic(self.samples).item()
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -120,7 +120,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=median_heuristic(self.samples)
+            length_scale=median_heuristic(self.samples).item()
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -140,9 +140,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         mu = np.zeros(dimension)
         sigma_matrix = np.eye(dimension)
         lambda_matrix = np.linalg.pinv(sigma_matrix)
-        generator = np.random.default_rng(1_989)
-        samples = generator.multivariate_normal(
-            mu, sigma_matrix, size=self.num_data_points
+        key = jr.PRNGKey(1_989)
+        samples = jr.multivariate_normal(
+            key, mu, sigma_matrix, shape=(self.num_data_points,)
         )
 
         def true_score(x_: Array) -> Array:
@@ -155,7 +155,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=median_heuristic(samples)
+            length_scale=median_heuristic(samples).item()
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -177,7 +177,9 @@ class TestKernelDensityMatching(unittest.TestCase):
         mix = np.array([1 - p, p])
         generator = np.random.default_rng(1_989)
         comp = generator.binomial(1, p, size=self.num_data_points)
-        samples = generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        samples = jnp.asarray(
+            generator.normal(mus[comp], std_devs[comp]).reshape(-1, 1)
+        )
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
@@ -199,7 +201,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         # Define a kernel density matching object
         kernel_density_matcher = KernelDensityMatching(
-            length_scale=median_heuristic(samples)
+            length_scale=median_heuristic(samples).item()
         )
 
         # Extract the score function (this is not really learned from the data, more
@@ -328,9 +330,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         which equals 1.0 in the case of ``s`` being a vector of ones.
         """
         # Define data
-        u = np.array([0.0, 1.0])
-        v = np.array([[1.0, 0.0]])
-        s = np.ones(2, dtype=float)
+        u = jnp.array([0.0, 1.0])
+        v = jnp.array([[1.0, 0.0]])
+        s = jnp.ones(2, dtype=float)
 
         # Define expected output - orthogonal u and v vectors should give back
         # half-length squared s
@@ -382,9 +384,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         and ``s``.
         """
         # Define data
-        u = np.arange(3, dtype=float)
-        v = np.arange(3, 6, dtype=float)
-        s = np.arange(9, 12, dtype=float)
+        u = jnp.arange(3, dtype=float)
+        v = jnp.arange(3, 6, dtype=float)
+        s = jnp.arange(9, 12, dtype=float)
 
         # Define expected outputs
         expected_output_analytic = 165.0
@@ -445,9 +447,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """
         # Define data - orthogonal u and v vectors should give back half squared dot
         # product of v and s
-        u = np.array([0.0, 1.0])
-        v = np.array([[1.0, 0.0]])
-        s = np.ones(2, dtype=float)
+        u = jnp.array([0.0, 1.0])
+        v = jnp.array([[1.0, 0.0]])
+        s = jnp.ones(2, dtype=float)
 
         # Define expected outputs
         expected_output = 0.5
@@ -490,9 +492,9 @@ class TestSlicedScoreMatching(unittest.TestCase):
         Evaluating this gives a result of 7456.0.
         """
         # Define data
-        u = np.arange(3, dtype=float)
-        v = np.arange(3, 6, dtype=float)
-        s = np.arange(9, 12, dtype=float)
+        u = jnp.arange(3, dtype=float)
+        v = jnp.arange(3, 6, dtype=float)
+        s = jnp.arange(9, 12, dtype=float)
 
         # Define expected outputs
         expected_output = 7456.0
@@ -529,14 +531,14 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return y**2
 
         # Define an arbitrary input
-        x = np.array([2.0, 7.0])
-        s = score_function(x)
+        x = jnp.array([2.0, 7.0])
+        s = jnp.asarray(score_function(x))
 
         # Defined the Hessian (grad of score function)
-        hessian = 2.0 * np.diag(x)
+        hessian = 2.0 * jnp.diag(x)
 
         # Define some arbitrary random vector
-        random_vector = np.ones(2, dtype=float)
+        random_vector = jnp.ones(2, dtype=float)
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
@@ -591,14 +593,14 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return x_**2
 
         # Define an arbitrary input
-        x = np.array([2.0, 7.0])
-        s = score_function(x)
+        x = jnp.array([2.0, 7.0])
+        s = jnp.asarray(score_function(x))
 
         # Defined the Hessian (grad of score function)
-        hessian = 2.0 * np.diag(x)
+        hessian = 2.0 * jnp.diag(x)
 
         # Define some arbitrary random vector
-        random_vector = np.ones(2, dtype=float)
+        random_vector = jnp.ones(2, dtype=float)
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
@@ -681,8 +683,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Disable pylint warning for unsubscriptable-object as we are able to
         # subscript this and use this for testing purposes only
         # pylint: disable=unsubscriptable-object
-        weights = state.params["Dense_0"]["kernel"].T
-        bias = state.params["Dense_0"]["bias"]
+        weights = jnp.asarray(state.params["Dense_0"]["kernel"]).T
+        bias = jnp.asarray(state.params["Dense_0"]["bias"])
         # pylint: enable=unsubscriptable-object
 
         # Define input data
@@ -711,10 +713,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Jax is row based, so transpose W_
         np.testing.assert_array_almost_equal(
-            state.params["Dense_0"]["kernel"], weights_.T, decimal=3
+            jnp.asarray(state.params["Dense_0"]["kernel"]), weights_.T, decimal=3
         )
         np.testing.assert_array_almost_equal(
-            state.params["Dense_0"]["bias"], bias_, decimal=3
+            jnp.asarray(state.params["Dense_0"]["bias"]), bias_, decimal=3
         )
 
     def test_univariate_gaussian_score(self):
@@ -1100,7 +1102,9 @@ class TestConvertSteinKernel:
         [LinearKernel(), SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_convert_stein_kernel(
-        self, score_matching: Union[None, MagicMock], kernel: ScalarValuedKernel
+        self,
+        score_matching: Union[None, MagicMock, KernelDensityMatching],
+        kernel: ScalarValuedKernel,
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""
         random_key = jr.key(2_024)

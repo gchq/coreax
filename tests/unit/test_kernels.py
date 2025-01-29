@@ -407,6 +407,9 @@ class TestPowerKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         expected_grad = (
             self.power
             * kernel.base_kernel.grad_x_elementwise(x, y)
@@ -424,6 +427,9 @@ class TestPowerKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         expected_grad = (
             self.power
             * kernel.base_kernel.grad_y_elementwise(x, y)
@@ -439,6 +445,9 @@ class TestPowerKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
     ) -> np.ndarray:
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         divergence = self.power * (
             (
                 kernel.base_kernel.compute_elementwise(x, y) ** (self.power - 1)
@@ -584,6 +593,9 @@ class TestAdditiveKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         # Variable rename allows for nicer automatic formatting
         grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
@@ -600,6 +612,9 @@ class TestAdditiveKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         # Variable rename allows for nicer automatic formatting
         grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
@@ -615,6 +630,9 @@ class TestAdditiveKernel(
         self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
     ) -> np.ndarray:
         num_points, _ = np.atleast_2d(x).shape
+
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
 
         expected_divergences = np.tile(
             kernel.first_kernel.divergence_x_grad_y_elementwise(x, y)
@@ -696,6 +714,9 @@ class TestProductKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         # Variable rename allows for nicer automatic formatting
         grad_1 = kernel.first_kernel.grad_x_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_x_elementwise(x, y)
@@ -714,6 +735,9 @@ class TestProductKernel(
     ) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+
         # Variable rename allows for nicer automatic formatting
         grad_1 = kernel.first_kernel.grad_y_elementwise(x, y)
         grad_2 = kernel.second_kernel.grad_y_elementwise(x, y)
@@ -730,6 +754,8 @@ class TestProductKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
     ) -> np.ndarray:
+        x = jnp.array(x)
+        y = jnp.array(y)
         # Variable rename allows for nicer automatic formatting
         k1, k2 = kernel.first_kernel, kernel.second_kernel
         expected_divergences = (
@@ -748,7 +774,7 @@ class TestProductKernel(
         We consider a product kernel with equal input kernels and check that
         the second kernel is never called.
         """
-        x = np.array([1])
+        x = jnp.array([1])
 
         # Form two simple mocked kernels and force any == operation to return True
         first_kernel = MagicMock(spec=ScalarValuedKernel)
@@ -1362,7 +1388,10 @@ class TestSquaredExponentialKernel(
             expected_distances = np.zeros((num_points, num_points))
             for x_idx, x_ in enumerate(x):
                 for y_idx, y_ in enumerate(y):
-                    expected_distances[x_idx, y_idx] = scipy_norm(y_, length_scale).pdf(
+                    expected_distances[x_idx, y_idx] = scipy_norm(
+                        y_,
+                        length_scale,
+                    ).pdf(  # pyright: ignore[reportAttributeAccessIssue]
                         x_
                     )
             x, y = x.reshape(-1, 1), y.reshape(-1, 1)

@@ -161,7 +161,7 @@ def get_most_recent_historic_data(
         # fine since there aren't any results present to normalise
         return {"results": {}, "normalisation": {"compilation": 0.0, "execution": 0.0}}
 
-    most_recent_file = max(files.keys(), key=files.get)
+    most_recent_file = max(files.keys(), key=files.__getitem__)
 
     with open(most_recent_file, "r", encoding="utf8") as f:
         return json.load(f)

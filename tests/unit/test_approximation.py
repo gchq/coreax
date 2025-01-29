@@ -26,7 +26,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
-from jax.typing import ArrayLike
+from jax import Array
 
 from coreax.approximation import (
     ANNchorApproximateKernel,
@@ -42,11 +42,11 @@ _RandomRegressionKernel = type[RandomRegressionKernel]
 
 class _Problem(NamedTuple):
     random_key: KeyArrayLike
-    data: ArrayLike
+    data: Array
     kernel: ScalarValuedKernel
     num_kernel_points: int
     num_train_points: int
-    true_distances: ArrayLike
+    true_distances: Array
 
 
 @pytest.mark.parametrize(
@@ -113,7 +113,7 @@ class TestRandomRegressionApproximations:
 
         # We can repeat the above, but changing the point with which we are comparing
         # to get:
-        true_distances = np.array(
+        true_distances = jnp.array(
             [
                 0.5855723855138795,
                 0.5737865795122914,
