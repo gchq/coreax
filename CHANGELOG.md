@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pylint pre-commit hook is now configured as the Pylint docs recommend. (https://github.com/gchq/coreax/pull/899)
 - Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
 - Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
+- Type annotations so that the tests pass Pyright. (https://github.com/gchq/coreax/pull/940)
 - Incorrectly-implemented tests for the gradients of `PeriodicKernel`. (https://github.com/gchq/coreax/pull/936)
 
 ### Changed
