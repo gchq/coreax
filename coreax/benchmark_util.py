@@ -22,10 +22,9 @@ functions for computing solver parameters and retrieving solver names.
 
 from collections.abc import Callable
 
-import jax
 import jax.numpy as jnp
 import numpy as np
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float
 
 from coreax import Data
 from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
@@ -39,9 +38,10 @@ from coreax.solvers import (
     Solver,
     SteinThinning,
 )
+from coreax.util import KeyArrayLike
 
 
-def calculate_delta(n: Int[Array, "1"]) -> Float[Array, "1"]:
+def calculate_delta(n: int) -> Float[Array, "1"]:
     r"""
     Calculate the delta parameter for kernel thinning.
 
@@ -67,11 +67,11 @@ def calculate_delta(n: Int[Array, "1"]) -> Float[Array, "1"]:
         if log_log_n > 0:
             return 1 / (n * log_log_n)
         return 1 / (n * log_n)
-    return 1 / n
+    return jnp.array(1 / n)
 
 
 def initialise_solvers(
-    train_data_umap: Data, key: jax.random.PRNGKey
+    train_data_umap: Data, key: KeyArrayLike
 ) -> list[Callable[[int], Solver]]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
@@ -93,7 +93,7 @@ def initialise_solvers(
     random_seed = 45
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(train_data_umap[idx])
+    length_scale = median_heuristic(jnp.asarray(train_data_umap[idx]))
     kernel = SquaredExponentialKernel(length_scale=length_scale)
     sqrt_kernel = kernel.get_sqrt_kernel(16)
 
@@ -112,7 +112,7 @@ def initialise_solvers(
             coreset_size=_size,
             kernel=kernel,
             random_key=key,
-            delta=calculate_delta(num_data_points),
+            delta=calculate_delta(num_data_points).item(),
             sqrt_kernel=sqrt_kernel,
         )
 
@@ -145,7 +145,7 @@ def initialise_solvers(
         """
         # Generate small dataset for ScoreMatching for Stein Kernel
 
-        score_function = KernelDensityMatching(length_scale=length_scale).match(
+        score_function = KernelDensityMatching(length_scale=length_scale.item()).match(
             train_data_umap[idx]
         )
         stein_kernel = SteinKernel(kernel, score_function)
