@@ -33,8 +33,10 @@ from benchmark.mnist_benchmark import (
     train_and_evaluate,
 )
 from coreax import Data
-from coreax.benchmark_util import initialise_solvers
+from coreax.benchmark_util import calculate_delta, get_solver_name, initialise_solvers
+from coreax.kernel import SquaredExponentialKernel
 from coreax.solvers import (
+    KernelHerding,
     MapReduce,
     RandomSample,
     RPCholesky,
@@ -152,6 +154,36 @@ def test_initialise_solvers() -> None:
         assert isinstance(solver_instance, (MapReduce, RandomSample, RPCholesky)), (
             f"Unexpected solver type: {type(solver_instance)}"
         )
+
+
+def test_get_solver_name():
+    """
+    Test `get_solver_name` function to ensure it returns correct solver names.
+    """
+    # Create a KernelHerding solver
+    herding_solver = KernelHerding(coreset_size=5, kernel=SquaredExponentialKernel())
+
+    # Wrap it in MapReduce
+    map_reduce_solver = MapReduce(base_solver=herding_solver, leaf_size=15)
+
+    assert get_solver_name(lambda _: herding_solver) == "KernelHerding", (
+        "Expected 'KernelHerding' but got something else."
+    )
+
+    assert get_solver_name(lambda _: map_reduce_solver) == "KernelHerding", (
+        "Expected 'KernelHerding' from MapReduce solver but got something else."
+    )
+
+
+@pytest.mark.parametrize("n", [10, 100, 1000])
+def test_calculate_delta(n):
+    """
+    Test the `calculate_delta` function.
+
+    Ensure that the function produces a positive delta value for different values of n.
+    """
+    delta = calculate_delta(n)
+    assert delta > 0, f"Delta should be positive but got {delta} for n={n}"
 
 
 if __name__ == "__main__":
