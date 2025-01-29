@@ -52,7 +52,7 @@ block.
 """
 
 from abc import abstractmethod
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union, cast
 
 import equinox as eqx
 import jax
@@ -331,7 +331,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     ) -> Shaped[Array, " n n"]:
         # Set rcond parameter if not given using array dimension
         num_rows = array.shape[0]
-        machine_precision = jnp.finfo(array.dtype).eps
+        machine_precision = cast(float, jnp.finfo(array.dtype).eps)
         if self.rcond is None:
             rcond = machine_precision * num_rows
         elif self.rcond == -1:

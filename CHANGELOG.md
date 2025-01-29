@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
 - Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
 - `KernelThinning` now computes swap probability correctly. (https://github.com/gchq/coreax/pull/932)
+- Incorrectly-implemented tests for the gradients of `PeriodicKernel`. (https://github.com/gchq/coreax/pull/936)
 
 ### Changed
 
