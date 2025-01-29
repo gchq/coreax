@@ -1039,6 +1039,32 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             herding_coreset_ref.unweighted_indices, expected_refine_indices
         )
 
+    @pytest.mark.parametrize("reduce_problem", ["random"], indirect=True)
+    def test_kernel_herding_probabilistic(self, reduce_problem: _ReduceProblem):
+        """
+        Test the probabilistic version of Kernel Herding.
+        """
+        # Set up solver and problem
+        dataset, solver_base, _ = reduce_problem
+        solver_prob = KernelHerding(
+            coreset_size=solver_base.coreset_size,
+            kernel=solver_base.kernel,
+            random_key=jr.key(0),
+        )
+
+        # Run the standard and probabilistic KH solvers
+        coreset_base, state_base = solver_base.reduce(dataset)
+        coreset_prob, state_prob = solver_prob.reduce(
+            dataset, probabilistic=True, temperature=0.1
+        )
+
+        # Test whether probabilistic KH outputs the same type of coreset
+        assert isinstance(coreset_prob, type(coreset_base))
+        # Test whether the state is the same in both versions
+        np.testing.assert_array_equal(
+            state_base.gramian_row_mean, state_prob.gramian_row_mean
+        )
+
 
 class TestRandomSample(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
