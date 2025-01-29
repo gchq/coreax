@@ -38,9 +38,9 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax import random
-from mnist_benchmark import get_solver_name, initialise_solvers
 
 from coreax import Data
+from coreax.benchmark_util import get_solver_name, initialise_solvers
 from examples.david_map_reduce_weighted import downsample_opencv
 
 MAX_8BIT = 255
