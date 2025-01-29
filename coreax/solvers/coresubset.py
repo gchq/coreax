@@ -1100,7 +1100,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             key1, key2 = jax.random.split(random_key)
 
             swap_probability = 1 / 2 * (1 - alpha / a)
-            should_swap = jax.random.uniform(key1) < swap_probability
+            should_swap = jax.random.uniform(key1) <= swap_probability
             return lax.cond(
                 should_swap,
                 lambda _: (2 * i + 1, 2 * i),  # do swap: val1 = x2, val2 = x1
