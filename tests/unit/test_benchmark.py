@@ -32,6 +32,13 @@ from benchmark.mnist_benchmark import (
     convert_to_jax_arrays,
     train_and_evaluate,
 )
+from coreax import Data
+from coreax.benchmark_util import initialise_solvers
+from coreax.solvers import (
+    MapReduce,
+    RandomSample,
+    RPCholesky,
+)
 
 
 class MockDataset(Dataset):
@@ -119,6 +126,32 @@ def test_train_and_evaluate() -> None:
     assert "final_test_loss" in result
     assert "final_test_accuracy" in result
     assert 0.0 <= result["final_test_accuracy"] <= 1.0
+
+
+def test_initialise_solvers() -> None:
+    """
+    Test the :func:`initialise_solvers`.
+
+    Ensure that `initialise_solvers` returns exactly five solvers.
+    Verify that the returned list contains callable functions that produce
+    valid solver instances.
+    """
+    # Create a mock dataset (UMAP-transformed) with arbitrary values
+    mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
+
+    # Generate a random key
+    key = random.PRNGKey(42)
+
+    # Call the function
+    solvers = initialise_solvers(mock_data, key)
+
+    # Ensure each solver is a callable function that returns a solver instance
+    for solver in solvers:
+        assert callable(solver), "Solver should be a callable function"
+        solver_instance = solver(1)  # Instantiate with a coreset size of 1
+        assert isinstance(solver_instance, (MapReduce, RandomSample, RPCholesky)), (
+            f"Unexpected solver type: {type(solver_instance)}"
+        )
 
 
 if __name__ == "__main__":
