@@ -1073,6 +1073,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
                 temperature=0.0,
                 random_key=jr.key(0),
             )
+        with pytest.raises(TypeError):
             KernelHerding(
                 coreset_size=solver_base.coreset_size,
                 kernel=solver_base.kernel,
