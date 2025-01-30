@@ -40,7 +40,6 @@ GPUs, 48 virtual CPUs and 192 GiB memory.
 import json
 import os
 import time
-from collections.abc import Callable
 from typing import Any, NamedTuple, Optional, Union
 
 import equinox as eqx
@@ -56,17 +55,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
 from coreax import Data
-from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
-from coreax.score_matching import KernelDensityMatching
-from coreax.solvers import (
-    KernelHerding,
-    MapReduce,
-    RandomSample,
-    RPCholesky,
-    Solver,
-    SteinThinning,
-)
-from coreax.util import KeyArrayLike
+from coreax.benchmark_util import get_solver_name, initialise_solvers
 
 
 # Convert PyTorch dataset to JAX arrays
@@ -78,8 +67,7 @@ def convert_to_jax_arrays(pytorch_data: Dataset) -> tuple[jnp.ndarray, jnp.ndarr
     :return: Tuple of JAX arrays (data, targets).
     """
     # Load all data in one batch
-    # pyright is wrong here, a Dataset object does have __len__ method
-    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))  # type: ignore
+    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))
     # Grab the first batch, which is all data
     _data, _targets = next(iter(data_loader))
     # Convert to NumPy first, then JAX array
@@ -151,8 +139,8 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Optional[dict[str, jnp.ndarray]]
-    dropout_rng: KeyArrayLike
+    batch_stats: Optional[dict[str, jnp.ndarray]] = None
+    dropout_rng: Optional[jnp.ndarray] = None
 
 
 class Metrics(NamedTuple):
@@ -163,7 +151,7 @@ class Metrics(NamedTuple):
 
 
 def create_train_state(
-    rng: KeyArrayLike, _model: nn.Module, learning_rate: float, weight_decay: float
+    rng: jnp.ndarray, _model: nn.Module, learning_rate: float, weight_decay: float
 ) -> TrainState:
     """
     Create and initialise the train state.
@@ -325,7 +313,7 @@ def train_and_evaluate(
     train_set: DataSet,
     test_set: DataSet,
     _model: nn.Module,
-    rng: KeyArrayLike,
+    rng: jnp.ndarray,
     config: dict[str, Any],
 ) -> dict[str, float]:
     """
@@ -428,94 +416,9 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
     return train_data_jax, train_targets_jax, test_data_jax, test_targets_jax
 
 
-def initialise_solvers(
-    train_data_umap: Data, key: KeyArrayLike
-) -> list[Callable[[int], Solver]]:
-    """
-    Initialise and return a list of solvers for various coreset algorithms.
-
-    Set up solvers for Kernel Herding, Stein Thinning, Random Sampling, and Randomised
-    Cholesky methods. Each solver has different parameter requirements. Some solvers
-    can utilise MapReduce, while others cannot,and some require specific kernels.
-    This setup allows them to be called by passing only the coreset size,
-    enabling easy integration in a loop for benchmarking.
-
-    :param train_data_umap: The UMAP-transformed training data used for
-        length scale estimation for ``SquareExponentialKernel``.
-    :param key: The random key for initialising random solvers.
-    :return: A list of solvers functions for different coreset algorithms.
-    """
-    # Set up kernel using median heuristic
-    num_data_points = len(train_data_umap)
-    num_samples_length_scale = min(num_data_points, 300)
-    random_seed = 45
-    generator = np.random.default_rng(random_seed)
-    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(jnp.asarray(train_data_umap[idx]))
-    kernel = SquaredExponentialKernel(length_scale=length_scale)
-
-    def _get_herding_solver(_size: int) -> MapReduce:
-        """
-        Set up KernelHerding to use ``MapReduce``.
-
-        Create a KernelHerding solver with the specified size and return
-        it along with a MapReduce object for reducing a large dataset like
-        MNIST dataset.
-
-        :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the MapReduce solver.
-        """
-        herding_solver = KernelHerding(_size, kernel)
-        return MapReduce(herding_solver, leaf_size=3 * _size)
-
-    def _get_stein_solver(_size: int) -> MapReduce:
-        """
-        Set up Stein Thinning to use ``MapReduce``.
-
-        Create a SteinThinning solver with the specified  coreset size,
-        using ``KernelDensityMatching`` score function for matching on
-        a subset of the dataset.
-
-        :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the MapReduce solver.
-        """
-        # Generate small dataset for ScoreMatching for Stein Kernel
-
-        score_function = KernelDensityMatching(length_scale=length_scale.item()).match(
-            train_data_umap[idx]
-        )
-        stein_kernel = SteinKernel(kernel, score_function)
-        stein_solver = SteinThinning(
-            coreset_size=_size, kernel=stein_kernel, regularise=False
-        )
-        return MapReduce(stein_solver, leaf_size=3 * _size)
-
-    def _get_random_solver(_size: int) -> RandomSample:
-        """
-        Set up Random Sampling to generate a coreset.
-
-        :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the RandomSample solver.
-        """
-        random_solver = RandomSample(_size, key)
-        return random_solver
-
-    def _get_rp_solver(_size: int) -> RPCholesky:
-        """
-        Set up Randomised Cholesky solver.
-
-        :param _size: The size of the coreset to be generated.
-        :return: A tuple containing the solver name and the RPCholesky solver.
-        """
-        rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
-        return rp_solver
-
-    return [_get_random_solver, _get_rp_solver, _get_herding_solver, _get_stein_solver]
-
-
 def train_model(
     data_bundle: dict[str, jnp.ndarray],
-    key: KeyArrayLike,
+    key: jax.random.PRNGKey,
     config: dict[str, Union[int, float]],
 ) -> dict[str, float]:
     """
@@ -593,25 +496,6 @@ def save_results(results: dict) -> None:
         json.dump(results, f, indent=2)
 
     print(f"Data has been saved to {file_name}")
-
-
-def get_solver_name(solver: Callable[[int], Solver]) -> str:
-    """
-    Get the name of the solver.
-
-    This function extracts and returns the name of the solver class.
-    If ``_solver`` is an instance of :class:`~coreax.solvers.MapReduce`, it retrieves
-    the name of the :class:`~coreax.solvers.MapReduce.base_solver` class instead.
-
-    :param solver: An instance of a solver, such as `MapReduce` or `RandomSample`.
-    :return: The name of the solver class.
-    """
-    # Evaluate solver function to get an instance to interrogate
-    # Don't just inspect type annotations, as they may be incorrect - not robust
-    solver_instance = solver(1)
-    if isinstance(solver_instance, MapReduce):
-        return type(solver_instance.base_solver).__name__
-    return type(solver_instance).__name__
 
 
 # pylint: disable=too-many-locals

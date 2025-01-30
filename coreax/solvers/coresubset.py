@@ -882,8 +882,9 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     :param random_key: Key for random number generation, enabling reproducibility of
         probabilistic components in the algorithm.
     :param delta: A float between 0 and 1 used to compute the swapping probability
-        during the splitting process. A recommended value is :math:`1 / \log(\log(n))`,
-        where :math:`n` is the length of the original dataset.
+        during the splitting process. A recommended value is
+        :math:`\frac{1}{n \log (\log n)}`, where :math:`n` is the length of the original
+        dataset.
     :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance representing the
         square root kernel used for splitting the original dataset.
     """
@@ -1099,11 +1100,12 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             """
             key1, key2 = jax.random.split(random_key)
 
-            prob = jax.random.uniform(key1)
+            swap_probability = 1 / 2 * (1 - alpha / a)
+            should_swap = jax.random.uniform(key1) <= swap_probability
             return lax.cond(
-                prob > 1 / 2 * (1 - alpha / a),
-                lambda _: (2 * i, 2 * i + 1),  # first case: val1 = x1, val2 = x2
-                lambda _: (2 * i + 1, 2 * i),  # second case: val1 = x2, val2 = x1
+                should_swap,
+                lambda _: (2 * i + 1, 2 * i),  # do swap: val1 = x2, val2 = x1
+                lambda _: (2 * i, 2 * i + 1),  # don't swap: val1 = x1, val2 = x2
                 None,
             ), key2
 

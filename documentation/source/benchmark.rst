@@ -3,9 +3,10 @@ Benchmarking Coreset Algorithms
 
 In this benchmark, we assess the performance of four different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
-:class:`~coreax.solvers.RandomSample`, and :class:`~coreax.solvers.RPCholesky`.
-Each of these algorithms is evaluated across four different tests, providing a
-comparison of their performance and applicability to various datasets.
+:class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky` and
+:class:`~coreax.solvers.KernelThinning`. Each of these algorithms is evaluated across
+four different tests, providing a comparison of their performance and applicability to
+various datasets.
 
 Test 1: Benchmarking Coreset Algorithms on the MNIST Dataset
 ------------------------------------------------------------
@@ -34,7 +35,7 @@ these steps:
    measured on the test set of 10,000 images.
 
 6. **Evaluation**: Due to randomness in the coreset algorithms and training process,
-   the experiment is repeated 5 times with different random seeds. The benchmark is run
+   the experiment is repeated 4 times with different random seeds. The benchmark is run
    on an **Amazon Web Services EC2 g4dn.12xlarge instance** with 4 NVIDIA T4 Tensor Core
    GPUs, 48 vCPUs, and 192 GiB memory.
 
@@ -84,7 +85,7 @@ The tables below show the performance metrics (Unweighted MMD, Unweighted KSD,
 Weighted MMD, Weighted KSD, and Time) for each coreset algorithm and each coreset size.
 For each metric and coreset size, the best performance score is highlighted in bold.
 
-.. list-table:: Coreset Size 10 (Original Sample Size 1,000)
+.. list-table:: Coreset Size 25 (Original Sample Size 1,000)
    :header-rows: 1
    :widths: 20 15 15 15 15 15
 
@@ -95,29 +96,35 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_KSD
      - Time
    * - KernelHerding
-     - **0.071504**
-     - 0.087505
-     - 0.037931
-     - 0.082903
-     - 5.884511
+     - 0.026319
+     - 0.071420
+     - 0.008461
+     - 0.072526
+     - 1.836664
    * - RandomSample
-     - 0.275138
-     - 0.106468
-     - 0.080327
-     - **0.082597**
-     - **2.705248**
+     - 0.105940
+     - 0.081013
+     - 0.038174
+     - *0.077431*
+     - *1.281091*
    * - RPCholesky
-     - 0.182342
-     - 0.079254
-     - **0.032423**
-     - 0.085621
-     - 3.177700
+     - 0.121869
+     - *0.059722*
+     - *0.003283*
+     - 0.072288
+     - 1.576841
    * - SteinThinning
-     - 0.186064
-     - **0.078773**
-     - 0.087347
-     - 0.085194
-     - 4.450125
+     - 0.161923
+     - 0.077394
+     - 0.030987
+     - 0.074365
+     - 1.821020
+   * - KernelThinning
+     - *0.014111*
+     - 0.072134
+     - 0.006634
+     - 0.072531
+     - 9.144707
 
 .. list-table:: Coreset Size 50 (Original Sample Size 1,000)
    :header-rows: 1
@@ -130,29 +137,35 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_KSD
      - Time
    * - KernelHerding
-     - **0.016602**
-     - 0.080800
-     - 0.003821
-     - **0.079875**
-     - 5.309067
+     - 0.012574
+     - 0.072600
+     - 0.003843
+     - *0.072351*
+     - 1.863356
    * - RandomSample
-     - 0.083658
-     - 0.084844
-     - 0.005009
-     - 0.079948
-     - **2.636160**
+     - 0.083379
+     - 0.079031
+     - 0.008653
+     - 0.072867
+     - *1.329118*
    * - RPCholesky
-     - 0.133182
-     - **0.061976**
-     - **0.001859**
-     - 0.079935
-     - 3.201798
+     - 0.154799
+     - *0.056437*
+     - *0.001347*
+     - 0.072359
+     - 1.564009
    * - SteinThinning
-     - 0.079028
-     - 0.074763
-     - 0.009652
-     - 0.080119
-     - 3.735810
+     - 0.122605
+     - 0.079683
+     - 0.012048
+     - 0.072424
+     - 1.849748
+   * - KernelThinning
+     - *0.005397*
+     - 0.072051
+     - 0.002191
+     - 0.072453
+     - 5.524234
 
 .. list-table:: Coreset Size 100 (Original Sample Size 1,000)
    :header-rows: 1
@@ -165,29 +178,35 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_KSD
      - Time
    * - KernelHerding
-     - **0.007747**
-     - 0.080280
-     - 0.001582
-     - 0.080024
-     - 5.425807
+     - 0.007651
+     - *0.071999*
+     - 0.001814
+     - 0.072364
+     - 2.185324
    * - RandomSample
-     - 0.032532
-     - 0.077081
-     - 0.001638
-     - 0.080073
-     - **3.009871**
+     - 0.052402
+     - 0.077454
+     - 0.001630
+     - 0.072480
+     - *1.359826*
    * - RPCholesky
-     - 0.069909
-     - **0.072023**
-     - **0.000977**
-     - 0.079995
-     - 3.497632
+     - 0.087236
+     - 0.063822
+     - *0.000910*
+     - 0.072433
+     - 1.721290
    * - SteinThinning
-     - 0.118452
-     - 0.081853
-     - 0.002652
-     - **0.079836**
-     - 3.766622
+     - 0.128295
+     - 0.082733
+     - 0.006041
+     - *0.072182*
+     - 1.893099
+   * - KernelThinning
+     - *0.002591*
+     - 0.072293
+     - 0.001207
+     - 0.072394
+     - 3.519274
 
 .. list-table:: Coreset Size 200 (Original Sample Size 1,000)
    :header-rows: 1
@@ -200,29 +219,35 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_KSD
      - Time
    * - KernelHerding
-     - **0.003937**
-     - 0.079932
-     - 0.001064
-     - 0.080012
-     - 5.786333
+     - 0.004310
+     - 0.072341
+     - 0.000777
+     - 0.072422
+     - 1.837929
    * - RandomSample
-     - 0.048701
-     - 0.077522
-     - 0.000913
-     - 0.080059
-     - **2.964436**
+     - 0.036624
+     - 0.072870
+     - *0.000584*
+     - 0.072441
+     - *1.367439*
    * - RPCholesky
-     - 0.052085
-     - **0.075708**
-     - **0.000772**
-     - 0.080050
-     - 3.722556
+     - 0.041140
+     - *0.068655*
+     - 0.000751
+     - 0.072430
+     - 2.106838
    * - SteinThinning
-     - 0.129073
-     - 0.084883
-     - 0.002329
-     - **0.079847**
-     - 4.004353
+     - 0.148525
+     - 0.087512
+     - 0.003799
+     - *0.072164*
+     - 1.910560
+   * - KernelThinning
+     - *0.001330*
+     - 0.072348
+     - 0.001014
+     - 0.072428
+     - 2.565189
 
 
 **Visualisation**: The results in this table can be visualised as follows:
@@ -311,7 +336,7 @@ Conclusion
 
 In this benchmark, we evaluated four coreset algorithms across various datasets and
 tasks, including image classification, synthetic datasets, and pixel/frame data
-processing. Based on the results, **kernel herding** emerges as the preferred choice
+processing. Based on the results, **kernel thinning** emerges as the preferred choice
 for most tasks due to its consistent performance. For larger datasets,
 combining kernel herding with distributed frameworks like **map reduce** is
 recommended to ensure scalability and efficiency.

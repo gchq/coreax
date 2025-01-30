@@ -39,8 +39,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jax import random
 
-from benchmark.mnist_benchmark import get_solver_name, initialise_solvers
 from coreax import Data
+from coreax.benchmark_util import get_solver_name, initialise_solvers
 from examples.david_map_reduce_weighted import downsample_opencv
 
 MAX_8BIT = 255
@@ -65,7 +65,6 @@ def benchmark_coreset_algorithms(
     """
     # Base directory of the current script
     base_dir = os.path.dirname(os.path.abspath(__file__))
-
     # Convert to absolute paths using os.path.join
     if not in_path.is_absolute():
         in_path = Path(os.path.join(base_dir, in_path))

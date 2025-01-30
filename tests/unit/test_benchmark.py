@@ -32,6 +32,15 @@ from benchmark.mnist_benchmark import (
     convert_to_jax_arrays,
     train_and_evaluate,
 )
+from coreax import Data
+from coreax.benchmark_util import calculate_delta, get_solver_name, initialise_solvers
+from coreax.kernel import SquaredExponentialKernel
+from coreax.solvers import (
+    KernelHerding,
+    MapReduce,
+    RandomSample,
+    RPCholesky,
+)
 
 
 class MockDataset(Dataset):
@@ -119,6 +128,55 @@ def test_train_and_evaluate() -> None:
     assert "final_test_loss" in result
     assert "final_test_accuracy" in result
     assert 0.0 <= result["final_test_accuracy"] <= 1.0
+
+
+def test_initialise_solvers() -> None:
+    """
+    Test the :func:`initialise_solvers`.
+
+    Verify that the returned list contains callable functions that produce
+    valid solver instances.
+    """
+    # Create a mock dataset (UMAP-transformed) with arbitrary values
+    mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
+    key = random.PRNGKey(42)
+
+    solvers = initialise_solvers(mock_data, key)
+    for solver in solvers:
+        solver_instance = solver(1)  # Instantiate with a coreset size of 1
+        assert isinstance(solver_instance, (MapReduce, RandomSample, RPCholesky)), (
+            f"Unexpected solver type: {type(solver_instance)}"
+        )
+
+
+def test_get_solver_name():
+    """
+    Test `get_solver_name` function to ensure it returns correct solver names.
+    """
+    # Create a KernelHerding solver
+    herding_solver = KernelHerding(coreset_size=5, kernel=SquaredExponentialKernel())
+
+    # Wrap it in MapReduce
+    map_reduce_solver = MapReduce(base_solver=herding_solver, leaf_size=15)
+
+    assert get_solver_name(lambda _: herding_solver) == "KernelHerding", (
+        "Expected 'KernelHerding' but got something else."
+    )
+
+    assert get_solver_name(lambda _: map_reduce_solver) == "KernelHerding", (
+        "Expected 'KernelHerding' from MapReduce solver but got something else."
+    )
+
+
+@pytest.mark.parametrize("n", [10, 100, 1000])
+def test_calculate_delta(n):
+    """
+    Test the `calculate_delta` function.
+
+    Ensure that the function produces a positive delta value for different values of n.
+    """
+    delta = calculate_delta(n)
+    assert delta > 0, f"Delta should be positive but got {delta} for n={n}"
 
 
 if __name__ == "__main__":
