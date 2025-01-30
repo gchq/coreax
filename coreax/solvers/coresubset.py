@@ -50,6 +50,21 @@ _Data = TypeVar("_Data", bound=Data)
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
+def _ensure_positive(value: Union[float, int], name: str) -> float:
+    """
+    Ensure a value is positive and convert it to float.
+
+    :param value: The value to validate
+    :param name: Name of the parameter (for error message)
+    :return: The validated value as float
+    """
+    if not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be a number, got {type(value)}")
+    if value <= 0:
+        raise ValueError(f"{name} must be positive, got {value}")
+    return float(value)
+
+
 def _initial_coresubset(
     fill_value: int, coreset_size: int, dataset: _Data
 ) -> Coresubset[_Data]:
@@ -237,6 +252,18 @@ class KernelHerding(
     be seen as a balance between using points at which the underlying density is high
     (the first term) and exploration of distinct regions of the space (the second term).
 
+    Optionally, the Kernel Herding procedure can be modified using the
+    ``probabilistic`` and ``temperature`` parameters in the ``reduce`` and ``refine``
+    methods. If ``probabilistic`` is ``True``, a single point :math:`x` at each
+    iteration is selected with probability proportional to
+    :math:`\text{softmax}(\frac{\text{KHMetric(x)}}{T})`, where :math:`\text{
+    KHMetric}` is given above and :math:`T` is the ``temperature`` parameter. As
+    :math:`T \rightarrow \infty`, the probabilities become uniform, resulting in a
+    random sampling. As :math:`T \rightarrow 0`, the probabilities become
+    concentrated at the point with the highest metric, recovering the original Kernel
+    Herding procedure. This feature is experimental and does not come from the
+    original paper (:cite:`chen2012herding`).
+
     :param coreset_size: The desired size of the solved coreset
     :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
         kernel function
@@ -247,12 +274,24 @@ class KernelHerding(
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
     :param unroll: Unroll parameter passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+    :param probabilistic: If True, the elements are chosen probabilistically at each
+        iteration. Otherwise, standard Kernel Herding is run.
+    :param temperature: Temperature parameter, which controls how uniform the
+        probabilities are for probabilistic selection.
+    :param random_key: Key for random number generation, only used if probabilistic
     """
 
     kernel: ScalarValuedKernel
     unique: bool = True
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
+    probabilistic: bool = False
+    temperature: float = eqx.field(
+        default=1.0,
+        # Ensure temperature is positive to avoid degenerate behaviour
+        converter=lambda x: _ensure_positive(x, "temperature"),
+    )
+    random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
 
     @override
     def reduce(
@@ -297,14 +336,24 @@ class KernelHerding(
             gramian_row_mean = solver_state.gramian_row_mean
 
         def selection_function(
-            _i: int,
-            _kernel_similarity_penalty: Shaped[Array, " n"],
+            i: int,
+            kernel_similarity_penalty: Shaped[Array, " n"],
             coreset_size: Scalar,
         ) -> Shaped[Array, ""]:
             """Greedy selection criterion - Equation 8 of :cite:`chen2012herding`."""
-            return jnp.nanargmax(
-                gramian_row_mean - _kernel_similarity_penalty / coreset_size
+            valid_residuals = (
+                gramian_row_mean - kernel_similarity_penalty / coreset_size
             )
+
+            # Apply softmax to the metric for probabilistic selection
+            if self.probabilistic:
+                probs = jax.nn.softmax(valid_residuals / self.temperature)
+                key = jr.fold_in(self.random_key, i)
+                return jr.choice(
+                    key, gramian_row_mean.shape[0], (), p=probs, replace=False
+                )
+            # Otherwise choose the best candidate
+            return jnp.nanargmax(valid_residuals)
 
         refined_coreset = _greedy_kernel_selection(
             coresubset,
