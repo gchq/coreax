@@ -1048,14 +1048,14 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         solver_prob = KernelHerding(
             coreset_size=solver_base.coreset_size,
             kernel=solver_base.kernel,
+            probabilistic=True,
+            temperature=0.1,
             random_key=jr.key(0),
         )
 
         # Run the standard and probabilistic KH solvers
         coreset_base, state_base = solver_base.reduce(dataset)
-        coreset_prob, state_prob = solver_prob.reduce(
-            dataset, probabilistic=True, temperature=0.1
-        )
+        coreset_prob, state_prob = solver_prob.reduce(dataset)
 
         # Test whether probabilistic KH outputs the same type of coreset
         assert isinstance(coreset_prob, type(coreset_base))
@@ -1063,6 +1063,16 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         np.testing.assert_array_equal(
             state_base.gramian_row_mean, state_prob.gramian_row_mean
         )
+
+        # Check that non-positive temperature cannot be instantiated
+        with pytest.raises(ValueError):
+            KernelHerding(
+                coreset_size=solver_base.coreset_size,
+                kernel=solver_base.kernel,
+                probabilistic=True,
+                temperature=0.0,
+                random_key=jr.key(0),
+            )
 
 
 class TestRandomSample(ExplicitSizeSolverTest):

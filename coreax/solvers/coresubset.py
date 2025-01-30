@@ -50,6 +50,21 @@ _Data = TypeVar("_Data", bound=Data)
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
+def _ensure_positive(value: Union[float, int], name: str) -> float:
+    """
+    Ensure a value is positive and convert it to float.
+
+    :param value: The value to validate
+    :param name: Name of the parameter (for error message)
+    :return: The validated value as float
+    """
+    if not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be a number, got {type(value)}")
+    if value <= 0:
+        raise ValueError(f"{name} must be positive, got {value}")
+    return float(value)
+
+
 def _initial_coresubset(
     fill_value: int, coreset_size: int, dataset: _Data
 ) -> Coresubset[_Data]:
@@ -259,13 +274,23 @@ class KernelHerding(
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
     :param unroll: Unroll parameter passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+    :param probabilistic: If True, the elements are chosen probabilistically at each
+        iteration. Otherwise, standard Kernel Herding is run.
+    :param temperature: Temperature parameter, which controls how uniform the
+        probabilities are for probabilistic selection.
+    :param random_key: Key for random number generation, only used if probabilistic
     """
 
     kernel: ScalarValuedKernel
     unique: bool = True
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
-    # Default dummy value
+    probabilistic: bool = False
+    temperature: float = eqx.field(
+        default=1.0,
+        # Ensure temperature is positive to avoid degenerate behaviour
+        converter=lambda x: _ensure_positive(x, "temperature"),
+    )
     random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
 
     @override
@@ -273,18 +298,14 @@ class KernelHerding(
         self,
         dataset: _Data,
         solver_state: Optional[HerdingState] = None,
-        probabilistic: bool = False,
-        temperature: float = 0.0,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
-        return self.refine(initial_coresubset, solver_state, probabilistic, temperature)
+        return self.refine(initial_coresubset, solver_state)
 
     def refine(
         self,
         coresubset: Coresubset[_Data],
         solver_state: Optional[HerdingState] = None,
-        probabilistic: bool = False,
-        temperature: float = 0.0,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
@@ -306,10 +327,6 @@ class KernelHerding(
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :param probabilistic: If True, the elements are chosen probabilistically at each
-            iteration. Otherwise, standard Kernel Herding is run.
-        :param temperature: Temperature parameter, which controls how uniform the
-            probabilities are for probabilistic selection.
         :return: A refined coresubset and relevant intermediate solver state information
         """
         if solver_state is None:
@@ -329,8 +346,8 @@ class KernelHerding(
             )
 
             # Apply softmax to the metric for probabilistic selection
-            if probabilistic:
-                probs = jax.nn.softmax(valid_residuals / temperature)
+            if self.probabilistic:
+                probs = jax.nn.softmax(valid_residuals / self.temperature)
                 key = jr.fold_in(self.random_key, i)
                 return jr.choice(
                     key, gramian_row_mean.shape[0], (), p=probs, replace=False
