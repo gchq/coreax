@@ -1018,7 +1018,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         # Small testing dataset with a fixed seed
         generator = np.random.default_rng(97)
         x = generator.uniform(size=(100, 2))
-        jax.debug.print(f"{x}")
         data = Data(x)
 
         # Initialise the solver using a simple kernel
