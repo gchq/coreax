@@ -42,6 +42,10 @@ def compute_statistics(
     """
     Compute statistical summary (mean, min, max).
 
+    The parameter data_by_solver contains time and accuracy data for different solvers
+    for different seeds. The data for the first run is skipped because it is much slower
+    due to JIT compilation.
+
     :param data_by_solver: A dictionary where each key is an algorithm name,
                            and each value is a dictionary mapping coreset size
                            to benchmark results. Benchmark results include multiple
@@ -77,7 +81,8 @@ def compute_statistics(
             size_str = str(size)
             accuracies, times = [], []
             if size_str in sizes:
-                run_list = list(sizes[size_str].values())[1:]  # Skip the first run
+                # Skip the first run as it is much slower due to JIT compilation
+                run_list = list(sizes[size_str].values())[1:]
                 for run_data in run_list:
                     accuracies.append(run_data["accuracy"])
                     times.append(run_data["time_taken"])
@@ -98,6 +103,9 @@ def compute_statistics(
 def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
     """
     Compute statistical summary (mean, min, max) for standalone time data.
+
+    The data for the first run is skipped because it is much slower due to JIT
+    compilation.
 
     :param data: A dictionary containing time data for different algorithms
                  and coreset sizes.
@@ -120,7 +128,8 @@ def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
             size_str = str(size)
             times = []
             if size_str in sizes:
-                run_list = list(sizes[size_str].values())[1:]  # Skip the first run
+                # Skip the first run as it is much slower due to JIT compilation
+                run_list = list(sizes[size_str].values())[1:]
                 for time in run_list:
                     times.append(time)
                     stats[algo]["points"][size].append(time)

@@ -882,8 +882,9 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     :param random_key: Key for random number generation, enabling reproducibility of
         probabilistic components in the algorithm.
     :param delta: A float between 0 and 1 used to compute the swapping probability
-        during the splitting process. A recommended value is :math:`1 / \log(\log(n))`,
-        where :math:`n` is the length of the original dataset.
+        during the splitting process. A recommended value is
+        :math:`\frac{1}{n \log (\log n)}`, where :math:`n` is the length of the original
+        dataset.
     :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance representing the
         square root kernel used for splitting the original dataset.
     """

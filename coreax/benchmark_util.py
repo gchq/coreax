@@ -49,12 +49,12 @@ def calculate_delta(n: int) -> Float[Array, "1"]:
 
     1. If :math:`\\log n` is positive:
        - Further evaluates :math:`\\log (\\log n)`.
-         * If this is also positive, returns :math:`\frac{1}{n} \\log (\\log n)`.
-         * Otherwise, returns :math:`\frac{1}{n} \\log n`.
+         * If this is also positive, returns :math:`\frac{1}{n \\log (\\log n)}`.
+         * Otherwise, returns :math:`\frac{1}{n \\log n}`.
     2. If :math:`\\log n` is negative:
        - Returns :math:`\frac{1}{n}`.
 
-    The recommended value is :math:`\frac{1}{n} \\log (\\log n)`, but for small
+    The recommended value is :math:`\frac{1}{n \\log (\\log n)}`, but for small
     values of :math:`n`, this may be negative or even undefined. Therefore,
     alternative values are used in such cases.
 
