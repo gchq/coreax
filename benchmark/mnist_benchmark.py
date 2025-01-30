@@ -56,6 +56,7 @@ from torchvision import transforms
 
 from coreax import Data
 from coreax.benchmark_util import get_solver_name, initialise_solvers
+from coreax.util import KeyArrayLike
 
 
 # Convert PyTorch dataset to JAX arrays
@@ -67,7 +68,8 @@ def convert_to_jax_arrays(pytorch_data: Dataset) -> tuple[jnp.ndarray, jnp.ndarr
     :return: Tuple of JAX arrays (data, targets).
     """
     # Load all data in one batch
-    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))
+    # pyright is wrong here, a Dataset object does have __len__ method
+    data_loader = DataLoader(pytorch_data, batch_size=len(pytorch_data))  # type: ignore
     # Grab the first batch, which is all data
     _data, _targets = next(iter(data_loader))
     # Convert to NumPy first, then JAX array
@@ -139,8 +141,8 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Optional[dict[str, jnp.ndarray]] = None
-    dropout_rng: Optional[jnp.ndarray] = None
+    batch_stats: Optional[dict[str, jnp.ndarray]]
+    dropout_rng: KeyArrayLike
 
 
 class Metrics(NamedTuple):
@@ -418,7 +420,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
 
 def train_model(
     data_bundle: dict[str, jnp.ndarray],
-    key: jax.random.PRNGKey,
+    key: KeyArrayLike,
     config: dict[str, Union[int, float]],
 ) -> dict[str, float]:
     """
