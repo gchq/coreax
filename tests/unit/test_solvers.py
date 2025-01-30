@@ -2236,8 +2236,10 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         that determines whether :math:`x` goes to S1 and :math:`y` to S2, or vice
         versa. In either case, both :math:`x` and :math:`y` are added to S.
 
-        If swap probability is less than 0.5, we add the x and y to S1 and S2
-        respectively, otherwise we swap x and y and then add x to S1 and y to S2.
+        We swap x and y with probability equal to swap probability and then add x and y
+        to S1 and S2 respectively. For the purpose of analytic test, if swap probability
+        is less than 0.5, we do not swap and add x and y to S1 and S2 respectively,
+        otherwise we swap x and y and then add x to S1 and y to S2.
 
         The process is as follows:
 
@@ -2292,14 +2294,21 @@ class TestKernelThinning(ExplicitSizeSolverTest):
 
         - Inputs: S=[], S1=[], S2=[], sigma=0, delta=1/8.
         - Compute b:
-          - b(0.7, 0.55) = 0.2109442800283432.
-        - Compute alpha: alpha = 0 (as S and S1 are empty).
+          - .. math::
+              b(0.7, 0.55) = \sqrt{k(0.7, 0.7) + k(0.55, 0.55) - 2k(0.7, 0.55)}
+              = 0.2109442800283432.
+        - Compute alpha:
+          - Since S and S1 are empty, alpha = 0.
         - Compute a:
-          - a = max(b * sigma * sqrt(2 * log(2/delta)), b^2) = 0.04449748992919922.
+          - .. math::
+              a = \max(b \cdot \sigma \cdot \sqrt{2 \ln(2 / \delta)}, b^2)
+              = 0.04449748992919922.
         - Update sigma:
           - new_sigma = 0.2109442800283432.
         - Compute probability:
-          - p = 0.5 * (1 - alpha / a) = 0.5.
+          - .. math::
+              p = 0.5 \cdot \left(1 - \frac{\alpha}{a}\right)
+              = 0.5.
         - Assign:
           - Since p >= 0.5, assign x=0.7 to S2, y=0.55 to S1, and add both to S.
           - S1 = [0.55], S2 = [0.7], S = [0.7, 0.55].
@@ -2310,11 +2319,13 @@ class TestKernelThinning(ExplicitSizeSolverTest):
 
         - Inputs: S=[0.7, 0.55], S1=[0.55], S2=[0.7], sigma=0.2109442800283432.
         - Compute b:
-          - b(0.6, 0.65) = 0.07066679745912552.
+          - .. math::
+              b(0.6, 0.65) = \sqrt{k(0.6, 0.6) + k(0.65, 0.65) - 2k(0.6, 0.65)}
+              = 0.07066679745912552.
         - Compute alpha:
           - alpha = -0.014906525611877441.
         - Compute a:
-          - a = max(b * sigma * sqrt(2 * log(2/delta)), b^2) = 0.035102729200688874.
+          - a = 0.035102729200688874.
         - Update sigma:
           - new_sigma = 0.2109442800283432.
         - Compute probability:
@@ -2330,11 +2341,13 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         - Inputs: S=[0.7, 0.55, 0.6, 0.65], S1=[0.55, 0.65], S2=[0.7, 0.6],
           sigma=0.2109442800283432.
         - Compute b:
-          - b(0.9, 0.1) = 0.9723246097564697.
+          - .. math::
+              b(0.9, 0.1) = \sqrt{k(0.9, 0.9) + k(0.1, 0.1) - 2k(0.9, 0.1)}
+              = 0.9723246097564697.
         - Compute alpha:
           - alpha = 0.12977957725524902.
         - Compute a:
-          - a = max(b * sigma * sqrt(2 * log(2/delta)), b^2) = 0.9454151391983032.
+          - a = 0.9454151391983032.
         - Update sigma:
           - new_sigma = 0.9723246097564697.
         - Compute probability:
@@ -2351,11 +2364,13 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         - Inputs: S=[0.7, 0.55, 0.6, 0.65, 0.9, 0.1], S1=[0.55, 0.65, 0.9],
           S2=[0.7, 0.6, 0.1], sigma=0.9723246097564697.
         - Compute b:
-          - b(0.11, 0.12) = 0.014143308624625206.
+          - .. math::
+              b(0.11, 0.12) = \sqrt{k(0.11, 0.11) + k(0.12, 0.12) - 2k(0.11, 0.12)}
+              = 0.014143308624625206.
         - Compute alpha:
           - alpha = 0.008038222789764404.
         - Compute a:
-          - a = max(b * sigma * sqrt(2 * log(2/delta)), b^2) = 0.03238321865838572.
+          - a = 0.03238321865838572.
         - Update sigma:
           - new_sigma = 0.9723246097564697.
         - Compute probability:
@@ -2363,12 +2378,11 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         - Assign:
           - Since p < 0.5, assign x=0.11 to S1 and y=0.12 to S2, and add both to S.
           - S1 = [0.55, 0.65, 0.9, 0.11], S2 = [0.7, 0.6, 0.1, 0.12],
-          S = [0.7, 0.55, 0.6, 0.65, 0.9, 0.1, 0.11, 0.12].
+            S = [0.7, 0.55, 0.6, 0.65, 0.9, 0.1, 0.11, 0.12].
 
         ---
 
         **Final result:**
-
         S1 = [0.55, 0.65, 0.9, 0.11], S2 = [0.7, 0.6, 0.1, 0.12].
         """  # noqa: E501
         # pylint: enable=line-too-long
