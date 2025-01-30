@@ -265,7 +265,8 @@ class KernelHerding(
     unique: bool = True
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
-    random_key: KeyArrayLike = jr.key(0)  # Default value, not used by standard KH
+    # Default dummy value
+    random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
 
     @override
     def reduce(
