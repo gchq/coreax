@@ -30,7 +30,7 @@ import numpy as np
 import umap
 from jax import random
 
-from benchmark.mnist_benchmark import get_solver_name, initialise_solvers
+from coreax.benchmark_util import get_solver_name, initialise_solvers
 from coreax.data import Data
 from coreax.solvers import MapReduce
 
