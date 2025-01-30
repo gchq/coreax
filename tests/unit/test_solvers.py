@@ -34,7 +34,7 @@ import numpy as np
 import pytest
 from typing_extensions import override
 
-from coreax.coreset import Coreset, Coresubset
+from coreax.coreset import AbstractCoreset, Coresubset, PseudoCoreset
 from coreax.data import Data, SupervisedData
 from coreax.kernels import (
     PCIMQKernel,
@@ -69,7 +69,7 @@ from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 class _ReduceProblem(NamedTuple):
     dataset: Union[Data, SupervisedData]
     solver: Solver
-    expected_coreset: Optional[Coreset] = None
+    expected_coreset: Optional[AbstractCoreset] = None
 
 
 class _RefineProblem(NamedTuple):
@@ -111,7 +111,7 @@ class SolverTest:
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         """
         Check that a coreset obeys certain expected invariant properties.
@@ -231,7 +231,7 @@ class RecombinationSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         r"""
         Check that a coreset obeys certain expected invariant properties.
@@ -437,7 +437,7 @@ class ExplicitSizeSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = problem.solver
@@ -1088,7 +1088,7 @@ class TestRandomSample(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = cast(RandomSample, problem.solver)
@@ -1109,7 +1109,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -1370,7 +1370,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
         np.testing.assert_array_almost_equal(
             solver_state.gramian_diagonal, expected_gramian_diagonal
@@ -1801,7 +1801,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: Coreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -1930,9 +1930,9 @@ class TestMapReduce(SolverTest):
 
         def mock_reduce(
             dataset: Data, solver_state: None = None
-        ) -> tuple[Coreset[Data], None]:
+        ) -> tuple[AbstractCoreset[Data], None]:
             indices = jnp.arange(base_solver.coreset_size)
-            return Coreset(dataset[indices], dataset), solver_state
+            return PseudoCoreset(dataset[indices], dataset), solver_state
 
         base_solver.reduce = mock_reduce
 
@@ -1971,7 +1971,7 @@ class TestMapReduce(SolverTest):
         # (1): [:16], [32:48], [64:80], [96:112]
         # (2): [:16], [64:80]
         # (3): [:16] <- 'coreset_size'
-        expected_coreset = Coreset(dataset[: self.coreset_size], Data(dataset))
+        expected_coreset = PseudoCoreset(dataset[: self.coreset_size], Data(dataset))
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     @pytest.mark.parametrize(
@@ -2130,7 +2130,7 @@ class TestMapReduce(SolverTest):
 
         def interleaved_mock_reduce(
             dataset: Data, solver_state: None = None
-        ) -> tuple[Coreset[Data], None]:
+        ) -> tuple[AbstractCoreset[Data], None]:
             half_size = interleaved_base_solver.coreset_size // 2
             indices = jnp.arange(interleaved_base_solver.coreset_size)
             forward_indices = indices[:half_size]
@@ -2141,7 +2141,7 @@ class TestMapReduce(SolverTest):
 
             if interleaved_base_solver.coreset_size % 2 != 0:
                 interleaved_indices = jnp.append(interleaved_indices, half_size)
-            return Coreset(dataset[interleaved_indices], dataset), solver_state
+            return PseudoCoreset(dataset[interleaved_indices], dataset), solver_state
 
         interleaved_base_solver.reduce = interleaved_mock_reduce
 
@@ -2406,7 +2406,7 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         # Patch `jax.random.uniform` with `deterministic_uniform`
         with patch("jax.random.uniform", side_effect=deterministic_uniform):
             coresets = [
-                jnp.asarray(s.coreset.data) for s in thinning_solver.kt_half(data)
+                jnp.asarray(s.points.data) for s in thinning_solver.kt_half(data)
             ]
 
         np.testing.assert_array_equal(

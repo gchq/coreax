@@ -132,8 +132,8 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
     # Produce some scatter plots (assume 2-dimensional data)
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        herding_coreset.coreset.data[:, 0],
-        herding_coreset.coreset.data[:, 1],
+        herding_coreset.points.data[:, 0],
+        herding_coreset.points.data[:, 1],
         s=10,
         color="red",
     )
@@ -145,8 +145,8 @@ def main(out_path: Optional[Path] = None) -> tuple[float, float]:
 
     plt.scatter(x[:, 0], x[:, 1], s=2.0, alpha=0.1)
     plt.scatter(
-        random_coreset.coreset.data[:, 0],
-        random_coreset.coreset.data[:, 1],
+        random_coreset.points.data[:, 0],
+        random_coreset.points.data[:, 1],
         s=10,
         color="red",
     )

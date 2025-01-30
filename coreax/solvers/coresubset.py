@@ -45,7 +45,7 @@ from coreax.solvers.base import (
 )
 from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
-_Data = TypeVar("_Data", bound=Data)
+_Data = TypeVar("_Data", Data, SupervisedData)
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
@@ -152,7 +152,7 @@ def _greedy_kernel_selection(
     # If the initialisation coresubset is too small, pad its nodes up to 'output_size'
     # with zero valued and weighted indices.
     padding = max(0, output_size - len(coresubset))
-    padded_indices = tree_zero_pad_leading_axis(coresubset.nodes, padding)
+    padded_indices = tree_zero_pad_leading_axis(coresubset.points, padding)
     padded_coresubset = eqx.tree_at(lambda x: x.nodes, coresubset, padded_indices)
 
     # Calculate the actual size of the provided `coresubset` assuming 0-weighted
@@ -998,7 +998,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         # Recursively call self.kt_half on the coreset (or the dataset)
         if isinstance(current_coreset, Coresubset):
-            subset1, subset2 = self.kt_half(current_coreset.coreset)
+            subset1, subset2 = self.kt_half(current_coreset.points)
         else:
             subset1, subset2 = self.kt_half(current_coreset)
 
@@ -1008,7 +1008,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         # Update indices: map current subset's indices to original dataset
         if isinstance(current_coreset, Coresubset):
-            parent_indices = current_coreset.nodes.data  # Parent subset's indices
+            parent_indices = current_coreset.points.data  # Parent subset's indices
             subset1_indices = subset1.nodes.data.flatten()  # Indices relative to parent
             subset2_indices = subset2.nodes.data.flatten()  # Indices relative to parent
 
@@ -1025,7 +1025,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             subset1, m - 1, original_dataset
         ) + self.kt_half_recursive(subset2, m - 1, original_dataset)
 
-    def kt_half(self, dataset: _Data) -> list[Coresubset[_Data]]:
+    def kt_half(self, dataset: _Data) -> tuple[Coresubset[_Data], Coresubset[_Data]]:
         """
         Partition the given dataset into two subsets.
 
@@ -1238,7 +1238,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 self.random_key,
             ),
         )
-        return [Coresubset(final_arr1, dataset), Coresubset(final_arr2, dataset)]
+        return Coresubset(final_arr1, dataset), Coresubset(final_arr2, dataset)
 
     def get_baseline_coreset(
         self, dataset: Data, baseline_coreset_size: int
@@ -1266,8 +1266,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: The coreset with the smallest MMD relative to the input dataset.
         """
         mmd = MMD(kernel=self.kernel)
-        candidate_coresets_jax = jnp.array([c.coreset.data for c in candidate_coresets])
-        candidate_coresets_indices = jnp.array([c.nodes for c in candidate_coresets])
+        candidate_coresets_jax = jnp.array([c.points.data for c in candidate_coresets])
+        candidate_coresets_indices = jnp.array([c.points for c in candidate_coresets])
         mmd_values = jax.vmap(lambda c: mmd.compute(c, points))(candidate_coresets_jax)
 
         best_index = jnp.argmin(mmd_values)
