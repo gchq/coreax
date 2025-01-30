@@ -20,7 +20,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import pytest
 
-from coreax.coreset import Coreset, Coresubset
+from coreax.coreset import Coresubset, PseudoCoreset
 from coreax.data import Data, SupervisedData
 from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
@@ -32,10 +32,10 @@ SUPERVISED_DATA = SupervisedData(
 PRE_CORESET_DATA = Data(jnp.arange(10)[..., None])
 
 
-@pytest.mark.parametrize("coreset_type", [Coreset, Coresubset])
+@pytest.mark.parametrize("coreset_type", [PseudoCoreset, Coresubset])
 @pytest.mark.parametrize("data", [DATA, SUPERVISED_DATA])
 class TestCoresetCommon:
-    """Common tests for `coreax.coreset.Coreset` and `coreax.coreset.Coresubset`."""
+    """Common tests for `PseudoCoreset` and `Coresubset`."""
 
     def test_init_array_conversion(self, coreset_type, data):
         """

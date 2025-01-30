@@ -186,7 +186,7 @@ def main(
         herding_solver, leaf_size=16_000 // (downsampling_factor**2)
     )
     herding_coreset, _ = eqx.filter_jit(mapped_herding_solver.reduce)(data)
-    herding_weights = weights_optimiser.solve(data, herding_coreset.coreset)
+    herding_weights = weights_optimiser.solve(data, herding_coreset.points)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -258,9 +258,9 @@ def main(
     # weights
     plt.subplot(1, 3, 2)
     plt.scatter(
-        herding_coreset.coreset.data[:, 1],
-        -herding_coreset.coreset.data[:, 0],
-        c=herding_coreset.coreset.data[:, 2],
+        herding_coreset.points.data[:, 1],
+        -herding_coreset.points.data[:, 0],
+        c=herding_coreset.points.data[:, 2],
         cmap="gray",
         s=(transform_marker_size(herding_weights)).reshape(1, -1),
         marker="h",
@@ -273,9 +273,9 @@ def main(
     # Plot the image of randomly sampled points
     plt.subplot(1, 3, 3)
     plt.scatter(
-        random_coreset.coreset.data[:, 1],
-        -random_coreset.coreset.data[:, 0],
-        c=random_coreset.coreset.data[:, 2],
+        random_coreset.points.data[:, 1],
+        -random_coreset.points.data[:, 0],
+        c=random_coreset.points.data[:, 2],
         s=25 * downsampling_factor,
         cmap="gray",
         marker="h",

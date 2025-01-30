@@ -199,7 +199,7 @@ def main(dimension: int = 3, max_degree: int = 4) -> Coresubset:
     # product Cubature, as follows:
     solver = TreeRecombination(test_functions=test_functions, mode="explicit")
     coresubset_cubature, _ = solver.reduce(product_cubature)
-    coresubset_nodes, coresubset_weights = jtu.tree_leaves(coresubset_cubature.coreset)
+    coresubset_nodes, coresubset_weights = jtu.tree_leaves(coresubset_cubature.points)
     print(f"Recombined Cubature:\n\t node_count: {len(coresubset_nodes)}")
 
     # The product Cubature and the recombined (Coresubset) Cubature should evaluate to

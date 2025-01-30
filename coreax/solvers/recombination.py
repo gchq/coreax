@@ -548,7 +548,7 @@ class TreeRecombination(RecombinationSolver[Data, None]):
             # Solve the measure reduction problem on the centroid dataset.
             centroid_coresubset, _ = car_recomb_solver.reduce(centroid_dataset)
             coresubset_indices = centroid_coresubset.unweighted_indices
-            coresubset_weights = centroid_coresubset.coreset.weights
+            coresubset_weights = centroid_coresubset.points.weights
             # Propagate centroid coresubset weights to the underlying weights for each
             # centroid, as defined by `centroid_indices`.
             weight_update_indices = centroid_indices[coresubset_indices]
