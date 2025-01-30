@@ -29,7 +29,7 @@ from typing import (
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
@@ -90,6 +90,12 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
                 "'len(nodes)' cannot be greater than 'len(pre_coreset_data)' "
                 "by definition of a Coreset"
             )
+
+    @property
+    @deprecated("Use `.points` instead.")
+    def coreset(self) -> _TPointsData_co:
+        """Deprecated alias for `.points`."""
+        return self.points
 
 
 class PseudoCoreset(
@@ -158,6 +164,12 @@ class PseudoCoreset(
     @override
     def pre_coreset_data(self):
         return self._pre_coreset_data
+
+    @property
+    @deprecated("Use `.points` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `points`."""
+        return self.points
 
 
 class Coresubset(
@@ -246,3 +258,14 @@ class Coresubset(
     @override
     def pre_coreset_data(self):
         return self._pre_coreset_data
+
+    @property
+    def indices(self) -> Data:
+        """The (possibly weighted) Coresubset indices."""
+        return self._indices
+
+    @property
+    @deprecated("Use `.indices` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `indices`."""
+        return self.indices
