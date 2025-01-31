@@ -1244,7 +1244,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
 class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     r"""
-    Compress++: A hierarchical coreset construction solver.
+    Compress++ - A hierarchical coreset construction solver.
 
     `CompressPlusPlus` is an efficient method for building coresets without
     compromising performance significantly. It operates in two steps: recursively
@@ -1256,7 +1256,9 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
     The halved subsets are concatenated bottom-up to form a coreset.
 
     Finally, the resulting coreset is thinned again using
-    `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+    `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size. This
+    implementation is an adaptation of the Compress++ algorithm in
+    :cite:`shetty2022compress` to make it an explicit sized solver.
 
     :param depth: The number of recursive divisions of the dataset into four subsets.
     :param kernel: A `~coreax.kernels.ScalarValuedKernel` for kernel thinning.
@@ -1297,26 +1299,25 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         if self.coreset_size > len(dataset):
             raise ValueError(MSG)
 
-        # check that depth and coreset_size are compatible
+        # Check that depth and coreset_size are compatible
         nearest_power_of_4 = math.floor(math.log(n, 4))
         effective_data_size = 4**nearest_power_of_4
         if not 0 <= self.depth < nearest_power_of_4:
             raise ValueError(
-                f"depth should be between 0 and {nearest_power_of_4 - 1}, inclusive."
+                f"Depth should be between 0 and {nearest_power_of_4 - 1}, inclusive."
             )
 
         if not self.coreset_size * 2**self.depth <= effective_data_size:
             raise ValueError(
-                "depth and coreset size are not compatible with the dataset size."
+                "Depth and coreset size are not compatible with the dataset size."
             )
-        # clip the dataset to the nearest power of 4
+        # Clip the dataset to the nearest power of 4
         clipped_indices = jax.random.choice(
             self.random_key, n, shape=(effective_data_size,), replace=False
         )
         clipped_dataset = dataset[clipped_indices]
-        # apply reduce_plus_plus
         plus_plus_coreset, _ = self.reduce_plus_plus(clipped_dataset)
-        # reset pre_coreset_data
+        # Reset pre_coreset_data
         coreset = eqx.tree_at(lambda x: x.pre_coreset_data, plus_plus_coreset, dataset)
         return coreset, None
 
@@ -1355,7 +1356,9 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         # Base case: at the leaves
         if depth == 1:
 
-            def wrapper(partition: jax.Array) -> tuple[jax.Array, jax.Array]:
+            def apply_compress_half(
+                partition: jax.Array,
+            ) -> tuple[jax.Array, jax.Array]:
                 """
                 Apply `compress_half` on a dataset and return coreset and indices.
 
@@ -1371,7 +1374,9 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                     coreset_of_partition.nodes.data,
                 )
 
-            ensemble_data, ensemble_indices = jax.vmap(wrapper)(partitioned_data)
+            ensemble_data, ensemble_indices = jax.vmap(apply_compress_half)(
+                partitioned_data
+            )
             concatenated_data = jtu.tree_map(jnp.concatenate, ensemble_data)
             concatenated_indices = jax.vmap(lambda x, index: x[index])(
                 partitioned_indices, ensemble_indices
