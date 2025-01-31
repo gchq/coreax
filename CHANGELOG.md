@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[BREAKING CHANGE]** Equinox dependency version is changed from `<0.11.8` to `>=0.
 11.5`. (https://github.com/gchq/coreax/pull/898)
 - **[BREAKING CHANGE]** The `jaxtyping` version is now lower bounded at `v0.2.31` to enable `coreax.data.Data` jaxtyping compatibility.
+- Refactored the `Coreset` types - instead of `Coreset` and `Coresubset(Coreset)`, we
+  now have `AbstractCoreset`, `PseudoCoreset(AbstractCoreset)`, and
+  `Coresubset(AbstractCoreset)`. See "Deprecated" below for more details of this change.
 
 ### Removed
 
@@ -67,7 +70,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
--
+- Uses of `Coreset` should be replaced with `AbstractCoreset` (for a general coreset,
+  such as in a function argument type hint), or `PseudoCoreset` (for the specific case
+  of a coreset that is not necessarily a coresubset).
+- Uses of `Coreset.coreset` should be replaced with `Coreset.points`.
+- Uses of `Coreset.nodes` should be replaced with `Coresubset.indices` or
+  `PseudoCoreset.points`, depending on whether the coreset is a coresubset or a
+  pseudo-coreset.
+- Passing `Array` or `tuple[Array, Array]` into coreset constructors is now deprecated -
+  either pass in `Data` or `SupervisedData` instances, or use the `build()` class
+  method which handles the conversion.
 
 
 ## [0.3.1]
