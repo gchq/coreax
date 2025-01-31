@@ -196,21 +196,21 @@ class PseudoCoreset(
         cls,
         nodes: Union[Data, Array],
         pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
-    ) -> """
-        PseudoCoreset[Data]
-        | PseudoCoreset[SupervisedData]
-        | PseudoCoreset[_TOriginalData]
-    """:
+    ) -> "PseudoCoreset[Data]\
+        | PseudoCoreset[SupervisedData]\
+        | PseudoCoreset[_TOriginalData]\
+    ":
         """
         Construct a PseudoCoreset from Data or raw Arrays.
 
         :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
             accessed via :meth:`Coresubset.points`. :class:`jax.Array` instances are
-            automatically converted into :class:`Data`.
+            automatically converted into :class:`~coreax.data.Data`.
         :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
-            :class:`jax.Array` instances are automatically converted into :class:`Data`.
-            :data:`tuple[Array, Array]` is automatically converted into
-            :class:`SupervisedData`.
+            :class:`jax.Array` instances are automatically converted into
+            :class:`~coreax.data.Data`.
+            :class:`tuple` [:class:`jax.Array`, :class:`jax.Array`]
+            is automatically converted into :class:`~coreax.data.SupervisedData`.
         """
         if isinstance(pre_coreset_data, Array):
             converted_pre_coreset_data = as_data(pre_coreset_data)
@@ -357,11 +357,12 @@ class Coresubset(
         :param indices: The (weighted) coresubset node indices, :math:`I`; the
             materialised coresubset nodes should only be accessed via
             :meth:`Coresubset.points`. :class:`jax.Array` instances are automatically
-            converted into :class:`Data`.
+            converted into :class:`~coreax.data.Data`.
         :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
-            :class:`jax.Array` instances are automatically converted into :class:`Data`.
-            :data:`tuple[Array, Array]` is automatically converted into
-            :class:`SupervisedData`.
+            :class:`jax.Array` instances are automatically converted into
+            :class:`~coreax.data.Data`.
+            :class:`tuple` [:class:`jax.Array`, :class:`jax.Array`]
+            is automatically converted into :class:`~coreax.data.SupervisedData`.
         """
         if isinstance(pre_coreset_data, Array):
             converted_pre_coreset_data = as_data(pre_coreset_data)
