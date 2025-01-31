@@ -83,7 +83,7 @@ def benchmark_coreset_algorithms(
         # Extract corresponding frames from original data and save GIF
         coreset_frames = raw_data[selected_indices]
         output_gif_path = out_dir / f"{solver_name}_coreset.gif"
-        imageio.mimsave(output_gif_path, list(coreset_frames), loop=0)
+        imageio.v3.imwrite(output_gif_path, coreset_frames, loop=0)
         print(f"Saved {solver_name} coreset GIF to {output_gif_path}")
         print(f"time taken: {solver_name:<25} {duration:<30.4f}")
 

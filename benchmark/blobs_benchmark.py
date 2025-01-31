@@ -276,7 +276,7 @@ def main() -> None:  # pylint: disable=too-many-locals
                     aggregated_results[size][solver_name][metric].append(value)
 
     # Average results across seeds
-    final_results: dict = {"n_samples": n_samples}
+    final_results = {}
     for size, solvers in aggregated_results.items():
         final_results[size] = {}
         for solver_name, metrics in solvers.items():
