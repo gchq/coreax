@@ -24,13 +24,12 @@ from typing import (
     TypeVar,
     Union,
     overload,
-    override,
 )
 
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
-from typing_extensions import Self, deprecated
+from typing_extensions import Self, deprecated, override
 
 from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
