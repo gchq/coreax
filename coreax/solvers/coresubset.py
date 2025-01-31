@@ -623,7 +623,9 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
         init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
         output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
         gramian_diagonal, _, updated_coreset_indices = output_state
-        updated_coreset = Coresubset.build(updated_coreset_indices, dataset)
+        updated_coreset: Coresubset[_Data] = Coresubset.build(
+            updated_coreset_indices, dataset
+        )
         return updated_coreset, RPCholeskyState(gramian_diagonal)
 
 
