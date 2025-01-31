@@ -1276,7 +1276,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: The coreset with the smallest MMD relative to the input dataset.
         """
         mmd = MMD(kernel=self.kernel)
-        candidate_coresets_jax = jnp.array([c.indices.data for c in candidate_coresets])
+        candidate_coresets_jax = jnp.array([c.points.data for c in candidate_coresets])
         candidate_coresets_indices = jnp.array([c.indices for c in candidate_coresets])
         mmd_values = jax.vmap(lambda c: mmd.compute(c, points))(candidate_coresets_jax)
 
