@@ -41,6 +41,7 @@ if TYPE_CHECKING:
 # `_co` is a well-established suffix for covariant TypeVars
 # pylint: disable=invalid-name
 _TPointsData_co = TypeVar("_TPointsData_co", Data, SupervisedData, covariant=True)
+_TOriginalData = TypeVar("_TOriginalData", Data, SupervisedData)
 _TOriginalData_co = TypeVar("_TOriginalData_co", Data, SupervisedData, covariant=True)
 # pylint: enable=invalid-name
 
@@ -136,7 +137,7 @@ class PseudoCoreset(
     @classmethod
     @overload
     def build(
-        cls, nodes: Union[Data, Array], pre_coreset_data: Union[Data, Array]
+        cls, nodes: Union[Data, Array], pre_coreset_data: Array
     ) -> "PseudoCoreset[Data]": ...
 
     @classmethod
@@ -144,22 +145,36 @@ class PseudoCoreset(
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Union[SupervisedData, Tuple[Array, Array]],
+        pre_coreset_data: Tuple[Array, Array],
     ) -> "PseudoCoreset[SupervisedData]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        nodes: Union[Data, Array],
+        pre_coreset_data: _TOriginalData,
+    ) -> "PseudoCoreset[_TOriginalData]": ...
 
     @classmethod
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Union[Data, SupervisedData, Array, Tuple[Array, Array]],
-    ) -> "PseudoCoreset[Data] | PseudoCoreset[SupervisedData]":
+        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+    ) -> """
+        PseudoCoreset[Data]
+        | PseudoCoreset[SupervisedData]
+        | PseudoCoreset[_TOriginalData]
+    """:
         """Construct a PseudoCoreset from Data or raw Arrays."""
         if isinstance(pre_coreset_data, Array):
-            pre_coreset_data = as_data(pre_coreset_data)
+            converted_pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
-            pre_coreset_data = SupervisedData(*pre_coreset_data)
+            converted_pre_coreset_data = SupervisedData(*pre_coreset_data)
+        else:
+            converted_pre_coreset_data = pre_coreset_data
 
-        return PseudoCoreset(as_data(nodes), pre_coreset_data)
+        return PseudoCoreset(as_data(nodes), converted_pre_coreset_data)
 
     @property
     @override
@@ -226,7 +241,7 @@ class Coresubset(
     @classmethod
     @overload
     def build(
-        cls, nodes: Union[Data, Array], pre_coreset_data: Union[Data, Array]
+        cls, nodes: Union[Data, Array], pre_coreset_data: Array
     ) -> "Coresubset[Data]": ...
 
     @classmethod
@@ -234,22 +249,32 @@ class Coresubset(
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Union[SupervisedData, Tuple[Array, Array]],
+        pre_coreset_data: Tuple[Array, Array],
     ) -> "Coresubset[SupervisedData]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        nodes: Union[Data, Array],
+        pre_coreset_data: _TOriginalData,
+    ) -> "Coresubset[_TOriginalData]": ...
 
     @classmethod
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Union[Data, SupervisedData, Array, Tuple[Array, Array]],
-    ) -> "Coresubset[Data] | Coresubset[SupervisedData]":
+        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+    ) -> "Coresubset[Data] | Coresubset[SupervisedData] | Coresubset[_TOriginalData]":
         """Construct a Coresubset from Data or raw Arrays."""
         if isinstance(pre_coreset_data, Array):
-            pre_coreset_data = as_data(pre_coreset_data)
+            converted_pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
-            pre_coreset_data = SupervisedData(*pre_coreset_data)
+            converted_pre_coreset_data = SupervisedData(*pre_coreset_data)
+        else:
+            converted_pre_coreset_data = pre_coreset_data
 
-        return Coresubset(as_data(nodes), pre_coreset_data)
+        return Coresubset(as_data(nodes), converted_pre_coreset_data)
 
     @property
     @override
