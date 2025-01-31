@@ -14,6 +14,7 @@
 
 """Module for defining coreset data structures."""
 
+import warnings
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -129,8 +130,43 @@ class PseudoCoreset(
 
     def __init__(self, nodes: Data, pre_coreset_data: _TOriginalData_co) -> None:
         """Initialise self."""
-        assert isinstance(nodes, Data)
-        assert isinstance(pre_coreset_data, (Data, SupervisedData))
+        if isinstance(nodes, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            nodes = as_data(nodes)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, tuple):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+
+        if not isinstance(nodes, Data):
+            raise TypeError("`nodes` must be of type `Data`")
+        if not isinstance(pre_coreset_data, Data):
+            raise TypeError(
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+            )
+
         self._nodes = nodes
         self._pre_coreset_data = pre_coreset_data
 
@@ -195,6 +231,11 @@ class PseudoCoreset(
         return self.points
 
 
+@deprecated("Use AbstractCoreset, PseudoCoreset, or Coresubset instead.")
+class Coreset(PseudoCoreset):
+    """Deprecated - split into AbstractCoreset and PseudoCoreset."""
+
+
 class Coresubset(
     AbstractCoreset[_TOriginalData_co, _TOriginalData_co], Generic[_TOriginalData_co]
 ):
@@ -233,8 +274,43 @@ class Coresubset(
 
     def __init__(self, indices: Data, pre_coreset_data: _TOriginalData_co) -> None:
         """Handle type conversion of ``indices`` and ``pre_coreset_data``."""
-        assert isinstance(indices, Data)
-        assert isinstance(pre_coreset_data, (Data, SupervisedData))
+        if isinstance(indices, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            indices = as_data(indices)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, tuple):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+
+        if not isinstance(indices, Data):
+            raise TypeError("`indices` must be of type `Data`")
+        if not isinstance(pre_coreset_data, Data):
+            raise TypeError(
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+            )
+
         self._indices = indices
         self._pre_coreset_data = pre_coreset_data
 
