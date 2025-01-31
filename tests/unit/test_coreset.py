@@ -37,17 +37,17 @@ PRE_CORESET_DATA = Data(jnp.arange(10)[..., None])
 class TestCoresetCommon:
     """Common tests for `PseudoCoreset` and `Coresubset`."""
 
-    def test_init_array_conversion(self, coreset_type, data):
+    def test_build_array_conversion(self, coreset_type, data):
         """
-        Test the initialisation behaviour.
+        Test the behaviour of `build`.
 
         The nodes can be passed as an 'Array' or as a 'Data' instance. In the former
         case, we expect this array to be automatically converted to a 'Data' instance.
         """
         array_nodes = data.data
         data_obj = Data(data.data, data.weights)
-        coreset_array_nodes = coreset_type(array_nodes, PRE_CORESET_DATA)
-        coreset_data_nodes = coreset_type(data_obj, PRE_CORESET_DATA)
+        coreset_array_nodes = coreset_type.build(array_nodes, PRE_CORESET_DATA)
+        coreset_data_nodes = coreset_type.build(data_obj, PRE_CORESET_DATA)
         assert coreset_array_nodes == coreset_data_nodes
 
     def test_materialization(self, coreset_type, data):

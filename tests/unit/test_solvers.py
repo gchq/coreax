@@ -149,7 +149,9 @@ class SolverTest:
                 coreset_from_padded, _ = solver.reduce(padded_dataset)
             assert eqx.tree_equal(coreset_from_padded.coreset, coreset.coreset)
 
-    @pytest.mark.parametrize("use_cached_state", (False, True))
+    @pytest.mark.parametrize(
+        "use_cached_state", (False, True), ids=["not_cached", "cached"]
+    )
     def test_reduce(
         self,
         jit_variant: Callable[[Callable], Callable],
@@ -398,7 +400,7 @@ class RefinementSolverTest(SolverTest):
             indices = Data(random_indices, 0)
         else:
             raise ValueError("Invalid fixture parametrization")
-        initial_coresubset = Coresubset(indices, dataset)
+        initial_coresubset = Coresubset.build(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     @pytest.mark.parametrize("use_cached_state", (False, True))
@@ -533,7 +535,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             # While '0' has a larger `gramian_row_mean`, after application of the kernel
             # similarity penalty (updated with the result of the first index), the
             # highest scoring index is Index 2, completing our expected coreset.
-            expected_coreset = Coresubset(jnp.array([1, 2]), Data(dataset))
+            expected_coreset = Coresubset.build(jnp.array([1, 2]), Data(dataset))
         else:
             raise ValueError("Invalid fixture parametrization")
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
@@ -1861,7 +1863,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
             expected_coresubset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        initial_coresubset = Coresubset(indices, dataset)
+        initial_coresubset = Coresubset.build(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     def test_greedy_kernel_inducing_point_state(
@@ -1930,7 +1932,7 @@ class TestMapReduce(SolverTest):
 
         def mock_reduce(
             dataset: Data, solver_state: None = None
-        ) -> tuple[AbstractCoreset[Data], None]:
+        ) -> tuple[AbstractCoreset[Data, Data], None]:
             indices = jnp.arange(base_solver.coreset_size)
             return PseudoCoreset(dataset[indices], dataset), solver_state
 
@@ -1971,7 +1973,9 @@ class TestMapReduce(SolverTest):
         # (1): [:16], [32:48], [64:80], [96:112]
         # (2): [:16], [64:80]
         # (3): [:16] <- 'coreset_size'
-        expected_coreset = PseudoCoreset(dataset[: self.coreset_size], Data(dataset))
+        expected_coreset = PseudoCoreset.build(
+            dataset[: self.coreset_size], Data(dataset)
+        )
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     @pytest.mark.parametrize(
@@ -2036,7 +2040,7 @@ class TestMapReduce(SolverTest):
 
         solver = MapReduce(base_solver=base_solver, leaf_size=leaf_size)
         coreset, _ = solver.reduce(Data(dataset))
-        selected_indices = coreset.nodes.data
+        selected_indices = coreset.indices.data
 
         assert jnp.any(selected_indices >= coreset_size), (
             "MapReduce should select points beyond the first few"
@@ -2130,7 +2134,8 @@ class TestMapReduce(SolverTest):
 
         def interleaved_mock_reduce(
             dataset: Data, solver_state: None = None
-        ) -> tuple[AbstractCoreset[Data], None]:
+        ) -> tuple[PseudoCoreset[Data], None]:
+            # TODO: check - should this be Coresubset instead?
             half_size = interleaved_base_solver.coreset_size // 2
             indices = jnp.arange(interleaved_base_solver.coreset_size)
             forward_indices = indices[:half_size]

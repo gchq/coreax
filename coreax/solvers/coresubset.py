@@ -152,8 +152,8 @@ def _greedy_kernel_selection(
     # If the initialisation coresubset is too small, pad its nodes up to 'output_size'
     # with zero valued and weighted indices.
     padding = max(0, output_size - len(coresubset))
-    padded_indices = tree_zero_pad_leading_axis(coresubset.points, padding)
-    padded_coresubset = eqx.tree_at(lambda x: x.nodes, coresubset, padded_indices)
+    padded_indices = tree_zero_pad_leading_axis(coresubset.indices, padding)
+    padded_coresubset = eqx.tree_at(lambda x: x.indices, coresubset, padded_indices)
 
     # Calculate the actual size of the provided `coresubset` assuming 0-weighted
     # indices are not included
@@ -623,7 +623,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
         init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
         output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
         gramian_diagonal, _, updated_coreset_indices = output_state
-        updated_coreset = Coresubset(updated_coreset_indices, dataset)
+        updated_coreset = Coresubset.build(updated_coreset_indices, dataset)
         return updated_coreset, RPCholeskyState(gramian_diagonal)
 
 
@@ -908,9 +908,9 @@ class GreedyKernelPoints(
             ),
         )
 
-        return Coresubset(updated_coreset_indices, dataset), GreedyKernelPointsState(
-            padded_feature_gramian
-        )
+        return Coresubset.build(
+            updated_coreset_indices, dataset
+        ), GreedyKernelPointsState(padded_feature_gramian)
 
 
 class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
@@ -1008,17 +1008,21 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         # Update indices: map current subset's indices to original dataset
         if isinstance(current_coreset, Coresubset):
-            parent_indices = current_coreset.points.data  # Parent subset's indices
-            subset1_indices = subset1.nodes.data.flatten()  # Indices relative to parent
-            subset2_indices = subset2.nodes.data.flatten()  # Indices relative to parent
+            parent_indices = current_coreset.indices.data  # Parent subset's indices
+            subset1_indices = (
+                subset1.indices.data.flatten()
+            )  # Indices relative to parent
+            subset2_indices = (
+                subset2.indices.data.flatten()
+            )  # Indices relative to parent
 
             # Map subset indices back to original dataset
             subset1_indices = parent_indices[subset1_indices]
             subset2_indices = parent_indices[subset2_indices]
 
             # Update the subsets with the remapped indices
-            subset1 = eqx.tree_at(lambda x: x.nodes.data, subset1, subset1_indices)
-            subset2 = eqx.tree_at(lambda x: x.nodes.data, subset2, subset2_indices)
+            subset1 = eqx.tree_at(lambda x: x.indices.data, subset1, subset1_indices)
+            subset2 = eqx.tree_at(lambda x: x.indices.data, subset2, subset2_indices)
 
         # Recurse for both subsets and concatenate results
         return self.kt_half_recursive(
@@ -1039,6 +1043,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param dataset: The input dataset to be halved.
         :return: A list containing the two partitioned coresets.
         """
+        print(type(dataset))
         n = len(dataset) // 2
         original_array = dataset.data
         first_coreset_indices = jnp.zeros(n, dtype=jnp.int32)
@@ -1238,7 +1243,10 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 self.random_key,
             ),
         )
-        return Coresubset(final_arr1, dataset), Coresubset(final_arr2, dataset)
+        return (
+            Coresubset.build(final_arr1, dataset),
+            Coresubset.build(final_arr2, dataset),
+        )
 
     def get_baseline_coreset(
         self, dataset: Data, baseline_coreset_size: int
@@ -1266,8 +1274,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :return: The coreset with the smallest MMD relative to the input dataset.
         """
         mmd = MMD(kernel=self.kernel)
-        candidate_coresets_jax = jnp.array([c.points.data for c in candidate_coresets])
-        candidate_coresets_indices = jnp.array([c.points for c in candidate_coresets])
+        candidate_coresets_jax = jnp.array([c.indices.data for c in candidate_coresets])
+        candidate_coresets_indices = jnp.array([c.indices for c in candidate_coresets])
         mmd_values = jax.vmap(lambda c: mmd.compute(c, points))(candidate_coresets_jax)
 
         best_index = jnp.argmin(mmd_values)

@@ -135,8 +135,8 @@ class MapReduce(
 
         @overload
         def _reduce_coreset(
-            data: _Data, _indices: Optional[_Indices] = None
-        ) -> tuple[_Coreset, _State, Optional[_Indices]]: ...
+            data: _Data, _indices: None = None
+        ) -> tuple[_Coreset, _State, None]: ...
 
         def _reduce_coreset(
             data: _Data, _indices: Optional[_Indices] = None
@@ -144,7 +144,8 @@ class MapReduce(
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
                 if _indices is not None:
-                    _indices = _indices[coreset.points.data]
+                    # TODO: can we avoid Nodes here?
+                    _indices = _indices[coreset.nodes.data]
                 return coreset, state, _indices
 
             def wrapper(partition: _Data) -> tuple[_Data, Array]:
@@ -156,7 +157,8 @@ class MapReduce(
                 The reduction is performed on each partition via ``vmap()``.
                 """
                 x, _ = self.base_solver.reduce(partition)
-                return x.points, x.points.data
+                # TODO: can we avoid `nodes` here?
+                return x.points, x.nodes.data
 
             partitioned_dataset, partitioned_indices = _jit_tree(
                 data, self.leaf_size, self.tree_type

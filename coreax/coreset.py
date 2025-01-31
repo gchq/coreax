@@ -68,6 +68,12 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def pre_coreset_data(self) -> _TOriginalData_co:
         """The original data that this coreset is based on."""
 
+    @property
+    @abstractmethod
+    @deprecated("Narrow to a subclass, then use `.indices` or `.points` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `indices` or `points`, depending on subclass."""
+
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
         weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
@@ -87,7 +93,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
         """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
         if len(self.points) > len(self.pre_coreset_data):
             raise ValueError(
-                "'len(nodes)' cannot be greater than 'len(pre_coreset_data)' "
+                "'len(points)' cannot be greater than 'len(pre_coreset_data)' "
                 "by definition of a Coreset"
             )
 
@@ -122,6 +128,8 @@ class PseudoCoreset(
 
     def __init__(self, nodes: Data, pre_coreset_data: _TOriginalData_co) -> None:
         """Initialise self."""
+        assert isinstance(nodes, Data)
+        assert isinstance(pre_coreset_data, (Data, SupervisedData))
         self._nodes = nodes
         self._pre_coreset_data = pre_coreset_data
 
@@ -146,13 +154,12 @@ class PseudoCoreset(
         pre_coreset_data: Union[Data, SupervisedData, Array, Tuple[Array, Array]],
     ) -> "PseudoCoreset[Data] | PseudoCoreset[SupervisedData]":
         """Construct a PseudoCoreset from Data or raw Arrays."""
-        nodes = as_data(nodes)
         if isinstance(pre_coreset_data, Array):
             pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
             pre_coreset_data = SupervisedData(*pre_coreset_data)
 
-        return PseudoCoreset(nodes, pre_coreset_data)
+        return PseudoCoreset(as_data(nodes), pre_coreset_data)
 
     @property
     @override
@@ -166,6 +173,7 @@ class PseudoCoreset(
         return self._pre_coreset_data
 
     @property
+    @override
     @deprecated("Use `.points` instead.")
     def nodes(self) -> Data:
         """Deprecated alias for `points`."""
@@ -210,6 +218,8 @@ class Coresubset(
 
     def __init__(self, indices: Data, pre_coreset_data: _TOriginalData_co) -> None:
         """Handle type conversion of ``indices`` and ``pre_coreset_data``."""
+        assert isinstance(indices, Data)
+        assert isinstance(pre_coreset_data, (Data, SupervisedData))
         self._indices = indices
         self._pre_coreset_data = pre_coreset_data
 
@@ -234,13 +244,12 @@ class Coresubset(
         pre_coreset_data: Union[Data, SupervisedData, Array, Tuple[Array, Array]],
     ) -> "Coresubset[Data] | Coresubset[SupervisedData]":
         """Construct a Coresubset from Data or raw Arrays."""
-        nodes = as_data(nodes)
         if isinstance(pre_coreset_data, Array):
             pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
             pre_coreset_data = SupervisedData(*pre_coreset_data)
 
-        return Coresubset(nodes, pre_coreset_data)
+        return Coresubset(as_data(nodes), pre_coreset_data)
 
     @property
     @override
@@ -254,6 +263,12 @@ class Coresubset(
         """Unweighted Coresubset indices - attribute access helper."""
         return jnp.squeeze(self._indices.data)
 
+    @override
+    def __len__(self) -> int:
+        # TODO: this is a hacky temporary fix. The underlying issue is that Coresubset
+        #  doesn't seem to handle 2d data properly if len(indices)==1.
+        return len(self.indices)
+
     @property
     @override
     def pre_coreset_data(self):
@@ -265,6 +280,7 @@ class Coresubset(
         return self._indices
 
     @property
+    @override
     @deprecated("Use `.indices` instead.")
     def nodes(self) -> Data:
         """Deprecated alias for `indices`."""
