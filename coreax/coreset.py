@@ -202,7 +202,17 @@ class PseudoCoreset(
         | PseudoCoreset[SupervisedData]
         | PseudoCoreset[_TOriginalData]
     """:
-        """Construct a PseudoCoreset from Data or raw Arrays."""
+        """
+        Construct a PseudoCoreset from Data or raw Arrays.
+
+        :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
+            accessed via :meth:`Coresubset.points`. :class:`jax.Array` instances are
+            automatically converted into :class:`Data`.
+        :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
+            :class:`jax.Array` instances are automatically converted into :class:`Data`.
+            :data:`tuple[Array, Array]` is automatically converted into
+            :class:`SupervisedData`.
+        """
         if isinstance(pre_coreset_data, Array):
             converted_pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
@@ -317,14 +327,14 @@ class Coresubset(
     @classmethod
     @overload
     def build(
-        cls, nodes: Union[Data, Array], pre_coreset_data: Array
+        cls, indices: Union[Data, Array], pre_coreset_data: Array
     ) -> "Coresubset[Data]": ...
 
     @classmethod
     @overload
     def build(
         cls,
-        nodes: Union[Data, Array],
+        indices: Union[Data, Array],
         pre_coreset_data: Tuple[Array, Array],
     ) -> "Coresubset[SupervisedData]": ...
 
@@ -332,17 +342,28 @@ class Coresubset(
     @overload
     def build(
         cls,
-        nodes: Union[Data, Array],
+        indices: Union[Data, Array],
         pre_coreset_data: _TOriginalData,
     ) -> "Coresubset[_TOriginalData]": ...
 
     @classmethod
     def build(
         cls,
-        nodes: Union[Data, Array],
+        indices: Union[Data, Array],
         pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
     ) -> "Coresubset[Data] | Coresubset[SupervisedData] | Coresubset[_TOriginalData]":
-        """Construct a Coresubset from Data or raw Arrays."""
+        """
+        Construct a Coresubset from Data or raw Arrays.
+
+        :param indices: The (weighted) coresubset node indices, :math:`I`; the
+            materialised coresubset nodes should only be accessed via
+            :meth:`Coresubset.points`. :class:`jax.Array` instances are automatically
+            converted into :class:`Data`.
+        :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
+            :class:`jax.Array` instances are automatically converted into :class:`Data`.
+            :data:`tuple[Array, Array]` is automatically converted into
+            :class:`SupervisedData`.
+        """
         if isinstance(pre_coreset_data, Array):
             converted_pre_coreset_data = as_data(pre_coreset_data)
         elif isinstance(pre_coreset_data, tuple):
@@ -350,7 +371,7 @@ class Coresubset(
         else:
             converted_pre_coreset_data = pre_coreset_data
 
-        return Coresubset(as_data(nodes), converted_pre_coreset_data)
+        return Coresubset(as_data(indices), converted_pre_coreset_data)
 
     @property
     @override
