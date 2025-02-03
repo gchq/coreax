@@ -24,7 +24,6 @@ dataset as possible. The generated dataset is often called a coreset.
 
 __version__ = "0.3.1"
 
-# pylint: disable=unused-import
 from coreax.approximation import (
     ANNchorApproximateKernel,
     ApproximateKernel,
@@ -43,4 +42,24 @@ from coreax.kernels import (
 )
 from coreax.metrics import KSD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
-# pylint: enable=unused-import
+
+__all__ = [
+    "ANNchorApproximateKernel",
+    "ApproximateKernel",
+    "MonteCarloApproximateKernel",
+    "NystromApproximateKernel",
+    "Coreset",
+    "Coresubset",
+    "Data",
+    "SupervisedData",
+    "LaplacianKernel",
+    "PCIMQKernel",
+    "ScalarValuedKernel",
+    "SquaredExponentialKernel",
+    "SteinKernel",
+    "UniCompositeKernel",
+    "KSD",
+    "MMD",
+    "KernelDensityMatching",
+    "SlicedScoreMatching",
+]
