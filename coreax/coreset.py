@@ -78,6 +78,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
         weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        # TODO: Can we avoid using `nodes` here?
         return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
 
     def compute_metric(

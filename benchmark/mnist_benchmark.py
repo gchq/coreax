@@ -539,7 +539,7 @@ def main() -> None:
                 # pylint: enable=duplicate-code
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 
-                coreset_indices = coreset.nodes.data
+                coreset_indices = coreset.indices.data
 
                 train_data_coreset = train_data_jax[coreset_indices]
                 train_targets_coreset = train_targets_jax[coreset_indices]

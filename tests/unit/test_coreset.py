@@ -53,7 +53,7 @@ class TestCoresetCommon:
     def test_materialization(self, coreset_type, data):
         """Test the coreset materialisation behaviour."""
         coreset = coreset_type(data, PRE_CORESET_DATA)
-        expected_materialization = coreset.nodes
+        expected_materialization = coreset.points
         if isinstance(coreset, Coresubset):
             materialized_nodes = PRE_CORESET_DATA.data[data.data.squeeze()]
             expected_materialization = Data(materialized_nodes)

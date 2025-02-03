@@ -183,7 +183,7 @@ class MapReduce(
         coreset = eqx.tree_at(lambda x: x.pre_coreset_data, pre_coreset, dataset)
         if _indices is not None:
             if isinstance(coreset, Coresubset):
-                coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
+                coreset = eqx.tree_at(lambda x: x.indices.data, coreset, _indices)
         return coreset, output_solver_state
 
 
