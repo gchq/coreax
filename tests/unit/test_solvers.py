@@ -2134,8 +2134,7 @@ class TestMapReduce(SolverTest):
 
         def interleaved_mock_reduce(
             dataset: Data, solver_state: None = None
-        ) -> tuple[PseudoCoreset[Data], None]:
-            # TODO: check - should this be Coresubset instead?
+        ) -> tuple[Coresubset[Data], None]:
             half_size = interleaved_base_solver.coreset_size // 2
             indices = jnp.arange(interleaved_base_solver.coreset_size)
             forward_indices = indices[:half_size]
@@ -2146,7 +2145,7 @@ class TestMapReduce(SolverTest):
 
             if interleaved_base_solver.coreset_size % 2 != 0:
                 interleaved_indices = jnp.append(interleaved_indices, half_size)
-            return PseudoCoreset(dataset[interleaved_indices], dataset), solver_state
+            return Coresubset.build(interleaved_indices, dataset), solver_state
 
         interleaved_base_solver.reduce = interleaved_mock_reduce
 
@@ -2182,7 +2181,7 @@ class TestMapReduce(SolverTest):
         coreset, _ = MapReduce(base_solver=interleaved_base_solver, leaf_size=6).reduce(
             original_data
         )
-        assert eqx.tree_equal(coreset.coreset.data == expected_coreset_data.data)
+        assert eqx.tree_equal(coreset.points.data == expected_coreset_data.data)
 
 
 class TestCaratheodoryRecombination(RecombinationSolverTest):
