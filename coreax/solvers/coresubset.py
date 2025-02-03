@@ -1410,7 +1410,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param dataset: The input dataset to be reduced.
         :return: A tuple containing the reduced coreset and `None`.
         """
-        partitioned_data, indices = partition_with_indices(dataset, self.depth)
+        partitioned_data, indices = self.partition_with_indices(dataset, self.depth)
         (_reduced_coreset_data, reduced_coreset_indices) = (
             self.recursive_partition_and_halve(
                 jnp.asarray(partitioned_data), indices, self.depth
@@ -1443,46 +1443,32 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             Data(reduced_indices[thinning_coreset.nodes.data]), dataset
         ), None
 
+    def partition_with_indices(
+        self, data: _Data, depth: int
+    ) -> tuple[_Data, jax.Array]:
+        """
+        Partition data indices into a hierarchical structure.
 
-def partition_indices(data_size: int, depth: int) -> jax.Array:
-    """
-    Partition data indices into a hierarchical structure.
+        If depth = 1, the dataset is partitioned into 4 datasets of size one-fourth each
 
-    If depth = 1, the dataset is partitioned into 4 datasets of size one-fourth each
+        :param data: The data to be partitioned.
+        :param depth: The depth of the partitioning hierarchy.
+        :return: A tuple containing the partitioned data and indices.
+        """
+        data_size = len(data)
 
-    :param data_size: The total size of the data to be partitioned.
-    :param depth: The depth of the partitioning hierarchy.
-    :return: A JAX array of partitioned indices.
-    """
-    if depth == 1:
-        chunk_size = data_size // 4
-        return jnp.array(
-            [
-                jnp.arange(0, chunk_size),
-                jnp.arange(chunk_size, 2 * chunk_size),
-                jnp.arange(2 * chunk_size, 3 * chunk_size),
-                jnp.arange(3 * chunk_size, data_size),
-            ]
-        )
+        if depth == 1:
+            indices = jnp.arange(data_size).reshape(4, -1)
+        else:
+            chunk_size = data_size // 4
+            indices = jnp.stack(
+                [
+                    self.partition_with_indices(
+                        cast(_Data, Data(jnp.arange(chunk_size))), depth - 1
+                    )[1]
+                    + i * chunk_size
+                    for i in range(4)
+                ]
+            )
 
-    chunk_size = data_size // 4
-    return jnp.array(
-        [
-            partition_indices(chunk_size, depth - 1) + (0 * chunk_size),
-            partition_indices(chunk_size, depth - 1) + (1 * chunk_size),
-            partition_indices(chunk_size, depth - 1) + (2 * chunk_size),
-            partition_indices(chunk_size, depth - 1) + (3 * chunk_size),
-        ]
-    )
-
-
-def partition_with_indices(data: _Data, depth: int) -> tuple[_Data, jax.Array]:
-    """
-    Partition data and return the partitioned data with corresponding indices.
-
-    :param data: The data to be partitioned.
-    :param depth: The depth of the partitioning hierarchy.
-    :return: A tuple containing the partitioned data and indices.
-    """
-    indices = partition_indices(len(data), depth)
-    return data[indices], indices
+        return data[indices], indices
