@@ -47,6 +47,7 @@ hstack
 imageio
 imread
 imshow
+imwrite
 inproceedings
 intercal
 intersphinx
