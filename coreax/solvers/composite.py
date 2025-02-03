@@ -28,14 +28,14 @@ from jaxtyping import Integer
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import TypeAlias, override
 
-from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
+from coreax.coreset import AbstractCoreset, Coresubset
+from coreax.data import Data, SupervisedData
 from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
 from coreax.util import tree_zero_pad_leading_axis
 
 BinaryTree: TypeAlias = Union[KDTree, BallTree]
-_Data = TypeVar("_Data", bound=Data)
-_Coreset = TypeVar("_Coreset", Coreset, Coresubset)
+_Data = TypeVar("_Data", Data, SupervisedData)
+_Coreset = TypeVar("_Coreset", bound=AbstractCoreset)
 _State = TypeVar("_State")
 _Indices = Integer[Array, "..."]
 
@@ -135,8 +135,8 @@ class MapReduce(
 
         @overload
         def _reduce_coreset(
-            data: _Data, _indices: Optional[_Indices] = None
-        ) -> tuple[_Coreset, _State, Optional[_Indices]]: ...
+            data: _Data, _indices: None = None
+        ) -> tuple[_Coreset, _State, None]: ...
 
         def _reduce_coreset(
             data: _Data, _indices: Optional[_Indices] = None
@@ -144,6 +144,7 @@ class MapReduce(
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
                 if _indices is not None:
+                    # TODO: can we avoid Nodes here?
                     _indices = _indices[coreset.nodes.data]
                 return coreset, state, _indices
 
@@ -156,7 +157,8 @@ class MapReduce(
                 The reduction is performed on each partition via ``vmap()``.
                 """
                 x, _ = self.base_solver.reduce(partition)
-                return x.coreset, x.nodes.data
+                # TODO: can we avoid `nodes` here?
+                return x.points, x.nodes.data
 
             partitioned_dataset, partitioned_indices = _jit_tree(
                 data, self.leaf_size, self.tree_type

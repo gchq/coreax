@@ -29,7 +29,7 @@ import numpy as np
 import pytest
 from typing_extensions import override
 
-from coreax.coreset import Coreset, Coresubset
+from coreax.coreset import AbstractCoreset, Coresubset
 from coreax.data import Data, SupervisedData
 from coreax.kernels import SquaredExponentialKernel
 from coreax.metrics import MMD, Metric
@@ -47,7 +47,7 @@ _Data = TypeVar("_Data", bound=Data)
 
 
 class _Problem(NamedTuple):
-    coreset: Coreset
+    coreset: AbstractCoreset
     optimiser: WeightsOptimiser
     target_metric: Optional[Metric]
 
@@ -121,7 +121,7 @@ class TestSBQWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         coreset_indices = Data(
             jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
         )
-        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
+        coreset = Coresubset(indices=coreset_indices, pre_coreset_data=pre_coreset_data)
         return _Problem(coreset, optimiser, target_metric)
 
     def test_analytic_case(self) -> None:
@@ -199,7 +199,7 @@ class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         coreset_indices = Data(
             jr.choice(self.random_key, self.data_shape[0], (self.coreset_size,))
         )
-        coreset = Coresubset(nodes=coreset_indices, pre_coreset_data=pre_coreset_data)
+        coreset = Coresubset(indices=coreset_indices, pre_coreset_data=pre_coreset_data)
 
         return _Problem(coreset, optimiser, target_metric)
 

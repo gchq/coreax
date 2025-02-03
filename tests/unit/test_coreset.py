@@ -20,7 +20,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import pytest
 
-from coreax.coreset import Coreset, Coresubset
+from coreax.coreset import Coresubset, PseudoCoreset
 from coreax.data import Data, SupervisedData
 from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
@@ -32,22 +32,22 @@ SUPERVISED_DATA = SupervisedData(
 PRE_CORESET_DATA = Data(jnp.arange(10)[..., None])
 
 
-@pytest.mark.parametrize("coreset_type", [Coreset, Coresubset])
+@pytest.mark.parametrize("coreset_type", [PseudoCoreset, Coresubset])
 @pytest.mark.parametrize("data", [DATA, SUPERVISED_DATA])
 class TestCoresetCommon:
-    """Common tests for `coreax.coreset.Coreset` and `coreax.coreset.Coresubset`."""
+    """Common tests for `PseudoCoreset` and `Coresubset`."""
 
-    def test_init_array_conversion(self, coreset_type, data):
+    def test_build_array_conversion(self, coreset_type, data):
         """
-        Test the initialisation behaviour.
+        Test the behaviour of `build`.
 
         The nodes can be passed as an 'Array' or as a 'Data' instance. In the former
         case, we expect this array to be automatically converted to a 'Data' instance.
         """
         array_nodes = data.data
         data_obj = Data(data.data, data.weights)
-        coreset_array_nodes = coreset_type(array_nodes, PRE_CORESET_DATA)
-        coreset_data_nodes = coreset_type(data_obj, PRE_CORESET_DATA)
+        coreset_array_nodes = coreset_type.build(array_nodes, PRE_CORESET_DATA)
+        coreset_data_nodes = coreset_type.build(data_obj, PRE_CORESET_DATA)
         assert coreset_array_nodes == coreset_data_nodes
 
     def test_materialization(self, coreset_type, data):
