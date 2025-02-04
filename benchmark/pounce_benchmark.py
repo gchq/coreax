@@ -61,9 +61,9 @@ def benchmark_coreset_algorithms(
     reshaped_data = raw_data.reshape(raw_data.shape[0], -1)
 
     umap_model = umap.UMAP(densmap=True, n_components=25)
-    umap_data = umap_model.fit_transform(reshaped_data)
+    umap_data = jnp.asarray(umap_model.fit_transform(reshaped_data))
 
-    solver_factories = initialise_solvers(umap_data, random.PRNGKey(45))
+    solver_factories = initialise_solvers(Data(umap_data), random.PRNGKey(45))
     for solver_creator in solver_factories:
         solver = solver_creator(coreset_size)
 
@@ -72,7 +72,7 @@ def benchmark_coreset_algorithms(
             solver = solver.base_solver
 
         solver_name = get_solver_name(solver_creator)
-        data = Data(jnp.array(umap_data))
+        data = Data(umap_data)
 
         start_time = time.perf_counter()
         coreset, _ = solver.reduce(data)
@@ -83,7 +83,7 @@ def benchmark_coreset_algorithms(
         # Extract corresponding frames from original data and save GIF
         coreset_frames = raw_data[selected_indices]
         output_gif_path = out_dir / f"{solver_name}_coreset.gif"
-        imageio.mimsave(output_gif_path, coreset_frames, loop=0)
+        imageio.v3.imwrite(output_gif_path, coreset_frames, loop=0)
         print(f"Saved {solver_name} coreset GIF to {output_gif_path}")
         print(f"time taken: {solver_name:<25} {duration:<30.4f}")
 

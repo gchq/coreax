@@ -51,15 +51,19 @@ import torchvision
 import umap
 from flax import linen as nn
 from flax.training import train_state
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.datasets import VisionDataset
 
 from coreax import Data
 from coreax.benchmark_util import get_solver_name, initialise_solvers
+from coreax.util import KeyArrayLike
 
 
 # Convert PyTorch dataset to JAX arrays
-def convert_to_jax_arrays(pytorch_data: Dataset) -> tuple[jnp.ndarray, jnp.ndarray]:
+def convert_to_jax_arrays(
+    pytorch_data: VisionDataset,
+) -> (tuple)[jnp.ndarray, jnp.ndarray]:
     """
     Convert a PyTorch dataset to JAX arrays.
 
@@ -139,15 +143,8 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Optional[dict[str, jnp.ndarray]] = None
-    dropout_rng: Optional[jnp.ndarray] = None
-
-
-class Metrics(NamedTuple):
-    """Represents evaluation metrics."""
-
-    loss: float
-    accuracy: float
+    batch_stats: Optional[dict[str, jnp.ndarray]]
+    dropout_rng: KeyArrayLike
 
 
 def create_train_state(
@@ -418,7 +415,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
 
 def train_model(
     data_bundle: dict[str, jnp.ndarray],
-    key: jax.random.PRNGKey,
+    key: KeyArrayLike,
     config: dict[str, Union[int, float]],
 ) -> dict[str, float]:
     """

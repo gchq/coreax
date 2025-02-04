@@ -24,13 +24,11 @@ def plot_benchmarking_results(data):
     """
     Visualise the benchmarking results.
 
-    :param data: A dictionary where the first key is the original sample size
-                 and the rest of the keys are the coreset sizes (as strings) and values
+    :param data: A dictionary where keys are the coreset sizes (as strings) and values
                  that are dictionaries containing the metrics for each algorithm.
 
     Example:
                  {
-                    'n_samples': 1000,
                      '100': {
                          'KernelHerding': {
                              'unweighted_mmd': 0.12345678,
@@ -47,9 +45,6 @@ def plot_benchmarking_results(data):
                  }
 
     """
-    # Extract n_samples
-    n_samples = data.pop("n_samples")
-
     first_coreset_size = next(iter(data.keys()))
     first_algorithm = next(
         iter(data[first_coreset_size].values())
@@ -66,8 +61,7 @@ def plot_benchmarking_results(data):
     for i, metric in enumerate(metrics):
         ax = axs[i]
         ax.set_title(
-            f"{metric.replace('_', ' ').title()} vs "
-            f"Coreset Size (n_samples = {n_samples})",
+            f"{metric.replace('_', ' ').title()} vs Coreset Size",
             fontsize=14,
         )
 
@@ -89,7 +83,7 @@ def plot_benchmarking_results(data):
 
     # Adjust layout to avoid overlap
     plt.subplots_adjust(hspace=15.0, wspace=1.0)
-    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.96])
+    plt.tight_layout(pad=3.0, rect=(0.0, 0.0, 1.0, 0.96))
     plt.show()
 
 
@@ -98,13 +92,11 @@ def print_metrics_table(data: dict, coreset_size: str) -> None:
     """
     Print a table for the given sample size with methods as rows and metrics as columns.
 
-    :param data: A dictionary where the first key is the original sample size
-                 and the rest of the keys are the coreset sizes (as strings) and values
+    :param data: A dictionary where keys are the coreset sizes (as strings) and values
                  that are dictionaries containing the metrics for each algorithm.
 
     Example:
                  {
-                    'n_samples': 1000,
                      '100': {
                          'KernelHerding': {
                              'unweighted_mmd': 0.12345678,
@@ -129,7 +121,7 @@ def print_metrics_table(data: dict, coreset_size: str) -> None:
     separator = "-" * len(formatted_header)
 
     # Print table for the current coreset size
-    print(f"\nCoreset Size: {coreset_size} (Original Sample Size: {data['n_samples']})")
+    print(f"\nCoreset Size: {coreset_size}")
     print(separator)
     print(formatted_header)
     print(separator)
