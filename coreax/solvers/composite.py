@@ -118,7 +118,9 @@ class MapReduce(
             warnings.warn(
                 "'base_solver' is not a 'PaddingInvariantSolver'; Zero-weighted padding"
                 + " applied in 'MapReduce' may lead to undefined results.",
-                stacklevel=2,
+                # __check_init__ is called inside base __init__, so stacklevel=3 should
+                # show this warning at the call site
+                stacklevel=3,
             )
 
     @override
