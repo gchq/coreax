@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build documentation
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: 3.12
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
@@ -20,7 +22,7 @@ jobs:
           # Note that this is just the version of Python that we use to run `uv` with.
           # `uv` manages its own version of Python.
           # For speed, we use the same version for both, but in principle these could differ.
-          python-version: 3.13
+          python-version: 3.12
       - name: Set up uv cache directory location (Linux/Mac)
         run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
         if: runner.os != 'Windows'
