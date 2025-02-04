@@ -97,7 +97,6 @@ def print_metrics_table(data: dict, coreset_size: str) -> None:
 
     Example:
                  {
-                    'n_samples': 1000,
                      '100': {
                          'KernelHerding': {
                              'unweighted_mmd': 0.12345678,
