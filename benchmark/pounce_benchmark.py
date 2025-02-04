@@ -72,7 +72,7 @@ def benchmark_coreset_algorithms(
             solver = solver.base_solver
 
         solver_name = get_solver_name(solver_creator)
-        data = Data(jnp.array(umap_data))
+        data = Data(umap_data)
 
         start_time = time.perf_counter()
         coreset, _ = solver.reduce(data)

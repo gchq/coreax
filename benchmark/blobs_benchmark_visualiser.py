@@ -61,7 +61,7 @@ def plot_benchmarking_results(data):
     for i, metric in enumerate(metrics):
         ax = axs[i]
         ax.set_title(
-            f"{metric.replace('_', ' ').title()} vs Coreset Size (n_samples = {1_000})",
+            f"{metric.replace('_', ' ').title()} vs Coreset Size",
             fontsize=14,
         )
 
@@ -92,8 +92,7 @@ def print_metrics_table(data: dict, coreset_size: str) -> None:
     """
     Print a table for the given sample size with methods as rows and metrics as columns.
 
-    :param data: A dictionary where the first key is the original sample size
-                 and the rest of the keys are the coreset sizes (as strings) and values
+    :param data: A dictionary where keys are the coreset sizes (as strings) and values
                  that are dictionaries containing the metrics for each algorithm.
 
     Example:
