@@ -155,7 +155,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"coreax/__init__.py" = ["F401"]
 "documentation/source/conf.py" = ["E402"]
 "documentation/source/snippets/*" = ["D100", "F821"]
 "examples/*" = ["PLR0914", "PLR0915"]
