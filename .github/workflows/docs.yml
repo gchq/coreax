@@ -13,6 +13,8 @@ jobs:
     name: Build documentation
     runs-on: ubuntu-latest
     env:
+      # Note that we use 3.12 here rather than 3.13 to avoid spurious Sphinx errors
+      # about not being able to link to `pathlib._locals.Path`.
       UV_PYTHON: 3.12
     steps:
       - uses: actions/checkout@v4
