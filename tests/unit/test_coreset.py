@@ -57,7 +57,7 @@ class TestCoresetCommon:
         if isinstance(coreset, Coresubset):
             materialized_nodes = PRE_CORESET_DATA.data[data.data.squeeze()]
             expected_materialization = Data(materialized_nodes)
-        assert expected_materialization == coreset.coreset
+        assert expected_materialization == coreset.points
 
     def test_len(self, coreset_type, data):
         """Test the coreset length."""
@@ -76,7 +76,7 @@ class TestCoresetCommon:
         coreset_solved_weights = coreset.solve_weights(solver, **kwargs)
         assert eqx.tree_equal(coreset_solved_weights, coreset_expected)
         solver.solve.assert_called_with(
-            coreset.pre_coreset_data, coreset.coreset, **kwargs
+            coreset.pre_coreset_data, coreset.points, **kwargs
         )
 
     def test_compute_metric(self, coreset_type, data):
@@ -89,7 +89,7 @@ class TestCoresetCommon:
         coreset_metric = coreset.compute_metric(metric, **kwargs)
         assert eqx.tree_equal(coreset_metric, expected_metric)
         metric.compute.assert_called_with(
-            coreset.pre_coreset_data, coreset.coreset, **kwargs
+            coreset.pre_coreset_data, coreset.points, **kwargs
         )
 
 

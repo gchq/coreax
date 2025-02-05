@@ -80,7 +80,7 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
         `epsilon`
         """
         coreset, optimiser, _ = problem
-        optimiser.solve(coreset.pre_coreset_data, coreset.coreset, epsilon=epsilon)
+        optimiser.solve(coreset.pre_coreset_data, coreset.points, epsilon=epsilon)
 
     def test_solver_reduces_target_metric(
         self,

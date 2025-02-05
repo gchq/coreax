@@ -166,7 +166,7 @@ def _greedy_kernel_selection(
     data, data_weights = jtu.tree_leaves(coresubset.pre_coreset_data)
     init_kernel_similarity_penalty = init_coreset_size * kernel.compute_mean(
         data,
-        padded_coresubset.coreset,
+        padded_coresubset.points,
         axis=1,
         block_size=block_size,
         unroll=unroll,

@@ -133,7 +133,7 @@ class SolverTest:
             assert isinstance(coreset, type(expected_coreset))
             assert eqx.tree_equal(coreset, expected_coreset)
         if isinstance(coreset, Coresubset):
-            membership = jtu.tree_map(jnp.isin, coreset.coreset.data, dataset.data)
+            membership = jtu.tree_map(jnp.isin, coreset.points.data, dataset.data)
             all_membership = jtu.tree_map(jnp.all, membership)
             assert jtu.tree_all(all_membership)
         if isinstance(solver, PaddingInvariantSolver):
@@ -147,7 +147,7 @@ class SolverTest:
                 coreset_from_padded, _ = solver.refine(padded_initial_coreset)
             else:
                 coreset_from_padded, _ = solver.reduce(padded_dataset)
-            assert eqx.tree_equal(coreset_from_padded.coreset, coreset.coreset)
+            assert eqx.tree_equal(coreset_from_padded.points, coreset.points)
 
     @pytest.mark.parametrize(
         "use_cached_state", (False, True), ids=["not_cached", "cached"]
@@ -249,7 +249,7 @@ class RecombinationSolverTest(SolverTest):
         """
         super().check_solution_invariants(coreset, problem)
         dataset, solver, _ = problem
-        coreset_nodes, coreset_weights = coreset.coreset.data, coreset.coreset.weights
+        coreset_nodes, coreset_weights = coreset.points.data, coreset.points.weights
         assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
         if solver.test_functions is None:
             solver = eqx.tree_at(
@@ -696,7 +696,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
         np.testing.assert_array_almost_equal(
             solver_state.gramian_row_mean, expected_gramian_row_mean
@@ -847,7 +847,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
         np.testing.assert_array_almost_equal(
             solver_state.gramian_row_mean, expected_gramian_row_mean
@@ -1004,7 +1004,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
         np.testing.assert_array_almost_equal(
             solver_state.gramian_row_mean, expected_gramian_row_mean
@@ -1094,8 +1094,9 @@ class TestRandomSample(ExplicitSizeSolverTest):
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = cast(RandomSample, problem.solver)
+        assert isinstance(coreset, Coresubset)
         if solver.unique:
-            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            _, counts = jnp.unique(coreset.indices.data, return_counts=True)
             assert max(counts) <= 1
 
     @override
@@ -1116,8 +1117,9 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
         solver = cast(RPCholesky, problem.solver)
+        assert isinstance(coreset, Coresubset)
         if solver.unique:
-            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            _, counts = jnp.unique(coreset.indices.data, return_counts=True)
             assert max(counts) <= 1
 
     @override
@@ -1446,7 +1448,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
                 coreset.unweighted_indices, coreset_equiv.unweighted_indices
             )
             np.testing.assert_array_equal(
-                coreset.coreset.data, coreset_equiv.coreset.data
+                coreset.points.data, coreset_equiv.points.data
             )
         # Check that int is cast to float
         elif isinstance(test_lambda, int):
@@ -1461,7 +1463,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
                 coreset.unweighted_indices, coreset_float.unweighted_indices
             )
             np.testing.assert_array_equal(
-                coreset.coreset.data, coreset_float.coreset.data
+                coreset.points.data, coreset_float.points.data
             )
 
     def test_stein_thinning_analytic_unique(self):
@@ -1658,7 +1660,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
 
     def test_stein_thinning_analytic_non_unique(self):
@@ -1707,7 +1709,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
 
     def test_stein_thinning_analytic_reg(self):
@@ -1763,7 +1765,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
             coreset.unweighted_indices, expected_coreset_indices
         )
         np.testing.assert_array_equal(
-            coreset.coreset.data, data.data[expected_coreset_indices]
+            coreset.points.data, data.data[expected_coreset_indices]
         )
 
 
@@ -1808,8 +1810,9 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
         solver = cast(GreedyKernelPoints, problem.solver)
+        assert isinstance(coreset, Coresubset)
         if solver.unique:
-            _, counts = jnp.unique(coreset.nodes.data, return_counts=True)
+            _, counts = jnp.unique(coreset.indices.data, return_counts=True)
             assert max(counts) <= 1
 
     @pytest.fixture(
@@ -1966,7 +1969,7 @@ class TestMapReduce(SolverTest):
                 def mock_reduce(
                     dataset: Data, solver_state: None = None
                 ) -> tuple[AbstractCoreset[Data, Data], None]:
-                    points = jnp.ones(base_solver.coreset_size, dtype=jnp.floating)
+                    points = jnp.ones(base_solver.coreset_size, dtype=jnp.float32)
                     return PseudoCoreset.build(points, dataset), solver_state
 
             else:

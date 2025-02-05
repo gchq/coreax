@@ -207,6 +207,6 @@ covered by any of the chosen pivots.
     # Inspect results
     print("Chosen coreset:")
     print(coreset.unweighted_indices)  # The coreset_indices
-    print(coreset.coreset.data)  # The data-points in the coreset
+    print(coreset.points.data)  # The data-points in the coreset
     print("Residual diagonal:")
     print(solver_state.gramian_diagonal)

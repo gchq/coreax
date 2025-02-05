@@ -138,7 +138,7 @@ This example would be run in coreax using:
 
     # Inspect results
     print(coreset.unweighted_indices)  # The coreset_indices
-    print(coreset.coreset.data)  # The data-points in the coreset
+    print(coreset.points.data)  # The data-points in the coreset
     print(solver_state.gramian_row_mean)  # The stored gramian_row_mean
 
 Coreax also supports weighted data. If we have the same data as described above, but
@@ -222,5 +222,5 @@ would be run as:
 
     # Inspect results
     print(coreset.unweighted_indices)  # The coreset_indices
-    print(coreset.coreset.data)  # The data-points in the coreset
+    print(coreset.points.data)  # The data-points in the coreset
     print(solver_state.gramian_row_mean)  # The stored gramian_row_mean

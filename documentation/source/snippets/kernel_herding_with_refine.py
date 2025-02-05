@@ -23,8 +23,8 @@ herding_solver = KernelHerding(
 herding_coreset, _ = herding_solver.reduce(data)
 
 # Refine the coreset to improve quality
-refined_herding_coreset = herding_solver.refine(herding_coreset)
+refined_herding_coreset, _ = herding_solver.refine(herding_coreset)
 
 # We can now print the selected coresubset indices and the materialized coresubset
-print(refined_herding_coreset.coreset)
-print(refined_herding_coreset.coreset_indices)
+print(refined_herding_coreset.points)
+print(refined_herding_coreset.indices)

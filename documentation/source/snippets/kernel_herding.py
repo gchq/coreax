@@ -52,4 +52,4 @@ herding_coreset, _ = herding_solver.reduce(data)
 
 # We can now print the selected coresubset indices and the materialized coresubset
 print(herding_coreset.unweighted_indices)
-print(herding_coreset.coreset)
+print(herding_coreset.points)

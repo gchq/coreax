@@ -96,7 +96,7 @@ def benchmark_coreset_algorithms(
         start_time = time.perf_counter()
         coreset, _ = eqx.filter_jit(solver.reduce)(data)
         duration = time.perf_counter() - start_time
-        coresets[solver_name] = coreset.coreset.data
+        coresets[solver_name] = coreset.points.data
         solver_times[solver_name] = duration
 
     plt.figure(figsize=(15, 10))
