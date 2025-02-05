@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
 - Added a new coreset algorithm Kernel Thinning. (https://github.com/gchq/coreax/pull/915)
 - Added (loose) lower bounds to all direct dependencies. (https://github.com/gchq/coreax/pull/920)
+- Added Kernel Thinning to existing benchmarking tests. (https://github.com/gchq/coreax/pull/927)
+- Added an option to run Kernel Herding probabilistically. (https://github.com/gchq/coreax/pull/941)
 - Added Compress++ coreset algorithm. (https://github.com/gchq/coreax/pull/939)
 
 ### Fixed

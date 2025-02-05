@@ -42,6 +42,10 @@ def compute_statistics(
     """
     Compute statistical summary (mean, min, max).
 
+    The parameter data_by_solver contains time and accuracy data for different solvers
+    for different seeds. The data for the first run is skipped because it is much slower
+    due to JIT compilation.
+
     :param data_by_solver: A dictionary where each key is an algorithm name,
                            and each value is a dictionary mapping coreset size
                            to benchmark results. Benchmark results include multiple
@@ -77,7 +81,9 @@ def compute_statistics(
             size_str = str(size)
             accuracies, times = [], []
             if size_str in sizes:
-                for run_data in sizes[size_str].values():
+                # Skip the first run as it is much slower due to JIT compilation
+                run_list = list(sizes[size_str].values())[1:]
+                for run_data in run_list:
                     accuracies.append(run_data["accuracy"])
                     times.append(run_data["time_taken"])
                     accuracy_stats[algo]["points"][size].append(run_data["accuracy"])
@@ -97,6 +103,9 @@ def compute_statistics(
 def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
     """
     Compute statistical summary (mean, min, max) for standalone time data.
+
+    The data for the first run is skipped because it is much slower due to JIT
+    compilation.
 
     :param data: A dictionary containing time data for different algorithms
                  and coreset sizes.
@@ -119,7 +128,9 @@ def compute_time_statistics(data: dict, coreset_sizes: list[int]) -> dict:
             size_str = str(size)
             times = []
             if size_str in sizes:
-                for time in sizes[size_str].values():
+                # Skip the first run as it is much slower due to JIT compilation
+                run_list = list(sizes[size_str].values())[1:]
+                for time in run_list:
                     times.append(time)
                     stats[algo]["points"][size].append(time)
 
@@ -199,7 +210,10 @@ def plot_performance(
     if log_scale:
         plt.yscale("log")
     plt.title(title)
-    plt.xticks(index + bar_width * (n_algorithms - 1) / 2, coreset_sizes)
+    plt.xticks(
+        index + bar_width * (n_algorithms - 1) / 2,
+        [str(size) for size in coreset_sizes],
+    )
     plt.legend()
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.tight_layout()
