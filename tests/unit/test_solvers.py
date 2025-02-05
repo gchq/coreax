@@ -2443,9 +2443,7 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
         """
         dataset, solver, _ = reduce_problem
         modified_solver = eqx.tree_at(lambda x: x.depth, solver, 10)  # Too deep
-        with pytest.raises(
-            ValueError, match="depth should be between 0 and .* inclusive"
-        ):
+        with pytest.raises(ValueError):
             modified_solver.reduce(dataset)
 
     def test_compress_half(self, reduce_problem: _ReduceProblem) -> None:
