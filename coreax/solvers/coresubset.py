@@ -1350,6 +1350,15 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         if self.coreset_size > len(dataset):
             raise ValueError(MSG)
 
+        if self.depth == 0:
+            return KernelThinning(
+                coreset_size=self.coreset_size,
+                delta=self.delta,
+                kernel=self.kernel,
+                sqrt_kernel=self.sqrt_kernel,
+                random_key=self.random_key,
+            ).reduce(dataset)
+
         # Check that depth and coreset_size are compatible
         nearest_power_of_4 = math.floor(math.log(n, 4))
         effective_data_size = 4**nearest_power_of_4
@@ -1461,10 +1470,12 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param dataset: The input dataset to be reduced.
         :return: A tuple containing the reduced coreset and `None`.
         """
-        partitioned_data, indices = self.partition_with_indices(dataset, self.depth)
+        partitioned_indices = self.partition_indices(len(dataset), self.depth)
         (_reduced_coreset_data, reduced_coreset_indices) = (
             self.recursive_partition_and_halve(
-                jnp.asarray(partitioned_data), indices, self.depth
+                jnp.asarray(dataset[partitioned_indices]),
+                partitioned_indices,
+                self.depth,
             )
         )
         return Coresubset(Data(reduced_coreset_indices), dataset), None
@@ -1523,3 +1534,28 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             )
 
         return data[indices], indices
+
+    def partition_indices(self, data_size: int, depth: int) -> jax.Array:
+        """
+        Partition data indices into a hierarchical structure.
+
+        If depth = 1, the dataset is partitioned into 4 datasets of size one-fourth
+        each. For higher depth, each of those partition is further partitioned into
+        size one-fourth again.
+
+        :param data_size: The total size of the data to be partitioned.
+        :param depth: The depth of the partitioning hierarchy.
+        :return: A JAX array of partitioned indices.
+        """
+        chunk_size = data_size // 4
+        indices = jnp.arange(data_size).reshape(4, -1)  # Simplified chunking
+
+        if depth == 1:
+            return indices
+
+        return jnp.stack(
+            [
+                self.partition_indices(chunk_size, depth - 1) + i * chunk_size
+                for i in range(4)
+            ]
+        )
