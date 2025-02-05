@@ -122,7 +122,7 @@ class MapReduce(
             )
 
     @override
-    def reduce(
+    def reduce(  # noqa: C901
         self, dataset: _Data, solver_state: Optional[_State] = None
     ) -> tuple[_Coreset, _State]:
         # There is no obvious way to use state information here.
@@ -143,12 +143,11 @@ class MapReduce(
         ) -> tuple[_Coreset, _State, Optional[_Indices]]:
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
-                if _indices is not None:
-                    # TODO: can we avoid Nodes here?
-                    _indices = _indices[coreset.nodes.data]
+                if _indices is not None and isinstance(coreset, Coresubset):
+                    _indices = _indices[coreset.indices.data]
                 return coreset, state, _indices
 
-            def wrapper(partition: _Data) -> tuple[_Data, Array]:
+            def wrapper(partition: _Data) -> tuple[_Data, Optional[Array]]:
                 """
                 Apply the `reduce` method of the base solver on a partition.
 
@@ -157,8 +156,9 @@ class MapReduce(
                 The reduction is performed on each partition via ``vmap()``.
                 """
                 x, _ = self.base_solver.reduce(partition)
-                # TODO: can we avoid `nodes` here?
-                return x.points, x.nodes.data
+                if isinstance(x, Coresubset):
+                    return x.points, x.indices.data
+                return x.points, None
 
             partitioned_dataset, partitioned_indices = _jit_tree(
                 data, self.leaf_size, self.tree_type

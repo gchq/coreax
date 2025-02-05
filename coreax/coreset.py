@@ -112,7 +112,7 @@ class PseudoCoreset(
 
     The points of a pseudo-coreset are not necessarily points in the original dataset.
 
-    :param indices: The (weighted) coreset nodes, :math:`I`; these can be
+    :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
         accessed via :meth:`Coresubset.points`.
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """

@@ -1927,17 +1927,6 @@ class TestMapReduce(SolverTest):
     @override
     @pytest.fixture(scope="class")
     def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
-        base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
-        base_solver.coreset_size = self.coreset_size
-
-        def mock_reduce(
-            dataset: Data, solver_state: None = None
-        ) -> tuple[AbstractCoreset[Data, Data], None]:
-            indices = jnp.arange(base_solver.coreset_size)
-            return PseudoCoreset(dataset[indices], dataset), solver_state
-
-        base_solver.reduce = mock_reduce
-
         class _MockTree:
             def __init__(self, _data: np.ndarray, **kwargs):
                 del kwargs
@@ -1947,35 +1936,88 @@ class TestMapReduce(SolverTest):
                 """Mock sklearn.neighbours.BinaryTree.get_arrays method."""
                 return None, np.arange(len(self.data)), None, None
 
-        return jtu.Partial(
-            MapReduce,
-            base_solver=base_solver,
-            leaf_size=self.leaf_size,
-            tree_type=_MockTree,
-        )
+        def get_solver(flavour: str = "original", **kwargs) -> Solver:
+            base_solver = MagicMock(_ExplicitPaddingInvariantSolver)
+            base_solver.coreset_size = self.coreset_size
+
+            if flavour == "original":
+                # As this test was originally. Build a PseudoCoreset that is essentially
+                # a Coresubset.
+
+                def mock_reduce(
+                    dataset: Data, solver_state: None = None
+                ) -> tuple[AbstractCoreset[Data, Data], None]:
+                    indices = jnp.arange(base_solver.coreset_size)
+                    return PseudoCoreset(dataset[indices], dataset), solver_state
+
+            elif flavour == "coresubset":
+                # Do essentially the same as for "original", just make it an actual
+                # Coresubset.
+
+                def mock_reduce(
+                    dataset: Data, solver_state: None = None
+                ) -> tuple[AbstractCoreset[Data, Data], None]:
+                    indices = jnp.arange(base_solver.coreset_size)
+                    return Coresubset.build(indices, dataset), solver_state
+
+            elif flavour == "pseudo":
+                # Make a PseudoCoreset that just contains ones.
+
+                def mock_reduce(
+                    dataset: Data, solver_state: None = None
+                ) -> tuple[AbstractCoreset[Data, Data], None]:
+                    points = jnp.ones(base_solver.coreset_size, dtype=jnp.floating)
+                    return PseudoCoreset.build(points, dataset), solver_state
+
+            else:
+                raise ValueError(flavour)
+
+            base_solver.reduce = mock_reduce
+
+            final_args = {
+                "base_solver": base_solver,
+                "leaf_size": self.leaf_size,
+                "tree_type": _MockTree,
+            }
+
+            # Allow overriding arguments
+            final_args.update(**kwargs)
+
+            return MapReduce(**final_args)
+
+        return jtu.Partial(get_solver)
 
     @override
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="class", params=["original", "pseudo", "coresubset"])
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
         solver_factory: Union[type[Solver], jtu.Partial],
     ) -> _ReduceProblem:
-        del request
         dataset = jnp.broadcast_to(jnp.arange(self.shape[0])[..., None], self.shape)
-        solver = solver_factory()
-        # Expected procedure:
-        # len(dataset) = 128; leaf_size=32
-        # (1): 128 -> Partition -> 4x32 -> Reduce -> 4x16 -> Reshape -> 64
-        # (2): 64  -> Partition -> 2x32 -> Reduce -> 2x16 -> Reshape -> 32
-        # (3): 32  -> Partition -> 1x32 -> Reduce -> 1x16 -> Reshape -> 16
-        # Expected sub-coreset values at each step.
-        # (1): [:16], [32:48], [64:80], [96:112]
-        # (2): [:16], [64:80]
-        # (3): [:16] <- 'coreset_size'
-        expected_coreset = PseudoCoreset.build(
-            dataset[: self.coreset_size], Data(dataset)
-        )
+        solver_flavour = request.param
+        solver = solver_factory(solver_flavour)
+        if solver_flavour == "original":
+            # Expected procedure:
+            # len(dataset) = 128; leaf_size=32
+            # (1): 128 -> Partition -> 4x32 -> Reduce -> 4x16 -> Reshape -> 64
+            # (2): 64  -> Partition -> 2x32 -> Reduce -> 2x16 -> Reshape -> 32
+            # (3): 32  -> Partition -> 1x32 -> Reduce -> 1x16 -> Reshape -> 16
+            # Expected sub-coreset values at each step.
+            # (1): [:16], [32:48], [64:80], [96:112]
+            # (2): [:16], [64:80]
+            # (3): [:16] <- 'coreset_size'
+            expected_coreset = PseudoCoreset.build(
+                dataset[: self.coreset_size], dataset
+            )
+        elif solver_flavour == "coresubset":
+            # As above, but a Coresubset
+            expected_coreset = Coresubset.build(jnp.arange(self.coreset_size), dataset)
+        elif solver_flavour == "pseudo":
+            # PseudoCoreset mock solver just returns ones
+            expected_coreset = PseudoCoreset.build(jnp.ones(self.coreset_size), dataset)
+        else:
+            raise ValueError(solver_flavour)
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     @pytest.mark.parametrize(
