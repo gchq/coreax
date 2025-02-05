@@ -75,11 +75,9 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def nodes(self) -> Data:
         """Deprecated alias for `indices` or `points`, depending on subclass."""
 
+    @abstractmethod
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
-        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
-        # TODO: Can we avoid using `nodes` here?
-        return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
 
     def compute_metric(
         self, metric: Metric[Data], **metric_kwargs
@@ -240,6 +238,12 @@ class PseudoCoreset(
         """Deprecated alias for `points`."""
         return self.points
 
+    @override
+    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
+        """Return a copy of 'self' with weights solved by 'solver'."""
+        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        return eqx.tree_at(lambda x: x.points.weights, self, weights)
+
 
 @deprecated("Use AbstractCoreset, PseudoCoreset, or Coresubset instead.")
 class Coreset(PseudoCoreset):
@@ -388,8 +392,9 @@ class Coresubset(
 
     @override
     def __len__(self) -> int:
-        # TODO: this is a hacky temporary fix. The underlying issue is that Coresubset
-        #  doesn't seem to handle 2d data properly if len(indices)==1.
+        # TODO: this feels like a hacky temporary fix - the underlying issue is that
+        #  Coresubset doesn't seem to handle 2d data properly if len(indices)==1.
+        # https://github.com/gchq/coreax/issues/952
         return len(self.indices)
 
     @property
@@ -408,3 +413,9 @@ class Coresubset(
     def nodes(self) -> Data:
         """Deprecated alias for `indices`."""
         return self.indices
+
+    @override
+    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
+        """Return a copy of 'self' with weights solved by 'solver'."""
+        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        return eqx.tree_at(lambda x: x.indices.weights, self, weights)
