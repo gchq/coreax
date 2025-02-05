@@ -6,6 +6,7 @@ dictionaries:
   - custom-misc
   - library-terms
   - people
+  - python
 dictionaryDefinitions:
   - name: custom-misc
     path: ./.cspell/custom_misc.txt

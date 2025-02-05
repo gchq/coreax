@@ -6,6 +6,8 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
+    # Note that we use 3.12 here rather than 3.13 to avoid spurious Sphinx errors
+    # about not being able to link to `pathlib._locals.Path`.
     python: "3.12"
 
 sphinx:
