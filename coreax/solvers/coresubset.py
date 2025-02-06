@@ -1505,36 +1505,6 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             Data(reduced_indices[thinning_coreset.nodes.data]), dataset
         ), None
 
-    def partition_with_indices(
-        self, data: _Data, depth: int
-    ) -> tuple[_Data, jax.Array]:
-        """
-        Partition data indices into a hierarchical structure.
-
-        If depth = 1, the dataset is partitioned into 4 datasets of size one-fourth each
-
-        :param data: The data to be partitioned.
-        :param depth: The depth of the partitioning hierarchy.
-        :return: A tuple containing the partitioned data and indices.
-        """
-        data_size = len(data)
-
-        if depth == 1:
-            indices = jnp.arange(data_size).reshape(4, -1)
-        else:
-            chunk_size = data_size // 4
-            indices = jnp.stack(
-                [
-                    self.partition_with_indices(
-                        cast(_Data, Data(jnp.arange(chunk_size))), depth - 1
-                    )[1]
-                    + i * chunk_size
-                    for i in range(4)
-                ]
-            )
-
-        return data[indices], indices
-
     def partition_indices(self, data_size: int, depth: int) -> jax.Array:
         """
         Partition data indices into a hierarchical structure.
