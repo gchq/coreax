@@ -792,7 +792,7 @@ class GreedyKernelPoints(
         else:
             least_squares_solver = self.least_squares_solver
 
-        # If the initialisation coresubset is too small, pad its nodes up to
+        # If the initialisation coresubset is too small, pad its indices up to
         # 'output_size' with -1 valued indices. If it is too large, raise a warning and
         # clip off the indices at the end.
         if self.coreset_size > len(coresubset):
