@@ -14,7 +14,8 @@
 
 """Data-structures for representing weighted and/or supervised data."""
 
-from typing import Optional, Sequence, Union, overload
+from collections.abc import Sequence
+from typing import Optional, Union, overload
 
 import equinox as eqx
 import jax.numpy as jnp

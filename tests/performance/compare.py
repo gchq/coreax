@@ -19,7 +19,7 @@ import datetime
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from scipy.stats import ttest_ind_from_stats
 from typing_extensions import TypedDict
@@ -65,11 +65,11 @@ class SinglePerformanceTestData(TypedDict):
 class FullPerformanceData(TypedDict):
     """Type hint for the full performance test data file."""
 
-    results: Dict[str, SinglePerformanceTestData]
+    results: dict[str, SinglePerformanceTestData]
     normalisation: NormalisationData
 
 
-def parse_args() -> Tuple[Path, Path, str, Path]:
+def parse_args() -> tuple[Path, Path, str, Path]:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -94,7 +94,7 @@ def parse_args() -> Tuple[Path, Path, str, Path]:
     )
 
 
-def date_from_filename(path: Path) -> Optional[Tuple[datetime.datetime, str]]:
+def date_from_filename(path: Path) -> Optional[tuple[datetime.datetime, str]]:
     """
     Extract the date from a performance data file name.
 
@@ -149,7 +149,7 @@ def get_most_recent_historic_data(
     :return: Dictionary `(test_name -> dictionary(statistic -> value))` extracted from
         the most recent performance file
     """
-    files: Dict[Path, Tuple[datetime.datetime, str]] = {}
+    files: dict[Path, tuple[datetime.datetime, str]] = {}
     for filename in reference_directory.iterdir():
         date_tuple = date_from_filename(filename)
         if date_tuple is not None:
@@ -163,7 +163,7 @@ def get_most_recent_historic_data(
 
     most_recent_file = max(files.keys(), key=files.get)
 
-    with open(most_recent_file, "r", encoding="utf8") as f:
+    with open(most_recent_file, encoding="utf8") as f:
         return json.load(f)
 
 
@@ -189,13 +189,13 @@ def main() -> None:  # noqa: C901
     performance_file, reference_directory, commit_short_hash, commit_subject_file = (
         parse_args()
     )
-    with open(commit_subject_file, "r", encoding="utf8") as f:
+    with open(commit_subject_file, encoding="utf8") as f:
         # escape any underscores to avoid formatting weirdness
         commit_subject = f.read().strip().replace("_", r"\_")
 
     print(f"###### Commit `{commit_short_hash}` - _{commit_subject}_")
 
-    with open(performance_file, "r", encoding="utf8") as f:
+    with open(performance_file, encoding="utf8") as f:
         current_performance_data: dict = json.load(f)
     historic_performance_data = get_most_recent_historic_data(reference_directory)
 
@@ -270,9 +270,9 @@ def relative_change(before: float, after: float) -> float:
 
 
 def get_significant_differences(
-    current_performance: Dict[str, SinglePerformanceTestData],
-    historic_performance: Dict[str, SinglePerformanceTestData],
-) -> List[Tuple[str, List[str]]]:
+    current_performance: dict[str, SinglePerformanceTestData],
+    historic_performance: dict[str, SinglePerformanceTestData],
+) -> list[tuple[str, list[str]]]:
     """
     Check if there are any significant differences in performance.
 

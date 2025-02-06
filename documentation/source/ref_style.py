@@ -22,7 +22,7 @@ Path: test/roots/test-bibliography_style_label_1/conf.py
 
 from __future__ import annotations
 
-from typing import Generator, Iterable
+from collections.abc import Generator, Iterable
 
 from pybtex.database import Entry
 from pybtex.plugin import register_plugin

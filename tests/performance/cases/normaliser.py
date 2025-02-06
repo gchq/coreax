@@ -14,8 +14,6 @@
 
 """A simple test that serves to normalise other performance test results."""
 
-from typing import Tuple
-
 from jax import (
     Array,
     numpy as jnp,
@@ -25,7 +23,7 @@ from jax import (
 from coreax.util import JITCompilableFunction
 
 
-def _setup_data() -> Tuple[Array, Array]:
+def _setup_data() -> tuple[Array, Array]:
     """Set up a large random matrix to be operated on."""
     key = jr.key(1_234)
     # big matrix to ensure high execution time
