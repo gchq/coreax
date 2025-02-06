@@ -438,6 +438,8 @@ disable=too-many-lines,
 # Throws false positives that prevent abstract class hierarchies; The check is
 # handled at instantiation time by other linting rules.
         abstract-method,
+# Ruff's line-too-long handling is better - no need to duplicate it here
+        line-too-long,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

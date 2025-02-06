@@ -121,7 +121,7 @@ def get_most_recent_coverage_total(reference_directory: Path) -> float:
         print("**WARNING: No historic coverage data found.**")
         return 0
 
-    most_recent_file = max(files.keys(), key=files.get)
+    most_recent_file = max(files.keys(), key=files.__getitem__)
 
     with open(most_recent_file, "r", encoding="utf8") as f:
         coverage_dict = json.load(f)
