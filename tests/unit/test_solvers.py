@@ -2446,6 +2446,15 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
         with pytest.raises(ValueError):
             modified_solver.reduce(dataset)
 
+        incompatible_solver = eqx.tree_at(lambda x: x.coreset_size, solver, 100)
+
+        # Now check if the ValueError is raised for incompatible depth and coreset size
+        with pytest.raises(
+            ValueError,
+            match="Depth and coreset size are not compatible with the dataset size.",
+        ):
+            incompatible_solver.reduce(dataset)
+
     def test_compress_half(self, reduce_problem: _ReduceProblem) -> None:
         """
         Test that `compress_half` reduces the dataset to half its size.
@@ -2509,4 +2518,4 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
 
         # Assert expected output
         expected_output = jnp.array([[0], [7], [12]])
-        assert jnp.array_equal(x_compress.coreset.data, expected_output), "Test failed!"
+        assert jnp.array_equal(x_compress.coreset.data, expected_output)
