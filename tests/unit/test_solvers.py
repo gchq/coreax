@@ -163,6 +163,7 @@ class SolverTest:
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        **kwargs,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -173,6 +174,7 @@ class SolverTest:
             run, and keeping all other arguments the same.
         3. Check the two calls to 'refine' yield that same result.
         """
+        del kwargs
         dataset, solver, _ = reduce_problem
         coreset, state = jit_variant(solver.reduce)(dataset)
         if use_cached_state:
@@ -325,17 +327,17 @@ class RecombinationSolverTest(SolverTest):
             (None, pytest.raises(ValueError, match="Invalid mode")),
         ),
     )
-    # TODO:
-    # We don't care too much that arguments differ as this is required to override the
-    # parametrization. Nevertheless, this should probably be revisited in the future.
+    # Ignore pylint here; this is a perfectly valid override (because of **kwargs).
     # pylint: disable-next=arguments-differ
-    def test_reduce(  # pyright: ignore[reportIncompatibleMethodOverride]
+    def test_reduce(
         self,
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        *,
         recombination_mode: Literal["implicit-explicit", "implicit", "explicit"],
         context: AbstractContextManager,
+        **kwargs,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -349,6 +351,7 @@ class RecombinationSolverTest(SolverTest):
             run, and keeping all other arguments the same.
         3. Check the two calls to 'refine' yield that same result.
         """
+        del kwargs
         dataset, base_solver, expected_coreset = reduce_problem
         solver = eqx.tree_at(lambda x: x.mode, base_solver, recombination_mode)
         updated_problem = _ReduceProblem(dataset, solver, expected_coreset)
@@ -1158,6 +1161,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        **kwargs,
     ) -> None:
         """
         Check `coreax.solvers.RPCholesky.reduce` raises no errors.
@@ -1167,7 +1171,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             is `solver_state` invariant, which is not true for RPCholesky.
 
         """
-        super().test_reduce(jit_variant, reduce_problem, use_cached_state)
+        super().test_reduce(jit_variant, reduce_problem, use_cached_state, **kwargs)
 
     def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
         """
