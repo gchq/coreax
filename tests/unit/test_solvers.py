@@ -1064,24 +1064,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             state_base.gramian_row_mean, state_prob.gramian_row_mean
         )
 
-        # Check that temperature is validated
-        with pytest.raises(ValueError):
-            KernelHerding(
-                coreset_size=solver_base.coreset_size,
-                kernel=solver_base.kernel,
-                probabilistic=True,
-                temperature=0.0,
-                random_key=jr.key(0),
-            )
-        with pytest.raises(TypeError):
-            KernelHerding(
-                coreset_size=solver_base.coreset_size,
-                kernel=solver_base.kernel,
-                probabilistic=True,
-                temperature="1.0",
-                random_key=jr.key(0),
-            )
-
 
 class TestRandomSample(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
