@@ -136,6 +136,7 @@ select = [
     "PL",     # pylint
     "S102",   # exec-builtin
     "S307",   # suspicious-eval-usage
+    "UP",     # pyupgrade
     "W",      # pycodestyle [warning]
 ]
 
