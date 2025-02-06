@@ -50,21 +50,6 @@ _Data = TypeVar("_Data", bound=Data)
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
 
-def _ensure_positive(value: Union[float, int], name: str) -> float:
-    """
-    Ensure a value is positive and convert it to float.
-
-    :param value: The value to validate
-    :param name: Name of the parameter (for error message)
-    :return: The validated value as float
-    """
-    if not isinstance(value, (int, float)):
-        raise TypeError(f"{name} must be a number, got {type(value)}")
-    if value <= 0:
-        raise ValueError(f"{name} must be positive, got {value}")
-    return float(value)
-
-
 def _initial_coresubset(
     fill_value: int, coreset_size: int, dataset: _Data
 ) -> Coresubset[_Data]:
@@ -286,11 +271,7 @@ class KernelHerding(
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
     probabilistic: bool = False
-    temperature: float = eqx.field(
-        default=1.0,
-        # Ensure temperature is positive to avoid degenerate behaviour
-        converter=lambda x: _ensure_positive(x, "temperature"),
-    )
+    temperature: Union[float, Scalar] = eqx.field(default=1.0)
     random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
 
     @override
