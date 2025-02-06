@@ -179,8 +179,8 @@ def compute_solver_metrics(
     coresubset, _ = solver.reduce(dataset)
 
     # Unweighted metrics
-    unweighted_mmd = float(mmd_metric.compute(dataset, coresubset.coreset))
-    unweighted_ksd = float(ksd_metric.compute(dataset, coresubset.coreset))
+    unweighted_mmd = float(mmd_metric.compute(dataset, coresubset.points))
+    unweighted_ksd = float(ksd_metric.compute(dataset, coresubset.points))
 
     # Weighted metrics
     weighted_coresubset = coresubset.solve_weights(weights_optimiser)

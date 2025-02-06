@@ -30,7 +30,7 @@ from coreax.approximation import (
     MonteCarloApproximateKernel,
     NystromApproximateKernel,
 )
-from coreax.coreset import Coreset, Coresubset
+from coreax.coreset import AbstractCoreset, Coresubset, PseudoCoreset
 from coreax.data import Data, SupervisedData
 from coreax.kernels import (
     LaplacianKernel,
@@ -48,8 +48,9 @@ __all__ = [
     "ApproximateKernel",
     "MonteCarloApproximateKernel",
     "NystromApproximateKernel",
-    "Coreset",
+    "AbstractCoreset",
     "Coresubset",
+    "PseudoCoreset",
     "Data",
     "SupervisedData",
     "LaplacianKernel",

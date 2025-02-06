@@ -28,14 +28,14 @@ from jaxtyping import Integer
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import TypeAlias, override
 
-from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
+from coreax.coreset import AbstractCoreset, Coresubset
+from coreax.data import Data, SupervisedData
 from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
 from coreax.util import tree_zero_pad_leading_axis
 
 BinaryTree: TypeAlias = Union[KDTree, BallTree]
-_Data = TypeVar("_Data", bound=Data)
-_Coreset = TypeVar("_Coreset", Coreset, Coresubset)
+_Data = TypeVar("_Data", Data, SupervisedData)
+_Coreset = TypeVar("_Coreset", bound=AbstractCoreset)
 _State = TypeVar("_State")
 _Indices = Integer[Array, "..."]
 
@@ -122,7 +122,7 @@ class MapReduce(
             )
 
     @override
-    def reduce(
+    def reduce(  # noqa: C901
         self, dataset: _Data, solver_state: Optional[_State] = None
     ) -> tuple[_Coreset, _State]:
         # There is no obvious way to use state information here.
@@ -135,19 +135,19 @@ class MapReduce(
 
         @overload
         def _reduce_coreset(
-            data: _Data, _indices: Optional[_Indices] = None
-        ) -> tuple[_Coreset, _State, Optional[_Indices]]: ...
+            data: _Data, _indices: None = None
+        ) -> tuple[_Coreset, _State, None]: ...
 
         def _reduce_coreset(
             data: _Data, _indices: Optional[_Indices] = None
         ) -> tuple[_Coreset, _State, Optional[_Indices]]:
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
-                if _indices is not None:
-                    _indices = _indices[coreset.nodes.data]
+                if _indices is not None and isinstance(coreset, Coresubset):
+                    _indices = _indices[coreset.indices.data]
                 return coreset, state, _indices
 
-            def wrapper(partition: _Data) -> tuple[_Data, Array]:
+            def wrapper(partition: _Data) -> tuple[_Data, Optional[Array]]:
                 """
                 Apply the `reduce` method of the base solver on a partition.
 
@@ -156,7 +156,9 @@ class MapReduce(
                 The reduction is performed on each partition via ``vmap()``.
                 """
                 x, _ = self.base_solver.reduce(partition)
-                return x.coreset, x.nodes.data
+                if isinstance(x, Coresubset):
+                    return x.points, x.indices.data
+                return x.points, None
 
             partitioned_dataset, partitioned_indices = _jit_tree(
                 data, self.leaf_size, self.tree_type
@@ -181,7 +183,7 @@ class MapReduce(
         coreset = eqx.tree_at(lambda x: x.pre_coreset_data, pre_coreset, dataset)
         if _indices is not None:
             if isinstance(coreset, Coresubset):
-                coreset = eqx.tree_at(lambda x: x.nodes.data, coreset, _indices)
+                coreset = eqx.tree_at(lambda x: x.indices.data, coreset, _indices)
         return coreset, output_solver_state
 
 

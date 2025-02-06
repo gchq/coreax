@@ -14,26 +14,41 @@
 
 """Module for defining coreset data structures."""
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+import warnings
+from abc import abstractmethod
+from typing import (
+    TYPE_CHECKING,
+    Final,
+    Generic,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
-from typing_extensions import Self
+from typing_extensions import Self, deprecated, override
 
-from coreax.data import Data, as_data, as_supervised_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
 from coreax.weights import WeightsOptimiser
 
 if TYPE_CHECKING:
     from typing import Any  # noqa: F401
 
-_Data = TypeVar("_Data", bound=Data)
+# `_co` is a well-established suffix for covariant TypeVars
+# pylint: disable=invalid-name
+_TPointsData_co = TypeVar("_TPointsData_co", Data, SupervisedData, covariant=True)
+_TOriginalData = TypeVar("_TOriginalData", Data, SupervisedData)
+_TOriginalData_co = TypeVar("_TOriginalData_co", Data, SupervisedData, covariant=True)
+# pylint: enable=invalid-name
 
 
-class Coreset(eqx.Module, Generic[_Data]):
+class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     r"""
-    Data structure for representing a coreset.
+    Abstract base class for coresets.
 
     A coreset is a reduced set of :math:`\hat{n}` (potentially weighted) data points,
     :math:`\hat{X} := \{(\hat{x}_i, \hat{w}_i)\}_{i=1}^\hat{n}` that, in some sense,
@@ -42,61 +57,202 @@ class Coreset(eqx.Module, Generic[_Data]):
 
     :math:`\hat{x}_i, x_i \in \Omega` represent the data points/nodes and
     :math:`\hat{w}_i, w_i \in \mathbb{R}` represent the associated weights.
-
-    :param nodes: The (weighted) coreset nodes, :math:`\hat{x}_i`; once instantiated,
-        the nodes should only be accessed via :meth:`Coresubset.coreset`
-    :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    nodes: _Data
-    pre_coreset_data: _Data
+    @property
+    @abstractmethod
+    def points(self) -> _TPointsData_co:
+        """The coreset points."""
 
-    def __init__(self, nodes: _Data, pre_coreset_data: _Data) -> None:
-        """Handle type conversion of ``nodes`` and ``pre_coreset_data``."""
-        if isinstance(nodes, Array):
-            self.nodes = as_data(nodes)
-        elif isinstance(nodes, tuple):
-            self.nodes = as_supervised_data(nodes)
-        else:
-            self.nodes = nodes
+    @property
+    @abstractmethod
+    def pre_coreset_data(self) -> _TOriginalData_co:
+        """The original data that this coreset is based on."""
 
-        if isinstance(pre_coreset_data, Array):
-            self.pre_coreset_data = as_data(pre_coreset_data)
-        elif isinstance(pre_coreset_data, tuple):
-            self.pre_coreset_data = as_supervised_data(pre_coreset_data)
-        else:
-            self.pre_coreset_data = pre_coreset_data
+    @property
+    @abstractmethod
+    @deprecated("Narrow to a subclass, then use `.indices` or `.points` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `indices` or `points`, depending on subclass."""
 
-    def __check_init__(self) -> None:
-        """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
-        if len(self.nodes) > len(self.pre_coreset_data):
-            raise ValueError(
-                "'len(nodes)' cannot be greater than 'len(pre_coreset_data)' "
-                "by definition of a Coreset"
-            )
+    @abstractmethod
+    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
+        """Return a copy of 'self' with weights solved by 'solver'."""
+
+    def compute_metric(
+        self, metric: Metric[Data], **metric_kwargs
+    ) -> Shaped[Array, ""]:
+        """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
+        return metric.compute(self.pre_coreset_data, self.points, **metric_kwargs)
 
     def __len__(self) -> int:
         """Return Coreset size/length."""
-        return len(self.nodes)
+        return len(self.points)
+
+    def __check_init__(self) -> None:
+        """Check that coreset has fewer 'nodes' than the 'pre_coreset_data'."""
+        if len(self.points) > len(self.pre_coreset_data):
+            raise ValueError(
+                "'len(points)' cannot be greater than 'len(pre_coreset_data)' "
+                "by definition of a Coreset"
+            )
 
     @property
-    def coreset(self) -> _Data:
+    @deprecated("Use `.points` instead.")
+    def coreset(self) -> _TPointsData_co:
+        """Deprecated alias for `.points`."""
+        return self.points
+
+
+class PseudoCoreset(
+    AbstractCoreset[Data, _TOriginalData_co], Generic[_TOriginalData_co]
+):
+    r"""
+    Data structure for representing a pseudo-coreset.
+
+    The points of a pseudo-coreset are not necessarily points in the original dataset.
+
+    :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
+        accessed via :meth:`Coresubset.points`.
+    :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
+    """
+
+    # These aren't _constants_ so much as just _read-only_, so it doesn't make sense
+    # for them to be in SCREAMING_SNAKE_CASE. Also, even if they are changed to appease
+    # Pylint here, Pylint then just complains when they're assigned to in __init__
+    # instead!
+    # pylint: disable=invalid-name
+    _nodes: Final[Data]
+    _pre_coreset_data: Final[_TOriginalData_co]
+    # pylint: enable=invalid-name
+
+    def __init__(self, nodes: Data, pre_coreset_data: _TOriginalData_co) -> None:
+        """Initialise self."""
+        if isinstance(nodes, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            nodes = as_data(nodes)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, tuple):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+
+        if not isinstance(nodes, Data):
+            raise TypeError("`nodes` must be of type `Data`")
+        if not isinstance(pre_coreset_data, Data):
+            raise TypeError(
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+            )
+
+        self._nodes = nodes
+        self._pre_coreset_data = pre_coreset_data
+
+    @classmethod
+    @overload
+    def build(
+        cls, nodes: Union[Data, Array], pre_coreset_data: Array
+    ) -> "PseudoCoreset[Data]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        nodes: Union[Data, Array],
+        pre_coreset_data: Tuple[Array, Array],
+    ) -> "PseudoCoreset[SupervisedData]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        nodes: Union[Data, Array],
+        pre_coreset_data: _TOriginalData,
+    ) -> "PseudoCoreset[_TOriginalData]": ...
+
+    @classmethod
+    def build(
+        cls,
+        nodes: Union[Data, Array],
+        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+    ) -> "PseudoCoreset[Data]\
+        | PseudoCoreset[SupervisedData]\
+        | PseudoCoreset[_TOriginalData]\
+    ":
+        """
+        Construct a PseudoCoreset from Data or raw Arrays.
+
+        :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
+            accessed via :meth:`Coresubset.points`. :class:`jax.Array` instances are
+            automatically converted into :class:`~coreax.data.Data`.
+        :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
+            :class:`jax.Array` instances are automatically converted into
+            :class:`~coreax.data.Data`.
+            :class:`tuple` [:class:`jax.Array`, :class:`jax.Array`]
+            is automatically converted into :class:`~coreax.data.SupervisedData`.
+        """
+        if isinstance(pre_coreset_data, Array):
+            converted_pre_coreset_data = as_data(pre_coreset_data)
+        elif isinstance(pre_coreset_data, tuple):
+            converted_pre_coreset_data = SupervisedData(*pre_coreset_data)
+        else:
+            converted_pre_coreset_data = pre_coreset_data
+
+        return PseudoCoreset(as_data(nodes), converted_pre_coreset_data)
+
+    @property
+    @override
+    def points(self) -> Data:
         """Materialised coreset."""
-        return self.nodes
+        return self._nodes
 
-    def solve_weights(self, solver: WeightsOptimiser[_Data], **solver_kwargs) -> Self:
+    @property
+    @override
+    def pre_coreset_data(self):
+        return self._pre_coreset_data
+
+    @property
+    @override
+    @deprecated("Use `.points` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `points`."""
+        return self.points
+
+    @override
+    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
-        weights = solver.solve(self.pre_coreset_data, self.coreset, **solver_kwargs)
-        return eqx.tree_at(lambda x: x.nodes.weights, self, weights)
-
-    def compute_metric(
-        self, metric: Metric[_Data], **metric_kwargs
-    ) -> Shaped[Array, ""]:
-        """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
-        return metric.compute(self.pre_coreset_data, self.coreset, **metric_kwargs)
+        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        return eqx.tree_at(lambda x: x.points.weights, self, weights)
 
 
-class Coresubset(Coreset[_Data], Generic[_Data]):
+@deprecated("Use AbstractCoreset, PseudoCoreset, or Coresubset instead.")
+class Coreset(PseudoCoreset):
+    """Deprecated - split into AbstractCoreset and PseudoCoreset."""
+
+
+class Coresubset(
+    AbstractCoreset[_TOriginalData_co, _TOriginalData_co], Generic[_TOriginalData_co]
+):
     r"""
     Data structure for representing a coresubset.
 
@@ -116,30 +272,150 @@ class Coresubset(Coreset[_Data], Generic[_Data]):
     required (E.G. for some JAX transformations); the explicit approach is more similar
     to a standard coreset.
 
-    :param nodes: The (weighted) coresubset node indices, :math:`I`; the materialised
-        coresubset nodes should only be accessed via :meth:`Coresubset.coreset`.
+    :param indices: The (weighted) coresubset node indices, :math:`I`; the materialised
+        coresubset nodes should only be accessed via :meth:`Coresubset.points`.
     :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
     """
 
-    # Unlike on Coreset, contains indices of coreset rather than coreset itself
-    nodes: _Data
+    # These aren't _constants_ so much as just _read-only_, so it doesn't make sense
+    # for them to be in SCREAMING_SNAKE_CASE. Also, even if they are changed to appease
+    # Pylint here, Pylint then just complains when they're assigned to in __init__
+    # instead!
+    # pylint: disable=invalid-name
+    _indices: Final[Data]
+    _pre_coreset_data: Final[_TOriginalData_co]
+    # pylint: enable=invalid-name
 
-    def __init__(self, nodes: Data, pre_coreset_data: _Data):
-        """Handle typing of ``nodes`` being a `Data` instance."""
-        # nodes type can't technically be cast to _Data but do so anyway to avoid a
-        # significant amount of boilerplate just for type checking
-        super().__init__(
-            nodes,  # pyright: ignore [reportArgumentType]
-            pre_coreset_data,
-        )
+    def __init__(self, indices: Data, pre_coreset_data: _TOriginalData_co) -> None:
+        """Handle type conversion of ``indices`` and ``pre_coreset_data``."""
+        if isinstance(indices, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            indices = as_data(indices)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, Array):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+        if isinstance(pre_coreset_data, tuple):
+            warnings.warn(
+                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Use PseudoCoreset.build() instead. "
+                "In future, this will become a TypeError.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # pylint: disable-next=line-too-long
+            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
+
+        if not isinstance(indices, Data):
+            raise TypeError("`indices` must be of type `Data`")
+        if not isinstance(pre_coreset_data, Data):
+            raise TypeError(
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+            )
+
+        self._indices = indices
+        self._pre_coreset_data = pre_coreset_data
+
+    @classmethod
+    @overload
+    def build(
+        cls, indices: Union[Data, Array], pre_coreset_data: Array
+    ) -> "Coresubset[Data]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        indices: Union[Data, Array],
+        pre_coreset_data: Tuple[Array, Array],
+    ) -> "Coresubset[SupervisedData]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        indices: Union[Data, Array],
+        pre_coreset_data: _TOriginalData,
+    ) -> "Coresubset[_TOriginalData]": ...
+
+    @classmethod
+    def build(
+        cls,
+        indices: Union[Data, Array],
+        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+    ) -> "Coresubset[Data] | Coresubset[SupervisedData] | Coresubset[_TOriginalData]":
+        """
+        Construct a Coresubset from Data or raw Arrays.
+
+        :param indices: The (weighted) coresubset node indices, :math:`I`; the
+            materialised coresubset nodes should only be accessed via
+            :meth:`Coresubset.points`. :class:`jax.Array` instances are automatically
+            converted into :class:`~coreax.data.Data`.
+        :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
+            :class:`jax.Array` instances are automatically converted into
+            :class:`~coreax.data.Data`.
+            :class:`tuple` [:class:`jax.Array`, :class:`jax.Array`]
+            is automatically converted into :class:`~coreax.data.SupervisedData`.
+        """
+        if isinstance(pre_coreset_data, Array):
+            converted_pre_coreset_data = as_data(pre_coreset_data)
+        elif isinstance(pre_coreset_data, tuple):
+            converted_pre_coreset_data = SupervisedData(*pre_coreset_data)
+        else:
+            converted_pre_coreset_data = pre_coreset_data
+
+        return Coresubset(as_data(indices), converted_pre_coreset_data)
 
     @property
-    def coreset(self) -> _Data:
+    @override
+    def points(self) -> _TOriginalData_co:
         """Materialise the coresubset from the indices and original data."""
         coreset_data = self.pre_coreset_data[self.unweighted_indices]
-        return eqx.tree_at(lambda x: x.weights, coreset_data, self.nodes.weights)
+        return eqx.tree_at(lambda x: x.weights, coreset_data, self._indices.weights)
 
     @property
     def unweighted_indices(self) -> Shaped[Array, " n"]:
         """Unweighted Coresubset indices - attribute access helper."""
-        return jnp.squeeze(self.nodes.data)
+        return jnp.squeeze(self._indices.data)
+
+    @override
+    def __len__(self) -> int:
+        # TODO: this feels like a hacky temporary fix - the underlying issue is that
+        #  Coresubset doesn't seem to handle 2d data properly if len(indices)==1.
+        # https://github.com/gchq/coreax/issues/952
+        return len(self.indices)
+
+    @property
+    @override
+    def pre_coreset_data(self):
+        return self._pre_coreset_data
+
+    @property
+    def indices(self) -> Data:
+        """The (possibly weighted) Coresubset indices."""
+        return self._indices
+
+    @property
+    @override
+    @deprecated("Use `.indices` instead.")
+    def nodes(self) -> Data:
+        """Deprecated alias for `indices`."""
+        return self.indices
+
+    @override
+    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
+        """Return a copy of 'self' with weights solved by 'solver'."""
+        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        return eqx.tree_at(lambda x: x.indices.weights, self, weights)

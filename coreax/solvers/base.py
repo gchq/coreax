@@ -19,11 +19,11 @@ from typing import Generic, Optional, TypeVar
 
 import equinox as eqx
 
-from coreax.coreset import Coreset, Coresubset
-from coreax.data import Data
+from coreax.coreset import AbstractCoreset, Coresubset
+from coreax.data import Data, SupervisedData
 
-_Data = TypeVar("_Data", bound=Data)
-_Coreset = TypeVar("_Coreset", bound=Coreset)
+_Data = TypeVar("_Data", Data, SupervisedData)
+_Coreset = TypeVar("_Coreset", bound=AbstractCoreset)
 _State = TypeVar("_State")
 
 
@@ -94,7 +94,9 @@ class RefinementSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
         """
 
 
-class ExplicitSizeSolver(Solver):
+class ExplicitSizeSolver(
+    Solver[_Coreset, _Data, _State], Generic[_Coreset, _Data, _State]
+):
     """
     A :class:`Solver` which produces a coreset of an explicitly specified size.
 
@@ -109,7 +111,9 @@ class ExplicitSizeSolver(Solver):
             raise ValueError("'coreset_size' must be a positive integer")
 
 
-class PaddingInvariantSolver(Solver):
+class PaddingInvariantSolver(
+    Solver[_Coreset, _Data, _State], Generic[_Coreset, _Data, _State]
+):
     """
     A :class:`Solver` whose results are invariant to zero weighted data.
 
