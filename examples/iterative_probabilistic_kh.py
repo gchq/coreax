@@ -68,7 +68,7 @@ def get_kernels(
     num_samples_length_scale = min(num_data_points, 1_000)
     generator = np.random.default_rng(random_seed)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
-    length_scale = median_heuristic(data[idx])
+    length_scale = median_heuristic(data.data[idx])
     return (
         SquaredExponentialKernel(length_scale=length_scale),
         SquaredExponentialKernel(
