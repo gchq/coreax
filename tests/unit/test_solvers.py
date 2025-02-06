@@ -2453,3 +2453,60 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
         dataset, solver, _ = reduce_problem
         coreset, _ = solver.compress_half(dataset)
         assert len(coreset.coreset.data) == len(dataset.data) // 2
+
+    def test_compress_plus_plus_analytic(self) -> None:
+        """
+        Test the Compress++ coreset algorithm on analytical example.
+
+        Suppose we wish to reduce a dataset [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] into
+        a coreset of size 3 with depth = 1. Suppose also that kernel thinning, for now,
+        returns every third element. Here is how Compress++ works. We first divide the
+        dataset into four partitions: [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15].
+        Next, we half of each dataset by using kernel thinning (which for us returns
+        every third element i.e. first and fourth elements from each list): [0,3],
+        [4,7], [8,11], [12,15]. We then concatenate these to form [0,3,4,7,8,11,12,15]
+        and reduce this to a dataset of size 3 using kernel thinning, selecting the
+        first, fourth, and seventh indices, resulting in [0,7,12].
+        """
+
+        def mock_reduce(self, dataset: Data) -> tuple[Coresubset[Data], None]:
+            """Select every 3rd element modulo dataset size."""
+            n = len(dataset)
+            print("mock reduce called")
+            indices = jnp.array([(3 * i) % n for i in range(self.coreset_size)])
+            return Coresubset(Data(indices), dataset), None
+
+        # Set PRNG key
+        key = jax.random.PRNGKey(seed=0)
+
+        # Define kernel
+        kernel = SquaredExponentialKernel()
+        sqrt_kernel = kernel.get_sqrt_kernel(1)
+
+        # Create dataset
+        x = jnp.arange(16)
+        dataset = Data(jnp.array(x))
+
+        # Define delta
+        delta = 1 / (512 * jnp.log(jnp.log(512)))
+
+        # Set coreset size
+        coreset_size = 3
+
+        # Patch only the reduce method of KernelThinning
+        with patch.object(KernelThinning, "reduce", mock_reduce):
+            compress_solver = CompressPlusPlus(
+                coreset_size=coreset_size,
+                random_key=key,
+                kernel=kernel,
+                sqrt_kernel=sqrt_kernel,
+                delta=delta,
+                depth=1,
+            )
+
+            x_compress, _ = compress_solver.reduce(dataset)
+            print("x_compress", x_compress.coreset.data)
+
+        # Assert expected output
+        expected_output = jnp.array([[0], [7], [12]])
+        assert jnp.array_equal(x_compress.coreset.data, expected_output), "Test failed!"
