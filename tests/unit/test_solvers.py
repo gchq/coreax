@@ -22,7 +22,16 @@ from contextlib import (
     AbstractContextManager,
     nullcontext as does_not_raise,
 )
-from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Generic,
+    Literal,
+    NamedTuple,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+)
 from unittest.mock import MagicMock, patch
 
 import equinox as eqx
@@ -69,17 +78,31 @@ _Data = TypeVar("_Data", Data, SupervisedData)
 _Solver = TypeVar("_Solver", bound=Solver)
 _RefinementSolver = TypeVar("_RefinementSolver", bound=RefinementSolver)
 
+if TYPE_CHECKING:
+    # In Python 3.9-3.10, this raises
+    # `TypeError: Multiple inheritance with NamedTuple is not supported`.
+    # Thus, we have to do the actual full typing here, and a non-generic one
+    # below to be used at runtime.
+    class _ReduceProblem(NamedTuple, Generic[_Data, _Solver]):
+        dataset: _Data
+        solver: _Solver
+        expected_coreset: Optional[AbstractCoreset] = None
 
-class _ReduceProblem(NamedTuple, Generic[_Data, _Solver]):
-    dataset: _Data
-    solver: _Solver
-    expected_coreset: Optional[AbstractCoreset] = None
+    class _RefineProblem(NamedTuple, Generic[_RefinementSolver]):
+        initial_coresubset: Coresubset
+        solver: _RefinementSolver
+        expected_coresubset: Optional[Coresubset] = None
+else:
+    # This is the implementation that's used at runtime.
+    class _ReduceProblem(NamedTuple):
+        dataset: _Data
+        solver: _Solver
+        expected_coreset: Optional[AbstractCoreset] = None
 
-
-class _RefineProblem(NamedTuple, Generic[_RefinementSolver]):
-    initial_coresubset: Coresubset
-    solver: _RefinementSolver
-    expected_coresubset: Optional[Coresubset] = None
+    class _RefineProblem(NamedTuple):
+        initial_coresubset: Coresubset
+        solver: _RefinementSolver
+        expected_coresubset: Optional[Coresubset] = None
 
 
 class SolverTest:
