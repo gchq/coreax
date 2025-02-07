@@ -70,7 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- The `coreax.kernel` module, deprecated in v0.3.0, has been removed. The kernels have
+  been moved to submodules of `coreax.kernels` - see the "Deprecated" section of v0.3.0
+  for more information. (https://github.com/gchq/coreax/pull/958)
+- `coreax.util.median_heuristic`, deprecated in v0.3.0 has been removed. This should be
+  replaced with `coreax.kernels.util.median_heuristic`.
+  for more information. (https://github.com/gchq/coreax/pull/958)
 
 ### Deprecated
 
