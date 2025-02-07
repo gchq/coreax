@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Incorrectly-implemented tests for the gradients of `PeriodicKernel`. (https://github.com/gchq/coreax/pull/936)
 - `MapReduce`'s warning about a solver not being padding-invariant is now raised at the
   correct stack level. (https://github.com/gchq/coreax/pull/951)
+- `len(coresubset.points)` is no longer incorrect for a coresubset of size 1 from a 2d
+  dataset. (https://github.com/gchq/coreax/pull/957)
 
 ### Changed
 
