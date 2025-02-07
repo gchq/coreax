@@ -116,6 +116,7 @@ pytest
 pytorch
 pytree
 pytrees
+pyupgrade
 quickstart
 rcfile
 rcond

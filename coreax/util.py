@@ -24,17 +24,14 @@ class factories and checks for numerical precision.
 import logging
 import sys
 import time
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import partial, wraps
 from math import log10
 from typing import (
     Any,
-    Dict,
     Generic,
     NamedTuple,
     Optional,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -76,13 +73,13 @@ class JITCompilableFunction(NamedTuple):
 
     fn: Callable
     fn_args: tuple = ()
-    fn_kwargs: Optional[Dict[str, Any]] = None
-    jit_kwargs: Optional[Dict[str, Any]] = None
+    fn_kwargs: Optional[dict[str, Any]] = None
+    jit_kwargs: Optional[dict[str, Any]] = None
     name: Optional[str] = None
 
     def without_name(
         self,
-    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> tuple[Callable, tuple, Optional[dict[str, Any]], Optional[dict[str, Any]]]:
         """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
         return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
@@ -378,7 +375,7 @@ def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
     log_results: bool = False,
-    normalisation: Optional[Tuple[float, float]] = None,
+    normalisation: Optional[tuple[float, float]] = None,
 ) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.

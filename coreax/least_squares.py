@@ -52,7 +52,8 @@ block.
 """
 
 from abc import abstractmethod
-from typing import Any, Optional, Sequence, Union, cast
+from collections.abc import Sequence
+from typing import Any, Optional, Union, cast
 
 import equinox as eqx
 import jax

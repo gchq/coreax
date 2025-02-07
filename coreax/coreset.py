@@ -20,7 +20,6 @@ from typing import (
     TYPE_CHECKING,
     Final,
     Generic,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -179,7 +178,7 @@ class PseudoCoreset(
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Tuple[Array, Array],
+        pre_coreset_data: tuple[Array, Array],
     ) -> "PseudoCoreset[SupervisedData]": ...
 
     @classmethod
@@ -194,7 +193,7 @@ class PseudoCoreset(
     def build(
         cls,
         nodes: Union[Data, Array],
-        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+        pre_coreset_data: Union[_TOriginalData, Array, tuple[Array, Array]],
     ) -> "PseudoCoreset[Data]\
         | PseudoCoreset[SupervisedData]\
         | PseudoCoreset[_TOriginalData]\
@@ -339,7 +338,7 @@ class Coresubset(
     def build(
         cls,
         indices: Union[Data, Array],
-        pre_coreset_data: Tuple[Array, Array],
+        pre_coreset_data: tuple[Array, Array],
     ) -> "Coresubset[SupervisedData]": ...
 
     @classmethod
@@ -354,7 +353,7 @@ class Coresubset(
     def build(
         cls,
         indices: Union[Data, Array],
-        pre_coreset_data: Union[_TOriginalData, Array, Tuple[Array, Array]],
+        pre_coreset_data: Union[_TOriginalData, Array, tuple[Array, Array]],
     ) -> "Coresubset[Data] | Coresubset[SupervisedData] | Coresubset[_TOriginalData]":
         """
         Construct a Coresubset from Data or raw Arrays.
