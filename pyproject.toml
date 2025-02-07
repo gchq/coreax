@@ -66,6 +66,7 @@ test = [
     "pytest>=8",
     "pytest-cov>=6",
     "pytest-rerunfailures>=15",
+    "pytest-xdist>=3",
     "scipy>=1.13",
 ]
 # Compile documentation

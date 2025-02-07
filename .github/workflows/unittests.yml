@@ -58,10 +58,10 @@ jobs:
     - name: Debug - uv pip freeze
       run: uv pip freeze
     - name: Test with pytest
-      run: uv run pytest --ignore=tests/integration
+      run: uv run pytest --ignore=tests/integration -n auto --dist worksteal
     # Integration tests are slow, so only run if all other tests pass.
     - name: Test integration tests
-      run: uv run pytest tests/integration
+      run: uv run pytest tests/integration -n auto --dist worksteal
     - name: Minimize UV cache
       run: uv cache prune --ci
       if: always()
