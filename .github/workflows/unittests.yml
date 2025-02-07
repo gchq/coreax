@@ -27,6 +27,8 @@ jobs:
     env:
       # Set the Python version that `uv` will use for its virtual environment.
       UV_PYTHON: ${{ matrix.python-version }}
+      # Disable implicitly syncing before running - we run an explicit sync first.
+      UV_NO_SYNC: true
     steps:
     - uses: actions/checkout@v4
     - name: Set up base Python

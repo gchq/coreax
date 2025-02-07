@@ -16,6 +16,8 @@ jobs:
       # Note that we use 3.12 here rather than 3.13 to avoid spurious Sphinx errors
       # about not being able to link to `pathlib._locals.Path`.
       UV_PYTHON: 3.12
+      # Disable implicitly syncing before running - we run an explicit sync first.
+      UV_NO_SYNC: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
