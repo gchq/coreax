@@ -71,7 +71,11 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
 
     @property
     @abstractmethod
-    @deprecated("Narrow to a subclass, then use `.indices` or `.points` instead.")
+    @deprecated(
+        "Narrow to a subclass, then use `.indices` or `.points` instead. "
+        + "Deprecated since v0.4.0. "
+        + "Will be removed in v1.0.0."
+    )
     def nodes(self) -> Data:
         """Deprecated alias for `indices` or `points`, depending on subclass."""
 
@@ -98,7 +102,11 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
             )
 
     @property
-    @deprecated("Use `.points` instead.")
+    @deprecated(
+        "Use `.points` instead."
+        + "Deprecated since v0.4.0. "
+        + "Will be removed in v1.0.0."
+    )
     def coreset(self) -> _TPointsData_co:
         """Deprecated alias for `.points`."""
         return self.points
@@ -130,18 +138,18 @@ class PseudoCoreset(
         """Initialise self."""
         if isinstance(nodes, Array):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
             nodes = as_data(nodes)  # pyright: ignore[reportAssignmentType]
         if isinstance(pre_coreset_data, Array):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -149,9 +157,9 @@ class PseudoCoreset(
             pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
         if isinstance(pre_coreset_data, tuple):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
+                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -233,7 +241,11 @@ class PseudoCoreset(
 
     @property
     @override
-    @deprecated("Use `.points` instead.")
+    @deprecated(
+        "Use `.points` instead."
+        + "Deprecated since v0.4.0. "
+        + "Will be removed in v1.0.0."
+    )
     def nodes(self) -> Data:
         """Deprecated alias for `points`."""
         return self.points
@@ -245,7 +257,11 @@ class PseudoCoreset(
         return eqx.tree_at(lambda x: x.points.weights, self, weights)
 
 
-@deprecated("Use AbstractCoreset, PseudoCoreset, or Coresubset instead.")
+@deprecated(
+    "Use AbstractCoreset, PseudoCoreset, or Coresubset instead."
+    + "Deprecated since v0.4.0. "
+    + "Will be removed in v1.0.0."
+)
 class Coreset(PseudoCoreset):
     """Deprecated - split into AbstractCoreset and PseudoCoreset."""
 
@@ -290,18 +306,18 @@ class Coresubset(
         """Handle type conversion of ``indices`` and ``pre_coreset_data``."""
         if isinstance(indices, Array):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
-                "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
+                "Use Coresubset.build() instead. "
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
             indices = as_data(indices)  # pyright: ignore[reportAssignmentType]
         if isinstance(pre_coreset_data, Array):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
-                "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
+                "Use Coresubset.build() instead. "
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -309,9 +325,9 @@ class Coresubset(
             pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
         if isinstance(pre_coreset_data, tuple):
             warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated. "
-                "Use PseudoCoreset.build() instead. "
-                "In future, this will become a TypeError.",
+                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
+                "Use Coresubset.build() instead. "
+                "in v1.0.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -409,7 +425,11 @@ class Coresubset(
 
     @property
     @override
-    @deprecated("Use `.indices` instead.")
+    @deprecated(
+        "Use `.indices` instead."
+        + "Deprecated since v0.4.0. "
+        + "Will be removed in v1.0.0."
+    )
     def nodes(self) -> Data:
         """Deprecated alias for `indices`."""
         return self.indices
