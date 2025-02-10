@@ -24,7 +24,7 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -93,7 +93,7 @@ class MMD(Metric[Data]):
         *,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-        **kwargs,
+        **kwargs: Any,
     ) -> Shaped[Array, ""]:
         r"""
         Compute the (weighted) maximum mean discrepancy.
@@ -207,7 +207,7 @@ class KSD(Metric[Data]):
         regularise: bool = False,
         block_size: Optional[int] = None,
         unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-        **kwargs,
+        **kwargs: Any,
     ) -> Shaped[Array, ""]:
         r"""
         Compute the (regularised) (Laplace-corrected) kernel Stein discrepancy.

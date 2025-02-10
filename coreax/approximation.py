@@ -30,7 +30,7 @@ standard :class:`~coreax.kernels.ScalarValuedKernel` is expected.
 
 from collections.abc import Callable
 from functools import partial
-from typing import Union
+from typing import Any, Union
 
 import jax
 import jax.numpy as jnp
@@ -185,7 +185,7 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
             int,
             Data,
         ],
-        **kwargs,
+        **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Monte-Carlo sampling.
@@ -240,7 +240,7 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
             int,
             Data,
         ],
-        **kwargs,
+        **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by random regression on ANNchor points.
@@ -313,7 +313,7 @@ class NystromApproximateKernel(RandomRegressionKernel):
             int,
             Data,
         ],
-        **kwargs,
+        **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""
         Approximate the Gramian row-mean by Nystrom approximation.

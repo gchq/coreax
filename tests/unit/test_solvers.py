@@ -24,6 +24,7 @@ from contextlib import (
 )
 from typing import (
     TYPE_CHECKING,
+    Any,
     Generic,
     Literal,
     NamedTuple,
@@ -186,7 +187,7 @@ class SolverTest:
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -360,7 +361,7 @@ class RecombinationSolverTest(SolverTest):
         *,
         recombination_mode: Literal["implicit-explicit", "implicit", "explicit"],
         context: AbstractContextManager,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -1184,7 +1185,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Check `coreax.solvers.RPCholesky.reduce` raises no errors.
