@@ -118,6 +118,10 @@ packages = [
 [tool.setuptools.dynamic]
 version = {attr = "coreax.__version__"}
 
+[tool.pyright]
+# Exclude snippets for documentation as most variables not properly defined
+exclude = ["documentation/source/snippets"]
+
 [tool.ruff]
 src = [".", "examples"]
 
