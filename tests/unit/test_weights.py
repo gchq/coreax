@@ -25,7 +25,6 @@ from typing import Callable, Generic, NamedTuple, Optional, TypeVar
 
 import jax.numpy as jnp
 import jax.random as jr
-import numpy as np
 import pytest
 from typing_extensions import override
 
@@ -302,7 +301,7 @@ class TestHelperFunctions:
         with pytest.raises(TypeError, match="not a valid JAX array type"):
             solve_qp(
                 kernel_mm="invalid_kernel_mm",  # pyright: ignore
-                gramian_row_mean=np.array([1, 2, 3]),
+                gramian_row_mean=jnp.array([1, 2, 3]),
             )
 
     def test_solve_qp_invalid_gramian_row_mean(self) -> None:
@@ -317,7 +316,7 @@ class TestHelperFunctions:
         # this should error as no sensible result can be found in such a case.
         with pytest.raises(TypeError, match="not a valid JAX array type"):
             solve_qp(
-                kernel_mm=np.array([1, 2, 3]),
+                kernel_mm=jnp.array([1, 2, 3]),
                 gramian_row_mean="invalid_gramian_row_mean",  # pyright: ignore
             )
 

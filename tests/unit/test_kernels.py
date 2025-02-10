@@ -220,19 +220,19 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
 
     @abstractmethod
     def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: _ScalarValuedKernel
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
     ) -> Union[Array, np.ndarray]:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
@@ -402,9 +402,7 @@ class TestPowerKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
-    def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
-    ) -> np.ndarray:
+    def expected_grad_x(self, x: Array, y: Array, kernel: PowerKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         expected_grad = (
@@ -419,9 +417,7 @@ class TestPowerKernel(
 
         return np.array(expected_grad)
 
-    def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
-    ) -> np.ndarray:
+    def expected_grad_y(self, x: Array, y: Array, kernel: PowerKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         expected_grad = (
@@ -437,7 +433,7 @@ class TestPowerKernel(
         return np.array(expected_grad)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: PowerKernel
+        self, x: Array, y: Array, kernel: PowerKernel
     ) -> np.ndarray:
         divergence = self.power * (
             (
@@ -579,9 +575,7 @@ class TestAdditiveKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
-    def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
-    ) -> np.ndarray:
+    def expected_grad_x(self, x: Array, y: Array, kernel: AdditiveKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         # Variable rename allows for nicer automatic formatting
@@ -595,9 +589,7 @@ class TestAdditiveKernel(
 
         return np.array(expected_grad)
 
-    def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
-    ) -> np.ndarray:
+    def expected_grad_y(self, x: Array, y: Array, kernel: AdditiveKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         # Variable rename allows for nicer automatic formatting
@@ -612,7 +604,7 @@ class TestAdditiveKernel(
         return np.array(expected_grad)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: AdditiveKernel
+        self, x: Array, y: Array, kernel: AdditiveKernel
     ) -> np.ndarray:
         num_points, _ = np.atleast_2d(x).shape
 
@@ -691,9 +683,7 @@ class TestProductKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
-    def expected_grad_x(
-        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
-    ) -> np.ndarray:
+    def expected_grad_x(self, x: Array, y: Array, kernel: ProductKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         # Variable rename allows for nicer automatic formatting
@@ -709,9 +699,7 @@ class TestProductKernel(
 
         return np.array(expected_grad)
 
-    def expected_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
-    ) -> np.ndarray:
+    def expected_grad_y(self, x: Array, y: Array, kernel: ProductKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
         # Variable rename allows for nicer automatic formatting
@@ -728,7 +716,7 @@ class TestProductKernel(
         return np.array(expected_grad)
 
     def expected_divergence_x_grad_y(
-        self, x: ArrayLike, y: ArrayLike, kernel: ProductKernel
+        self, x: Array, y: Array, kernel: ProductKernel
     ) -> np.ndarray:
         # Variable rename allows for nicer automatic formatting
         k1, k2 = kernel.first_kernel, kernel.second_kernel
@@ -748,7 +736,7 @@ class TestProductKernel(
         We consider a product kernel with equal input kernels and check that
         the second kernel is never called.
         """
-        x = np.array([1])
+        x = jnp.array([1])
 
         # Form two simple mocked kernels and force any == operation to return True
         first_kernel = MagicMock(spec=ScalarValuedKernel)
@@ -1362,8 +1350,10 @@ class TestSquaredExponentialKernel(
             expected_distances = np.zeros((num_points, num_points))
             for x_idx, x_ in enumerate(x):
                 for y_idx, y_ in enumerate(y):
-                    expected_distances[x_idx, y_idx] = scipy_norm(y_, length_scale).pdf(
-                        x_
+                    expected_distances[x_idx, y_idx] = (
+                        scipy_norm(y_, length_scale)
+                        # Ignore Pyright here - the .pdf() function definitely exists!
+                        .pdf(x_)  # pyright: ignore[reportAttributeAccessIssue]
                     )
             x, y = x.reshape(-1, 1), y.reshape(-1, 1)
         elif mode == "negative_length_scale":

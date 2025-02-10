@@ -109,12 +109,12 @@ class TestCoresetCommon:
         with pytest.warns(DeprecationWarning):
             nodes = coreset.nodes
 
-        if setup.coreset_type is PseudoCoreset:
+        if isinstance(coreset, PseudoCoreset):
             assert nodes == coreset.points
-        elif setup.coreset_type is Coresubset:
+        elif isinstance(coreset, Coresubset):
             assert nodes == coreset.indices
         else:
-            raise ValueError(setup.coreset_type)
+            raise TypeError(type(coreset))
 
     def test_deprecated_coreset(
         self,
@@ -189,7 +189,8 @@ class TestCoresetCommon:
             )
             with ctx:
                 coreset_from_arrays = setup.coreset_type(
-                    coreset_input_final, pre_coreset_data_final
+                    coreset_input_final,  # pyright: ignore[reportArgumentType]
+                    pre_coreset_data_final,  # pyright: ignore[reportArgumentType]
                 )
         coreset_from_data = setup.coreset_type.build(
             setup.coreset_input, setup.pre_coreset_data
@@ -267,7 +268,7 @@ class TestCoresetErrors:
         with pytest.raises(TypeError, match="pre_coreset_data"):
             with warnings.catch_warnings():
                 warnings.simplefilter(action="ignore", category=DeprecationWarning)
-                coreset_type.build(indices_or_nodes, object())
+                coreset_type.build(indices_or_nodes, object())  # pyright: ignore[reportArgumentType, reportCallIssue]
 
     @pytest.mark.parametrize("coreset_type", [Coresubset, PseudoCoreset])
     def test_invalid_indices_or_points_type(
@@ -280,7 +281,7 @@ class TestCoresetErrors:
         ):
             with warnings.catch_warnings():
                 warnings.simplefilter(action="ignore", category=DeprecationWarning)
-                coreset_type(object(), pre_coreset_data)
+                coreset_type(object(), pre_coreset_data)  # pyright: ignore[reportArgumentType, reportCallIssue]
 
 
 class TestCoresubset:
