@@ -103,7 +103,7 @@ def iterative_refine_experiment(
     """
     Perform an experiment by iteratively refining the coreset using Kernel Herding.
 
-    :param data: A :class:`Data` instance
+    :param data: The dataset to iteratively refine a coreset from
     :param coreset_size: The desired size of the coreset
     :param n_iter: The number of refine iterations to perform
     :param t_schedule: A :class:`Array` of length `n_iter`, where `t_schedule[i]` is the
