@@ -1395,7 +1395,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 random_key=self.random_key,
             )
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
-            return indices[halved_coreset.nodes.data.flatten()]
+            return indices[halved_coreset.indices.data.flatten()]
 
         def _compress_thin(indices: jax.Array) -> jax.Array:
             """
@@ -1403,7 +1403,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
             :param indices: The indices of current dataset with respect to the original
                 dataset.
-            :return: The indices of the halved dataset.
+            :return: The indices of the thinned dataset.
             """
             data_to_half = dataset[indices]
             thinning_solver = KernelThinning(
@@ -1414,9 +1414,16 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 random_key=self.random_key,
             )
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
-            return indices[halved_coreset.nodes.data.flatten()]
+            return indices[halved_coreset.indices.data.flatten()]
 
-        def _compress(indices):
+        def _compress(indices: jax.Array) -> jax.Array:
+            """
+            Apply the compress algorithm from :cite:`shetty2022compress`.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the compressed dataset.
+            """
             m = len(indices)
             # Base case: If m = 4^g, return the dataset
             if m < 4**self.g:
@@ -1436,7 +1443,14 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             # Apply the halving function to the concatenated result
             return _compress_half(concatenated)
 
-        def _compress_plus_plus(indices):
+        def _compress_plus_plus(indices: jax.Array) -> jax.Array:
+            """
+            Apply the compress++ algorithm from :cite:`shetty2022compress`.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the compressed dataset.
+            """
             return _compress_thin(_compress(indices))
 
         plus_plus_indices = _compress_plus_plus(clipped_indices)

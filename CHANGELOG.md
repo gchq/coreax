@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added (loose) lower bounds to all direct dependencies. (https://github.com/gchq/coreax/pull/920)
 - Added Kernel Thinning to existing benchmarking tests. (https://github.com/gchq/coreax/pull/927)
 - Added an option to run Kernel Herding probabilistically. (https://github.com/gchq/coreax/pull/941)
+- Added Compress++ coreset reduction algorithm. (https://github.com/gchq/coreax/issues/934)
 
 ### Fixed
 
