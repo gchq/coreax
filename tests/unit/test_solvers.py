@@ -45,6 +45,7 @@ from coreax.kernels import (
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     CaratheodoryRecombination,
+    CompressPlusPlus,
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
@@ -2463,4 +2464,23 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         )
         np.testing.assert_array_equal(
             coresets[1], jnp.array([[0.7], [0.6], [0.1], [0.12]])
+        )
+
+
+class TestCompressPlusPlus(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+        kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 8
+        return jtu.Partial(
+            CompressPlusPlus,
+            g=2,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            kernel=kernel,
+            delta=0.01,
+            sqrt_kernel=kernel,
         )
