@@ -85,7 +85,9 @@ def get_kernels(
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(data.data[idx])
     return (
+        # SquaredExponentialKernel to be used in Kernel Herding
         SquaredExponentialKernel(length_scale=length_scale),
+        # Normalised SquaredExponentialKernel for MMD comparison
         SquaredExponentialKernel(
             length_scale=length_scale,
             output_scale=1.0 / (length_scale * jnp.sqrt(2.0 * jnp.pi)),
