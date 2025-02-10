@@ -74,7 +74,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     @deprecated(
         "Narrow to a subclass, then use `.indices` or `.points` instead. "
         + "Deprecated since v0.4.0. "
-        + "Will be removed in v1.0.0."
+        + "Will be removed in v0.5.0."
     )
     def nodes(self) -> Data:
         """Deprecated alias for `indices` or `points`, depending on subclass."""
@@ -105,7 +105,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     @deprecated(
         "Use `.points` instead."
         + "Deprecated since v0.4.0. "
-        + "Will be removed in v1.0.0."
+        + "Will be removed in v0.5.0."
     )
     def coreset(self) -> _TPointsData_co:
         """Deprecated alias for `.points`."""
@@ -140,7 +140,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -149,7 +149,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -159,7 +159,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -244,7 +244,7 @@ class PseudoCoreset(
     @deprecated(
         "Use `.points` instead."
         + "Deprecated since v0.4.0. "
-        + "Will be removed in v1.0.0."
+        + "Will be removed in v0.5.0."
     )
     def nodes(self) -> Data:
         """Deprecated alias for `points`."""
@@ -260,7 +260,7 @@ class PseudoCoreset(
 @deprecated(
     "Use AbstractCoreset, PseudoCoreset, or Coresubset instead."
     + "Deprecated since v0.4.0. "
-    + "Will be removed in v1.0.0."
+    + "Will be removed in v0.5.0."
 )
 class Coreset(PseudoCoreset):
     """Deprecated - split into AbstractCoreset and PseudoCoreset."""
@@ -308,7 +308,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -317,7 +317,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -327,7 +327,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v1.0.0, this will become a TypeError.",
+                "in v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -428,7 +428,7 @@ class Coresubset(
     @deprecated(
         "Use `.indices` instead."
         + "Deprecated since v0.4.0. "
-        + "Will be removed in v1.0.0."
+        + "Will be removed in v0.5.0."
     )
     def nodes(self) -> Data:
         """Deprecated alias for `indices`."""
