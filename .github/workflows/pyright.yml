@@ -43,8 +43,8 @@ jobs:
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Run Pyright
-        # Currently only the `coreax` and `examples` directories are expected to pass.
-        run: uv run pyright coreax examples tests
+        # Currently only the directories listed here are expected to pass.
+        run: uv run pyright coreax examples tests benchmark
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
