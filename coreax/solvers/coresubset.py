@@ -1045,7 +1045,6 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param dataset: The input dataset to be halved.
         :return: A list containing the two partitioned coresets.
         """
-        print(type(dataset))
         n = len(dataset) // 2
         original_array = dataset.data
         first_coreset_indices = jnp.zeros(n, dtype=jnp.int32)
