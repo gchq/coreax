@@ -387,14 +387,8 @@ class Coresubset(
     @property
     def unweighted_indices(self) -> Shaped[Array, " n"]:
         """Unweighted Coresubset indices - attribute access helper."""
-        return jnp.squeeze(self._indices.data)
-
-    @override
-    def __len__(self) -> int:
-        # TODO: this feels like a hacky temporary fix - the underlying issue is that
-        #  Coresubset doesn't seem to handle 2d data properly if len(indices)==1.
-        # https://github.com/gchq/coreax/issues/952
-        return len(self.indices)
+        # Ensure at least 1d to avoid shape errors.
+        return jnp.atleast_1d(jnp.squeeze(self._indices.data))
 
     @property
     @override

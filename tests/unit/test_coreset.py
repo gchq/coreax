@@ -291,3 +291,16 @@ class TestCoresubset:
         coresubset = Coresubset(CORESUBSET_INDICES, PRE_CORESET_DATA)
         expected_indices = CORESUBSET_INDICES.data.squeeze()
         assert eqx.tree_equal(expected_indices, coresubset.unweighted_indices)
+
+    def test_materialisation_2d_size_1(self):
+        """
+        Test that the length of a coreset of size 1 from a 2d dataset is correct.
+
+        This test is here to prevent regressions on
+        https://github.com/gchq/coreax/issues/952
+        """
+        pre_coreset_data = jnp.ones((5, 2))
+        indices = jnp.array([0])
+        coresubset = Coresubset.build(indices, pre_coreset_data)
+        assert len(coresubset) == 1
+        assert len(coresubset.points) == 1
