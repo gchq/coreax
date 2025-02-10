@@ -1426,10 +1426,6 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             """
             m = len(indices)
             # Base case: If m = 4^g, return the dataset
-            if m < 4**self.g:
-                raise ValueError(
-                    f"Dataset size {m} is smaller than the required size {4**self.g}."
-                )
             if m == 4**self.g:
                 return indices
 
