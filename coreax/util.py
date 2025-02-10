@@ -24,17 +24,14 @@ class factories and checks for numerical precision.
 import logging
 import sys
 import time
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import partial, wraps
 from math import log10
 from typing import (
     Any,
-    Dict,
     Generic,
     NamedTuple,
     Optional,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -45,7 +42,7 @@ import jax.random as jr
 import jax.tree_util as jtu
 from jax import Array, block_until_ready, jit, vmap
 from jaxtyping import Shaped
-from typing_extensions import TypeAlias, deprecated
+from typing_extensions import TypeAlias
 
 _logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -76,13 +73,13 @@ class JITCompilableFunction(NamedTuple):
 
     fn: Callable
     fn_args: tuple = ()
-    fn_kwargs: Optional[Dict[str, Any]] = None
-    jit_kwargs: Optional[Dict[str, Any]] = None
+    fn_kwargs: Optional[dict[str, Any]] = None
+    jit_kwargs: Optional[dict[str, Any]] = None
     name: Optional[str] = None
 
     def without_name(
         self,
-    ) -> Tuple[Callable, Tuple, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> tuple[Callable, tuple, Optional[dict[str, Any]], Optional[dict[str, Any]]]:
         """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
         return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
@@ -236,37 +233,6 @@ def difference(
     return x - y
 
 
-@deprecated(
-    "Use coreax.kernels.util.median_heuristic instead."
-    + " Deprecated since version 0.3.0."
-    + " Will be removed in version 0.4.0."
-)
-@jit
-def median_heuristic(
-    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
-    """
-    Compute the median heuristic for setting kernel bandwidth.
-
-    Analysis of the performance of the median heuristic can be found in
-    :cite:`garreau2018median`.
-
-    :param x: Input array of vectors
-    :return: Bandwidth parameter, computed from the median heuristic, as a
-        zero-dimensional array
-    """
-    # Format inputs
-    x = jnp.atleast_2d(x)
-    # Calculate square distances as an upper triangular matrix
-    square_distances = jnp.triu(pairwise(squared_distance)(x, x), k=1)
-    # Calculate the median of the square distances
-    median_square_distance = jnp.median(
-        square_distances[jnp.triu_indices_from(square_distances, k=1)]
-    )
-
-    return jnp.sqrt(median_square_distance / 2.0)
-
-
 def sample_batch_indices(
     random_key: KeyArrayLike,
     max_index: int,
@@ -378,7 +344,7 @@ def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
     log_results: bool = False,
-    normalisation: Optional[Tuple[float, float]] = None,
+    normalisation: Optional[tuple[float, float]] = None,
 ) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.

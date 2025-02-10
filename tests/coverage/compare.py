@@ -123,7 +123,7 @@ def get_most_recent_coverage_total(reference_directory: Path) -> float:
 
     most_recent_file = max(files.keys(), key=files.__getitem__)
 
-    with open(most_recent_file, "r", encoding="utf8") as f:
+    with open(most_recent_file, encoding="utf8") as f:
         coverage_dict = json.load(f)
 
     return coverage_dict["total"]

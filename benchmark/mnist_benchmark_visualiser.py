@@ -30,7 +30,7 @@ def load_benchmark_data(filename: str) -> dict:
              if there was an error loading the file.
     """
     try:
-        with open(filename, "r", encoding="utf-8") as file:
+        with open(filename, encoding="utf-8") as file:
             return json.load(file)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         raise RuntimeError(f"Failed to load benchmark data: {e}") from e

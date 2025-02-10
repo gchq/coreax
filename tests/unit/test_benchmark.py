@@ -34,7 +34,7 @@ from benchmark.mnist_benchmark import (
 )
 from coreax import Data
 from coreax.benchmark_util import calculate_delta, get_solver_name, initialise_solvers
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels.scalar_valued import SquaredExponentialKernel
 from coreax.solvers import (
     KernelHerding,
     MapReduce,

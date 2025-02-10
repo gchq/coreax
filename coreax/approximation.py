@@ -30,14 +30,14 @@ standard :class:`~coreax.kernels.ScalarValuedKernel` is expected.
 
 from collections.abc import Callable
 from functools import partial
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
 from jaxtyping import Shaped
-from typing_extensions import TYPE_CHECKING, Literal, override
+from typing_extensions import Literal, override
 
 from coreax.data import Data, _atleast_2d_consistent
 from coreax.kernels import UniCompositeKernel

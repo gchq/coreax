@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
 - `KernelThinning` now computes swap probability correctly. (https://github.com/gchq/coreax/pull/932)
 - Incorrectly-implemented tests for the gradients of `PeriodicKernel`. (https://github.com/gchq/coreax/pull/936)
+- `MapReduce`'s warning about a solver not being padding-invariant is now raised at the
+  correct stack level. (https://github.com/gchq/coreax/pull/951)
+- `len(coresubset.points)` is no longer incorrect for a coresubset of size 1 from a 2d
+  dataset. (https://github.com/gchq/coreax/pull/957)
 
 ### Changed
 
@@ -68,7 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- The `coreax.kernel` module, deprecated in v0.3.0, has been removed. The kernels have
+  been moved to submodules of `coreax.kernels` - see the "Deprecated" section of v0.3.0
+  for more information. (https://github.com/gchq/coreax/pull/958)
+- `coreax.util.median_heuristic`, deprecated in v0.3.0 has been removed. This should be
+  replaced with `coreax.kernels.util.median_heuristic`.
+  for more information. (https://github.com/gchq/coreax/pull/958)
 
 ### Deprecated
 
