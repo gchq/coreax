@@ -34,7 +34,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-from jaxtyping import Array
+from jaxtyping import Array, Shaped
 from sklearn.datasets import make_blobs
 
 from coreax import MMD, Coresubset, Data, SquaredExponentialKernel
@@ -97,7 +97,7 @@ def iterative_refine_experiment(
     data: Data,
     coreset_size: int,
     n_iter: int,
-    t_schedule: Optional[Array] = None,
+    t_schedule: Optional[Shaped[Array, " {n_iter}"]] = None,
     seed: int = 0,
 ) -> tuple[Array, Coresubset]:
     """
