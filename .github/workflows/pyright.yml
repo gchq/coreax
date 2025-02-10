@@ -12,6 +12,9 @@ jobs:
   build:
     name: Run static type checks (Pyright)
     runs-on: ubuntu-latest
+    env:
+      # Disable implicitly syncing before running - we run an explicit sync first.
+      UV_NO_SYNC: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
