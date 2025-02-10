@@ -371,9 +371,7 @@ if not TQDM_CUSTOM_PATH.exists():
 
 def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
     """Combine fields and parameters into a single entry for NamedTuple classes."""
-    # pylint: disable=line-too-long
     if type(obj) is collections._tuplegetter:  # pyright: ignore [reportAttributeAccessIssue]
-        # pylint: enable=line-too-long
         return True
     return skip
 
