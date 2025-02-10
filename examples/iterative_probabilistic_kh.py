@@ -28,7 +28,7 @@ Herding and converge faster.
 """
 
 import time
-from typing import Dict, Optional
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -146,7 +146,7 @@ def iterative_refine_experiment(
     return mmd_data, coreset
 
 
-def visualise_results(mmd_data_prob: Dict[str, Array], mmd_data_base: Array) -> None:
+def visualise_results(mmd_data_prob: dict[str, Array], mmd_data_base: Array) -> None:
     """
     Visualise the results of the experiment.
 
