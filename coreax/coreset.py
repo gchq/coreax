@@ -103,7 +103,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
 
     @property
     @deprecated(
-        "Use `.points` instead."
+        "Use `.points` instead. "
         + "Deprecated since v0.4.0. "
         + "Will be removed in v0.5.0."
     )
@@ -140,7 +140,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -149,7 +149,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -159,7 +159,7 @@ class PseudoCoreset(
             warnings.warn(
                 "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
                 "Use PseudoCoreset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -242,7 +242,7 @@ class PseudoCoreset(
     @property
     @override
     @deprecated(
-        "Use `.points` instead."
+        "Use `.points` instead. "
         + "Deprecated since v0.4.0. "
         + "Will be removed in v0.5.0."
     )
@@ -258,7 +258,7 @@ class PseudoCoreset(
 
 
 @deprecated(
-    "Use AbstractCoreset, PseudoCoreset, or Coresubset instead."
+    "Use AbstractCoreset, PseudoCoreset, or Coresubset instead. "
     + "Deprecated since v0.4.0. "
     + "Will be removed in v0.5.0."
 )
@@ -308,7 +308,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -317,7 +317,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -327,7 +327,7 @@ class Coresubset(
             warnings.warn(
                 "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
                 "Use Coresubset.build() instead. "
-                "in v0.5.0, this will become a TypeError.",
+                "In v0.5.0, this will become a TypeError.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -426,7 +426,7 @@ class Coresubset(
     @property
     @override
     @deprecated(
-        "Use `.indices` instead."
+        "Use `.indices` instead. "
         + "Deprecated since v0.4.0. "
         + "Will be removed in v0.5.0."
     )
