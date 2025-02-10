@@ -2511,7 +2511,8 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
 
         with pytest.raises(
             ValueError,
-            match="Coreset size and g are not compatible with the dataset size.",
+            match="Coreset size and g are not compatible with the dataset size. "
+            "Ensure that the coreset size does not exceed .* or increase g.",
         ):
             solver = CompressPlusPlus(
                 g=g,

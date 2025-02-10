@@ -1346,10 +1346,12 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         This method reduces the dataset by recursively partitioning it and applying
         kernel thinning. The dataset is clipped to the nearest power of four before
         processing. The dataset is partitioned into four subsets. Each subset is further
-        divided into four subsets, repeated a predefined number of times. After this,
-        each subset is halved using `~coreax.solvers.KernelThinning` and concatenated
-        recursively. Finally, the resulting coreset is thinned again using
-        `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+        divided into four subsets, repeated until we have a coreset of predefined size.
+        After this, the partitioned are recursively concatenated (4 at a time) and
+        halved using :meth:`~coreax.solvers.KernelThinning.reduce`. Finally, the
+        resulting coreset is thinned again using
+        :meth:`~coreax.solvers.KernelThinning.reduce` to obtain a coreset of the desired
+        size.
 
         :param dataset: The original dataset to be reduced.
         :param solver_state: The state of the solver.
@@ -1370,16 +1372,21 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         if not self.coreset_size <= 2**self.g * math.sqrt(effective_data_size):
             raise ValueError(
-                "Coreset size and g are not compatible with the dataset size."
+                f"Coreset size and g are not compatible with the dataset size. Ensure "
+                f"that the coreset size does not exceed "
+                f"{2**self.g * math.sqrt(effective_data_size)} or increase g."
             )
         # Clip the dataset to the nearest power of 4
         clipped_indices = jax.random.choice(
             self.random_key, n, shape=(effective_data_size,), replace=False
         )
 
-        def _compress_half(indices: jax.Array) -> jax.Array:
+        def _compress_half(indices: Array) -> Array:
             """
             Compress the dataset to half its size using kernel thinning.
+
+            Kernel thinning is used here but any other halving function could have been
+            used.
 
             :param indices: The indices of current dataset with respect to the original
                 dataset.
@@ -1397,9 +1404,12 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
             return indices[halved_coreset.indices.data.flatten()]
 
-        def _compress_thin(indices: jax.Array) -> jax.Array:
+        def _compress_thin(indices: Array) -> Array:
             """
             Compress the dataset to required size using kernel thinning.
+
+            Kernel thinning is used here but any other thinning function could have been
+            used.
 
             :param indices: The indices of current dataset with respect to the original
                 dataset.
@@ -1416,7 +1426,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
             return indices[halved_coreset.indices.data.flatten()]
 
-        def _compress(indices: jax.Array) -> jax.Array:
+        def _compress(indices: Array) -> Array:
             """
             Apply the compress algorithm from :cite:`shetty2022compress`.
 
@@ -1439,7 +1449,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             # Apply the halving function to the concatenated result
             return _compress_half(concatenated)
 
-        def _compress_plus_plus(indices: jax.Array) -> jax.Array:
+        def _compress_plus_plus(indices: Array) -> Array:
             """
             Apply the compress++ algorithm from :cite:`shetty2022compress`.
 
