@@ -119,8 +119,15 @@ packages = [
 version = {attr = "coreax.__version__"}
 
 [tool.pyright]
-# Exclude snippets for documentation as most variables not properly defined
-exclude = ["documentation/source/snippets"]
+exclude = [
+    # Exclude snippets for documentation as most variables not properly defined
+    "documentation/source/snippets",
+    # Exclusions that would have been generated automatically if this section weren't
+    # specified
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+]
 
 [tool.ruff]
 src = [".", "examples"]
