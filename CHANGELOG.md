@@ -9,36 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for Python 3.13 (https://github.com/gchq/coreax/pull/950)
+-
+
+### Fixed
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
+
+### Deprecated
+
+-
+
+
+## [0.4.0]
+
+### Added
+
+- Support for Python 3.13. (https://github.com/gchq/coreax/pull/950)
 - Contributor-facing features:
-  - Automated testing of the built package before release
-    (https://github.com/gchq/coreax/issues/854)
-  - Automated static type checking in CI with Pyright
+  - Automated testing of the built package before release.
+    (https://github.com/gchq/coreax/pull/858)
+  - Automated static type checking in CI with Pyright.
     (https://github.com/gchq/coreax/pull/921)
 - Added an analytical test for SteinThinning, and associated documentation in
   `tests.unit.test_solvers`. (https://github.com/gchq/coreax/pull/842)
-- Added an analytical test for `KernelHerding.refine` on an existing coreset. (https://github.com/gchq/coreax/issues/870)
+- Added an analytical test for `KernelHerding.refine` on an existing coreset.
+  (https://github.com/gchq/coreax/pull/879)
 - Added benchmarking scripts:
-  - MNIST (train a classifier on coreset of training data, test on testing data)
+  - MNIST (train a classifier on coreset of training data, test on testing data).
     (https://github.com/gchq/coreax/pull/802)
   - Blobs (generate synthetic data using `sklearn.datasets.make_blobs` and compare MMD
-    and KSD metrics) (https://github.com/gchq/coreax/pull/802)
+    and KSD metrics). (https://github.com/gchq/coreax/pull/802)
   - David (extract pixel locations and values from an image and plot coresets side by
-    side for visual benchmarking) (https://github.com/gchq/coreax/pull/880)
+    side for visual benchmarking). (https://github.com/gchq/coreax/pull/880)
   - Pounce (extract frames from a video and use coreset algorithms to select the best
-    frames) (https://github.com/gchq/coreax/issues/892)
-- Benchmarking results added on documentation.(https://github.com/gchq/coreax/issues/803)
+    frames). (https://github.com/gchq/coreax/pull/893)
+- Benchmarking results added on documentation.
+  (https://github.com/gchq/coreax/pull/908)
 - `benchmark` dependency group for benchmarking dependencies.
   (https://github.com/gchq/coreax/pull/888)
 - `example` dependency group for running example scripts.
   (https://github.com/gchq/coreax/pull/909)
 - Added a method `SquaredExponentialKernel.get_sqrt_kernel` which returns a square
-  root kernel for the squared exponential kernel. (https://github.com/gchq/coreax/pull/883)
-- Added a new coreset algorithm Kernel Thinning. (https://github.com/gchq/coreax/pull/915)
-- Added (loose) lower bounds to all direct dependencies. (https://github.com/gchq/coreax/pull/920)
-- Added Kernel Thinning to existing benchmarking tests. (https://github.com/gchq/coreax/pull/927)
-- Added an option to run Kernel Herding probabilistically. (https://github.com/gchq/coreax/pull/941)
-- Added an example script for iterative and probabilistic refinement using Kernel Herding. (https://github.com/gchq/coreax/pull/953)
+  root kernel for the squared exponential kernel.
+  (https://github.com/gchq/coreax/pull/883)
+- Added a new coreset algorithm Kernel Thinning.
+  (https://github.com/gchq/coreax/pull/915)
+- Added (loose) lower bounds to all direct dependencies.
+  (https://github.com/gchq/coreax/pull/920)
+- Added Kernel Thinning to existing benchmarking tests.
+  (https://github.com/gchq/coreax/pull/927)
+- Added an option to run Kernel Herding probabilistically.
+  (https://github.com/gchq/coreax/pull/941)
+- Added an example script for iterative and probabilistic refinement using Kernel
+  Herding. (https://github.com/gchq/coreax/pull/953)
 
 ### Fixed
 
@@ -48,12 +79,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `TreeRecombination` on GPU machines. (https://github.com/gchq/coreax/pull/874, see
   also https://github.com/gchq/coreax/issues/852 and
   https://github.com/gchq/coreax/issues/853)
-- `KernelHerding.refine` correctly computes a refinement of an existing coreset. (https://github.com/gchq/coreax/issues/870)
-- Pylint pre-commit hook is now configured as the Pylint docs recommend. (https://github.com/gchq/coreax/pull/899)
-- Type annotations so that core coreax package passes Pyright. (https://github.com/gchq/coreax/pull/906)
-- Type annotations so that the example scripts pass Pyright. (https://github.com/gchq/coreax/pull/921)
-- `KernelThinning` now computes swap probability correctly. (https://github.com/gchq/coreax/pull/932)
-- Incorrectly-implemented tests for the gradients of `PeriodicKernel`. (https://github.com/gchq/coreax/pull/936)
+- `KernelHerding.refine` correctly computes a refinement of an existing coreset.
+  (https://github.com/gchq/coreax/issues/870)
+- Pylint pre-commit hook is now configured as the Pylint docs recommend.
+  (https://github.com/gchq/coreax/pull/899)
+- Type annotations so that core coreax package passes Pyright.
+  (https://github.com/gchq/coreax/pull/906)
+- Type annotations so that the example scripts pass Pyright.
+  (https://github.com/gchq/coreax/pull/921)
+- `KernelThinning` now computes swap probability correctly.
+  (https://github.com/gchq/coreax/pull/932)
+- Incorrectly-implemented tests for the gradients of `PeriodicKernel`.
+  (https://github.com/gchq/coreax/pull/936)
 - `MapReduce`'s warning about a solver not being padding-invariant is now raised at the
   correct stack level. (https://github.com/gchq/coreax/pull/951)
 - `len(coresubset.points)` is no longer incorrect for a coresubset of size 1 from a 2d
@@ -64,8 +101,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved coverage and performance data from GitHub gist to coreax-metadata repo.
   (https://github.com/gchq/coreax/pull/887)
 - **[BREAKING CHANGE]** Equinox dependency version is changed from `<0.11.8` to `>=0.
-11.5`. (https://github.com/gchq/coreax/pull/898)
-- **[BREAKING CHANGE]** The `jaxtyping` version is now lower bounded at `v0.2.31` to enable `coreax.data.Data` jaxtyping compatibility.
+  11.5`. (https://github.com/gchq/coreax/pull/898)
+- **[BREAKING CHANGE]** The `jaxtyping` version is now lower bounded at `v0.2.31` to
+  enable `coreax.data.Data` jaxtyping compatibility.
 - Refactored the `Coreset` types - instead of `Coreset` and `Coresubset(Coreset)`, we
   now have `AbstractCoreset`, `PseudoCoreset(AbstractCoreset)`, and
   `Coresubset(AbstractCoreset)`. See "Deprecated" below for more details of this change.
@@ -354,7 +392,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/gchq/coreax/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/gchq/coreax/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/gchq/coreax/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/gchq/coreax/compare/v0.2.0...v0.2.1
