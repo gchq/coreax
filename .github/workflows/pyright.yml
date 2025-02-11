@@ -1,4 +1,4 @@
-name: Build Documentation
+name: Pyright
 
 on:
   push:
@@ -46,8 +46,7 @@ jobs:
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Run Pyright
-        # Currently only the directories listed here are expected to pass.
-        run: uv run pyright coreax examples tests benchmark
+        run: uv run pyright
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()
