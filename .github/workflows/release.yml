@@ -111,8 +111,9 @@ jobs:
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Test with pytest
-        run: uv run pytest tests --ignore=tests/integration
-      # Integration tests are slow, so only run if all other tests pass.
+        # Do not test benchmarking as not part of Coreax package.
+        # Integration tests are slow, so only run if all other tests pass.
+        run: uv run pytest tests --ignore=tests/integration --ignore=tests/unit/test_benchmark.py
       - name: Test integration tests
         run: uv run pytest tests/integration
   release-github:
