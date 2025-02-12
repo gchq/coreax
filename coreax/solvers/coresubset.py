@@ -1011,12 +1011,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         # Update indices: map current subset's indices to original dataset
         if isinstance(current_coreset, Coresubset):
             parent_indices = current_coreset.indices.data  # Parent subset's indices
-            subset1_indices = (
-                subset1.indices.data.flatten()
-            )  # Indices relative to parent
-            subset2_indices = (
-                subset2.indices.data.flatten()
-            )  # Indices relative to parent
+            subset1_indices = subset1.unweighted_indices  # Indices relative to parent
+            subset2_indices = subset2.unweighted_indices  # Indices relative to parent
 
             # Map subset indices back to original dataset
             subset1_indices = parent_indices[subset1_indices]
@@ -1312,23 +1308,24 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
     In the recursive halving step, the dataset is partitioned into four subsets.
     Each subset is further divided into four subsets, repeated a predefined number
-    of times. After this, each subset is halved using `~coreax.solvers.KernelThinning`.
-    The halved subsets are concatenated bottom-up to form a coreset.
+    of times. After this, each subset is halved using
+    :class:`~coreax.solvers.KernelThinning`. The halved subsets are concatenated
+    bottom-up to form a coreset.
 
     Finally, the resulting coreset is thinned again using
-    `~coreax.solvers.KernelThinning` to obtain a coreset of the desired size. This
-    implementation is an adaptation of the Compress++ algorithm in
+    :class:`~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+    This implementation is an adaptation of the Compress++ algorithm in
     :cite:`shetty2022compress` to make it an explicit sized solver.
 
     :param g: The oversampling factor.
-    :param kernel: A `~coreax.kernels.ScalarValuedKernel` for kernel thinning.
+    :param kernel: A :class:`~coreax.kernels.ScalarValuedKernel` for kernel thinning.
     :param random_key: A random number generator key for the kernel thinning solver,
         ensuring reproducibility of probabilistic components in the algorithm.
     :param delta: A float between 0 and 1, representing the swapping probability during
         the dataset splitting. A recommended value is :math:`1 / \log(\log(n))`, where
         :math:`n` is the size of the original dataset.
-    :param sqrt_kernel: A `~coreax.kernels.ScalarValuedKernel` instance defining the
-        square root kernel used in the kernel thinning solver.
+    :param sqrt_kernel: A :class:`~coreax.kernels.ScalarValuedKernel` instance defining
+        the square root kernel used in the kernel thinning solver.
     """
 
     g: int
@@ -1402,7 +1399,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 random_key=self.random_key,
             )
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
-            return indices[halved_coreset.indices.data.flatten()]
+            return indices[halved_coreset.unweighted_indices]
 
         def _compress_thin(indices: Array) -> Array:
             """
@@ -1424,7 +1421,7 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 random_key=self.random_key,
             )
             halved_coreset, _ = thinning_solver.reduce(data_to_half)
-            return indices[halved_coreset.indices.data.flatten()]
+            return indices[halved_coreset.unweighted_indices]
 
         def _compress(indices: Array) -> Array:
             """
