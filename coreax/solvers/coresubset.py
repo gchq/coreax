@@ -992,12 +992,8 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         # Update indices: map current subset's indices to original dataset
         if isinstance(current_coreset, Coresubset):
             parent_indices = current_coreset.indices.data  # Parent subset's indices
-            subset1_indices = (
-                subset1.indices.data.flatten()
-            )  # Indices relative to parent
-            subset2_indices = (
-                subset2.indices.data.flatten()
-            )  # Indices relative to parent
+            subset1_indices = subset1.unweighted_indices  # Indices relative to parent
+            subset2_indices = subset2.unweighted_indices  # Indices relative to parent
 
             # Map subset indices back to original dataset
             subset1_indices = parent_indices[subset1_indices]
@@ -1026,7 +1022,6 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         :param dataset: The input dataset to be halved.
         :return: A list containing the two partitioned coresets.
         """
-        print(type(dataset))
         n = len(dataset) // 2
         original_array = dataset.data
         first_coreset_indices = jnp.zeros(n, dtype=jnp.int32)
@@ -1282,3 +1277,165 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             coreset_size=self.coreset_size, kernel=self.kernel
         ).refine(candidate_coreset)
         return refined_coreset, None
+
+
+class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
+    r"""
+    Compress++ - A hierarchical coreset construction solver.
+
+    `CompressPlusPlus` is an efficient method for building coresets without
+    compromising performance significantly. It operates in two steps: recursively
+    halving and thinning.
+
+    In the recursive halving step, the dataset is partitioned into four subsets.
+    Each subset is further divided into four subsets, repeated a predefined number
+    of times. After this, each subset is halved using
+    :class:`~coreax.solvers.KernelThinning`. The halved subsets are concatenated
+    bottom-up to form a coreset.
+
+    Finally, the resulting coreset is thinned again using
+    :class:`~coreax.solvers.KernelThinning` to obtain a coreset of the desired size.
+    This implementation is an adaptation of the Compress++ algorithm in
+    :cite:`shetty2022compress` to make it an explicit sized solver.
+
+    :param g: The oversampling factor.
+    :param kernel: A :class:`~coreax.kernels.ScalarValuedKernel` for kernel thinning.
+    :param random_key: A random number generator key for the kernel thinning solver,
+        ensuring reproducibility of probabilistic components in the algorithm.
+    :param delta: A float between 0 and 1, representing the swapping probability during
+        the dataset splitting. A recommended value is :math:`1 / \log(\log(n))`, where
+        :math:`n` is the size of the original dataset.
+    :param sqrt_kernel: A :class:`~coreax.kernels.ScalarValuedKernel` instance defining
+        the square root kernel used in the kernel thinning solver.
+    """
+
+    g: int
+    kernel: ScalarValuedKernel
+    random_key: KeyArrayLike
+    delta: float
+    sqrt_kernel: ScalarValuedKernel
+
+    def reduce(
+        self, dataset: _Data, solver_state: None = None
+    ) -> tuple[Coresubset[_Data], None]:
+        """
+        Reduce a dataset to a coreset of the desired size using a hierarchical approach.
+
+        This method reduces the dataset by recursively partitioning it and applying
+        kernel thinning. The dataset is clipped to the nearest power of four before
+        processing. The dataset is partitioned into four subsets. Each subset is further
+        divided into four subsets, repeated until we have a coreset of predefined size.
+        After this, the partitioned are recursively concatenated (4 at a time) and
+        halved using :meth:`~coreax.solvers.KernelThinning.reduce`. Finally, the
+        resulting coreset is thinned again using
+        :meth:`~coreax.solvers.KernelThinning.reduce` to obtain a coreset of the desired
+        size.
+
+        :param dataset: The original dataset to be reduced.
+        :param solver_state: The state of the solver.
+        :return: A tuple containing the final coreset and the solver state (None).
+        """
+        n = len(dataset)
+        if self.coreset_size > len(dataset):
+            raise ValueError(MSG)
+
+        # Check that depth and coreset_size are compatible
+        nearest_power_of_4 = math.floor(math.log(n, 4))
+        effective_data_size = 4**nearest_power_of_4
+        if not 0 <= self.g <= nearest_power_of_4:
+            raise ValueError(
+                f"The over-sampling factor g should be between 0 "
+                f"and {nearest_power_of_4}, inclusive."
+            )
+
+        if not self.coreset_size <= 2**self.g * math.sqrt(effective_data_size):
+            raise ValueError(
+                f"Coreset size and g are not compatible with the dataset size. Ensure "
+                f"that the coreset size does not exceed "
+                f"{2**self.g * math.sqrt(effective_data_size)} or increase g."
+            )
+        # Clip the dataset to the nearest power of 4
+        clipped_indices = jax.random.choice(
+            self.random_key, n, shape=(effective_data_size,), replace=False
+        )
+
+        def _compress_half(indices: Array) -> Array:
+            """
+            Compress the dataset to half its size using kernel thinning.
+
+            Kernel thinning is used here but any other halving function could have been
+            used.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the halved dataset.
+            """
+            m = len(indices)
+            data_to_half = dataset[indices]
+            thinning_solver = KernelThinning(
+                coreset_size=m // 2,
+                delta=self.delta,
+                kernel=self.kernel,
+                sqrt_kernel=self.sqrt_kernel,
+                random_key=self.random_key,
+            )
+            halved_coreset, _ = thinning_solver.reduce(data_to_half)
+            return indices[halved_coreset.unweighted_indices]
+
+        def _compress_thin(indices: Array) -> Array:
+            """
+            Compress the dataset to required size using kernel thinning.
+
+            Kernel thinning is used here but any other thinning function could have been
+            used.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the thinned dataset.
+            """
+            data_to_half = dataset[indices]
+            thinning_solver = KernelThinning(
+                coreset_size=self.coreset_size,
+                delta=self.delta,
+                kernel=self.kernel,
+                sqrt_kernel=self.sqrt_kernel,
+                random_key=self.random_key,
+            )
+            halved_coreset, _ = thinning_solver.reduce(data_to_half)
+            return indices[halved_coreset.unweighted_indices]
+
+        def _compress(indices: Array) -> Array:
+            """
+            Apply the compress algorithm from :cite:`shetty2022compress`.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the compressed dataset.
+            """
+            m = len(indices)
+            # Base case: If m = 4^g, return the dataset
+            if m == 4**self.g:
+                return indices
+
+            quarter_size = m // 4
+            subsequences = jnp.reshape(indices, (4, quarter_size))
+            # Recursive call to compress each subsequence
+            compressed_subsequences = jax.vmap(_compress)(subsequences)
+            # Concatenate the compressed subsequences
+            concatenated = jnp.concatenate(compressed_subsequences)
+
+            # Apply the halving function to the concatenated result
+            return _compress_half(concatenated)
+
+        def _compress_plus_plus(indices: Array) -> Array:
+            """
+            Apply the compress++ algorithm from :cite:`shetty2022compress`.
+
+            :param indices: The indices of current dataset with respect to the original
+                dataset.
+            :return: The indices of the compressed dataset.
+            """
+            return _compress_thin(_compress(indices))
+
+        plus_plus_indices = _compress_plus_plus(clipped_indices)
+        return Coresubset(Data(plus_plus_indices), dataset), None

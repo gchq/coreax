@@ -55,6 +55,7 @@ from coreax.kernels import (
 from coreax.least_squares import RandomisedEigendecompositionSolver
 from coreax.solvers import (
     CaratheodoryRecombination,
+    CompressPlusPlus,
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
@@ -2492,3 +2493,61 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         np.testing.assert_array_equal(
             coresets[1], jnp.array([[0.7], [0.6], [0.1], [0.12]])
         )
+
+
+class TestCompressPlusPlus(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> jtu.Partial:
+        kernel = SquaredExponentialKernel()
+        coreset_size = self.shape[0] // 8
+        return jtu.Partial(
+            CompressPlusPlus,
+            g=2,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            kernel=kernel,
+            delta=0.01,
+            sqrt_kernel=kernel,
+        )
+
+    def test_invalid_g_too_high(self):
+        """Test that ValueError is raised when g too high."""
+        dataset = Data(jnp.arange(64))  # Create a dataset with 64 elements
+
+        with pytest.raises(
+            ValueError,
+            match="The over-sampling factor g should be between 0 and 3, inclusive.",
+        ):
+            solver = CompressPlusPlus(
+                g=4,  # Set g to 4, which is outside the valid range (0 to 3)
+                coreset_size=3,  # Set coreset_size to 8
+                random_key=self.random_key,
+                kernel=SquaredExponentialKernel(),
+                delta=0.01,
+                sqrt_kernel=SquaredExponentialKernel(),
+            )
+            solver.reduce(dataset)  # Attempt to reduce the dataset
+
+    def test_invalid_coreset_size_incompatible(self):
+        """Test that ValueError is raised when coreset_size and g are incompatible."""
+        dataset = Data(jnp.arange(64))  # Create a dataset with 64 elements
+        g = 0  # Set g to 0
+        coreset_size = 17  # Set an incompatible coreset size
+
+        with pytest.raises(
+            ValueError,
+            match="Coreset size and g are not compatible with the dataset size. "
+            "Ensure that the coreset size does not exceed .* or increase g.",
+        ):
+            solver = CompressPlusPlus(
+                g=g,
+                coreset_size=coreset_size,
+                random_key=self.random_key,
+                kernel=SquaredExponentialKernel(),
+                delta=0.01,
+                sqrt_kernel=SquaredExponentialKernel(),
+            )
+            solver.reduce(dataset)
