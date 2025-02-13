@@ -24,7 +24,7 @@ import jax.numpy as jnp
 import pytest
 import torch
 from jax import random
-from torch.utils.data import Dataset
+from torchvision.datasets import VisionDataset
 
 from benchmark.mnist_benchmark import (
     MLP,
@@ -34,7 +34,7 @@ from benchmark.mnist_benchmark import (
 )
 from coreax import Data
 from coreax.benchmark_util import calculate_delta, get_solver_name, initialise_solvers
-from coreax.kernel import SquaredExponentialKernel
+from coreax.kernels.scalar_valued import SquaredExponentialKernel
 from coreax.solvers import (
     KernelHerding,
     MapReduce,
@@ -43,10 +43,11 @@ from coreax.solvers import (
 )
 
 
-class MockDataset(Dataset):
+class MockDataset(VisionDataset):
     """Mock dataset class for testing purposes."""
 
-    def __init__(self, data: torch.Tensor, labels: torch.Tensor) -> None:
+    # We deliberately don't call super().__init__(), as this is a mock class
+    def __init__(self, data: torch.Tensor, labels: torch.Tensor) -> None:  # pylint: disable=super-init-not-called
         """
         Initialise the MockDataset.
 

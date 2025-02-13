@@ -1,4 +1,4 @@
-name: Build Documentation
+name: Pyright
 
 on:
   push:
@@ -12,6 +12,9 @@ jobs:
   build:
     name: Run static type checks (Pyright)
     runs-on: ubuntu-latest
+    env:
+      # Disable implicitly syncing before running - we run an explicit sync first.
+      UV_NO_SYNC: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up base Python
@@ -43,8 +46,7 @@ jobs:
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Run Pyright
-        # Currently only the `coreax` and `examples` directories are expected to pass.
-        run: uv run pyright coreax examples
+        run: uv run pyright
       - name: Minimize UV cache
         run: uv cache prune --ci
         if: always()

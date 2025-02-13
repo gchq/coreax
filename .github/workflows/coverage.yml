@@ -13,6 +13,9 @@ on:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    env:
+      # Disable implicitly syncing before running - we run an explicit sync first.
+      UV_NO_SYNC: true
     outputs:
       percentage_int: ${{ steps.cov.outputs.percentage_int }}
       percentage_float: ${{ steps.cov.outputs.percentage_float }}

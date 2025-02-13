@@ -206,6 +206,8 @@ class TestMMD:
         kernel_mm = kernel.compute(y.data, y.data)
         kernel_nm = kernel.compute(x.data, y.data)
         if mode == "weighted":
+            assert isinstance(x.weights, Array)
+            assert isinstance(y.weights, Array)
             weights_nn = x.weights[..., None] * x.weights[None, ...]
             weights_mm = y.weights[..., None] * y.weights[None, ...]
             weights_nm = x.weights[..., None] * y.weights[None, ...]
@@ -355,6 +357,7 @@ class TestKSD:
         # Compute each term in the KSD formula to obtain an expected KSD.
         kernel_mm = kernel.compute(y.data, y.data)
         if mode == "weighted":
+            assert isinstance(y.weights, Array)
             weights_mm = y.weights[..., None] * y.weights[None, ...]
             expected_ksd = jnp.sqrt(jnp.average(kernel_mm, weights=weights_mm))
             output = metric.compute(x, y, laplace_correct=False, regularise=False)

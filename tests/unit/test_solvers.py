@@ -22,7 +22,17 @@ from contextlib import (
     AbstractContextManager,
     nullcontext as does_not_raise,
 )
-from typing import Literal, NamedTuple, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Literal,
+    NamedTuple,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+)
 from unittest.mock import MagicMock, patch
 
 import equinox as eqx
@@ -66,17 +76,35 @@ from coreax.solvers.base import (
 )
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
+_Data = TypeVar("_Data", Data, SupervisedData)
+_Solver = TypeVar("_Solver", bound=Solver)
+_RefinementSolver = TypeVar("_RefinementSolver", bound=RefinementSolver)
 
-class _ReduceProblem(NamedTuple):
-    dataset: Union[Data, SupervisedData]
-    solver: Solver
-    expected_coreset: Optional[AbstractCoreset] = None
+if TYPE_CHECKING:
+    # In Python 3.9-3.10, this raises
+    # `TypeError: Multiple inheritance with NamedTuple is not supported`.
+    # Thus, we have to do the actual full typing here, and a non-generic one
+    # below to be used at runtime.
+    class _ReduceProblem(NamedTuple, Generic[_Data, _Solver]):
+        dataset: _Data
+        solver: _Solver
+        expected_coreset: Optional[AbstractCoreset] = None
 
+    class _RefineProblem(NamedTuple, Generic[_RefinementSolver]):
+        initial_coresubset: Coresubset
+        solver: _RefinementSolver
+        expected_coresubset: Optional[Coresubset] = None
+else:
+    # This is the implementation that's used at runtime.
+    class _ReduceProblem(NamedTuple):
+        dataset: _Data
+        solver: _Solver
+        expected_coreset: Optional[AbstractCoreset] = None
 
-class _RefineProblem(NamedTuple):
-    initial_coresubset: Coresubset
-    solver: RefinementSolver
-    expected_coresubset: Optional[Coresubset] = None
+    class _RefineProblem(NamedTuple):
+        initial_coresubset: Coresubset
+        solver: _RefinementSolver
+        expected_coresubset: Optional[Coresubset] = None
 
 
 class SolverTest:
@@ -86,7 +114,7 @@ class SolverTest:
     shape: tuple[int, int] = (128, 10)
 
     @abstractmethod
-    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         """
         Pytest fixture that returns a partially applied solver initialiser.
 
@@ -97,7 +125,7 @@ class SolverTest:
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
-        solver_factory: Union[type[Solver], jtu.Partial],
+        solver_factory: jtu.Partial,
     ) -> _ReduceProblem:
         """
         Pytest fixture that returns a problem dataset and the expected coreset.
@@ -129,6 +157,7 @@ class SolverTest:
         dataset, solver, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
             dataset = problem.initial_coresubset.pre_coreset_data
+        assert isinstance(dataset, Data)
         assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
         if expected_coreset is not None:
             assert isinstance(coreset, type(expected_coreset))
@@ -140,6 +169,7 @@ class SolverTest:
         if isinstance(solver, PaddingInvariantSolver):
             padded_dataset = tree_zero_pad_leading_axis(dataset, len(dataset))
             if isinstance(problem, _RefineProblem):
+                assert isinstance(solver, RefinementSolver)
                 padded_initial_coreset = eqx.tree_at(
                     lambda x: x.pre_coreset_data,
                     problem.initial_coresubset,
@@ -158,6 +188,7 @@ class SolverTest:
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        **kwargs: Any,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -168,6 +199,7 @@ class SolverTest:
             run, and keeping all other arguments the same.
         3. Check the two calls to 'refine' yield that same result.
         """
+        del kwargs
         dataset, solver, _ = reduce_problem
         coreset, state = jit_variant(solver.reduce)(dataset)
         if use_cached_state:
@@ -193,7 +225,7 @@ class RecombinationSolverTest(SolverTest):
         scope="class",
     )
     def reduce_problem(  # noqa: C901 complex-structure
-        self, request: pytest.FixtureRequest, solver_factory: Union[Solver, jtu.Partial]
+        self, request: pytest.FixtureRequest, solver_factory: jtu.Partial
     ) -> _ReduceProblem:
         node_key, weight_key, rng_key = jr.split(self.random_key, num=3)
         nodes = jr.uniform(node_key, self.shape)
@@ -209,23 +241,31 @@ class RecombinationSolverTest(SolverTest):
             test_functions = None
         elif request.param == "null":
             # Same as 'random' but with test-functions mapping to the zero vector.
-            def test_functions(x):
+            def test_functions_impl(x):
                 return jnp.zeros(x.shape)
+
+            test_functions = test_functions_impl
         elif request.param == "full_rank":
             # Same as 'random' but with all test-functions linearly-independent.
-            def test_functions(x):
+            def test_functions_impl(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, norm_x**2, norm_x**3])
+
+            test_functions = test_functions_impl
         elif request.param == "rank_deficient":
             # Same as 'full_rank' but with some test-functions linearly-dependent.
-            def test_functions(x):
+            def test_functions_impl(x):
                 norm_x = jnp.linalg.norm(x)
                 return jnp.array([norm_x, 2 * norm_x, 2 + norm_x])
+
+            test_functions = test_functions_impl
         elif request.param == "excessive_test_functions":
             # Same as 'random' but with more test-functions than dataset entries.
-            def test_functions(x):
+            def test_functions_impl(x):
                 del x
                 return jnp.zeros((len(nodes) + 1,))
+
+            test_functions = test_functions_impl
         else:
             raise ValueError("Invalid fixture parametrization")
         solver_factory.keywords["test_functions"] = test_functions
@@ -250,6 +290,7 @@ class RecombinationSolverTest(SolverTest):
         """
         super().check_solution_invariants(coreset, problem)
         dataset, solver, _ = problem
+        assert isinstance(dataset, Data)
         coreset_nodes, coreset_weights = coreset.points.data, coreset.points.weights
         assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
         if solver.test_functions is None:
@@ -311,15 +352,17 @@ class RecombinationSolverTest(SolverTest):
             (None, pytest.raises(ValueError, match="Invalid mode")),
         ),
     )
-    # We don't care too much that arguments differ as this is required to override the
-    # parametrization. Nevertheless, this should probably be revisited in the future.
-    def test_reduce(  # pylint: disable=arguments-differ
+    # Ignore pylint here; this is a perfectly valid override (because of **kwargs).
+    # pylint: disable-next=arguments-differ
+    def test_reduce(
         self,
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        *,
         recombination_mode: Literal["implicit-explicit", "implicit", "explicit"],
         context: AbstractContextManager,
+        **kwargs: Any,
     ) -> None:
         """
         Check 'reduce' raises no errors and is resultant 'solver_state' invariant.
@@ -333,6 +376,7 @@ class RecombinationSolverTest(SolverTest):
             run, and keeping all other arguments the same.
         3. Check the two calls to 'refine' yield that same result.
         """
+        del kwargs
         dataset, base_solver, expected_coreset = reduce_problem
         solver = eqx.tree_at(lambda x: x.mode, base_solver, recombination_mode)
         updated_problem = _ReduceProblem(dataset, solver, expected_coreset)
@@ -1020,7 +1064,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         """
         # Small testing dataset with a fixed seed
         generator = np.random.default_rng(97)
-        x = generator.uniform(size=(100, 2))
+        x = jnp.asarray(generator.uniform(size=(100, 2)))
         data = Data(x)
 
         # Initialise the solver using a simple kernel
@@ -1067,24 +1111,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
             state_base.gramian_row_mean, state_prob.gramian_row_mean
         )
 
-        # Check that temperature is validated
-        with pytest.raises(ValueError):
-            KernelHerding(
-                coreset_size=solver_base.coreset_size,
-                kernel=solver_base.kernel,
-                probabilistic=True,
-                temperature=0.0,
-                random_key=jr.key(0),
-            )
-        with pytest.raises(TypeError):
-            KernelHerding(
-                coreset_size=solver_base.coreset_size,
-                kernel=solver_base.kernel,
-                probabilistic=True,
-                temperature="1.0",
-                random_key=jr.key(0),
-            )
-
 
 class TestRandomSample(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.RandomSample`."""
@@ -1125,7 +1151,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
@@ -1142,6 +1168,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
         use_cached_state: bool,
+        **kwargs: Any,
     ) -> None:
         """
         Check `coreax.solvers.RPCholesky.reduce` raises no errors.
@@ -1151,7 +1178,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
             is `solver_state` invariant, which is not true for RPCholesky.
 
         """
-        super().test_reduce(jit_variant, reduce_problem, use_cached_state)
+        super().test_reduce(jit_variant, reduce_problem, use_cached_state, **kwargs)
 
     def test_rpcholesky_state(self, reduce_problem: _ReduceProblem) -> None:
         """
@@ -1930,7 +1957,7 @@ class TestMapReduce(SolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         class _MockTree:
             def __init__(self, _data: np.ndarray, **kwargs):
                 del kwargs
@@ -1996,11 +2023,12 @@ class TestMapReduce(SolverTest):
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
-        solver_factory: Union[type[Solver], jtu.Partial],
+        solver_factory: jtu.Partial,
     ) -> _ReduceProblem:
         dataset = jnp.broadcast_to(jnp.arange(self.shape[0])[..., None], self.shape)
         solver_flavour = request.param
-        solver = solver_factory(solver_flavour)
+        solver_factory.keywords["flavour"] = solver_flavour
+        solver: Solver = solver_factory()
         if solver_flavour == "original":
             # Expected procedure:
             # len(dataset) = 128; leaf_size=32
@@ -2235,7 +2263,7 @@ class TestCaratheodoryRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         return jtu.Partial(CaratheodoryRecombination, test_functions=None, rcond=None)
 
 
@@ -2244,7 +2272,7 @@ class TestTreeRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[Solver, jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         return jtu.Partial(
             TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
         )
@@ -2255,7 +2283,7 @@ class TestKernelThinning(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(

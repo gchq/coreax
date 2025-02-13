@@ -56,6 +56,7 @@ def _setup_dataset():
         random_state=random_seed,
         return_centers=True,
     )
+    x = jnp.asarray(x)
 
     # Setup the original data object
     data = Data(x)
@@ -92,7 +93,7 @@ def setup_stein():
     data, length_scale = _setup_dataset()
     # We use kernel density matching rather than sliced score matching as it's much
     # faster than the sliced score matching used in the original unit test
-    matcher = KernelDensityMatching(length_scale=length_scale)
+    matcher = KernelDensityMatching(length_scale=length_scale.item())
     stein_kernel = SteinKernel(
         PCIMQKernel(length_scale=length_scale),
         matcher.match(jnp.asarray(data)),

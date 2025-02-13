@@ -318,11 +318,14 @@ maintainers decide the codebase is ready for another release:
      closed them.
 6. Update the version number in `coreax/__init.py__` and
    `.github/ISSUE_TEMPLATE/bug_report.yml`.
-7. Create and review a pull request.
-8. Once approved, merge the release branch into `main` as soon as possible. Do _not_
+7. Create, review and approve a pull request.
+8. Manually trigger the "Release" action, inputting the name of the release branch. If
+   there are any failures, make hot fixes to merge into the release branch. In some
+   circumstances, such as if there would be merge conflicts with `main`, it may be
+   better to merge the fixes to `main` and rebase the release branch.
+9. Merge the release branch into `main` as soon as possible. Do _not_
    delete the release branch when you merge the PR - only delete it once the full
    release process has been completed.
-9. Manually trigger the "Release" action, inputting the name of the release branch.
 10. Create a release in GitHub pointing at the final commit on the release branch (that
    is, the commit _before_ merging into `main`). Add the wheel file produced by the
    Release action to the GitHub release as an artifact.

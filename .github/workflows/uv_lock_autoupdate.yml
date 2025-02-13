@@ -83,7 +83,7 @@ jobs:
           --format requirements-txt
           --no-hashes
           --no-dev
-          --no-emit-project
+          --no-editable
           --extra doc
           --output-file requirements-doc.txt
       - name: Store hash of new files for comparison
