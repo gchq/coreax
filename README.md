@@ -109,10 +109,3 @@ We anticipate two release types: feature releases and security releases. Securit
 releases will be issued as needed in accordance with the
 [security policy](https://github.com/gchq/coreax/security/policy). Feature releases will
 be issued as appropriate, dependent on the feature pipeline and development priorities.
-
-# Coming soon
-
-Some features coming soon include:
-* Coordinate bootstrapping for high-dimensional data.
-* Other coreset-style algorithms, including recombination, as means
-to reducing a large dataset whilst maintaining properties of the underlying distribution.
