@@ -2559,7 +2559,7 @@ class TestIterativeKernelHerding(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+    def solver_factory(self) -> jtu.Partial:
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(

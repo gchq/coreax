@@ -24,7 +24,7 @@ import jax.numpy as jnp
 import pytest
 import torch
 from jax import random
-from torch.utils.data import Dataset
+from torchvision.datasets import VisionDataset
 
 from benchmark.mnist_benchmark import (
     MLP,
@@ -46,7 +46,7 @@ from coreax.solvers import (
 )
 
 
-class MockDataset(Dataset):
+class MockDataset(VisionDataset):
     """Mock dataset class for testing purposes."""
 
     def __init__(self, data: torch.Tensor, labels: torch.Tensor) -> None:
@@ -58,6 +58,7 @@ class MockDataset(Dataset):
         :param data: A tensor containing the dataset features.
         :param labels: A tensor containing the corresponding labels.
         """
+        super().__init__(root="", transform=None, target_transform=None)
         self.data = data
         self.labels = labels
 
