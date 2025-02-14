@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
--
+- `Coming soon` sections from README and documentation, as covered by backlogs.
+  (https://github.com/gchq/coreax/pull/972)
 
 ### Deprecated
 
