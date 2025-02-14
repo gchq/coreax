@@ -153,6 +153,7 @@ vars
 viewcode
 vmap
 vmaps
+worksteal
 writebytes
 xlabel
 ylabel
