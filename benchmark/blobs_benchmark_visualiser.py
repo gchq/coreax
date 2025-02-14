@@ -22,10 +22,10 @@ from matplotlib import pyplot as plt
 
 def plot_benchmarking_results(data):
     """
-    Visualise the benchmarking results.
+    Visualise the benchmarking results in five separate plots.
 
     :param data: A dictionary where keys are the coreset sizes (as strings) and values
-                 that are dictionaries containing the metrics for each algorithm.
+                 are dictionaries containing the metrics for each algorithm.
 
     Example:
                  {
@@ -45,46 +45,54 @@ def plot_benchmarking_results(data):
                  }
 
     """
+    title_size = 22
+    label_size = 18
+    tick_size = 16
+    legend_size = 16
+
     first_coreset_size = next(iter(data.keys()))
-    first_algorithm = next(
-        iter(data[first_coreset_size].values())
-    )  # Get one example algorithm
+    first_algorithm = next(iter(data[first_coreset_size].values()))
     metrics = list(first_algorithm.keys())
-    n_metrics = len(metrics)
 
-    n_rows = (n_metrics + 1) // 2
-    fig, axs = plt.subplots(n_rows, 2, figsize=(14, 6 * n_rows))
-    fig.delaxes(axs[2, 1])
-    axs = axs.flatten()
-
-    # Iterate over each metric and create its subplot
-    for i, metric in enumerate(metrics):
-        ax = axs[i]
-        ax.set_title(
+    for metric in metrics:
+        plt.figure(figsize=(10, 8))
+        plt.title(
             f"{metric.replace('_', ' ').title()} vs Coreset Size",
-            fontsize=14,
+            fontsize=title_size,
+            fontweight="bold",
         )
 
-        # For each algorithm, plot its performance across different subset sizes
-        for algo in data[list(data.keys())[0]].keys():  # Iterating through algorithms
-            # Create lists of subset sizes (10, 50, 100, 200)
+        for algo in data[first_coreset_size].keys():
             coreset_sizes = sorted(map(int, data.keys()))
             metric_values = [
-                data[str(subset_size)][algo].get(metric, float("nan"))
-                for subset_size in coreset_sizes
+                data[str(size)][algo].get(metric, float("nan"))
+                for size in coreset_sizes
             ]
 
-            ax.plot(coreset_sizes, metric_values, marker="o", label=algo)
+            plt.plot(
+                coreset_sizes,
+                metric_values,
+                marker="o",
+                markersize=8,
+                linewidth=2.5,
+                label=algo,
+            )
 
-        ax.set_xlabel("Coreset Size")
-        ax.set_ylabel(f"{metric.replace('_', ' ').title()}")
-        ax.set_yscale("log")  # log scale for better visualization
-        ax.legend()
+        plt.xlabel("Coreset Size", fontsize=label_size, fontweight="bold")
+        plt.ylabel(
+            f"{metric.replace('_', ' ').title()}",
+            fontsize=label_size,
+            fontweight="bold",
+        )
+        plt.yscale("log")
 
-    # Adjust layout to avoid overlap
-    plt.subplots_adjust(hspace=15.0, wspace=1.0)
-    plt.tight_layout(pad=3.0, rect=(0.0, 0.0, 1.0, 0.96))
-    plt.show()
+        plt.xticks(fontsize=tick_size)
+        plt.yticks(fontsize=tick_size)
+
+        plt.legend(fontsize=legend_size, loc="best", frameon=True)
+
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.show()
 
 
 # Function to print metrics table for each sample size
@@ -134,6 +142,53 @@ def print_metrics_table(data: dict, coreset_size: str) -> None:
     print(separator)
 
 
+def print_rst_metrics_table(data: dict, original_sample_size: int) -> None:
+    """
+    Print metrics tables in reStructuredText format with highlighted best values.
+
+    :param data: Dictionary with coreset sizes as keys and nested metrics data
+    :param original_sample_size: The size of the original sample to display
+    """
+    metrics = [
+        "Unweighted_MMD",
+        "Unweighted_KSD",
+        "Weighted_MMD",
+        "Weighted_KSD",
+        "Time",
+    ]
+
+    for coreset_size, methods_data in sorted(data.items(), key=lambda x: int(x[0])):
+        if coreset_size == "n_samples":  # Skip the sample size entry
+            continue
+
+        print(
+            f".. list-table:: Coreset Size {coreset_size} "
+            f"(Original Sample Size {original_sample_size:,})"
+        )
+        print("   :header-rows: 1")
+        print("   :widths: 20 15 15 15 15 15")
+        print()
+        print("   * - Method")
+        for metric in metrics:
+            print(f"     - {metric}")
+
+        # Find best (minimum) values for each metric
+        best_values = {
+            metric: min(methods_data[method][metric] for method in methods_data)
+            for metric in metrics
+        }
+
+        for method in methods_data:
+            print(f"   * - {method}")
+            for metric in metrics:
+                value = methods_data[method][metric]
+                if value == best_values[metric]:
+                    print(f"     - **{value:.6f}**")  # Highlight best value
+                else:
+                    print(f"     - {value:.6f}")
+            print()
+
+
 def main() -> None:
     """Load the data and print metrics in table format per sample size."""
     # Load the JSON data
@@ -149,6 +204,7 @@ def main() -> None:
             continue
         print_metrics_table(data, coreset_size)
 
+    print_rst_metrics_table(data, original_sample_size=1024)
     plot_benchmarking_results(data)
 
 

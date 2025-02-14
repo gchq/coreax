@@ -30,9 +30,8 @@ import numpy as np
 import umap
 from jax import random
 
-from coreax.benchmark_util import get_solver_name, initialise_solvers
+from coreax.benchmark_util import initialise_solvers
 from coreax.data import Data
-from coreax.solvers import MapReduce
 
 
 def benchmark_coreset_algorithms(
@@ -62,16 +61,13 @@ def benchmark_coreset_algorithms(
 
     umap_model = umap.UMAP(densmap=True, n_components=25)
     umap_data = jnp.asarray(umap_model.fit_transform(reshaped_data))
+    print("umap_data_shape", umap_data.shape)
 
-    solver_factories = initialise_solvers(Data(umap_data), random.PRNGKey(45))
-    for solver_creator in solver_factories:
+    solver_factories = initialise_solvers(
+        Data(umap_data), random.PRNGKey(45), g=3, leaf_size=0
+    )
+    for solver_name, solver_creator in solver_factories.items():
         solver = solver_creator(coreset_size)
-
-        # There is no need to use MapReduce as the data-size is small
-        if isinstance(solver, MapReduce):
-            solver = solver.base_solver
-
-        solver_name = get_solver_name(solver_creator)
         data = Data(umap_data)
 
         start_time = time.perf_counter()

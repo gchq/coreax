@@ -209,6 +209,7 @@ nitpick_ignore = [
     ("py:obj", "coreax.metrics._Data"),
     ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
     ("py:obj", "coreax.util.T"),
+    ("py:class", "pathlib._local.Path"),
 ]
 
 nitpick_ignore_regex = [
@@ -340,13 +341,12 @@ def create_custom_inv_file(
             # pylint: disable=abstract-class-instantiated
             inventory.objects.append(
                 sphobjinv.DataObjStr(
-                    # Pyright does not detect this as a dataclass
-                    name=name,  # pyright: ignore [reportCallIssue]
-                    domain=domain,  # pyright: ignore [reportCallIssue]
-                    role=role,  # pyright: ignore [reportCallIssue]
-                    priority=str(1),  # pyright: ignore [reportCallIssue]
-                    uri=uri,  # pyright: ignore [reportCallIssue]
-                    dispname="-",  # pyright: ignore [reportCallIssue]
+                    name=name,
+                    domain=domain,
+                    role=role,
+                    priority=str(1),
+                    uri=uri,
+                    dispname="-",
                 )
             )
             # pylint: enable=abstract-class-instantiated
@@ -371,7 +371,7 @@ if not TQDM_CUSTOM_PATH.exists():
 
 def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
     """Combine fields and parameters into a single entry for NamedTuple classes."""
-    if type(obj) is collections._tuplegetter:  # pyright: ignore [reportAttributeAccessIssue]
+    if type(obj) is collections._tuplegetter:
         return True
     return skip
 

@@ -33,14 +33,13 @@ import time
 
 import equinox as eqx
 import jax
-
-from benchmark.mnist_benchmark import (
+from mnist_benchmark import (
     density_preserving_umap,
-    get_solver_name,
-    initialise_solvers,
     prepare_datasets,
 )
+
 from coreax import Data
+from coreax.benchmark_util import initialise_solvers
 
 
 def save_results(results: dict) -> None:
@@ -103,12 +102,14 @@ def main() -> None:
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solver_factories = initialise_solvers(train_data_umap, key)
-        for solver_creator in solver_factories:
+        solver_factories = initialise_solvers(
+            train_data_umap, key, g=7, leaf_size=15_000
+        )
+        for solver_name, solver_creator in solver_factories.items():
             for size in [25, 50, 100, 500, 1_000]:
                 solver = solver_creator(size)
-                solver_name = get_solver_name(solver_creator)
                 start_time = time.perf_counter()
+                # pylint: enable=duplicate-code
                 _, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
                 time_taken = time.perf_counter() - start_time
 

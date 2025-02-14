@@ -24,7 +24,7 @@ import jax.numpy as jnp
 import pytest
 import torch
 from jax import random
-from torchvision.datasets import VisionDataset
+from torch.utils.data import Dataset
 
 from benchmark.mnist_benchmark import (
     MLP,
@@ -33,21 +33,23 @@ from benchmark.mnist_benchmark import (
     train_and_evaluate,
 )
 from coreax import Data
-from coreax.benchmark_util import calculate_delta, get_solver_name, initialise_solvers
-from coreax.kernels.scalar_valued import SquaredExponentialKernel
+from coreax.benchmark_util import calculate_delta, initialise_solvers
 from coreax.solvers import (
+    CompressPlusPlus,
+    IterativeKernelHerding,
     KernelHerding,
+    KernelThinning,
     MapReduce,
     RandomSample,
     RPCholesky,
+    SteinThinning,
 )
 
 
-class MockDataset(VisionDataset):
+class MockDataset(Dataset):
     """Mock dataset class for testing purposes."""
 
-    # We deliberately don't call super().__init__(), as this is a mock class
-    def __init__(self, data: torch.Tensor, labels: torch.Tensor) -> None:  # pylint: disable=super-init-not-called
+    def __init__(self, data: torch.Tensor, labels: torch.Tensor) -> None:
         """
         Initialise the MockDataset.
 
@@ -135,41 +137,57 @@ def test_initialise_solvers() -> None:
     """
     Test the :func:`initialise_solvers`.
 
-    Verify that the returned list contains callable functions that produce
+    Verify that the returned dictionary contains callable functions that produce
     valid solver instances.
     """
     # Create a mock dataset (UMAP-transformed) with arbitrary values
     mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
     key = random.PRNGKey(42)
+    g = 1
+    leaf_size = 0  # Set to 0 for simplicity in testing, adjust as needed
 
-    solvers = initialise_solvers(mock_data, key)
-    for solver in solvers:
-        solver_instance = solver(1)  # Instantiate with a coreset size of 1
-        assert isinstance(solver_instance, (MapReduce, RandomSample, RPCholesky)), (
-            f"Unexpected solver type: {type(solver_instance)}"
-        )
+    # Initialise solvers
+    solvers = initialise_solvers(mock_data, key, g, leaf_size)
+
+    # Ensure solvers is a dictionary with the expected keys
+    expected_solver_keys = [
+        "Random Sample",
+        "RP Cholesky",
+        "Kernel Herding",
+        "Stein Thinning",
+        "Kernel Thinning",
+        "Compress++",
+        "Probabilistic Iterative Herding",
+    ]
+    assert set(solvers.keys()) == set(expected_solver_keys), "Solver keys mismatch"
+
+    # Test if each solver in the dictionary is callable and returns the correct instance
+    for solver_name, solver_function in solvers.items():
+        print(f"Testing solver: {solver_name}")
+        solver_instance = solver_function(1)  # Instantiate with a coreset size of 1
+
+        # Assert the solver instance is one of the expected solver types
+        assert isinstance(
+            solver_instance,
+            (
+                MapReduce,
+                RandomSample,
+                RPCholesky,
+                KernelHerding,
+                SteinThinning,
+                KernelThinning,
+                CompressPlusPlus,
+                IterativeKernelHerding,
+            ),
+        ), f"Unexpected solver type for {solver_name}: {type(solver_instance)}"
+
+        # Optionally, print solver instance type for verification
+        print(f"   - Solver {solver_name} returned: {type(solver_instance)}")
+
+    print("All solvers initialized successfully.")
 
 
-def test_get_solver_name():
-    """
-    Test `get_solver_name` function to ensure it returns correct solver names.
-    """
-    # Create a KernelHerding solver
-    herding_solver = KernelHerding(coreset_size=5, kernel=SquaredExponentialKernel())
-
-    # Wrap it in MapReduce
-    map_reduce_solver = MapReduce(base_solver=herding_solver, leaf_size=15)
-
-    assert get_solver_name(lambda _: herding_solver) == "KernelHerding", (
-        "Expected 'KernelHerding' but got something else."
-    )
-
-    assert get_solver_name(lambda _: map_reduce_solver) == "KernelHerding", (
-        "Expected 'KernelHerding' from MapReduce solver but got something else."
-    )
-
-
-@pytest.mark.parametrize("n", [10, 100, 1000])
+@pytest.mark.parametrize("n", [1, 2, 100])
 def test_calculate_delta(n):
     """
     Test the `calculate_delta` function.

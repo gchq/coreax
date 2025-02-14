@@ -1439,3 +1439,67 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         plus_plus_indices = _compress_plus_plus(clipped_indices)
         return Coresubset(Data(plus_plus_indices), dataset), None
+
+
+class IterativeKernelHerding(ExplicitSizeSolver):
+    """
+    Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
+
+    Reduce using :class:`~coreax.solvers.KernelHerding` then refine set number of times.
+
+    :param kernel: Kernel to be used for Kernel Herding.
+    :param unique: Ensures the resulting coresubset contains only unique elements.
+    :param block_size: Block size for kernel computation.
+    :param unroll: Unroll parameter for kernel computation.
+    :param probabilistic: If True, elements are chosen probabilistically.
+    :param temperature: Temperature parameter for probabilistic selection.
+    :param random_key: Key for random number generation.
+    :param num_iterations: Number of refinement iterations.
+    """
+
+    num_iterations: int
+    kernel: ScalarValuedKernel
+    unique: bool = True
+    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
+    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
+    probabilistic: bool = False
+    temperature: Union[float, Scalar] = eqx.field(default=1.0)
+    random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
+
+    def reduce(
+        self,
+        dataset: _Data,
+        solver_state: Optional[HerdingState] = None,
+    ) -> tuple[Coresubset[_Data], HerdingState]:
+        """
+        Perform Kernel Herding reduction followed by additional refinement iterations.
+
+        :param dataset: The dataset to process.
+        :param solver_state: Optional solver state.
+        :return: Refined coresubset and final solver state.
+        """
+        herding_solver = KernelHerding(
+            coreset_size=self.coreset_size,
+            kernel=self.kernel,
+            unique=self.unique,
+            block_size=self.block_size,
+            unroll=self.unroll,
+            probabilistic=self.probabilistic,
+            temperature=self.temperature,
+            random_key=self.random_key,
+        )
+
+        coreset, reduced_solver_state = herding_solver.reduce(dataset, solver_state)
+
+        def refine_step(_, state):
+            coreset, reduced_solver_state = state
+            coreset, reduced_solver_state = herding_solver.refine(
+                coreset, reduced_solver_state
+            )
+            return (coreset, reduced_solver_state)
+
+        coreset, reduced_solver_state = lax.fori_loop(
+            0, self.num_iterations, refine_step, (coreset, reduced_solver_state)
+        )
+
+        return coreset, reduced_solver_state

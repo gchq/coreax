@@ -59,6 +59,7 @@ from coreax.solvers import (
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
+    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -2551,3 +2552,21 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
                 sqrt_kernel=SquaredExponentialKernel(),
             )
             solver.reduce(dataset)
+
+
+class TestIterativeKernelHerding(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
+
+    @override
+    @pytest.fixture(scope="class")
+    def solver_factory(self) -> Union[type[Solver], jtu.Partial]:
+        kernel = PCIMQKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            IterativeKernelHerding,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            kernel=kernel,
+            probabilistic=True,
+            num_iterations=2,
+        )

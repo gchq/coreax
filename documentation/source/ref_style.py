@@ -40,8 +40,7 @@ class MyLabelStyle(BaseLabelStyle):
     ) -> Generator[str, None, None]:
         """Yield formatted labels for each entry."""
         for entry in sorted_entries:
-            assert isinstance(rtn := entry.key, str)
-            yield rtn
+            yield entry.key
 
 
 class _BibKeyStyle(UnsrtStyle):

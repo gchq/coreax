@@ -45,6 +45,8 @@ from coreax.kernels import (
 )
 from coreax.metrics import KSD, MMD
 from coreax.solvers import (
+    CompressPlusPlus,
+    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     RandomSample,
@@ -153,6 +155,39 @@ def setup_solvers(
                 sqrt_kernel=sqrt_kernel,
             ),
         ),
+        (
+            "CompressPlusPlus",
+            CompressPlusPlus(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                random_key=random_key,
+                delta=delta,
+                sqrt_kernel=sqrt_kernel,
+                g=4,
+            ),
+        ),
+        (
+            "ProbabilisticIterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=True,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=5,
+            ),
+        ),
+        (
+            "IterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=False,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=5,
+            ),
+        ),
     ]
 
 
@@ -230,7 +265,7 @@ def compute_metrics(
 
 def main() -> None:  # pylint: disable=too-many-locals
     """Benchmark various algorithms on a synthetic dataset over multiple seeds."""
-    n_samples = 1_000
+    n_samples = 1_024
     seeds = [42, 45, 46, 47, 48]  # List of seeds to average over
     coreset_sizes = [25, 50, 100, 200]
 

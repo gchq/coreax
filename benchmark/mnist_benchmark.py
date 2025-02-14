@@ -56,7 +56,7 @@ from torchvision import transforms
 from torchvision.datasets import VisionDataset
 
 from coreax import Data
-from coreax.benchmark_util import get_solver_name, initialise_solvers
+from coreax.benchmark_util import initialise_solvers
 from coreax.util import KeyArrayLike
 
 
@@ -530,11 +530,12 @@ def main() -> None:
     for i in range(5):
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
-        solver_factories = initialise_solvers(train_data_umap, key)
-        for solver_creator in solver_factories:
+        solver_factories = initialise_solvers(
+            train_data_umap, key, g=7, leaf_size=15_000
+        )
+        for solver_name, solver_creator in solver_factories.items():
             for size in [25, 50, 100, 500, 1_000, 5_000]:
                 solver = solver_creator(size)
-                solver_name = get_solver_name(solver_creator)
                 start_time = time.perf_counter()
                 # pylint: enable=duplicate-code
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
