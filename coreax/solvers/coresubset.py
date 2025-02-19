@@ -347,6 +347,57 @@ class KernelHerding(
         )
         return refined_coreset, HerdingState(gramian_row_mean)
 
+    def reduce_iterative(
+        self,
+        dataset: _Data,
+        solver_state: Optional[HerdingState] = None,
+        num_iterations: int = 1,
+        t_schedule: Optional[Shaped[Array, " {num_iterations}"]] = None,
+    ) -> tuple[Coresubset[_Data], HerdingState]:
+        """
+        Reduce a dataset to a coreset by refining iteratively.
+
+        :param dataset: Dataset to reduce
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values
+        :param num_iterations: Number of iterations of the refine method
+        :param t_schedule: An :class:`Array` of length `num_iterations`, where
+            `t_schedule[i]` is the temperature parameter used for iteration i. If None,
+            standard Kernel Herding is used
+        :return: A coresubset and relevant intermediate solver state information
+        """
+        initial_coreset = _initial_coresubset(0, self.coreset_size, dataset)
+        if solver_state is None:
+            x, bs, un = initial_coreset.pre_coreset_data, self.block_size, self.unroll
+            solver_state = HerdingState(
+                self.kernel.gramian_row_mean(x, block_size=bs, unroll=un)
+            )
+
+        def refine_iteration(i: int, coreset: Coresubset) -> Coresubset:
+            """
+            Perform one iteration of the refine method.
+
+            :param i: Iteration number
+            :param coreset: Coreset to be refined
+            """
+            # Update the random key
+            new_solver = eqx.tree_at(
+                lambda x: x.random_key, self, jr.fold_in(self.random_key, i)
+            )
+            # If the temperature schedule is provided, update temperature too
+            if t_schedule is not None:
+                new_solver = eqx.tree_at(
+                    lambda x: x.temperature, new_solver, t_schedule[i]
+                )
+
+            coreset, _ = new_solver.refine(coreset, solver_state)
+            return coreset
+
+        return (
+            jax.lax.fori_loop(0, num_iterations, refine_iteration, initial_coreset),
+            solver_state,
+        )
+
 
 class SteinThinning(
     RefinementSolver[_Data, None], ExplicitSizeSolver, PaddingInvariantSolver
