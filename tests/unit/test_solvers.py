@@ -1168,7 +1168,6 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
 
             coreset_prob_iter, _ = solver_base.reduce_iterative(
                 dataset,
-                state,
                 num_iterations=num_iter,
                 t_schedule=jnp.ones(num_iter) * solver_base.temperature,
             )
