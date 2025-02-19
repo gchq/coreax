@@ -1117,17 +1117,16 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         Test the iterative version of Kernel Herding.
         """
         dataset, solver_base, _ = reduce_problem
-
         num_iter = 4
 
+        # Check that reduce_iterative() outputs the same coreset as when applying
+        # refine num_iter times
         coreset_det, state = solver_base.reduce(dataset)
         for _ in range(num_iter - 1):
             coreset_det, _ = solver_base.refine(coreset_det, state)
-
         coreset_det_iter, _ = solver_base.reduce_iterative(
             dataset, state, num_iterations=num_iter
         )
-
         np.testing.assert_array_equal(
             coreset_det.unweighted_indices, coreset_det_iter.unweighted_indices
         )
@@ -1174,6 +1173,8 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
                 t_schedule=jnp.ones(num_iter) * solver_base.temperature,
             )
 
+        # Check that reduce_iterative() outputs the same coreset as when applying
+        # refine num_iter times
         np.testing.assert_array_equal(
             coreset_prob.unweighted_indices, coreset_prob_iter.unweighted_indices
         )
