@@ -226,6 +226,30 @@ def initialise_solvers(  # noqa: C901
             return herding_solver
         return MapReduce(herding_solver, leaf_size=leaf_size)
 
+    def _get_iterative_herding_solver(
+        _size: int,
+    ) -> Union[IterativeKernelHerding, MapReduce]:
+        """
+        Set up KernelHerding with probabilistic selection.
+
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
+
+        :param _size: The size of the coreset to be generated.
+        :return: MapReduce solver with KernelHerding as the base solver.
+        """
+        herding_solver = IterativeKernelHerding(
+            coreset_size=_size,
+            kernel=kernel,
+            probabilistic=False,
+            temperature=0.001,
+            random_key=key,
+            num_iterations=5,
+        )
+        if leaf_size is None:
+            return herding_solver
+        return MapReduce(herding_solver, leaf_size=leaf_size)
+
     return {
         "Random Sample": _get_random_solver,
         "RP Cholesky": _get_rp_solver,
@@ -234,4 +258,5 @@ def initialise_solvers(  # noqa: C901
         "Kernel Thinning": _get_thinning_solver,
         "Compress++": _get_compress_solver,
         "Probabilistic Iterative Herding": _get_probabilistic_herding_solver,
+        "Iterative Herding": _get_iterative_herding_solver,
     }
