@@ -158,6 +158,7 @@ def test_initialise_solvers() -> None:
         "Kernel Thinning",
         "Compress++",
         "Probabilistic Iterative Herding",
+        "Iterative Herding",
     ]
     assert set(solvers.keys()) == set(expected_solver_keys), "Solver keys mismatch"
 
