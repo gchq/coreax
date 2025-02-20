@@ -145,10 +145,9 @@ def test_initialise_solvers() -> None:
     mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
     key = random.PRNGKey(42)
     g = 1
-    leaf_size = 0  # Set to 0 for simplicity in testing, adjust as needed
 
     # Initialise solvers
-    solvers = initialise_solvers(mock_data, key, g, leaf_size)
+    solvers = initialise_solvers(mock_data, key, g)
 
     # Ensure solvers is a dictionary with the expected keys
     expected_solver_keys = [
@@ -165,7 +164,7 @@ def test_initialise_solvers() -> None:
     # Test if each solver in the dictionary is callable and returns the correct instance
     for solver_name, solver_function in solvers.items():
         print(f"Testing solver: {solver_name}")
-        solver_instance = solver_function(1)  # Instantiate with a coreset size of 1
+        solver_instance = solver_function(1)
 
         # Assert the solver instance is one of the expected solver types
         assert isinstance(
