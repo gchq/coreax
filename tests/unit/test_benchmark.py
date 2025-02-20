@@ -144,10 +144,10 @@ def test_initialise_solvers() -> None:
     # Create a mock dataset (UMAP-transformed) with arbitrary values
     mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
     key = random.PRNGKey(42)
-    g = 1
+    cpp_oversampling_factor = 1
 
     # Initialise solvers
-    solvers = initialise_solvers(mock_data, key, g)
+    solvers = initialise_solvers(mock_data, key, cpp_oversampling_factor)
 
     # Ensure solvers is a dictionary with the expected keys
     expected_solver_keys = [
