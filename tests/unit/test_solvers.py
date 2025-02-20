@@ -2558,8 +2558,8 @@ class TestIterativeKernelHerding(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
 
     @override
-    @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    @pytest.fixture(scope="class", params=[True, False])
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:  # pylint: disable=arguments-differ
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
@@ -2567,6 +2567,6 @@ class TestIterativeKernelHerding(ExplicitSizeSolverTest):
             coreset_size=coreset_size,
             random_key=self.random_key,
             kernel=kernel,
-            probabilistic=True,
+            probabilistic=request.param,
             num_iterations=2,
         )
