@@ -103,7 +103,7 @@ def main() -> None:
         print(f"Run {i + 1} of 5:")
         key = jax.random.PRNGKey(i)
         solver_factories = initialise_solvers(
-            train_data_umap, key, g=7, leaf_size=15_000
+            train_data_umap, key, cpp_oversampling_factor=7, leaf_size=15_000
         )
         for solver_name, solver_creator in solver_factories.items():
             for size in [25, 50, 100, 500, 1_000]:

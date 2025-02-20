@@ -21,6 +21,7 @@ functions for computing solver parameters and retrieving solver names.
 """
 
 from collections.abc import Callable
+from typing import Optional, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -75,8 +76,8 @@ def calculate_delta(n: int) -> Float[Array, "1"]:
 def initialise_solvers(  # noqa: C901
     train_data_umap: Data,
     key: KeyArrayLike,
-    g: int,
-    leaf_size: int,
+    cpp_oversampling_factor: int,
+    leaf_size: Optional[int] = None,
 ) -> dict[str, Callable[[int], Solver]]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
@@ -90,7 +91,10 @@ def initialise_solvers(  # noqa: C901
     :param train_data_umap: The UMAP-transformed training data used for
         length scale estimation for ``SquareExponentialKernel``.
     :param key: The random key for initialising random solvers.
-    :return: A list of solvers functions for different coreset algorithms.
+    :param cpp_oversampling_factor: The oversampling factor for `Compress++`.
+    :param leaf_size: Leaf size to be used in `MapReduce` solvers.
+    :return: A dictionary where the keys are solver names and the values are
+        corresponding solver functions for different coreset algorithms.
     """
     # Set up kernel using median heuristic
     num_data_points = len(train_data_umap)
@@ -102,13 +106,12 @@ def initialise_solvers(  # noqa: C901
     kernel = SquaredExponentialKernel(length_scale=length_scale)
     sqrt_kernel = kernel.get_sqrt_kernel(16)
 
-    def _get_thinning_solver(_size: int) -> Solver:
+    def _get_thinning_solver(_size: int) -> Union[KernelThinning, MapReduce]:
         """
-        Set up KernelThinning to use ``MapReduce``.
+        Set up kernel thinning solver.
 
-        Create a KernelThinning solver with the specified size and return
-        it along with a MapReduce object for reducing a large dataset like
-        MNIST dataset.
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
 
         :param _size: The size of the coreset to be generated.
         :return: MapReduce solver with KernelThinning as the base solver.
@@ -120,33 +123,31 @@ def initialise_solvers(  # noqa: C901
             delta=calculate_delta(num_data_points).item(),
             sqrt_kernel=sqrt_kernel,
         )
-        if leaf_size == 0:
+        if leaf_size is None:
             return thinning_solver
         return MapReduce(thinning_solver, leaf_size=leaf_size)
 
-    def _get_herding_solver(_size: int) -> Solver:
+    def _get_herding_solver(_size: int) -> Union[KernelHerding, MapReduce]:
         """
-        Set up KernelHerding to use ``MapReduce``.
+        Set up kernel herding solver.
 
-        Create a KernelHerding solver with the specified size and return
-        it along with a MapReduce object for reducing a large dataset like
-        MNIST dataset.
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
 
         :param _size: The size of the coreset to be generated.
         :return: MapReduce solver with KernelHerding as the base solver.
         """
         herding_solver = KernelHerding(_size, kernel)
-        if leaf_size == 0:
+        if leaf_size is None:
             return herding_solver
         return MapReduce(herding_solver, leaf_size=leaf_size)
 
-    def _get_stein_solver(_size: int) -> Solver:
+    def _get_stein_solver(_size: int) -> Union[SteinThinning, MapReduce]:
         """
-        Set up Stein Thinning to use ``MapReduce``.
+        Set up Stein thinning solver.
 
-        Create a SteinThinning solver with the specified  coreset size,
-        using ``KernelDensityMatching`` score function for matching on
-        a subset of the dataset.
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
 
         :param _size: The size of the coreset to be generated.
         :return: MapReduce solver with SteinThinning as the base solver.
@@ -160,11 +161,11 @@ def initialise_solvers(  # noqa: C901
         stein_solver = SteinThinning(
             coreset_size=_size, kernel=stein_kernel, regularise=False
         )
-        if leaf_size == 0:
+        if leaf_size is None:
             return stein_solver
         return MapReduce(stein_solver, leaf_size=leaf_size)
 
-    def _get_random_solver(_size: int) -> Solver:
+    def _get_random_solver(_size: int) -> RandomSample:
         """
         Set up Random Sampling to generate a coreset.
 
@@ -174,7 +175,7 @@ def initialise_solvers(  # noqa: C901
         random_solver = RandomSample(_size, key)
         return random_solver
 
-    def _get_rp_solver(_size: int) -> Solver:
+    def _get_rp_solver(_size: int) -> RPCholesky:
         """
         Set up Randomised Cholesky solver.
 
@@ -184,7 +185,7 @@ def initialise_solvers(  # noqa: C901
         rp_solver = RPCholesky(coreset_size=_size, kernel=kernel, random_key=key)
         return rp_solver
 
-    def _get_compress_solver(_size: int) -> Solver:
+    def _get_compress_solver(_size: int) -> CompressPlusPlus:
         """
         Set up Compress++ solver.
 
@@ -197,17 +198,18 @@ def initialise_solvers(  # noqa: C901
             random_key=key,
             delta=calculate_delta(num_data_points).item(),
             sqrt_kernel=sqrt_kernel,
-            g=g,
+            g=cpp_oversampling_factor,
         )
         return compress_solver
 
-    def _get_probabilistic_herding_solver(_size: int) -> Solver:
+    def _get_probabilistic_herding_solver(
+        _size: int,
+    ) -> Union[IterativeKernelHerding, MapReduce]:
         """
-        Set up KernelHerding to use ``MapReduce``.
+        Set up KernelHerding with probabilistic selection.
 
-        Create a KernelHerding solver with the specified size and return
-        it along with a MapReduce object for reducing a large dataset like
-        MNIST dataset.
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
 
         :param _size: The size of the coreset to be generated.
         :return: MapReduce solver with KernelHerding as the base solver.
@@ -220,7 +222,7 @@ def initialise_solvers(  # noqa: C901
             random_key=key,
             num_iterations=5,
         )
-        if leaf_size == 0:
+        if leaf_size is None:
             return herding_solver
         return MapReduce(herding_solver, leaf_size=leaf_size)
 

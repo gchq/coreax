@@ -29,9 +29,37 @@ import jax.numpy as jnp
 import numpy as np
 import umap
 from jax import random
+from matplotlib import pyplot as plt
 
 from coreax.benchmark_util import initialise_solvers
 from coreax.data import Data
+
+
+def plot_selected_frames(umap_data, selected_indices, action_frames, solver_name):
+    """
+    Plot the selected frames and action frames on a bar chart.
+
+    :param umap_data: The UMAP-transformed data.
+    :param selected_indices: Indices of the selected frames.
+    :param action_frames: Indices of the action frames.
+    :param solver_name: The name of the solver used.
+    """
+    x = np.arange(len(umap_data))
+    y = np.zeros(len(umap_data))
+    y[selected_indices] = 1.0
+
+    z = np.zeros(len(umap_data))
+    z[jnp.intersect1d(selected_indices, action_frames)] = 1.0
+
+    plt.figure(figsize=(20, 3))
+    plt.bar(x, y, alpha=0.5, label="Selected Frames")
+    plt.bar(x, z, label="Action Frames")
+    plt.xlabel("Frame", fontsize=18)
+    plt.ylabel("Chosen", fontsize=18)
+    plt.title(f"Selected Frames for {solver_name}", fontsize=24, fontweight="bold")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 
 def benchmark_coreset_algorithms(
@@ -64,7 +92,7 @@ def benchmark_coreset_algorithms(
     print("umap_data_shape", umap_data.shape)
 
     solver_factories = initialise_solvers(
-        Data(umap_data), random.PRNGKey(45), g=3, leaf_size=0
+        Data(umap_data), random.PRNGKey(45), cpp_oversampling_factor=3
     )
     for solver_name, solver_creator in solver_factories.items():
         solver = solver_creator(coreset_size)
@@ -76,12 +104,18 @@ def benchmark_coreset_algorithms(
 
         selected_indices = np.sort(np.asarray(coreset.unweighted_indices))
 
-        # Extract corresponding frames from original data and save GIF
         coreset_frames = raw_data[selected_indices]
         output_gif_path = out_dir / f"{solver_name}_coreset.gif"
         imageio.v3.imwrite(output_gif_path, coreset_frames, loop=0)
         print(f"Saved {solver_name} coreset GIF to {output_gif_path}")
         print(f"time taken: {solver_name:<25} {duration:<30.4f}")
+
+        plot_selected_frames(
+            umap_data=umap_data,
+            selected_indices=selected_indices,
+            action_frames=np.arange(63, 85),
+            solver_name=solver_name,
+        )
 
 
 if __name__ == "__main__":

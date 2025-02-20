@@ -1442,18 +1442,28 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
 
 class IterativeKernelHerding(ExplicitSizeSolver):
-    """
+    r"""
     Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
 
     Reduce using :class:`~coreax.solvers.KernelHerding` then refine set number of times.
+    All the parameters except the `num_iterations` is passed to
+    :class:`~coreax.solvers.KernelHerding`.
 
-    :param kernel: Kernel to be used for Kernel Herding.
-    :param unique: Ensures the resulting coresubset contains only unique elements.
-    :param block_size: Block size for kernel computation.
-    :param unroll: Unroll parameter for kernel computation.
-    :param probabilistic: If True, elements are chosen probabilistically.
-    :param temperature: Temperature parameter for probabilistic selection.
-    :param random_key: Key for random number generation.
+    :param coreset_size: The desired size of the solved coreset.
+    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
+        kernel function.
+        :math:`k: \\mathbb{R}^d \times \\mathbb{R}^d \rightarrow \\mathbb{R}`
+    :param unique: Boolean that ensures the resulting coresubset will only contain
+        unique elements.
+    :param block_size: Block size passed to
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
+    :param unroll: Unroll parameter passed to
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
+    :param probabilistic: If True, the elements are chosen probabilistically at each
+        iteration. Otherwise, standard Kernel Herding is run.
+    :param temperature: Temperature parameter, which controls how uniform the
+        probabilities are for probabilistic selection.
+    :param random_key: Key for random number generation, only used if probabilistic
     :param num_iterations: Number of refinement iterations.
     """
 
