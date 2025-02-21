@@ -160,32 +160,54 @@ def test_initialise_solvers() -> None:
         "Probabilistic Iterative Herding",
         "Iterative Herding",
     ]
-    assert set(solvers.keys()) == set(expected_solver_keys), "Solver keys mismatch"
+    assert set(solvers.keys()) == set(expected_solver_keys)
 
-    # Test if each solver in the dictionary is callable and returns the correct instance
-    for solver_name, solver_function in solvers.items():
-        print(f"Testing solver: {solver_name}")
+
+def test_solver_instances() -> None:
+    """
+    Test :func:`initialise_solvers` returns an instance of the expected solver type.
+    """
+    mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
+    key = random.PRNGKey(42)
+    cpp_oversampling_factor = 1
+    # Case 1: When leaf_size is not provided
+    solvers_no_leaf = initialise_solvers(mock_data, key, cpp_oversampling_factor)
+
+    expected_solver_types_no_leaf = {
+        "Random Sample": RandomSample,
+        "RP Cholesky": RPCholesky,
+        "Kernel Herding": KernelHerding,
+        "Stein Thinning": SteinThinning,
+        "Kernel Thinning": KernelThinning,
+        "Compress++": CompressPlusPlus,
+        "Probabilistic Iterative Herding": IterativeKernelHerding,
+        "Iterative Herding": IterativeKernelHerding,
+    }
+
+    for solver_name, solver_function in solvers_no_leaf.items():
         solver_instance = solver_function(1)
+        assert isinstance(solver_instance, expected_solver_types_no_leaf[solver_name])
 
-        # Assert the solver instance is one of the expected solver types
-        assert isinstance(
-            solver_instance,
-            (
-                MapReduce,
-                RandomSample,
-                RPCholesky,
-                KernelHerding,
-                SteinThinning,
-                KernelThinning,
-                CompressPlusPlus,
-                IterativeKernelHerding,
-            ),
-        ), f"Unexpected solver type for {solver_name}: {type(solver_instance)}"
+    # Case 2: When leaf_size is provided
+    leaf_size = 2
+    solvers_with_leaf = initialise_solvers(
+        mock_data, key, cpp_oversampling_factor, leaf_size
+    )
 
-        # Optionally, print solver instance type for verification
-        print(f"   - Solver {solver_name} returned: {type(solver_instance)}")
+    expected_solver_types_with_leaf = {
+        "Random Sample": RandomSample,
+        "RP Cholesky": RPCholesky,
+        "Kernel Herding": MapReduce,
+        "Stein Thinning": MapReduce,
+        "Kernel Thinning": MapReduce,
+        "Compress++": CompressPlusPlus,
+        "Probabilistic Iterative Herding": MapReduce,
+        "Iterative Herding": MapReduce,
+    }
 
-    print("All solvers initialized successfully.")
+    for solver_name, solver_function in solvers_with_leaf.items():
+        solver_instance = solver_function(1)
+        assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
 
 
 @pytest.mark.parametrize("n", [1, 2, 100])
@@ -196,7 +218,7 @@ def test_calculate_delta(n):
     Ensure that the function produces a positive delta value for different values of n.
     """
     delta = calculate_delta(n)
-    assert delta > 0, f"Delta should be positive but got {delta} for n={n}"
+    assert delta > 0
 
 
 if __name__ == "__main__":

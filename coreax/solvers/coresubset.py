@@ -1446,7 +1446,7 @@ class IterativeKernelHerding(ExplicitSizeSolver):
     Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
 
     Reduce using :class:`~coreax.solvers.KernelHerding` then refine set number of times.
-    All the parameters except the `num_iterations` is passed to
+    All the parameters except the `num_iterations` are passed to
     :class:`~coreax.solvers.KernelHerding`.
 
     :param coreset_size: The desired size of the solved coreset.
@@ -1459,8 +1459,8 @@ class IterativeKernelHerding(ExplicitSizeSolver):
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
     :param unroll: Unroll parameter passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
-    :param probabilistic: If True, the elements are chosen probabilistically at each
-        iteration. Otherwise, standard Kernel Herding is run.
+    :param probabilistic: If :data:`True`, the elements are chosen probabilistically at
+        each iteration. Otherwise, standard Kernel Herding is run.
     :param temperature: Temperature parameter, which controls how uniform the
         probabilities are for probabilistic selection.
     :param random_key: Key for random number generation, only used if probabilistic

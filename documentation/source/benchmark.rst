@@ -44,18 +44,21 @@ these steps:
 Impact of UMAP and MapReduce on Coreset Performance
 ---------------------------------------------------
 
-Since **UMAP** was used to reduce dimensionality and **MapReduce** was required to
-handle large-scale data, the coreset algorithms were not applied directly to the raw
-MNIST images. While these preprocessing steps improved efficiency, they may have
-impacted the performance of the coreset methods. Specifically, **MapReduce**
-partitions the dataset into smaller subsets and applies solvers to each partition,
+In the benchmarking of coreset algorithms, only **Random Sample** can be run without
+MapReduce or UMAP without running into memory allocation errors. The other coreset
+algorithms require dimensionality reduction and distributed processing to handle
+large-scale data efficiently. As a result, the coreset algorithms were not applied
+directly to the raw MNIST images. While these preprocessing steps improved efficiency,
+they may have impacted the performance of the coreset methods. Specifically,
+**MapReduce** partitions the dataset into subsets and applies solvers to each partition,
 which can reduce accuracy compared to applying solvers directly to the full dataset.
-Additionally, **batch normalisation** and **dropout** were used during training
-to mitigate over-fitting. These regularisation techniques made the models more robust,
-ensuring that accuracy did not heavily depend on the specific subset chosen. As a
-result, the benchmarking test showed that the accuracy remained similar regardless of
+Additionally, **batch normalisation** and **dropout** were used during training to
+mitigate over-fitting. These regularisation techniques made the models more robust,
+which also means that accuracy did not heavily depend on the specific subset chosen.
+The benchmarking test showed that the accuracy remained similar regardless of
 the coreset method used, with only small differences, which could potentially be
 attributed to the use of these regularisation techniques.
+
 
 **Results**:
 The accuracy of the MLP classifier when trained using the full MNIST dataset
@@ -347,36 +350,31 @@ For each metric and coreset size, the best performance score is highlighted in b
      :alt: Line graph visualising the data tables above, plotting unweighted MMD against
            coreset size for each of the coreset methods
 
-  **Figure 3**: Line graph visualising the data tables above, plotting unweighted MMD
-  against coreset size for each of the coreset methods.
+  **Figure 3**: Unweighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_unweighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting unweighted KSD against
            coreset size for each of the coreset methods
 
-  **Figure 3**: Line graph visualising the data tables above, plotting unweighted KSD
-  against coreset size for each of the coreset methods.
+  **Figure 4**: Unweighted KSD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_mmd.png
      :alt: Line graph visualising the data tables above, plotting weighted MMD against
            coreset size for each of the coreset methods
 
-  **Figure 3**: Line graph visualising the data tables above, plotting weighted MMD
-  against coreset size for each of the coreset methods.
+  **Figure 5**: Weighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting weighted KSD against
            coreset size for each of the coreset methods
 
-  **Figure 3**: Line graph visualising the data tables above, plotting weighted KSD
-  against coreset size for each of the coreset methods.
+  **Figure 6**: Weighted KSD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_time_taken.png
      :alt: Line graph visualising the data tables above, plotting time taken against
            coreset size for each of the coreset methods
 
-  **Figure 3**: Line graph visualising the data tables above, plotting time taken against
-           coreset size for each of the coreset methods.
+  **Figure 7**: Time taken plotted against coreset size for each coreset method.
 
 Test 3: Benchmarking Coreset Algorithms on Pixel Data from an Image
 -------------------------------------------------------------------
@@ -399,67 +397,67 @@ from an input image. The process follows these steps:
   .. image:: ../../examples/benchmarking_images/david_benchmark_results.png
      :alt: Plot showing pixels chosen from an image by each coreset algorithm
 
-  **Figure 4**: The original image and pixels selected by each coreset algorithm
+  **Figure 8**: The original image and pixels selected by each coreset algorithm
   plotted side-by-side for visual comparison.
 
 Test 4: Selecting Key Frames from Video Data
 --------------------------------------------
 
 The fourth and final test evaluates the performance of coreset algorithms on data
-extracted from an input animated **GIF**. This test involves the following steps:
+extracted from an input animated **Video**. This test involves the following steps:
 
-1. **Input GIF**: A GIF is loaded, and its frames are preprocessed.
+1. **Input Video**: A video is loaded, and its frames are preprocessed.
 
 2. **Dimensionality Reduction**: On each frame data, a density preserving
    :class:`~umap.umap_.UMAP` is applied to reduce dimensionality of each frame to 25.
 
-3. **Coreset Generation**: Coresets are generated using each coreset algorithm, and
-   selected frames are saved as new GIFs.
+3. **Coreset Generation**: For each coreset algorithm, coresets are generated and
+   selected frames are saved as new video.
 
 
 **Result**:
-- GIF files showing the selected frames for each coreset algorithm.
+- Video files showing the selected frames for each coreset algorithm.
 
   .. image:: ../../examples/pounce/pounce.gif
-     :alt: Original GIF showing the sequence of frames before applying
+     :alt: Original video showing the sequence of frames before applying
            coreset algorithms.
 
-  **Gif 1**: Original gif file.
+  **Video 1**: Original video file.
 
   .. image:: ../../examples/benchmarking_images/RandomSample_coreset.gif
-     :alt: GIF showing the frames selected by Random Sample
+     :alt: Video showing the frames selected by Random Sample
 
-  **Gif 2**: Frames selected by Random Sample.
+  **Video 2**: Frames selected by Random Sample.
 
   .. image:: ../../examples/benchmarking_images/SteinThinning_coreset.gif
-     :alt: GIF showing the frames selected by Stein Thinning
+     :alt: Video showing the frames selected by Stein Thinning
 
-  **Gif 3**: Frames selected by Stein thinning.
+  **Video 3**: Frames selected by Stein thinning.
 
   .. image:: ../../examples/benchmarking_images/RPCholesky_coreset.gif
-     :alt: GIF showing the frames selected by RP Cholesky
+     :alt: Video showing the frames selected by RP Cholesky
 
-  **Gif 4**: Frames selected by RP Cholesky.
+  **Video 4**: Frames selected by RP Cholesky.
 
   .. image:: ../../examples/benchmarking_images/KernelHerding_coreset.gif
-     :alt: GIF showing the frames selected by Kernel Herding
+     :alt: Video showing the frames selected by Kernel Herding
 
-  **Gif 5**: Frames selected by Kernel Herding.
+  **Video 5**: Frames selected by Kernel Herding.
 
   .. image:: ../../examples/benchmarking_images/KernelThinning_coreset.gif
-     :alt: GIF showing the frames selected by Kernel Thinning
+     :alt: Video showing the frames selected by Kernel Thinning
 
-  **Gif 6**: Frames selected by Kernel Thinning.
+  **Video 6**: Frames selected by Kernel Thinning.
 
   .. image:: ../../examples/benchmarking_images/CompressPlusPlus_coreset.gif
-     :alt: GIF showing the frames selected by Compress++
+     :alt: Video showing the frames selected by Compress++
 
-  **Gif 7**: Frames selected by Compress++.
+  **Video 7**: Frames selected by Compress++.
 
   .. image:: ../../examples/benchmarking_images/ProbabilisticIterativeHerding_coreset.gif
-     :alt: GIF showing the frames selected by Probabilistic Iterative Kernel Herding
+     :alt: Video showing the frames selected by Probabilistic Iterative Kernel Herding
 
-  **Gif 8**: Frames selected by Probabilistic Iterative Kernel Herding.
+  **Video 8**: Frames selected by Probabilistic Iterative Kernel Herding.
 
 The following plots show the frames chosen by each coreset algorithm with action frames
 in orange.
@@ -491,3 +489,7 @@ This benchmark evaluated four coreset algorithms across various tasks, including
 classification and frame selection. *Iterative kernel herding* and *kernel thinning*
 emerged as the top performers, offering strong and consistent results. For large-scale
 datasets, *compress++* and *map reduce* provide efficient scalability.
+
+Ultimately, this conclusion reflects one interpretation of the results, and readers are
+encouraged to analyse the benchmarks and derive their own insights based on the specific
+requirements of their tasks.

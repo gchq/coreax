@@ -92,7 +92,8 @@ def initialise_solvers(  # noqa: C901
         length scale estimation for ``SquareExponentialKernel``.
     :param key: The random key for initialising random solvers.
     :param cpp_oversampling_factor: The oversampling factor for `Compress++`.
-    :param leaf_size: Leaf size to be used in `MapReduce` solvers.
+    :param leaf_size: The leaf size to be used in `MapReduce` solvers. If not provided
+    (i.e., `None`), `MapReduce` solvers will not be used.
     :return: A dictionary where the keys are solver names and the values are
         corresponding solver functions for different coreset algorithms.
     """
@@ -114,7 +115,8 @@ def initialise_solvers(  # noqa: C901
         datasets.
 
         :param _size: The size of the coreset to be generated.
-        :return: MapReduce solver with KernelThinning as the base solver.
+        :return: A `KernelThinning` solver if `leaf_size` is `None`, otherwise a
+            `MapReduce` solver with `KernelThinning` as the base solver.
         """
         thinning_solver = KernelThinning(
             coreset_size=_size,
@@ -135,7 +137,8 @@ def initialise_solvers(  # noqa: C901
         datasets.
 
         :param _size: The size of the coreset to be generated.
-        :return: MapReduce solver with KernelHerding as the base solver.
+        :return: A `KernelHerding` solver if `leaf_size` is `None`, otherwise a
+             `MapReduce` solver with `KernelHerding` as the base solver.
         """
         herding_solver = KernelHerding(_size, kernel)
         if leaf_size is None:
@@ -150,7 +153,8 @@ def initialise_solvers(  # noqa: C901
         datasets.
 
         :param _size: The size of the coreset to be generated.
-        :return: MapReduce solver with SteinThinning as the base solver.
+        :return: A `SteinThinning` solver if `leaf_size` is `None`, otherwise a
+             `MapReduce` solver with `SteinThinning` as the base solver.
         """
         # Generate small dataset for ScoreMatching for Stein Kernel
 
@@ -212,7 +216,8 @@ def initialise_solvers(  # noqa: C901
         datasets.
 
         :param _size: The size of the coreset to be generated.
-        :return: MapReduce solver with KernelHerding as the base solver.
+        :return: An `IterativeKernelHerding` solver if `leaf_size` is `None`, otherwise
+            a `MapReduce` solver with `IterativeKernelHerding` as the base solver.
         """
         herding_solver = IterativeKernelHerding(
             coreset_size=_size,
@@ -236,7 +241,8 @@ def initialise_solvers(  # noqa: C901
         datasets.
 
         :param _size: The size of the coreset to be generated.
-        :return: MapReduce solver with KernelHerding as the base solver.
+        :return: An `IterativeKernelHerding` solver if `leaf_size` is `None`, otherwise
+            a `MapReduce` solver with `IterativeKernelHerding` as the base solver.
         """
         herding_solver = IterativeKernelHerding(
             coreset_size=_size,
