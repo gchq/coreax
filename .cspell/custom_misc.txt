@@ -16,12 +16,16 @@ delaxes
 diag
 docstrings
 ecolor
+edgecolor
 eigendecomposition
 elementwise
+elinewidth
 errorbar
 figtext
 fontsize
+fontweight
 forall
+frameon
 GCHQ
 Gramian
 gramians
@@ -37,10 +41,12 @@ KSD
 linestyle
 linewidth
 mapsto
+markersize
 Matern
 maxs
 ml.p3.8xlarge
 MNIST
+ncol
 ndmin
 parsable
 PCIMQ
@@ -72,3 +78,4 @@ xticks
 yerr
 ylim
 yscale
+yticks
