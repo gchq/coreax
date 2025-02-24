@@ -33,10 +33,13 @@ from benchmark.mnist_benchmark import (
     train_and_evaluate,
 )
 from coreax import Data
-from coreax.benchmark_util import calculate_delta, initialise_solvers
+from coreax.benchmark_util import (
+    IterativeKernelHerding,
+    calculate_delta,
+    initialise_solvers,
+)
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     MapReduce,

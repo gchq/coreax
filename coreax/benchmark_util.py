@@ -21,18 +21,18 @@ functions for computing solver parameters and retrieving solver names.
 """
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 
 import jax.numpy as jnp
 import numpy as np
 from jaxtyping import Array, Float
 
-from coreax import Data
+from coreax import Coresubset, Data, SupervisedData
 from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.score_matching import KernelDensityMatching
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
+    HerdingState,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -42,6 +42,46 @@ from coreax.solvers import (
     SteinThinning,
 )
 from coreax.util import KeyArrayLike
+
+_Data = TypeVar("_Data", Data, SupervisedData)
+
+
+class IterativeKernelHerding(KernelHerding[_Data]):  # pylint: disable=too-many-ancestors
+    r"""
+    Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
+
+    Wrapper around :meth:`~coreax.solvers.KernelHerding.reduce_iterative` for
+    benchmarking purposes.
+
+    :param num_iterations: Number of refinement iterations
+    :param t_schedule: An :class:`Array` of length `num_iterations`, where
+        `t_schedule[i]` is the temperature parameter used for iteration i. If None,
+        standard Kernel Herding is used
+    """
+
+    num_iterations: int = 1
+    t_schedule: Optional[Array] = None
+
+    def reduce(
+        self,
+        dataset: _Data,
+        solver_state: Optional[HerdingState] = None,
+    ) -> tuple[Coresubset[_Data], HerdingState]:
+        """
+        Perform Kernel Herding reduction followed by additional refinement iterations.
+
+        :param dataset: The dataset to process.
+        :param solver_state: Optional solver state.
+        :return: Refined coresubset and final solver state.
+        """
+        coreset, reduced_solver_state = self.reduce_iterative(
+            dataset,
+            solver_state,
+            num_iterations=self.num_iterations,
+            t_schedule=self.t_schedule,
+        )
+
+        return coreset, reduced_solver_state
 
 
 def calculate_delta(n: int) -> Float[Array, "1"]:

@@ -38,6 +38,7 @@ import numpy as np
 from sklearn.datasets import make_blobs
 
 from coreax import Data, SlicedScoreMatching
+from coreax.benchmark_util import IterativeKernelHerding
 from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
@@ -46,7 +47,6 @@ from coreax.kernels import (
 from coreax.metrics import KSD, MMD
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     RandomSample,
