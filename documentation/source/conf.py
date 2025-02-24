@@ -209,6 +209,7 @@ nitpick_ignore = [
     ("py:obj", "coreax.metrics._Data"),
     ("py:obj", "coreax.solvers.coresubset._SupervisedData"),
     ("py:obj", "coreax.util.T"),
+    ("py:class", "pathlib._local.Path"),
 ]
 
 nitpick_ignore_regex = [
