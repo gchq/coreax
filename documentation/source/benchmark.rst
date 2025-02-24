@@ -1,12 +1,13 @@
 Benchmarking Coreset Algorithms
 ===============================
 
-In this benchmark, we assess the performance of four different coreset algorithms:
+In this benchmark, we assess the performance of different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
 :class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky` and
-:class:`~coreax.solvers.KernelThinning`. Each of these algorithms is evaluated across
-four different tests, providing a comparison of their performance and applicability to
-various datasets.
+:class:`~coreax.solvers.KernelThinning`, :class:`~coreax.solvers.CompressPlusPlus`,
+:class:`~coreax.solvers.IterativeKernelHerding`. Each of these algorithms is evaluated
+across four different tests, providing a comparison of their performance and
+applicability to various datasets.
 
 Test 1: Benchmarking Coreset Algorithms on the MNIST Dataset
 ------------------------------------------------------------
@@ -27,9 +28,10 @@ these steps:
    into 16 components before applying any coreset algorithm.
 
 4. **Coreset Generation**: Coresets of various sizes are generated using the
-   different coreset algorithms. For :class:`~coreax.solvers.KernelHerding` and
-   :class:`~coreax.solvers.SteinThinning`, :class:`~coreax.solvers.MapReduce` is
-   employed to handle large-scale data.
+   different coreset algorithms. For :class:`~coreax.solvers.KernelHerding`,
+   :class:`~coreax.solvers.SteinThinning`, :class:`~coreax.solvers.KernelThinning`, and
+   :class:`~coreax.solvers.IterativeKernelHerding`,
+   :class:`~coreax.solvers.MapReduce` is employed to handle large-scale data.
 
 5. **Training**: The model is trained using the selected coresets, and accuracy is
    measured on the test set of 10,000 images.
@@ -38,6 +40,25 @@ these steps:
    the experiment is repeated 4 times with different random seeds. The benchmark is run
    on an **Amazon Web Services EC2 g4dn.12xlarge instance** with 4 NVIDIA T4 Tensor Core
    GPUs, 48 vCPUs, and 192 GiB memory.
+
+Impact of UMAP and MapReduce on Coreset Performance
+---------------------------------------------------
+
+In the benchmarking of coreset algorithms, only **Random Sample** can be run without
+MapReduce or UMAP without running into memory allocation errors. The other coreset
+algorithms require dimensionality reduction and distributed processing to handle
+large-scale data efficiently. As a result, the coreset algorithms were not applied
+directly to the raw MNIST images. While these preprocessing steps improved efficiency,
+they may have impacted the performance of the coreset methods. Specifically,
+**MapReduce** partitions the dataset into subsets and applies solvers to each partition,
+which can reduce accuracy compared to applying solvers directly to the full dataset.
+Additionally, **batch normalisation** and **dropout** were used during training to
+mitigate over-fitting. These regularisation techniques made the models more robust,
+which also means that accuracy did not heavily depend on the specific subset chosen.
+The benchmarking test showed that the accuracy remained similar regardless of
+the coreset method used, with only small differences, which could potentially be
+attributed to the use of these regularisation techniques.
+
 
 **Results**:
 The accuracy of the MLP classifier when trained using the full MNIST dataset
@@ -64,10 +85,10 @@ Test 2: Benchmarking Coreset Algorithms on a Synthetic Dataset
 --------------------------------------------------------------
 
 In this second test, we evaluate the performance of the coreset algorithms on a
-**synthetic dataset**. The dataset consists of 1,000 points in two-dimensional space,
+**synthetic dataset**. The dataset consists of 1,024 points in two-dimensional space,
 generated using :func:`sklearn.datasets.make_blobs`. The process follows these steps:
 
-1. **Dataset**: A synthetic dataset of 1,000 points is generated to test the
+1. **Dataset**: A synthetic dataset of 1,024 points is generated to test the
    quality of coreset algorithms.
 
 2. **Coreset Generation**: Coresets of different sizes (10, 50, 100, and 200 points)
@@ -85,7 +106,7 @@ The tables below show the performance metrics (Unweighted MMD, Unweighted KSD,
 Weighted MMD, Weighted KSD, and Time) for each coreset algorithm and each coreset size.
 For each metric and coreset size, the best performance score is highlighted in bold.
 
-.. list-table:: Coreset Size 25 (Original Sample Size 1,000)
+.. list-table:: Coreset Size 25 (Original Sample Size 1,024)
    :header-rows: 1
    :widths: 20 15 15 15 15 15
 
@@ -95,38 +116,56 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - KernelHerding
-     - 0.026319
-     - 0.071420
-     - 0.008461
-     - 0.072526
-     - 1.836664
+   * - Kernel Herding
+     - 0.024273
+     - 0.072547
+     - 0.008471
+     - 0.072267
+     - 3.859628
    * - RandomSample
-     - 0.105940
-     - 0.081013
-     - 0.038174
-     - *0.077431*
-     - *1.281091*
-   * - RPCholesky
-     - 0.121869
-     - *0.059722*
-     - *0.003283*
-     - 0.072288
-     - 1.576841
-   * - SteinThinning
-     - 0.161923
-     - 0.077394
-     - 0.030987
-     - 0.074365
-     - 1.821020
-   * - KernelThinning
-     - *0.014111*
-     - 0.072134
-     - 0.006634
-     - 0.072531
-     - 9.144707
+     - 0.125471
+     - 0.087859
+     - 0.037686
+     - 0.074856
+     - **2.659764**
+   * - RP Cholesky
+     - 0.140715
+     - **0.059376**
+     - **0.003011**
+     - **0.071982**
+     - 3.312633
+   * - Stein Thinning
+     - 0.165692
+     - 0.073476
+     - 0.033367
+     - 0.073952
+     - 3.714297
+   * - Kernel Thinning
+     - 0.014093
+     - 0.071987
+     - 0.005737
+     - 0.072614
+     - 23.659113
+   * - Compress++
+     - 0.010929
+     - 0.072254
+     - 0.005783
+     - 0.072447
+     - 15.278997
+   * - Probabilistic Iterative Herding
+     - 0.017470
+     - 0.074181
+     - 0.007226
+     - 0.072694
+     - 4.330906
+   * - IIterative Herding
+     - **0.006842**
+     - 0.072133
+     - 0.004978
+     - 0.072212
+     - 3.399839
 
-.. list-table:: Coreset Size 50 (Original Sample Size 1,000)
+.. list-table:: Coreset Size 50 (Original Sample Size 1,024)
    :header-rows: 1
    :widths: 20 15 15 15 15 15
 
@@ -136,38 +175,56 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - KernelHerding
-     - 0.012574
-     - 0.072600
-     - 0.003843
-     - *0.072351*
-     - 1.863356
+   * - Kernel Herding
+     - 0.014011
+     - 0.072273
+     - 0.003191
+     - 0.072094
+     - 3.417109
    * - RandomSample
-     - 0.083379
-     - 0.079031
-     - 0.008653
-     - 0.072867
-     - *1.329118*
-   * - RPCholesky
-     - 0.154799
-     - *0.056437*
-     - *0.001347*
-     - 0.072359
-     - 1.564009
-   * - SteinThinning
-     - 0.122605
-     - 0.079683
-     - 0.012048
-     - 0.072424
-     - 1.849748
-   * - KernelThinning
-     - *0.005397*
-     - 0.072051
-     - 0.002191
-     - 0.072453
-     - 5.524234
+     - 0.100558
+     - 0.080291
+     - 0.005518
+     - 0.072549
+     - **2.575190**
+   * - RP Cholesky
+     - 0.136605
+     - **0.055552**
+     - **0.001971**
+     - 0.072116
+     - 3.227958
+   * - Stein Thinning
+     - 0.152293
+     - 0.073183
+     - 0.017996
+     - **0.071682**
+     - 4.056369
+   * - Kernel Thinning
+     - 0.006482
+     - 0.071823
+     - 0.002541
+     - 0.072183
+     - 12.507483
+   * - Compress++
+     - 0.006065
+     - 0.071981
+     - 0.002633
+     - 0.072257
+     - 9.339439
+   * - Probabilistic Iterative Herding
+     - 0.010031
+     - 0.072707
+     - 0.002906
+     - 0.072432
+     - 4.279948
+   * - IIterative Herding
+     - **0.003546**
+     - 0.072107
+     - 0.002555
+     - 0.072203
+     - 3.291645
 
-.. list-table:: Coreset Size 100 (Original Sample Size 1,000)
+.. list-table:: Coreset Size 100 (Original Sample Size 1,024)
    :header-rows: 1
    :widths: 20 15 15 15 15 15
 
@@ -177,38 +234,56 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - KernelHerding
-     - 0.007651
-     - *0.071999*
-     - 0.001814
-     - 0.072364
-     - 2.185324
+   * - Kernel Herding
+     - 0.007909
+     - 0.071763
+     - 0.001859
+     - 0.072205
+     - 3.583433
    * - RandomSample
-     - 0.052402
-     - 0.077454
-     - 0.001630
-     - 0.072480
-     - *1.359826*
-   * - RPCholesky
-     - 0.087236
-     - 0.063822
-     - *0.000910*
-     - 0.072433
-     - 1.721290
-   * - SteinThinning
-     - 0.128295
-     - 0.082733
-     - 0.006041
-     - *0.072182*
-     - 1.893099
-   * - KernelThinning
-     - *0.002591*
-     - 0.072293
-     - 0.001207
-     - 0.072394
-     - 3.519274
+     - 0.067373
+     - 0.077506
+     - 0.001673
+     - 0.072329
+     - **2.631034**
+   * - RP Cholesky
+     - 0.091372
+     - **0.059889**
+     - **0.001174**
+     - 0.072281
+     - 3.426726
+   * - Stein Thinning
+     - 0.102536
+     - 0.074250
+     - 0.007770
+     - **0.071809**
+     - 3.673147
+   * - Kernel Thinning
+     - 0.002811
+     - 0.072218
+     - 0.001414
+     - 0.072286
+     - 7.878599
+   * - Compress++
+     - 0.003343
+     - 0.072287
+     - 0.001486
+     - 0.072283
+     - 6.930467
+   * - Probabilistic Iterative Herding
+     - 0.006254
+     - 0.072408
+     - 0.001649
+     - 0.072289
+     - 4.381068
+   * - IIterative Herding
+     - **0.002130**
+     - 0.072142
+     - 0.001373
+     - 0.072248
+     - 3.502385
 
-.. list-table:: Coreset Size 200 (Original Sample Size 1,000)
+.. list-table:: Coreset Size 200 (Original Sample Size 1,024)
    :header-rows: 1
    :widths: 20 15 15 15 15 15
 
@@ -218,45 +293,88 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - KernelHerding
-     - 0.004310
-     - 0.072341
-     - 0.000777
-     - 0.072422
-     - 1.837929
+   * - Kernel Herding
+     - 0.004259
+     - 0.072017
+     - 0.001173
+     - 0.072242
+     - 3.810858
    * - RandomSample
-     - 0.036624
-     - 0.072870
-     - *0.000584*
-     - 0.072441
-     - *1.367439*
-   * - RPCholesky
-     - 0.041140
-     - *0.068655*
-     - 0.000751
-     - 0.072430
-     - 2.106838
-   * - SteinThinning
-     - 0.148525
-     - 0.087512
-     - 0.003799
-     - *0.072164*
-     - 1.910560
-   * - KernelThinning
-     - *0.001330*
-     - 0.072348
-     - 0.001014
-     - 0.072428
-     - 2.565189
+     - 0.031644
+     - 0.074061
+     - 0.001005
+     - 0.072271
+     - **2.787691**
+   * - RP Cholesky
+     - 0.052786
+     - **0.065218**
+     - **0.000784**
+     - 0.072269
+     - 3.545290
+   * - Stein Thinning
+     - 0.098395
+     - 0.078290
+     - 0.004569
+     - **0.071896**
+     - 3.910901
+   * - Kernel Thinning
+     - **0.001175**
+     - 0.072160
+     - 0.000933
+     - 0.072273
+     - 5.720256
+   * - Compress++
+     - 0.001336
+     - 0.072193
+     - 0.000788
+     - 0.072228
+     - 6.081252
+   * - Probabilistic Iterative Herding
+     - 0.005056
+     - 0.072054
+     - 0.000852
+     - 0.072287
+     - 5.043387
+   * - IIterative Herding
+     - 0.001346
+     - 0.072169
+     - 0.001020
+     - 0.072241
+     - 3.699600
+
 
 
 **Visualisation**: The results in this table can be visualised as follows:
 
-  .. image:: ../../examples/benchmarking_images/blobs_benchmark_results.png
-     :alt: Benchmark Results for Synthetic Dataset
+  .. image:: ../../examples/benchmarking_images/blobs_unweighted_mmd.png
+     :alt: Line graph visualising the data tables above, plotting unweighted MMD against
+           coreset size for each of the coreset methods
 
-  **Figure 3**: Line graphs depicting the average performance metrics across 5 runs of
-  each coreset algorithm on a synthetic dataset.
+  **Figure 3**: Unweighted MMD plotted against coreset size for each coreset method.
+
+  .. image:: ../../examples/benchmarking_images/blobs_unweighted_ksd.png
+     :alt: Line graph visualising the data tables above, plotting unweighted KSD against
+           coreset size for each of the coreset methods
+
+  **Figure 4**: Unweighted KSD plotted against coreset size for each coreset method.
+
+  .. image:: ../../examples/benchmarking_images/blobs_weighted_mmd.png
+     :alt: Line graph visualising the data tables above, plotting weighted MMD against
+           coreset size for each of the coreset methods
+
+  **Figure 5**: Weighted MMD plotted against coreset size for each coreset method.
+
+  .. image:: ../../examples/benchmarking_images/blobs_weighted_ksd.png
+     :alt: Line graph visualising the data tables above, plotting weighted KSD against
+           coreset size for each of the coreset methods
+
+  **Figure 6**: Weighted KSD plotted against coreset size for each coreset method.
+
+  .. image:: ../../examples/benchmarking_images/blobs_time_taken.png
+     :alt: Line graph visualising the data tables above, plotting time taken against
+           coreset size for each of the coreset methods
+
+  **Figure 7**: Time taken plotted against coreset size for each coreset method.
 
 Test 3: Benchmarking Coreset Algorithms on Pixel Data from an Image
 -------------------------------------------------------------------
@@ -277,72 +395,100 @@ from an input image. The process follows these steps:
 **Results**: The following plot visualises the pixels chosen by each coreset algorithm.
 
   .. image:: ../../examples/benchmarking_images/david_benchmark_results.png
-     :alt: Coreset Visualisation on Image
+     :alt: Plot showing pixels chosen from an image by each coreset algorithm
 
-  **Figure 4**: The original image and pixels selected by each coreset algorithm
+  **Figure 8**: The original image and pixels selected by each coreset algorithm
   plotted side-by-side for visual comparison.
 
-Test 4: Benchmarking Coreset Algorithms on Frame Data from a GIF
-----------------------------------------------------------------
+Test 4: Selecting Key Frames from Video Data
+--------------------------------------------
 
 The fourth and final test evaluates the performance of coreset algorithms on data
-extracted from an input **GIF**. This test involves the following steps:
+extracted from an input animated **Video**. This test involves the following steps:
 
-1. **Input GIF**: A GIF is loaded, and its frames are preprocessed.
+1. **Input Video**: A video is loaded, and its frames are preprocessed.
 
 2. **Dimensionality Reduction**: On each frame data, a density preserving
    :class:`~umap.umap_.UMAP` is applied to reduce dimensionality of each frame to 25.
 
-3. **Coreset Generation**: Coresets are generated using each coreset algorithm, and
-   selected frames are saved as new GIFs.
+3. **Coreset Generation**: For each coreset algorithm, coresets are generated and
+   selected frames are saved as new video.
 
 
 **Result**:
-- GIF files showing the selected frames for each coreset algorithm.
+- Video files showing the selected frames for each coreset algorithm.
 
   .. image:: ../../examples/pounce/pounce.gif
-     :alt: Coreset Visualisation on GIF Frames
+     :alt: Original video showing the sequence of frames before applying
+           coreset algorithms.
 
-  **Gif 1**: Original gif file.
+  **Video 1**: Original video file.
 
   .. image:: ../../examples/benchmarking_images/RandomSample_coreset.gif
-     :alt: Coreset Visualisation on GIF Frames
+     :alt: Video showing the frames selected by Random Sample
 
-  **Gif 2**: Frames selected by Random Sample.
+  **Video 2**: Frames selected by Random Sample.
 
   .. image:: ../../examples/benchmarking_images/SteinThinning_coreset.gif
-     :alt: Coreset Visualisation on GIF Frames
+     :alt: Video showing the frames selected by Stein Thinning
 
-  **Gif 3**: Frames selected by Stein thinning.
+  **Video 3**: Frames selected by Stein thinning.
 
   .. image:: ../../examples/benchmarking_images/RPCholesky_coreset.gif
-     :alt: Coreset Visualisation on GIF Frames
+     :alt: Video showing the frames selected by RP Cholesky
 
-  **Gif 4**: Frames selected by RP Cholesky.
+  **Video 4**: Frames selected by RP Cholesky.
 
   .. image:: ../../examples/benchmarking_images/KernelHerding_coreset.gif
-     :alt: Coreset Visualisation on GIF Frames
+     :alt: Video showing the frames selected by Kernel Herding
 
-  **Gif 5**: Frames selected by kernel herding.
+  **Video 5**: Frames selected by Kernel Herding.
 
-  .. image:: ../../examples/benchmarking_images/pounce_frames.png
-     :alt: Coreset Visualisation on GIF Frames
+  .. image:: ../../examples/benchmarking_images/KernelThinning_coreset.gif
+     :alt: Video showing the frames selected by Kernel Thinning
 
-  **Figure 5**:Frames chosen by each each coreset algorithm with action frames (the
-  frames in which pounce action takes place) highlighted in red.
+  **Video 6**: Frames selected by Kernel Thinning.
+
+  .. image:: ../../examples/benchmarking_images/CompressPlusPlus_coreset.gif
+     :alt: Video showing the frames selected by Compress++
+
+  **Video 7**: Frames selected by Compress++.
+
+  .. image:: ../../examples/benchmarking_images/ProbabilisticIterativeHerding_coreset.gif
+     :alt: Video showing the frames selected by Probabilistic Iterative Kernel Herding
+
+  **Video 8**: Frames selected by Probabilistic Iterative Kernel Herding.
+
+The following plots show the frames chosen by each coreset algorithm with action frames
+in orange.
+
+  .. image:: ../../examples/benchmarking_images/frames_random_sample.png
+    :alt: Plot showing the frames selected by Random Sample
+
+  .. image:: ../../examples/benchmarking_images/frames_rp_cholesky.png
+    :alt: Plot showing the frames selected by RP Cholesky
+
+  .. image:: ../../examples/benchmarking_images/frames_stein_thinning.png
+    :alt: Plot showing the frames selected by Stein Thinning
+
+  .. image:: ../../examples/benchmarking_images/frames_kernel_herding.png
+    :alt: Plot showing the frames selected by Kernel Herding
+
+  .. image:: ../../examples/benchmarking_images/frames_kernel_thinning.png
+    :alt: Plot showing the frames selected by Kernel Thinning
+
+  .. image:: ../../examples/benchmarking_images/frames_compress_plus_plus.png
+    :alt: Plot showing the frames selected by Compress++
+
+  .. image:: ../../examples/benchmarking_images/frames_probabilistic_iterative_herding.png
+    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding
 
 Conclusion
 ----------
-
-In this benchmark, we evaluated four coreset algorithms across various datasets and
-tasks, including image classification, synthetic datasets, and pixel/frame data
-processing. Based on the results, **kernel thinning** emerges as the preferred choice
-for most tasks due to its consistent performance. For larger datasets,
-combining kernel herding with distributed frameworks like **map reduce** is
-recommended to ensure scalability and efficiency.
-
-For specialised tasks, such as frame selection from GIFs (Test 4), **Stein thinning**
-demonstrated superior performance and may be the optimal choice.
+This benchmark evaluated four coreset algorithms across various tasks, including image
+classification and frame selection. *Iterative kernel herding* and *kernel thinning*
+emerged as the top performers, offering strong and consistent results. For large-scale
+datasets, *compress++* and *map reduce* provide efficient scalability.
 
 Ultimately, this conclusion reflects one interpretation of the results, and readers are
 encouraged to analyse the benchmarks and derive their own insights based on the specific

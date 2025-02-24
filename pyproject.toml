@@ -72,7 +72,7 @@ test = [
 # Compile documentation
 doc = [
     "furo>=2024",
-    "sphinx>=7",
+    "sphinx>=7, !=8.2.1",
     "sphinx-autodoc-typehints>=2",
     "sphinx-toolbox>=3",
     "sphinxcontrib-bibtex>=2",

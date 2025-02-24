@@ -41,6 +41,23 @@ repos:
         args:
           - --ignore-case
           - --unique
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.6.2
+    hooks:
+      # Keep lock file up to date
+      - id: uv-lock
+      # Keep requirements-doc up to date
+      - id: uv-export
+        args: [
+          "--frozen",
+          "--quiet",
+          "--format", "requirements-txt",
+          "--no-hashes",
+          "--no-dev",
+          "--no-editable",
+          "--extra", "doc",
+          "--output-file", "requirements-doc.txt",
+        ]
   - repo: local
     hooks:
       # Check files are valid UTF-8
@@ -53,22 +70,6 @@ repos:
           (?x)^(
             examples/.+/.+.(gif|png)
           )$
-      # Keep requirements-docs.txt in sync with uv.lock
-      - id: check-requirements-docs
-        name: Keep requirements-docs.txt in sync with uv.lock
-        language: system
-        entry: >
-          uv export
-          --frozen
-          --quiet
-          --format requirements-txt
-          --no-hashes
-          --no-dev
-          --no-editable
-          --extra doc
-          --output-file requirements-doc.txt
-        pass_filenames: false
-        files: ^uv\.lock$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.5
     hooks:
@@ -104,7 +105,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.6
+    rev: v0.9.7
     hooks:
       # Run the linter.
       - id: ruff

@@ -162,6 +162,8 @@ def plot_performance(
     bar_width = 0.8 / n_algorithms  # Divide available space for bars
     index = np.arange(len(coreset_sizes))  # x positions for coreset sizes
 
+    plt.figure(figsize=(12, 8))  # Bigger figure size
+
     for i, algo in enumerate(stats):
         # Plot the bars for mean values
         plt.bar(
@@ -170,9 +172,12 @@ def plot_performance(
             bar_width,
             label=algo,
             color=f"C{i}",
-            alpha=0.7,
+            alpha=0.8,
+            edgecolor="black",
+            linewidth=1.5,
         )
 
+        # Add error bars with a larger capsize
         plt.errorbar(
             index + i * bar_width,
             stats[algo]["means"],
@@ -182,18 +187,19 @@ def plot_performance(
             ],
             fmt="none",
             ecolor="black",
-            capsize=5,
+            capsize=7,  # Larger cap size for better visibility
             alpha=0.9,
+            elinewidth=2,  # Thicker error bars
         )
 
-        # Overlay individual points as dots
+        # Overlay individual points as larger dots
         for j, size in enumerate(coreset_sizes):
             x_positions = (
                 index[j]
                 + i * bar_width
                 + np.random.uniform(
-                    -0.01 * bar_width,
-                    0.01 * bar_width,
+                    -0.02 * bar_width,
+                    0.02 * bar_width,
                     len(stats[algo]["points"][size]),
                 )
             )
@@ -201,21 +207,38 @@ def plot_performance(
                 x_positions,
                 stats[algo]["points"][size],
                 color=f"C{i}",
-                s=10,
+                s=40,  # Larger dots for better visibility
+                edgecolor="black",
+                linewidth=0.8,
+                alpha=0.8,
             )
 
-    # Add labels, titles, and other plot formatting
-    plt.xlabel("Coreset Size")
-    plt.ylabel(ylabel)
+    # Add labels, titles, and formatting
+    plt.ylabel(ylabel, fontsize=20, fontweight="bold")
+    plt.xlabel("Coreset Size", fontsize=20, fontweight="bold")
+
     if log_scale:
         plt.yscale("log")
-    plt.title(title)
+
+    plt.title(title, fontsize=24, fontweight="bold")
     plt.xticks(
         index + bar_width * (n_algorithms - 1) / 2,
         [str(size) for size in coreset_sizes],
+        fontsize=18,
     )
-    plt.legend()
-    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.yticks(fontsize=18)
+
+    # Enhanced legend styling
+    plt.legend(
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.25),
+        ncol=(n_algorithms + 1) // 2,
+        fontsize=18,
+        frameon=True,
+        edgecolor="black",
+    )
+
+    plt.grid(True, linestyle="--", alpha=0.5)
     plt.tight_layout()
 
 
@@ -252,16 +275,6 @@ def main() -> None:
         "Algorithm Performance (Accuracy) for Different Coreset Sizes",
     )
 
-    plt.figtext(
-        0.5,
-        0.01,
-        "Plot showing the mean performance of algorithms with error bars"
-        " representing min-max ranges",
-        wrap=True,
-        horizontalalignment="center",
-        fontsize=8,
-    )
-
     plt.show()
 
     # Plot time taken results
@@ -275,12 +288,12 @@ def main() -> None:
 
     plt.figtext(
         0.5,
-        0.01,
+        0.91,
         "Plot showing the mean time taken to generate coresets and train MNIST"
         "classifier with coreset sizes with error bars representing min-max ranges",
         wrap=True,
         horizontalalignment="center",
-        fontsize=8,
+        fontsize=12,
     )
 
     plt.show()
@@ -297,12 +310,12 @@ def main() -> None:
 
     plt.figtext(
         0.5,
-        0.01,
+        0.91,
         "Plot showing the mean time taken to generate coresets of different"
         " coreset sizes with error bars representing min-max ranges",
         wrap=True,
         horizontalalignment="center",
-        fontsize=8,
+        fontsize=12,
     )
 
     plt.show()

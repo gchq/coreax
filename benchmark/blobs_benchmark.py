@@ -16,7 +16,7 @@
 Benchmark performance of different coreset algorithms on a synthetic dataset.
 
 The benchmarking process follows these steps:
-1. Generate a synthetic dataset of 1000 two-dimensional points using
+1. Generate a synthetic dataset of 1_024 two-dimensional points using
    :func:`sklearn.datasets.make_blobs`.
 2. Generate coresets of varying sizes: 10, 50, 100, and 200 points using different
    coreset algorithms.
@@ -45,6 +45,8 @@ from coreax.kernels import (
 )
 from coreax.metrics import KSD, MMD
 from coreax.solvers import (
+    CompressPlusPlus,
+    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     RandomSample,
@@ -153,6 +155,39 @@ def setup_solvers(
                 sqrt_kernel=sqrt_kernel,
             ),
         ),
+        (
+            "CompressPlusPlus",
+            CompressPlusPlus(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                random_key=random_key,
+                delta=delta,
+                sqrt_kernel=sqrt_kernel,
+                g=4,
+            ),
+        ),
+        (
+            "ProbabilisticIterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=True,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=5,
+            ),
+        ),
+        (
+            "IterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=False,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=5,
+            ),
+        ),
     ]
 
 
@@ -229,8 +264,17 @@ def compute_metrics(
 
 
 def main() -> None:  # pylint: disable=too-many-locals
-    """Benchmark various algorithms on a synthetic dataset over multiple seeds."""
-    n_samples = 1_000
+    """
+    Benchmark various algorithms on a synthetic dataset over multiple seeds.
+
+    Generate a synthetic dataset of 1,024 two-dimensional points, as this size some
+    coreset algorithms, such as Compress++, which perform best when the dataset size is
+    a power of 4. The function evaluates the performance of different coreset algorithms
+    on different sizes of coresets (25, 50, 100, and 200 points), over multiple seeds.
+    The performance of each algorithm is assessed using the Maximum Mean Discrepancy
+    (MMD) and Kernel Stein Discrepancy (KSD) metrics.
+    """
+    n_samples = 1_024
     seeds = [42, 45, 46, 47, 48]  # List of seeds to average over
     coreset_sizes = [25, 50, 100, 200]
 

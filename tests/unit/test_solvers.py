@@ -59,6 +59,7 @@ from coreax.solvers import (
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
+    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -114,7 +115,7 @@ class SolverTest:
     shape: tuple[int, int] = (128, 10)
 
     @abstractmethod
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
         """
         Pytest fixture that returns a partially applied solver initialiser.
 
@@ -540,7 +541,8 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(KernelHerding, coreset_size=coreset_size, kernel=kernel)
@@ -1195,7 +1197,8 @@ class TestRandomSample(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         coreset_size = self.shape[0] // 10
         key = jr.fold_in(self.random_key, self.shape[0])
         return jtu.Partial(RandomSample, coreset_size=coreset_size, random_key=key)
@@ -1218,7 +1221,8 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request) -> jtu.Partial:
+        del request
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
@@ -1503,7 +1507,8 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
@@ -1869,7 +1874,8 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request) -> jtu.Partial:
+        del request
         feature_kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
@@ -2024,7 +2030,9 @@ class TestMapReduce(SolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request) -> jtu.Partial:
+        del request
+
         class _MockTree:
             def __init__(self, _data: np.ndarray, **kwargs):
                 del kwargs
@@ -2330,7 +2338,8 @@ class TestCaratheodoryRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         return jtu.Partial(CaratheodoryRecombination, test_functions=None, rcond=None)
 
 
@@ -2339,7 +2348,8 @@ class TestTreeRecombination(RecombinationSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         return jtu.Partial(
             TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
         )
@@ -2350,7 +2360,8 @@ class TestKernelThinning(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         kernel = PCIMQKernel()
         coreset_size = self.shape[0] // 10
         return jtu.Partial(
@@ -2567,7 +2578,8 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
 
     @override
     @pytest.fixture(scope="class")
-    def solver_factory(self) -> jtu.Partial:
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        del request
         kernel = SquaredExponentialKernel()
         coreset_size = self.shape[0] // 8
         return jtu.Partial(
@@ -2618,3 +2630,21 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
                 sqrt_kernel=SquaredExponentialKernel(),
             )
             solver.reduce(dataset)
+
+
+class TestIterativeKernelHerding(ExplicitSizeSolverTest):
+    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
+
+    @override
+    @pytest.fixture(scope="class", params=[True, False])
+    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
+        kernel = PCIMQKernel()
+        coreset_size = self.shape[0] // 10
+        return jtu.Partial(
+            IterativeKernelHerding,
+            coreset_size=coreset_size,
+            random_key=self.random_key,
+            kernel=kernel,
+            probabilistic=request.param,
+            num_iterations=2,
+        )
