@@ -42,8 +42,6 @@ from jax import random
 
 from coreax import Data
 from coreax.benchmark_util import initialise_solvers
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from examples.david_map_reduce_weighted import downsample_opencv
 
 MAX_8BIT = 255

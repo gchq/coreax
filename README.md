@@ -45,9 +45,9 @@ pixel image (38,700 pixels in total) to a coreset approximately 20% of this size
 (Right) 8,000 points chosen randomly.
 Run `benchmark/david_benchmark.py` to  replicate.
 
-|             Original              |             Coreset             |               Random                |
-|:---------------------------------:|:-------------------------------:|:-----------------------------------:|
-| ![](examples/data/david_orig.png) | ![](examples/data/david_kt.png) | ![](examples/data/david_random.png) |
+|               Original                |             Coreset             |               Random                |
+|:-------------------------------------:|:-------------------------------:|:-----------------------------------:|
+| ![](examples/data/david_original.png) | ![](examples/data/david_kt.png) | ![](examples/data/david_random.png) |
 
 
 ### Video event detection
