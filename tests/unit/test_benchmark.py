@@ -32,7 +32,7 @@ from benchmark.mnist_benchmark import (
     convert_to_jax_arrays,
     train_and_evaluate,
 )
-from coreax import Data
+from coreax import Data, SquaredExponentialKernel
 from coreax.benchmark_util import (
     IterativeKernelHerding,
     calculate_delta,
@@ -222,6 +222,30 @@ def test_calculate_delta(n):
     """
     delta = calculate_delta(n)
     assert delta > 0
+
+
+def test_iterative_kernel_herding_reduce() -> None:
+    """Check that `IterativeKernelHerding.reduce` = `KernelHerding.reduce_iterative`."""
+    random_key = random.key(0)
+    dataset = Data(random.uniform(random_key, (100, 5)))
+
+    solver_params = {
+        "coreset_size": 10,
+        "kernel": SquaredExponentialKernel(),
+        "probabilistic": True,
+        "temperature": 0.001,
+        "random_key": random_key,
+    }
+    iter_params = {"num_iterations": 5, "t_schedule": jnp.ones(5) * 0.0001}
+    solver_kh = KernelHerding(**solver_params)
+    solver_ikh = IterativeKernelHerding(**solver_params, **iter_params)
+
+    coreset_kh, state = solver_kh.reduce_iterative(dataset, **iter_params)
+    coreset_ikh, _ = solver_ikh.reduce(dataset, solver_state=state)
+
+    assert jnp.array_equal(
+        coreset_kh.unweighted_indices, coreset_ikh.unweighted_indices
+    )
 
 
 if __name__ == "__main__":
