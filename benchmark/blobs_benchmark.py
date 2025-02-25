@@ -188,6 +188,18 @@ def setup_solvers(
                 num_iterations=5,
             ),
         ),
+        (
+            "CubicProbIterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=True,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=10,
+                t_schedule=1 / jnp.linspace(10, 100, 10) ** 3,
+            ),
+        ),
     ]
 
 
