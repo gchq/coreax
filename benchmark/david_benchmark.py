@@ -103,7 +103,7 @@ def benchmark_coreset_algorithms(
         solver_times[solver_name] = duration
 
         # Save individual plots for each coreset method
-        fig, ax = plt.subplots(figsize=(6, 4))  # Smaller figure size
+        fig, ax = plt.subplots(figsize=(6, 4))
         ax.scatter(
             coreset.points.data[:, 1],
             -coreset.points.data[:, 0],
@@ -113,19 +113,17 @@ def benchmark_coreset_algorithms(
             marker="h",
             alpha=0.8,
         )
-        ax.axis("off")  # Turn off axes, labels, and grid
+        ax.axis("off")
 
-        # Save the individual plot with no extra padding
         individual_plot_path = out_path.parent / f"{solver_name}_coreset_plot.png"
         plt.savefig(individual_plot_path, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
         print(f"Saved individual plot for {solver_name} at {individual_plot_path}")
 
-    # Save the original image plot
     original_plot_path = out_path.parent / "original_image_plot.png"
     fig, ax = plt.subplots(figsize=(6, 4))  # Smaller figure size
     ax.imshow(original_data, cmap="gray")
-    ax.axis("off")  # Turn off axes, labels, and grid
+    ax.axis("off")
     plt.savefig(original_plot_path, bbox_inches="tight", pad_inches=0)
     plt.close(fig)
     print(f"Saved original image plot at {original_plot_path}")
