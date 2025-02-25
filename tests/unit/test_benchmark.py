@@ -160,8 +160,9 @@ def test_initialise_solvers() -> None:
         "Stein Thinning",
         "Kernel Thinning",
         "Compress++",
-        "Probabilistic Iterative Herding",
         "Iterative Herding",
+        "Iterative Probabilistic Herding (constant)",
+        "Iterative Probabilistic Herding (cubic)",
     ]
     assert set(solvers.keys()) == set(expected_solver_keys)
 
@@ -183,8 +184,9 @@ def test_solver_instances() -> None:
         "Stein Thinning": SteinThinning,
         "Kernel Thinning": KernelThinning,
         "Compress++": CompressPlusPlus,
-        "Probabilistic Iterative Herding": IterativeKernelHerding,
         "Iterative Herding": IterativeKernelHerding,
+        "Iterative Probabilistic Herding (constant)": IterativeKernelHerding,
+        "Iterative Probabilistic Herding (cubic)": IterativeKernelHerding,
     }
 
     for solver_name, solver_function in solvers_no_leaf.items():
@@ -204,8 +206,9 @@ def test_solver_instances() -> None:
         "Stein Thinning": MapReduce,
         "Kernel Thinning": MapReduce,
         "Compress++": CompressPlusPlus,
-        "Probabilistic Iterative Herding": MapReduce,
         "Iterative Herding": MapReduce,
+        "Iterative Probabilistic Herding (constant)": MapReduce,
+        "Iterative Probabilistic Herding (cubic)": MapReduce,
     }
 
     for solver_name, solver_function in solvers_with_leaf.items():
