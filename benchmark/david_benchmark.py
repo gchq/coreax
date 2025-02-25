@@ -115,13 +115,13 @@ def benchmark_coreset_algorithms(
         )
         ax.axis("off")
 
-        individual_plot_path = out_path.parent / f"{solver_name}_coreset_plot.png"
+        individual_plot_path = f"{solver_name}_coreset_plot.png"
         plt.savefig(individual_plot_path, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
         print(f"Saved individual plot for {solver_name} at {individual_plot_path}")
 
-    original_plot_path = out_path.parent / "original_image_plot.png"
-    fig, ax = plt.subplots(figsize=(6, 4))  # Smaller figure size
+    original_plot_path = "original_image_plot.png"
+    fig, ax = plt.subplots(figsize=(6, 4))
     ax.imshow(original_data, cmap="gray")
     ax.axis("off")
     plt.savefig(original_plot_path, bbox_inches="tight", pad_inches=0)
@@ -143,7 +143,7 @@ def benchmark_coreset_algorithms(
                 -coreset_data[:, 0],
                 c=coreset_data[:, 2],
                 cmap="gray",
-                s=10.0 * downsampling_factor**2,  # Set a constant marker size
+                s=10.0 * downsampling_factor**2,
                 marker="h",
                 alpha=0.8,
             )
