@@ -41,12 +41,13 @@ Please see [the documentation](https://coreax.readthedocs.io/en/latest/quickstar
 In the example below, we reduce the original 180x215
 pixel image (38,700 pixels in total) to a coreset approximately 20% of this size.
 (Left) original image.
-(Centre) 8,000 coreset points chosen using Stein kernel herding, with point size a
-function of weight.
+(Centre) 8,000 coreset points chosen using kernel thinning.
 (Right) 8,000 points chosen randomly.
-Run `examples/david_map_reduce_weighted.py` to  replicate.
+Run `benchmark/david_benchmark.py` to  replicate.
 
-![](https://raw.githubusercontent.com/gchq/coreax/main/examples/data/david_coreset.png)
+|             Original              |             Coreset             |               Random                |
+|:---------------------------------:|:-------------------------------:|:-----------------------------------:|
+| ![](examples/data/david_orig.png) | ![](examples/data/david_kt.png) | ![](examples/data/david_random.png) |
 
 
 ### Video event detection
@@ -55,9 +56,9 @@ Here we identify representative frames such that most of the
 useful information in a video is preserved.
 Run `examples/pounce.py` to replicate.
 
-|                                 Original                                 |                                     Coreset                                      |
-|:------------------------------------------------------------------------:|:--------------------------------------------------------------------------------:|
-| ![](https://raw.githubusercontent.com/gchq/coreax/main/examples/pounce/pounce.gif) | ![](https://raw.githubusercontent.com/gchq/coreax/main/examples/pounce/pounce_coreset.gif) |
+|            Original             |                 Coreset                 |
+|:-------------------------------:|:---------------------------------------:|
+| ![](examples/pounce/pounce.gif) | ![](examples/pounce/pounce_coreset.gif) |
 
 
 # Setup
