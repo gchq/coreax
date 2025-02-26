@@ -47,11 +47,13 @@ from examples.david_map_reduce_weighted import downsample_opencv
 MAX_8BIT = 255
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals, too-many-statements
+# ruff: noqa: PLR0914, PLR0915
+# (disable line too long and too many statements ruff)
 def benchmark_coreset_algorithms(
     in_path: Path = Path("../examples/data/david_orig.png"),
     out_path: Optional[Path] = Path("david_benchmark_results.png"),
-    downsampling_factor: int = 6,
+    downsampling_factor: int = 1,
 ):
     """
     Benchmark the performance of coreset algorithms on a downsampled greyscale image.
@@ -100,30 +102,55 @@ def benchmark_coreset_algorithms(
         coresets[solver_name] = coreset.points.data
         solver_times[solver_name] = duration
 
-    plt.figure(figsize=(15, 10))
-    plt.subplot(3, 3, 1)
-    plt.imshow(original_data, cmap="gray")
-    plt.title("Original Image")
-    plt.axis("off")
-
-    # Plot each coreset method
-    for i, (solver_name, coreset_data) in enumerate(coresets.items(), start=2):
-        plt.subplot(3, 3, i)
-        plt.scatter(
-            coreset_data[:, 1],
-            -coreset_data[:, 0],
-            c=coreset_data[:, 2],
+        # Save individual plots for each coreset method
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.scatter(
+            coreset.points.data[:, 1],
+            -coreset.points.data[:, 0],
+            c=coreset.points.data[:, 2],
             cmap="gray",
-            s=10.0 * downsampling_factor**2,  # Set a constant marker size
+            s=10.0 * downsampling_factor**2,
             marker="h",
             alpha=0.8,
         )
-        plt.title(f"{solver_name} ({solver_times[solver_name]:.4f} s)")
-        plt.axis("scaled")
+        ax.axis("off")
+
+        individual_plot_path = f"{solver_name}_coreset_plot.png"
+        plt.savefig(individual_plot_path, bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+        print(f"Saved individual plot for {solver_name} at {individual_plot_path}")
+
+    original_plot_path = "original_image_plot.png"
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.imshow(original_data, cmap="gray")
+    ax.axis("off")
+    plt.savefig(original_plot_path, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+    print(f"Saved original image plot at {original_plot_path}")
+
+    # Save the combined benchmark plot
+    if out_path:
+        plt.figure(figsize=(15, 10))
+        plt.subplot(3, 3, 1)
+        plt.imshow(original_data, cmap="gray")
+        plt.title("Original Image")
         plt.axis("off")
 
-    # Save plot to file instead of showing
-    if out_path:
+        for i, (solver_name, coreset_data) in enumerate(coresets.items(), start=2):
+            plt.subplot(3, 3, i)
+            plt.scatter(
+                coreset_data[:, 1],
+                -coreset_data[:, 0],
+                c=coreset_data[:, 2],
+                cmap="gray",
+                s=10.0 * downsampling_factor**2,
+                marker="h",
+                alpha=0.8,
+            )
+            plt.title(f"{solver_name} ({solver_times[solver_name]:.4f} s)")
+            plt.axis("scaled")
+            plt.axis("off")
+
         plt.savefig(out_path)
         print(f"Benchmark plot saved to {out_path}")
 
