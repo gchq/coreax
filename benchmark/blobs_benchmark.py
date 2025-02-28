@@ -38,6 +38,7 @@ import numpy as np
 from sklearn.datasets import make_blobs
 
 from coreax import Data, SlicedScoreMatching
+from coreax.benchmark_util import IterativeKernelHerding
 from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
@@ -46,7 +47,6 @@ from coreax.kernels import (
 from coreax.metrics import KSD, MMD
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     RandomSample,
@@ -186,6 +186,18 @@ def setup_solvers(
                 temperature=0.001,
                 random_key=random_key,
                 num_iterations=5,
+            ),
+        ),
+        (
+            "CubicProbIterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=True,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=10,
+                t_schedule=1 / jnp.linspace(10, 100, 10) ** 3,
             ),
         ),
     ]

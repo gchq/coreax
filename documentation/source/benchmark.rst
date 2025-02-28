@@ -3,9 +3,9 @@ Benchmarking Coreset Algorithms
 
 In this benchmark, we assess the performance of different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
-:class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky` and
-:class:`~coreax.solvers.KernelThinning`, :class:`~coreax.solvers.CompressPlusPlus`,
-:class:`~coreax.solvers.IterativeKernelHerding`. Each of these algorithms is evaluated
+:class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky`,
+:class:`~coreax.solvers.KernelThinning`, and :class:`~coreax.solvers.CompressPlusPlus`.
+Each of these algorithms is evaluated
 across four different tests, providing a comparison of their performance and
 applicability to various datasets.
 
@@ -29,8 +29,7 @@ these steps:
 
 4. **Coreset Generation**: Coresets of various sizes are generated using the
    different coreset algorithms. For :class:`~coreax.solvers.KernelHerding`,
-   :class:`~coreax.solvers.SteinThinning`, :class:`~coreax.solvers.KernelThinning`, and
-   :class:`~coreax.solvers.IterativeKernelHerding`,
+   :class:`~coreax.solvers.SteinThinning`, and :class:`~coreax.solvers.KernelThinning`,
    :class:`~coreax.solvers.MapReduce` is employed to handle large-scale data.
 
 5. **Training**: The model is trained using the selected coresets, and accuracy is
