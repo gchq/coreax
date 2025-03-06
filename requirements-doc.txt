@@ -41,7 +41,7 @@ jaxlib==0.4.38 ; python_full_version >= '3.10'
 jaxopt==0.8.3
 jaxtyping==0.2.36 ; python_full_version < '3.10'
 jaxtyping==0.2.38 ; python_full_version >= '3.10'
-jinja2==3.1.5
+jinja2==3.1.6
 joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
@@ -62,7 +62,7 @@ orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
 orbax-checkpoint==0.11.5 ; python_full_version >= '3.10'
 packaging==24.2
 platformdirs==4.3.6
-protobuf==5.29.3
+protobuf==6.30.0
 pybtex==0.24.0
 pybtex-docutils==1.0.3
 pygments==2.19.1
