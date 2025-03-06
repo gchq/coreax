@@ -16,7 +16,8 @@
 
 import math
 from collections.abc import Callable
-from typing import Optional, TypeVar, Union
+from typing import Literal, Optional, TypeVar, Union, overload
+from warnings import warn
 
 import equinox as eqx
 import jax
@@ -29,7 +30,7 @@ from jaxtyping import Array, ArrayLike, Bool, Float, Scalar, Shaped
 from typing_extensions import override
 
 from coreax.coreset import Coresubset
-from coreax.data import Data, SupervisedData, as_data, as_supervised_data
+from coreax.data import Data, SupervisedData, as_data
 from coreax.kernels import ScalarValuedKernel
 from coreax.least_squares import (
     MinimalEuclideanNormSolver,
@@ -46,6 +47,12 @@ from coreax.solvers.base import (
 from coreax.util import KeyArrayLike, sample_batch_indices, tree_zero_pad_leading_axis
 
 _Data = TypeVar("_Data", Data, SupervisedData)
+_SupervisedData = TypeVar("_SupervisedData", bound=SupervisedData)
+
+
+class SizeWarning(Warning):
+    """Custom warning to be raised when some parameter shape is too large."""
+
 
 MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a coreset"
 
@@ -146,7 +153,7 @@ def _greedy_kernel_selection(
     init_coreset_size = jnp.sum(jnp.greater(coreset_weights, 0))
 
     # The kernel similarity penalty must be computed for the initial coreset. If we did
-    # not support refinement, the penalty could be initialised to the zeros vector, and
+    # not support refinement, the penalty could be initialised to the zeroes vector, and
     # the result would be invariant to the initial coresubset.
     data, data_weights = jtu.tree_leaves(coresubset.pre_coreset_data)
     init_kernel_similarity_penalty = init_coreset_size * kernel.compute_mean(
@@ -549,7 +556,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
         initial_coresubset = _initial_coresubset(
             num_data_points + 1, self.coreset_size, dataset
         )
-        coreset_indices = initial_coresubset.unweighted_indices
+        initial_coreset_indices = initial_coresubset.unweighted_indices
 
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
@@ -600,12 +607,16 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
                 updated_coreset_indices,
             )
 
-        approximation_matrix = jnp.zeros((num_data_points, self.coreset_size))
-        init_state = (gramian_diagonal, approximation_matrix, coreset_indices)
+        initial_approximation_matrix = jnp.zeros((num_data_points, self.coreset_size))
+        init_state = (
+            gramian_diagonal,
+            initial_approximation_matrix,
+            initial_coreset_indices,
+        )
         output_state = jax.lax.fori_loop(0, self.coreset_size, _greedy_body, init_state)
-        gramian_diagonal, _, updated_coreset_indices = output_state
+        gramian_diagonal, _, new_coreset_indices = output_state
         updated_coreset: Coresubset[_Data] = Coresubset.build(
-            updated_coreset_indices, dataset
+            new_coreset_indices, dataset
         )
         return updated_coreset, RPCholeskyState(gramian_diagonal)
 
@@ -615,10 +626,340 @@ class GreedyKernelPointsState(eqx.Module):
     Intermediate :class:`GreedyKernelPoints` solver state information.
 
     :param feature_gramian: Cached feature kernel gramian matrix, should be padded with
-        an additional row and column of zeros.
+        an additional row and column of zeroes.
     """
 
     feature_gramian: Array
+
+
+# Overload for the case where we want to construct both the identity array and the
+# loss_batch_indices array.
+@overload
+def _setup_batch_solver(  # pragma: no cover
+    coreset_size: int,
+    coresubset: Coresubset,
+    num_data_pairs: int,
+    candidate_batch_size: Optional[int],
+    loss_batch_size: Optional[int],
+    random_key: KeyArrayLike,
+    setup_identity: Literal[True] = True,
+    setup_loss_batch_indices: Literal[True] = True,
+) -> tuple[Array, Array, Array, Array, Array]: ...
+
+
+# Overload for the case where we want to construct neither the identity array or the
+# loss_batch_indices array.
+@overload
+def _setup_batch_solver(  # pragma: no cover
+    coreset_size: int,
+    coresubset: Coresubset,
+    num_data_pairs: int,
+    candidate_batch_size: Optional[int],
+    loss_batch_size: Optional[int],
+    random_key: KeyArrayLike,
+    setup_identity: Literal[False] = False,
+    setup_loss_batch_indices: Literal[False] = False,
+) -> tuple[Array, Array, None, Array, None]: ...
+
+
+# Overload for the case where we want to construct just the identity array and not the
+# loss_batch_indices array.
+@overload
+def _setup_batch_solver(  # pragma: no cover
+    coreset_size: int,
+    coresubset: Coresubset,
+    num_data_pairs: int,
+    candidate_batch_size: Optional[int],
+    loss_batch_size: Optional[int],
+    random_key: KeyArrayLike,
+    setup_identity: Literal[True] = True,
+    setup_loss_batch_indices: Literal[False] = False,
+) -> tuple[Array, Array, None, Array, Array]: ...
+
+
+# Overload for the case where we do not want to construct the identity array but we do
+# the loss_batch_indices array.
+@overload
+def _setup_batch_solver(  # pragma: no cover
+    coreset_size: int,
+    coresubset: Coresubset,
+    num_data_pairs: int,
+    candidate_batch_size: Optional[int],
+    loss_batch_size: Optional[int],
+    random_key: KeyArrayLike,
+    setup_identity: Literal[False] = False,
+    setup_loss_batch_indices: Literal[True] = True,
+) -> tuple[Array, Array, Array, Array, None]: ...
+
+
+def _setup_batch_solver(
+    coreset_size: int,
+    coresubset: Coresubset,
+    num_data_pairs: int,
+    candidate_batch_size: Optional[int],
+    loss_batch_size: Optional[int],
+    random_key: KeyArrayLike,
+    setup_identity: bool = False,
+    setup_loss_batch_indices: bool = True,
+) -> tuple[Array, Array, Optional[Array], Array, Optional[Array]]:
+    """
+    Set up the matrices required to initialise a batched solver.
+
+    For use in :class:`GreedyKernelPoints` to reduce code duplication with future
+    similar solvers.
+
+    :param coreset_size: Requested coreset size.
+    :param coresubset: Instance of :class:`~coreax.coreset.Coresubset` representing
+        the coreset to be refined.
+    :param  num_data_pairs: An integer representing the number of data pairs in the
+        original dataset.
+    :param candidate_batch_size: An integer representing the number of data pairs to
+        randomly sample at each iteration to consider adding to the coreset.
+    :param loss_batch_size: Number of data pairs to randomly sample at each iteration to
+        consider computing the loss with respect to.
+    :param random_key: Key for random number generation.
+    :param setup_identity: Boolean indicating whether or not to construct and return
+        an identity matrix used in coreset construction, defaults to :data:`False`.
+    :param setup_loss_batch_indices: Boolean indicating whether or not to construct and
+        return an array of batch indices for loss computation, defaults to :data:`True`.
+
+    :return: Tuple of matrices, (``initial_coreset_indices``,
+        ``loss_batch_indices``, ``candidate_batch_indices``,
+        ``initial_candidate_coresets``, ``identity``), the first ``coreset_size``-vector
+        which will be updated with the coreset index selected at each iteration. The
+        second a ``coreset_size`` x ``candidate_batch_size`` matrix of sampled indices,
+        each row represents an iteration of the algorithm and holds the indices we
+        consider adding to the coreset. The third a ``coreset_size`` x
+        ``candidate_batch_size`` matrix of sampled indices, each row represents an
+        iteration of the algorithm and holds the indices we compute the loss with
+        respect to. The fourth a ``candidate_batch_size`` x ``coreset_size`` matrix
+        which will be iteratively updated such that each row represents a coreset under
+        consideration at each iteration. Lastly an adaptively initialised
+        "identity matrix". For reduction this is a zeroes matrix which we will
+        iteratively add ones to on the diagonal, while for refinement this is an actual
+        identity matrix. If ``setup_identity`` is :data:`False`, we return :data:`None`.
+    """
+    # If the initialisation coresubset is too small, pad its nodes up to
+    # 'output_size' with -1 valued indices. If it is too large, raise a warning and
+    # clip off the indices at the end. We fill with -1 valued indices as the -1 index
+    # will point towards the zero-valued-padding of the arrays we wish to index. This
+    # lets us work around JAX requiring static array sizes. Note that if we are reducing
+    # coresubset.unweighted_indices will be a vector of -1's, whereas if we are refining
+    # this will be a vector of actual coreset indices
+    if coreset_size > len(coresubset):
+        pad_size = max(0, coreset_size - len(coresubset))
+        initial_coreset_indices = jnp.hstack(
+            (
+                coresubset.unweighted_indices,
+                -1 * jnp.ones(pad_size, dtype=jnp.int32),
+            )
+        )
+    elif coreset_size < len(coresubset):
+        warn(
+            "Requested coreset size is smaller than input 'coresubset', clipping"
+            + " to the correct size and proceeding...",
+            SizeWarning,
+            stacklevel=3,
+        )
+        initial_coreset_indices = coresubset.unweighted_indices[:coreset_size]
+    else:
+        initial_coreset_indices = coresubset.unweighted_indices
+
+    # Sample the indices to be considered at each iteration ahead of time. This is a
+    # coreset_size x candidate_batch_size array. Each row corresponds to an iteration of
+    # the algorithm; the nth row holds all the indices we will consider adding to the
+    # coreset in the nth iteration.
+
+    candidate_key, loss_key = jr.split(random_key)
+    if candidate_batch_size is None or candidate_batch_size > num_data_pairs:
+        candidate_batch_size = num_data_pairs
+    candidate_batch_indices = sample_batch_indices(
+        random_key=candidate_key,
+        max_index=num_data_pairs,
+        batch_size=candidate_batch_size,
+        num_batches=coreset_size,
+    )
+
+    # Add coreset indices onto the batch indices to avoid degrading the loss (only
+    # has an effect when refining). This extends the candidate_batch_indices array to a
+    # coreset_size x candidate_batch_size + 1 array; we do this because when refining,
+    # it may be the case that the current index is the best one, and we should not
+    # replace it with any of the batch indices we sampled. Note that we increment
+    # candidate_batch_size by 1.
+    #
+    # e.g. Assume we are reducing, coreset_size = 5, candidate_batch_size = 3 + 1, then
+    # this will look something like (noticing that each row must have unique elements)
+    #
+    #       | 89  24 74 -1 |
+    #       | 11  43 65 -1 |
+    #       | 54  12 11 -1 |
+    #       | 101 23 11 -1 |
+    #       | 13  19 82 -1 |
+    #
+    # If we are refining, and the provided coreset is [ 0, 1, 18, 23, 100], then
+    # it will look like
+    #
+    #       | 89  24 74 0   |
+    #       | 11  43 65 1   |
+    #       | 54  12 11 18  |
+    #       | 101 23 11 23  |
+    #       | 13  19 82 100 |
+    #
+    if candidate_batch_size is not None and candidate_batch_size < num_data_pairs:
+        candidate_batch_indices = jnp.hstack(
+            (candidate_batch_indices, initial_coreset_indices[:, jnp.newaxis])
+        )
+        candidate_batch_size += 1
+
+    # Initialise an array that will let us extract arrays corresponding to every
+    # possible candidate coreset. This is a candidate_batch_size x coreset_size array,
+    # which is filled with -1's, except the first column, which we fill in with the
+    # first set of batch indices. This means that each row is a possible candidate
+    # coreset to be considered at the first iteration. At the second iteration, we
+    # replace the first column by repeating the best coreset index of those batched
+    # into it, and replace the next column (of -1's) with the next set of batch indices,
+    # and so on... In the case of refinement, the initial_coreset_indices will not be
+    # a vector of -1's, but instead a vector of actual indices. In this case the
+    # initial_candidate_coresets array will consist of the initial_coreset_indices
+    # vector repeated into each row, except the first column, which again we replace
+    # with the first set of batched indices.
+    #
+    # e.g. If we are reducing, for candidate_batch_size = 3 + 1 and coreset_size = 5,
+    # this will look something like
+    #
+    #       | 89 -1 -1 -1 -1 |
+    #       | 24 -1 -1 -1 -1 |
+    #       | 74 -1 -1 -1 -1 |
+    #       | -1 -1 -1 -1 -1 |
+    #
+    # at the first iteration, and assuming that 24 is the best of those 3 batched
+    # indices
+    #
+    #       | 24 11 -1 -1 -1 |
+    #       | 24 43 -1 -1 -1 |
+    #       | 24 65 -1 -1 -1 |
+    #       | 24 -1 -1 -1 -1 |
+    #
+    # at the second iteration, and so on... If we are refining on the other hand,
+    # and we have a coreset [ 0, 1, 18, 23, 100], then it will look like
+    #
+    #       | 89, 1, 18, 23, 100 |
+    #       | 24, 1, 18, 23, 100 |
+    #       | 74, 1, 18, 23, 100 |
+    #       | 0,  1, 18, 23, 100 |
+    #
+    # at the first iteration and, assuming 0 is still the best coreset index, then
+    #
+    #       | 0, 11, 18, 23, 100 |
+    #       | 0, 43, 18, 23, 100 |
+    #       | 0, 65, 18, 23, 100 |
+    #       | 0, 1,  18, 23, 100 |
+    #
+    # at the second iteration, and so on...
+    initial_candidate_coresets = (
+        jnp.tile(initial_coreset_indices, (candidate_batch_size, 1))
+        .at[:, 0]
+        .set(candidate_batch_indices[0, :])
+    )
+
+    # Adaptively initialise a coreset_size x coreset_size "identity matrix". For
+    # reduction, we need this to be a zeroes matrix to which we will add ones on the
+    # diagonal at each iteration of the algorithm. While for refinement we need an
+    # actual identity matrix.
+    identity = None
+    if setup_identity:
+        identity_helper = jnp.hstack((jnp.ones(num_data_pairs), jnp.array([0])))
+        identity = jnp.diag(identity_helper[initial_coreset_indices])
+
+    # Set up a coreset_size x loss_batch_size array holding indices that we compute
+    # the loss with respect to. Each row corresponds to an iteration of the algorithm.
+    # The cost of sampling these indices is non-zero, so we handle the option of not
+    # sampling these at all for batched algorithms where this batch has no use.
+    if setup_loss_batch_indices:
+        if loss_batch_size is None or loss_batch_size > num_data_pairs:
+            loss_batch_size = num_data_pairs
+        loss_batch_indices = sample_batch_indices(
+            random_key=loss_key,
+            max_index=num_data_pairs,
+            batch_size=loss_batch_size,
+            num_batches=coreset_size,
+        )
+    else:
+        loss_batch_indices = None
+
+    return (
+        initial_coreset_indices,
+        candidate_batch_indices,
+        loss_batch_indices,
+        initial_candidate_coresets,
+        identity,
+    )
+
+
+def _update_candidate_coresets_and_coreset_indices(
+    i: int,
+    unique: bool,
+    candidate_coresets: Array,
+    coreset_indices: Array,
+    loss: Array,
+    candidate_batch_indices: Array,
+) -> tuple[Array, Array]:
+    """
+    Update the coreset indices and candidate coreset matrix following loss computation.
+
+    For use with :class:`GreedyKernelPoints` to reduce code duplication with future
+    coreset methods.
+
+    On the ``i``th iteration, the ``i``th column of ``candidate_coresets`` contains the
+    index we consider adding to the coreset. The preceding columns are fixed, containing
+    indices already selected for the coreset. The following columns are -1.
+    See :func:`_setup_batch_solver` for further details.
+
+    :param i: Integer representing the current iteration number.
+    :param unique: If each index in the resulting coresubset should be unique.
+    :param candidate_coresets: Matrix of indices representing all possible "next"
+        coresets; each row contains the indices of a candidate coreset.
+    :param coreset_indices: Vector of the current coreset indices.
+    :param loss: Vector of loss values corresponding to each potential next coreset
+        point.
+    :param candidate_batch_indices: Matrix of batch indices for consideration of adding
+        to the coreset. Each column contains the candidate indices for each iteration.
+    :return: Tuple of matrices (``updated_candidate_coresets`,
+        ``updated_coreset_indices``), the first is  ``candidate_coresets`` with the
+        chosen coreset index repeated into the ``i``th column, and the next batch of
+        indices inserted into the (``i``:math:`+1`)th column. The second is the vector
+        of ``coreset_indices`` with the chosen coreset index inserted as the ``i``th
+        element.
+    """
+    # If we want the coreset indices to be unique, we add infinity to the value of
+    # the loss corresponding to those indices that are already in the coreset. This
+    # ensures it is not chosen. There is additional logic here to ensure that if
+    # we are refining (i.e. not reducing), we are allowed to keep the index that
+    # currently exists in the coreset if it is the best one.
+    if unique:
+        already_chosen_indices_mask = jnp.isin(
+            candidate_coresets[:, i],
+            coreset_indices.at[i].set(-1),
+        )
+        loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
+    index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
+
+    # Repeat the chosen coreset index into the ith column of the array of
+    # the candidate_batch_size x coreset_size candidate_coresets array. Replace the
+    # (i + 1)th column with the next batch of possible coreset indices. This ensures
+    # that each row of the updated_candidate_coresets array corresponds to a potential
+    # coreset to be considered at the next iteration of the algorithm. See comments
+    # inside _setup_batch_solver for an explicit example of this update procedure.
+    updated_candidate_coresets = (
+        candidate_coresets.at[:, i]
+        .set(index_to_include_in_coreset)
+        .at[:, i + 1]
+        .set(candidate_batch_indices[i + 1, :])
+    )
+
+    # Add the chosen coreset index to the current coreset indices
+    updated_coreset_indices = coreset_indices.at[i].set(index_to_include_in_coreset)
+    return updated_candidate_coresets, updated_coreset_indices
 
 
 def _greedy_kernel_points_loss(
@@ -628,37 +969,53 @@ def _greedy_kernel_points_loss(
     regularisation_parameter: float,
     identity: Shaped[Array, " coreset_size coreset_size"],
     least_squares_solver: RegularisedLeastSquaresSolver,
+    loss_batch: Shaped[Array, " batch_size"],
 ) -> Shaped[Array, " batch_size"]:
-    """
-    Given an array of candidate coreset indices, compute the greedy KIP loss for each.
+    r"""
+    Given a matrix of candidate coreset indices, compute the greedy KIP loss for each.
 
     Primarily intended for use with :class:`GreedyKernelPoints`.
 
-    :param candidate_coresets: Array of indices representing all possible "next"
-        coresets
-    :param responses: Array of responses
-    :param feature_gramian: Feature kernel gramian
-    :param regularisation_parameter: Regularisation parameter for stable inversion of
-        array, negative values will be converted to positive
-    :param identity: Identity array used to regularise the feature gramians
-        corresponding to each coreset. For :meth:`GreedyKernelPoints.reduce`
-        this array is a matrix of zeros except for ones on the diagonal up to the
-        current size of the coreset. For :meth:`GreedyKernelPoints.refine` this
-        array is a standard identity array.
+    :param candidate_coresets: Matrix of indices representing all possible "next"
+        coresets.
+    :param responses: Matrix of responses.
+    :param feature_gramian: Feature kernel Gramian.
+    :param regularisation_parameter: Regularisation parameter :math:`\lambda` for
+        stable inversion of the feature Gramian; negative values will be converted
+        to positive.
+    :param identity: Identity matrix used to regularise the feature Gramians
+        corresponding to each coreset. For :meth:`GreedyKernelPoints.reduce`,
+        this is a matrix of zeroes except for ones on the diagonal up to the
+        current size of the coreset. For :meth:`GreedyKernelPoints.refine`, this
+        is a standard identity matrix.
+    :param loss_batch: Vector of batch indices, which we use to speed up computation
+        of the loss.
     :param least_squares_solver: Instance of
-        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`
-
-    :return: :class`GreedyKernelPoints` loss for each candidate coreset
+        :class:`~coreax.least_squares.RegularisedLeastSquaresSolver`
+    :param loss_batch: Batch of indices to make predictions on.
+    :return: :class:`GreedyKernelPoints` loss for each candidate coreset
     """
-    # Extract all the possible "next" coreset feature gramians, cross feature gramians
-    # and coreset response vectors.
+    # For all of these arrays, the first dimension corresponds to each coreset under
+    # consideration.
+
+    # candidate_batch_size x coreset_size x coreset_size array holding the scalar-valued
+    # kernel matrix computed on each coreset
     coreset_gramians = feature_gramian[
         (candidate_coresets[:, :, None], candidate_coresets[:, None, :])
     ]
-    coreset_cross_gramians = feature_gramian[candidate_coresets, :-1]
+
+    # candidate_batch_size x coreset_size x 1 (response dimension) array holding the
+    # vector-valued responses corresponding to the coreset indices
     coreset_responses = responses[candidate_coresets]
 
-    # Solve for the kernel ridge regression coefficients for each possible coreset
+    # coreset_cross_gramians is a candidate_batch_size x coreset_size x loss_batch_size
+    # array containing the scalar-valued kernel matrices between each coreset and the
+    # current loss batch of dataset.
+    coreset_cross_gramians = feature_gramian[:, loss_batch][candidate_coresets, :]
+
+    # Solve for the vector-valued kernel ridge regression coefficients for each possible
+    # coreset. This is a candidate_batch_size x coreset_size x 1 (response dimension)
+    # array.
     coefficients = least_squares_solver.solve_stack(
         arrays=coreset_gramians,
         regularisation_parameter=regularisation_parameter,
@@ -666,77 +1023,97 @@ def _greedy_kernel_points_loss(
         identity=identity,
     )
 
-    # Compute the loss function, making sure that we remove the padding on the responses
+    # Using each coreset model, make predictions of the training responses. The
+    # predictions array is a candidate_batch_size x n (data size) x 1 (response
+    # dimension) array representing the predictions (second and third dimensions) of
+    # each model fitted on the candidate coresets (first dimension):
+    # predictions = coreset_cross_gramians^T @ coreset_coefficients
     predictions = (coreset_cross_gramians * coefficients).sum(axis=1)
-    loss = ((predictions - 2 * responses[:-1, 0]) * predictions).sum(axis=1)
+
+    # The loss array is a candidate_batch_size array representing the value of each
+    # candidate coreset point; the smallest loss corresponds to the best coreset.
+    # Sample the responses via batching and compute loss for each coreset. Note that
+    # we do not compute the first term as it is invariant w.r.t. coreset.
+    loss = ((predictions - 2 * responses[loss_batch, 0]) * predictions).sum(axis=1)
     return loss
 
 
 class GreedyKernelPoints(
-    RefinementSolver[SupervisedData, GreedyKernelPointsState],
+    RefinementSolver[_SupervisedData, GreedyKernelPointsState],
     ExplicitSizeSolver,
 ):
     r"""
-    Apply `GreedyKernelPoints` to a supervised dataset.
+    Apply Greedy Kernel Points to a supervised dataset.
 
-    `GreedyKernelPoints` is a deterministic, iterative and greedy approach to
-    build a coreset adapted from the inducing point method developed in
+    GreedyKernelPoints is a deterministic, iterative and greedy approach to
+    build a coreset, adapted from the inducing point method developed in
     :cite:`nguyen2021meta`.
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
-    of :math:`n` pairs with :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and
-    one has selected :math:`m` data pairs :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i,
-    \tilde{y}_i)\}_{i=1}^m` already for their compressed representation of the original
-    dataset, `GreedyKernelPoints` selects the next point to minimise the loss
+    of :math:`n` pairs with :math:`x \in \mathbb{R}^d` and :math:`y \in \mathbb{R}`,
+    and one has selected :math:`m` data pairs
+    :math:`\mathcal{D}^{(2)} = \{(\tilde{x}_i, \tilde{y}_i)\}_{i=1}^m` already for their
+    compressed representation of the original dataset, Greedy Kernel Points selects
+    the next point to minimise the loss
 
     .. math::
 
-        L(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = ||y^{(1)} -
-        K^{(12)}(K^{(22)} + \lambda I_m)^{-1}y^{(2)} ||^2_{\mathbb{R}^n}
+        L(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = || y^{(1)} -
+        K^{(12)}(K^{(22)} + \lambda I_m)^{-1} y^{(2)} ||^2_{\mathbb{R}^n},
 
-    where :math:`y^{(1)}\in\mathbb{R}^n` is the vector of responses from
-    :math:`\mathcal{D}^{(1)}`, :math:`y^{(2)}\in\mathbb{R}^n` is the vector of responses
-    from :math:`\mathcal{D}^{(2)}`,  :math:`K^{(12)} \in \mathbb{R}^{n\times m}` is the
-    cross-matrix of kernel evaluations between :math:`\mathcal{D}^{(1)}` and
-    :math:`\mathcal{D}^{(2)}`, :math:`K^{(22)} \in \mathbb{R}^{m\times m}` is the
-    kernel matrix on :math:`\mathcal{D}^{(2)}`,
-    :math:`\lambda I_m \in \mathbb{R}^{m \times m}` is the identity matrix and
-    :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation parameter.
+    where :math:`y^{(1)} \in \mathbb{R}^n` is the vector of responses from
+    :math:`\mathcal{D}^{(1)}`, :math:`y^{(2)} \in \mathbb{R}^n` is the vector of
+    responses from :math:`\mathcal{D}^{(2)}`,
+    :math:`K^{(12)} \in \mathbb{R}^{n \times m}` is the cross-matrix of kernel
+    evaluations between :math:`\mathcal{D}^{(1)}` and :math:`\mathcal{D}^{(2)}`,
+    :math:`K^{(22)} \in \mathbb{R}^{m \times m}` is the kernel matrix on
+    :math:`\mathcal{D}^{(2)}`, :math:`\lambda I_m \in \mathbb{R}^{m \times m}` is the
+    identity matrix and :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation
+    parameter.
 
     This class works with all children of :class:`~coreax.kernels.ScalarValuedKernel`.
-    Note that `GreedyKernelPoints` does not support non-uniform weights and will only
-    return coresubsets with uniform weights.
 
-    :param random_key: Key for random number generation
+    .. warning::
+
+        ``GreedyKernelPoints`` does not support non-uniform weights and will only
+        return coresubsets with uniform weights.
+
+    :param coreset_size: Desired size of the solved coreset.
+    :param random_key: Key for random number generation.
     :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
         implementing a kernel function
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the
-        feature space
-    :param regularisation_parameter: Regularisation parameter for stable inversion of
-        the feature Gramian
+        feature space.
+    :param regularisation_parameter: Regularisation parameter :math:`\lambda` for
+        stable inversion of the feature Gramian; negative values will be converted
+        to positive.
     :param unique: If :data:`False`, the resulting coresubset may contain the same point
         multiple times. If :data:`True` (default), the resulting coresubset will not
-        contain any duplicate points
-    :param batch_size: An integer representing the size of the batches of data pairs
-        sampled at each iteration for consideration for adding to the coreset. If
-        :data:`None` (default), the search is performed over the entire dataset
+        contain any duplicate points.
+    :param candidate_batch_size: Number of data pairs to randomly sample at each
+        iteration to consider adding to the coreset. If :data:`None` (default), the
+        search is performed over the entire dataset.
+    :param loss_batch_size:  Number of data pairs to randomly sample at each iteration
+        to compute the loss function with respect to. If :data:`None` (default), the
+        loss is computed using the entire dataset.
     :param least_squares_solver: Instance of
-        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
-        :data:`None` uses :class:`coreax.least_squares.MinimalEuclideanNormSolver`
+        :class:`~coreax.least_squares.RegularisedLeastSquaresSolver`, default value of
+        :data:`None` uses :class:`~coreax.least_squares.MinimalEuclideanNormSolver`.
     """
 
     random_key: KeyArrayLike
     feature_kernel: ScalarValuedKernel
     regularisation_parameter: float = 1e-6
     unique: bool = True
-    batch_size: Optional[int] = None
+    candidate_batch_size: Optional[int] = None
+    loss_batch_size: Optional[int] = None
     least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
 
     @override
     def reduce(
         self,
         dataset: SupervisedData,
-        solver_state: Union[GreedyKernelPointsState, None] = None,
+        solver_state: Optional[GreedyKernelPointsState] = None,
     ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
@@ -744,14 +1121,14 @@ class GreedyKernelPoints(
     def refine(  # noqa: PLR0915
         self,
         coresubset: Coresubset[SupervisedData],
-        solver_state: Union[GreedyKernelPointsState, None] = None,
+        solver_state: Optional[GreedyKernelPointsState] = None,
     ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         """
-        Refine a coresubset with 'GreedyKernelPointsState'.
+        Refine a coresubset with :class:`GreedyKernelPointsState`.
 
         We first compute the various factors if they are not given in the
-        `solver_state`, and then iteratively swap points with the initial coreset,
-        selecting points which minimise the loss.
+        ``solver_state``, and then iteratively swap points with the initial coreset,
+        selecting points that minimise the loss.
 
         .. warning::
 
@@ -762,78 +1139,62 @@ class GreedyKernelPoints(
             requested ``coreset_size``, the extra indices will not be optimised and will
             be clipped from the return ``coresubset``.
 
-        :param coresubset: The coresubset to refine
+        :param coresubset: coresubset to refine.
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :return: A refined coresubset and relevant intermediate solver state information
+        :return: A refined coresubset; Relevant intermediate solver state information.
         """
+        dataset = coresubset.pre_coreset_data
+        num_data_pairs = len(dataset)
+
         # Handle default value of None
         if self.least_squares_solver is None:
             least_squares_solver = MinimalEuclideanNormSolver()
         else:
             least_squares_solver = self.least_squares_solver
 
-        # If the initialisation coresubset is too small, pad its indices up to
-        # 'output_size' with -1 valued indices. If it is too large, raise a warning and
-        # clip off the indices at the end.
-        if self.coreset_size > len(coresubset):
-            pad_size = max(0, self.coreset_size - len(coresubset))
-            coreset_indices = jnp.hstack(
-                (
-                    coresubset.unweighted_indices,
-                    -1 * jnp.ones(pad_size, dtype=jnp.int32),
-                )
-            )
-        elif self.coreset_size < len(coresubset):
-            coreset_indices = coresubset.unweighted_indices[: self.coreset_size]
-        else:
-            coreset_indices = coresubset.unweighted_indices
-
-        # Extract features and responses
-        dataset = as_supervised_data(coresubset.pre_coreset_data)
-        num_data_pairs = len(dataset)
-        x, y = dataset.data, dataset.supervision
+        # See _setup_batch_solver for a detailed explanation of these arrays
+        (
+            initial_coreset_indices,
+            candidate_batch_indices,
+            loss_batch_indices,
+            initial_candidate_coresets,
+            initial_identity,
+        ) = _setup_batch_solver(
+            coreset_size=self.coreset_size,
+            coresubset=coresubset,
+            num_data_pairs=num_data_pairs,
+            candidate_batch_size=self.candidate_batch_size,
+            loss_batch_size=self.loss_batch_size,
+            random_key=self.random_key,
+            setup_identity=True,
+            setup_loss_batch_indices=True,
+        )
 
         # Pad the response array with an additional zero to allow us to
-        # extract sub-arrays and fill in elements with zeros simultaneously.
-        padded_responses = jnp.vstack((y, jnp.array([[0]])))
+        # extract sub-arrays and fill in elements with zeroes simultaneously.
+        x, y = dataset.data, dataset.supervision
+        padded_responses = jnp.vstack((y, jnp.zeros(y.shape[1])))
 
         if solver_state is None:
-            # Pad the gramian with zeros in an additional column and row
+            # Pad the Gramian with zeroes in an additional column and row
             padded_feature_gramian = jnp.pad(
                 self.feature_kernel.compute(x, x), [(0, 1)], mode="constant"
             )
         else:
             padded_feature_gramian = solver_state.feature_gramian
 
-        # Sample the indices to be considered at each iteration ahead of time.
-        if self.batch_size is not None and self.batch_size < num_data_pairs:
-            batch_size = self.batch_size
-        else:
-            batch_size = num_data_pairs
-        batch_indices = sample_batch_indices(
-            random_key=self.random_key,
-            max_index=num_data_pairs,
-            batch_size=batch_size,
-            num_batches=self.coreset_size,
-        )
-
-        # Initialise an array that will let us extract arrays corresponding to every
-        # possible candidate coreset.
-        initial_candidate_coresets = (
-            jnp.tile(coreset_indices, (batch_size, 1)).at[:, 0].set(batch_indices[0, :])
-        )
-
-        # Adaptively initialise an "identity matrix". For reduction we need this to
-        # be a zeros matrix which we will iteratively add ones to on the diagonal. While
-        # for refinement we need an actual identity matrix.
-        identity_helper = jnp.hstack((jnp.ones(num_data_pairs), jnp.array([0])))
-        identity = jnp.diag(identity_helper[coreset_indices])
-
         def _greedy_body(
             i: int, val: tuple[Array, Array, Array]
         ) -> tuple[Array, Array, Array]:
-            """Execute main loop of GreedyKernelPoints."""
+            """
+            Execute main loop of Greedy Kernel Points.
+
+            :param i: Integer representing iteration number.
+            :param val: Tuple of arrays used to do one iteration of Greedy Kernel
+                Points.
+            :return: Updated ``val``.
+            """
             coreset_indices, identity, candidate_coresets = val
 
             # Update the identity matrix to allow for sub-array inversion in the
@@ -849,51 +1210,39 @@ class GreedyKernelPoints(
                 self.regularisation_parameter,
                 updated_identity,
                 least_squares_solver,
+                loss_batch_indices[i],
             )
 
-            # Find the optimal replacement coreset index, ensuring we don't pick an
-            # already chosen point if we want the indices to be unique. Note we
-            # must set the ith index to -1 for refinement purposes, as we are happy for
-            # the current index to be retained if it is the best.
-            if self.unique:
-                already_chosen_indices_mask = jnp.isin(
-                    candidate_coresets[:, i],
-                    coreset_indices.at[i].set(-1),
+            # See _update_candidate_coresets_and_coreset_indices for an
+            # explanation of this update procedure
+            updated_candidate_coresets, updated_coreset_indices = (
+                _update_candidate_coresets_and_coreset_indices(
+                    i,
+                    self.unique,
+                    candidate_coresets,
+                    coreset_indices,
+                    loss,
+                    candidate_batch_indices,
                 )
-                loss += jnp.where(already_chosen_indices_mask, jnp.inf, 0)
-            index_to_include_in_coreset = candidate_coresets[loss.argmin(), i]
-
-            # Repeat the chosen coreset index into the ith column of the array of
-            # candidate coreset indices. Replace the (i+1)th column with the next batch
-            # of possible coreset indices.
-            updated_candidate_coresets = (
-                candidate_coresets.at[:, i]
-                .set(index_to_include_in_coreset)
-                .at[:, i + 1]
-                .set(batch_indices[i + 1, :])
-            )
-
-            # Add the chosen coreset index to the current coreset indices
-            updated_coreset_indices = coreset_indices.at[i].set(
-                index_to_include_in_coreset
             )
             return updated_coreset_indices, updated_identity, updated_candidate_coresets
 
         # Greedily refine coreset points
-        updated_coreset_indices, _, _ = jax.lax.fori_loop(
+        new_coreset_indices, _, _ = jax.lax.fori_loop(
             lower=0,
             upper=self.coreset_size,
             body_fun=_greedy_body,
             init_val=(
-                coreset_indices,
-                identity,
+                initial_coreset_indices,
+                initial_identity,
                 initial_candidate_coresets,
             ),
         )
 
-        return Coresubset.build(
-            updated_coreset_indices, dataset
-        ), GreedyKernelPointsState(padded_feature_gramian)
+        return (
+            Coresubset.build(new_coreset_indices, dataset),
+            GreedyKernelPointsState(padded_feature_gramian),
+        )
 
 
 class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
