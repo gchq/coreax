@@ -53,10 +53,10 @@ class IterativeKernelHerding(KernelHerding[_Data]):  # pylint: disable=too-many-
     Wrapper around :meth:`~coreax.solvers.KernelHerding.reduce_iterative` for
     benchmarking purposes.
 
-    :param num_iterations: Number of refinement iterations
+    :param num_iterations: Number of refinement iterations.
     :param t_schedule: An :class:`Array` of length `num_iterations`, where
         `t_schedule[i]` is the temperature parameter used for iteration i. If None,
-        standard Kernel Herding is used
+        standard Kernel Herding is used.
     """
 
     num_iterations: int = 1

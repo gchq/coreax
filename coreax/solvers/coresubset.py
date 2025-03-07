@@ -305,10 +305,11 @@ class KernelHerding(
             ``coreset_size``, the extra indices will not be optimised and will be
             clipped from the return ``coresubset``.
 
-        :param coresubset: The coresubset to refine
+        :param coresubset: The coresubset to refine.
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :return: A refined coresubset and relevant intermediate solver state information
+        :return: A refined coresubset and relevant intermediate solver state
+        information.
         """
         if solver_state is None:
             x, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
@@ -357,14 +358,14 @@ class KernelHerding(
         """
         Reduce a dataset to a coreset by refining iteratively.
 
-        :param dataset: Dataset to reduce
+        :param dataset: Dataset to reduce.
         :param solver_state: Solution state information, primarily used to cache
-            expensive intermediate solution step values
-        :param num_iterations: Number of iterations of the refine method
+            expensive intermediate solution step values.
+        :param num_iterations: Number of iterations of the refine method to perform.
         :param t_schedule: An :class:`Array` of length `num_iterations`, where
             `t_schedule[i]` is the temperature parameter used for iteration i. If None,
-            standard Kernel Herding is used
-        :return: A coresubset and relevant intermediate solver state information
+            standard Kernel Herding is used.
+        :return: A coresubset and relevant intermediate solver state information.
         """
         initial_coreset = _initial_coresubset(0, self.coreset_size, dataset)
         if solver_state is None:
@@ -377,8 +378,8 @@ class KernelHerding(
             """
             Perform one iteration of the refine method.
 
-            :param i: Iteration number
-            :param coreset: Coreset to be refined
+            :param i: Iteration number.
+            :param coreset: Coreset to be refined.
             """
             # Update the random key
             new_solver = eqx.tree_at(
