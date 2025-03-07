@@ -309,7 +309,7 @@ class KernelHerding(
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state
-        information.
+            information.
         """
         if solver_state is None:
             x, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
