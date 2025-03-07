@@ -22,6 +22,13 @@ With the :class:`~coreax.kernels.LinearKernel` with
 :class:`~coreax.solvers.coresubset.GreedyKernelPoints` algorithm with zero
 regularisation, we seek a coreset of size two.
 
+The feature Gramian is
+
+.. math::
+
+    K^{(11)} &= X^T X \\
+    &= \begin{pmatrix} 1 & 0 & 2 \\ 0 & 1 & 1 \\ 2 & 1 & 5 \end{pmatrix} .
+
 Let :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` be a supervised dataset of
 :math:`n` pairs, where, with respect to some scalar-valued feature kernel, the original
 feature Gramian is
