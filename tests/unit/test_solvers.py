@@ -52,7 +52,10 @@ from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.least_squares import RandomisedEigendecompositionSolver
+from coreax.least_squares import (
+    MinimalEuclideanNormSolver,
+    RandomisedEigendecompositionSolver,
+)
 from coreax.solvers import (
     CaratheodoryRecombination,
     CompressPlusPlus,
@@ -74,6 +77,9 @@ from coreax.solvers.base import (
     ExplicitSizeSolver,
     PaddingInvariantSolver,
     RefinementSolver,
+)
+from coreax.solvers.coresubset import (
+    _greedy_kernel_points_loss,  # noqa: PLC2701
 )
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
@@ -1900,7 +1906,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
             expected_coresubset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        initial_coresubset = Coresubset.build(indices, dataset)
+        initial_coresubset = Coresubset(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     def test_greedy_kernel_inducing_point_state(
@@ -1940,15 +1946,132 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         solver.reduce(dataset)
 
     def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
-        """Test that setting a not `None` `batch_size` produces no errors."""
+        """Test that setting not `None` batch sizes produces no errors."""
         dataset, _, _ = reduce_problem
         solver = GreedyKernelPoints(
             random_key=self.random_key,
             coreset_size=10,
             feature_kernel=SquaredExponentialKernel(),
-            batch_size=10,
+            candidate_batch_size=10,
+            loss_batch_size=5,
         )
         solver.reduce(dataset)
+
+    @pytest.mark.parametrize(
+        "data_size, coreset_size, candidate_batch_size",
+        [(100, 50, 10), (100, 50, 13), (100, 10, 50), (50, 10, 100), (50, 50, 10)],
+        ids=[
+            "multiple_candidate_batch_size_less_than_coreset_size_less_than_data_size",
+            "non_multi_candidate_batch_size_less_than_coreset_size_less_than_data_size",
+            "coreset_size_less_than_candidate_batch_size_less_than_data_size",
+            "coreset_size_less_than_data_size_less_than_candidate_batch_size",
+            "coreset_size_equal_to_data_size",
+        ],
+    )
+    def test_candidate_batch_size(
+        self,
+        reduce_problem: _ReduceProblem,
+        data_size: int,
+        coreset_size: int,
+        candidate_batch_size: int,
+    ) -> None:
+        """Test that various choices of `candidate_batch_size` throw no errors."""
+        dataset, _, _ = reduce_problem
+        dataset = dataset[:data_size]
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=SquaredExponentialKernel(),
+            candidate_batch_size=candidate_batch_size,
+        )
+        solver.reduce(dataset)
+
+    @pytest.mark.parametrize(
+        "data_size, coreset_size, loss_batch_size",
+        [(100, 50, 10), (100, 50, 13), (100, 10, 50), (50, 10, 100), (50, 50, 10)],
+        ids=[
+            "multiple_loss_batch_size_less_than_coreset_size_less_than_data_size",
+            "non_multiple_loss_batch_size_less_than_coreset_size_less_than_data_size",
+            "coreset_size_less_than_loss_batch_size_less_than_data_size",
+            "coreset_size_less_than_data_size_less_than_loss_batch_size",
+            "coreset_size_equal_to_data_size",
+        ],
+    )
+    def test_loss_batch_size(
+        self,
+        reduce_problem: _ReduceProblem,
+        data_size: int,
+        coreset_size: int,
+        loss_batch_size: int,
+    ) -> None:
+        """Test that various choices of `loss_batch_size` throw no errors."""
+        dataset, _, _ = reduce_problem
+        dataset = dataset[:data_size]
+        solver = GreedyKernelPoints(
+            random_key=self.random_key,
+            coreset_size=coreset_size,
+            feature_kernel=SquaredExponentialKernel(),
+            loss_batch_size=loss_batch_size,
+        )
+        solver.reduce(dataset)
+
+    def test_analytic_greedy_kernel_points_loss(self) -> None:
+        """Test a simple analytic example."""
+        # We consider a dataset of size 3, and we analytically test the second iteration
+        # where we have already chosen the 1st index.
+        candidate_coresets = jnp.array([[1, 0], [1, 2]])
+
+        # Mock the responses and feature gramian
+        responses = jnp.array([[0], [1], [2]])
+        feature_gramian = jnp.array(
+            [
+                [1, 1 / 2, 1 / 2],
+                [1 / 2, 1, 1 / 5],
+                [1 / 2, 1 / 5, 1],
+            ]
+        )
+
+        # For the two candidate feature gramians, compute the coefficients for the
+        # kernel ridge regression model, i.e. C = K^{-1}y
+        coefficients = jnp.array(
+            [
+                [
+                    [4 / 3],
+                    [-2 / 3],
+                ],
+                [
+                    [5 / 8],
+                    [15 / 8],
+                ],
+            ]
+        )
+        del coefficients
+
+        # Use the model to predict on all of the training data i.e.
+        # predictions = K_cross_gramians C
+        predictions = jnp.array(
+            [
+                [0, 1, -1 / 15],
+                [5 / 4, 1, 2],
+            ]
+        )
+        del predictions
+
+        # Compute the loss according to docstring of GreedyKernelPoints
+        analytic_loss = jnp.array([-164 / 225, -55 / 16])
+
+        # Call the loss function
+        expected_loss = _greedy_kernel_points_loss(
+            candidate_coresets=candidate_coresets,
+            responses=responses,
+            feature_gramian=feature_gramian,
+            regularisation_parameter=0,
+            identity=jnp.eye(2),
+            least_squares_solver=MinimalEuclideanNormSolver(),
+            loss_batch=jnp.arange(3),
+        )
+
+        assert analytic_loss == pytest.approx(expected_loss)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
