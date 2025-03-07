@@ -3,9 +3,9 @@ Benchmarking Coreset Algorithms
 
 In this benchmark, we assess the performance of different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
-:class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky` and
-:class:`~coreax.solvers.KernelThinning`, :class:`~coreax.solvers.CompressPlusPlus`,
-:class:`~coreax.solvers.IterativeKernelHerding`. Each of these algorithms is evaluated
+:class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky`,
+:class:`~coreax.solvers.KernelThinning`, and :class:`~coreax.solvers.CompressPlusPlus`.
+Each of these algorithms is evaluated
 across four different tests, providing a comparison of their performance and
 applicability to various datasets.
 
@@ -29,8 +29,7 @@ these steps:
 
 4. **Coreset Generation**: Coresets of various sizes are generated using the
    different coreset algorithms. For :class:`~coreax.solvers.KernelHerding`,
-   :class:`~coreax.solvers.SteinThinning`, :class:`~coreax.solvers.KernelThinning`, and
-   :class:`~coreax.solvers.IterativeKernelHerding`,
+   :class:`~coreax.solvers.SteinThinning`, and :class:`~coreax.solvers.KernelThinning`,
    :class:`~coreax.solvers.MapReduce` is employed to handle large-scale data.
 
 5. **Training**: The model is trained using the selected coresets, and accuracy is
@@ -116,54 +115,68 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - Kernel Herding
+   * - KernelHerding
      - 0.024273
      - 0.072547
      - 0.008471
      - 0.072267
-     - 3.859628
+     - 4.600567
+
    * - RandomSample
-     - 0.125471
-     - 0.087859
-     - 0.037686
-     - 0.074856
-     - **2.659764**
-   * - RP Cholesky
-     - 0.140715
-     - **0.059376**
-     - **0.003011**
-     - **0.071982**
-     - 3.312633
-   * - Stein Thinning
-     - 0.165692
-     - 0.073476
-     - 0.033367
-     - 0.073952
-     - 3.714297
-   * - Kernel Thinning
-     - 0.014093
-     - 0.071987
-     - 0.005737
-     - 0.072614
-     - 23.659113
-   * - Compress++
-     - 0.010929
-     - 0.072254
-     - 0.005783
-     - 0.072447
-     - 15.278997
-   * - Probabilistic Iterative Herding
-     - 0.017470
-     - 0.074181
-     - 0.007226
-     - 0.072694
-     - 4.330906
-   * - IIterative Herding
-     - **0.006842**
-     - 0.072133
-     - 0.004978
-     - 0.072212
-     - 3.399839
+     - 0.111424
+     - 0.077308
+     - 0.011224
+     - 0.073833
+     - **3.495483**
+
+   * - RPCholesky
+     - 0.140047
+     - **0.059306**
+     - 0.003688
+     - **0.071969**
+     - 4.230014
+
+   * - SteinThinning
+     - 0.147962
+     - 0.075813
+     - 0.017571
+     - 0.074239
+     - 4.806702
+
+   * - KernelThinning
+     - 0.014880
+     - 0.072271
+     - 0.005388
+     - 0.072463
+     - 27.173368
+
+   * - CompressPlusPlus
+     - 0.013212
+     - 0.072479
+     - 0.007081
+     - 0.072777
+     - 17.304506
+
+   * - ProbabilisticIterativeHerding
+     - 0.021128
+     - 0.073220
+     - 0.007852
+     - 0.073069
+     - 4.669493
+
+   * - IterativeHerding
+     - 0.007051
+     - 0.072036
+     - 0.005125
+     - 0.072206
+     - 4.062584
+
+   * - CubicProbIterativeHerding
+     - **0.004543**
+     - 0.072165
+     - **0.003512**
+     - 0.072366
+     - 4.687458
 
 .. list-table:: Coreset Size 50 (Original Sample Size 1,024)
    :header-rows: 1
@@ -175,54 +188,68 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - Kernel Herding
+   * - KernelHerding
      - 0.014011
      - 0.072273
      - 0.003191
-     - 0.072094
-     - 3.417109
+     - **0.072094**
+     - 4.139396
+
    * - RandomSample
-     - 0.100558
-     - 0.080291
-     - 0.005518
-     - 0.072549
-     - **2.575190**
-   * - RP Cholesky
-     - 0.136605
-     - **0.055552**
-     - **0.001971**
-     - 0.072116
-     - 3.227958
-   * - Stein Thinning
-     - 0.152293
-     - 0.073183
-     - 0.017996
-     - **0.071682**
-     - 4.056369
-   * - Kernel Thinning
-     - 0.006482
-     - 0.071823
-     - 0.002541
-     - 0.072183
-     - 12.507483
-   * - Compress++
-     - 0.006065
-     - 0.071981
-     - 0.002633
-     - 0.072257
-     - 9.339439
-   * - Probabilistic Iterative Herding
-     - 0.010031
-     - 0.072707
-     - 0.002906
-     - 0.072432
-     - 4.279948
-   * - IIterative Herding
-     - **0.003546**
-     - 0.072107
-     - 0.002555
-     - 0.072203
-     - 3.291645
+     - 0.104925
+     - 0.078755
+     - 0.004955
+     - 0.072600
+     - **3.580714**
+
+   * - RPCholesky
+     - 0.146650
+     - **0.056694**
+     - 0.001539
+     - 0.072209
+     - 3.820043
+
+   * - SteinThinning
+     - 0.132586
+     - 0.077087
+     - 0.006761
+     - 0.072635
+     - 4.231215
+
+   * - KernelThinning
+     - 0.006304
+     - 0.072012
+     - 0.002246
+     - 0.072222
+     - 15.216022
+
+   * - CompressPlusPlus
+     - 0.007616
+     - 0.072154
+     - 0.002819
+     - 0.072249
+     - 11.209934
+
+   * - ProbabilisticIterativeHerding
+     - 0.015108
+     - 0.073478
+     - 0.003151
+     - 0.072501
+     - 4.343780
+
+   * - IterativeHerding
+     - 0.003708
+     - 0.072123
+     - 0.002604
+     - 0.072199
+     - 3.681021
+
+   * - CubicProbIterativeHerding
+     - **0.001733**
+     - 0.072226
+     - **0.001442**
+     - 0.072296
+     - 4.199541
 
 .. list-table:: Coreset Size 100 (Original Sample Size 1,024)
    :header-rows: 1
@@ -234,54 +261,68 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - Kernel Herding
+   * - KernelHerding
      - 0.007909
      - 0.071763
      - 0.001859
-     - 0.072205
-     - 3.583433
+     - **0.072205**
+     - 4.313880
+
    * - RandomSample
-     - 0.067373
-     - 0.077506
-     - 0.001673
-     - 0.072329
-     - **2.631034**
-   * - RP Cholesky
-     - 0.091372
-     - **0.059889**
-     - **0.001174**
-     - 0.072281
-     - 3.426726
-   * - Stein Thinning
-     - 0.102536
-     - 0.074250
-     - 0.007770
-     - **0.071809**
-     - 3.673147
-   * - Kernel Thinning
-     - 0.002811
-     - 0.072218
-     - 0.001414
-     - 0.072286
-     - 7.878599
-   * - Compress++
-     - 0.003343
-     - 0.072287
-     - 0.001486
-     - 0.072283
-     - 6.930467
-   * - Probabilistic Iterative Herding
-     - 0.006254
-     - 0.072408
-     - 0.001649
-     - 0.072289
-     - 4.381068
-   * - IIterative Herding
-     - **0.002130**
-     - 0.072142
-     - 0.001373
-     - 0.072248
-     - 3.502385
+     - 0.055019
+     - 0.075205
+     - 0.001804
+     - 0.072270
+     - **3.731109**
+
+   * - RPCholesky
+     - 0.097647
+     - **0.062210**
+     - 0.001044
+     - 0.072251
+     - 4.349850
+
+   * - SteinThinning
+     - 0.137844
+     - 0.081297
+     - 0.004691
+     - 0.072308
+     - 4.689983
+
+   * - KernelThinning
+     - 0.002685
+     - 0.072069
+     - 0.001265
+     - 0.072263
+     - 10.102306
+
+   * - CompressPlusPlus
+     - 0.002936
+     - 0.072196
+     - 0.001226
+     - 0.072285
+     - 9.244769
+
+   * - ProbabilisticIterativeHerding
+     - 0.009710
+     - 0.072786
+     - 0.001838
+     - 0.072367
+     - 4.425218
+
+   * - IterativeHerding
+     - 0.002256
+     - 0.072129
+     - 0.001407
+     - 0.072255
+     - 4.298705
+
+   * - CubicProbIterativeHerding
+     - **0.000805**
+     - 0.072214
+     - **0.000979**
+     - 0.072259
+     - 4.685692
 
 .. list-table:: Coreset Size 200 (Original Sample Size 1,024)
    :header-rows: 1
@@ -293,55 +334,68 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Weighted_MMD
      - Weighted_KSD
      - Time
-   * - Kernel Herding
+   * - KernelHerding
      - 0.004259
      - 0.072017
      - 0.001173
      - 0.072242
-     - 3.810858
-   * - RandomSample
-     - 0.031644
-     - 0.074061
-     - 0.001005
-     - 0.072271
-     - **2.787691**
-   * - RP Cholesky
-     - 0.052786
-     - **0.065218**
-     - **0.000784**
-     - 0.072269
-     - 3.545290
-   * - Stein Thinning
-     - 0.098395
-     - 0.078290
-     - 0.004569
-     - **0.071896**
-     - 3.910901
-   * - Kernel Thinning
-     - **0.001175**
-     - 0.072160
-     - 0.000933
-     - 0.072273
-     - 5.720256
-   * - Compress++
-     - 0.001336
-     - 0.072193
-     - 0.000788
-     - 0.072228
-     - 6.081252
-   * - Probabilistic Iterative Herding
-     - 0.005056
-     - 0.072054
-     - 0.000852
-     - 0.072287
-     - 5.043387
-   * - IIterative Herding
-     - 0.001346
-     - 0.072169
-     - 0.001020
-     - 0.072241
-     - 3.699600
+     - 4.809446
 
+   * - RandomSample
+     - 0.041521
+     - 0.072316
+     - 0.000914
+     - 0.072260
+     - **3.744803**
+
+   * - RPCholesky
+     - 0.056923
+     - **0.067187**
+     - 0.000830
+     - 0.072248
+     - 4.360848
+
+   * - SteinThinning
+     - 0.144544
+     - 0.085564
+     - 0.002836
+     - **0.072155**
+     - 4.833500
+
+   * - KernelThinning
+     - 0.001518
+     - 0.072137
+     - 0.000886
+     - 0.072265
+     - 6.940934
+
+   * - CompressPlusPlus
+     - 0.001410
+     - 0.072154
+     - 0.000755
+     - 0.072240
+     - 7.291234
+
+   * - ProbabilisticIterativeHerding
+     - 0.006358
+     - 0.072700
+     - 0.000873
+     - 0.072272
+     - 4.814415
+
+   * - IterativeHerding
+     - 0.001382
+     - 0.072160
+     - 0.000995
+     - 0.072241
+     - 4.238990
+
+   * - CubicProbIterativeHerding
+     - **0.000582**
+     - 0.072205
+     - **0.000706**
+     - 0.072260
+     - 4.936301
 
 
 **Visualisation**: The results in this table can be visualised as follows:
@@ -370,7 +424,7 @@ For each metric and coreset size, the best performance score is highlighted in b
 
   **Figure 6**: Weighted KSD plotted against coreset size for each coreset method.
 
-  .. image:: ../../examples/benchmarking_images/blobs_time_taken.png
+  .. image:: ../../examples/benchmarking_images/blobs_Time.png
      :alt: Line graph visualising the data tables above, plotting time taken against
            coreset size for each of the coreset methods
 
@@ -424,64 +478,73 @@ extracted from an input animated **Video**. This test involves the following ste
 
   **Video 1**: Original video file.
 
-  .. image:: ../../examples/benchmarking_images/RandomSample_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Random_Sample_coreset.gif
      :alt: Video showing the frames selected by Random Sample
 
   **Video 2**: Frames selected by Random Sample.
 
-  .. image:: ../../examples/benchmarking_images/SteinThinning_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Stein_Thinning_coreset.gif
      :alt: Video showing the frames selected by Stein Thinning
 
   **Video 3**: Frames selected by Stein thinning.
 
-  .. image:: ../../examples/benchmarking_images/RPCholesky_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/RP_Cholesky_coreset.gif
      :alt: Video showing the frames selected by RP Cholesky
 
   **Video 4**: Frames selected by RP Cholesky.
 
-  .. image:: ../../examples/benchmarking_images/KernelHerding_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Kernel_Herding_coreset.gif
      :alt: Video showing the frames selected by Kernel Herding
 
   **Video 5**: Frames selected by Kernel Herding.
 
-  .. image:: ../../examples/benchmarking_images/KernelThinning_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Kernel_Thinning_coreset.gif
      :alt: Video showing the frames selected by Kernel Thinning
 
   **Video 6**: Frames selected by Kernel Thinning.
 
-  .. image:: ../../examples/benchmarking_images/CompressPlusPlus_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Compress++_coreset.gif
      :alt: Video showing the frames selected by Compress++
 
   **Video 7**: Frames selected by Compress++.
 
-  .. image:: ../../examples/benchmarking_images/ProbabilisticIterativeHerding_coreset.gif
+  .. image:: ../../examples/benchmarking_images/pounce/Iterative_Probabilistic_Herding_(constant)_coreset.gif
      :alt: Video showing the frames selected by Probabilistic Iterative Kernel Herding
 
   **Video 8**: Frames selected by Probabilistic Iterative Kernel Herding.
 
+  .. image:: ../../examples/benchmarking_images/pounce/Iterative_Probabilistic_Herding_(cubic)_coreset.gif
+     :alt: Video showing the frames selected by Probabilistic Iterative Kernel Herding
+
+  **Video 8**: Frames selected by Probabilistic Iterative Kernel Herding with a
+    decaying temperature parameter.
+
 The following plots show the frames chosen by each coreset algorithm with action frames
 in orange.
 
-  .. image:: ../../examples/benchmarking_images/frames_random_sample.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Random_Sample.png
     :alt: Plot showing the frames selected by Random Sample
 
-  .. image:: ../../examples/benchmarking_images/frames_rp_cholesky.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_RP_Cholesky.png
     :alt: Plot showing the frames selected by RP Cholesky
 
-  .. image:: ../../examples/benchmarking_images/frames_stein_thinning.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Stein_Thinning.png
     :alt: Plot showing the frames selected by Stein Thinning
 
-  .. image:: ../../examples/benchmarking_images/frames_kernel_herding.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Herding.png
     :alt: Plot showing the frames selected by Kernel Herding
 
-  .. image:: ../../examples/benchmarking_images/frames_kernel_thinning.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Thinning.png
     :alt: Plot showing the frames selected by Kernel Thinning
 
-  .. image:: ../../examples/benchmarking_images/frames_compress_plus_plus.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Compress++.png
     :alt: Plot showing the frames selected by Compress++
 
-  .. image:: ../../examples/benchmarking_images/frames_probabilistic_iterative_herding.png
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(constant).png
     :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding
+
+  .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(cubic).png
+    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding with a decaying temperature parameter
 
 Conclusion
 ----------

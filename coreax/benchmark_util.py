@@ -21,18 +21,18 @@ functions for computing solver parameters and retrieving solver names.
 """
 
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 
 import jax.numpy as jnp
 import numpy as np
 from jaxtyping import Array, Float
 
-from coreax import Data
+from coreax import Coresubset, Data, SupervisedData
 from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
 from coreax.score_matching import KernelDensityMatching
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
+    HerdingState,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -42,6 +42,46 @@ from coreax.solvers import (
     SteinThinning,
 )
 from coreax.util import KeyArrayLike
+
+_Data = TypeVar("_Data", Data, SupervisedData)
+
+
+class IterativeKernelHerding(KernelHerding[_Data]):  # pylint: disable=too-many-ancestors
+    r"""
+    Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
+
+    Wrapper around :meth:`~coreax.solvers.KernelHerding.reduce_iterative` for
+    benchmarking purposes.
+
+    :param num_iterations: Number of refinement iterations.
+    :param t_schedule: An :class:`Array` of length `num_iterations`, where
+        `t_schedule[i]` is the temperature parameter used for iteration i. If None,
+        standard Kernel Herding is used.
+    """
+
+    num_iterations: int = 1
+    t_schedule: Optional[Array] = None
+
+    def reduce(
+        self,
+        dataset: _Data,
+        solver_state: Optional[HerdingState] = None,
+    ) -> tuple[Coresubset[_Data], HerdingState]:
+        """
+        Perform Kernel Herding reduction followed by additional refinement iterations.
+
+        :param dataset: The dataset to process.
+        :param solver_state: Optional solver state.
+        :return: Refined coresubset and final solver state.
+        """
+        coreset, reduced_solver_state = self.reduce_iterative(
+            dataset,
+            solver_state,
+            num_iterations=self.num_iterations,
+            t_schedule=self.t_schedule,
+        )
+
+        return coreset, reduced_solver_state
 
 
 def calculate_delta(n: int) -> Float[Array, "1"]:
@@ -100,8 +140,7 @@ def initialise_solvers(  # noqa: C901
     # Set up kernel using median heuristic
     num_data_points = len(train_data_umap)
     num_samples_length_scale = min(num_data_points, 300)
-    random_seed = 45
-    generator = np.random.default_rng(random_seed)
+    generator = np.random.default_rng(seed=45)
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(jnp.asarray(train_data_umap[idx]))
     kernel = SquaredExponentialKernel(length_scale=length_scale)
@@ -256,6 +295,35 @@ def initialise_solvers(  # noqa: C901
             return herding_solver
         return MapReduce(herding_solver, leaf_size=leaf_size)
 
+    def _get_cubic_iterative_herding_solver(
+        _size: int,
+    ) -> Union[IterativeKernelHerding, MapReduce]:
+        """
+        Set up KernelHerding with probabilistic selection.
+
+        If the `leaf_size` is provided, the solver uses ``MapReduce`` to reduce
+        datasets.
+
+        :param _size: The size of the coreset to be generated.
+        :return: An `IterativeKernelHerding` solver if `leaf_size` is `None`, otherwise
+            a `MapReduce` solver with `IterativeKernelHerding` as the base solver.
+        """
+        n_iter = 10
+        t_schedule = 1 / jnp.linspace(10, 100, n_iter) ** 3
+
+        herding_solver = IterativeKernelHerding(
+            coreset_size=_size,
+            kernel=kernel,
+            probabilistic=True,
+            temperature=0.001,
+            random_key=key,
+            num_iterations=n_iter,
+            t_schedule=t_schedule,
+        )
+        if leaf_size is None:
+            return herding_solver
+        return MapReduce(herding_solver, leaf_size=leaf_size)
+
     return {
         "Random Sample": _get_random_solver,
         "RP Cholesky": _get_rp_solver,
@@ -263,6 +331,7 @@ def initialise_solvers(  # noqa: C901
         "Stein Thinning": _get_stein_solver,
         "Kernel Thinning": _get_thinning_solver,
         "Compress++": _get_compress_solver,
-        "Probabilistic Iterative Herding": _get_probabilistic_herding_solver,
+        "Iterative Probabilistic Herding (constant)": _get_probabilistic_herding_solver,
         "Iterative Herding": _get_iterative_herding_solver,
+        "Iterative Probabilistic Herding (cubic)": _get_cubic_iterative_herding_solver,
     }

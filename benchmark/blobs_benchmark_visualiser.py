@@ -46,16 +46,16 @@ def plot_benchmarking_results(data):
 
     """
     title_size = 22
-    label_size = 18
-    tick_size = 16
-    legend_size = 16
+    label_size = 20
+    tick_size = 18
+    legend_size = 18
 
     first_coreset_size = next(iter(data.keys()))
     first_algorithm = next(iter(data[first_coreset_size].values()))
     metrics = list(first_algorithm.keys())
 
     for metric in metrics:
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(15, 10))
         plt.title(
             f"{metric.replace('_', ' ').title()} vs Coreset Size",
             fontsize=title_size,
@@ -85,14 +85,16 @@ def plot_benchmarking_results(data):
             fontweight="bold",
         )
         plt.yscale("log")
-
         plt.xticks(fontsize=tick_size)
         plt.yticks(fontsize=tick_size)
 
         plt.legend(fontsize=legend_size, loc="best", frameon=True)
 
         plt.grid(True, linestyle="--", alpha=0.7)
-        plt.show()
+
+        plt.savefig(
+            f"../examples/benchmarking_images/blobs_{metric}.png", bbox_inches="tight"
+        )
 
 
 # Function to print metrics table for each sample size
