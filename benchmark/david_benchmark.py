@@ -130,20 +130,14 @@ def benchmark_coreset_algorithms(
 
     # Save the combined benchmark plot
     if out_path:
-        # Calculate the grid dimensions and figsize based on the number of coresets
-        total_plots = len(coresets) + 1  # +1 for the original image
-        grid_size = math.ceil(math.sqrt(total_plots))
-        plt.figure(figsize=(4 * grid_size, 4 * grid_size))
-
-        # Plot the original image
-        plt.subplot(grid_size, grid_size, 1)
+        plt.figure(figsize=(15, 10))
+        plt.subplot(3, 3, 1)
         plt.imshow(original_data, cmap="gray")
         plt.title("Original Image")
         plt.axis("off")
 
-        # Plot each coreset
         for i, (solver_name, coreset_data) in enumerate(coresets.items(), start=2):
-            plt.subplot(grid_size, grid_size, i)
+            plt.subplot(3, 3, i)
             plt.scatter(
                 coreset_data[:, 1],
                 -coreset_data[:, 0],
