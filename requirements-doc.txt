@@ -22,11 +22,11 @@ domdf-python-tools==3.10.0
 equinox==0.11.10 ; python_full_version < '3.10'
 equinox==0.11.12 ; python_full_version >= '3.10'
 etils==1.5.2 ; python_full_version < '3.10'
-etils==1.12.0 ; python_full_version >= '3.10'
+etils==1.12.1 ; python_full_version >= '3.10'
 filelock==3.17.0
 flax==0.8.5 ; python_full_version < '3.10'
 flax==0.10.4 ; python_full_version >= '3.10'
-fsspec==2025.2.0
+fsspec==2025.3.0
 furo==2024.8.6
 html5lib==1.1
 humanize==4.12.1
@@ -76,7 +76,7 @@ ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_impl
 scikit-learn==1.6.1
 scipy==1.13.1 ; python_full_version < '3.10'
 scipy==1.15.2 ; python_full_version >= '3.10'
-setuptools==75.8.2 ; python_full_version >= '3.12'
+setuptools==75.9.0 ; python_full_version >= '3.12'
 simplejson==3.20.1 ; python_full_version >= '3.10'
 six==1.17.0
 snowballstemmer==2.2.0
