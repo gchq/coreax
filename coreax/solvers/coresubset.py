@@ -305,10 +305,11 @@ class KernelHerding(
             ``coreset_size``, the extra indices will not be optimised and will be
             clipped from the return ``coresubset``.
 
-        :param coresubset: The coresubset to refine
+        :param coresubset: The coresubset to refine.
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :return: A refined coresubset and relevant intermediate solver state information
+        :return: A refined coresubset and relevant intermediate solver state
+            information.
         """
         if solver_state is None:
             x, bs, un = coresubset.pre_coreset_data, self.block_size, self.unroll
@@ -346,6 +347,57 @@ class KernelHerding(
             self.unroll,
         )
         return refined_coreset, HerdingState(gramian_row_mean)
+
+    def reduce_iterative(
+        self,
+        dataset: _Data,
+        solver_state: Optional[HerdingState] = None,
+        num_iterations: int = 1,
+        t_schedule: Optional[Shaped[Array, " {num_iterations}"]] = None,
+    ) -> tuple[Coresubset[_Data], HerdingState]:
+        """
+        Reduce a dataset to a coreset by refining iteratively.
+
+        :param dataset: Dataset to reduce.
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :param num_iterations: Number of iterations of the refine method to perform.
+        :param t_schedule: An :class:`Array` of length `num_iterations`, where
+            `t_schedule[i]` is the temperature parameter used for iteration i. If None,
+            standard Kernel Herding is used.
+        :return: A coresubset and relevant intermediate solver state information.
+        """
+        initial_coreset = _initial_coresubset(0, self.coreset_size, dataset)
+        if solver_state is None:
+            x, bs, un = initial_coreset.pre_coreset_data, self.block_size, self.unroll
+            solver_state = HerdingState(
+                self.kernel.gramian_row_mean(x, block_size=bs, unroll=un)
+            )
+
+        def refine_iteration(i: int, coreset: Coresubset) -> Coresubset:
+            """
+            Perform one iteration of the refine method.
+
+            :param i: Iteration number.
+            :param coreset: Coreset to be refined.
+            """
+            # Update the random key
+            new_solver = eqx.tree_at(
+                lambda x: x.random_key, self, jr.fold_in(self.random_key, i)
+            )
+            # If the temperature schedule is provided, update temperature too
+            if t_schedule is not None:
+                new_solver = eqx.tree_at(
+                    lambda x: x.temperature, new_solver, t_schedule[i]
+                )
+
+            coreset, _ = new_solver.refine(coreset, solver_state)
+            return coreset
+
+        return (
+            jax.lax.fori_loop(0, num_iterations, refine_iteration, initial_coreset),
+            solver_state,
+        )
 
 
 class SteinThinning(
@@ -1439,77 +1491,3 @@ class CompressPlusPlus(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
         plus_plus_indices = _compress_plus_plus(clipped_indices)
         return Coresubset(Data(plus_plus_indices), dataset), None
-
-
-class IterativeKernelHerding(ExplicitSizeSolver):
-    r"""
-    Iterative Kernel Herding - perform multiple refinements of Kernel Herding.
-
-    Reduce using :class:`~coreax.solvers.KernelHerding` then refine set number of times.
-    All the parameters except the `num_iterations` are passed to
-    :class:`~coreax.solvers.KernelHerding`.
-
-    :param coreset_size: The desired size of the solved coreset.
-    :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
-        kernel function.
-        :math:`k: \\mathbb{R}^d \times \\mathbb{R}^d \rightarrow \\mathbb{R}`
-    :param unique: Boolean that ensures the resulting coresubset will only contain
-        unique elements.
-    :param block_size: Block size passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
-    :param unroll: Unroll parameter passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
-    :param probabilistic: If :data:`True`, the elements are chosen probabilistically at
-        each iteration. Otherwise, standard Kernel Herding is run.
-    :param temperature: Temperature parameter, which controls how uniform the
-        probabilities are for probabilistic selection.
-    :param random_key: Key for random number generation, only used if probabilistic
-    :param num_iterations: Number of refinement iterations.
-    """
-
-    num_iterations: int
-    kernel: ScalarValuedKernel
-    unique: bool = True
-    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
-    probabilistic: bool = False
-    temperature: Union[float, Scalar] = eqx.field(default=1.0)
-    random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
-
-    def reduce(
-        self,
-        dataset: _Data,
-        solver_state: Optional[HerdingState] = None,
-    ) -> tuple[Coresubset[_Data], HerdingState]:
-        """
-        Perform Kernel Herding reduction followed by additional refinement iterations.
-
-        :param dataset: The dataset to process.
-        :param solver_state: Optional solver state.
-        :return: Refined coresubset and final solver state.
-        """
-        herding_solver = KernelHerding(
-            coreset_size=self.coreset_size,
-            kernel=self.kernel,
-            unique=self.unique,
-            block_size=self.block_size,
-            unroll=self.unroll,
-            probabilistic=self.probabilistic,
-            temperature=self.temperature,
-            random_key=self.random_key,
-        )
-
-        coreset, reduced_solver_state = herding_solver.reduce(dataset, solver_state)
-
-        def refine_step(_, state):
-            coreset, reduced_solver_state = state
-            coreset, reduced_solver_state = herding_solver.refine(
-                coreset, reduced_solver_state
-            )
-            return (coreset, reduced_solver_state)
-
-        coreset, reduced_solver_state = lax.fori_loop(
-            0, self.num_iterations, refine_step, (coreset, reduced_solver_state)
-        )
-
-        return coreset, reduced_solver_state

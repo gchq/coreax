@@ -162,7 +162,7 @@ def plot_performance(
     bar_width = 0.8 / n_algorithms  # Divide available space for bars
     index = np.arange(len(coreset_sizes))  # x positions for coreset sizes
 
-    plt.figure(figsize=(12, 8))  # Bigger figure size
+    plt.figure(figsize=(15, 10))  # Bigger figure size
 
     for i, algo in enumerate(stats):
         # Plot the bars for mean values
@@ -231,8 +231,8 @@ def plot_performance(
     # Enhanced legend styling
     plt.legend(
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.25),
-        ncol=(n_algorithms + 1) // 2,
+        bbox_to_anchor=(0.5, -0.3),
+        ncol=(n_algorithms + 1) // 3,
         fontsize=18,
         frameon=True,
         edgecolor="black",
@@ -267,25 +267,24 @@ def main() -> None:
     )
 
     # Plot accuracy results
-    plt.figure(figsize=(12, 6))
     plot_performance(
         accuracy_stats,
         coreset_sizes,
         "Performance (Accuracy)",
         "Algorithm Performance (Accuracy) for Different Coreset Sizes",
     )
-
-    plt.show()
+    plt.savefig(
+        "../examples/benchmarking_images/mnist_benchmark_accuracy.png",
+        bbox_inches="tight",
+    )
 
     # Plot time taken results
-    plt.figure(figsize=(12, 6))
     plot_performance(
         time_stats,
         coreset_sizes,
         "Time Taken (seconds)",
         "Algorithm Performance (Time Taken) for Different Coreset Sizes",
     )
-
     plt.figtext(
         0.5,
         0.91,
@@ -296,10 +295,7 @@ def main() -> None:
         fontsize=12,
     )
 
-    plt.show()
-
     # Plot time taken results
-    plt.figure(figsize=(12, 6))
     plot_performance(
         time_stats_time_only,
         coreset_sizes_time_only,
@@ -307,18 +303,18 @@ def main() -> None:
         "Time Taken to generate coresets for Different Coreset Sizes",
         True,
     )
-
     plt.figtext(
         0.5,
         0.91,
-        "Plot showing the mean time taken to generate coresets of different"
-        " coreset sizes with error bars representing min-max ranges",
+        "",
         wrap=True,
         horizontalalignment="center",
         fontsize=12,
     )
-
-    plt.show()
+    plt.savefig(
+        "../examples/benchmarking_images/mnist_benchmark_time_taken.png",
+        bbox_inches="tight",
+    )
 
 
 if __name__ == "__main__":

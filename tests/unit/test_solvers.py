@@ -59,7 +59,6 @@ from coreax.solvers import (
     GreedyKernelPoints,
     GreedyKernelPointsState,
     HerdingState,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -1111,6 +1110,73 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         # Test whether the state is the same in both versions
         np.testing.assert_array_equal(
             state_base.gramian_row_mean, state_prob.gramian_row_mean
+        )
+
+    @pytest.mark.parametrize("reduce_problem", ["random"], indirect=True)
+    def test_reduce_iterative(self, reduce_problem: _ReduceProblem):
+        """
+        Test the iterative version of Kernel Herding.
+        """
+        dataset, solver_base, _ = reduce_problem
+        num_iter = 4
+
+        # Check that reduce_iterative() outputs the same coreset as when applying
+        # refine num_iter times
+        coreset_det, state = solver_base.reduce(dataset)
+        for _ in range(num_iter - 1):
+            coreset_det, _ = solver_base.refine(coreset_det, state)
+        coreset_det_iter, _ = solver_base.reduce_iterative(
+            dataset, state, num_iterations=num_iter
+        )
+        np.testing.assert_array_equal(
+            coreset_det.unweighted_indices, coreset_det_iter.unweighted_indices
+        )
+
+        # Initialise the probabilistic solver
+        solver_prob = KernelHerding(
+            coreset_size=solver_base.coreset_size,
+            kernel=solver_base.kernel,
+            probabilistic=True,
+            temperature=1.0,
+            random_key=jr.key(0),
+        )
+
+        def deterministic_choice(*_, p, **__):
+            """
+            Return the index of largest element of p.
+
+            If there is a tie, return the largest index.
+            This is used to mimic random sampling, where we have a deterministic
+            sampling approach.
+            """
+            # Find indices where the value equals the maximum
+            is_max = p == p.max()
+            # Convert boolean mask to integers and multiply by index
+            # This way, we'll get the highest index where True appears
+            indices = jnp.arange(p.shape[0])
+            return jnp.where(is_max, indices, -1).max()
+
+        # Mock the random choice function
+        with patch("jax.random.choice", deterministic_choice):
+            coreset_prob, _ = solver_prob.reduce(dataset)
+            for i in range(num_iter - 1):
+                new_solver = eqx.tree_at(
+                    lambda x: x.random_key,
+                    solver_prob,
+                    jr.fold_in(solver_prob.random_key, i),
+                )
+                coreset_prob, _ = new_solver.refine(coreset_prob, state)
+
+            coreset_prob_iter, _ = solver_base.reduce_iterative(
+                dataset,
+                num_iterations=num_iter,
+                t_schedule=jnp.ones(num_iter) * solver_base.temperature,
+            )
+
+        # Check that reduce_iterative() outputs the same coreset as when applying
+        # refine num_iter times
+        np.testing.assert_array_equal(
+            coreset_prob.unweighted_indices, coreset_prob_iter.unweighted_indices
         )
 
 
@@ -2563,21 +2629,3 @@ class TestCompressPlusPlus(ExplicitSizeSolverTest):
                 sqrt_kernel=SquaredExponentialKernel(),
             )
             solver.reduce(dataset)
-
-
-class TestIterativeKernelHerding(ExplicitSizeSolverTest):
-    """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
-
-    @override
-    @pytest.fixture(scope="class", params=[True, False])
-    def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
-        kernel = PCIMQKernel()
-        coreset_size = self.shape[0] // 10
-        return jtu.Partial(
-            IterativeKernelHerding,
-            coreset_size=coreset_size,
-            random_key=self.random_key,
-            kernel=kernel,
-            probabilistic=request.param,
-            num_iterations=2,
-        )
