@@ -184,7 +184,6 @@ ignore = [
     # understand and can serve as its own documentation.
 ]
 "tests/*" = [
-    "D102",  # To be removed
     "D200",  # Allow "one-line docstring not on one line" - test docstrings can be
              # quite long, so sometimes the extra six characters are really needed
     "PLR0904",  # Ignore "too many public methods" - test classes are really just
