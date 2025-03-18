@@ -446,8 +446,7 @@ class SteinThinning(
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
     :param unroll: Unroll parameter passed to
         :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
-    :param kde_bw_method: Bandwidth method passed to
-        :meth:`jax.scipy.stats.gaussian_kde`.
+    :param kde_bw_method: Bandwidth method passed to `jax.scipy.stats.gaussian_kde`.
     """
 
     kernel: ScalarValuedKernel
@@ -480,7 +479,7 @@ class SteinThinning(
             Only the score function, :math:`\nabla \log p(x)`, is provided to the
             solver. Since the lambda regularisation term relies on the density,
             :math:`p(x)`, directly, it is estimated using a Gaussian kernel density
-            estimator using :meth:`jax.scipy.stats.gaussian_kde`. The bandwidth
+            estimator using `jax.scipy.stats.gaussian_kde`. The bandwidth
             method for this can passed as kde_bw_method when initialising
             :class:`SteinThinning`.
 
