@@ -296,7 +296,7 @@ def main() -> None:  # pylint: disable=too-many-locals
 
         # Set up metrics
         mmd_metric = MMD(kernel=sq_exp_kernel)
-        ksd_metric = KSD(kernel=sq_exp_kernel)
+        ksd_metric = KSD(kernel=stein_kernel)  # KSD needs a Stein kernel
 
         # Set up weights optimiser
         weights_optimiser = MMDWeightsOptimiser(kernel=sq_exp_kernel)
