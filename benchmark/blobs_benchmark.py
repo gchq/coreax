@@ -34,10 +34,12 @@ import time
 
 import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
 import numpy as np
+from jaxtyping import Array, Shaped
 from sklearn.datasets import make_blobs
 
-from coreax import Data, SlicedScoreMatching
+from coreax import Data
 from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
@@ -84,17 +86,30 @@ def setup_stein_kernel(
     :param random_seed: An integer seed for the random number generator.
     :return: A SteinKernel object.
     """
-    sliced_score_matcher = SlicedScoreMatching(
-        jax.random.PRNGKey(random_seed),
-        jax.random.rademacher,
-        use_analytic=True,
-        num_random_vectors=100,
-        learning_rate=0.001,
-        num_epochs=50,
-    )
+    # Fit a Gaussian kernel density estimator on a subset of points for efficiency
+    num_data_points = len(dataset)
+    num_samples_length_scale = min(num_data_points, 1000)
+    generator = np.random.default_rng(random_seed)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
+    kde = jsp.stats.gaussian_kde(dataset.data[idx].T)
+
+    # Define the score function as the gradient of log density given by the KDE
+    def score_function(x: Shaped[Array, " d"]) -> Shaped[Array, " d"]:
+        """
+        Compute the score function (gradient of log density) for a single point.
+
+        :param x: Input point represented as array
+        :return: Gradient of log probability density at the given point
+        """
+
+        def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
+            return kde.logpdf(x.reshape(1, -1))[0]
+
+        return jax.grad(logpdf_single)(x)
+
     return SteinKernel(
         base_kernel=sq_exp_kernel,
-        score_function=sliced_score_matcher.match(jnp.asarray(dataset.data)),
+        score_function=score_function,
     )
 
 
@@ -142,7 +157,7 @@ def setup_solvers(
             SteinThinning(
                 coreset_size=coreset_size,
                 kernel=stein_kernel,
-                regularise=False,
+                regularise=True,
             ),
         ),
         (
