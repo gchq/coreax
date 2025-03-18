@@ -31,6 +31,7 @@ The benchmarking process follows these steps:
 import json
 import os
 import time
+from typing import Union
 
 import jax
 import jax.numpy as jnp
@@ -94,7 +95,9 @@ def setup_stein_kernel(
     kde = jsp.stats.gaussian_kde(dataset.data[idx].T)
 
     # Define the score function as the gradient of log density given by the KDE
-    def score_function(x: Shaped[Array, " d"]) -> Shaped[Array, " d"]:
+    def score_function(
+        x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
+    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
         """
         Compute the score function (gradient of log density) for a single point.
 
