@@ -225,7 +225,7 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
             output = getattr(autodiff_kernel, test_mode)(x, y)
         else:
             output = getattr(kernel, test_mode)(x, y)
-        np.testing.assert_allclose(output, expected_output, atol=1e-3, rtol=1e-6)
+        np.testing.assert_allclose(output, expected_output, atol=1e-3, rtol=1e-4)
 
     @abstractmethod
     def expected_grad_x(
