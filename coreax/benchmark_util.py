@@ -23,13 +23,14 @@ functions for computing solver parameters and retrieving solver names.
 from collections.abc import Callable
 from typing import Optional, Union
 
+import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
 import numpy as np
-from jaxtyping import Array, Float
+from jaxtyping import Array, Float, Shaped
 
 from coreax import Data
 from coreax.kernels import SquaredExponentialKernel, SteinKernel, median_heuristic
-from coreax.score_matching import KernelDensityMatching
 from coreax.solvers import (
     CompressPlusPlus,
     IterativeKernelHerding,
@@ -156,14 +157,30 @@ def initialise_solvers(  # noqa: C901
         :return: A `SteinThinning` solver if `leaf_size` is `None`, otherwise a
              `MapReduce` solver with `SteinThinning` as the base solver.
         """
-        # Generate small dataset for ScoreMatching for Stein Kernel
+        kde = jsp.stats.gaussian_kde(train_data_umap.data[idx].T)
 
-        score_function = KernelDensityMatching(length_scale=length_scale.item()).match(
-            train_data_umap[idx]
+        # Define the score function as the gradient of log density given by the KDE
+        def score_function(
+            x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
+        ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+            """
+            Compute the score function (gradient of log density) for a single point.
+
+            :param x: Input point represented as array
+            :return: Gradient of log probability density at the given point
+            """
+
+            def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
+                return kde.logpdf(x.reshape(1, -1))[0]
+
+            return jax.grad(logpdf_single)(x)
+
+        stein_kernel = SteinKernel(
+            base_kernel=kernel,
+            score_function=score_function,
         )
-        stein_kernel = SteinKernel(kernel, score_function)
         stein_solver = SteinThinning(
-            coreset_size=_size, kernel=stein_kernel, regularise=False
+            coreset_size=_size, kernel=stein_kernel, regularise=True
         )
         if leaf_size is None:
             return stein_solver
