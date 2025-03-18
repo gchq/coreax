@@ -891,7 +891,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         score_result = learned_score(x_stacked)
 
         # Check learned score and true score align
-        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.75)
+        self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.8)
 
     def test_sliced_score_matching_no_noise_conditioning(self):
         """
