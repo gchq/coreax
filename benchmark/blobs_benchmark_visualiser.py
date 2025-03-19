@@ -93,7 +93,8 @@ def plot_benchmarking_results(data):
         plt.grid(True, linestyle="--", alpha=0.7)
 
         plt.savefig(
-            f"../examples/benchmarking_images/blobs_{metric}.png", bbox_inches="tight"
+            f"../examples/benchmarking_images/blobs_{metric.lower()}.png",
+            bbox_inches="tight",
         )
 
 
