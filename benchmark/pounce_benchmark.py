@@ -91,7 +91,7 @@ def benchmark_coreset_algorithms(
     raw_data = np.asarray(image_data)
     reshaped_data = raw_data.reshape(raw_data.shape[0], -1)
 
-    umap_model = umap.UMAP(densmap=True, n_components=25)
+    umap_model = umap.UMAP(densmap=True, n_components=10, random_state=0)
     umap_data = jnp.asarray(umap_model.fit_transform(reshaped_data))
     print("umap_data_shape", umap_data.shape)
 
