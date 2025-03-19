@@ -38,6 +38,7 @@ from coreax.benchmark_util import (
     calculate_delta,
     initialise_solvers,
 )
+from coreax.coreset import Coresubset
 from coreax.solvers import (
     CompressPlusPlus,
     KernelHerding,
@@ -215,12 +216,10 @@ def test_solver_instances() -> None:
         solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
 
-    # For SteinThinning, test the score function
+    # For SteinThinning, run reduce to make sure the score function works
     stein_solver = solvers_no_leaf["Stein Thinning"](1)
-    single_point = mock_data.data[0]
-    single_point_score = stein_solver.kernel.score_function(single_point)  # pylint: disable=E1101
-    # This is too little data to fit the KDE, but we can check for correct shape
-    assert single_point_score.shape == single_point.shape
+    coreset, _ = stein_solver.reduce(mock_data)
+    assert isinstance(coreset, Coresubset)
 
 
 @pytest.mark.parametrize("n", [1, 2, 100])
