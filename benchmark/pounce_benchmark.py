@@ -64,7 +64,7 @@ def plot_selected_frames(umap_data, selected_indices, action_frames, solver_name
 
 def benchmark_coreset_algorithms(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
-    out_dir: Path = Path("pounce"),
+    out_dir: Path = Path("../examples/benchmarking_images/pounce"),
     coreset_size: int = 10,
 ):
     """
