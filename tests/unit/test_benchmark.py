@@ -215,6 +215,13 @@ def test_solver_instances() -> None:
         solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
 
+    # For SteinThinning, test the score function
+    stein_solver = solvers_no_leaf["Stein Thinning"](1)
+    single_point = mock_data.data[0]
+    single_point_score = stein_solver.kernel.score_function(single_point)  # pylint: disable=E1101
+    # This is too little data to fit the KDE, but we can check for correct shape
+    assert single_point_score.shape == single_point.shape
+
 
 @pytest.mark.parametrize("n", [1, 2, 100])
 def test_calculate_delta(n):
