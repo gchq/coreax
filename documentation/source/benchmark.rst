@@ -5,9 +5,12 @@ In this benchmark, we assess the performance of different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
 :class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky`,
 :class:`~coreax.solvers.KernelThinning`, and :class:`~coreax.solvers.CompressPlusPlus`.
-Each of these algorithms is evaluated
-across four different tests, providing a comparison of their performance and
-applicability to various datasets.
+Each of these algorithms is evaluated across four different tests, providing a
+comparison of their performance and applicability to various datasets.
+
+This benchmark only evaluates unsupervised coreset algorithms. Hence, the tasks
+involve selecting a representative subset of data points without any prior labels
+provided.
 
 Test 1: Benchmarking Coreset Algorithms on the MNIST Dataset
 ------------------------------------------------------------
