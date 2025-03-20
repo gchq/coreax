@@ -443,9 +443,10 @@ class SteinThinning(
         If :data:`None`, defaults to :math:`1/\text{coreset_size}` following
         :cite:`benard2023kernel`.
     :param block_size: Block size passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
     :param unroll: Unroll parameter passed to
-        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`
+        :meth:`~coreax.kernels.ScalarValuedKernel.compute_mean`.
+    :param kde_bw_method: Bandwidth method passed to `jax.scipy.stats.gaussian_kde`.
     """
 
     kernel: ScalarValuedKernel
@@ -455,6 +456,7 @@ class SteinThinning(
     regulariser_lambda: Optional[float] = None
     block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
     unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
+    kde_bw_method: Optional[Union[str, int, Callable]] = None
 
     @override
     def reduce(
@@ -477,20 +479,21 @@ class SteinThinning(
             Only the score function, :math:`\nabla \log p(x)`, is provided to the
             solver. Since the lambda regularisation term relies on the density,
             :math:`p(x)`, directly, it is estimated using a Gaussian kernel density
-            estimator.
+            estimator using `jax.scipy.stats.gaussian_kde`. The bandwidth
+            method for this can passed as kde_bw_method when initialising
+            :class:`SteinThinning`.
 
         :param coresubset: The coresubset to refine
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
-        :return: a refined coresubset and relevant intermediate solver state information
+        :return: A refined coresubset and relevant intermediate solver state
+            information.
         """
         x, w_x = jtu.tree_leaves(coresubset.pre_coreset_data)
         kernel = convert_stein_kernel(x, self.kernel, self.score_matching)
         stein_kernel_diagonal = jax.vmap(self.kernel.compute_elementwise)(x, x)
         if self.regularise:
-            # Cannot guarantee that kernel.base_kernel has a 'length_scale' attribute
-            bandwidth_method = getattr(kernel.base_kernel, "length_scale", None)
-            kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=bandwidth_method)
+            kde = jsp.stats.gaussian_kde(x.T, weights=w_x, bw_method=self.kde_bw_method)
 
             if self.regulariser_lambda is None:
                 # Use regularisation parameter suggested in :cite:`benard2023kernel`
@@ -814,7 +817,7 @@ class GreedyKernelPoints(
             requested ``coreset_size``, the extra indices will not be optimised and will
             be clipped from the return ``coresubset``.
 
-        :param coresubset: The coresubset to refine
+        :param coresubset: The coresubset to refine.
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step values.
         :return: A refined coresubset and relevant intermediate solver state information

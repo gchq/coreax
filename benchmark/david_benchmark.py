@@ -28,8 +28,14 @@ The benchmarking process follows these steps:
 Each coreset algorithm is timed to measure and report the time taken for each step.
 """
 
-import math
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# Pylint and Ruff are fighting over the position of the local import
+# pylint: disable=wrong-import-position
+import math
 import time
 from pathlib import Path
 from typing import Optional
@@ -44,15 +50,19 @@ from coreax import Data
 from coreax.benchmark_util import initialise_solvers
 from examples.david_map_reduce_weighted import downsample_opencv
 
+# pylint: enable=wrong-import-position
+
 MAX_8BIT = 255
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# pylint: disable=too-many-locals
 # ruff: noqa: PLR0914, PLR0915
 # (disable line too long and too many statements ruff)
 def benchmark_coreset_algorithms(
     in_path: Path = Path("../examples/data/david_orig.png"),
-    out_path: Optional[Path] = Path("david_benchmark_results.png"),
+    out_path: Optional[Path] = Path(
+        "../examples/benchmarking_images/david_benchmark_results.png"
+    ),
     downsampling_factor: int = 1,
 ):
     """
@@ -63,7 +73,8 @@ def benchmark_coreset_algorithms(
     time is printed.
 
     :param in_path: Path to the input image file.
-    :param out_path: Path to save the output benchmark plot image.
+    :param out_path: Path to save the output benchmark plot image, relative to the
+        script's location.
     :param downsampling_factor: Factor by which to downsample the image.
     """
     # Base directory of the current script
@@ -131,13 +142,13 @@ def benchmark_coreset_algorithms(
     # Save the combined benchmark plot
     if out_path:
         plt.figure(figsize=(15, 10))
-        plt.subplot(3, 3, 1)
+        plt.subplot(4, 3, 1)
         plt.imshow(original_data, cmap="gray")
         plt.title("Original Image")
         plt.axis("off")
 
         for i, (solver_name, coreset_data) in enumerate(coresets.items(), start=2):
-            plt.subplot(3, 3, i)
+            plt.subplot(4, 3, i)
             plt.scatter(
                 coreset_data[:, 1],
                 -coreset_data[:, 0],

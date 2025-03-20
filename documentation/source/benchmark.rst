@@ -5,9 +5,12 @@ In this benchmark, we assess the performance of different coreset algorithms:
 :class:`~coreax.solvers.KernelHerding`, :class:`~coreax.solvers.SteinThinning`,
 :class:`~coreax.solvers.RandomSample`, :class:`~coreax.solvers.RPCholesky`,
 :class:`~coreax.solvers.KernelThinning`, and :class:`~coreax.solvers.CompressPlusPlus`.
-Each of these algorithms is evaluated
-across four different tests, providing a comparison of their performance and
-applicability to various datasets.
+Each of these algorithms is evaluated across four different tests, providing a
+comparison of their performance and applicability to various datasets.
+
+This benchmark only evaluates unsupervised coreset algorithms. Hence, the tasks
+involve selecting a representative subset of data points without any prior labels
+provided.
 
 Test 1: Benchmarking Coreset Algorithms on the MNIST Dataset
 ------------------------------------------------------------
@@ -58,23 +61,31 @@ The benchmarking test showed that the accuracy remained similar regardless of
 the coreset method used, with only small differences, which could potentially be
 attributed to the use of these regularisation techniques.
 
-
 **Results**:
 The accuracy of the MLP classifier when trained using the full MNIST dataset
 (60,000 training images) was 97.31%, serving as a baseline for evaluating the
 performance of the coreset algorithms.
 
-
-
 .. image:: ../../examples/benchmarking_images/mnist_benchmark_accuracy.png
- :alt: Benchmark Results for MNIST Coreset Algorithms
+ :alt: A bar chart showing the accuracy of nine different algorithms
+    (the 6 mentioned above and 3 variants of iterative probabilistic Kernel Herding) across
+    six coreset sizes (25, 50, 100, 500, 1000, and 5000). The chart displays increasing
+    accuracy for all algorithms as coreset size increases, with performance ranging from
+    about 0.45-0.55 at size 25 to about 0.9 at size 5000. There is
+    little difference in performance between the algorithms at the 1000-5000 size. No
+    algorithm can be said to outperform the random sample consistently and Stein
+    Thinning lags slightly behind all other algorithms across all sizes.
 
 **Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
 represent the average accuracy. Error bars represent the min-max range for accuracy
 for each coreset size across 5 runs.
 
 .. image:: ../../examples/benchmarking_images/mnist_benchmark_time_taken.png
- :alt: Time Taken Benchmark Results for MNIST Coreset Algorithms
+ :alt: A bar chart showing the time taken on the logarithmic scale.
+    Random sample shows negligible time to run across the sizes, while Stein Thinning
+    tends to take an order of magnitude more than other algorithms. Among others,
+    Compress++ tends to be consistently faster than other algorithms while RP
+    Cholesky is the fastest at small coreset sizes.
 
 **Figure 2**: Time taken to generate coreset for each coreset algorithm. Bar heights
 represent the average time taken. Error bars represent the min-max range for each
@@ -117,66 +128,66 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Time
    * - KernelHerding
      - 0.024273
-     - 0.072547
+     - 0.086342
      - 0.008471
-     - 0.072267
-     - 4.600567
+     - 0.074467
+     - 4.765064
 
    * - RandomSample
      - 0.111424
-     - 0.077308
+     - 0.088141
      - 0.011224
-     - 0.073833
-     - **3.495483**
+     - 0.075859
+     - **3.372750**
 
    * - RPCholesky
      - 0.140047
-     - **0.059306**
+     - 0.073147
      - 0.003688
-     - **0.071969**
-     - 4.230014
+     - **0.060939**
+     - 4.026443
 
    * - SteinThinning
-     - 0.147962
-     - 0.075813
-     - 0.017571
-     - 0.074239
-     - 4.806702
+     - 0.144938
+     - 0.085247
+     - 0.063385
+     - 0.086622
+     - 5.611508
 
    * - KernelThinning
      - 0.014880
-     - 0.072271
+     - 0.075884
      - 0.005388
-     - 0.072463
-     - 27.173368
+     - 0.064494
+     - 25.014126
 
    * - CompressPlusPlus
      - 0.013212
-     - 0.072479
+     - 0.084045
      - 0.007081
-     - 0.072777
-     - 17.304506
+     - 0.081235
+     - 16.713568
 
    * - ProbabilisticIterativeHerding
      - 0.021128
-     - 0.073220
+     - 0.089382
      - 0.007852
-     - 0.073069
-     - 4.669493
+     - 0.080658
+     - 4.702327
 
    * - IterativeHerding
      - 0.007051
-     - 0.072036
+     - **0.068399**
      - 0.005125
-     - 0.072206
-     - 4.062584
+     - 0.065863
+     - 3.825249
 
    * - CubicProbIterativeHerding
      - **0.004543**
-     - 0.072165
+     - 0.081827
      - **0.003512**
-     - 0.072366
-     - 4.687458
+     - 0.077990
+     - 4.375146
 
 .. list-table:: Coreset Size 50 (Original Sample Size 1,024)
    :header-rows: 1
@@ -190,66 +201,66 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Time
    * - KernelHerding
      - 0.014011
-     - 0.072273
+     - 0.057618
      - 0.003191
-     - **0.072094**
-     - 4.139396
+     - **0.052470**
+     - 4.036918
 
    * - RandomSample
      - 0.104925
-     - 0.078755
+     - 0.079876
      - 0.004955
-     - 0.072600
-     - **3.580714**
+     - 0.061597
+     - **3.279080**
 
    * - RPCholesky
      - 0.146650
-     - **0.056694**
+     - 0.064917
      - 0.001539
-     - 0.072209
-     - 3.820043
+     - 0.054541
+     - 3.720830
 
    * - SteinThinning
-     - 0.132586
-     - 0.077087
-     - 0.006761
-     - 0.072635
-     - 4.231215
+     - 0.086824
+     - 0.055094
+     - 0.013564
+     - 0.061475
+     - 4.627325
 
    * - KernelThinning
      - 0.006304
-     - 0.072012
+     - 0.061570
      - 0.002246
-     - 0.072222
-     - 15.216022
+     - 0.058513
+     - 14.038467
 
    * - CompressPlusPlus
      - 0.007616
-     - 0.072154
+     - 0.063311
      - 0.002819
-     - 0.072249
-     - 11.209934
+     - 0.056713
+     - 10.396490
 
    * - ProbabilisticIterativeHerding
      - 0.015108
-     - 0.073478
+     - 0.068838
      - 0.003151
-     - 0.072501
-     - 4.343780
+     - 0.063005
+     - 4.108718
 
    * - IterativeHerding
      - 0.003708
-     - 0.072123
+     - **0.052616**
      - 0.002604
-     - 0.072199
-     - 3.681021
+     - 0.053199
+     - 3.577140
 
    * - CubicProbIterativeHerding
      - **0.001733**
-     - 0.072226
+     - 0.058076
      - **0.001442**
-     - 0.072296
-     - 4.199541
+     - 0.059921
+     - 4.120308
 
 .. list-table:: Coreset Size 100 (Original Sample Size 1,024)
    :header-rows: 1
@@ -263,66 +274,66 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Time
    * - KernelHerding
      - 0.007909
-     - 0.071763
+     - 0.046639
      - 0.001859
-     - **0.072205**
-     - 4.313880
+     - 0.051218
+     - 4.235977
 
    * - RandomSample
      - 0.055019
-     - 0.075205
+     - 0.061831
      - 0.001804
-     - 0.072270
-     - **3.731109**
+     - 0.057107
+     - **3.158193**
 
    * - RPCholesky
      - 0.097647
-     - **0.062210**
+     - 0.039633
      - 0.001044
-     - 0.072251
-     - 4.349850
+     - 0.055332
+     - 3.850249
 
    * - SteinThinning
-     - 0.137844
-     - 0.081297
-     - 0.004691
-     - 0.072308
-     - 4.689983
+     - 0.093073
+     - **0.035877**
+     - 0.006268
+     - 0.055652
+     - 4.740899
 
    * - KernelThinning
      - 0.002685
-     - 0.072069
+     - 0.056104
      - 0.001265
-     - 0.072263
-     - 10.102306
+     - 0.058189
+     - 9.000171
 
    * - CompressPlusPlus
      - 0.002936
-     - 0.072196
+     - 0.055740
      - 0.001226
-     - 0.072285
-     - 9.244769
+     - 0.055948
+     - 8.099011
 
    * - ProbabilisticIterativeHerding
      - 0.009710
-     - 0.072786
+     - 0.062317
      - 0.001838
-     - 0.072367
-     - 4.425218
+     - 0.059106
+     - 4.518486
 
    * - IterativeHerding
      - 0.002256
-     - 0.072129
+     - 0.048805
      - 0.001407
-     - 0.072255
-     - 4.298705
+     - **0.051166**
+     - 4.135961
 
    * - CubicProbIterativeHerding
      - **0.000805**
-     - 0.072214
+     - 0.051934
      - **0.000979**
-     - 0.072259
-     - 4.685692
+     - 0.054329
+     - 4.499996
 
 .. list-table:: Coreset Size 200 (Original Sample Size 1,024)
    :header-rows: 1
@@ -336,97 +347,97 @@ For each metric and coreset size, the best performance score is highlighted in b
      - Time
    * - KernelHerding
      - 0.004259
-     - 0.072017
+     - 0.047415
      - 0.001173
-     - 0.072242
-     - 4.809446
+     - 0.054883
+     - 4.568870
 
    * - RandomSample
      - 0.041521
-     - 0.072316
+     - 0.057967
      - 0.000914
-     - 0.072260
-     - **3.744803**
+     - 0.055495
+     - **3.401281**
 
    * - RPCholesky
      - 0.056923
-     - **0.067187**
+     - 0.042466
      - 0.000830
-     - 0.072248
-     - 4.360848
+     - **0.053957**
+     - 4.136736
 
    * - SteinThinning
-     - 0.144544
-     - 0.085564
-     - 0.002836
-     - **0.072155**
-     - 4.833500
+     - 0.104213
+     - **0.024422**
+     - 0.003508
+     - 0.055823
+     - 5.040177
 
    * - KernelThinning
      - 0.001518
-     - 0.072137
+     - 0.054005
      - 0.000886
-     - 0.072265
-     - 6.940934
+     - 0.057455
+     - 6.787894
 
    * - CompressPlusPlus
      - 0.001410
-     - 0.072154
+     - 0.053179
      - 0.000755
-     - 0.072240
-     - 7.291234
+     - 0.054638
+     - 7.406790
 
    * - ProbabilisticIterativeHerding
      - 0.006358
-     - 0.072700
+     - 0.058343
      - 0.000873
-     - 0.072272
-     - 4.814415
+     - 0.057020
+     - 4.711837
 
    * - IterativeHerding
      - 0.001382
-     - 0.072160
+     - 0.050098
      - 0.000995
-     - 0.072241
-     - 4.238990
+     - 0.054194
+     - 4.150570
 
    * - CubicProbIterativeHerding
      - **0.000582**
-     - 0.072205
+     - 0.052761
      - **0.000706**
-     - 0.072260
-     - 4.936301
+     - 0.056212
+     - 4.702852
 
 
 **Visualisation**: The results in this table can be visualised as follows:
 
   .. image:: ../../examples/benchmarking_images/blobs_unweighted_mmd.png
      :alt: Line graph visualising the data tables above, plotting unweighted MMD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 3**: Unweighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_unweighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting unweighted KSD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 4**: Unweighted KSD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_mmd.png
      :alt: Line graph visualising the data tables above, plotting weighted MMD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 5**: Weighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting weighted KSD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 6**: Weighted KSD plotted against coreset size for each coreset method.
 
-  .. image:: ../../examples/benchmarking_images/blobs_Time.png
+  .. image:: ../../examples/benchmarking_images/blobs_time.png
      :alt: Line graph visualising the data tables above, plotting time taken against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 7**: Time taken plotted against coreset size for each coreset method.
 
@@ -449,7 +460,10 @@ from an input image. The process follows these steps:
 **Results**: The following plot visualises the pixels chosen by each coreset algorithm.
 
   .. image:: ../../examples/benchmarking_images/david_benchmark_results.png
-     :alt: Plot showing pixels chosen from an image by each coreset algorithm
+     :alt: Plot showing pixels chosen from an image by each coreset algorithm. All
+        algorithms tend to perform similarly, resulting in a blurred version of the
+        original image. The only exception is Stein Thinning, which reconstructs only a
+        few features of the image.
 
   **Figure 8**: The original image and pixels selected by each coreset algorithm
   plotted side-by-side for visual comparison.
@@ -523,28 +537,29 @@ The following plots show the frames chosen by each coreset algorithm with action
 in orange.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Random_Sample.png
-    :alt: Plot showing the frames selected by Random Sample
+    :alt: Plot shows Random Sample selecting 3 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_RP_Cholesky.png
-    :alt: Plot showing the frames selected by RP Cholesky
+    :alt: Plot shows RP Cholesky selecting 3 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Stein_Thinning.png
-    :alt: Plot showing the frames selected by Stein Thinning
+    :alt: Plot shows Stein Thinning selecting 5 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Herding.png
-    :alt: Plot showing the frames selected by Kernel Herding
+    :alt: Plot shows Kernel Herding selecting 1 action frame.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Thinning.png
-    :alt: Plot showing the frames selected by Kernel Thinning
+    :alt: Plot shows Kernel Thinning selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Compress++.png
-    :alt: Plot showing the frames selected by Compress++
+    :alt: Plot shows Compress++ selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(constant).png
-    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding
+    :alt: Plot shows Probabilistic Iterative Kernel Herding selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(cubic).png
-    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding with a decaying temperature parameter
+    :alt: Plot shows Probabilistic Iterative Kernel Herding with a decaying temperature
+        parameter selecting 2 action frames.
 
 Conclusion
 ----------

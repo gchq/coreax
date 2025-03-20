@@ -38,6 +38,7 @@ from coreax.benchmark_util import (
     calculate_delta,
     initialise_solvers,
 )
+from coreax.coreset import Coresubset
 from coreax.solvers import (
     CompressPlusPlus,
     KernelHerding,
@@ -214,6 +215,11 @@ def test_solver_instances() -> None:
     for solver_name, solver_function in solvers_with_leaf.items():
         solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
+
+    # For SteinThinning, run reduce to make sure the score function works
+    stein_solver = solvers_no_leaf["Stein Thinning"](1)
+    coreset, _ = stein_solver.reduce(mock_data)
+    assert isinstance(coreset, Coresubset)
 
 
 @pytest.mark.parametrize("n", [1, 2, 100])
