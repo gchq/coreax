@@ -73,7 +73,8 @@ def benchmark_coreset_algorithms(
     time is printed.
 
     :param in_path: Path to the input image file.
-    :param out_path: Path to save the output benchmark plot image.
+    :param out_path: Path to save the output benchmark plot image, relative to the
+        script's location.
     :param downsampling_factor: Factor by which to downsample the image.
     """
     # Base directory of the current script
