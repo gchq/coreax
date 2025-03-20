@@ -205,8 +205,8 @@ def initialise_solvers(  # noqa: C901
             """
             Compute the score function (gradient of log density) for a single point.
 
-            :param x: Input point represented as array
-            :return: Gradient of log probability density at the given point
+            :param x: Input point represented as array.
+            :return: Gradient of log probability density at the given point.
             """
 
             def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
