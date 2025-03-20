@@ -73,8 +73,8 @@ performance of the coreset algorithms.
     accuracy for all algorithms as coreset size increases, with performance ranging from
     about 0.45-0.55 at size 25 to about 0.9 at size 5000. There is
     little difference in performance between the algorithms at the 1000-5000 size. No
-    algorithm can be said to outperform the random sample consistently and Stain Thinning
-    lags slightly behind all other algorithms across all sizes.
+    algorithm can be said to outperform the random sample consistently and Stein
+    Thinning lags slightly behind all other algorithms across all sizes.
 
 **Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
 represent the average accuracy. Error bars represent the min-max range for accuracy
