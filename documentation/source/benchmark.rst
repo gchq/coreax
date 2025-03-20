@@ -61,23 +61,31 @@ The benchmarking test showed that the accuracy remained similar regardless of
 the coreset method used, with only small differences, which could potentially be
 attributed to the use of these regularisation techniques.
 
-
 **Results**:
 The accuracy of the MLP classifier when trained using the full MNIST dataset
 (60,000 training images) was 97.31%, serving as a baseline for evaluating the
 performance of the coreset algorithms.
 
-
-
 .. image:: ../../examples/benchmarking_images/mnist_benchmark_accuracy.png
- :alt: Benchmark Results for MNIST Coreset Algorithms
+ :alt: A bar chart showing the accuracy of nine different algorithms
+    (the 6 mentioned above and 3 variants of iterative probabilistic Kernel Herding) across
+    six coreset sizes (25, 50, 100, 500, 1000, and 5000). The chart displays increasing
+    accuracy for all algorithms as coreset size increases, with performance ranging from
+    about 0.45-0.55 at size 25 to about 0.9 at size 5000. There is
+    little difference in performance between the algorithms at the 1000-5000 size. No
+    algorithm can be said to outperform the random sample consistently and Stain Thinning
+    lags slightly behind all other algorithms across all sizes.
 
 **Figure 1**: Accuracy of coreset algorithms on the MNIST dataset. Bar heights
 represent the average accuracy. Error bars represent the min-max range for accuracy
 for each coreset size across 5 runs.
 
 .. image:: ../../examples/benchmarking_images/mnist_benchmark_time_taken.png
- :alt: Time Taken Benchmark Results for MNIST Coreset Algorithms
+ :alt: A bar chart showing the time taken on the logarithmic scale.
+    Random sample shows negligible time to run across the sizes, while Stein Thinning
+    tends to take an order of magnitude more than other algorithms. Among others,
+    Compress++ tends to be consistently faster than other algorithms while RP
+    Cholesky is the fastest at small coreset sizes.
 
 **Figure 2**: Time taken to generate coreset for each coreset algorithm. Bar heights
 represent the average time taken. Error bars represent the min-max range for each
@@ -405,31 +413,31 @@ For each metric and coreset size, the best performance score is highlighted in b
 
   .. image:: ../../examples/benchmarking_images/blobs_unweighted_mmd.png
      :alt: Line graph visualising the data tables above, plotting unweighted MMD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 3**: Unweighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_unweighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting unweighted KSD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 4**: Unweighted KSD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_mmd.png
      :alt: Line graph visualising the data tables above, plotting weighted MMD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 5**: Weighted MMD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_weighted_ksd.png
      :alt: Line graph visualising the data tables above, plotting weighted KSD against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 6**: Weighted KSD plotted against coreset size for each coreset method.
 
   .. image:: ../../examples/benchmarking_images/blobs_time.png
      :alt: Line graph visualising the data tables above, plotting time taken against
-           coreset size for each of the coreset methods
+           coreset size for each of the coreset methods.
 
   **Figure 7**: Time taken plotted against coreset size for each coreset method.
 
@@ -452,7 +460,10 @@ from an input image. The process follows these steps:
 **Results**: The following plot visualises the pixels chosen by each coreset algorithm.
 
   .. image:: ../../examples/benchmarking_images/david_benchmark_results.png
-     :alt: Plot showing pixels chosen from an image by each coreset algorithm
+     :alt: Plot showing pixels chosen from an image by each coreset algorithm. All
+        algorithms tend to perform similarly, resulting in a blurred version of the
+        original image. The only exception is Stein Thinning, which reconstructs only a
+        few features of the image.
 
   **Figure 8**: The original image and pixels selected by each coreset algorithm
   plotted side-by-side for visual comparison.
@@ -526,28 +537,29 @@ The following plots show the frames chosen by each coreset algorithm with action
 in orange.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Random_Sample.png
-    :alt: Plot showing the frames selected by Random Sample
+    :alt: Plot shows Random Sample selecting 3 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_RP_Cholesky.png
-    :alt: Plot showing the frames selected by RP Cholesky
+    :alt: Plot shows RP Cholesky selecting 3 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Stein_Thinning.png
-    :alt: Plot showing the frames selected by Stein Thinning
+    :alt: Plot shows Stein Thinning selecting 5 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Herding.png
-    :alt: Plot showing the frames selected by Kernel Herding
+    :alt: Plot shows Kernel Herding selecting 1 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Thinning.png
-    :alt: Plot showing the frames selected by Kernel Thinning
+    :alt: Plot shows Kernel Thinning selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Compress++.png
-    :alt: Plot showing the frames selected by Compress++
+    :alt: Plot shows Compress++ selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(constant).png
-    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding
+    :alt: Plot shows Probabilistic Iterative Kernel Herding selecting 2 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Iterative_Probabilistic_Herding_(cubic).png
-    :alt: Plot showing the frames selected by Probabilistic Iterative Kernel Herding with a decaying temperature parameter
+    :alt: Plot shows Probabilistic Iterative Kernel Herding with a decaying temperature
+        parameter selecting 2 action frames.
 
 Conclusion
 ----------
