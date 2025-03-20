@@ -546,7 +546,7 @@ in orange.
     :alt: Plot shows Stein Thinning selecting 5 action frames.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Herding.png
-    :alt: Plot shows Kernel Herding selecting 1 action frames.
+    :alt: Plot shows Kernel Herding selecting 1 action frame.
 
   .. image:: ../../examples/benchmarking_images/pounce/frames_Kernel_Thinning.png
     :alt: Plot shows Kernel Thinning selecting 2 action frames.
