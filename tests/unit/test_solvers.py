@@ -2015,63 +2015,178 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         )
         solver.reduce(dataset)
 
-    def test_analytic_greedy_kernel_points_loss(self) -> None:
-        """Test a simple analytic example."""
-        # We consider a dataset of size 3, and we analytically test the second iteration
-        # where we have already chosen the 1st index.
-        candidate_coresets = jnp.array([[1, 0], [1, 2]])
+    @pytest.mark.parametrize(
+        ("candidate_coresets", "feature_gramian", "responses", "identity", "expect"),
+        (
+            (
+                jnp.array([[1, 0], [1, 2]]),
+                jnp.array([[1, 1 / 2, 1 / 2], [1 / 2, 1, 1 / 5], [1 / 2, 1 / 5, 1]]),
+                jnp.array([[0], [1], [2]]),
+                jnp.identity(2),
+                jnp.array([-164 / 225, -55 / 16]),
+            ),
+            (
+                jnp.array([[0], [1], [2]]),
+                jnp.array([[1, 0, 2], [0, 1, 1], [2, 1, 5]]),
+                jnp.array([[0], [1], [5]]),
+                jnp.identity(1),
+                jnp.array([0, -10, -22]),
+            ),
+            (
+                jnp.array([[2, 0], [2, 1]]),
+                jnp.array([[1, 0, 2], [0, 1, 1], [2, 1, 5]]),
+                jnp.array([[0], [1], [5]]),
+                jnp.identity(2),
+                jnp.array([-10, -22]),
+            ),
+            (
+                jnp.array([[0, -1], [1, -1], [2, -1]]),
+                jnp.array([[1, 0, 2, 0], [0, 1, 1, 0], [2, 1, 5, 0], [0, 0, 0, 0]]),
+                jnp.array([[0], [1], [5]]),
+                jnp.array([[1, 0], [0, 0]]),
+                jnp.array([0, -10, -22]),
+            ),
+        ),
+        ids=("standalone", "integration[0]", "integration[1]", "padding"),
+    )
+    def test_analytic_greedy_kernel_points_loss(
+        self,
+        candidate_coresets: jax.Array,
+        feature_gramian: jax.Array,
+        responses: jax.Array,
+        identity: jax.Array,
+        expect: jax.Array,
+    ) -> None:
+        r"""
+        Test _greedy_kernel_points_loss() analytically with zero regularisation.
 
-        # Mock the responses and feature gramian
-        responses = jnp.array([[0], [1], [2]])
-        feature_gramian = jnp.array(
-            [
-                [1, 1 / 2, 1 / 2],
-                [1 / 2, 1, 1 / 5],
-                [1 / 2, 1 / 5, 1],
-            ]
-        )
+        In the first test case, we consider a dataset of size three, and we test the
+        second iteration, where we have already chosen the first index to be element
+        one. The feature Gramian is
 
-        # For the two candidate feature gramians, compute the coefficients for the
-        # kernel ridge regression model, i.e. C = K^{-1}y
-        coefficients = jnp.array(
-            [
-                [
-                    [4 / 3],
-                    [-2 / 3],
-                ],
-                [
-                    [5 / 8],
-                    [15 / 8],
-                ],
-            ]
-        )
-        del coefficients
+        .. math::
 
-        # Use the model to predict on all of the training data i.e.
-        # predictions = K_cross_gramians C
-        predictions = jnp.array(
-            [
-                [0, 1, -1 / 15],
-                [5 / 4, 1, 2],
-            ]
-        )
-        del predictions
+            K^{(11)} = \begin{pmatrix}
+                1 & \frac{1}{2} & \frac{1}{2} \\
+                \frac{1}{2} & 1 & \frac{1}{5} \\
+                \frac{1}{2} & \frac{1}{5} & 1
+                \end{pmatrix}
 
-        # Compute the loss according to docstring of GreedyKernelPoints
-        analytic_loss = jnp.array([-164 / 225, -55 / 16])
+        with response vector
 
-        # Call the loss function
-        expected_loss = _greedy_kernel_points_loss(
+        .. math::
+
+            y^{(1)} = \begin{pmatrix} 0 \\ 1 \\ 2 \end{pmatrix} .
+
+        If element zero joins the coreset,
+
+        .. math::
+
+            K^{(12)} &= \begin{pmatrix} \frac{1}{2} & 1 \\ 1 & \frac{1}{2} \\
+                \frac{1}{5} & \frac{1}{2} \end{pmatrix} ; \\
+            K^{(22)} &= \begin{pmatrix} 1 & \frac{1}{2} \\
+                \frac{1}{2} & 1 \end{pmatrix} ; \\
+            y^{(2)} &= \begin{pmatrix} 1 \\ 0 \end{pmatrix} .
+
+        Then, the inverse of the kernel matrix is
+
+        .. math::
+
+            {K^{(22)}}^{-1} = \frac{4}{3}
+                \begin{pmatrix} 1 & -\frac{1}{2} \\ -\frac{1}{2} & 1 \end{pmatrix} ,
+
+        and the prediction is
+
+        .. math::
+
+            z &= K^{(12)} {K^{(22)}}^{-1} y^{(2)} \\
+            &= \frac{4}{3} \begin{pmatrix} \frac{1}{2} & 1 \\ 1 & \frac{1}{2} \\
+                \frac{1}{5} & \frac{1}{2} \end{pmatrix}
+                \begin{pmatrix} 1 & -\frac{1}{2} \\ -\frac{1}{2} & 1 \end{pmatrix}
+                \begin{pmatrix} 1 \\ 0 \end{pmatrix} \\
+            &= \begin{pmatrix} \frac{1}{2} & 1 \\ 1 & \frac{1}{2} \\
+                \frac{1}{5} & \frac{1}{2} \end{pmatrix}
+                \begin{pmatrix} -\frac{4}{3} \\ -\frac{2}{3} \end{pmatrix} \\
+            &= \begin{pmatrix} 0 \\ 1 \\ -\frac{1}{15} \end{pmatrix} ,
+
+        so the loss is
+
+        .. math::
+
+            L &= 0^2 + 0^2 + \left( \frac{31}{15} \right)^2 \\
+            &= \frac{961}{225} .
+
+        If element two joins the coreset,
+
+        .. math::
+
+            K^{(12)} &= \begin{pmatrix} \frac{1}{2} & \frac{1}{2} \\ 1 & \frac{1}{5} \\
+                \frac{1}{5} & 1 \end{pmatrix} ; \\
+            K^{(22)} &= \begin{pmatrix} 1 & \frac{1}{5} \\
+                \frac{1}{5} & 1 \end{pmatrix} ; \\
+            y^{(2)} &= \begin{pmatrix} 1 \\ 2 \end{pmatrix} .
+
+        Then, the inverse of the kernel matrix is
+
+        .. math::
+
+            {K^{(22)}}^{-1} = \frac{25}{24}
+                \begin{pmatrix} 1 & -\frac{1}{5} \\ -\frac{1}{5} & 1 \end{pmatrix} ,
+
+        and the prediction is
+
+        .. math::
+
+            z &= K^{(12)} {K^{(22)}}^{-1} y^{(2)} \\
+            &= \frac{25}{24} \begin{pmatrix} \frac{1}{2} & \frac{1}{2} \\
+                1 & \frac{1}{5} \\frac{1}{5} & 1 \end{pmatrix}
+                \begin{pmatrix} 1 & -\frac{1}{5} \\ -\frac{1}{5} & 1 \end{pmatrix}
+                \begin{pmatrix} 1 \\ 2 \end{pmatrix} \\
+            &= \begin{pmatrix} \frac{1}{2} & \frac{1}{2} \\ 1 & \frac{1}{5} \\
+                \frac{1}{5} & 1 \end{pmatrix}
+                \begin{pmatrix} \frac{5}{8} \\ \frac{15}{8} \end{pmatrix} \\
+            &= \begin{pmatrix} \frac{5}{4} \\ 1 \\ 2 \end{pmatrix} ,
+
+        so the loss is
+
+        .. math::
+
+            L &= \left( \frac{5}{4} \right)^2 + 0^2 + 0^2\\
+            &= \frac{25}{16} .
+
+        In the implementation of greedy_kernel_points_loss(), the constant
+        :math:`\left\| y^{(1)} \right\|^2 = 5` is excluded, so the expected losses are
+        five less than the full analytic loss,
+
+        .. math::
+
+            \begin{pmatrix} -\frac{164}{225} \\ -\frac{55}{16} .
+
+        The remaining test cases are from :mod:`examples.greedy_kernel_points_analytic`.
+        Now, :math:`\left\| y^{(1)} \right\|^2 = 26`, so 26 needs to be subtracted from
+        the calculated losses to match the implementation in
+        _greedy_kernel_points_loss().
+
+        The final test includes padding introduced to take advantage of fixed array
+        sizes to avoid JAX recompilation.
+
+        :param candidate_coresets: Array of all candidate coresets.
+        :param feature_gramian: Gramian of input data.
+        :param responses: Responses of input data.
+        :param identity: Identity matrix of size matching the coreset. If padding is
+            used in the candidate coresets, this must be padded with zeroes to match.
+        :param expect: Loss for each candidate coreset with constant term excluded.
+        """
+        actual = _greedy_kernel_points_loss(
             candidate_coresets=candidate_coresets,
             responses=responses,
             feature_gramian=feature_gramian,
             regularisation_parameter=0,
-            identity=jnp.eye(2),
+            identity=identity,
             least_squares_solver=MinimalEuclideanNormSolver(),
             loss_batch=jnp.arange(3),
         )
-
-        assert analytic_loss == pytest.approx(expected_loss)
+        assert actual == pytest.approx(expect)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
