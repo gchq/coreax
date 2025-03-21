@@ -1058,8 +1058,9 @@ class GreedyKernelPoints(
 
     .. math::
 
-        L(\mathcal{D}^{(1)}, \mathcal{D}^{(2)}) = || y^{(1)} -
-        K^{(12)}(K^{(22)} + \lambda I_m)^{-1} y^{(2)} ||^2_{\mathbb{R}^n},
+        L \left( \mathcal{D}^{(1)}, \mathcal{D}^{(2)} \right) = \left\|
+        y^{(1)} - K^{(12)} \left( K^{(22)} + \lambda I_m \right)^{-1} y^{(2)}
+        \right\|^2_{\mathbb{R}^n} ,
 
     where :math:`y^{(1)} \in \mathbb{R}^n` is the vector of responses from
     :math:`\mathcal{D}^{(1)}`, :math:`y^{(2)} \in \mathbb{R}^n` is the vector of
@@ -1070,6 +1071,9 @@ class GreedyKernelPoints(
     :math:`\mathcal{D}^{(2)}`, :math:`\lambda I_m \in \mathbb{R}^{m \times m}` is the
     identity matrix and :math:`\lambda \in \mathbb{R}_{>0}` is a regularisation
     parameter.
+
+    We remark that :math:`\left( K^{(22)} + \lambda I_m \right)^{-1} y^{(2)}` are kernel
+    ridge regression coefficients.
 
     This class works with all children of :class:`~coreax.kernels.ScalarValuedKernel`.
 
