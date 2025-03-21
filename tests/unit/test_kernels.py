@@ -32,6 +32,7 @@ import pytest
 from jax import Array
 from jax.typing import ArrayLike
 from scipy.stats import norm as scipy_norm
+from typing_extensions import override
 
 from coreax.data import Data
 from coreax.kernels import (
@@ -411,6 +412,7 @@ class TestPowerKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(self, x: Array, y: Array, kernel: PowerKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -426,6 +428,7 @@ class TestPowerKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_grad_y(self, x: Array, y: Array, kernel: PowerKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -441,6 +444,7 @@ class TestPowerKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: Array, y: Array, kernel: PowerKernel
     ) -> np.ndarray:
@@ -584,6 +588,7 @@ class TestAdditiveKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(self, x: Array, y: Array, kernel: AdditiveKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -598,6 +603,7 @@ class TestAdditiveKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_grad_y(self, x: Array, y: Array, kernel: AdditiveKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -612,6 +618,7 @@ class TestAdditiveKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: Array, y: Array, kernel: AdditiveKernel
     ) -> np.ndarray:
@@ -692,6 +699,7 @@ class TestProductKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(self, x: Array, y: Array, kernel: ProductKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -708,6 +716,7 @@ class TestProductKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_grad_y(self, x: Array, y: Array, kernel: ProductKernel) -> np.ndarray:
         num_points, dimension = np.atleast_2d(x).shape
 
@@ -724,6 +733,7 @@ class TestProductKernel(
 
         return np.array(expected_grad)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: Array, y: Array, kernel: ProductKernel
     ) -> np.ndarray:
@@ -774,6 +784,7 @@ class TestLinearKernel(
     """Test ``coreax.kernels.LinearKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> LinearKernel:
         random_seed = 2_024
         output_scale, constant = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
@@ -812,6 +823,7 @@ class TestLinearKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
@@ -824,6 +836,7 @@ class TestLinearKernel(
                 expected_gradients[x_idx, y_idx] = kernel.output_scale * y[y_idx]
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
@@ -836,6 +849,7 @@ class TestLinearKernel(
                 expected_gradients[x_idx, y_idx] = kernel.output_scale * x[x_idx]
         return expected_gradients
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
@@ -870,6 +884,7 @@ class TestPoissonKernel(
     """Test ``coreax.kernels.PoissonKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> PoissonKernel:
         random_seed = 2_024
         output_scale, index = jr.uniform(
@@ -1140,6 +1155,7 @@ class TestPolynomialKernel(
     """Test ``coreax.kernels.PolynomialKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> PolynomialKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
@@ -1193,6 +1209,7 @@ class TestPolynomialKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
@@ -1211,6 +1228,7 @@ class TestPolynomialKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
@@ -1229,6 +1247,7 @@ class TestPolynomialKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
@@ -1286,6 +1305,7 @@ class TestSquaredExponentialKernel(
     """Test ``coreax.kernels.SquaredExponentialKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> SquaredExponentialKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -1387,6 +1407,7 @@ class TestSquaredExponentialKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
@@ -1407,11 +1428,13 @@ class TestSquaredExponentialKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
@@ -1466,6 +1489,7 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
     """Test ``coreax.kernels.MaternKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> MaternKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
@@ -1605,6 +1629,7 @@ class TestExponentialKernel(
     """Test ``coreax.kernels.ExponentialKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> ExponentialKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
@@ -1671,6 +1696,7 @@ class TestExponentialKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
     ) -> np.ndarray:
@@ -1691,11 +1717,13 @@ class TestExponentialKernel(
 
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
     ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
     ) -> np.ndarray:
@@ -1740,6 +1768,7 @@ class TestRationalQuadraticKernel(
     """Test ``coreax.kernels.RationalQuadraticKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> RationalQuadraticKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(2,)))
@@ -1824,6 +1853,7 @@ class TestRationalQuadraticKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
     ) -> np.ndarray:
@@ -1843,11 +1873,13 @@ class TestRationalQuadraticKernel(
                 ) ** (-kernel.relative_weighting - 1)
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
     ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
     ) -> np.ndarray:
@@ -1897,6 +1929,7 @@ class TestPeriodicKernel(
     """Test ``coreax.kernels.PeriodicKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> PeriodicKernel:
         random_seed = 2_025
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(3,)))
@@ -1970,6 +2003,7 @@ class TestPeriodicKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
@@ -1997,11 +2031,13 @@ class TestPeriodicKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
         return -self.expected_grad_y(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
@@ -2069,6 +2105,7 @@ class TestLocallyPeriodicKernel(
     """Test ``coreax.kernels.LocallyPeriodicKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> LocallyPeriodicKernel:
         random_seed = 2_024
         parameters = jnp.abs(jr.normal(key=jr.key(random_seed), shape=(5,)))
@@ -2161,6 +2198,7 @@ class TestLaplacianKernel(
     """Test ``coreax.kernels.LaplacianKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> LaplacianKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -2239,6 +2277,7 @@ class TestLaplacianKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
     ) -> np.ndarray:
@@ -2259,11 +2298,13 @@ class TestLaplacianKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
     ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
     ) -> np.ndarray:
@@ -2306,6 +2347,7 @@ class TestPCIMQKernel(
     """Test ``coreax.kernels.PCIMQKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> PCIMQKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
@@ -2382,6 +2424,7 @@ class TestPCIMQKernel(
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
+    @override
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
     ) -> np.ndarray:
@@ -2402,11 +2445,13 @@ class TestPCIMQKernel(
                 )
         return expected_gradients
 
+    @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
     ) -> np.ndarray:
         return -self.expected_grad_x(x, y, kernel)
 
+    @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
     ) -> np.ndarray:
@@ -2456,6 +2501,7 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
     """Test ``coreax.kernels.SteinKernel``."""
 
     @pytest.fixture(scope="class")
+    @override
     def kernel(self) -> SteinKernel:
         random_seed = 2_024
         length_scale, output_scale = jnp.abs(
