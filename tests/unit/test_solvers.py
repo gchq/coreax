@@ -79,6 +79,9 @@ from coreax.solvers.base import (
 )
 from coreax.solvers.coresubset import (
     _greedy_kernel_points_loss,  # noqa: PLC2701
+    _initial_coresubset,  # noqa: PLC2701
+    _setup_batch_solver,  # noqa: PLC2701
+    _update_candidate_coresets_and_coreset_indices,  # noqa: PLC2701
 )
 from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 
@@ -213,6 +216,233 @@ class SolverTest:
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
         self.check_solution_invariants(coreset, reduce_problem)
+
+
+class TestHelperFunctions:
+    """Test the private functions defined to aid the coreset solvers."""
+
+    random_key: KeyArrayLike = jr.key(2_024)
+    num_data_pairs: int = 100
+    coreset_size: int = 15
+    candidate_batch_size: int = 5
+    loss_batch_size: int = 10
+
+    @pytest.fixture(scope="class")
+    def coresubset(self) -> Coresubset:
+        """Build the initial coresubset used throughout tests in this class."""
+        data_key, supervision_key = jr.split(self.random_key)
+        supervised_dataset = SupervisedData(
+            jr.normal(data_key, (self.num_data_pairs, 5)),
+            jr.normal(supervision_key, (self.num_data_pairs, 2)),
+        )
+        return _initial_coresubset(-1, self.coreset_size, supervised_dataset)
+
+    def test_setup_batch_solver(self, coresubset: Coresubset) -> None:
+        """Test that the setup function for batched solvers is doing what we expect."""
+        (
+            test_initial_coreset_indices,
+            test_candidate_batch_indices,
+            test_loss_batch_indices,
+            test_initial_candidate_coresets,
+            test_identity,
+        ) = _setup_batch_solver(
+            coreset_size=self.coreset_size,
+            coresubset=coresubset,
+            num_data_pairs=self.num_data_pairs,
+            candidate_batch_size=self.candidate_batch_size,
+            loss_batch_size=self.loss_batch_size,
+            random_key=self.random_key,
+            setup_identity=True,
+        )
+
+        # Check that the coreset index vector is the expected shape
+        assert test_initial_coreset_indices.shape[0] == self.coreset_size
+
+        # Check that the candidate batch indices array is the expected shape, we add 1
+        # as the array is extended to avoid refining making the coreset worse
+        assert test_candidate_batch_indices.shape == (
+            self.coreset_size,
+            self.candidate_batch_size + 1,
+        )
+
+        # Check that the loss batch indices array is the expected shape
+        assert test_loss_batch_indices.shape == (
+            self.coreset_size,
+            self.loss_batch_size,
+        )
+
+        # Check that the array holding the candidate coresets is the expected shape, we
+        # add 1 as the array is extended to avoid refining making the coreset worse
+        assert test_initial_candidate_coresets.shape == (
+            self.candidate_batch_size + 1,
+            self.coreset_size,
+        )
+
+        # Check that the first column of the candidate coreset array is composed of the
+        # indices sampled in the first row of the batch indices array
+        assert jnp.all(
+            test_initial_candidate_coresets[:, 0] == test_candidate_batch_indices[0, :]
+        )
+
+        # Check that the rest of the columns of the candidate coreset array are
+        # composed of entirely -1's
+        assert jnp.all(test_initial_candidate_coresets[:, 1:] == -1)
+
+        # Check that the identity matrix is the expected shape
+        assert test_identity.shape == (self.coreset_size, self.coreset_size)
+
+    def test_no_identity_is_returned(self, coresubset: Coresubset) -> None:
+        """Check that we do not get an array if ``setup_identity`` is :data:`False`."""
+        _, _, _, _, identity = _setup_batch_solver(
+            coreset_size=self.coreset_size,
+            coresubset=coresubset,
+            num_data_pairs=self.num_data_pairs,
+            candidate_batch_size=self.candidate_batch_size,
+            loss_batch_size=self.loss_batch_size,
+            random_key=self.random_key,
+            setup_identity=False,
+        )
+        assert identity is None
+
+    def test_no_loss_batch_is_returned(self, coresubset: Coresubset) -> None:
+        """Test return :data:`None` if ``setup_loss_batch_indices`` is :data:`False`."""
+        _, _, loss_batch_indices, _, _ = _setup_batch_solver(
+            coreset_size=self.coreset_size,
+            coresubset=coresubset,
+            num_data_pairs=self.num_data_pairs,
+            candidate_batch_size=self.candidate_batch_size,
+            loss_batch_size=self.loss_batch_size,
+            random_key=self.random_key,
+            setup_identity=True,
+            setup_loss_batch_indices=False,
+        )
+        assert loss_batch_indices is None
+
+    def test_update_candidate_coresets_and_coreset_indices(self) -> None:
+        """Test that the update function for batched solvers is doing what we expect."""
+        analytic_test_coresubset = _initial_coresubset(
+            -1, 3, Data(jr.normal(self.random_key, (self.num_data_pairs,)))
+        )
+        # Set up an initial coreset
+        (
+            initial_coreset_indices,
+            candidate_batch_indices,
+            _,
+            initial_candidate_coresets,
+            _,
+        ) = _setup_batch_solver(
+            coreset_size=3,
+            coresubset=analytic_test_coresubset,
+            num_data_pairs=self.num_data_pairs,
+            candidate_batch_size=self.candidate_batch_size,
+            loss_batch_size=self.loss_batch_size,
+            random_key=self.random_key,
+            setup_identity=False,
+        )
+
+        # Test the first iteration
+
+        # Set up a mocked loss vector where the third element is the best
+        loss = jnp.ones(self.candidate_batch_size + 1).at[2].set(-1)
+
+        # Update the coreset and candidate coreset arrays
+        updated_candidate_coresets, updated_coreset_indices = (
+            _update_candidate_coresets_and_coreset_indices(
+                i=0,
+                unique=True,
+                candidate_coresets=initial_candidate_coresets,
+                coreset_indices=initial_coreset_indices,
+                loss=loss,
+                candidate_batch_indices=candidate_batch_indices,
+            )
+        )
+
+        # Extract the optimal index according to the above mock loss
+        first_optimal_index = candidate_batch_indices[0, 2]
+
+        # Check that we have added the first_optimal_index to the coreset indices
+        assert updated_coreset_indices[0] == first_optimal_index
+
+        # Check that the rest of the indices are still -1's
+        assert jnp.all(updated_coreset_indices[1:] == -1)
+
+        # Check that we have repeated the first_optimal_index into the first column
+        assert jnp.all(updated_candidate_coresets[:, 0] == first_optimal_index)
+
+        # Check that we have inserted the next batch of indices into the second column
+        assert jnp.all(
+            updated_candidate_coresets[:, 1] == candidate_batch_indices[1, :]
+        )
+
+        # Check that the rest of the values are still -1's
+        assert jnp.all(updated_candidate_coresets[:, 2:] == -1)
+
+        # Test the second iteration
+
+        # Set up a mocked loss vector where the fourth element is now the best
+        loss = jnp.ones(self.candidate_batch_size + 1).at[3].set(-1)
+
+        # Test the next iteration; update the coreset and candidate coreset arrays
+        updated_candidate_coresets, updated_coreset_indices = (
+            _update_candidate_coresets_and_coreset_indices(
+                i=1,
+                unique=True,
+                candidate_coresets=updated_candidate_coresets,
+                coreset_indices=updated_coreset_indices,
+                loss=loss,
+                candidate_batch_indices=candidate_batch_indices,
+            )
+        )
+
+        # Extract the optimal index according to the above mock loss
+        second_optimal_index = candidate_batch_indices[1, 3]
+
+        # Check that we have added the second_optimal_index to the coreset indices
+        assert updated_coreset_indices[1] == second_optimal_index
+
+        # Check that the first element has not changed
+        assert updated_coreset_indices[0] == first_optimal_index
+
+        # Check that the rest of the indices are still -1's
+        assert jnp.all(updated_coreset_indices[2:] == -1)
+
+        # Check that we have repeated the second_optimal_index into the second column
+        assert jnp.all(updated_candidate_coresets[:, 1] == second_optimal_index)
+
+        # Check that we have inserted the next batch of indices into the third column
+        assert jnp.all(
+            updated_candidate_coresets[:, 2] == candidate_batch_indices[2, :]
+        )
+
+        # Check that the first column has not changed
+        assert jnp.all(updated_candidate_coresets[:, 0] == first_optimal_index)
+
+        # Test the last iteration
+
+        # Set up a mocked loss vector where the first element is now the best
+        loss = jnp.ones(self.candidate_batch_size + 1).at[0].set(-1)
+
+        # Test the next iteration; update the coreset and candidate coreset arrays
+        # We don't care about the candidate coreset array any more, as this is never
+        # returned to the user and plays no further part after the last iteration.
+        _, updated_coreset_indices = _update_candidate_coresets_and_coreset_indices(
+            i=2,
+            unique=True,
+            candidate_coresets=updated_candidate_coresets,
+            coreset_indices=updated_coreset_indices,
+            loss=loss,
+            candidate_batch_indices=candidate_batch_indices,
+        )
+
+        # Extract the optimal index according to the above mock loss
+        third_optimal_index = candidate_batch_indices[2, 0]
+
+        # Check that we have added the third_optimal_index to the coreset indices
+        assert updated_coreset_indices[2] == third_optimal_index
+
+        # Check that the first and second element has not changed
+        assert updated_coreset_indices[0] == first_optimal_index
+        assert updated_coreset_indices[1] == second_optimal_index
 
 
 class RecombinationSolverTest(SolverTest):
