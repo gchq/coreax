@@ -41,13 +41,13 @@ class Solver(eqx.Module, Generic[_Coreset, _Data, _State]):
         self, dataset: _Data, solver_state: Optional[_State] = None
     ) -> tuple[_Coreset, _State]:
         r"""
-        Reduce 'dataset' to a coreset - solve the coreset problem.
+        Reduce ``dataset`` to a coreset - solve the coreset problem.
 
         :param dataset: The (potentially weighted and supervised) data to generate the
             coreset from
         :param solver_state: Solution state information, primarily used to cache
             expensive intermediate solution step information
-        :return: a tuple of the solved coreset and intermediate solver state information
+        :return: Solved coreset; Intermediate solver state information
         """
 
 
