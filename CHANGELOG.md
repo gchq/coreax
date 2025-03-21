@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Compress++ coreset reduction algorithm.
   (https://github.com/gchq/coreax/issues/934)
+- Analytic example with integration test for `GreedyKernelPoints` plus an analytic unit
+  test for the loss function. (https://github.com/gchq/coreax/pull/1004)
 
 ### Fixed
 
@@ -18,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--
+- Refactored `GreedyKernelPoints` and associated functions to make more extensible in
+  future. (https://github.com/gchq/coreax/pull/1004)
 
 ### Removed
 
