@@ -205,6 +205,7 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
             and isinstance(kernel, PeriodicKernel)
         ):
             # TODO(rg): Fix this failure.
+            # https://github.com/gchq/coreax/issues/1003
             pytest.skip("Currently fails with large numerical errors.")
 
         x, y = gradient_problem
