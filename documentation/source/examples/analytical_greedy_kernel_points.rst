@@ -20,7 +20,7 @@ With the :class:`~coreax.kernels.LinearKernel` with
 :attr:`~coreax.kernels.LinearKernel.output_scale` :math:`= 1` and
 :attr:`~coreax.kernels.LinearKernel.constant` :math:`= 0` and using the
 :class:`~coreax.solvers.coresubset.GreedyKernelPoints` algorithm with zero
-regularisation, we seek a coreset of size two.
+regularisation (:math:`\lambda = 0`), we seek a coreset of size two without duplicates.
 
 The feature Gramian is
 
@@ -29,22 +29,193 @@ The feature Gramian is
     K^{(11)} &= X^T X \\
     &= \begin{pmatrix} 1 & 0 & 2 \\ 0 & 1 & 1 \\ 2 & 1 & 5 \end{pmatrix} .
 
-Let :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` be a supervised dataset of
-:math:`n` pairs, where, with respect to some scalar-valued feature kernel, the original
-feature Gramian is
+Following the notation in :class:`~coreax.solvers.coresubset.GreedyKernelPoints`, let
+:math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^m` be the set of points already selected
+for the coreset. Then, :math:`y^{(2)} \in \mathbb{R}^m` is the vector of responses,
+:math:`K^{(12)}` is the cross-matrix of kernel evaluations (a subset of columns of the
+feature Gramian), and :math:`K^{(22)}` is the kernel matrix on :math:`\mathcal{D}^{(2)}`
+(a subset of rows and columns of the feature Gramian). With zero regularisation, the
+predictions for a given coreset are given by
+:math:`z = K^{(12)} {K^{(22)}}^{-1} y^{(2)}`.
+
+First iteration
+---------------
+
+At the first iteration, there are no data points already in the coreset, so we consider
+the three candidate coresets, each of size one.
+
+Candidate (0)
+^^^^^^^^^^^^^
 
 .. math::
 
-    K^{(11)} = \begin{pmatrix}
-                1 & \frac{1}{2} & \frac{1}{2} \\
-                \frac{1}{2} & 1 & \frac{1}{5} \\
-                \frac{1}{2} & \frac{1}{5} & 1
-                \end{pmatrix}
+    K^{(12)} &= \begin{pmatrix} 1 \\ 0 \\ 2 \end{pmatrix} ; \\
+    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
 
-and the vector of responses is
+Then, the inverse of the kernel matrix is
 
 .. math::
 
-    Y^{(1)} = \begin{pmatrix} 0 \\ 1 \\ 2 \end{pmatrix} .
+    {K^{(22)}}^{-1} = \begin{pmatrix} 1 \end{pmatrix} ,
 
-We wish to find a coresubset of size two.
+and the prediction is
+
+.. math::
+
+    z = \begin{pmatrix} 0 \\ 0 \\ 0 \end{pmatrix} ,
+
+so the loss is
+
+.. math::
+
+    L &= \left\| y^{(1)} - z \right\|^2 \\
+    &= 0^2 + 1^2 + 5^2 \\
+    &= 26 .
+
+Candidate (1)
+^^^^^^^^^^^^^
+
+.. math::
+
+    K^{(12)} &= \begin{pmatrix} 0 \\ 1 \\ 1 \end{pmatrix} ; \\
+    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
+
+Then, the inverse of the kernel matrix is
+
+.. math::
+
+    {K^{(22)}}^{-1} = \begin{pmatrix} 1 \end{pmatrix} ,
+
+and the prediction is
+
+.. math::
+
+    z = \begin{pmatrix} 0 \\ 1 \\ 1 \end{pmatrix} ,
+
+so the loss is
+
+.. math::
+
+    L &= 0^2 + 0^2 + 4^2 \\
+    &= 16 .
+
+Candidate (2)
+^^^^^^^^^^^^^
+
+.. math::
+
+    K^{(12)} &= \begin{pmatrix} 2 \\ 1 \\ 5 \end{pmatrix} ; \\
+    K^{(22)} &= \begin{pmatrix} 5 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
+
+Then, the inverse of the kernel matrix is
+
+.. math::
+
+    {K^{(22)}}^{-1} = \begin{pmatrix} \frac{1}{5} \end{pmatrix} ,
+
+and the prediction is
+
+.. math::
+
+    z = \begin{pmatrix} 2 \\ 1 \\ 5 \end{pmatrix} ,
+
+so the loss is
+
+.. math::
+
+    L &= 2^2 + 0^2 + 0^2 \\
+    &= 4 .
+
+Selection
+^^^^^^^^^
+
+Index 2 has the lowest loss, so joins the coreset.
+
+Second iteration
+----------------
+
+We consider two candidate coresets of size two, each containing data corresponding to
+index 2 as the first element with another index in the second element.
+
+Candidate (2 0)
+^^^^^^^^^^^^^^^
+
+.. math::
+
+    K^{(12)} &= \begin{pmatrix} 2 & 1 \\ 1 & 0 \\ 5 & 2 \end{pmatrix} ; \\
+    K^{(22)} &= \begin{pmatrix} 5 & 2 \\ 2 & 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 5 \\ 0 \end{pmatrix} .
+
+Then, the inverse of the kernel matrix is
+
+.. math::
+
+    {K^{(22)}}^{-1} = \begin{pmatrix} 1 & -2 \\ -2 & 5 \end{pmatrix} ,
+
+and the prediction is
+
+.. math::
+
+    z &= K^{(12)} {K^{(22)}}^{-1} y^{(2)} \\
+    &= \begin{pmatrix} 2 & 1 \\ 1 & 0 \\ 5 & 2 \end{pmatrix}
+        \begin{pmatrix} 1 & -2 \\ -2 & 5 \end{pmatrix}
+        \begin{pmatrix} 5 \\ 0 \end{pmatrix} \\
+    &= \begin{pmatrix} 2 & 1 \\ 1 & 0 \\ 5 & 2 \end{pmatrix}
+        \begin{pmatrix} 5 \\ -10 \end{pmatrix} \\
+    &= \begin{pmatrix} 0 \\ 5 \\ 5 \end{pmatrix} ,
+
+so the loss is
+
+.. math::
+
+    L &= 0^2 + 4^2 + 0^2 \\
+    &= 16 .
+
+Candidate (2 1)
+^^^^^^^^^^^^^^^
+
+.. math::
+
+    K^{(12)} &= \begin{pmatrix} 2 & 0 \\ 1 & 1 \\ 5 & 1 \end{pmatrix} ; \\
+    K^{(22)} &= \begin{pmatrix} 5 & 1 \\ 1 & 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 5 \\ 1 \end{pmatrix} .
+
+Then, the inverse of the kernel matrix is
+
+.. math::
+
+    {K^{(22)}}^{-1} = \frac{1}{4} \begin{pmatrix} 1 & -1 \\ -1 & 5 \end{pmatrix} ,
+
+and the prediction is
+
+.. math::
+
+    z &= K^{(12)} {K^{(22)}}^{-1} y^{(2)} \\
+    &= \frac{1}{4} \begin{pmatrix} 2 & 0 \\ 1 & 1 \\ 5 & 1 \end{pmatrix}
+        \begin{pmatrix} 1 & -1 \\ -1 & 5 \end{pmatrix}
+        \begin{pmatrix} 5 \\ 1 \end{pmatrix} \\
+    &= \begin{pmatrix} 2 & 0 \\ 1 & 1 \\ 5 & 1 \end{pmatrix}
+        \begin{pmatrix} 4 \\ 0 \end{pmatrix} \\
+    &= \begin{pmatrix} 2 \\ 1 \\ 5 \end{pmatrix} ,
+
+so the loss is
+
+.. math::
+
+    L &= 2^2 + 0^2 + 0^2 \\
+    &= 4 .
+
+Final selection
+^^^^^^^^^^^^^^^
+
+The second candidate has the lower loss, so the final coreset consists of indices
+:math:`\begin{pmatrix} 2 & 1 \end{pmatrix}`. In terms of original data, this can be
+expressed as
+
+.. math::
+
+    \hat{X} &= \begin{pmatrix} 2 & 1 \\ 0 & 1 \end{pmatrix} ; \\
+    \hat{y} &= \begin{pmatrix} 5 \\ 1 \end{pmatrix} .
