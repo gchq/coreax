@@ -690,7 +690,7 @@ class GreedyKernelPointsState(eqx.Module):
 # Overload for the case where we want to construct both the identity array and the
 # loss_batch_indices array.
 @overload
-def _setup_batch_solver(  # pragma: no cover
+def _setup_batch_solver(  # pragma: no cover # pyright: ignore reportOverlappingOverload
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
