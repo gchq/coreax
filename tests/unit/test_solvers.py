@@ -418,12 +418,6 @@ class RefinementSolverTest(SolverTest):
         return the same result as a call to 'reduce'. The 'random' case we only expect
         to pass without raising an error.
         """
-        if isinstance(self, TestSteinThinning) and request.param == "under-sized":
-            # TODO(rg): Fix this failure.
-            pytest.skip(
-                "Currently fails as some of the coreset points aren't as expected."
-            )
-
         dataset, solver, expected_coreset = reduce_problem
         indices_key, weights_key = jr.split(self.random_key)
         solver = cast(KernelHerding, solver)
