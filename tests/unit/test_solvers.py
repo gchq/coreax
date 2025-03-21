@@ -2252,7 +2252,8 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
             least_squares_solver=MinimalEuclideanNormSolver(),
             loss_batch=jnp.arange(3),
         )
-        assert actual == pytest.approx(expect)
+        # Relax relative tolerance for macOS
+        assert actual == pytest.approx(expect, rel=1e-4)
 
 
 class _ExplicitPaddingInvariantSolver(ExplicitSizeSolver, PaddingInvariantSolver):
