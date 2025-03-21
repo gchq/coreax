@@ -32,11 +32,15 @@ from benchmark.mnist_benchmark import (
     convert_to_jax_arrays,
     train_and_evaluate,
 )
-from coreax import Data
-from coreax.benchmark_util import calculate_delta, initialise_solvers
+from coreax import Data, SquaredExponentialKernel
+from coreax.benchmark_util import (
+    IterativeKernelHerding,
+    calculate_delta,
+    initialise_solvers,
+)
+from coreax.coreset import Coresubset
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     MapReduce,
@@ -157,8 +161,9 @@ def test_initialise_solvers() -> None:
         "Stein Thinning",
         "Kernel Thinning",
         "Compress++",
-        "Probabilistic Iterative Herding",
         "Iterative Herding",
+        "Iterative Probabilistic Herding (constant)",
+        "Iterative Probabilistic Herding (cubic)",
     ]
     assert set(solvers.keys()) == set(expected_solver_keys)
 
@@ -180,8 +185,9 @@ def test_solver_instances() -> None:
         "Stein Thinning": SteinThinning,
         "Kernel Thinning": KernelThinning,
         "Compress++": CompressPlusPlus,
-        "Probabilistic Iterative Herding": IterativeKernelHerding,
         "Iterative Herding": IterativeKernelHerding,
+        "Iterative Probabilistic Herding (constant)": IterativeKernelHerding,
+        "Iterative Probabilistic Herding (cubic)": IterativeKernelHerding,
     }
 
     for solver_name, solver_function in solvers_no_leaf.items():
@@ -201,13 +207,19 @@ def test_solver_instances() -> None:
         "Stein Thinning": MapReduce,
         "Kernel Thinning": MapReduce,
         "Compress++": CompressPlusPlus,
-        "Probabilistic Iterative Herding": MapReduce,
         "Iterative Herding": MapReduce,
+        "Iterative Probabilistic Herding (constant)": MapReduce,
+        "Iterative Probabilistic Herding (cubic)": MapReduce,
     }
 
     for solver_name, solver_function in solvers_with_leaf.items():
         solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
+
+    # For SteinThinning, run reduce to make sure the score function works
+    stein_solver = solvers_no_leaf["Stein Thinning"](1)
+    coreset, _ = stein_solver.reduce(mock_data)
+    assert isinstance(coreset, Coresubset)
 
 
 @pytest.mark.parametrize("n", [1, 2, 100])
@@ -219,6 +231,30 @@ def test_calculate_delta(n):
     """
     delta = calculate_delta(n)
     assert delta > 0
+
+
+def test_iterative_kernel_herding_reduce() -> None:
+    """Check that `IterativeKernelHerding.reduce` = `KernelHerding.reduce_iterative`."""
+    random_key = random.key(0)
+    dataset = Data(random.uniform(random_key, (100, 5)))
+
+    solver_params = {
+        "coreset_size": 10,
+        "kernel": SquaredExponentialKernel(),
+        "probabilistic": True,
+        "temperature": 0.001,
+        "random_key": random_key,
+    }
+    iter_params = {"num_iterations": 5, "t_schedule": jnp.ones(5) * 0.0001}
+    solver_kh = KernelHerding(**solver_params)
+    solver_ikh = IterativeKernelHerding(**solver_params, **iter_params)
+
+    coreset_kh, state = solver_kh.reduce_iterative(dataset, **iter_params)
+    coreset_ikh, _ = solver_ikh.reduce(dataset, solver_state=state)
+
+    assert jnp.array_equal(
+        coreset_kh.unweighted_indices, coreset_ikh.unweighted_indices
+    )
 
 
 if __name__ == "__main__":

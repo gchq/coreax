@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Compress++ coreset reduction algorithm.
   (https://github.com/gchq/coreax/issues/934)
+- Added `reduce_iterative()` method to Kernel Herding. (https://github.com/gchq/coreax/pull/983)
+- Added probabilistic iterative Kernel Herding benchmarking results. (https://github.com/gchq/coreax/pull/983)
 - Analytic example with integration test for `GreedyKernelPoints` plus an analytic unit
   test for the loss function. (https://github.com/gchq/coreax/pull/1004)
 
@@ -20,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Changed the score function used by Stein Thinning in benchmarking.
+  (https://github.com/gchq/coreax/pull/1000)
+- Fixed the random state for UMAP in benchmarking for reproducibility.
+  (https://github.com/gchq/coreax/pull/1000)
+- Reduced the number of dimensions when applying UMAP in `pounce_benchmark.py`.
+  (https://github.com/gchq/coreax/pull/1000)
 - Refactored `GreedyKernelPoints` and associated functions to make more extensible in
   future. (https://github.com/gchq/coreax/pull/1004)
 

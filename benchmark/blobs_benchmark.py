@@ -31,13 +31,17 @@ The benchmarking process follows these steps:
 import json
 import os
 import time
+from typing import Union
 
 import jax
 import jax.numpy as jnp
+import jax.scipy as jsp
 import numpy as np
+from jaxtyping import Array, Shaped
 from sklearn.datasets import make_blobs
 
-from coreax import Data, SlicedScoreMatching
+from coreax import Data
+from coreax.benchmark_util import IterativeKernelHerding
 from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
@@ -46,7 +50,6 @@ from coreax.kernels import (
 from coreax.metrics import KSD, MMD
 from coreax.solvers import (
     CompressPlusPlus,
-    IterativeKernelHerding,
     KernelHerding,
     KernelThinning,
     RandomSample,
@@ -84,17 +87,32 @@ def setup_stein_kernel(
     :param random_seed: An integer seed for the random number generator.
     :return: A SteinKernel object.
     """
-    sliced_score_matcher = SlicedScoreMatching(
-        jax.random.PRNGKey(random_seed),
-        jax.random.rademacher,
-        use_analytic=True,
-        num_random_vectors=100,
-        learning_rate=0.001,
-        num_epochs=50,
-    )
+    # Fit a Gaussian kernel density estimator on a subset of points for efficiency
+    num_data_points = len(dataset)
+    num_samples_length_scale = min(num_data_points, 1000)
+    generator = np.random.default_rng(random_seed)
+    idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
+    kde = jsp.stats.gaussian_kde(dataset.data[idx].T)
+
+    # Define the score function as the gradient of log density given by the KDE
+    def score_function(
+        x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
+    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+        """
+        Compute the score function (gradient of log density) for a single point.
+
+        :param x: Input point represented as array
+        :return: Gradient of log probability density at the given point
+        """
+
+        def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
+            return kde.logpdf(x.reshape(1, -1))[0]
+
+        return jax.grad(logpdf_single)(x)
+
     return SteinKernel(
         base_kernel=sq_exp_kernel,
-        score_function=sliced_score_matcher.match(jnp.asarray(dataset.data)),
+        score_function=score_function,
     )
 
 
@@ -142,7 +160,7 @@ def setup_solvers(
             SteinThinning(
                 coreset_size=coreset_size,
                 kernel=stein_kernel,
-                regularise=False,
+                regularise=True,
             ),
         ),
         (
@@ -186,6 +204,18 @@ def setup_solvers(
                 temperature=0.001,
                 random_key=random_key,
                 num_iterations=5,
+            ),
+        ),
+        (
+            "CubicProbIterativeHerding",
+            IterativeKernelHerding(
+                coreset_size=coreset_size,
+                kernel=sq_exp_kernel,
+                probabilistic=True,
+                temperature=0.001,
+                random_key=random_key,
+                num_iterations=10,
+                t_schedule=1 / jnp.linspace(10, 100, 10) ** 3,
             ),
         ),
     ]
@@ -296,7 +326,7 @@ def main() -> None:  # pylint: disable=too-many-locals
 
         # Set up metrics
         mmd_metric = MMD(kernel=sq_exp_kernel)
-        ksd_metric = KSD(kernel=sq_exp_kernel)
+        ksd_metric = KSD(kernel=stein_kernel)  # KSD needs a Stein kernel
 
         # Set up weights optimiser
         weights_optimiser = MMDWeightsOptimiser(kernel=sq_exp_kernel)

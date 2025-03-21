@@ -35,7 +35,9 @@ from coreax.benchmark_util import initialise_solvers
 from coreax.data import Data
 
 
-def plot_selected_frames(umap_data, selected_indices, action_frames, solver_name):
+def plot_selected_frames(
+    umap_data, selected_indices, action_frames, solver_name, out_dir
+):
     """
     Plot the selected frames and action frames on a bar chart.
 
@@ -43,6 +45,7 @@ def plot_selected_frames(umap_data, selected_indices, action_frames, solver_name
     :param selected_indices: Indices of the selected frames.
     :param action_frames: Indices of the action frames.
     :param solver_name: The name of the solver used.
+    :param out_dir: The output directory for saved plots.
     """
     x = np.arange(len(umap_data))
     y = np.zeros(len(umap_data))
@@ -59,12 +62,13 @@ def plot_selected_frames(umap_data, selected_indices, action_frames, solver_name
     plt.title(f"Selected Frames for {solver_name}", fontsize=24, fontweight="bold")
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    output_frames_path = out_dir / f"frames_{solver_name.replace(' ', '_')}.png"
+    plt.savefig(output_frames_path)
 
 
 def benchmark_coreset_algorithms(
     in_path: Path = Path("../examples/data/pounce/pounce.gif"),
-    out_dir: Path = Path("pounce"),
+    out_dir: Path = Path("../examples/benchmarking_images/pounce"),
     coreset_size: int = 10,
 ):
     """
@@ -87,7 +91,7 @@ def benchmark_coreset_algorithms(
     raw_data = np.asarray(image_data)
     reshaped_data = raw_data.reshape(raw_data.shape[0], -1)
 
-    umap_model = umap.UMAP(densmap=True, n_components=25)
+    umap_model = umap.UMAP(densmap=True, n_components=10, random_state=0)
     umap_data = jnp.asarray(umap_model.fit_transform(reshaped_data))
     print("umap_data_shape", umap_data.shape)
 
@@ -105,7 +109,7 @@ def benchmark_coreset_algorithms(
         selected_indices = np.sort(np.asarray(coreset.unweighted_indices))
 
         coreset_frames = raw_data[selected_indices]
-        output_gif_path = out_dir / f"{solver_name}_coreset.gif"
+        output_gif_path = out_dir / f"{solver_name.replace(' ', '_')}_coreset.gif"
         imageio.v3.imwrite(output_gif_path, coreset_frames, loop=0)
         print(f"Saved {solver_name} coreset GIF to {output_gif_path}")
         print(f"time taken: {solver_name:<25} {duration:<30.4f}")
@@ -115,6 +119,7 @@ def benchmark_coreset_algorithms(
             selected_indices=selected_indices,
             action_frames=np.arange(63, 85),
             solver_name=solver_name,
+            out_dir=out_dir,
         )
 
 

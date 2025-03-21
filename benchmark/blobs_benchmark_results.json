@@ -1,0 +1,262 @@
+{
+  "25": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.024272788688540457,
+      "Unweighted_KSD": 0.08634152710437774,
+      "Weighted_MMD": 0.008470626920461655,
+      "Weighted_KSD": 0.07446694374084473,
+      "Time": 4.765064420400449
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.11142438650131226,
+      "Unweighted_KSD": 0.08814063891768456,
+      "Weighted_MMD": 0.011223642434924842,
+      "Weighted_KSD": 0.07585941627621651,
+      "Time": 3.3727504627993765
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.14004717767238617,
+      "Unweighted_KSD": 0.07314706221222878,
+      "Weighted_MMD": 0.003688266733661294,
+      "Weighted_KSD": 0.06093888357281685,
+      "Time": 4.0264426012003245
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.14493760019540786,
+      "Unweighted_KSD": 0.08524694442749023,
+      "Weighted_MMD": 0.06338460296392441,
+      "Weighted_KSD": 0.08662225008010864,
+      "Time": 5.611508011200203
+    },
+    "KernelThinning": {
+      "Unweighted_MMD": 0.014880230650305748,
+      "Unweighted_KSD": 0.07588417455554008,
+      "Weighted_MMD": 0.005388019885867834,
+      "Weighted_KSD": 0.06449438109993935,
+      "Time": 25.01412621220006
+    },
+    "CompressPlusPlus": {
+      "Unweighted_MMD": 0.013212332502007484,
+      "Unweighted_KSD": 0.08404513746500016,
+      "Weighted_MMD": 0.007080519571900368,
+      "Weighted_KSD": 0.08123543560504913,
+      "Time": 16.713567591600075
+    },
+    "ProbabilisticIterativeHerding": {
+      "Unweighted_MMD": 0.021128473989665508,
+      "Unweighted_KSD": 0.08938155919313431,
+      "Weighted_MMD": 0.007852014992386103,
+      "Weighted_KSD": 0.08065845519304275,
+      "Time": 4.702327222399617
+    },
+    "IterativeHerding": {
+      "Unweighted_MMD": 0.007051250245422125,
+      "Unweighted_KSD": 0.06839882656931877,
+      "Weighted_MMD": 0.005125141562893986,
+      "Weighted_KSD": 0.06586349084973335,
+      "Time": 3.8252486778001185
+    },
+    "CubicProbIterativeHerding": {
+      "Unweighted_MMD": 0.004542805999517441,
+      "Unweighted_KSD": 0.08182733058929444,
+      "Weighted_MMD": 0.003512424463406205,
+      "Weighted_KSD": 0.07799033671617508,
+      "Time": 4.375145751399759
+    }
+  },
+  "50": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.014010918885469436,
+      "Unweighted_KSD": 0.05761846974492073,
+      "Weighted_MMD": 0.0031911543337628245,
+      "Weighted_KSD": 0.052470114827156064,
+      "Time": 4.036917862999689
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.10492457151412964,
+      "Unweighted_KSD": 0.0798761561512947,
+      "Weighted_MMD": 0.004955455008894205,
+      "Weighted_KSD": 0.06159702017903328,
+      "Time": 3.27908037680063
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.1466503471136093,
+      "Unweighted_KSD": 0.06491677835583687,
+      "Weighted_MMD": 0.0015391094610095024,
+      "Weighted_KSD": 0.054540709406137464,
+      "Time": 3.7208302791997996
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.0868241548538208,
+      "Unweighted_KSD": 0.05509435683488846,
+      "Weighted_MMD": 0.0135643620043993,
+      "Weighted_KSD": 0.061474745720624925,
+      "Time": 4.627325403000578
+    },
+    "KernelThinning": {
+      "Unweighted_MMD": 0.006303768884390592,
+      "Unweighted_KSD": 0.061569680273532865,
+      "Weighted_MMD": 0.0022462865337729452,
+      "Weighted_KSD": 0.05851251482963562,
+      "Time": 14.038466937999692
+    },
+    "CompressPlusPlus": {
+      "Unweighted_MMD": 0.007616249471902847,
+      "Unweighted_KSD": 0.06331060901284218,
+      "Weighted_MMD": 0.0028188966680318117,
+      "Weighted_KSD": 0.05671325549483299,
+      "Time": 10.396489782000208
+    },
+    "ProbabilisticIterativeHerding": {
+      "Unweighted_MMD": 0.015107517503201962,
+      "Unweighted_KSD": 0.06883815973997116,
+      "Weighted_MMD": 0.003151226742193103,
+      "Weighted_KSD": 0.06300541535019874,
+      "Time": 4.108718106000015
+    },
+    "IterativeHerding": {
+      "Unweighted_MMD": 0.003708381252363324,
+      "Unweighted_KSD": 0.05261607468128204,
+      "Weighted_MMD": 0.002603885461576283,
+      "Weighted_KSD": 0.0531992956995964,
+      "Time": 3.5771397664000686
+    },
+    "CubicProbIterativeHerding": {
+      "Unweighted_MMD": 0.001733466051518917,
+      "Unweighted_KSD": 0.058075586706399916,
+      "Weighted_MMD": 0.001442490390036255,
+      "Weighted_KSD": 0.059921151399612425,
+      "Time": 4.120307515600507
+    }
+  },
+  "100": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.007909100409597159,
+      "Unweighted_KSD": 0.04663899913430214,
+      "Weighted_MMD": 0.0018589411629363894,
+      "Weighted_KSD": 0.051218368113040924,
+      "Time": 4.235976945400035
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.05501915663480759,
+      "Unweighted_KSD": 0.0618309035897255,
+      "Weighted_MMD": 0.00180354667827487,
+      "Weighted_KSD": 0.05710694566369057,
+      "Time": 3.1581929947999017
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.09764691218733787,
+      "Unweighted_KSD": 0.039633375406265256,
+      "Weighted_MMD": 0.0010440661339089275,
+      "Weighted_KSD": 0.05533244013786316,
+      "Time": 3.8502491777991965
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.09307270124554634,
+      "Unweighted_KSD": 0.03587676882743836,
+      "Weighted_MMD": 0.006268286239355802,
+      "Weighted_KSD": 0.05565239489078522,
+      "Time": 4.740899266999622
+    },
+    "KernelThinning": {
+      "Unweighted_MMD": 0.002685086103156209,
+      "Unweighted_KSD": 0.05610363930463791,
+      "Weighted_MMD": 0.001265210215933621,
+      "Weighted_KSD": 0.0581892117857933,
+      "Time": 9.000170669599902
+    },
+    "CompressPlusPlus": {
+      "Unweighted_MMD": 0.0029356910847127436,
+      "Unweighted_KSD": 0.05573995485901832,
+      "Weighted_MMD": 0.0012260458199307323,
+      "Weighted_KSD": 0.055947765707969666,
+      "Time": 8.099010541199823
+    },
+    "ProbabilisticIterativeHerding": {
+      "Unweighted_MMD": 0.009710153844207526,
+      "Unweighted_KSD": 0.062317197769880296,
+      "Weighted_MMD": 0.0018384325550869108,
+      "Weighted_KSD": 0.059105978906154634,
+      "Time": 4.5184859611999855
+    },
+    "IterativeHerding": {
+      "Unweighted_MMD": 0.0022563493344932794,
+      "Unweighted_KSD": 0.04880478382110596,
+      "Weighted_MMD": 0.001406662119552493,
+      "Weighted_KSD": 0.05116616040468216,
+      "Time": 4.1359605843997995
+    },
+    "CubicProbIterativeHerding": {
+      "Unweighted_MMD": 0.0008045180700719356,
+      "Unweighted_KSD": 0.05193357020616531,
+      "Weighted_MMD": 0.0009792268159799279,
+      "Weighted_KSD": 0.054329156130552295,
+      "Time": 4.49999562500052
+    }
+  },
+  "200": {
+    "KernelHerding": {
+      "Unweighted_MMD": 0.004258563183248043,
+      "Unweighted_KSD": 0.047414638102054596,
+      "Weighted_MMD": 0.0011734690284356474,
+      "Weighted_KSD": 0.05488279089331627,
+      "Time": 4.568870213000264
+    },
+    "RandomSample": {
+      "Unweighted_MMD": 0.04152125939726829,
+      "Unweighted_KSD": 0.05796747878193855,
+      "Weighted_MMD": 0.000913540180772543,
+      "Weighted_KSD": 0.055494559556245805,
+      "Time": 3.401281245000064
+    },
+    "RPCholesky": {
+      "Unweighted_MMD": 0.05692300647497177,
+      "Unweighted_KSD": 0.04246571436524391,
+      "Weighted_MMD": 0.0008295111590996384,
+      "Weighted_KSD": 0.053956735879182816,
+      "Time": 4.136736245400243
+    },
+    "SteinThinning": {
+      "Unweighted_MMD": 0.10421270728111268,
+      "Unweighted_KSD": 0.024421826750040055,
+      "Weighted_MMD": 0.003508183266967535,
+      "Weighted_KSD": 0.055823469161987306,
+      "Time": 5.040176883599997
+    },
+    "KernelThinning": {
+      "Unweighted_MMD": 0.0015182187082245946,
+      "Unweighted_KSD": 0.054005082696676254,
+      "Weighted_MMD": 0.000885988853406161,
+      "Weighted_KSD": 0.05745472684502602,
+      "Time": 6.787894143599624
+    },
+    "CompressPlusPlus": {
+      "Unweighted_MMD": 0.0014102120650932193,
+      "Unweighted_KSD": 0.05317859873175621,
+      "Weighted_MMD": 0.0007552313501946629,
+      "Weighted_KSD": 0.05463842824101448,
+      "Time": 7.406790399999591
+    },
+    "ProbabilisticIterativeHerding": {
+      "Unweighted_MMD": 0.006357756908982992,
+      "Unweighted_KSD": 0.05834345370531082,
+      "Weighted_MMD": 0.0008730732253752649,
+      "Weighted_KSD": 0.05702040642499924,
+      "Time": 4.711837356400428
+    },
+    "IterativeHerding": {
+      "Unweighted_MMD": 0.0013821582775563,
+      "Unweighted_KSD": 0.0500980406999588,
+      "Weighted_MMD": 0.0009947988553903997,
+      "Weighted_KSD": 0.05419353991746902,
+      "Time": 4.150569619399903
+    },
+    "CubicProbIterativeHerding": {
+      "Unweighted_MMD": 0.0005821106024086475,
+      "Unweighted_KSD": 0.05276075378060341,
+      "Weighted_MMD": 0.0007064452278427779,
+      "Weighted_KSD": 0.05621158331632614,
+      "Time": 4.702852152600099
+    }
+  }
+}

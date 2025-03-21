@@ -72,7 +72,7 @@ test = [
 # Compile documentation
 doc = [
     "furo>=2024",
-    "sphinx>=7, !=8.2.*",
+    "sphinx>=7",
     "sphinx-autodoc-typehints>=2",
     "sphinx-toolbox>=3",
     "sphinxcontrib-bibtex>=2",
@@ -169,10 +169,26 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"documentation/source/conf.py" = ["E402"]
-"documentation/source/snippets/*" = ["D100", "F821"]
-"examples/*" = ["PLR0914", "PLR0915"]
-"tests/*" = ["D102", "D200", "PLR0904"]
+"documentation/source/conf.py" = [
+    "E402",  # Allow module imports not at the top of the file - conf.py does weird
+             # things with imports that necessitate this
+]
+"documentation/source/snippets/*" = [
+    "D100",  # Allow missing module docstring - these are snippets, not full modules
+    "F821",  # Allow undefined names - the snippets are *snippets*, not complete code
+]
+"examples/*" = [
+    "PLR0914",  # Ignore "too many locals"
+    "PLR0915",  # Ignore "too many statements"
+    # In both cases, the example code is meant to be more verbose so it's easier to
+    # understand and can serve as its own documentation.
+]
+"tests/*" = [
+    "D200",  # Allow "one-line docstring not on one line" - test docstrings can be
+             # quite long, so sometimes the extra six characters are really needed
+    "PLR0904",  # Ignore "too many public methods" - test classes are really just
+                # namespaces, so the usual concerns here don't apply
+]
 
 [tool.ruff.lint.pylint]
 max-args = 10

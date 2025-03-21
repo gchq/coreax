@@ -35,6 +35,7 @@ from jax import Array, vjp
 from jax.scipy.stats import multivariate_normal, norm
 from jax.typing import ArrayLike
 from optax import sgd
+from typing_extensions import override
 
 import coreax.networks
 import coreax.score_matching
@@ -59,6 +60,7 @@ class SimpleNetwork(nn.Module):
     num_output_dim: int
 
     @nn.compact
+    @override
     def __call__(self, x: ArrayLike) -> ArrayLike:
         x = nn.Dense(self.num_hidden_dim)(x)
         return x

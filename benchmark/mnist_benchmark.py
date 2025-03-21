@@ -381,7 +381,7 @@ def density_preserving_umap(x: jnp.ndarray, n_components: int = 16) -> jnp.ndarr
     x_np = np.array(x)
 
     # Initialize UMAP with density-preserving option
-    umap_model = umap.UMAP(densmap=True, n_components=n_components)
+    umap_model = umap.UMAP(densmap=True, n_components=n_components, random_state=0)
 
     # Fit and transform the data
     x_umap = umap_model.fit_transform(x_np)
