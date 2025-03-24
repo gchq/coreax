@@ -1027,7 +1027,7 @@ def _greedy_kernel_points_loss(
     loss_batch: Shaped[Array, " batch_size"],
 ) -> Shaped[Array, " batch_size"]:
     r"""
-    Given a matrix of candidate coreset indices, compute the greedy KIP loss for each.
+    Compute greedy kernel inducing points losses for a matrix of candidate coresets.
 
     Primarily intended for use with :class:`GreedyKernelPoints`.
 
@@ -1101,7 +1101,7 @@ class GreedyKernelPoints(
     Apply Greedy Kernel Points to a supervised dataset.
 
     GreedyKernelPoints is a deterministic, iterative and greedy approach to
-    build a coreset, adapted from the inducing point method developed in
+    build a coreset, adapted from the kernel inducing point (KIP) method developed in
     :cite:`nguyen2021meta`.
 
     Given one has an original dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n`
