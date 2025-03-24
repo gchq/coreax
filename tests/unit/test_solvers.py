@@ -2360,7 +2360,9 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
         In the first test case, we consider a dataset of size three, and we test the
         second iteration, where we have already chosen the first index to be element
-        one. The feature Gramian is
+        one. For simplicity, we assume some kernel has already been applied to some
+        supervised dataset without specifying what they are. We take the feature Gramian
+        to be
 
         .. math::
 
