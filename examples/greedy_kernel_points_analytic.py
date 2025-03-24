@@ -46,12 +46,12 @@ The feature Gramian is
 
 Following the notation in :class:`~coreax.solvers.coresubset.GreedyKernelPoints`, let
 :math:`\mathcal{D}^{(2)} = \{(x_i, y_i)\}_{i=1}^m` be the set of points already selected
-for the coreset. Then, :math:`y^{(2)} \in \mathbb{R}^m` is the vector of responses,
-:math:`K^{(12)}` is the cross-matrix of kernel evaluations (a subset of columns of the
-feature Gramian), and :math:`K^{(22)}` is the kernel matrix on :math:`\mathcal{D}^{(2)}`
-(a subset of rows and columns of the feature Gramian). With zero regularisation, the
-predictions for a given coreset are given by
-:math:`z = K^{(12)} {K^{(22)}}^{-1} y^{(2)}`.
+for the coreset. Then, :math:`X^{(2)} \in \mathbb{R}^{m \times 2}` is the selected data,
+:math:`y^{(2)} \in \mathbb{R}^m` is the vector of responses, :math:`K^{(12)}` is the
+cross-matrix of kernel evaluations (a subset of columns of the feature Gramian), and
+:math:`K^{(22)}` is the kernel matrix on :math:`\mathcal{D}^{(2)}` (a subset of rows and
+columns of the feature Gramian). With zero regularisation, the predictions for a given
+coreset are given by :math:`z = K^{(12)} {K^{(22)}}^{-1} y^{(2)}`.
 
 First iteration
 ---------------
@@ -64,9 +64,10 @@ Candidate (0)
 
 .. math::
 
+    X^{(2)} &= \begin{pmatrix} 1 & 0 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 1 \\ 0 \\ 2 \end{pmatrix} ; \\
-    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
+    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} .
 
 Then, the inverse of the kernel matrix is
 
@@ -93,9 +94,10 @@ Candidate (1)
 
 .. math::
 
+    X^{(2)} &= \begin{pmatrix} 0 & 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 0 \\ 1 \\ 1 \end{pmatrix} ; \\
-    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
+    K^{(22)} &= \begin{pmatrix} 1 \end{pmatrix} .
 
 Then, the inverse of the kernel matrix is
 
@@ -121,9 +123,10 @@ Candidate (2)
 
 .. math::
 
+    X^{(2)} &= \begin{pmatrix} 2 & 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 2 \\ 1 \\ 5 \end{pmatrix} ; \\
-    K^{(22)} &= \begin{pmatrix} 5 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} .
+    K^{(22)} &= \begin{pmatrix} 5 \end{pmatrix} .
 
 Then, the inverse of the kernel matrix is
 
@@ -160,9 +163,10 @@ Candidate (2 0)
 
 .. math::
 
+    X^{(2)} &= \begin{pmatrix} 2 & 1 \\ 1 & 0 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 5 \\ 0 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 2 & 1 \\ 1 & 0 \\ 5 & 2 \end{pmatrix} ; \\
-    K^{(22)} &= \begin{pmatrix} 5 & 2 \\ 2 & 1 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 5 \\ 0 \end{pmatrix} .
+    K^{(22)} &= \begin{pmatrix} 5 & 2 \\ 2 & 1 \end{pmatrix} .
 
 Then, the inverse of the kernel matrix is
 
@@ -194,9 +198,10 @@ Candidate (2 1)
 
 .. math::
 
+    X^{(2)} &= \begin{pmatrix} 2 & 1 \\ 0 & 1 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 5 \\ 1 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 2 & 0 \\ 1 & 1 \\ 5 & 1 \end{pmatrix} ; \\
-    K^{(22)} &= \begin{pmatrix} 5 & 1 \\ 1 & 1 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 5 \\ 1 \end{pmatrix} .
+    K^{(22)} &= \begin{pmatrix} 5 & 1 \\ 1 & 1 \end{pmatrix} .
 
 Then, the inverse of the kernel matrix is
 

@@ -2380,11 +2380,11 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
         .. math::
 
+            y^{(2)} &= \begin{pmatrix} 1 \\ 0 \end{pmatrix} ; \\
             K^{(12)} &= \begin{pmatrix} \frac{1}{2} & 1 \\ 1 & \frac{1}{2} \\
                 \frac{1}{5} & \frac{1}{2} \end{pmatrix} ; \\
             K^{(22)} &= \begin{pmatrix} 1 & \frac{1}{2} \\
-                \frac{1}{2} & 1 \end{pmatrix} ; \\
-            y^{(2)} &= \begin{pmatrix} 1 \\ 0 \end{pmatrix} .
+                \frac{1}{2} & 1 \end{pmatrix} .
 
         Then, the inverse of the kernel matrix is
 
@@ -2418,11 +2418,11 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
         .. math::
 
+            y^{(2)} &= \begin{pmatrix} 1 \\ 2 \end{pmatrix} ; \\
             K^{(12)} &= \begin{pmatrix} \frac{1}{2} & \frac{1}{2} \\ 1 & \frac{1}{5} \\
                 \frac{1}{5} & 1 \end{pmatrix} ; \\
             K^{(22)} &= \begin{pmatrix} 1 & \frac{1}{5} \\
-                \frac{1}{5} & 1 \end{pmatrix} ; \\
-            y^{(2)} &= \begin{pmatrix} 1 \\ 2 \end{pmatrix} .
+                \frac{1}{5} & 1 \end{pmatrix} .
 
         Then, the inverse of the kernel matrix is
 
