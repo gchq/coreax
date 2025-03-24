@@ -123,7 +123,7 @@ Candidate (2)
 .. math::
 
     X^{(2)} &= \begin{pmatrix} 2 & 1 \end{pmatrix} ; \\
-    y^{(2)} &= \begin{pmatrix} 0 \end{pmatrix} ; \\
+    y^{(2)} &= \begin{pmatrix} 5 \end{pmatrix} ; \\
     K^{(12)} &= \begin{pmatrix} 2 \\ 1 \\ 5 \end{pmatrix} ; \\
     K^{(22)} &= \begin{pmatrix} 5 \end{pmatrix} .
 
