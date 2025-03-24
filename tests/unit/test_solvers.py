@@ -2242,7 +2242,9 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         solver.reduce(dataset)
 
     def test_batch_size_not_none(self, reduce_problem: _ReduceProblem) -> None:
-        """Test that setting not `None` batch sizes produces no errors."""
+        """
+        Test that setting batch sizes to non-:data:`None` values produces no errors.
+        """
         dataset, _, _ = reduce_problem
         solver = GreedyKernelPoints(
             random_key=self.random_key,
