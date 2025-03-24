@@ -13,10 +13,9 @@
 # limitations under the License.
 
 r"""
-Example use of greedy kernel points.
+Step-by-step usage of greedy kernel points on an analytical example.
 
-This example shows step-by-step usage of greedy kernel points on an analytical example -
-see :class:`~coreax.solvers.coresubset.GreedyKernelPoints` for a description of the
+See :class:`~coreax.solvers.coresubset.GreedyKernelPoints` for a description of the
 method.
 
 We start with the supervised dataset of three points in :math:`\mathbb{R}^2`
