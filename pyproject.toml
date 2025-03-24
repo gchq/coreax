@@ -62,7 +62,7 @@ benchmark = [
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
-    "beartype>=0.19",
+    "beartype>=0.19, !=0.20.1, !=0.20.2",
     "pytest>=8",
     "pytest-cov>=6",
     "pytest-rerunfailures>=15",
@@ -72,7 +72,7 @@ test = [
 # Compile documentation
 doc = [
     "furo>=2024",
-    "sphinx>=7, !=8.2.*",
+    "sphinx>=7",
     "sphinx-autodoc-typehints>=2",
     "sphinx-toolbox>=3",
     "sphinxcontrib-bibtex>=2",

@@ -105,7 +105,7 @@ toc_object_entries_show_parents = "hide"  # don't show prefix in secondary TOC
 # pylint: disable=invalid-name
 bibtex_default_style = STYLE_NAME
 bibtex_references_path = SOURCE_FOLDER_PATH / "references.bib"
-bibtex_bibfiles = [str(bibtex_references_path)]
+bibtex_bibfiles = [bibtex_references_path.relative_to(SOURCE_FOLDER_PATH).as_posix()]
 # pylint: enable=invalid-name
 
 
