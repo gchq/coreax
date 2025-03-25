@@ -691,7 +691,7 @@ class GreedyKernelPointsState(eqx.Module):
         an additional row and column of zeroes.
     """
 
-    feature_gramian: Array
+    feature_gramian: Shaped[Array, " n+1 n+1"]
 
 
 # Overload for the case where we want to construct both the identity array and the
@@ -763,7 +763,13 @@ def _setup_batch_solver(
     random_key: KeyArrayLike,
     setup_identity: bool = False,
     setup_loss_batch_indices: bool = True,
-) -> tuple[Array, Array, Optional[Array], Array, Optional[Array]]:
+) -> tuple[
+    Shaped[Array, " n"],
+    Shaped[Array, " n p"],
+    Optional[Shaped[Array, " n p"]],
+    Shaped[Array, " p n"],
+    Optional[Shaped[Array, " n n"]],
+]:
     """
     Set up the matrices required to initialise a batched solver.
 
@@ -961,11 +967,11 @@ def _setup_batch_solver(
 def _update_candidate_coresets_and_coreset_indices(
     i: int,
     unique: bool,
-    candidate_coresets: Array,
-    coreset_indices: Array,
-    loss: Array,
-    candidate_batch_indices: Array,
-) -> tuple[Array, Array]:
+    candidate_coresets: Shaped[Array, " p n"],
+    coreset_indices: Shaped[Array, " n"],
+    loss: Shaped[Array, " p"],
+    candidate_batch_indices: Shaped[Array, " n p"],
+) -> tuple[Shaped[Array, " p n"], Shaped[Array, " n"]]:
     """
     Update the coreset indices and candidate coreset matrix following loss computation.
 
@@ -1251,8 +1257,13 @@ class GreedyKernelPoints(
             padded_feature_gramian = solver_state.feature_gramian
 
         def _greedy_body(
-            i: int, val: tuple[Array, Array, Array]
-        ) -> tuple[Array, Array, Array]:
+            i: int,
+            val: tuple[
+                Shaped[Array, " n"], Shaped[Array, " n"], Shaped[Array, " batch_size n"]
+            ],
+        ) -> tuple[
+            Shaped[Array, " n"], Shaped[Array, " n"], Shaped[Array, " batch_size n"]
+        ]:
             """
             Execute main loop of Greedy Kernel Points.
 
