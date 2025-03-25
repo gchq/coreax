@@ -60,7 +60,14 @@ MSG = "'coreset_size' must be less than 'len(dataset)' by definition of a corese
 def _initial_coresubset(
     fill_value: int, coreset_size: int, dataset: _Data
 ) -> Coresubset[_Data]:
-    """Generate a coresubset with `fill_value` valued and zero-weighted indices."""
+    """
+    Generate a coresubset with uniform indices, all zero-weighted.
+
+    :param fill_value: Index of dataset to select as every element in coresubset.
+    :param coreset_size: Size of coreset.
+    :param dataset: Original dataset.
+    :return: Coresubset of requested size with all indices set to ``fill_value``.
+    """
     initial_coresubset_indices = Data(
         jnp.full((coreset_size,), fill_value, dtype=jnp.int32), 0
     )
