@@ -2202,7 +2202,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
             expected_coresubset = None
         else:
             raise ValueError("Invalid fixture parametrization")
-        initial_coresubset = Coresubset.build(indices, dataset)
+        initial_coresubset = Coresubset(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
     def test_greedy_kernel_inducing_point_state(
