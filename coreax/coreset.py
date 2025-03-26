@@ -14,7 +14,6 @@
 
 """Module for defining coreset data structures."""
 
-import warnings
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -28,7 +27,7 @@ from typing import (
 import equinox as eqx
 import jax.numpy as jnp
 from jaxtyping import Array, Shaped
-from typing_extensions import Self, deprecated, override
+from typing_extensions import Self, override
 
 from coreax.data import Data, SupervisedData, as_data
 from coreax.metrics import Metric
@@ -68,16 +67,6 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def pre_coreset_data(self) -> _TOriginalData_co:
         """The original data that this coreset is based on."""
 
-    @property
-    @abstractmethod
-    @deprecated(
-        "Narrow to a subclass, then use `.indices` or `.points` instead. "
-        + "Deprecated since v0.4.0. "
-        + "Will be removed in v0.5.0."
-    )
-    def nodes(self) -> Data:
-        """Deprecated alias for `indices` or `points`, depending on subclass."""
-
     @abstractmethod
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
@@ -99,16 +88,6 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
                 "'len(points)' cannot be greater than 'len(pre_coreset_data)' "
                 "by definition of a Coreset"
             )
-
-    @property
-    @deprecated(
-        "Use `.points` instead. "
-        + "Deprecated since v0.4.0. "
-        + "Will be removed in v0.5.0."
-    )
-    def coreset(self) -> _TPointsData_co:
-        """Deprecated alias for `.points`."""
-        return self.points
 
 
 class PseudoCoreset(
@@ -135,41 +114,15 @@ class PseudoCoreset(
 
     def __init__(self, nodes: Data, pre_coreset_data: _TOriginalData_co) -> None:
         """Initialise self."""
-        if isinstance(nodes, Array):
-            warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
-                "Use PseudoCoreset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            nodes = as_data(nodes)  # pyright: ignore[reportAssignmentType]
-        if isinstance(pre_coreset_data, Array):
-            warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
-                "Use PseudoCoreset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # pylint: disable-next=line-too-long
-            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
-        if isinstance(pre_coreset_data, tuple):
-            warnings.warn(
-                "Passing Arrays into PseudoCoreset() is deprecated since v0.4.0. "
-                "Use PseudoCoreset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # pylint: disable-next=line-too-long
-            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
-
         if not isinstance(nodes, Data):
-            raise TypeError("`nodes` must be of type `Data`")
+            raise TypeError(
+                "`nodes` must be of type `Data`. "
+                "To use an array, use PseudoCoreset.build() instead."
+            )
         if not isinstance(pre_coreset_data, Data):
             raise TypeError(
-                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`. "
+                "To use an array or tuple of arrays, use PseudoCoreset.build() instead."
             )
 
         self._nodes = nodes
@@ -238,31 +191,11 @@ class PseudoCoreset(
     def pre_coreset_data(self):
         return self._pre_coreset_data
 
-    @property
-    @override
-    @deprecated(
-        "Use `.points` instead. "
-        + "Deprecated since v0.4.0. "
-        + "Will be removed in v0.5.0."
-    )
-    def nodes(self) -> Data:
-        """Deprecated alias for `points`."""
-        return self.points
-
     @override
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
         weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
         return eqx.tree_at(lambda x: x.points.weights, self, weights)
-
-
-@deprecated(
-    "Use AbstractCoreset, PseudoCoreset, or Coresubset instead. "
-    + "Deprecated since v0.4.0. "
-    + "Will be removed in v0.5.0."
-)
-class Coreset(PseudoCoreset):
-    """Deprecated - split into AbstractCoreset and PseudoCoreset."""
 
 
 class Coresubset(
@@ -302,42 +235,16 @@ class Coresubset(
     # pylint: enable=invalid-name
 
     def __init__(self, indices: Data, pre_coreset_data: _TOriginalData_co) -> None:
-        """Handle type conversion of ``indices`` and ``pre_coreset_data``."""
-        if isinstance(indices, Array):
-            warnings.warn(
-                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
-                "Use Coresubset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            indices = as_data(indices)  # pyright: ignore[reportAssignmentType]
-        if isinstance(pre_coreset_data, Array):
-            warnings.warn(
-                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
-                "Use Coresubset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # pylint: disable-next=line-too-long
-            pre_coreset_data = as_data(pre_coreset_data)  # pyright: ignore[reportAssignmentType]
-        if isinstance(pre_coreset_data, tuple):
-            warnings.warn(
-                "Passing Arrays into Coresubset() is deprecated since v0.4.0. "
-                "Use Coresubset.build() instead. "
-                "In v0.5.0, this will become a TypeError.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # pylint: disable-next=line-too-long
-            pre_coreset_data = SupervisedData(*pre_coreset_data)  # pyright: ignore[reportAssignmentType]
-
+        """Initialise self."""
         if not isinstance(indices, Data):
-            raise TypeError("`indices` must be of type `Data`")
+            raise TypeError(
+                "`indices` must be of type `Data`. "
+                "To use an array, use PseudoCoreset.build() instead."
+            )
         if not isinstance(pre_coreset_data, Data):
             raise TypeError(
-                "`pre_coreset_data` must be of type `Data` or `SupervisedData`"
+                "`pre_coreset_data` must be of type `Data` or `SupervisedData`. "
+                "To use an array or tuple of arrays, use PseudoCoreset.build() instead."
             )
 
         self._indices = indices
@@ -415,17 +322,6 @@ class Coresubset(
     def indices(self) -> Data:
         """The (possibly weighted) Coresubset indices."""
         return self._indices
-
-    @property
-    @override
-    @deprecated(
-        "Use `.indices` instead. "
-        + "Deprecated since v0.4.0. "
-        + "Will be removed in v0.5.0."
-    )
-    def nodes(self) -> Data:
-        """Deprecated alias for `indices`."""
-        return self.indices
 
     @override
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
