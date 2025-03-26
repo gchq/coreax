@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+ -
+
+### Fixed
+
+ -
+
+### Changed
+
+ -
+
+### Removed
+
+ -
+
+### Deprecated
+
+ -
+
+
+## [1.0.0]
+
+### Added
+
 - Coreax is now considered stable.
 - Added Compress++ coreset reduction algorithm.
   (https://github.com/gchq/coreax/issues/934)
@@ -16,10 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added probabilistic iterative Kernel Herding benchmarking results. (https://github.com/gchq/coreax/pull/983)
 - Analytic example with integration test for `GreedyKernelPoints` plus an analytic unit
   test for the loss function. (https://github.com/gchq/coreax/pull/1004)
-
-### Fixed
-
--
 
 ### Changed
 
@@ -38,10 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (https://github.com/gchq/coreax/pull/972)
 - **[BREAKING CHANGE]** Removed deprecated Coreset functionality - see v0.4.0's
 deprecations for more detail.
-
-### Deprecated
-
--
 
 
 ## [0.4.0]
@@ -408,7 +423,8 @@ from `coreax.inverses.RegularisedInverseApproximator`,
 [//]: # (### Deprecated)
 [//]: # (This is where existing but deprecated elements should be noted.)
 
-[Unreleased]: https://github.com/gchq/coreax/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/gchq/coreax/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/gchq/coreax/compare/v0.4.0...v1.0.0
 [0.4.0]: https://github.com/gchq/coreax/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/gchq/coreax/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/gchq/coreax/compare/v0.2.1...v0.3.0
