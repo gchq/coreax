@@ -204,7 +204,7 @@ class Coresubset(
     r"""
     Data structure for representing a coresubset.
 
-    A coresubset is a :class:`Coreset`, with the additional condition that the coreset
+    A coresubset is a coreset, with the additional condition that the coreset
     data points/nodes must be a subset of the original data points/nodes, such that
 
     .. math::
