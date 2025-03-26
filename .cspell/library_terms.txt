@@ -72,6 +72,7 @@ logpdf
 lstsq
 mathbb
 mathbf
+mathcal
 mathrm
 matplotlib
 maxval

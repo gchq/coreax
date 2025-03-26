@@ -31,7 +31,7 @@ class LinearKernel(ScalarValuedKernel):
     r"""
     Define a linear kernel.
 
-    Given :math:`\rho`=` ``output_scale``and :math:`a=` ``constant`` the linear kernel
+    Given output scale :math:`\rho` and constant :math:`a`, the linear kernel
     is defined as :math:`k: \mathbb{R}^d\times \mathbb{R}^d \to \mathbb{R}`,
     :math:`k(x, y) = a + \rho (x)^T(y)`.
 
