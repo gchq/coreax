@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Coreax is now considered stable.
 - Added Compress++ coreset reduction algorithm.
   (https://github.com/gchq/coreax/issues/934)
 - Added `reduce_iterative()` method to Kernel Herding. (https://github.com/gchq/coreax/pull/983)

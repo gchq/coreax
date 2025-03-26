@@ -10,7 +10,6 @@
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Python version](https://img.shields.io/pypi/pyversions/coreax.svg)](https://pypi.org/project/coreax)
 [![PyPI](https://img.shields.io/pypi/v/coreax)](https://pypi.org/project/coreax)
-![Beta](https://img.shields.io/badge/pre--release-beta-red)
 
 _© Crown Copyright GCHQ_
 
