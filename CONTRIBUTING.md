@@ -91,14 +91,9 @@ Refs: #123
 
 ### Breaking changes and deprecation
 
-Since we are still pre-1.0, [SemVer] states that any release may contain breaking
-changes. However, breaking changes should not be made without warning.
-
-Any breaking changes must have a deprecation period of at least **one minor release,
-or one month (whichever is longer),** before the breaking change is made. If the change
-is one that may require significant changes to client code, such as removing a function
-or class entirely, the deprecation period must instead be at least **two minor releases,
-or two months (whichever is longer).**
+Coreax is stable, so according to [SemVer], any breaking changes require incrementing
+the major version number. Any change that would otherwise be breaking should instead be
+made into a deprecation if possible.
 
 Ensure that during the deprecation period, the old behaviour still works, but raises a
 `DeprecationWarning` with an appropriate message (which should include which version
@@ -111,22 +106,19 @@ As an example, this is what the deprecation period for renaming `my_old_function
 `my_new_function` would look like:
 
 ```python
-# v0.1.0:
+# v1.1.0:
 def my_old_function(x: int) -> int:
     return x + x + x + x
 
-# v0.2.0:
+# v1.2.0:
 def my_new_function(x: int) -> int:
     return x*4
 
-@deprecated(
-    "Renamed to my_new_function."
-    + " Deprecated since v0.2.0; will be removed in v0.3.0."
-)
+@deprecated("Renamed to my_new_function; will be removed in the next major version")
 def my_old_function(x: int) -> int:
     return my_new_function(x)
 
-# v0.3.0:
+# v2.0.0:
 def my_new_function(x: int) -> int:
     return x*4
 ```

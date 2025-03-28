@@ -22,7 +22,7 @@ dataset as possible. The generated dataset is often called a coreset.
 
 """
 
-__version__ = "0.4.0"
+__version__ = "1.0.0"
 
 from coreax.approximation import (
     ANNchorApproximateKernel,

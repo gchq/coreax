@@ -15,7 +15,6 @@
 """Tests for coreset data-structures."""
 
 import warnings
-from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Union
 from unittest.mock import MagicMock, Mock
@@ -100,35 +99,6 @@ class CoresetTestSetup:
 class TestCoresetCommon:
     """Common tests for `PseudoCoreset` and `Coresubset`."""
 
-    def test_deprecated_nodes(
-        self,
-        setup: CoresetTestSetup,
-    ):
-        """Test that the now-deprecated `nodes` property works as before."""
-        coreset = setup.coreset_type(setup.coreset_input, setup.pre_coreset_data)
-        with pytest.warns(DeprecationWarning):
-            nodes = coreset.nodes
-
-        if isinstance(coreset, PseudoCoreset):
-            assert nodes == coreset.points
-        elif isinstance(coreset, Coresubset):
-            assert nodes == coreset.indices
-        else:
-            raise TypeError(type(coreset))
-
-    def test_deprecated_coreset(
-        self,
-        setup: CoresetTestSetup,
-    ):
-        """Test that the now-deprecated `coreset` property works as before."""
-        coreset = setup.coreset_type(setup.coreset_input, setup.pre_coreset_data)
-        with pytest.warns(DeprecationWarning):
-            points = coreset.coreset
-        assert eqx.tree_equal(points, coreset.points)
-
-    @pytest.mark.parametrize(
-        "use_build", [True, False], ids=["use_build", "use_deprecated_init"]
-    )
     @pytest.mark.parametrize(
         "is_coreset_input_data",
         [True, False],
@@ -142,7 +112,6 @@ class TestCoresetCommon:
     def test_build_array_conversion(
         self,
         setup: CoresetTestSetup,
-        use_build: bool,
         is_coreset_input_data: bool,
         is_pre_coreset_data_data: bool,
     ):
@@ -174,24 +143,9 @@ class TestCoresetCommon:
         else:
             pre_coreset_data_final = setup.pre_coreset_data.data
 
-        if use_build:
-            coreset_from_arrays = setup.coreset_type.build(
-                coreset_input_final, pre_coreset_data_final
-            )
-        else:
-            # Check we get a deprecation warning, but it still works.
-            # Note that if we pass both as Data instances, we shouldn't get any
-            # deprecation warning.
-            ctx = (
-                nullcontext()
-                if (is_coreset_input_data and is_pre_coreset_data_data)
-                else pytest.warns(DeprecationWarning)
-            )
-            with ctx:
-                coreset_from_arrays = setup.coreset_type(
-                    coreset_input_final,  # pyright: ignore[reportArgumentType]
-                    pre_coreset_data_final,  # pyright: ignore[reportArgumentType]
-                )
+        coreset_from_arrays = setup.coreset_type.build(
+            coreset_input_final, pre_coreset_data_final
+        )
         coreset_from_data = setup.coreset_type.build(
             setup.coreset_input, setup.pre_coreset_data
         )
