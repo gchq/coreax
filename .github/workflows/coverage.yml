@@ -95,7 +95,7 @@ jobs:
     steps:
       - name: Generate a GitHub token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
