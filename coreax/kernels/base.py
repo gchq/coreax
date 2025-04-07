@@ -50,7 +50,7 @@ compute than the automatic differentiated default.
 """
 
 from abc import abstractmethod
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Union, overload
 
 import equinox as eqx
 import jax
@@ -126,19 +126,23 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def compute(  # pyright: ignore[reportOverlappingOverload]
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, " 1 1"]: ...
 
     def compute(
         self,
-        x: Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        y: Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ) -> Union[Shaped[Array, " n m"], Shaped[Array, "1 1"]]:
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+    ) -> Shaped[Array, " n m"] | Shaped[Array, "1 1"]:
         r"""
         Evaluate the kernel on input data ``x`` and ``y``.
 
@@ -160,8 +164,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @abstractmethod
     def compute_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the kernel on individual input vectors ``x`` and ``y``, not-vectorised.
@@ -187,21 +191,23 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def grad_x(
         self,
-        x: Union[Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, ""], float, int],
+        x: Shaped[Array, ""] | float | int,
+        y: Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, " 1 1 1"]: ...
 
     def grad_x(
         self,
-        x: Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        y: Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ) -> Union[
-        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
-    ]:
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+    ) -> Shaped[Array, " n m d"] | Shaped[Array, " 1 1 d"] | Shaped[Array, "1 1 1"]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``x``.
 
@@ -230,21 +236,23 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def grad_y(
         self,
-        x: Union[Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, ""], float, int],
+        x: Shaped[Array, ""] | float | int,
+        y: Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, " 1 1 1"]: ...
 
     def grad_y(
         self,
-        x: Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        y: Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ) -> Union[
-        Shaped[Array, " n m d"], Shaped[Array, " 1 1 d"], Shaped[Array, "1 1 1"]
-    ]:
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+    ) -> Shaped[Array, " n m d"] | Shaped[Array, " 1 1 d"] | Shaped[Array, "1 1 1"]:
         r"""
         Evaluate the gradient (Jacobian) of the kernel function w.r.t. ``y``.
 
@@ -268,15 +276,15 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def grad_x_elementwise(
         self,
-        x: Union[Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, ""], float, int],
+        x: Shaped[Array, ""] | float | int,
+        y: Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, ""]: ...
 
     def grad_x_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+    ) -> Shaped[Array, " d"] | Shaped[Array, ""]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``x``.
 
@@ -301,15 +309,15 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, ""], float, int],
+        x: Shaped[Array, ""] | float | int,
+        y: Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, ""]: ...
 
     def grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    ) -> Union[Shaped[Array, " d"], Shaped[Array, ""]]:
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+    ) -> Shaped[Array, " d"] | Shaped[Array, ""]:
         r"""
         Evaluate the element-wise gradient of the kernel function w.r.t. ``y``.
 
@@ -334,19 +342,23 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def divergence_x_grad_y(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, " 1 1"]: ...
 
     def divergence_x_grad_y(
         self,
-        x: Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        y: Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ) -> Union[Shaped[Array, " n m"], Shaped[Array, " 1 1"]]:
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int,
+    ) -> Shaped[Array, " n m"] | Shaped[Array, " 1 1"]:
         r"""
         Evaluate the divergence operator w.r.t. ``x`` of Jacobian w.r.t. ``y``.
 
@@ -364,8 +376,8 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def divergence_x_grad_y_elementwise(
         self,
-        x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
+        x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
+        y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     ) -> Shaped[Array, ""]:
         r"""
         Evaluate the element-wise divergence w.r.t. ``x`` of Jacobian w.r.t. ``y``.
@@ -386,17 +398,15 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ) -> Shaped[Array, " n"]:
         r"""
         Compute the (blocked) row-mean of the kernel's Gramian matrix.
@@ -414,101 +424,85 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     @overload
     def compute_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
-        y: Union[
-            Shaped[Array, " m d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         axis: Literal[0] = 0,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ) -> Shaped[Array, " #m"]: ...
 
     @overload
     def compute_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
-        y: Union[
-            Shaped[Array, " m d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         axis: Literal[1] = 1,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ) -> Shaped[Array, " #n"]: ...
 
     @overload
     def compute_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
-        y: Union[
-            Shaped[Array, " m d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         axis: None = None,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
     ) -> Shaped[Array, ""]: ...
 
     def compute_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
-        y: Union[
-            Shaped[Array, " m d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
-        axis: Optional[int] = None,
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
+        y: Shaped[Array, " m d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
+        axis: int | None = None,
         *,
-        block_size: Union[int, None, tuple[Optional[int], Optional[int]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
-    ) -> Union[Shaped[Array, " n"], Shaped[Array, " m"], Shaped[Array, ""]]:
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
+    ) -> Shaped[Array, " n"] | Shaped[Array, " m"] | Shaped[Array, ""]:
         r"""
         Compute the (blocked) mean of the matrix :math:`K_{ij} = k(x_i, y_j)`.
 

@@ -22,7 +22,6 @@ approaches used produce the expected results on simple examples.
 
 import unittest
 from collections.abc import Callable
-from typing import Union
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -1109,7 +1108,7 @@ class TestConvertSteinKernel:
     )
     def test_convert_stein_kernel(
         self,
-        score_matching: Union[None, MagicMock, KernelDensityMatching],
+        score_matching: None | MagicMock | KernelDensityMatching,
         kernel: ScalarValuedKernel,
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""

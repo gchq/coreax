@@ -14,7 +14,7 @@
 
 """Scalar-valued kernel functions."""
 
-from typing import Callable, Union
+from collections.abc import Callable
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -481,7 +481,7 @@ class MaternKernel(ScalarValuedKernel):
     def _compute_summation_term(
         self,
         body: float,
-        iteration: Union[Shaped[Array, " *number_of_iterations"], int],
+        iteration: Shaped[Array, " *number_of_iterations"] | int,
     ) -> Shaped[Array, ""]:
         r"""
         Compute the summation term of the Matérn kernel for a given iteration.
@@ -775,8 +775,8 @@ class SteinKernel(UniCompositeKernel):
     """
 
     score_function: Callable[
-        [Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int]],
-        Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]],
+        [Shaped[Array, " n d"] | Shaped[Array, ""] | float | int],
+        Shaped[Array, " n d"] | Shaped[Array, " 1 1"],
     ]
 
     @override

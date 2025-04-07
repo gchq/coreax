@@ -27,7 +27,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 from pathlib import Path
-from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -53,7 +52,7 @@ from coreax.weights import MMDWeightsOptimiser
 # pylint warnings raised that go against this approach
 # pylint: disable=too-many-locals
 # pylint: disable=duplicate-code
-def main(out_path: Optional[Path] = None) -> tuple[float, float, float, float]:
+def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
     """
     Run the kernel herding on tabular data with a refine post-processing step.
 

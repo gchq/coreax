@@ -16,7 +16,6 @@
 
 import warnings
 from dataclasses import dataclass
-from typing import Union
 from unittest.mock import MagicMock, Mock
 
 import equinox as eqx
@@ -49,10 +48,10 @@ PRE_CORESET_SUPERVISED_DATA = SupervisedData(
 class CoresetTestSetup:
     """Dataclass holding parameters for Coreset tests."""
 
-    coreset_type: Union[type[Coresubset], type[PseudoCoreset]]
+    coreset_type: type[Coresubset] | type[PseudoCoreset]
     coreset_input: Data
     materialised_points: Data
-    pre_coreset_data: Union[Data, SupervisedData]
+    pre_coreset_data: Data | SupervisedData
 
 
 @pytest.mark.parametrize(
@@ -202,7 +201,7 @@ class TestCoresetErrors:
 
     @pytest.mark.parametrize("coreset_type", [Coresubset, PseudoCoreset])
     def test_coreset_too_large(
-        self, coreset_type: Union[type[Coresubset], type[PseudoCoreset]]
+        self, coreset_type: type[Coresubset] | type[PseudoCoreset]
     ):
         """Test we get an appropriate error if the coreset is too large."""
         indices_or_nodes = jnp.arange(10, dtype=jnp.int32)
@@ -215,7 +214,7 @@ class TestCoresetErrors:
 
     @pytest.mark.parametrize("coreset_type", [Coresubset, PseudoCoreset])
     def test_invalid_pre_coreset_data_type(
-        self, coreset_type: Union[type[Coresubset], type[PseudoCoreset]]
+        self, coreset_type: type[Coresubset] | type[PseudoCoreset]
     ):
         """Test we get an appropriate error if pre_coreset_data is the wrong type."""
         indices_or_nodes = jnp.arange(10, dtype=jnp.int32)
@@ -226,7 +225,7 @@ class TestCoresetErrors:
 
     @pytest.mark.parametrize("coreset_type", [Coresubset, PseudoCoreset])
     def test_invalid_indices_or_points_type(
-        self, coreset_type: Union[type[Coresubset], type[PseudoCoreset]]
+        self, coreset_type: type[Coresubset] | type[PseudoCoreset]
     ):
         """Test we get an appropriate error if the indices/points are the wrong type."""
         pre_coreset_data = jnp.arange(10, dtype=jnp.int32)

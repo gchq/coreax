@@ -24,7 +24,7 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -91,8 +91,8 @@ class MMD(Metric[Data]):
         reference_data: Data,
         comparison_data: Data,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **kwargs: Any,
     ) -> Shaped[Array, ""]:
         r"""
@@ -195,7 +195,7 @@ class KSD(Metric[Data]):
     """
 
     kernel: coreax.kernels.ScalarValuedKernel
-    score_matching: Optional[ScoreMatching] = None
+    score_matching: ScoreMatching | None = None
     precision_threshold: float = 1e-12
 
     def compute(
@@ -205,8 +205,8 @@ class KSD(Metric[Data]):
         *,
         laplace_correct: bool = False,
         regularise: bool = False,
-        block_size: Optional[int] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **kwargs: Any,
     ) -> Shaped[Array, ""]:
         r"""

@@ -34,7 +34,7 @@ and then differentiating a kernel density estimate to the data.
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Union, overload
+from typing import overload
 
 import equinox as eqx
 import numpy as np
@@ -77,9 +77,9 @@ class ScoreMatching(eqx.Module):
     @abstractmethod
     @overload
     def match(
-        self, x: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]
+        self, x: Shaped[Array, " 1 1"] | Shaped[Array, ""] | float | int
     ) -> Callable[
-        [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
+        [Shaped[Array, " 1 1"] | Shaped[Array, ""] | float | int],
         Shaped[Array, " 1 1"],
     ]: ...
 
@@ -91,14 +91,14 @@ class ScoreMatching(eqx.Module):
 
     @abstractmethod
     def match(
-        self, x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int]
-    ) -> Union[
-        Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]],
-        Callable[
-            [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
+        self, x: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int
+    ) -> (
+        Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]
+        | Callable[
+            [Shaped[Array, " 1 1"] | Shaped[Array, ""] | float | int],
             Shaped[Array, " 1 1"],
-        ],
-    ]:
+        ]
+    ):
         r"""
         Match some model score function to dataset :math:`X\in\mathbb{R}^{n \times d}`.
 
@@ -562,7 +562,7 @@ class KernelDensityMatching(ScoreMatching):
 
         @overload
         def score_function(
-            x_: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int],
+            x_: Shaped[Array, " 1 1"] | Shaped[Array, ""] | float | int,
         ) -> Shaped[Array, " 1 1"]: ...
 
         @overload
@@ -571,8 +571,8 @@ class KernelDensityMatching(ScoreMatching):
         ) -> Shaped[Array, " n d"]: ...
 
         def score_function(
-            x_: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
-        ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+            x_: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int,
+        ) -> Shaped[Array, " n d"] | Shaped[Array, " 1 1"]:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -613,7 +613,7 @@ class KernelDensityMatching(ScoreMatching):
 def convert_stein_kernel(
     x: Shaped[Array, " n d"],
     kernel: ScalarValuedKernel,
-    score_matching: Union[ScoreMatching, None],
+    score_matching: ScoreMatching | None,
 ) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernels.SteinKernel`.

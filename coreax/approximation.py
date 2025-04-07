@@ -30,14 +30,14 @@ standard :class:`~coreax.kernels.ScalarValuedKernel` is expected.
 
 from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import Array
 from jaxtyping import Shaped
-from typing_extensions import Literal, override
+from typing_extensions import override
 
 from coreax.data import Data, _atleast_2d_consistent
 from coreax.kernels import UniCompositeKernel
@@ -177,14 +177,12 @@ class MonteCarloApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""
@@ -232,14 +230,12 @@ class ANNchorApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""
@@ -305,14 +301,12 @@ class NystromApproximateKernel(RandomRegressionKernel):
 
     def gramian_row_mean(
         self,
-        x: Union[
-            Shaped[Array, " n d"],
-            Shaped[Array, " d"],
-            Shaped[Array, ""],
-            float,
-            int,
-            Data,
-        ],
+        x: Shaped[Array, " n d"]
+        | Shaped[Array, " d"]
+        | Shaped[Array, ""]
+        | float
+        | int
+        | Data,
         **kwargs: Any,
     ) -> Shaped[Array, " n"]:
         r"""

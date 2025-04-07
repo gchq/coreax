@@ -65,7 +65,7 @@ if __name__ == "__main__":
                     "execution_std": times[1][1].item(),
                     "num_runs": NUM_RUNS,
                 }
-                for setup, times in zip(function_setups, results)
+                for setup, times in zip(function_setups, results, strict=False)
             },
         }
         with open(args.output_file, "w", encoding="utf8") as f:

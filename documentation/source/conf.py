@@ -23,7 +23,7 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 from unittest import mock
 
 import sphinx.config
@@ -226,9 +226,7 @@ tqdm_refs: dict[str, dict[str, str]] = {
 }
 
 
-def typehints_formatter(
-    annotation: Any, config: sphinx.config.Config
-) -> Union[str, None]:
+def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> str | None:
     """
     Properly replace custom type aliases.
 
@@ -301,7 +299,7 @@ html_theme_options = {
 def create_custom_inv_file(
     module: ModuleType,
     custom_refs: dict[str, dict[str, str]],
-    file_name: Optional[str] = None,
+    file_name: str | None = None,
 ) -> None:
     """
     Create an objects.inv file containing custom routes.
