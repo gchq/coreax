@@ -51,12 +51,12 @@ from jax.lax import cond, fori_loop
 from jax.typing import DTypeLike
 from jaxtyping import Shaped
 from optax import adamw
-from tqdm import tqdm as LoudTQDM  # noqa:N812
+from tqdm import tqdm
 from typing_extensions import override
 
 from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
 from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
-from coreax.util import KeyArrayLike, SilentTQDM
+from coreax.util import KeyArrayLike
 
 _RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
 
@@ -162,7 +162,7 @@ class SlicedScoreMatching(ScoreMatching):
     num_noise_models: int
     sigma: float
     gamma: float
-    progress_bar: Union[type[LoudTQDM], type[SilentTQDM]]
+    progress_bar: bool
 
     # TODO: refactor this to require use of keyword arguments
     # https://github.com/gchq/coreax/issues/782
@@ -206,10 +206,7 @@ class SlicedScoreMatching(ScoreMatching):
         self.num_noise_models = num_noise_models
         self.sigma = sigma
         self.gamma = gamma
-        if progress_bar:
-            self.progress_bar = LoudTQDM
-        else:
-            self.progress_bar = SilentTQDM
+        self.progress_bar = progress_bar
 
     # pylint: enable=too-many-arguments
 
@@ -486,7 +483,8 @@ class SlicedScoreMatching(ScoreMatching):
             raise
 
         # Carry out main training loop to fit the neural network
-        for i in self.progress_bar(range(self.num_epochs)):
+        tqdm_progress_bar = tqdm(range(self.num_epochs), disable=not self.progress_bar)
+        for i in tqdm_progress_bar:
             # Sample some data-points to pass for this step
             try:
                 idx = random.randint(loop_keys[i], (self.batch_size,), 0, num_points)
@@ -504,8 +502,8 @@ class SlicedScoreMatching(ScoreMatching):
             state, val = train_step(state, x[idx, :], random_vectors[idx, :])
 
             # Print progress (limited to avoid excessive output)
-            if i % 10 == 0:
-                self.progress_bar.write(f"{i:>6}/{self.num_epochs}: loss {val:<.5f}")
+            if i % 10 == 0 and self.progress_bar:
+                tqdm_progress_bar.write(f"{i:>6}/{self.num_epochs}: loss {val:<.5f}")
 
         # Return the learned score function, which is a callable
         return lambda x_: state.apply_fn({"params": state.params}, x_)
