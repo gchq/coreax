@@ -41,7 +41,6 @@ body:
       description: Which version or versions of Python are you seeing the problem on?
       multiple: true
       options:
-        - "3.9"
         - "3.10"
         - "3.11"
         - "3.12"
