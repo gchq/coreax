@@ -117,6 +117,16 @@ repos:
       - id: ruff-format
   - repo: local
     hooks:
+      # Python static type checker
+      - id: pyright
+        name: pyright
+        entry: pyright
+        language: system
+        types:
+          - python
+        # Abort if pyright linter fails as there is some duplication of functionality with
+        # the slow pylint hook
+        fail_fast: true
       # Python static analysis tool
       - id: pylint
         name: pylint
