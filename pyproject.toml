@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "coreax"
 dynamic = ["version"]
-description = "Jax coreset algorithms."
+description = "JAX coreset algorithms."
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = [
@@ -93,31 +93,28 @@ dev = [
     "pyroma>=4.2",
 ]
 
-[tool.uv]
-# Ensure we get the latest package versions available for each Python version
-environments = [
-    "python_version>='3.13'",
-    "python_version=='3.12.*'",
-    "python_version=='3.11.*'",
-    "python_version=='3.10.*'",
-    "python_version=='3.9.*'",
-]
-
 [project.urls]
 Documentation = "https://coreax.readthedocs.io/en/latest/"
 Repository = "https://github.com/gchq/coreax"
 Issues = "https://github.com/gchq/coreax/issues"
 Changelog = "https://github.com/gchq/coreax/blob/main/CHANGELOG.md"
 
-[tool.setuptools]
-packages = [
-    "coreax",
-    "coreax.kernels",
-    "coreax.solvers",
-]
+[tool.coverage.run]
+command_line = "-m pytest tests/unit --cov"
+branch = true
+relative_files = true
+source = ["coreax"]
 
-[tool.setuptools.dynamic]
-version = {attr = "coreax.__version__"}
+[tool.coverage.report]
+show_missing = true
+sort = "Cover"
+exclude_also = [
+    "pass",
+    "raise RuntimeError",
+    "if TYPE_CHECKING:",
+    "raise$",
+    "\\.\\.\\.",
+]
 
 [tool.pyright]
 exclude = [
@@ -199,19 +196,22 @@ allow-dunder-method-names = ["__check_init__", "__jax_array__"]
 combine-as-imports = true
 force-wrap-aliases = true
 
-[tool.coverage.run]
-command_line = "-m pytest tests/unit --cov"
-branch = true
-relative_files = true
-source = ["coreax"]
-
-[tool.coverage.report]
-show_missing = true
-sort = "Cover"
-exclude_also = [
-    "pass",
-    "raise RuntimeError",
-    "if TYPE_CHECKING:",
-    "raise$",
-    "\\.\\.\\.",
+[tool.uv]
+# Ensure we get the latest package versions available for each Python version
+environments = [
+    "python_version>='3.13'",
+    "python_version=='3.12.*'",
+    "python_version=='3.11.*'",
+    "python_version=='3.10.*'",
+    "python_version=='3.9.*'",
 ]
+
+[tool.setuptools]
+packages = [
+    "coreax",
+    "coreax.kernels",
+    "coreax.solvers",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "coreax.__version__"}
