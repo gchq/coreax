@@ -30,6 +30,7 @@ dependencies = [
     # should not be taken to imply that Coreax is *known* to be incompatible with
     # earlier versions; they are just there to prevent extremely out-of-date versions
     # of dependencies being used (which would almost certainly have incompatibilities).
+    "beartype>=0.19, !=0.20.1, !=0.20.2",
     "equinox>=0.11.5",  # Earlier versions are incompatible.
     "flax>=0.8",
     "jax>=0.4",

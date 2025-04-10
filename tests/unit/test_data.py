@@ -25,7 +25,7 @@ import jax.tree_util as jtu
 import pytest
 from beartype.door import is_bearable
 from jax import Array
-from jaxtyping import Float, Int, Shaped
+from jaxtyping import Float, Int, Shaped, TypeCheckError
 
 import coreax.data
 
@@ -48,60 +48,31 @@ def test_as_supervised_data():
 
 
 @pytest.mark.parametrize(
-    "arrays",
-    [
-        (jnp.array(1),),
-        (jnp.array(1), jnp.array(1)),
-        (jnp.array([1, 1]),),
-        (jnp.array([1, 1]), jnp.array([1, 1])),
-        (jnp.array([[1], [1]]),),
-        (jnp.array([[1], [1]]), jnp.array([[1], [1]])),
-        (jnp.array([[[1]], [[1]]]),),
-        (jnp.array([[[1]], [[1]]]), jnp.array([[[1]], [[1]]])),
-        (1.0,),
-        (1.0, 1.0),
-        (1,),
-        (1, 1),
-    ],
-    ids=[
-        "single_zero_dimensional_array",
-        "multiple_zero_dimensional_arrays",
-        "single_one_dimensional_array",
-        "multiple_one_dimensional_arrays",
-        "single_two_dimensional_array",
-        "multiple_two_dimensional_arrays",
-        "single_three_dimensional_array",
-        "multiple_three_dimensional_arrays",
-        "single_float",
-        "multiple_floats",
-        "single_int",
-        "multiple_ints",
-    ],
+    "array",
+    (
+        pytest.param(jnp.array(1), id="zero_dimensional_array"),
+        pytest.param(jnp.array([1, 1]), id="one_dimensional_array"),
+        pytest.param(jnp.array([[1], [1]]), id="two_dimensional_array"),
+        pytest.param(jnp.array([[[1]], [[1]]]), id="three_dimensional_array"),
+        pytest.param(1.0, id="float"),
+        pytest.param(1, id="int"),
+    ),
 )
-def test_atleast_2d_consistent(arrays: tuple[Array]) -> None:
+def test_atleast_2d_consistent(array: Array) -> None:
     """Check ``atleast_2d_consistent`` returns arrays with expected dimension."""
     min_dimension = 2
-    num_arrays = len(arrays)
 
     # pylint: disable=protected-access
-    arrays_atleast_2d = coreax.data._atleast_2d_consistent(*arrays)
+    array_atleast_2d = coreax.data._atleast_2d_consistent(array)
     # pylint: enable=protected-access
 
-    if num_arrays == 1:
-        array = jnp.asarray(arrays[0])
-        if len(array.shape) <= min_dimension:
-            # Check we have expanded to two dimensions
-            assert len(arrays_atleast_2d.shape) == min_dimension
-        else:
-            # Do nothing
-            assert arrays_atleast_2d.shape == array.shape
+    array = jnp.asarray(array)
+    if len(array.shape) <= min_dimension:
+        # Check we have expanded to two dimensions
+        assert len(array_atleast_2d.shape) == min_dimension
     else:
-        for i in range(num_arrays):
-            array = jnp.asarray(arrays[i])
-            if len(array.shape) <= min_dimension:
-                assert len(arrays_atleast_2d[i].shape) == min_dimension
-            else:
-                assert arrays_atleast_2d[i].shape == array.shape
+        # Do nothing
+        assert array_atleast_2d.shape == array.shape
 
 
 @pytest.mark.parametrize(
@@ -224,8 +195,8 @@ class TestSupervisedData:
         Test that __check_init__ raises ValueError when supervision has bad dimension.
         """
         with pytest.raises(
-            ValueError,
-            match="Leading dimensions of 'supervision' and 'data' must be equal",
+            TypeCheckError,
+            match="error whilst checking the parameters of coreax.data.SupervisedData",
         ):
             invalid_supervision = jnp.ones(DATA_ARRAY.shape[0] + 1)
             coreax.data.SupervisedData(DATA_ARRAY, invalid_supervision)

@@ -9,6 +9,7 @@ apeye-core==1.1.5
 attrs==25.3.0
 autodocsumm==0.2.14
 babel==2.17.0
+beartype==0.20.0
 beautifulsoup4==4.13.3
 cachecontrol==0.14.2
 certifi==2025.1.31

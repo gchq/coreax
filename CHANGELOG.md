@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- -
+- `Data` and `SupervisedData` are now jaxtyped using beartype -- beartype is now a
+  required dependency.
 
 ### Removed
 
