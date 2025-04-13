@@ -133,7 +133,7 @@ jaxlib==0.5.3 ; python_full_version >= '3.10'
     #   jax
     #   jaxopt
     #   optax
-jaxopt==0.8.3
+jaxopt==0.8.4
     # via coreax
 jaxtyping==0.2.36 ; python_full_version < '3.10'
     # via
@@ -192,7 +192,7 @@ numpy==2.0.2 ; python_full_version < '3.10'
     #   scikit-learn
     #   scipy
     #   tensorstore
-numpy==2.1.3 ; python_full_version >= '3.10'
+numpy==2.2.4 ; python_full_version >= '3.10'
     # via
     #   chex
     #   flax
@@ -214,7 +214,7 @@ optax==0.2.4
     #   flax
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
-orbax-checkpoint==0.11.10 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.12 ; python_full_version >= '3.10'
     # via flax
 packaging==24.2
     # via sphinx
@@ -384,7 +384,7 @@ tqdm==4.67.1
     # via coreax
 treescope==0.1.9 ; python_full_version >= '3.10'
     # via flax
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via
     #   beautifulsoup4
     #   chex
@@ -398,7 +398,7 @@ typing-extensions==4.13.1
     #   referencing
     #   rich
     #   sphinx-toolbox
-urllib3==2.3.0
+urllib3==2.4.0
     # via
     #   requests
     #   sphinx-prompt
