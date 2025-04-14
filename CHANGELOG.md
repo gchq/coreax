@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
- -
+ - Internal `SilentTQDM` class has been removed; all user-facing functionality has been preserved.
 
 ### Deprecated
 
