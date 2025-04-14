@@ -27,7 +27,6 @@ jobs:
           version: "latest"
           python-version: 3.13
           enable-cache: true
-          cache-suffix: 3.13
       - name: Install test dependencies
         run: uv sync --extra test --no-dev --locked
       - name: Debug - uv pip freeze

@@ -35,7 +35,6 @@ jobs:
         version: "latest"
         python-version: ${{ matrix.python-version }}
         enable-cache: true
-        cache-suffix: ${{ matrix.python-version }}
     - name: Install test dependencies
       run: uv sync --extra test --no-dev --locked
     - name: Debug - uv pip freeze
