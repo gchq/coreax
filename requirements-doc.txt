@@ -23,7 +23,7 @@ autodocsumm==0.2.14
     # via sphinx-toolbox
 babel==2.17.0
     # via sphinx
-beautifulsoup4==4.13.3
+beautifulsoup4==4.13.4
     # via
     #   furo
     #   sphinx-toolbox
@@ -111,7 +111,7 @@ jax==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jax==0.5.3 ; python_full_version >= '3.10'
+jax==0.6.0 ; python_full_version >= '3.10'
     # via
     #   chex
     #   coreax
@@ -127,13 +127,13 @@ jaxlib==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jaxlib==0.5.3 ; python_full_version >= '3.10'
+jaxlib==0.6.0 ; python_full_version >= '3.10'
     # via
     #   chex
     #   jax
     #   jaxopt
     #   optax
-jaxopt==0.8.4
+jaxopt==0.8.5
     # via coreax
 jaxtyping==0.2.36 ; python_full_version < '3.10'
     # via
@@ -192,7 +192,7 @@ numpy==2.0.2 ; python_full_version < '3.10'
     #   scikit-learn
     #   scipy
     #   tensorstore
-numpy==2.2.4 ; python_full_version >= '3.10'
+numpy==2.2.5 ; python_full_version >= '3.10'
     # via
     #   chex
     #   flax
@@ -216,7 +216,7 @@ orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
 orbax-checkpoint==0.11.12 ; python_full_version >= '3.10'
     # via flax
-packaging==24.2
+packaging==25.0
     # via sphinx
 platformdirs==4.3.7
     # via apeye
@@ -275,7 +275,7 @@ scipy==1.15.2 ; python_full_version >= '3.10'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-setuptools==78.1.0 ; python_full_version >= '3.12'
+setuptools==78.1.1 ; python_full_version >= '3.12'
     # via
     #   chex
     #   sphinxcontrib-bibtex
@@ -402,7 +402,7 @@ urllib3==2.4.0
     # via
     #   requests
     #   sphinx-prompt
-wadler-lindig==0.1.4 ; python_full_version >= '3.10'
+wadler-lindig==0.1.5 ; python_full_version >= '3.10'
     # via
     #   equinox
     #   jaxtyping
