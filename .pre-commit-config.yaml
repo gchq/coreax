@@ -77,7 +77,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.17.3
+    rev: v8.19.0
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -105,7 +105,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.5
+    rev: v0.11.6
     hooks:
       # Run the linter.
       - id: ruff
