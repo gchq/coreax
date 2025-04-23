@@ -23,8 +23,7 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional, TypeVar, Union
-from unittest import mock
+from typing import Any, TypeVar
 
 import sphinx.config
 import sphobjinv
@@ -46,11 +45,7 @@ TQDM_CUSTOM_PATH = SOURCE_FOLDER_PATH / "tqdm.inv"
 
 sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER_PATH)])
 
-
 # pylint: disable=wrong-import-position
-for module_name in ("jaxopt",):
-    # only needed to import coreax, not actually used on import
-    sys.modules[module_name] = mock.Mock()
 from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
 
 import coreax  # Cannot import until after package has been added to path
@@ -148,7 +143,6 @@ if RUNNING_IN_GITHUB_ACTIONS:
 intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://jax.readthedocs.io/en/latest", None),
-    "jaxopt": ("https://jaxopt.github.io/stable", None),
     "jaxtyping": ("https://docs.kidger.site/jaxtyping", None),
     "flax": ("https://flax-linen.readthedocs.io/en/latest", None),
     "optax": ("https://optax.readthedocs.io/en/latest", None),
@@ -228,9 +222,7 @@ tqdm_refs: dict[str, dict[str, str]] = {
 }
 
 
-def typehints_formatter(
-    annotation: Any, config: sphinx.config.Config
-) -> Union[str, None]:
+def typehints_formatter(annotation: Any, config: sphinx.config.Config) -> str | None:
     """
     Properly replace custom type aliases.
 
@@ -303,7 +295,7 @@ html_theme_options = {
 def create_custom_inv_file(
     module: ModuleType,
     custom_refs: dict[str, dict[str, str]],
-    file_name: Optional[str] = None,
+    file_name: str | None = None,
 ) -> None:
     """
     Create an objects.inv file containing custom routes.

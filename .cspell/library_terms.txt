@@ -58,7 +58,6 @@ jacfwd
 jacrev
 jax
 jaxlib
-jaxopt
 jaxtyped
 jaxtyping
 jumanjihouse
@@ -82,6 +81,7 @@ mimsave
 minval
 mmd
 modindex
+mpax
 myst
 nabla
 nanargmax
@@ -119,6 +119,7 @@ pytree
 pytrees
 pyupgrade
 quickstart
+rapdhg
 rcfile
 rcond
 rect

@@ -29,11 +29,11 @@ dependencies = [
     # should not be taken to imply that Coreax is *known* to be incompatible with
     # earlier versions; they are just there to prevent extremely out-of-date versions
     # of dependencies being used (which would almost certainly have incompatibilities).
-    "equinox>=0.11.5",  # Earlier versions are incompatible.
+    "equinox>=0.11.5", # Earlier versions are incompatible.
     "flax>=0.8",
     "jax>=0.4",
-    "jaxopt>=0.8",
-    "jaxtyping>0.2.31",  # Earlier versions are incompatible.
+    "jaxtyping>0.2.31",
+    "mpax>=0.2.0",
     "optax>=0.2",
     "scikit-learn>=1",
     "tqdm>=4",

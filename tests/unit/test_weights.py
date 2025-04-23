@@ -21,7 +21,8 @@ written produce the expected results on simple examples.
 
 import cmath
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, NamedTuple, Optional, TypeVar
+from collections.abc import Callable
+from typing import Generic, NamedTuple, TypeVar
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -48,7 +49,7 @@ _Data = TypeVar("_Data", bound=Data)
 class _Problem(NamedTuple):
     coreset: AbstractCoreset
     optimiser: WeightsOptimiser
-    target_metric: Optional[Metric]
+    target_metric: Metric | None
 
 
 class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
@@ -274,12 +275,8 @@ class TestMMDWeightsOptimiser(BaseWeightsOptimiserTest[_Data]):
         w2 = jnp.real(w2)
         w1 = 1 - w2
         expected_output = jnp.asarray([w1, w2])
-
         optimiser = MMDWeightsOptimiser(kernel=SquaredExponentialKernel())
-
-        # Solve for the weights
         output = optimiser.solve(x, y)
-
         assert output == pytest.approx(expected_output, abs=1e-3)
 
 

@@ -32,13 +32,13 @@ the dataset.
 """
 
 from abc import abstractmethod
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
-from jaxopt import OSQP
 from jaxtyping import Shaped
+from mpax import create_qp, raPDHG
 
 from coreax.data import Data, as_data
 from coreax.kernels import ScalarValuedKernel
@@ -56,10 +56,10 @@ INVALID_KERNEL_DATA_COMBINATION = (
 def solve_qp(
     kernel_mm: Shaped[Array, "m m"],
     gramian_row_mean: Shaped[Array, " m 1"],
-    **osqp_kwargs,
+    **rapdhg_kwargs,
 ) -> Shaped[Array, " m"]:
     r"""
-    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
+    Solve quadratic programs with the :class:`mpax.raPDHG` solver.
 
     Solves simplex weight problems of the form:
 
@@ -78,28 +78,35 @@ def solve_qp(
     :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
     :return: Optimised solution for the quadratic program
     """
-    # Setup optimisation problem - all variable names are consistent with the OSQP
-    # terminology. Begin with the objective parameters.
-    q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(gramian_row_mean)
+    # Define the QP objective parameters
+    q_objective = jnp.asarray(kernel_mm)
+    c_objective = -jnp.asarray(gramian_row_mean)
 
-    # Define the equality constraint parameters
-    num_points = q_array.shape[0]
-    a_array = jnp.ones((1, num_points))
-    b = jnp.array([1.0])
-
-    # Define the inequality constraint parameters
-    g_array = jnp.eye(num_points) * -1.0
-    h = jnp.zeros(num_points)
+    num_points, *_ = q_objective.shape
+    # Define the QP constraint parameters
+    a_equality = jnp.ones((1, num_points))
+    b_equality = jnp.array([1.0])
+    g_inequality = jnp.eye(num_points)
+    h_inequality = jnp.zeros(num_points)
+    primal_solution_lower_bound = jnp.zeros(num_points)
+    primal_solution_upper_bound = jnp.ones(num_points)
 
     # Define solver object and run solver
-    qp = OSQP(**osqp_kwargs)
-    sol = qp.run(
-        params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
-    ).params
+    qp = create_qp(
+        Q=q_objective,
+        c=c_objective,
+        A=a_equality,
+        b=b_equality,
+        G=g_inequality,
+        h=h_inequality,
+        l=primal_solution_lower_bound,
+        u=primal_solution_upper_bound,
+    )
+    solver = raPDHG(**rapdhg_kwargs)
+    sol = solver.optimize(qp)
 
     # Ensure conditions of solution are met
-    solution = apply_negative_precision_threshold(sol.primal, jnp.inf)
+    solution = apply_negative_precision_threshold(sol.primal_solution, jnp.inf)
     return solution / jnp.sum(solution)
 
 
@@ -113,8 +120,8 @@ def _prepare_kernel_system(
     coreset: Data,
     epsilon: float = 1e-10,
     *,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    block_size: int | None | tuple[int | None, int | None] = None,
+    unroll: int | bool | tuple[int | bool, int | bool] = 1,
 ) -> tuple[Array, Array]:
     r"""
     Return the row mean of :math`k(coreset, dataset)` and the coreset Gramian.
@@ -217,8 +224,8 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
         coreset: _Data,
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **solver_kwargs,
     ) -> Shaped[Array, " m"]:
         r"""
@@ -285,8 +292,8 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         coreset: _Data,
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **solver_kwargs,
     ) -> Shaped[Array, " m"]:
         r"""
