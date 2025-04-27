@@ -29,7 +29,7 @@ beautifulsoup4==4.13.4
     #   sphinx-toolbox
 cachecontrol==0.14.2
     # via sphinx-toolbox
-certifi==2025.1.31
+certifi==2025.4.26
     # via
     #   requests
     #   sphinx-prompt
@@ -78,7 +78,7 @@ filelock==3.18.0
     #   sphinx-toolbox
 flax==0.8.5 ; python_full_version < '3.10'
     # via coreax
-flax==0.10.5 ; python_full_version >= '3.10'
+flax==0.10.6 ; python_full_version >= '3.10'
     # via coreax
 fsspec==2025.3.2
     # via etils
@@ -139,7 +139,7 @@ jaxtyping==0.2.36 ; python_full_version < '3.10'
     # via
     #   coreax
     #   equinox
-jaxtyping==0.3.1 ; python_full_version >= '3.10'
+jaxtyping==0.3.2 ; python_full_version >= '3.10'
     # via
     #   coreax
     #   equinox
@@ -151,7 +151,7 @@ joblib==1.4.2
     # via scikit-learn
 jsonschema==4.23.0
     # via sphobjinv
-jsonschema-specifications==2024.10.1
+jsonschema-specifications==2025.4.1
     # via jsonschema
 latexcodec==3.0.0
     # via pybtex
@@ -168,7 +168,7 @@ ml-dtypes==0.5.1
     #   jax
     #   jaxlib
     #   tensorstore
-more-itertools==10.6.0
+more-itertools==10.7.0
     # via cssutils
 msgpack==1.1.0
     # via
@@ -275,7 +275,7 @@ scipy==1.15.2 ; python_full_version >= '3.10'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-setuptools==78.1.1 ; python_full_version >= '3.12'
+setuptools==79.0.1 ; python_full_version >= '3.12'
     # via
     #   chex
     #   sphinxcontrib-bibtex
@@ -287,7 +287,7 @@ six==1.17.0
     #   pybtex
 snowballstemmer==2.2.0
     # via sphinx
-soupsieve==2.6
+soupsieve==2.7
     # via beautifulsoup4
 sphinx==7.4.7 ; python_full_version < '3.10'
     # via
@@ -330,7 +330,7 @@ sphinx-autodoc-typehints==3.0.1 ; python_full_version == '3.10.*'
     # via
     #   coreax
     #   sphinx-toolbox
-sphinx-autodoc-typehints==3.1.0 ; python_full_version >= '3.11'
+sphinx-autodoc-typehints==3.2.0 ; python_full_version >= '3.11'
     # via
     #   coreax
     #   sphinx-toolbox
@@ -370,7 +370,7 @@ tensorstore==0.1.69 ; python_full_version < '3.10'
     # via
     #   flax
     #   orbax-checkpoint
-tensorstore==0.1.73 ; python_full_version >= '3.10'
+tensorstore==0.1.74 ; python_full_version >= '3.10'
     # via
     #   flax
     #   orbax-checkpoint
