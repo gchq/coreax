@@ -45,15 +45,11 @@ jobs:
           fi
 
       # Pre-commit setup and autoupdate steps
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
+          version: "latest"
           python-version: 3.13
-          cache: pip
-      - name: Upgrade Pip
-        run: python -m pip install --upgrade pip
-      - name: Install pre-commit
-        run: pip install pre-commit
       - name: Store hash of baseline pre-commit config for comparison
         id: old_file
         run: echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT
@@ -65,7 +61,7 @@ jobs:
       - name: Run pre-commit autoupdate on main pre-commit config
         id: autoupdate
         run: |
-          pre-commit autoupdate > ${{ env.update_message_path }}
+          uv tool pre-commit autoupdate > ${{ env.update_message_path }}
           sed -i "/updating/!d" ${{ env.update_message_path }}
       - name: Store hash of new pre-commit config for comparison
         id: new_file

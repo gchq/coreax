@@ -21,30 +21,12 @@ jobs:
       percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up base Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          # Note that this is just the version of Python that we use to run `uv` with.
-          # `uv` manages its own version of Python.
-          # For speed, we use the same version for both, but in principle these could differ.
+          version: "latest"
           python-version: 3.13
-      - name: Set up uv cache directory location (Linux/Mac)
-        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
-        if: runner.os != 'Windows'
-      - name: Set up uv cache directory location (Windows)
-        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $env:GITHUB_ENV
-        if: runner.os == 'Windows'
-      - name: Restore uv cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.UV_CACHE_DIR }}
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-test
-          restore-keys: |
-            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}
-            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-            uv-${{ runner.os }}
-      - name: Install latest versions of pip and uv
-        run: python -m pip install --upgrade pip uv
+          enable-cache: true
       - name: Install test dependencies
         run: uv sync --extra test --no-dev --locked
       - name: Debug - uv pip freeze
@@ -78,9 +60,7 @@ jobs:
           uv run tests/coverage/compare.py \
             ${{ steps.cov.outputs.percentage_float }} \
             $HISTORIC
-      - name: Minimize UV cache
-        run: uv cache prune --ci
-        if: always()
+
   coverage-badge:
     name: Update coverage badge
     # Keep as a separate job to avoid clashes between meta and main repos
