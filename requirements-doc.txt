@@ -27,14 +27,14 @@ beautifulsoup4==4.13.4
     # via
     #   furo
     #   sphinx-toolbox
-cachecontrol==0.14.2
+cachecontrol==0.14.3
     # via sphinx-toolbox
 certifi==2025.4.26
     # via
     #   requests
     #   sphinx-prompt
     #   sphobjinv
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via requests
 chex==0.1.89
     # via optax
@@ -86,7 +86,7 @@ furo==2024.8.6
     # via coreax
 html5lib==1.1
     # via sphinx-toolbox
-humanize==4.12.2
+humanize==4.12.3
     # via orbax-checkpoint
 idna==3.10
     # via
@@ -95,7 +95,7 @@ idna==3.10
     #   sphinx-prompt
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.6.1 ; python_full_version < '3.10'
+importlib-metadata==8.7.0 ; python_full_version < '3.10'
     # via
     #   jax
     #   sphinx
@@ -147,7 +147,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   sphinx-jinja2-compat
-joblib==1.4.2
+joblib==1.5.0
     # via scikit-learn
 jsonschema==4.23.0
     # via sphobjinv
@@ -214,7 +214,7 @@ optax==0.2.4
     #   flax
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
-orbax-checkpoint==0.11.12 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.13 ; python_full_version >= '3.10'
     # via flax
 packaging==25.0
     # via sphinx
@@ -275,7 +275,7 @@ scipy==1.15.2 ; python_full_version >= '3.10'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-setuptools==79.0.1 ; python_full_version >= '3.12'
+setuptools==80.3.0 ; python_full_version >= '3.12'
     # via
     #   chex
     #   sphinxcontrib-bibtex
