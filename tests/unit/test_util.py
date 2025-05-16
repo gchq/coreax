@@ -35,7 +35,6 @@ from scipy.stats import ortho_group
 
 from coreax.util import (
     JITCompilableFunction,
-    SilentTQDM,
     apply_negative_precision_threshold,
     difference,
     format_time,
@@ -346,18 +345,3 @@ class TestUtil:
         assert jnp.all(result_dict["slow_mean"].std(axis=0) == summary_stats[0][1])
         assert jnp.all(result_dict["jnp_mean"].mean(axis=0) == summary_stats[1][0])
         assert jnp.all(result_dict["jnp_mean"].std(axis=0) == summary_stats[1][1])
-
-
-class TestSilentTQDM:
-    """Test silent substitute for TQDM."""
-
-    def test_iterator(self):
-        """Test that iterator works."""
-        iterator_length = 10
-        expect = list(range(iterator_length))
-        actual = list(SilentTQDM(range(iterator_length)))
-        assert actual == expect
-
-    def test_write(self):
-        """Test that silenced version of TQDM write command does not crash."""
-        assert SilentTQDM(range(1)).write("something") is None
