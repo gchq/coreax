@@ -259,7 +259,7 @@ class TestUtil:
         JIT compiling and executing the passed function, the latter is the time for
         dispatching the JIT compiled function.
         """
-        wait_time = 2
+        wait_time = 0.2
         trace_counter = Mock()
 
         x_in = jnp.ones(1000)
@@ -298,43 +298,34 @@ class TestUtil:
         not cached, and that a for-looped variant of a mean function takes longer to
         compile than the in-built vectorised version.
         """
+        wait_time = 0.2
         trace_counter = Mock()
-        # Define a for-looped version of a mean computation, this will be very slow to
-        # compile.
 
         def _slow_mean(a):
             trace_counter()
-            num_points = a.shape[0]
-            total = 0
-            for i in range(num_points):
-                total += a[i]
-            return total / num_points
+            time.sleep(wait_time)
+            return jnp.mean(a)
 
-        random_vector = jr.normal(jr.key(2_024), shape=(100,))
+        a_in = jnp.ones(shape=(100,))
 
-        num_runs = 10
+        num_runs = 5
+        function_sequence = [
+            JITCompilableFunction(_slow_mean, fn_kwargs={"a": a_in}, name="slow_mean"),
+            JITCompilableFunction(jnp.mean, fn_kwargs={"a": a_in}, name="jnp_mean"),
+        ]
         summary_stats, result_dict = speed_comparison_test(
-            [
-                JITCompilableFunction(
-                    _slow_mean, fn_kwargs={"a": random_vector}, name="slow_mean"
-                ),
-                JITCompilableFunction(
-                    jnp.mean, fn_kwargs={"a": random_vector}, name="jnp_mean"
-                ),
-            ],
-            num_runs=num_runs,
-            log_results=False,
+            function_sequence, num_runs=num_runs, log_results=False
         )
 
         # Tracing should occur for each run of the function, not just once, thus
-        # `trace_counter` should be called num_runs times.
+        # `trace_counter` should be called `num_runs` times.
         assert trace_counter.call_count == num_runs
 
-        # Assert that indeed the mean compilation time of slow_mean is slower than
-        # jnp.mean.
+        # At trace time `time.sleep` will be called. Thus, we can be sure that,
+        # `slow_mean_compilation_time` is lower bounded by `jnp_mean_compilation_time`.
         slow_mean_compilation_time = summary_stats[0][0][0]
-        fast_mean_compilation_time = summary_stats[1][0][0]
-        assert slow_mean_compilation_time > fast_mean_compilation_time > 0
+        jnp_mean_compilation_time = summary_stats[1][0][0]
+        assert slow_mean_compilation_time > jnp_mean_compilation_time > 0
 
         # Check result dictionary has the correct size
         assert len(result_dict["slow_mean"]) == num_runs
