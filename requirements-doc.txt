@@ -80,7 +80,7 @@ flax==0.8.5 ; python_full_version < '3.10'
     # via coreax
 flax==0.10.6 ; python_full_version >= '3.10'
     # via coreax
-fsspec==2025.3.2
+fsspec==2025.5.1
     # via etils
 furo==2024.8.6
     # via coreax
@@ -111,7 +111,7 @@ jax==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jax==0.6.0 ; python_full_version >= '3.10'
+jax==0.6.1 ; python_full_version >= '3.10'
     # via
     #   chex
     #   coreax
@@ -127,7 +127,7 @@ jaxlib==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jaxlib==0.6.0 ; python_full_version >= '3.10'
+jaxlib==0.6.1 ; python_full_version >= '3.10'
     # via
     #   chex
     #   jax
@@ -147,7 +147,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   sphinx-jinja2-compat
-joblib==1.5.0
+joblib==1.5.1
     # via scikit-learn
 jsonschema==4.23.0
     # via sphobjinv
@@ -253,7 +253,7 @@ rich==14.0.0
     # via flax
 roman-numerals-py==3.1.0 ; python_full_version >= '3.11'
     # via sphinx
-rpds-py==0.25.0
+rpds-py==0.25.1
     # via
     #   jsonschema
     #   referencing
@@ -275,7 +275,7 @@ scipy==1.15.3 ; python_full_version >= '3.10'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-setuptools==80.7.1 ; python_full_version >= '3.12'
+setuptools==80.8.0 ; python_full_version >= '3.12'
     # via
     #   chex
     #   sphinxcontrib-bibtex
