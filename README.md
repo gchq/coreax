@@ -44,10 +44,13 @@ pixel image (38,700 pixels in total) to a coreset approximately 20% of this size
 (Right) 8,000 points chosen randomly.
 Run `benchmark/david_benchmark.py` to  replicate.
 
-|               Original                |             Coreset             |               Random                |
-|:-------------------------------------:|:-------------------------------:|:-----------------------------------:|
-| ![](examples/data/david_original.png) | ![](examples/data/david_kt.png) | ![](examples/data/david_random.png) |
+|      Original      |      Coreset      |      Random      |
+|:------------------:|:-----------------:|:----------------:|
+| ![][DavidOriginal] | ![][DavidCoreset] | ![][DavidRandom] |
 
+[DavidOriginal]: https://raw.githubusercontent.com/gchq/coreax/refs/heads/main/examples/data/david_original.png
+[DavidCoreset]: https://raw.githubusercontent.com/gchq/coreax/refs/heads/main/examples/data/david_kt.png
+[DavidRandom]: https://raw.githubusercontent.com/gchq/coreax/refs/heads/main/examples/data/david_random.png
 
 ### Video event detection
 
@@ -55,9 +58,12 @@ Here we identify representative frames such that most of the
 useful information in a video is preserved.
 Run `examples/pounce.py` to replicate.
 
-|            Original             |                 Coreset                 |
-|:-------------------------------:|:---------------------------------------:|
-| ![](examples/pounce/pounce.gif) | ![](examples/pounce/pounce_coreset.gif) |
+|      Original       |      Coreset       |
+|:-------------------:|:------------------:|
+| ![][PounceOriginal] | ![][PounceCoreset] |
+
+[PounceOriginal]: https://raw.githubusercontent.com/gchq/coreax/refs/heads/main/examples/pounce/pounce.gif
+[PounceCoreset]: https://raw.githubusercontent.com/gchq/coreax/refs/heads/main/examples/pounce/pounce_coreset.gif
 
 
 # Setup
