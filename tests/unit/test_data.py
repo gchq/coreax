@@ -207,13 +207,13 @@ class TestData:
         valid_shape = " ".join(str(dim) for dim in data.shape)
         invalid_shape = " ".join(str(dim + 1) for dim in data.shape)
 
-        assert is_bearable(data, Shaped[coreax.data.Data, valid_shape])
+        assert is_bearable(data, Shaped[coreax.data.Data, valid_shape])  # pyright: ignore reportArgumentType see #1007
         assert is_bearable(data, valid_jax_type[coreax.data.Data, valid_shape])
         assert not is_bearable(data, invalid_jax_type[coreax.data.Data, invalid_shape])
-        assert not is_bearable(data, Shaped[coreax.data.Data, invalid_shape])
+        assert not is_bearable(data, Shaped[coreax.data.Data, invalid_shape])  # pyright: ignore reportArgumentType see #1007
         if not isinstance(data, coreax.data.SupervisedData):
             incorrect_instance_type = Shaped[coreax.data.SupervisedData, "..."]
-            assert not is_bearable(data, incorrect_instance_type)
+            assert not is_bearable(data, incorrect_instance_type)  # pyright: ignore reportArgumentType see #1007
 
 
 class TestSupervisedData:
