@@ -120,6 +120,7 @@ packages = [
 version = {attr = "coreax.__version__"}
 
 [tool.pyright]
+enableExperimentalFeatures = true
 exclude = [
     # Exclude snippets for documentation as most variables not properly defined
     "documentation/source/snippets",
