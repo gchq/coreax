@@ -69,9 +69,7 @@ etils==1.5.2 ; python_full_version < '3.10'
     #   optax
     #   orbax-checkpoint
 etils==1.12.2 ; python_full_version >= '3.10'
-    # via
-    #   optax
-    #   orbax-checkpoint
+    # via orbax-checkpoint
 filelock==3.18.0
     # via
     #   cachecontrol
@@ -170,7 +168,7 @@ ml-dtypes==0.5.1
     #   tensorstore
 more-itertools==10.7.0
     # via cssutils
-msgpack==1.1.0
+msgpack==1.1.1
     # via
     #   cachecontrol
     #   flax
@@ -208,13 +206,17 @@ numpy==2.2.6 ; python_full_version >= '3.10'
     #   treescope
 opt-einsum==3.4.0
     # via jax
-optax==0.2.4
+optax==0.2.4 ; python_full_version < '3.10'
+    # via
+    #   coreax
+    #   flax
+optax==0.2.5 ; python_full_version >= '3.10'
     # via
     #   coreax
     #   flax
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
-orbax-checkpoint==0.11.13 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.15 ; python_full_version >= '3.10'
     # via flax
 packaging==25.0
     # via sphinx
@@ -244,7 +246,7 @@ referencing==0.36.2
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.3
+requests==2.32.4
     # via
     #   apeye
     #   cachecontrol
@@ -257,7 +259,7 @@ rpds-py==0.25.1
     # via
     #   jsonschema
     #   referencing
-ruamel-yaml==0.18.13
+ruamel-yaml==0.18.14
     # via sphinx-toolbox
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.14' and platform_python_implementation == 'CPython'
     # via ruamel-yaml
@@ -410,7 +412,7 @@ wadler-lindig==0.1.6 ; python_full_version >= '3.10'
     #   jaxtyping
 webencodings==0.5.1
     # via html5lib
-zipp==3.22.0
+zipp==3.23.0
     # via
     #   etils
     #   importlib-metadata
