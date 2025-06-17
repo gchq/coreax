@@ -29,7 +29,7 @@ beautifulsoup4==4.13.4
     #   sphinx-toolbox
 cachecontrol==0.14.3
     # via sphinx-toolbox
-certifi==2025.4.26
+certifi==2025.6.15
     # via
     #   requests
     #   sphinx-prompt
@@ -279,7 +279,7 @@ scipy==1.15.3 ; python_full_version >= '3.10'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-setuptools==80.9.0 ; python_full_version >= '3.12'
+setuptools==80.9.0
     # via
     #   chex
     #   sphinxcontrib-bibtex
@@ -352,7 +352,7 @@ sphinx-toolbox==4.0.0
     # via coreax
 sphinxcontrib-applehelp==2.0.0
     # via sphinx
-sphinxcontrib-bibtex==2.6.3
+sphinxcontrib-bibtex==2.6.4
     # via coreax
 sphinxcontrib-devhelp==2.0.0
     # via sphinx
