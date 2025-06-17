@@ -123,6 +123,7 @@ class SolverTest:
     random_key: KeyArrayLike = jr.key(2024)
     shape: tuple[int, int] = (128, 10)
 
+    @pytest.fixture
     @abstractmethod
     def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
         """

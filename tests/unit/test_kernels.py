@@ -69,10 +69,12 @@ class _Problem(NamedTuple):
 class BaseKernelTest(ABC, Generic[_ScalarValuedKernel]):
     """Test the ``compute`` methods of a ``coreax.kernels.ScalarValuedKernel``."""
 
+    @pytest.fixture
     @abstractmethod
     def kernel(self) -> _ScalarValuedKernel:
         """Abstract pytest fixture which initialises a kernel with parameters fixed."""
 
+    @pytest.fixture
     @abstractmethod
     def problem(
         self, request: pytest.FixtureRequest, kernel: _ScalarValuedKernel

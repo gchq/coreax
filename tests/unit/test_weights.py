@@ -58,6 +58,7 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
     data_shape: tuple = (100, 2)
     coreset_size: int = data_shape[0] // 10
 
+    @pytest.fixture
     @abstractmethod
     def problem(self) -> _Problem:
         """Abstract pytest fixture which returns a weight optimisation problem."""

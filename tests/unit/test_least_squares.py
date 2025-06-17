@@ -58,10 +58,12 @@ class _InverseProblem(NamedTuple):
 class InverseApproximationTest(ABC, Generic[_RegularisedLeastSquaresSolver]):
     """Tests related to inverting kernel gramians via methods in least_squares.py."""
 
+    @pytest.fixture
     @abstractmethod
     def approximator(self) -> _RegularisedLeastSquaresSolver:
         """Abstract pytest fixture which initialises a least-squares approximator."""
 
+    @pytest.fixture
     @abstractmethod
     def problem(self) -> _InverseProblem:
         """Abstract fixture which returns a problem for least-squares approximation."""
