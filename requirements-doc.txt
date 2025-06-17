@@ -220,7 +220,7 @@ packaging==25.0
     # via sphinx
 platformdirs==4.3.8
     # via apeye
-protobuf==6.30.2
+protobuf==6.31.1
     # via orbax-checkpoint
 pybtex==0.24.0
     # via
