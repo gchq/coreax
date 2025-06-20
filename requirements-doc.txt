@@ -398,7 +398,7 @@ typing-extensions==4.13.2
     #   referencing
     #   rich
     #   sphinx-toolbox
-urllib3==2.4.0
+urllib3==2.5.0
     # via
     #   requests
     #   sphinx-prompt
