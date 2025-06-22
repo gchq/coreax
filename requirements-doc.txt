@@ -96,6 +96,7 @@ imagesize==1.4.1
 importlib-metadata==8.7.0 ; python_full_version < '3.10'
     # via
     #   jax
+    #   pybtex
     #   sphinx
     #   sphinxcontrib-bibtex
 importlib-resources==6.5.2
@@ -109,7 +110,7 @@ jax==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jax==0.6.1 ; python_full_version >= '3.10'
+jax==0.6.2 ; python_full_version >= '3.10'
     # via
     #   chex
     #   coreax
@@ -125,7 +126,7 @@ jaxlib==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jaxlib==0.6.1 ; python_full_version >= '3.10'
+jaxlib==0.6.2 ; python_full_version >= '3.10'
     # via
     #   chex
     #   jax
@@ -151,7 +152,7 @@ jsonschema==4.24.0
     # via sphobjinv
 jsonschema-specifications==2025.4.1
     # via jsonschema
-latexcodec==3.0.0
+latexcodec==3.0.1
     # via pybtex
 markdown-it-py==3.0.0
     # via rich
@@ -216,7 +217,7 @@ optax==0.2.5 ; python_full_version >= '3.10'
     #   flax
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
-orbax-checkpoint==0.11.15 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.16 ; python_full_version >= '3.10'
     # via flax
 packaging==25.0
     # via sphinx
@@ -224,13 +225,13 @@ platformdirs==4.3.8
     # via apeye
 protobuf==6.31.1
     # via orbax-checkpoint
-pybtex==0.24.0
+pybtex==0.25.0
     # via
     #   pybtex-docutils
     #   sphinxcontrib-bibtex
 pybtex-docutils==1.0.3
     # via sphinxcontrib-bibtex
-pygments==2.19.1
+pygments==2.19.2
     # via
     #   furo
     #   rich
@@ -286,9 +287,7 @@ setuptools==80.9.0
 simplejson==3.20.1 ; python_full_version >= '3.10'
     # via orbax-checkpoint
 six==1.17.0
-    # via
-    #   html5lib
-    #   pybtex
+    # via html5lib
 snowballstemmer==3.0.1
     # via sphinx
 soupsieve==2.7
@@ -402,11 +401,11 @@ typing-extensions==4.14.0
     #   referencing
     #   rich
     #   sphinx-toolbox
-urllib3==2.4.0
+urllib3==2.5.0
     # via
     #   requests
     #   sphinx-prompt
-wadler-lindig==0.1.6 ; python_full_version >= '3.10'
+wadler-lindig==0.1.7 ; python_full_version >= '3.10'
     # via
     #   equinox
     #   jaxtyping
