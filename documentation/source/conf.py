@@ -142,7 +142,7 @@ autodoc_default_options = {
 }
 
 if RUNNING_IN_GITHUB_ACTIONS:
-    linkcheck_ignore = ["https://stackoverflow.com"]
+    linkcheck_ignore = ["https://stackoverflow.com", "https://ora.ox.ac.uk"]
 
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {  # linking to external documentation
