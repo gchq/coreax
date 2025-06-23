@@ -62,7 +62,7 @@ benchmark = [
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
-    "beartype>=0.19, !=0.20.1, !=0.20.2",
+    "beartype>=0.19",
     "pytest>=8",
     "pytest-cov>=6",
     "pytest-rerunfailures>=15",
