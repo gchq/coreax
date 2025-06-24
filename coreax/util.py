@@ -24,15 +24,13 @@ class factories and checks for numerical precision.
 import logging
 import sys
 import time
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Sequence
 from functools import partial, wraps
 from math import log10
 from typing import (
     Any,
-    Generic,
     NamedTuple,
     Optional,
-    TypeVar,
     Union,
 )
 
@@ -413,37 +411,3 @@ def speed_comparison_test(
                 )
 
     return results, timings_dict
-
-
-T = TypeVar("T")
-
-
-class SilentTQDM(Generic[T]):
-    """
-    Class implementing interface of :class:`~tqdm.tqdm` that does nothing.
-
-    It can substitute :class:`~tqdm.tqdm` to silence all output.
-
-    Based on `code by Pro Q <https://stackoverflow.com/a/77450937>`_.
-
-    Additional parameters are accepted and ignored to match interface of
-    :class:`~tqdm.tqdm`.
-
-    :param iterable: Iterable of tasks to (not) indicate progress for
-    """
-
-    def __init__(self, iterable: Iterable[T], *_args, **_kwargs):
-        """Store iterable."""
-        self.iterable = iterable
-
-    def __iter__(self) -> Iterator[T]:
-        """
-        Iterate.
-
-        :return: Next item
-        """
-        return iter(self.iterable)
-
-    @staticmethod
-    def write(*_args, **_kwargs) -> None:
-        """Do nothing instead of writing to output."""

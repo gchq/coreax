@@ -42,7 +42,7 @@ repos:
           - --ignore-case
           - --unique
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.9
+    rev: 0.7.13
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -77,7 +77,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.17.3
+    rev: v9.0.1
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -105,7 +105,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+    rev: v0.12.0
     hooks:
       # Run the linter.
       - id: ruff
@@ -117,6 +117,16 @@ repos:
       - id: ruff-format
   - repo: local
     hooks:
+      # Python static type checker
+      - id: pyright
+        name: pyright
+        entry: pyright
+        language: system
+        types:
+          - python
+        # Abort if pyright linter fails as there is some duplication of functionality with
+        # the slow pylint hook
+        fail_fast: true
       # Python static analysis tool
       - id: pylint
         name: pylint

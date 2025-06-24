@@ -123,6 +123,7 @@ class SolverTest:
     random_key: KeyArrayLike = jr.key(2024)
     shape: tuple[int, int] = (128, 10)
 
+    @pytest.fixture
     @abstractmethod
     def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
         """
@@ -2786,7 +2787,7 @@ class TestMapReduce(SolverTest):
     coreset_size: int = 16
 
     @override
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="function")
     def solver_factory(self, request) -> jtu.Partial:
         del request
 
@@ -2845,13 +2846,12 @@ class TestMapReduce(SolverTest):
 
             # Allow overriding arguments
             final_args.update(**kwargs)
-
             return MapReduce(**final_args)
 
         return jtu.Partial(get_solver)
 
     @override
-    @pytest.fixture(scope="class", params=["original", "pseudo", "coresubset"])
+    @pytest.fixture(scope="function", params=["original", "pseudo", "coresubset"])
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,

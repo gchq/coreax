@@ -62,7 +62,7 @@ benchmark = [
 # Run unit tests with coverage assessment
 test = [
     "coreax[benchmark]",
-    "beartype>=0.19, !=0.20.1, !=0.20.2",
+    "beartype>=0.19",
     "pytest>=8",
     "pytest-cov>=6",
     "pytest-rerunfailures>=15",
@@ -129,6 +129,8 @@ exclude = [
     "**/__pycache__",
     "**/.*",
 ]
+venvPath = "."
+venv = ".venv"
 
 [tool.ruff]
 src = [".", "examples"]
@@ -148,24 +150,26 @@ select = [
     "PL",     # pylint
     "S102",   # exec-builtin
     "S307",   # suspicious-eval-usage
+    "TD",     # flake8-todo
     "UP",     # pyupgrade
     "W",      # pycodestyle [warning]
 ]
 
 ignore = [
     # Incompatible with ruff format
-    "D206",   # indent-with-spaces
-    "E111",   # indentation-with-invalid-multiple
-    "E114",   # indentation-with-invalid-multiple-comment
-    "E117",   # over-indented
-    "W191",   # tab-indentation
+    "D206",    # indent-with-spaces
+    "E111",    # indentation-with-invalid-multiple
+    "E114",    # indentation-with-invalid-multiple-comment
+    "E117",    # over-indented
+    "W191",    # tab-indentation
     # Incompatible with other pydocstyle rules
-    "D203",   # one-blank-line-before-class
-    "D212",   # multi-line-summary-first-line
+    "D203",    # one-blank-line-before-class
+    "D212",    # multi-line-summary-first-line
     # Incompatible with jaxtyping
-    "F722",   # forward-annotation-syntax-error
+    "F722",    # forward-annotation-syntax-error
     # Opinionated ignores
     "PLR6301", # no-self-use (opinionated)
+    "TD002",   # missing-todo-author (opinionated)
 ]
 
 [tool.ruff.lint.per-file-ignores]
