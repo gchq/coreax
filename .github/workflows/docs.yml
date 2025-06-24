@@ -21,9 +21,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
-          # Note that we use 3.12 here rather than 3.13 to avoid spurious Sphinx errors
-          # about not being able to link to `pathlib._locals.Path`.
-          python-version: 3.12
+          python-version: 3.13
           enable-cache: true
           cache-suffix: "docs"
       - name: Install documentation dependencies
