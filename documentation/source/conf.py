@@ -215,6 +215,7 @@ nitpick_ignore_regex = [
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints
     ArrayLike: ":data:`~jax.typing.ArrayLike`",
+    Path: ":class:`~pathlib.Path`",
 }
 
 # custom references for tqdm, which does not support intersphinx
