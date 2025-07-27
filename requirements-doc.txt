@@ -38,7 +38,7 @@ certifi==2025.7.14
     #   sphobjinv
 charset-normalizer==3.4.2
     # via requests
-chex==0.1.89
+chex==0.1.90
     # via optax
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
@@ -112,7 +112,16 @@ jax==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jax==0.6.2 ; python_full_version >= '3.10'
+jax==0.6.2 ; python_full_version == '3.10.*'
+    # via
+    #   chex
+    #   coreax
+    #   equinox
+    #   flax
+    #   jaxopt
+    #   optax
+    #   orbax-checkpoint
+jax==0.7.0 ; python_full_version >= '3.11'
     # via
     #   chex
     #   coreax
@@ -128,7 +137,13 @@ jaxlib==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jaxlib==0.6.2 ; python_full_version >= '3.10'
+jaxlib==0.6.2 ; python_full_version == '3.10.*'
+    # via
+    #   chex
+    #   jax
+    #   jaxopt
+    #   optax
+jaxlib==0.7.0 ; python_full_version >= '3.11'
     # via
     #   chex
     #   jax
@@ -257,7 +272,7 @@ requests==2.32.4
     #   cachecontrol
     #   sphinx
     #   sphinx-prompt
-rich==14.0.0
+rich==14.1.0
     # via flax
 roman-numerals-py==3.1.0 ; python_full_version >= '3.11'
     # via sphinx
@@ -410,7 +425,6 @@ typing-extensions==4.14.1
     #   jaxtyping
     #   orbax-checkpoint
     #   referencing
-    #   rich
     #   sphinx-toolbox
 urllib3==2.5.0
     # via
