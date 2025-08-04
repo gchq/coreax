@@ -147,7 +147,7 @@ if RUNNING_IN_GITHUB_ACTIONS:
 # set Inter-sphinx mapping to link to external documentation
 intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
-    "jax": ("https://jax.readthedocs.io/en/latest", None),
+    "jax": ("https://docs.jax.dev/en/latest", None),
     "jaxopt": ("https://jaxopt.github.io/stable", None),
     "jaxtyping": ("https://docs.kidger.site/jaxtyping", None),
     "flax": ("https://flax-linen.readthedocs.io/en/latest", None),
