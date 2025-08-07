@@ -6,6 +6,10 @@ absl-py==2.3.1
     #   chex
     #   optax
     #   orbax-checkpoint
+accessible-pygments==0.0.5
+    # via furo
+aiofiles==24.1.0 ; python_full_version >= '3.10'
+    # via orbax-checkpoint
 alabaster==0.7.16 ; python_full_version < '3.10'
     # via sphinx
 alabaster==1.0.0 ; python_full_version >= '3.10'
@@ -29,14 +33,14 @@ beautifulsoup4==4.13.4
     #   sphinx-toolbox
 cachecontrol==0.14.3
     # via sphinx-toolbox
-certifi==2025.6.15
+certifi==2025.7.14
     # via
     #   requests
     #   sphinx-prompt
     #   sphobjinv
 charset-normalizer==3.4.2
     # via requests
-chex==0.1.89
+chex==0.1.90
     # via optax
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
@@ -62,13 +66,13 @@ domdf-python-tools==3.10.0
     #   sphinx-toolbox
 equinox==0.11.10 ; python_full_version < '3.10'
     # via coreax
-equinox==0.12.2 ; python_full_version >= '3.10'
+equinox==0.13.0 ; python_full_version >= '3.10'
     # via coreax
 etils==1.5.2 ; python_full_version < '3.10'
     # via
     #   optax
     #   orbax-checkpoint
-etils==1.12.2 ; python_full_version >= '3.10'
+etils==1.13.0 ; python_full_version >= '3.10'
     # via orbax-checkpoint
 filelock==3.18.0
     # via
@@ -76,11 +80,13 @@ filelock==3.18.0
     #   sphinx-toolbox
 flax==0.8.5 ; python_full_version < '3.10'
     # via coreax
-flax==0.10.7 ; python_full_version >= '3.10'
+flax==0.10.7 ; python_full_version == '3.10.*'
     # via coreax
-fsspec==2025.5.1
+flax==0.11.0 ; python_full_version >= '3.11'
+    # via coreax
+fsspec==2025.7.0
     # via etils
-furo==2024.8.6
+furo==2025.7.19
     # via coreax
 html5lib==1.1
     # via sphinx-toolbox
@@ -110,7 +116,16 @@ jax==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jax==0.6.2 ; python_full_version >= '3.10'
+jax==0.6.2 ; python_full_version == '3.10.*'
+    # via
+    #   chex
+    #   coreax
+    #   equinox
+    #   flax
+    #   jaxopt
+    #   optax
+    #   orbax-checkpoint
+jax==0.7.0 ; python_full_version >= '3.11'
     # via
     #   chex
     #   coreax
@@ -126,7 +141,13 @@ jaxlib==0.4.30 ; python_full_version < '3.10'
     #   jaxopt
     #   optax
     #   orbax-checkpoint
-jaxlib==0.6.2 ; python_full_version >= '3.10'
+jaxlib==0.6.2 ; python_full_version == '3.10.*'
+    # via
+    #   chex
+    #   jax
+    #   jaxopt
+    #   optax
+jaxlib==0.7.0 ; python_full_version >= '3.11'
     # via
     #   chex
     #   jax
@@ -149,7 +170,7 @@ jinja2==3.1.6
     #   sphinx-prompt
 joblib==1.5.1
     # via scikit-learn
-jsonschema==4.24.0
+jsonschema==4.25.0
     # via sphobjinv
 jsonschema-specifications==2025.4.1
     # via jsonschema
@@ -163,7 +184,7 @@ markupsafe==3.0.2
     #   sphinx-jinja2-compat
 mdurl==0.1.2
     # via markdown-it-py
-ml-dtypes==0.5.1
+ml-dtypes==0.5.3
     # via
     #   jax
     #   jaxlib
@@ -218,7 +239,7 @@ optax==0.2.5 ; python_full_version >= '3.10'
     #   flax
 orbax-checkpoint==0.6.4 ; python_full_version < '3.10'
     # via flax
-orbax-checkpoint==0.11.18 ; python_full_version >= '3.10'
+orbax-checkpoint==0.11.20 ; python_full_version >= '3.10'
     # via flax
 packaging==25.0
     # via sphinx
@@ -234,6 +255,7 @@ pybtex-docutils==1.0.3
     # via sphinxcontrib-bibtex
 pygments==2.19.2
     # via
+    #   accessible-pygments
     #   furo
     #   rich
     #   sphinx
@@ -254,7 +276,7 @@ requests==2.32.4
     #   cachecontrol
     #   sphinx
     #   sphinx-prompt
-rich==14.0.0
+rich==14.1.0
     # via flax
 roman-numerals-py==3.1.0 ; python_full_version >= '3.11'
     # via sphinx
@@ -268,7 +290,7 @@ ruamel-yaml-clib==0.2.12 ; python_full_version < '3.14' and platform_python_impl
     # via ruamel-yaml
 scikit-learn==1.6.1 ; python_full_version < '3.10'
     # via coreax
-scikit-learn==1.7.0 ; python_full_version >= '3.10'
+scikit-learn==1.7.1 ; python_full_version >= '3.10'
     # via coreax
 scipy==1.13.1 ; python_full_version < '3.10'
     # via
@@ -282,7 +304,7 @@ scipy==1.15.3 ; python_full_version == '3.10.*'
     #   jaxlib
     #   jaxopt
     #   scikit-learn
-scipy==1.16.0 ; python_full_version >= '3.11'
+scipy==1.16.1 ; python_full_version >= '3.11'
     # via
     #   jax
     #   jaxlib
@@ -407,7 +429,6 @@ typing-extensions==4.14.1
     #   jaxtyping
     #   orbax-checkpoint
     #   referencing
-    #   rich
     #   sphinx-toolbox
 urllib3==2.5.0
     # via

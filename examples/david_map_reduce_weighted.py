@@ -81,6 +81,8 @@ def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
 
     # Calculate new dimensions based on downsampling factor
     scale_factor = 1 / downsampling_factor
+    if img is None:
+        raise RuntimeError("'img' is unexpectedly 'None'.")
     width = int(img.shape[1] * scale_factor)
     height = int(img.shape[0] * scale_factor)
     dim = (width, height)
