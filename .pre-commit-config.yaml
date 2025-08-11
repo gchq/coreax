@@ -46,18 +46,6 @@ repos:
     hooks:
       # Keep lock file up to date
       - id: uv-lock
-      # Keep requirements-doc up to date
-      - id: uv-export
-        args: [
-          "--frozen",
-          "--quiet",
-          "--format", "requirements-txt",
-          "--no-hashes",
-          "--no-dev",
-          "--no-editable",
-          "--extra", "doc",
-          "--output-file", "requirements-doc.txt",
-        ]
   - repo: local
     hooks:
       # Check files are valid UTF-8
