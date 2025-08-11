@@ -61,7 +61,7 @@ jobs:
       - name: Run pre-commit autoupdate on main pre-commit config
         id: autoupdate
         run: |
-          uv tool pre-commit autoupdate > ${{ env.update_message_path }}
+          uv tool run pre-commit autoupdate > ${{ env.update_message_path }}
           sed -i "/updating/!d" ${{ env.update_message_path }}
       - name: Store hash of new pre-commit config for comparison
         id: new_file
