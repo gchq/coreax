@@ -17,7 +17,7 @@ jobs:
       # Disable implicitly syncing before running - we run an explicit sync first.
       UV_NO_SYNC: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -33,7 +33,7 @@ jobs:
         run: uv run tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
       - name: Download historic performance data
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: gchq/coreax-metadata
           # GitHub Actions require check out destination to be within coreax/coreax. To
