@@ -75,7 +75,7 @@ jobs:
           # set to true, it checks out files in the repo root as well.)
           sparse-checkout-cone-mode: false
       - name: Download built package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
          name: build-latest
          path: ${{ runner.temp }}/dist
