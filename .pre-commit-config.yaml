@@ -7,7 +7,7 @@ default_stages:
   - pre-merge-commit
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Reject commits that add large files (coverage.xml, for example)
       # Consider adjusting kB limit
@@ -42,7 +42,7 @@ repos:
           - --ignore-case
           - --unique
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.7.13
+    rev: 0.8.11
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -65,7 +65,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.0.1
+    rev: v9.2.0
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
@@ -83,7 +83,7 @@ repos:
 
   # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
-    rev: "4.2"
+    rev: "5.0"
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
@@ -93,7 +93,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.0
+    rev: v0.12.9
     hooks:
       # Run the linter.
       - id: ruff
