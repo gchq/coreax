@@ -42,7 +42,7 @@ repos:
           - --ignore-case
           - --unique
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.8.11
+    rev: 0.8.13
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -93,7 +93,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.9
+    rev: v0.12.10
     hooks:
       # Run the linter.
       - id: ruff
