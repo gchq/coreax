@@ -40,7 +40,6 @@ repos:
         files: ^.cspell/(custom_misc|library_terms|people).txt$
         args:
           - --ignore-case
-          - --unique
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.8.14
     hooks:
