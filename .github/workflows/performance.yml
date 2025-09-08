@@ -61,7 +61,7 @@ jobs:
           cat $RUNNER_TEMP/comment.md
       - name: Comment performance update on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             var fs = require('fs');
