@@ -182,9 +182,6 @@ nitpick_ignore = [
     ("py:class", "jax._src.typing.SupportsDType"),
     ("py:class", "'n d'"),
     ("py:class", "'n p'"),
-    # TODO: Remove once no longer supporting Numpy < 2
-    # https://github.com/gchq/coreax/issues/674
-    ("py:class", "numpy.bool_"),
     ("py:class", "equinox._module.Module"),
     ("py:class", "coreax.coreset._Data"),
     ("py:obj", "coreax.coreset._TPointsData"),
