@@ -16,7 +16,7 @@
 
 import math
 import warnings
-from typing import Generic, Optional, TypeVar, Union, overload
+from typing import Generic, TypeAlias, TypeVar, overload
 
 import equinox as eqx
 import jax
@@ -26,14 +26,14 @@ import numpy as np
 from jax import Array
 from jaxtyping import Integer
 from sklearn.neighbors import BallTree, KDTree
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from coreax.coreset import AbstractCoreset, Coresubset
 from coreax.data import Data, SupervisedData
 from coreax.solvers.base import ExplicitSizeSolver, PaddingInvariantSolver, Solver
 from coreax.util import tree_zero_pad_leading_axis
 
-BinaryTree: TypeAlias = Union[KDTree, BallTree]
+BinaryTree: TypeAlias = KDTree | BallTree
 _Data = TypeVar("_Data", Data, SupervisedData)
 _Coreset = TypeVar("_Coreset", bound=AbstractCoreset)
 _State = TypeVar("_State")
@@ -125,7 +125,7 @@ class MapReduce(
 
     @override
     def reduce(  # noqa: C901
-        self, dataset: _Data, solver_state: Optional[_State] = None
+        self, dataset: _Data, solver_state: _State | None = None
     ) -> tuple[_Coreset, _State]:
         # There is no obvious way to use state information here.
         del solver_state
@@ -141,15 +141,15 @@ class MapReduce(
         ) -> tuple[_Coreset, _State, None]: ...
 
         def _reduce_coreset(
-            data: _Data, _indices: Optional[_Indices] = None
-        ) -> tuple[_Coreset, _State, Optional[_Indices]]:
+            data: _Data, _indices: _Indices | None = None
+        ) -> tuple[_Coreset, _State, _Indices | None]:
             if len(data) <= self.leaf_size:
                 coreset, state = self.base_solver.reduce(data)
                 if _indices is not None and isinstance(coreset, Coresubset):
                     _indices = _indices[coreset.indices.data]
                 return coreset, state, _indices
 
-            def wrapper(partition: _Data) -> tuple[_Data, Optional[Array]]:
+            def wrapper(partition: _Data) -> tuple[_Data, Array | None]:
                 """
                 Apply the `reduce` method of the base solver on a partition.
 

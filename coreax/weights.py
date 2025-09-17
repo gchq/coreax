@@ -32,7 +32,7 @@ the dataset.
 """
 
 from abc import abstractmethod
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -113,8 +113,8 @@ def _prepare_kernel_system(
     coreset: Data,
     epsilon: float = 1e-10,
     *,
-    block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+    block_size: int | None | tuple[int | None, int | None] = None,
+    unroll: int | bool | tuple[int | bool, int | bool] = 1,
 ) -> tuple[Array, Array]:
     r"""
     Return the row mean of :math`k(coreset, dataset)` and the coreset Gramian.
@@ -217,8 +217,8 @@ class SBQWeightsOptimiser(WeightsOptimiser[_Data]):
         coreset: _Data,
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **solver_kwargs,
     ) -> Shaped[Array, " m"]:
         r"""
@@ -285,8 +285,8 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
         coreset: _Data,
         epsilon: float = 1e-10,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **solver_kwargs,
     ) -> Shaped[Array, " m"]:
         r"""

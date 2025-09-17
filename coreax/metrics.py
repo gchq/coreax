@@ -24,14 +24,14 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jax import Array, jacfwd, vmap
-from jaxtyping import Shaped
+from jax import jacfwd, vmap
+from jaxtyping import Array, Scalar, Shaped
 
 import coreax.kernels
 import coreax.util
@@ -47,7 +47,7 @@ class Metric(eqx.Module, Generic[_Data]):
     @abstractmethod
     def compute(
         self, reference_data: _Data, comparison_data: _Data, **kwargs
-    ) -> Shaped[Array, ""]:
+    ) -> Scalar:
         r"""
         Compute the metric/distance between the reference and comparison data.
 
@@ -91,10 +91,10 @@ class MMD(Metric[Data]):
         reference_data: Data,
         comparison_data: Data,
         *,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None | tuple[int | None, int | None] = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **kwargs: Any,
-    ) -> Shaped[Array, ""]:
+    ) -> Scalar:
         r"""
         Compute the (weighted) maximum mean discrepancy.
 
@@ -195,7 +195,7 @@ class KSD(Metric[Data]):
     """
 
     kernel: coreax.kernels.ScalarValuedKernel
-    score_matching: Optional[ScoreMatching] = None
+    score_matching: ScoreMatching | None = None
     precision_threshold: float = 1e-12
 
     def compute(
@@ -205,10 +205,10 @@ class KSD(Metric[Data]):
         *,
         laplace_correct: bool = False,
         regularise: bool = False,
-        block_size: Optional[int] = None,
-        unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1,
+        block_size: int | None = None,
+        unroll: int | bool | tuple[int | bool, int | bool] = 1,
         **kwargs: Any,
-    ) -> Shaped[Array, ""]:
+    ) -> Scalar:
         r"""
         Compute the (regularised) (Laplace-corrected) kernel Stein discrepancy.
 
@@ -264,7 +264,7 @@ class KSD(Metric[Data]):
         if laplace_correct:
 
             @vmap
-            def _laplace_positive(x_: Shaped[Array, " m d"]) -> Shaped[Array, ""]:
+            def _laplace_positive(x_: Shaped[Array, " m d"]) -> Scalar:
                 r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
                 hessian = jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()

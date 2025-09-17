@@ -34,9 +34,9 @@ and then differentiating a kernel density estimate to the data.
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Union, overload
 
 import equinox as eqx
+import jax
 import numpy as np
 from flax.training.train_state import TrainState
 from jax import (
@@ -47,9 +47,7 @@ from jax import (
     value_and_grad,
     vmap,
 )
-from jax.lax import cond, fori_loop
-from jax.typing import DTypeLike
-from jaxtyping import Shaped
+from jaxtyping import ArrayLike, DTypeLike, Scalar, Shaped
 from optax import adamw
 from tqdm import tqdm
 from typing_extensions import override
@@ -75,30 +73,9 @@ class ScoreMatching(eqx.Module):
     """
 
     @abstractmethod
-    @overload
     def match(
-        self, x: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]
-    ) -> Callable[
-        [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
-        Shaped[Array, " 1 1"],
-    ]: ...
-
-    @abstractmethod
-    @overload
-    def match(  # pyright: ignore[reportOverlappingOverload]
-        self, x: Shaped[Array, " n d"]
-    ) -> Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]]: ...
-
-    @abstractmethod
-    def match(
-        self, x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int]
-    ) -> Union[
-        Callable[[Shaped[Array, " n d"]], Shaped[Array, " n d"]],
-        Callable[
-            [Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int]],
-            Shaped[Array, " 1 1"],
-        ],
-    ]:
+        self, x: Shaped[ArrayLike, " n d"]
+    ) -> Callable[[Shaped[ArrayLike, " n d"]], Shaped[Array, " n d"]]:
         r"""
         Match some model score function to dataset :math:`X\in\mathbb{R}^{n \times d}`.
 
@@ -215,7 +192,7 @@ class SlicedScoreMatching(ScoreMatching):
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
         score_matrix: Shaped[Array, " d"],
-    ) -> float:
+    ) -> Scalar:
         """
         Compute the score matching loss function.
 
@@ -231,7 +208,7 @@ class SlicedScoreMatching(ScoreMatching):
         :return: Evaluation of score matching objective, see equations 7 and 8 in
             :cite:`song2020ssm`
         """
-        return cond(
+        return jax.lax.cond(
             self.use_analytic,
             self._analytic_objective,
             self._general_objective,
@@ -245,7 +222,7 @@ class SlicedScoreMatching(ScoreMatching):
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
         score_matrix: Shaped[Array, " d"],
-    ) -> Shaped[Array, ""]:
+    ) -> Scalar:
         """
         Compute reduced variance score matching loss function.
 
@@ -271,7 +248,7 @@ class SlicedScoreMatching(ScoreMatching):
         random_direction_vector: Shaped[Array, " d"],
         grad_score_times_random_direction_matrix: Shaped[Array, " d"],
         score_matrix: Shaped[Array, " d"],
-    ) -> Shaped[Array, ""]:
+    ) -> Scalar:
         """
         Compute general score matching loss function.
 
@@ -294,7 +271,7 @@ class SlicedScoreMatching(ScoreMatching):
 
     def _loss_element(
         self, x: Shaped[Array, " d"], v: Shaped[Array, " d"], score_network: Callable
-    ) -> float:
+    ) -> Scalar:
         """
         Compute element-wise loss function.
 
@@ -417,7 +394,7 @@ class SlicedScoreMatching(ScoreMatching):
                 random_vectors=random_vectors,
                 sigmas=sigmas,
             )
-            return fori_loop(0, self.num_noise_models, body, 0.0)
+            return jax.lax.fori_loop(0, self.num_noise_models, body, 0.0)
 
         val, grads = value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
@@ -560,19 +537,7 @@ class KernelDensityMatching(ScoreMatching):
         """
         kde_data = x
 
-        @overload
-        def score_function(
-            x_: Union[Shaped[Array, " 1 1"], Shaped[Array, ""], float, int],
-        ) -> Shaped[Array, " 1 1"]: ...
-
-        @overload
-        def score_function(  # pyright: ignore[reportOverlappingOverload]
-            x_: Shaped[Array, " n d"],
-        ) -> Shaped[Array, " n d"]: ...
-
-        def score_function(
-            x_: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
-        ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+        def score_function(x_: Shaped[ArrayLike, " n d"]) -> Shaped[Array, " n d"]:
             r"""
             Compute the score function using a kernel density estimation.
 
@@ -613,7 +578,7 @@ class KernelDensityMatching(ScoreMatching):
 def convert_stein_kernel(
     x: Shaped[Array, " n d"],
     kernel: ScalarValuedKernel,
-    score_matching: Union[ScoreMatching, None],
+    score_matching: ScoreMatching | None,
 ) -> SteinKernel:
     r"""
     Convert the kernel to a :class:`~coreax.kernels.SteinKernel`.

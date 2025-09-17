@@ -22,7 +22,6 @@ approaches used produce the expected results on simple examples.
 
 import unittest
 from collections.abc import Callable
-from typing import Union
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -353,7 +352,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output), places=3)
 
     def test_analytic_objective(self) -> None:
         r"""
@@ -407,7 +406,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output_analytic, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output_analytic), places=3)
 
         # Mutate the objective, and check that the result changes
         sliced_score_matcher = eqx.tree_at(
@@ -469,7 +468,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output), places=3)
 
     def test_general_objective(self) -> None:
         r"""
@@ -514,7 +513,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output), places=3)
 
     def test_sliced_score_matching_loss_element_analytic(self) -> None:
         """
@@ -561,7 +560,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output), places=3)
 
         # Call the loss element with a different objective function, and check that the
         # JIT compilation recognises this change
@@ -622,7 +621,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # pylint: enable=protected-access
 
         # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
+        self.assertAlmostEqual(float(output), float(expected_output), places=3)
 
     def test_sliced_score_matching_loss(self) -> None:
         """
@@ -680,7 +679,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
         state = coreax.networks.create_train_state(
             state_key, score_network, 1e-3, 2, sgd
         )
-
         # Jax is row-based, so we have to work with the kernel transpose
         # Disable pylint warning for unsubscriptable-object as we are able to
         # subscript this and use this for testing purposes only
@@ -1109,7 +1107,7 @@ class TestConvertSteinKernel:
     )
     def test_convert_stein_kernel(
         self,
-        score_matching: Union[None, MagicMock, KernelDensityMatching],
+        score_matching: None | MagicMock | KernelDensityMatching,
         kernel: ScalarValuedKernel,
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""

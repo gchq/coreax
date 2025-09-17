@@ -20,13 +20,12 @@ from typing import (
     Final,
     Generic,
     TypeVar,
-    Union,
     overload,
 )
 
 import equinox as eqx
 import jax.numpy as jnp
-from jaxtyping import Array, Shaped
+from jaxtyping import Array, Scalar, Shaped
 from typing_extensions import Self, override
 
 from coreax.data import Data, SupervisedData, as_data
@@ -71,9 +70,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
         """Return a copy of 'self' with weights solved by 'solver'."""
 
-    def compute_metric(
-        self, metric: Metric[Data], **metric_kwargs
-    ) -> Shaped[Array, ""]:
+    def compute_metric(self, metric: Metric[Data], **metric_kwargs) -> Scalar:
         """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
         return metric.compute(self.pre_coreset_data, self.points, **metric_kwargs)
 
@@ -131,14 +128,14 @@ class PseudoCoreset(
     @classmethod
     @overload
     def build(
-        cls, nodes: Union[Data, Array], pre_coreset_data: Array
+        cls, nodes: Data | Array, pre_coreset_data: Array
     ) -> "PseudoCoreset[Data]": ...
 
     @classmethod
     @overload
     def build(
         cls,
-        nodes: Union[Data, Array],
+        nodes: Data | Array,
         pre_coreset_data: tuple[Array, Array],
     ) -> "PseudoCoreset[SupervisedData]": ...
 
@@ -146,15 +143,15 @@ class PseudoCoreset(
     @overload
     def build(
         cls,
-        nodes: Union[Data, Array],
+        nodes: Data | Array,
         pre_coreset_data: _TOriginalData,
     ) -> "PseudoCoreset[_TOriginalData]": ...
 
     @classmethod
     def build(
         cls,
-        nodes: Union[Data, Array],
-        pre_coreset_data: Union[_TOriginalData, Array, tuple[Array, Array]],
+        nodes: Data | Array,
+        pre_coreset_data: _TOriginalData | Array | tuple[Array, Array],
     ) -> "PseudoCoreset[Data]\
         | PseudoCoreset[SupervisedData]\
         | PseudoCoreset[_TOriginalData]\
@@ -253,14 +250,14 @@ class Coresubset(
     @classmethod
     @overload
     def build(
-        cls, indices: Union[Data, Array], pre_coreset_data: Array
+        cls, indices: Data | Array, pre_coreset_data: Array
     ) -> "Coresubset[Data]": ...
 
     @classmethod
     @overload
     def build(
         cls,
-        indices: Union[Data, Array],
+        indices: Data | Array,
         pre_coreset_data: tuple[Array, Array],
     ) -> "Coresubset[SupervisedData]": ...
 
@@ -268,15 +265,15 @@ class Coresubset(
     @overload
     def build(
         cls,
-        indices: Union[Data, Array],
+        indices: Data | Array,
         pre_coreset_data: _TOriginalData,
     ) -> "Coresubset[_TOriginalData]": ...
 
     @classmethod
     def build(
         cls,
-        indices: Union[Data, Array],
-        pre_coreset_data: Union[_TOriginalData, Array, tuple[Array, Array]],
+        indices: Data | Array,
+        pre_coreset_data: _TOriginalData | Array | tuple[Array, Array],
     ) -> "Coresubset[Data] | Coresubset[SupervisedData] | Coresubset[_TOriginalData]":
         """
         Construct a Coresubset from Data or raw Arrays.

@@ -25,7 +25,6 @@ measured using maximum mean discrepancy (MMD).
 """
 
 from pathlib import Path
-from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -48,7 +47,7 @@ from coreax.solvers import KernelHerding, RandomSample
 # pylint warnings raised that go against this approach
 # pylint: disable=duplicate-code
 # pylint: disable=too-many-locals
-def main(out_path: Optional[Path] = None) -> tuple[float, float]:
+def main(out_path: Path | None = None) -> tuple[float, float]:
     """
     Run the tabular data herding example with an approximate kernel Gramian row-mean.
 

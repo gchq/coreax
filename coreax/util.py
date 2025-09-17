@@ -30,17 +30,15 @@ from math import log10
 from typing import (
     Any,
     NamedTuple,
-    Optional,
-    Union,
+    TypeAlias,
 )
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
-from jax import Array, block_until_ready, jit, vmap
-from jaxtyping import Shaped
-from typing_extensions import TypeAlias
+from jax import block_until_ready, jit, vmap
+from jaxtyping import Array, ArrayLike, Scalar, ScalarLike, Shaped
 
 _logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -71,13 +69,13 @@ class JITCompilableFunction(NamedTuple):
 
     fn: Callable
     fn_args: tuple = ()
-    fn_kwargs: Optional[dict[str, Any]] = None
-    jit_kwargs: Optional[dict[str, Any]] = None
-    name: Optional[str] = None
+    fn_kwargs: dict[str, Any] | None = None
+    jit_kwargs: dict[str, Any] | None = None
+    name: str | None = None
 
     def without_name(
         self,
-    ) -> tuple[Callable, tuple, Optional[dict[str, Any]], Optional[dict[str, Any]]]:
+    ) -> tuple[Callable, tuple, dict[str, Any] | None, dict[str, Any] | None]:
         """Return the tuple (fn, fn_args, fn_kwargs, jit_kwargs)."""
         return self.fn, self.fn_args, self.fn_kwargs, self.jit_kwargs
 
@@ -136,8 +134,8 @@ def tree_zero_pad_leading_axis(tree: PyTreeDef, pad_width: int) -> PyTreeDef:
 
 
 def apply_negative_precision_threshold(
-    x: Union[Shaped[Array, ""], float, int], precision_threshold: float = 1e-8
-) -> Shaped[Array, ""]:
+    x: ScalarLike, precision_threshold: float = 1e-8
+) -> Scalar:
     """
     Round a number to 0.0 if it is negative but within precision_threshold of 0.0.
 
@@ -151,22 +149,10 @@ def apply_negative_precision_threshold(
 
 def pairwise(
     fn: Callable[
-        [
-            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-            Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-        ],
-        Shaped[Array, " *d"],
+        [Shaped[ArrayLike, " d"], Shaped[ArrayLike, " d"]], Shaped[Array, " *d"]
     ],
 ) -> Callable[
-    [
-        Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ],
-    Shaped[Array, " n m *d"],
+    [Shaped[ArrayLike, "n d"], Shaped[ArrayLike, "m d"]], Shaped[Array, "n m *d"]
 ]:
     """
     Transform a function so it returns all pairwise evaluations of its inputs.
@@ -178,29 +164,20 @@ def pairwise(
 
     @wraps(fn)
     def pairwise_fn(
-        x: Union[
-            Shaped[Array, " n d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-        y: Union[
-            Shaped[Array, " m d"], Shaped[Array, " d"], Shaped[Array, ""], float, int
-        ],
-    ) -> Shaped[Array, " n m *d"]:
+        x: Shaped[ArrayLike, "n d"],
+        y: Shaped[ArrayLike, "m d"],
+    ) -> Shaped[Array, "n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
-        return vmap(
-            vmap(fn, in_axes=(0, None), out_axes=0),
-            in_axes=(None, 0),
-            out_axes=1,
-        )(x, y)
+        inner_vmap = vmap(fn, in_axes=(0, None), out_axes=0)
+        outer_vmap = vmap(inner_vmap, in_axes=(None, 0), out_axes=1)
+        return outer_vmap(x, y)
 
     return pairwise_fn
 
 
 @jit
-def squared_distance(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
+def squared_distance(x: Shaped[Array, " d"], y: Shaped[Array, " d"]) -> Scalar:
     """
     Calculate the squared distance between two vectors.
 
@@ -215,10 +192,7 @@ def squared_distance(
 
 
 @jit
-def difference(
-    x: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-    y: Union[Shaped[Array, " d"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
+def difference(x: Shaped[Array, " d"], y: Shaped[Array, " d"]) -> Scalar:
     """
     Calculate vector difference for a pair of vectors.
 
@@ -262,8 +236,8 @@ def sample_batch_indices(
 def jit_test(
     fn: Callable,
     fn_args: tuple = (),
-    fn_kwargs: Optional[dict] = None,
-    jit_kwargs: Optional[dict] = None,
+    fn_kwargs: dict | None = None,
+    jit_kwargs: dict | None = None,
 ) -> tuple[float, float]:
     """
     Measure execution times of two runs of a JIT-compilable function.
@@ -342,7 +316,7 @@ def speed_comparison_test(
     function_setups: Sequence[JITCompilableFunction],
     num_runs: int = 10,
     log_results: bool = False,
-    normalisation: Optional[tuple[float, float]] = None,
+    normalisation: tuple[float, float] | None = None,
 ) -> tuple[list[tuple[Array, Array]], dict[str, Array]]:
     """
     Compare compilation time and runtime of a list of JIT-able functions.
