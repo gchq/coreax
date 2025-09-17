@@ -28,7 +28,6 @@ Herding and converge faster.
 """
 
 import time
-from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -99,7 +98,7 @@ def iterative_refine_experiment(
     data: Data,
     coreset_size: int,
     n_iter: int,
-    t_schedule: Optional[Shaped[Array, " {n_iter}"]] = None,
+    t_schedule: Shaped[Array, " {n_iter}"] | None = None,
     seed: int = 0,
 ) -> tuple[Array, Coresubset]:
     """

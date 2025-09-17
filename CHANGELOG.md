@@ -17,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- -
+ - Type hints now use python 3.10 syntax; `Union` and `Optional` types have been replaced with `A | B` and `A | None`.
+ - Jaxtyped arguments now have simpler/stricter shape requirements;
 
 ### Removed
 
  - Internal `SilentTQDM` class has been removed; all user-facing functionality has been preserved.
+ - Internal `_atleast_2d_consistent` function no longer supports sequences of arrays; all user-facing functionality has been preserved.
+ - Dropped support for python 3.9 which is near end-of-life.
 
 ### Deprecated
 

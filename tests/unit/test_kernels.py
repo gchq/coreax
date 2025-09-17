@@ -21,7 +21,7 @@ the codebase produce the expected results on simple examples.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, TypeVar
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -113,8 +113,8 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
         self,
         jit_variant: Callable[[Callable], Callable],
         kernel: _ScalarValuedKernel,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int, None],
+        block_size: int | None | tuple[int | None, int | None],
+        axis: int | None,
     ) -> None:
         """
         Test the `compute_mean` methods.
@@ -234,19 +234,19 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
     @abstractmethod
     def expected_grad_x(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
@@ -830,38 +830,38 @@ class TestLinearKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = kernel.output_scale * y[y_idx]
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * _y[y_idx]
         return expected_gradients
 
     @override
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                expected_gradients[x_idx, y_idx] = kernel.output_scale * x[x_idx]
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                expected_gradients[x_idx, y_idx] = kernel.output_scale * _x[x_idx]
         return expected_gradients
 
     @override
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LinearKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_divergence[x_idx, y_idx] = kernel.output_scale * dimension
         return expected_divergence
 
@@ -982,23 +982,23 @@ class TestPoissonKernel(
         self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
     ) -> np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``x``."""
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
 
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     -(
                         2
                         * kernel.output_scale
                         * kernel.index
-                        * jnp.sin(x[x_idx] - y[y_idx])
+                        * jnp.sin(_x[x_idx] - _y[y_idx])
                     )
                     / (
                         1
-                        - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                        - 2 * kernel.index * jnp.cos(_x[x_idx] - _y[y_idx])
                         + kernel.index**2
                     )
                     ** 2
@@ -1009,21 +1009,21 @@ class TestPoissonKernel(
         self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
     ) -> np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``y``."""
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
 
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     2
                     * kernel.output_scale
                     * kernel.index
-                    * jnp.sin(x[x_idx] - y[y_idx])
+                    * jnp.sin(_x[x_idx] - _y[y_idx])
                 ) / (
                     1
-                    - 2 * kernel.index * jnp.cos(x[x_idx] - y[y_idx])
+                    - 2 * kernel.index * jnp.cos(_x[x_idx] - _y[y_idx])
                     + kernel.index**2
                 ) ** 2
         return expected_gradients
@@ -1032,13 +1032,13 @@ class TestPoissonKernel(
         self, x: ArrayLike, y: ArrayLike, kernel: PoissonKernel
     ) -> np.ndarray:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, _ = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, _ = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                dist = jnp.linalg.norm(x[x_idx] - y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                dist = jnp.linalg.norm(_x[x_idx] - _y[y_idx])
                 div = 1 - 2 * kernel.index * jnp.cos(dist) + kernel.index**2
                 first_term = (
                     2 * kernel.output_scale * kernel.index * jnp.cos(dist)
@@ -1069,8 +1069,8 @@ class TestPoissonKernel(
         self,
         jit_variant: Callable[[Callable], Callable],
         kernel: PoissonKernel,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int, None],
+        block_size: int | None | tuple[int | None, int | None],
+        axis: int | None,
     ) -> None:
         """
         Test the `compute_mean` methods with data from the domain.
@@ -1216,17 +1216,17 @@ class TestPolynomialKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     kernel.output_scale
                     * kernel.degree
-                    * y[y_idx]
-                    * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    * _y[y_idx]
+                    * (np.dot(_x[x_idx], _y[y_idx]) + kernel.constant)
                     ** (kernel.degree - 1)
                 )
         return expected_gradients
@@ -1235,17 +1235,17 @@ class TestPolynomialKernel(
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     kernel.output_scale
                     * kernel.degree
-                    * x[x_idx]
-                    * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                    * _x[x_idx]
+                    * (np.dot(_x[x_idx], _y[y_idx]) + kernel.constant)
                     ** (kernel.degree - 1)
                 )
         return expected_gradients
@@ -1254,25 +1254,25 @@ class TestPolynomialKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PolynomialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_divergence[x_idx, y_idx] = (
                     kernel.output_scale
                     * kernel.degree
                     * (
                         (
                             (kernel.degree - 1)
-                            * np.dot(x[x_idx], y[y_idx])
-                            * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            * np.dot(_x[x_idx], _y[y_idx])
+                            * (np.dot(_x[x_idx], _y[y_idx]) + kernel.constant)
                             ** (kernel.degree - 2)
                         )
                         + (
                             dimension
-                            * (np.dot(x[x_idx], y[y_idx]) + kernel.constant)
+                            * (np.dot(_x[x_idx], _y[y_idx]) + kernel.constant)
                             ** (kernel.degree - 1)
                         )
                     )
@@ -1414,18 +1414,18 @@ class TestSquaredExponentialKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     -kernel.output_scale
-                    * (x[x_idx, :] - y[y_idx, :])
+                    * (_x[x_idx, :] - _y[y_idx, :])
                     / kernel.length_scale**2
                     * np.exp(
-                        -(np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2)
+                        -(np.linalg.norm(_x[x_idx, :] - _y[y_idx, :]) ** 2)
                         / (2 * kernel.length_scale**2)
                     )
                 )
@@ -1441,14 +1441,14 @@ class TestSquaredExponentialKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: SquaredExponentialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 dot_product = np.dot(
-                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                    _x[x_idx, :] - _y[y_idx, :], _x[x_idx, :] - _y[y_idx, :]
                 )
                 kernel_scaled = kernel.output_scale * np.exp(
                     -dot_product / (2.0 * kernel.length_scale**2)
@@ -1703,13 +1703,13 @@ class TestExponentialKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = x[x_idx, :] - y[y_idx, :]
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = _x[x_idx, :] - _y[y_idx, :]
                 dist = np.linalg.norm(sub)
                 expected_gradients[x_idx, y_idx] = (
                     -kernel.output_scale
@@ -1730,13 +1730,13 @@ class TestExponentialKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: ExponentialKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = np.subtract(x[x_idx], y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = np.subtract(_x[x_idx], _y[y_idx])
                 dist = np.linalg.norm(sub)
                 factor = 2 * kernel.length_scale**2
                 exp = np.exp(-dist / factor)
@@ -1860,13 +1860,13 @@ class TestRationalQuadraticKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = np.subtract(x[x_idx], y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = np.subtract(_x[x_idx], _y[y_idx])
                 expected_gradients[x_idx, y_idx] = -(
                     kernel.output_scale * sub / kernel.length_scale**2
                 ) * (
@@ -1886,13 +1886,13 @@ class TestRationalQuadraticKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: RationalQuadraticKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = np.subtract(x[x_idx], y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = np.subtract(_x[x_idx], _y[y_idx])
                 sq_dist = np.dot(sub, sub)
                 div = kernel.relative_weighting * kernel.length_scale**2
                 power = kernel.relative_weighting + 1
@@ -2010,13 +2010,13 @@ class TestPeriodicKernel(
     def expected_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = np.subtract(x[x_idx], y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = np.subtract(_x[x_idx], _y[y_idx])
                 dist = np.linalg.norm(sub)
                 body = np.pi * dist / kernel.periodicity
 
@@ -2044,13 +2044,13 @@ class TestPeriodicKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PeriodicKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
-                sub = np.subtract(x[x_idx], y[y_idx])
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
+                sub = np.subtract(_x[x_idx], _y[y_idx])
                 dist = np.linalg.norm(sub)
                 factor = np.pi / kernel.periodicity
 
@@ -2284,18 +2284,18 @@ class TestLaplacianKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_gradients[x_idx, y_idx] = (
                     -kernel.output_scale
-                    * np.sign(x[x_idx, :] - y[y_idx, :])
+                    * np.sign(_x[x_idx, :] - _y[y_idx, :])
                     / (2 * kernel.length_scale**2)
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        -np.linalg.norm(_x[x_idx, :] - _y[y_idx, :], ord=1)
                         / (2 * kernel.length_scale**2)
                     )
                 )
@@ -2311,18 +2311,18 @@ class TestLaplacianKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: LaplacianKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 expected_divergence[x_idx, y_idx] = (
                     -kernel.output_scale
                     * dimension
                     / (4 * kernel.length_scale**4)
                     * np.exp(
-                        -np.linalg.norm(x[x_idx, :] - y[y_idx, :], ord=1)
+                        -np.linalg.norm(_x[x_idx, :] - _y[y_idx, :], ord=1)
                         / (2 * kernel.length_scale**2)
                     )
                 )
@@ -2431,19 +2431,19 @@ class TestPCIMQKernel(
     def expected_grad_x(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         expected_gradients = np.zeros((num_points, num_points, dimension))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 scaling = 2 * kernel.length_scale**2
-                mq_array = np.linalg.norm(x[x_idx, :] - y[y_idx, :]) ** 2 / scaling
+                mq_array = np.linalg.norm(_x[x_idx, :] - _y[y_idx, :]) ** 2 / scaling
                 primal = kernel.output_scale / np.sqrt(1 + mq_array)
                 expected_gradients[x_idx, y_idx] = (
                     -kernel.output_scale
                     / scaling
-                    * (x[x_idx, :] - y[y_idx, :])
+                    * (_x[x_idx, :] - _y[y_idx, :])
                     * (primal / kernel.output_scale) ** 3
                 )
         return expected_gradients
@@ -2458,16 +2458,16 @@ class TestPCIMQKernel(
     def expected_divergence_x_grad_y(
         self, x: ArrayLike, y: ArrayLike, kernel: PCIMQKernel
     ) -> np.ndarray:
-        x = np.atleast_2d(x)
-        y = np.atleast_2d(y)
-        num_points, dimension = x.shape
+        _x = np.atleast_2d(x)
+        _y = np.atleast_2d(y)
+        num_points, dimension = _x.shape
         length_scale = kernel.length_scale
         output_scale = kernel.output_scale
         expected_divergence = np.zeros((num_points, num_points))
-        for x_idx in range(x.shape[0]):
-            for y_idx in range(y.shape[0]):
+        for x_idx in range(_x.shape[0]):
+            for y_idx in range(_y.shape[0]):
                 dot_product = np.dot(
-                    x[x_idx, :] - y[y_idx, :], x[x_idx, :] - y[y_idx, :]
+                    _x[x_idx, :] - _y[y_idx, :], _x[x_idx, :] - _y[y_idx, :]
                 )
                 kernel_scaled = output_scale / (
                     (1 + dot_product / (2 * length_scale**2)) ** (1 / 2)

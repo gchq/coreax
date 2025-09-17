@@ -31,13 +31,12 @@ The benchmarking process follows these steps:
 import json
 import os
 import time
-from typing import Union
 
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 import numpy as np
-from jaxtyping import Array, Shaped
+from jaxtyping import Array, ArrayLike, Scalar, Shaped
 from sklearn.datasets import make_blobs
 
 from coreax import Data
@@ -95,9 +94,7 @@ def setup_stein_kernel(
     kde = jsp.stats.gaussian_kde(dataset.data[idx].T)
 
     # Define the score function as the gradient of log density given by the KDE
-    def score_function(
-        x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
-    ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+    def score_function(x: Shaped[ArrayLike, " n d"]) -> Shaped[Array, " n d"]:
         """
         Compute the score function (gradient of log density) for a single point.
 
@@ -105,15 +102,13 @@ def setup_stein_kernel(
         :return: Gradient of log probability density at the given point
         """
 
-        def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
+        def logpdf_single(x: Shaped[Array, " d"]) -> Scalar:
             return kde.logpdf(x.reshape(1, -1))[0]
 
-        return jax.grad(logpdf_single)(x)
+        _x = jnp.asarray(x)
+        return jax.grad(logpdf_single)(_x)
 
-    return SteinKernel(
-        base_kernel=sq_exp_kernel,
-        score_function=score_function,
-    )
+    return SteinKernel(base_kernel=sq_exp_kernel, score_function=score_function)
 
 
 def setup_solvers(

@@ -19,7 +19,6 @@ import datetime
 import json
 import re
 from pathlib import Path
-from typing import Optional
 
 from scipy.stats import ttest_ind_from_stats
 from typing_extensions import TypedDict
@@ -94,7 +93,7 @@ def parse_args() -> tuple[Path, Path, str, Path]:
     )
 
 
-def date_from_filename(path: Path) -> Optional[tuple[datetime.datetime, str]]:
+def date_from_filename(path: Path) -> tuple[datetime.datetime, str] | None:
     """
     Extract the date from a performance data file name.
 

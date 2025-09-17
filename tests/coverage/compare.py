@@ -20,7 +20,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 # A good amount of this code is duplicated in the performance comparison script, but we
 # ignore this so that both scripts can be standalone.
@@ -58,7 +57,7 @@ def parse_args() -> tuple[float, Path]:
     return float(args.coverage_total), Path(args.reference_directory)
 
 
-def date_from_filename(path: Path) -> Optional[tuple[datetime.datetime, str]]:
+def date_from_filename(path: Path) -> tuple[datetime.datetime, str] | None:
     """
     Extract the date from a coverage data file name.
 

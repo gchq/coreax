@@ -15,20 +15,19 @@
 """Utility functions for the kernels subpackage."""
 
 from math import ceil
-from typing import Union
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array
-from jaxtyping import Shaped
+from jaxtyping import ArrayLike, Scalar, Shaped
 
 from coreax.data import Data, _atleast_2d_consistent, as_data
 from coreax.util import pairwise, squared_distance, tree_zero_pad_leading_axis
 
 
 def _block_data_convert(
-    x: Union[Data, Shaped[Array, " n d"]], block_size: Union[int, None]
+    x: Shaped[Array | Data, " n d"], block_size: int | None
 ) -> tuple[Data, int]:
     """Convert 'x' into padded and weight normalized blocks of size 'block_size'."""
     x = as_data(x).normalize(preserve_zeros=True)
@@ -48,9 +47,7 @@ def _block_data_convert(
     return jtu.tree_map(_reshape, padded_x, is_leaf=eqx.is_array), len(x)
 
 
-def median_heuristic(
-    x: Union[Shaped[Array, " n d"], Shaped[Array, " n"], Shaped[Array, ""], float, int],
-) -> Shaped[Array, ""]:
+def median_heuristic(x: Shaped[ArrayLike, " n d"]) -> Scalar:
     """
     Compute the median heuristic for setting kernel bandwidth.
 

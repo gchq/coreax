@@ -87,7 +87,7 @@ is identical to integration against a "target" (potentially continuous) measure
 
 import math
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, Optional, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -126,7 +126,7 @@ class RecombinationSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State
         compatible as the coreset size :math:`m^\prime` is unknown at compile time.
     """
 
-    test_functions: Optional[Callable[[Array], Real[Array, " m-1"]]] = None
+    test_functions: Callable[[Array], Real[Array, " m-1"]] | None = None
     mode: Literal["implicit-explicit", "implicit", "explicit"] = "implicit-explicit"
 
     def __check_init__(self):
@@ -175,7 +175,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
         rcond is :data:`None`, it defaults to `floating point eps * max(n, d)`
     """
 
-    rcond: Optional[float] = None
+    rcond: float | None = None
 
     @override
     def reduce(
@@ -277,7 +277,7 @@ class CaratheodoryRecombination(RecombinationSolver[Data, None]):
 
 def _push_forward(
     nodes: Shaped[Array, " n"],
-    test_functions: Optional[Callable[[Array], Real[Array, " m-1"]]],
+    test_functions: Callable[[Array], Real[Array, " m-1"]] | None,
     augment: bool = True,
 ) -> Shaped[Array, "n m"]:
     r"""
@@ -355,7 +355,7 @@ def _co_linearize(
 # pylint: enable=line-too-long
 def _resolve_null_basis(
     nodes: Shaped[Array, "n m"],
-    rcond: Union[float, None] = None,
+    rcond: float | None = None,
 ) -> tuple[Shaped[Array, "n n"], Integer[Array, ""]]:
     r"""
     Resolve the largest left null space basis, and its rank, for passed the node matrix.
@@ -386,7 +386,7 @@ def _resolve_null_basis(
 # Credit: https://github.com/patrick-kidger/lineax/blob/9b923c8df6556551fedc7adeea7979b5c7b3ffb0/lineax/_misc.py#L34  # noqa: E501
 # pylint: enable=line-too-long
 def _resolve_rcond(
-    shape: tuple[int, ...], dtype: DTypeLike, rcond: Optional[float] = None
+    shape: tuple[int, ...], dtype: DTypeLike, rcond: float | None = None
 ) -> Float[Array, ""]:
     """
     Resolve the relative condition number (rcond).
@@ -497,7 +497,7 @@ class TreeRecombination(RecombinationSolver[Data, None]):
         performing recombination, is equal to `n_nodes / tree_reduction_factor`;
     """
 
-    rcond: Union[float, None] = None
+    rcond: float | None = None
     tree_reduction_factor: int = 2
 
     @override
