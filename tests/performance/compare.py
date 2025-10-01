@@ -19,9 +19,9 @@ import datetime
 import json
 import re
 from pathlib import Path
+from typing import TypedDict
 
 from scipy.stats import ttest_ind_from_stats
-from typing_extensions import TypedDict
 
 from coreax.util import format_time
 

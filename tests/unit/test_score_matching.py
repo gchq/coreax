@@ -1108,7 +1108,7 @@ class TestConvertSteinKernel:
     )
     def test_convert_stein_kernel(
         self,
-        score_matching: None | MagicMock | KernelDensityMatching,
+        score_matching: MagicMock | KernelDensityMatching | None,
         kernel: ScalarValuedKernel,
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""

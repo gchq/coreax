@@ -50,7 +50,7 @@ compute than the automatic differentiated default.
 """
 
 from abc import abstractmethod
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, overload
 
 import equinox as eqx
 import jax
@@ -68,9 +68,7 @@ from coreax.util import pairwise, tree_leaves_repeat
 class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
     """Abstract base class for scalar-valued kernels."""
 
-    def __add__(
-        self, addition: Union["ScalarValuedKernel", int, float]
-    ) -> "AdditiveKernel":
+    def __add__(self, addition: "ScalarValuedKernel | int | float") -> "AdditiveKernel":
         """Overload `+` operator."""
         if isinstance(addition, (int, float)):
             return AdditiveKernel(self, _Constant(addition))
@@ -82,14 +80,12 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         )
 
     def __radd__(
-        self, addition: Union["ScalarValuedKernel", int, float]
+        self, addition: "ScalarValuedKernel | int | float"
     ) -> "AdditiveKernel":
         """Overload right `+` operator, order is mathematically irrelevant."""
         return self.__add__(addition)
 
-    def __mul__(
-        self, product: Union["ScalarValuedKernel", int, float]
-    ) -> "ProductKernel":
+    def __mul__(self, product: "ScalarValuedKernel | int | float") -> "ProductKernel":
         """Overload `*` operator."""
         if isinstance(product, (int, float)):
             return ProductKernel(self, _Constant(product))
@@ -100,9 +96,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
             + "an integer or a float"
         )
 
-    def __rmul__(
-        self, product: Union["ScalarValuedKernel", int, float]
-    ) -> "ProductKernel":
+    def __rmul__(self, product: "ScalarValuedKernel | int | float") -> "ProductKernel":
         """Overload right `*` operator, order is mathematically irrelevant."""
         return self.__mul__(product)
 

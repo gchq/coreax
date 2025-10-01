@@ -15,7 +15,7 @@
 """Data-structures for representing weighted and/or supervised data."""
 
 from collections.abc import Sequence
-from typing import Union, overload
+from typing import overload
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -170,7 +170,7 @@ class Data(eqx.Module):
     ) -> Shaped[Array, " n d+p"]: ...
 
     def __jax_array__(
-        self: Union["Data", "SupervisedData"],
+        self: "Data | SupervisedData",
     ) -> Shaped[Array, " n d"] | Shaped[Array, " n d+p"]:
         """
         Return value of `jnp.asarray(Data(...))` and `jnp.asarray(SupervisedData(...))`.
