@@ -46,7 +46,7 @@ jobs:
 
       # Pre-commit setup and autoupdate steps
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
           python-version: 3.13
