@@ -25,7 +25,7 @@ jobs:
           enable-cache: true
           cache-suffix: "docs"
       - name: Install documentation dependencies
-        run: uv sync --extra doc --no-dev --locked
+        run: uv sync --group doc --no-dev --locked
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Build documentation
