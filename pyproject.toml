@@ -131,6 +131,12 @@ exclude = [
 venvPath = "."
 venv = ".venv"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::ImportWarning:umap",
+    "ignore::DeprecationWarning:jaxopt",
+]
+
 [tool.ruff]
 src = [".", "examples"]
 

@@ -77,6 +77,7 @@ from coreax.solvers.base import (
     RefinementSolver,
 )
 from coreax.solvers.coresubset import (
+    SizeWarning,
     _greedy_kernel_points_loss,  # noqa: PLC2701
     _initial_coresubset,  # noqa: PLC2701
     _setup_batch_solver,  # noqa: PLC2701
@@ -736,7 +737,7 @@ class RecombinationSolverTest(SolverTest):
     @pytest.fixture(
         params=[
             "random",
-            "partial-null",
+            "partial_null",
             "null",
             "full_rank",
             "rank_deficient",
@@ -754,7 +755,7 @@ class RecombinationSolverTest(SolverTest):
         if request.param == "random":
             # Random dataset with default test-functions.
             test_functions = None
-        elif request.param == "partial-null":
+        elif request.param == "partial_null":
             # Same as 'random' but with some dataset entries given zero weight.
             zero_weights = jr.choice(rng_key, self.shape[0], (self.shape[0] // 2,))
             weights = weights.at[zero_weights].set(0)
@@ -904,9 +905,10 @@ class RecombinationSolverTest(SolverTest):
         if jit_variant is not eqx.filter_jit and recombination_mode == "explicit":
             context = does_not_raise()
         with context:
-            coreset, state = jit_variant(solver.reduce)(dataset)
+            _reduce = jit_variant(solver.reduce)
+            coreset, state = _reduce(dataset)
             if use_cached_state:
-                coreset_with_state, recycled_state = solver.reduce(dataset, state)
+                coreset_with_state, recycled_state = _reduce(dataset, state)
                 assert eqx.tree_equal(recycled_state, state)
                 assert eqx.tree_equal(coreset_with_state, coreset)
             self.check_solution_invariants(coreset, updated_problem)
@@ -986,11 +988,10 @@ class RefinementSolverTest(SolverTest):
         4. Check the two calls to 'refine' yield that same result.
         """
         initial_coresubset, solver, _ = refine_problem
-        coresubset, state = jit_variant(solver.refine)(initial_coresubset)
+        _refine = jit_variant(solver.refine)
+        coresubset, state = _refine(initial_coresubset)
         if use_cached_state:
-            coresubset_cached_state, recycled_state = solver.refine(
-                initial_coresubset, state
-            )
+            coresubset_cached_state, recycled_state = _refine(initial_coresubset, state)
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coresubset_cached_state, coresubset)
         self.check_solution_invariants(coresubset, refine_problem)
@@ -2488,6 +2489,16 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
             raise ValueError("Invalid fixture parametrization")
         initial_coresubset = Coresubset(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
+
+    @override
+    @pytest.mark.parametrize("use_cached_state", (False, True))
+    def test_refine(self, jit_variant, refine_problem, use_cached_state):
+        initial_coresubset, solver, _ = refine_problem
+        context = does_not_raise()
+        if solver.coreset_size < len(initial_coresubset):
+            context = pytest.warns(SizeWarning)
+        with context:
+            return super().test_refine(jit_variant, refine_problem, use_cached_state)
 
     def test_greedy_kernel_inducing_point_state(
         self, reduce_problem: _ReduceProblem
