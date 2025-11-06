@@ -54,7 +54,6 @@ for module_name in ("jaxopt",):
 from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
 
 import coreax  # Cannot import until after package has been added to path
-import coreax.util
 
 # pylint: enable=wrong-import-position
 
@@ -98,6 +97,7 @@ extensions = [
 
 
 # pylint: disable=invalid-name
+always_use_bars_union = True
 toc_object_entries_show_parents = "hide"  # don't show prefix in secondary TOC
 # pylint: enable=invalid-name
 
