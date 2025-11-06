@@ -14,6 +14,7 @@ autodoc
 automodule
 autosectionlabel
 autoupdate
+autouse
 beartype
 bibfiles
 bibtex
@@ -31,6 +32,7 @@ dollarmath
 dtype
 dtypes
 dunder
+eig
 eigh
 emibcn
 eprint

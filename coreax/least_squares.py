@@ -313,13 +313,11 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             oversampling_parameter=self.oversampling_parameter,
             power_iterations=self.power_iterations,
         )
-
         # Form the low rank array, compute its exact eigendecomposition and
         # ortho-normalise the eigenvectors.
         array_approximation = q.T @ array @ q
         approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
         approximate_eigenvectors = q @ eigenvectors
-
         return approximate_eigenvalues, approximate_eigenvectors
 
     @override

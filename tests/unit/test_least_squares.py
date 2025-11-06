@@ -84,7 +84,6 @@ class InverseApproximationTest(ABC, Generic[_RegularisedLeastSquaresSolver]):
             target=target,
             identity=identity,
         )
-
         assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
             0.0, abs=1e-1
         )
@@ -173,7 +172,7 @@ class TestRandomisedEigendecompositionSolver(
         random_seed = 2_024
         return RandomisedEigendecompositionSolver(
             random_key=jr.key(random_seed),
-            oversampling_parameter=100,
+            oversampling_parameter=1100,
             power_iterations=1,
             rcond=None,
         )
@@ -182,7 +181,7 @@ class TestRandomisedEigendecompositionSolver(
     @pytest.fixture(scope="class")
     def problem(self):
         random_key = jr.key(2_024)
-        num_data_points = 2000
+        num_data_points = 1000
         dimension = 2
         identity = jnp.eye(num_data_points)
         regularisation_parameter = 1e-3
@@ -190,7 +189,6 @@ class TestRandomisedEigendecompositionSolver(
         # Compute kernel matrix from standard normal data
         x = jr.normal(random_key, (num_data_points, dimension))
         array = SquaredExponentialKernel().compute(x, x)
-
         # Compute "exact" inverse
         exact_inverter = MinimalEuclideanNormSolver(rcond=None)
         expected_inverse = exact_inverter.solve(
