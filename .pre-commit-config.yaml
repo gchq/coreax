@@ -41,7 +41,7 @@ repos:
         args:
           - --ignore-case
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.7
+    rev: 0.9.8
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -92,10 +92,10 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.3
+    rev: v0.14.4
     hooks:
       # Run the linter.
-      - id: ruff-check
+      - id: ruff
         args: [ --fix ]
         # Abort if ruff linter fails as there is some duplication of functionality with
         # the slow pylint hook
