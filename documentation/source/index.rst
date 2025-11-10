@@ -23,7 +23,7 @@ version of JAX for your system.
 
 .. code:: shell
 
-   $ python3 -m pip install coreax[test]
+   $ python3 -m pip install --group test
 
 Should the installation fail, try again using stable pinned package versions. Note that
 these versions may be rather outdated, although we endeavour to avoid versions with

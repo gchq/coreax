@@ -15,7 +15,7 @@ of ways:
 All contributors must sign the [GCHQ Contributor Licence Agreement][cla].
 
 Developers should install additional packages required for development using
-`pip install -e .[dev]`. Then, set up pre-commit hooks using `pre-commit install`.
+`pip install --group dev -e .`. Then, set up pre-commit hooks using `pre-commit install`.
 
 ## Reporting issues
 

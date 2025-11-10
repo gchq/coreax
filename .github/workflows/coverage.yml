@@ -28,7 +28,7 @@ jobs:
           python-version: 3.13
           enable-cache: true
       - name: Install test dependencies
-        run: uv sync --extra test --no-dev --locked
+        run: uv sync --group test --no-dev --locked
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Assess coverage of unit tests

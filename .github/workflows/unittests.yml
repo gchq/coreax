@@ -36,7 +36,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
     - name: Install test dependencies
-      run: uv sync --extra test --no-dev --locked
+      run: uv sync --group test --no-dev --locked
     - name: Debug - uv pip freeze
       run: uv pip freeze
     - name: Test with pytest

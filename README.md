@@ -82,12 +82,12 @@ have an NVIDIA GPU on Linux, add `jax[cuda12]` to your project dependencies or r
 pip install jax[cuda12]
 ```
 
-There are optional sets of additional dependencies:
-* `coreax[test]` is required to run the tests;
-* `coreax[example]` contains all dependencies for the example scripts;
-* `coreax[benchmark]` is required to run benchmarking;
-* `coreax[doc]` is for compiling the Sphinx documentation;
-* `coreax[dev]` includes all tools and packages a developer of Coreax might need.
+There are additional dependency groups:
+* `dev` includes all the tools and packages a developer of Coreax might need (includes all the below groups).
+* `doc` is for compiling the Sphinx documentation;
+* `tests` is used to run the tests (includes benchmark);
+* `benchmark` is required to run benchmarking (includes example);
+* `example` contains all dependencies for the example scripts;
 
 Note that the `test` and `dev` dependencies include `opencv-python-headless`, which is
 the headless version of OpenCV and is incompatible with other versions of OpenCV. If you
