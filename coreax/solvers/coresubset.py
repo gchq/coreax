@@ -16,7 +16,7 @@
 
 import math
 from collections.abc import Callable
-from typing import Literal, Optional, TypeVar, Union, overload
+from typing import Literal, TypeVar, overload
 from warnings import warn
 
 import equinox as eqx
@@ -129,8 +129,8 @@ def _greedy_kernel_selection(
     output_size: int,
     kernel: ScalarValuedKernel,
     unique: bool,
-    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]],
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]],
+    block_size: int | tuple[int | None, int | None] | None,
+    unroll: int | bool | tuple[int | bool, int | bool],
 ) -> Coresubset[_Data]:
     """
     Iterative-greedy coresubset point selection loop.
@@ -282,17 +282,17 @@ class KernelHerding(
 
     kernel: ScalarValuedKernel
     unique: bool = True
-    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
+    block_size: int | tuple[int | None, int | None] | None = None
+    unroll: int | bool | tuple[int | bool, int | bool] = 1
     probabilistic: bool = False
-    temperature: Union[float, Scalar] = eqx.field(default=1.0)
+    temperature: float | Scalar = eqx.field(default=1.0)
     random_key: KeyArrayLike = eqx.field(default_factory=lambda: jax.random.key(0))
 
     @override
     def reduce(
         self,
         dataset: _Data,
-        solver_state: Optional[HerdingState] = None,
+        solver_state: HerdingState | None = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         initial_coresubset = _initial_coresubset(0, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
@@ -300,7 +300,7 @@ class KernelHerding(
     def refine(
         self,
         coresubset: Coresubset[_Data],
-        solver_state: Optional[HerdingState] = None,
+        solver_state: HerdingState | None = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Refine a coresubset with 'Kernel Herding'.
@@ -365,9 +365,9 @@ class KernelHerding(
     def reduce_iterative(
         self,
         dataset: _Data,
-        solver_state: Optional[HerdingState] = None,
+        solver_state: HerdingState | None = None,
         num_iterations: int = 1,
-        t_schedule: Optional[Shaped[Array, " {num_iterations}"]] = None,
+        t_schedule: Shaped[Array, " {num_iterations}"] | None = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Reduce a dataset to a coreset by refining iteratively.
@@ -464,13 +464,13 @@ class SteinThinning(
     """
 
     kernel: ScalarValuedKernel
-    score_matching: Optional[ScoreMatching] = None
+    score_matching: ScoreMatching | None = None
     unique: bool = True
     regularise: bool = True
-    regulariser_lambda: Optional[float] = None
-    block_size: Optional[Union[int, tuple[Optional[int], Optional[int]]]] = None
-    unroll: Union[int, bool, tuple[Union[int, bool], Union[int, bool]]] = 1
-    kde_bw_method: Optional[Union[str, int, Callable]] = None
+    regulariser_lambda: float | None = None
+    block_size: int | tuple[int | None, int | None] | None = None
+    unroll: int | bool | tuple[int | bool, int | bool] = 1
+    kde_bw_method: str | int | Callable | None = None
 
     @override
     def reduce(
@@ -582,7 +582,7 @@ class RPCholesky(CoresubsetSolver[_Data, RPCholeskyState], ExplicitSizeSolver):
     unique: bool = True
 
     def reduce(
-        self, dataset: _Data, solver_state: Optional[RPCholeskyState] = None
+        self, dataset: _Data, solver_state: RPCholeskyState | None = None
     ) -> tuple[Coresubset[_Data], RPCholeskyState]:
         """
         Reduce 'dataset' to a :class:`~coreax.coreset.Coresubset` with 'RPCholesky'.
@@ -701,8 +701,8 @@ def _setup_batch_solver(  # pragma: no cover # pyright: ignore reportOverlapping
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
-    candidate_batch_size: Optional[int],
-    loss_batch_size: Optional[int],
+    candidate_batch_size: int | None,
+    loss_batch_size: int | None,
     random_key: KeyArrayLike,
     setup_identity: Literal[True] = True,
     setup_loss_batch_indices: Literal[True] = True,
@@ -716,8 +716,8 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
-    candidate_batch_size: Optional[int],
-    loss_batch_size: Optional[int],
+    candidate_batch_size: int | None,
+    loss_batch_size: int | None,
     random_key: KeyArrayLike,
     setup_identity: Literal[False] = False,
     setup_loss_batch_indices: Literal[False] = False,
@@ -731,8 +731,8 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
-    candidate_batch_size: Optional[int],
-    loss_batch_size: Optional[int],
+    candidate_batch_size: int | None,
+    loss_batch_size: int | None,
     random_key: KeyArrayLike,
     setup_identity: Literal[True] = True,
     setup_loss_batch_indices: Literal[False] = False,
@@ -746,8 +746,8 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
-    candidate_batch_size: Optional[int],
-    loss_batch_size: Optional[int],
+    candidate_batch_size: int | None,
+    loss_batch_size: int | None,
     random_key: KeyArrayLike,
     setup_identity: Literal[False] = False,
     setup_loss_batch_indices: Literal[True] = True,
@@ -758,17 +758,17 @@ def _setup_batch_solver(
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
-    candidate_batch_size: Optional[int],
-    loss_batch_size: Optional[int],
+    candidate_batch_size: int | None,
+    loss_batch_size: int | None,
     random_key: KeyArrayLike,
     setup_identity: bool = False,
     setup_loss_batch_indices: bool = True,
 ) -> tuple[
     Shaped[Array, " n"],
     Shaped[Array, " n p"],
-    Optional[Shaped[Array, " n p"]],
+    Shaped[Array, " n p"] | None,
     Shaped[Array, " p n"],
-    Optional[Shaped[Array, " n n"]],
+    Shaped[Array, " n n"] | None,
 ]:
     """
     Set up the matrices required to initialise a batched solver.
@@ -1177,15 +1177,15 @@ class GreedyKernelPoints(
     feature_kernel: ScalarValuedKernel
     regularisation_parameter: float = 1e-6
     unique: bool = True
-    candidate_batch_size: Optional[int] = None
-    loss_batch_size: Optional[int] = None
-    least_squares_solver: Optional[RegularisedLeastSquaresSolver] = None
+    candidate_batch_size: int | None = None
+    loss_batch_size: int | None = None
+    least_squares_solver: RegularisedLeastSquaresSolver | None = None
 
     @override
     def reduce(
         self,
         dataset: SupervisedData,
-        solver_state: Optional[GreedyKernelPointsState] = None,
+        solver_state: GreedyKernelPointsState | None = None,
     ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         initial_coresubset = _initial_coresubset(-1, self.coreset_size, dataset)
         return self.refine(initial_coresubset, solver_state)
@@ -1193,7 +1193,7 @@ class GreedyKernelPoints(
     def refine(  # noqa: PLR0915
         self,
         coresubset: Coresubset[SupervisedData],
-        solver_state: Optional[GreedyKernelPointsState] = None,
+        solver_state: GreedyKernelPointsState | None = None,
     ) -> tuple[Coresubset[SupervisedData], GreedyKernelPointsState]:
         """
         Refine a coresubset with :class:`GreedyKernelPointsState`.
@@ -1387,7 +1387,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
     def kt_half_recursive(
         self,
-        current_coreset: Union[_Data, Coresubset[_Data]],
+        current_coreset: _Data | Coresubset[_Data],
         m: int,
         original_dataset: _Data,
     ) -> list[Coresubset[_Data]]:

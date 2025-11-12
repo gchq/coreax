@@ -21,7 +21,8 @@ written produce the expected results on simple examples.
 
 import cmath
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, NamedTuple, Optional, TypeVar
+from collections.abc import Callable
+from typing import Generic, NamedTuple, TypeVar
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -48,7 +49,7 @@ _Data = TypeVar("_Data", bound=Data)
 class _Problem(NamedTuple):
     coreset: AbstractCoreset
     optimiser: WeightsOptimiser
-    target_metric: Optional[Metric]
+    target_metric: Metric | None
 
 
 class BaseWeightsOptimiserTest(ABC, Generic[_Data]):

@@ -21,7 +21,7 @@ functions for computing solver parameters and retrieving solver names.
 """
 
 from collections.abc import Callable
-from typing import Optional, TypeVar, Union
+from typing import TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -61,12 +61,12 @@ class IterativeKernelHerding(KernelHerding[_Data]):  # pylint: disable=too-many-
     """
 
     num_iterations: int = 1
-    t_schedule: Optional[Array] = None
+    t_schedule: Array | None = None
 
     def reduce(
         self,
         dataset: _Data,
-        solver_state: Optional[HerdingState] = None,
+        solver_state: HerdingState | None = None,
     ) -> tuple[Coresubset[_Data], HerdingState]:
         """
         Perform Kernel Herding reduction followed by additional refinement iterations.
@@ -118,7 +118,7 @@ def initialise_solvers(  # noqa: C901
     train_data_umap: Data,
     key: KeyArrayLike,
     cpp_oversampling_factor: int,
-    leaf_size: Optional[int] = None,
+    leaf_size: int | None = None,
 ) -> dict[str, Callable[[int], Solver]]:
     """
     Initialise and return a list of solvers for various coreset algorithms.
@@ -147,7 +147,7 @@ def initialise_solvers(  # noqa: C901
     kernel = SquaredExponentialKernel(length_scale=length_scale)
     sqrt_kernel = kernel.get_sqrt_kernel(16)
 
-    def _get_thinning_solver(_size: int) -> Union[KernelThinning, MapReduce]:
+    def _get_thinning_solver(_size: int) -> KernelThinning | MapReduce:
         """
         Set up kernel thinning solver.
 
@@ -169,7 +169,7 @@ def initialise_solvers(  # noqa: C901
             return thinning_solver
         return MapReduce(thinning_solver, leaf_size=leaf_size)
 
-    def _get_herding_solver(_size: int) -> Union[KernelHerding, MapReduce]:
+    def _get_herding_solver(_size: int) -> KernelHerding | MapReduce:
         """
         Set up kernel herding solver.
 
@@ -185,7 +185,7 @@ def initialise_solvers(  # noqa: C901
             return herding_solver
         return MapReduce(herding_solver, leaf_size=leaf_size)
 
-    def _get_stein_solver(_size: int) -> Union[SteinThinning, MapReduce]:
+    def _get_stein_solver(_size: int) -> SteinThinning | MapReduce:
         """
         Set up Stein thinning solver.
 
@@ -200,8 +200,8 @@ def initialise_solvers(  # noqa: C901
 
         # Define the score function as the gradient of log density given by the KDE
         def score_function(
-            x: Union[Shaped[Array, " n d"], Shaped[Array, ""], float, int],
-        ) -> Union[Shaped[Array, " n d"], Shaped[Array, " 1 1"]]:
+            x: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int,
+        ) -> Shaped[Array, " n d"] | Shaped[Array, " 1 1"]:
             """
             Compute the score function (gradient of log density) for a single point.
 
@@ -264,7 +264,7 @@ def initialise_solvers(  # noqa: C901
 
     def _get_probabilistic_herding_solver(
         _size: int,
-    ) -> Union[IterativeKernelHerding, MapReduce]:
+    ) -> IterativeKernelHerding | MapReduce:
         """
         Set up KernelHerding with probabilistic selection.
 
@@ -289,7 +289,7 @@ def initialise_solvers(  # noqa: C901
 
     def _get_iterative_herding_solver(
         _size: int,
-    ) -> Union[IterativeKernelHerding, MapReduce]:
+    ) -> IterativeKernelHerding | MapReduce:
         """
         Set up KernelHerding with probabilistic selection.
 
@@ -314,7 +314,7 @@ def initialise_solvers(  # noqa: C901
 
     def _get_cubic_iterative_herding_solver(
         _size: int,
-    ) -> Union[IterativeKernelHerding, MapReduce]:
+    ) -> IterativeKernelHerding | MapReduce:
         """
         Set up KernelHerding with probabilistic selection.
 

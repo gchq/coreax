@@ -25,7 +25,7 @@ from contextlib import (
     AbstractContextManager,
     nullcontext as does_not_raise,
 )
-from typing import Generic, NamedTuple, TypeVar, Union
+from typing import Generic, NamedTuple, TypeVar
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -148,7 +148,7 @@ class TestMinimalEuclideanNormSolver:
         self,
         array: Array,
         identity: Array,
-        rcond: Union[int, float, None],
+        rcond: int | float | None,
         context: AbstractContextManager,
     ) -> None:
         """Test `MinimalEuclideanNormSolver` handles inputs as expected."""
@@ -223,7 +223,7 @@ class TestRandomisedEigendecompositionSolver(
         self,
         array: Array,
         identity: Array,
-        rcond: Union[int, float, None],
+        rcond: int | float | None,
         context: AbstractContextManager,
     ) -> None:
         """Test `RandomisedEigendecompositionApproximator` handles invalid inputs."""

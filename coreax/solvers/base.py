@@ -15,7 +15,7 @@
 """Abstract base classes for constructing different types of coreset solvers."""
 
 from abc import abstractmethod
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 import equinox as eqx
 
@@ -38,7 +38,7 @@ class Solver(eqx.Module, Generic[_Coreset, _Data, _State]):
 
     @abstractmethod
     def reduce(
-        self, dataset: _Data, solver_state: Optional[_State] = None
+        self, dataset: _Data, solver_state: _State | None = None
     ) -> tuple[_Coreset, _State]:
         r"""
         Reduce ``dataset`` to a coreset - solve the coreset problem.
@@ -82,7 +82,7 @@ class RefinementSolver(CoresubsetSolver[_Data, _State], Generic[_Data, _State]):
 
     @abstractmethod
     def refine(
-        self, coresubset: Coresubset[_Data], solver_state: Optional[_State] = None
+        self, coresubset: Coresubset[_Data], solver_state: _State | None = None
     ) -> tuple[Coresubset[_Data], _State]:
         """
         Refine a coresubset - swap/update coresubset indices.

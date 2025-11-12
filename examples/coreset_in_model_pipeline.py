@@ -22,7 +22,6 @@ full dataset and a random subset.
 
 from pathlib import Path
 from time import time
-from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -45,7 +44,7 @@ from coreax.solvers import KernelHerding, RandomSample
 # pylint: disable=too-many-statements
 # pylint: disable=duplicate-code
 def main(
-    out_path: Optional[Path] = None,
+    out_path: Path | None = None,
 ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
     """
     Run machine learning pipeline example.
