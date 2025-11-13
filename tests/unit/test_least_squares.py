@@ -87,7 +87,7 @@ class InverseApproximationTest(ABC, Generic[_RegularisedLeastSquaresSolver]):
         assert jnp.linalg.norm(expected_inverse - approximate_inverse) == pytest.approx(
             0.0, abs=1e-1
         )
-
+        del approximate_inverse
         # Approximate stacks of kernel matrix inverses
         approximate_inverses = approximator.solve_stack(
             arrays=jnp.array((array, array)),
@@ -172,7 +172,7 @@ class TestRandomisedEigendecompositionSolver(
         random_seed = 2_024
         return RandomisedEigendecompositionSolver(
             random_key=jr.key(random_seed),
-            oversampling_parameter=1100,
+            oversampling_parameter=100,
             power_iterations=1,
             rcond=None,
         )

@@ -154,11 +154,8 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
         target: Shaped[Array, " n m"],
         identity: Shaped[Array, " n n"],
     ) -> Shaped[Array, " n n"]:
-        return jnp.linalg.lstsq(
-            array + abs(regularisation_parameter) * identity,
-            target,
-            rcond=self.rcond,
-        )[0]
+        regularised_array = array + abs(regularisation_parameter) * identity
+        return jnp.linalg.lstsq(regularised_array, target, rcond=self.rcond)[0]
 
 
 def _gaussian_range_finder(
@@ -194,13 +191,15 @@ def _gaussian_range_finder(
     approximate_range = array @ standard_gaussian_draws
     q, _ = jnp.linalg.qr(approximate_range)
 
-    # Power iterations for improved accuracy
-    for _ in range(power_iterations):
-        approximate_range_ = array.T @ q
-        q_, _ = jnp.linalg.qr(approximate_range_)
-        approximate_range = array @ q_
-        q, _ = jnp.linalg.qr(approximate_range)
-    return q
+    def _power_iterate(
+        _,
+        q_in: Shaped[Array, "n oversampling_parameter"],
+    ) -> Shaped[Array, "n oversampling_parameter"]:
+        q_intermediate, _ = jnp.linalg.qr(array.T @ q_in)
+        q_out, _ = jnp.linalg.qr(array @ q_intermediate)
+        return q_out
+
+    return jax.lax.fori_loop(0, power_iterations, _power_iterate, q)
 
 
 def _eigendecomposition_invert(
@@ -297,7 +296,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         See :cite:`halko2009randomness` for discussion on choosing sensible parameters,
         the defaults chosen here are cautious.
 
-        Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
+        Given the positive semi-definite matrix :math:`A \in \mathbb{R}^{n\times n}` and
         :math:`r=` ``oversampling_parameter``, we return a diagonal array of eigenvalues
         :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of
         eigenvectors :math:`U\in\mathbb{R}^{n\times r}` such that we have
@@ -313,11 +312,10 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             oversampling_parameter=self.oversampling_parameter,
             power_iterations=self.power_iterations,
         )
-        # Form the low rank array, compute its exact eigendecomposition and
-        # ortho-normalise the eigenvectors.
-        array_approximation = q.T @ array @ q
-        approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
-        approximate_eigenvectors = q @ eigenvectors
+        # Compute the randomised SVD. We assume array is positive semi-definite so the
+        # singular values are the eigenvalues.
+        u, approximate_eigenvalues, _ = jnp.linalg.svd(q.T @ array, full_matrices=False)
+        approximate_eigenvectors = q @ u
         return approximate_eigenvalues, approximate_eigenvectors
 
     @override
