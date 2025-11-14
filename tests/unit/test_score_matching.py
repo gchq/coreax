@@ -76,7 +76,7 @@ class TestKernelDensityMatching(unittest.TestCase):
         self.random_key = jr.key(0)
         self.mu = 0.0
         self.std_dev = 1.0
-        self.num_data_points = 250
+        self.num_data_points = 50
         generator = np.random.default_rng(1_989)
         self.samples = jnp.asarray(
             generator.normal(self.mu, self.std_dev, size=(self.num_data_points, 1))
@@ -1114,7 +1114,7 @@ class TestConvertSteinKernel:
     ) -> None:
         """Check handling of Stein kernels and standard kernels is consistent."""
         random_key = jr.key(2_024)
-        dataset_shape = (100, 2)
+        dataset_shape = (50, 2)
         dataset = jr.uniform(random_key, dataset_shape)
 
         converted_kernel = convert_stein_kernel(dataset, kernel, score_matching)

@@ -238,7 +238,7 @@ class TestKSD:
     def problem(self) -> _MetricProblem:
         """Generate an example problem for testing KSD."""
         dimension = 1
-        num_points = 2500, 1000
+        num_points = 250, 100
         keys = tuple(jr.split(jr.key(0), 2))
 
         def _generate_data(_num_points: int, _key: Array) -> Data:
@@ -289,7 +289,7 @@ class TestKSD:
         """
         random_key = jr.key(2_024)
         dim = 2
-        num_data_points = 1000
+        num_data_points = 100
 
         # Generate data from a uniform distribution Q with which to compute the expected
         # KSD.

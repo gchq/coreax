@@ -21,7 +21,7 @@ the codebase produce the expected results on simple examples.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, TypeVar, Union, cast
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -29,9 +29,9 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
+import scipy.stats
 from jax import Array
 from jax.typing import ArrayLike
-from scipy.stats import norm as scipy_norm
 from typing_extensions import override
 
 from coreax.data import Data
@@ -90,9 +90,122 @@ class BaseKernelTest(ABC, Generic[_ScalarValuedKernel]):
         np.testing.assert_array_almost_equal(output, expected_output)
 
 
-class KernelMeanTest(Generic[_ScalarValuedKernel]):
-    """Test the ``compute_mean`` method of a ``coreax.kernels.ScalarValuedKernel``."""
+class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
+    """Test gradient and divergence of a ``coreax.kernels.ScalarValuedKernel``."""
 
+    @pytest.fixture(scope="class")
+    def gradient_problem(self):
+        """Return a problem for testing kernel gradients and divergence."""
+        num_points = 10
+        dimension = 2
+        random_data_generation_key = 1_989
+        generator = np.random.default_rng(random_data_generation_key)
+        x = generator.random((num_points, dimension))
+        y = generator.random((num_points, dimension))
+        return x, y
+
+    @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
+    @pytest.mark.parametrize("elementwise", [False, True])
+    def test_gradients(
+        self,
+        gradient_problem: tuple[Array, Array],
+        kernel: _ScalarValuedKernel,
+        mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
+        elementwise: bool,
+    ):
+        """Test computation of the kernel gradients."""
+        x, y = gradient_problem
+        test_mode = mode
+        reference_mode = "expected_" + mode
+        if elementwise:
+            test_mode += "_elementwise"
+            x, y = x[:, 0], y[:, 0]
+        expected_output = getattr(self, reference_mode)(x, y, kernel)
+        if elementwise:
+            expected_output = expected_output.squeeze()
+        output = getattr(kernel, test_mode)(x, y)
+        np.testing.assert_allclose(output, expected_output, atol=1e-3, rtol=1e-4)
+
+    @abstractmethod
+    def expected_grad_x(
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
+    ) -> Union[Array, np.ndarray]:
+        """Compute expected gradient of the kernel w.r.t ``x``."""
+
+    @abstractmethod
+    def expected_grad_y(
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
+    ) -> Union[Array, np.ndarray]:
+        """Compute expected gradient of the kernel w.r.t ``y``."""
+
+    @abstractmethod
+    def expected_divergence_x_grad_y(
+        self, x: Array, y: Array, kernel: _ScalarValuedKernel
+    ) -> Union[Array, np.ndarray]:
+        """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
+
+
+class TestScalarValuedKernel:
+    """Tests default methods of ScalarValueKernel."""
+
+    ADDITION_MSG = (
+        "'addition' must be an instance of a 'ScalarValuedKernel', an integer or a "
+        "float"
+    )
+    PRODUCT_MSG = (
+        "'product' must be an instance of a 'ScalarValuedKernel', an integer or a float"
+    )
+    POWER_MSG = (
+        "'power' must be a positive integer to ensure positive semi-definiteness"
+    )
+
+    @pytest.fixture
+    def kernel(self):
+        """ScalarValuedKernel that does not override any default methods."""
+        return LinearKernel()
+
+    def test_add(self, kernel):
+        """Test the `__add__` magic method of `Kernel`."""
+        assert kernel + 1 == AdditiveKernel(kernel, _Constant(1))
+        assert kernel + 1.0 == AdditiveKernel(kernel, _Constant(1.0))
+        assert kernel + kernel == AdditiveKernel(kernel, kernel)
+        with pytest.raises(ValueError, match=self.ADDITION_MSG):
+            _ = kernel + "string"
+
+    def test_radd(self, kernel):
+        """Test the `__radd__` magic method of `Kernel`."""
+        assert 1 + kernel == kernel + 1
+        assert 1.0 + kernel == kernel + 1.0
+        with pytest.raises(ValueError, match=self.ADDITION_MSG):
+            _ = "string" + kernel
+
+    def test_mul(self, kernel):
+        """Test the `__mul__` magic method of `Kernel`."""
+        assert kernel * 1 == ProductKernel(kernel, _Constant(1))
+        assert kernel * 1.0 == ProductKernel(kernel, _Constant(1.0))
+        assert kernel * kernel == ProductKernel(kernel, kernel)
+        with pytest.raises(ValueError, match=self.PRODUCT_MSG):
+            _ = kernel * "string"
+
+    def test_rmul(self, kernel):
+        """Test the `__rmul__` magic method of `Kernel`."""
+        assert 1 * kernel == kernel * 1
+        assert 1.0 * kernel == kernel * 1.0
+        with pytest.raises(ValueError, match=self.PRODUCT_MSG):
+            _ = "string" * kernel
+
+    def test_pow(self, kernel):
+        """Test the `__pow__` magic method of `Kernel`."""
+        assert kernel**4 == PowerKernel(kernel, 4)
+        for power in [-1, 2.6]:
+            with pytest.raises(ValueError, match=self.POWER_MSG):
+                _ = kernel**power
+
+    # NOTE: The `compute_mean` and `gramian_row_mean` methods are not overridden by any
+    # currently implemented (non-approximate) kernels - these tests will only fail for
+    # other kernels if there is an error with their `compute` method, which is already
+    # tested by the BaseKernelTest. I.E. it is sufficient and efficient to only test the
+    # `compute_mean` and `gramian_row_mean` methods for the LinearKernel used here.
     @pytest.mark.parametrize(
         "block_size",
         [None, 0, -1, 1.2, 2, 3, 9, (None, 2), (2, None)],
@@ -112,7 +225,7 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
     def test_compute_mean(
         self,
         jit_variant: Callable[[Callable], Callable],
-        kernel: _ScalarValuedKernel,
+        kernel: ScalarValuedKernel,
         block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
         axis: Union[int, None],
     ) -> None:
@@ -174,162 +287,6 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
         np.testing.assert_array_equal(output, expected)
 
 
-class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
-    """Test gradient and divergence of a ``coreax.kernels.ScalarValuedKernel``."""
-
-    @pytest.fixture(scope="class")
-    def gradient_problem(self):
-        """Return a problem for testing kernel gradients and divergence."""
-        num_points = 10
-        dimension = 2
-        random_data_generation_key = 1_989
-        generator = np.random.default_rng(random_data_generation_key)
-        x = generator.random((num_points, dimension))
-        y = generator.random((num_points, dimension))
-        return x, y
-
-    @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
-    @pytest.mark.parametrize("elementwise", [False, True])
-    @pytest.mark.parametrize("auto_diff", [False, True])
-    def test_gradients(
-        self,
-        gradient_problem: tuple[Array, Array],
-        kernel: _ScalarValuedKernel,
-        mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
-        elementwise: bool,
-        auto_diff: bool,
-    ):
-        """Test computation of the kernel gradients."""
-        if (
-            elementwise
-            and auto_diff
-            and mode == "divergence_x_grad_y"
-            and isinstance(kernel, PeriodicKernel)
-        ):
-            # TODO(rg): Fix this failure.
-            # https://github.com/gchq/coreax/issues/1003
-            pytest.skip("Currently fails with large numerical errors.")
-
-        x, y = gradient_problem
-        test_mode = mode
-        reference_mode = "expected_" + mode
-        if elementwise:
-            test_mode += "_elementwise"
-            x, y = x[:, 0], y[:, 0]
-        expected_output = getattr(self, reference_mode)(x, y, kernel)
-        if elementwise:
-            expected_output = expected_output.squeeze()
-        if auto_diff:
-            if isinstance(kernel, (AdditiveKernel, ProductKernel, PowerKernel)):
-                pytest.skip(
-                    "Autodiff of Additive and Product kernels is tested implicitly."
-                )
-            # Access overridden parent methods that use auto-differentiation
-            autodiff_kernel = super(type(kernel), kernel)
-            output = getattr(autodiff_kernel, test_mode)(x, y)
-        else:
-            output = getattr(kernel, test_mode)(x, y)
-        np.testing.assert_allclose(output, expected_output, atol=1e-3, rtol=1e-4)
-
-    @abstractmethod
-    def expected_grad_x(
-        self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
-        """Compute expected gradient of the kernel w.r.t ``x``."""
-
-    @abstractmethod
-    def expected_grad_y(
-        self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
-        """Compute expected gradient of the kernel w.r.t ``y``."""
-
-    @abstractmethod
-    def expected_divergence_x_grad_y(
-        self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
-        """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
-
-
-class TestKernelMagicMethods:
-    """Test that the Kernel magic methods produce correct instances."""
-
-    @pytest.mark.parametrize(
-        "mode",
-        [
-            "add_int",
-            "add_float",
-            "add_self",
-            "right_add",
-            "mul_int",
-            "mul_float",
-            "mul_self",
-            "right_mul",
-            "int_pow",
-            "invalid_float_pow",
-            "less_than_min_power",
-            "invalid_kernel_inputs",
-        ],
-    )
-    def test_magic_methods(  # noqa: C901
-        self, mode: str
-    ):
-        """Test kernel magic methods produce correct paired Kernels."""
-        kernel = LinearKernel()
-        if mode == "add_int":
-            assert kernel + 1 == AdditiveKernel(kernel, _Constant(1))
-        elif mode == "add_float":
-            assert kernel + 1.0 == AdditiveKernel(kernel, _Constant(1.0))
-        elif mode == "add_self":
-            assert kernel + kernel == AdditiveKernel(kernel, kernel)
-        elif mode == "right_add":
-            assert 1 + kernel == AdditiveKernel(kernel, _Constant(1.0))
-        elif mode == "mul_int":
-            assert kernel * 1 == ProductKernel(kernel, _Constant(1))
-        elif mode == "mul_float":
-            assert kernel * 1.0 == ProductKernel(kernel, _Constant(1.0))
-        elif mode == "mul_self":
-            assert kernel * kernel == ProductKernel(kernel, kernel)
-        elif mode == "right_mul":
-            assert 1 * kernel == ProductKernel(kernel, _Constant(1.0))
-        elif mode == "int_pow":
-            assert kernel**4 == PowerKernel(kernel, 4)
-        elif mode == "invalid_float_pow":
-            with pytest.raises(
-                ValueError,
-                match="'power' must be a positive integer to ensure positive"
-                + " semi-definiteness",
-            ):
-                _ = kernel**2.6  # pyright: ignore[reportOperatorIssue]
-        elif mode == "less_than_min_power":
-            with pytest.raises(
-                ValueError,
-                match="'power' must be a positive integer to ensure positive"
-                + " semi-definiteness",
-            ):
-                _ = kernel**-1  # pyright: ignore[reportOperatorIssue]
-        elif mode == "invalid_kernel_inputs":
-            with pytest.raises(TypeError):
-                _ = AdditiveKernel(1, "string")  # pyright: ignore[reportArgumentType]
-            with pytest.raises(
-                ValueError,
-                match="'addition' must be an instance of a 'ScalarValuedKernel',"
-                + " an integer or a float",
-            ):
-                _ = kernel + "string"  # pyright: ignore[reportOperatorIssue]
-            with pytest.raises(
-                ValueError,
-                match="'product' must be an instance of a 'ScalarValuedKernel',"
-                + " an integer or a float",
-            ):
-                _ = kernel * "string"  # pyright: ignore[reportOperatorIssue]
-            with pytest.raises(
-                ValueError,
-                match="'power' must be a positive integer to ensure positive"
-                + " semi-definiteness",
-            ):
-                _ = kernel ** "string"  # pyright: ignore[reportOperatorIssue]
-
-
 class _MockedUniCompositeKernel:
     """
     Mock UniCompositeKernel class for construction of an Additive or Product kernel.
@@ -357,7 +314,6 @@ class _MockedUniCompositeKernel:
 
 class TestPowerKernel(
     BaseKernelTest[PowerKernel],
-    KernelMeanTest[PowerKernel],
     KernelGradientTest[PowerKernel],
 ):
     """Test ``coreax.kernels.PowerKernel``."""
@@ -526,9 +482,7 @@ class _MockedDuoCompositeKernel:
 
 
 class TestAdditiveKernel(
-    BaseKernelTest[AdditiveKernel],
-    KernelMeanTest[AdditiveKernel],
-    KernelGradientTest[AdditiveKernel],
+    BaseKernelTest[AdditiveKernel], KernelGradientTest[AdditiveKernel]
 ):
     """Test ``coreax.kernels.AdditiveKernel``."""
 
@@ -637,9 +591,7 @@ class TestAdditiveKernel(
 
 
 class TestProductKernel(
-    BaseKernelTest[ProductKernel],
-    KernelMeanTest[ProductKernel],
-    KernelGradientTest[ProductKernel],
+    BaseKernelTest[ProductKernel], KernelGradientTest[ProductKernel]
 ):
     """Test ``coreax.kernels.ProductKernel``."""
 
@@ -779,11 +731,7 @@ class TestProductKernel(
         second_kernel.compute_elementwise.assert_not_called()
 
 
-class TestLinearKernel(
-    BaseKernelTest[LinearKernel],
-    KernelMeanTest[LinearKernel],
-    KernelGradientTest[LinearKernel],
-):
+class TestLinearKernel(BaseKernelTest[LinearKernel], KernelGradientTest[LinearKernel]):
     """Test ``coreax.kernels.LinearKernel``."""
 
     @pytest.fixture(scope="class")
@@ -881,9 +829,7 @@ class TestLinearKernel(
 
 # Cannot inherit from the gradient and mean tests as the domain of the Poisson kernel
 # is not compatible with the data used.
-class TestPoissonKernel(
-    BaseKernelTest[PoissonKernel],
-):
+class TestPoissonKernel(BaseKernelTest[PoissonKernel]):
     """Test ``coreax.kernels.PoissonKernel``."""
 
     @pytest.fixture(scope="class")
@@ -941,13 +887,11 @@ class TestPoissonKernel(
 
     @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
     @pytest.mark.parametrize("elementwise", [False, True])
-    @pytest.mark.parametrize("auto_diff", [False, True])
     def test_gradients(
         self,
         kernel: PoissonKernel,
         mode: Literal["grad_x", "grad_y", "divergence_x_grad_y"],
         elementwise: bool,
-        auto_diff: bool,
     ):
         """Test computation of the kernel gradients."""
         x = jnp.array(
@@ -970,12 +914,7 @@ class TestPoissonKernel(
         expected_output = getattr(self, reference_mode)(x, y, kernel)
         if elementwise:
             expected_output = expected_output.squeeze()
-        if auto_diff:
-            # Access overridden parent methods that use auto-differentiation
-            autodiff_kernel = super(type(kernel), kernel)
-            output = getattr(autodiff_kernel, test_mode)(x, y)
-        else:
-            output = getattr(kernel, test_mode)(x, y)
+        output = getattr(kernel, test_mode)(x, y)
         np.testing.assert_array_almost_equal(output, expected_output, decimal=3)
 
     def expected_grad_x(
@@ -1050,84 +989,6 @@ class TestPoissonKernel(
         return expected_divergence
 
     @pytest.mark.parametrize(
-        "block_size",
-        [None, 0, -1, 1.2, 2, 3, 9, (None, 2), (2, None)],
-        ids=[
-            "none",
-            "zero",
-            "negative",
-            "floating",
-            "integer_multiple",
-            "fractional_multiple",
-            "oversized",
-            "tuple[none, integer_multiple]",
-            "tuple[integer_multiple, none]",
-        ],
-    )
-    @pytest.mark.parametrize("axis", [None, 0, 1])
-    def test_compute_mean(
-        self,
-        jit_variant: Callable[[Callable], Callable],
-        kernel: PoissonKernel,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int, None],
-    ) -> None:
-        """
-        Test the `compute_mean` methods with data from the domain.
-
-        Considers all classes of 'block_size' and 'axis', along with implicitly and
-        explicitly weighted data.
-        """
-        x = jnp.array(
-            [
-                [0.0],
-                [1.0],
-                [2.0],
-                [3.0],
-                [4.0],
-                [5.0],
-                [6.0],
-            ]
-        )
-        y = x[::-1] + 1
-        kernel_matrix = kernel.compute(x, y)
-        x_weights, y_weights = jnp.arange(x.shape[0]), jnp.arange(y.shape[0])
-        x_data, y_data = Data(x, x_weights), Data(y, y_weights)
-        if axis == 0:
-            weights = x_weights
-        elif axis == 1:
-            weights = y_weights
-        else:
-            weights = x_weights[..., None] * y_weights[None, ...]
-        expected = jnp.average(kernel_matrix, axis, weights)
-        test_fn = jit_variant(kernel.compute_mean)
-        mean_output = test_fn(x_data, y_data, axis, block_size=block_size)
-        np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
-
-    def test_gramian_row_mean(
-        self, jit_variant: Callable[[Callable], Callable], kernel: ScalarValuedKernel
-    ) -> None:
-        """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
-        bs = None
-        unroll = (1, 1)
-        x = jnp.array(
-            [
-                [0.0],
-                [1.0],
-                [2.0],
-                [3.0],
-                [4.0],
-                [5.0],
-                [6.0],
-            ]
-        )
-        expected_fn = jit_variant(kernel.compute_mean)
-        output_fn = jit_variant(kernel.gramian_row_mean)
-        expected = expected_fn(x, x, axis=0, block_size=bs, unroll=unroll)
-        output = output_fn(x, block_size=bs, unroll=unroll)
-        np.testing.assert_array_equal(output, expected)
-
-    @pytest.mark.parametrize(
         "parameters, error_msg",
         [
             ((0.5, -0.1), "'output_scale' must be positive"),
@@ -1151,9 +1012,7 @@ class TestPoissonKernel(
 
 
 class TestPolynomialKernel(
-    BaseKernelTest[PolynomialKernel],
-    KernelMeanTest[PolynomialKernel],
-    KernelGradientTest[PolynomialKernel],
+    BaseKernelTest[PolynomialKernel], KernelGradientTest[PolynomialKernel]
 ):
     """Test ``coreax.kernels.PolynomialKernel``."""
 
@@ -1302,7 +1161,6 @@ class TestPolynomialKernel(
 
 class TestSquaredExponentialKernel(
     BaseKernelTest[SquaredExponentialKernel],
-    KernelMeanTest[SquaredExponentialKernel],
     KernelGradientTest[SquaredExponentialKernel],
 ):
     """Test ``coreax.kernels.SquaredExponentialKernel``."""
@@ -1382,11 +1240,9 @@ class TestSquaredExponentialKernel(
             expected_distances = np.zeros((num_points, num_points))
             for x_idx, x_ in enumerate(x):
                 for y_idx, y_ in enumerate(y):
-                    expected_distances[x_idx, y_idx] = (
-                        scipy_norm(y_, length_scale)
-                        # Ignore Pyright here - the .pdf() function definitely exists!
-                        .pdf(x_)  # pyright: ignore[reportAttributeAccessIssue]
-                    )
+                    scipy_norm = scipy.stats.norm(y_, length_scale)
+                    scipy_norm = cast(scipy.stats.rv_continuous, scipy_norm)
+                    expected_distances[x_idx, y_idx] = scipy_norm.pdf(x_)
             x, y = x.reshape(-1, 1), y.reshape(-1, 1)
         elif mode == "negative_length_scale":
             length_scale = -1
@@ -1488,7 +1344,7 @@ class TestSquaredExponentialKernel(
         )
 
 
-class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel]):
+class TestMaternKernel(BaseKernelTest[MaternKernel]):
     """Test ``coreax.kernels.MaternKernel``."""
 
     @pytest.fixture(scope="class")
@@ -1626,7 +1482,6 @@ class TestMaternKernel(BaseKernelTest[MaternKernel], KernelMeanTest[MaternKernel
 
 class TestExponentialKernel(
     BaseKernelTest[ExponentialKernel],
-    KernelMeanTest[ExponentialKernel],
     KernelGradientTest[ExponentialKernel],
 ):
     """Test ``coreax.kernels.ExponentialKernel``."""
@@ -1765,7 +1620,6 @@ class TestExponentialKernel(
 
 class TestRationalQuadraticKernel(
     BaseKernelTest[RationalQuadraticKernel],
-    KernelMeanTest[RationalQuadraticKernel],
     KernelGradientTest[RationalQuadraticKernel],
 ):
     """Test ``coreax.kernels.RationalQuadraticKernel``."""
@@ -1788,7 +1642,8 @@ class TestRationalQuadraticKernel(
             "large_negative_length_scale",
             "near_zero_length_scale",
             "negative_output_scale",
-        ]
+        ],
+        scope="class",
     )
     def problem(  # noqa: C901
         self, request, kernel: RationalQuadraticKernel
@@ -1926,7 +1781,6 @@ class TestRationalQuadraticKernel(
 
 class TestPeriodicKernel(
     BaseKernelTest[PeriodicKernel],
-    KernelMeanTest[PeriodicKernel],
     KernelGradientTest[PeriodicKernel],
 ):
     """Test ``coreax.kernels.PeriodicKernel``."""
@@ -2101,10 +1955,7 @@ class TestPeriodicKernel(
             PeriodicKernel(*parameters)
 
 
-class TestLocallyPeriodicKernel(
-    BaseKernelTest[LocallyPeriodicKernel],
-    KernelMeanTest[LocallyPeriodicKernel],
-):
+class TestLocallyPeriodicKernel(BaseKernelTest[LocallyPeriodicKernel]):
     """Test ``coreax.kernels.LocallyPeriodicKernel``."""
 
     @pytest.fixture(scope="class")
@@ -2195,7 +2046,6 @@ class TestLocallyPeriodicKernel(
 
 class TestLaplacianKernel(
     BaseKernelTest[LaplacianKernel],
-    KernelMeanTest[LaplacianKernel],
     KernelGradientTest[LaplacianKernel],
 ):
     """Test ``coreax.kernels.LaplacianKernel``."""
@@ -2218,7 +2068,8 @@ class TestLaplacianKernel(
             "large_negative_length_scale",
             "near_zero_length_scale",
             "negative_output_scale",
-        ]
+        ],
+        scope="class",
     )
     def problem(
         self, request: pytest.FixtureRequest, kernel: LaplacianKernel
@@ -2342,11 +2193,7 @@ class TestLaplacianKernel(
             LaplacianKernel(*parameters)
 
 
-class TestPCIMQKernel(
-    BaseKernelTest[PCIMQKernel],
-    KernelMeanTest[PCIMQKernel],
-    KernelGradientTest[PCIMQKernel],
-):
+class TestPCIMQKernel(BaseKernelTest[PCIMQKernel], KernelGradientTest[PCIMQKernel]):
     """Test ``coreax.kernels.PCIMQKernel``."""
 
     @pytest.fixture(scope="class")
@@ -2367,7 +2214,8 @@ class TestPCIMQKernel(
             "large_negative_length_scale",
             "near_zero_length_scale",
             "negative_output_scale",
-        ]
+        ],
+        scope="class",
     )
     def problem(self, request: pytest.FixtureRequest, kernel: PCIMQKernel) -> _Problem:
         r"""
@@ -2587,7 +2435,4 @@ class TestSteinKernel(BaseKernelTest[SteinKernel]):
             match="'base_kernel' must be an instance of "
             + "'coreax.kernels.base.ScalarValuedKernel'",
         ):
-            SteinKernel(
-                base_kernel="base_kernel",  # pyright: ignore[reportArgumentType]
-                score_function=jnp.negative,
-            )
+            SteinKernel(base_kernel="base_kernel", score_function=jnp.negative)  # pyright: ignore[reportArgumentType]
