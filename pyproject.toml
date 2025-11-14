@@ -134,7 +134,7 @@ venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
-addopts = "-v -s -n auto --dist worksteal"
+addopts = "-v -s"
 filterwarnings = [
     "ignore::ImportWarning:umap",
     "ignore::DeprecationWarning:jaxopt",
