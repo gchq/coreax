@@ -121,8 +121,8 @@ else:
 class SolverTest:
     """Base tests for all children of :class:`coreax.solvers.Solver`."""
 
-    random_key: KeyArrayLike = jr.key(2024)
-    shape: tuple[int, int] = (128, 10)
+    random_key: KeyArrayLike = jr.key(0)
+    shape: tuple[int, int] = (64, 8)
 
     @pytest.fixture
     @abstractmethod
@@ -2032,7 +2032,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
     def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
         del request
         kernel = PCIMQKernel()
-        coreset_size = self.shape[0] // 10
+        coreset_size = self.shape[0] // self.shape[1]
         return jtu.Partial(SteinThinning, coreset_size=coreset_size, kernel=kernel)
 
     @pytest.mark.parametrize(
@@ -2554,7 +2554,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @pytest.mark.parametrize(
         "data_size, coreset_size, candidate_batch_size",
-        [(100, 50, 10), (100, 50, 13), (100, 10, 50), (50, 10, 100), (50, 50, 10)],
+        [(50, 25, 10), (50, 25, 13), (50, 10, 25), (25, 10, 50), (25, 25, 10)],
         ids=[
             "multiple_candidate_batch_size_less_than_coreset_size_less_than_data_size",
             "non_multi_candidate_batch_size_less_than_coreset_size_less_than_data_size",
@@ -2583,7 +2583,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @pytest.mark.parametrize(
         "data_size, coreset_size, loss_batch_size",
-        [(100, 50, 10), (100, 50, 13), (100, 10, 50), (50, 10, 100), (50, 50, 10)],
+        [(50, 25, 10), (50, 25, 13), (50, 10, 25), (25, 10, 50), (25, 25, 10)],
         ids=[
             "multiple_loss_batch_size_less_than_coreset_size_less_than_data_size",
             "non_multiple_loss_batch_size_less_than_coreset_size_less_than_data_size",

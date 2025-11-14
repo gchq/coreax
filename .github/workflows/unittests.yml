@@ -39,8 +39,14 @@ jobs:
       run: uv sync --extra test --no-dev --locked
     - name: Debug - uv pip freeze
       run: uv pip freeze
-    - name: Test with pytest
-      run: uv run pytest --ignore=tests/integration -n auto --dist worksteal
+    # Solvers are tests separately to reduce CI memory usage.
+    - name: Test solvers with pytest
+      run: uv run pytest tests/unit/test_solvers.py
+    # Kernels are tested separately to reduce CI memory usage..
+    - name: Test kernels with pytest
+      run: uv run pytest tests/unit/test_kernels.py
+    - name: Test remaining units with pytest
+      run: uv run pytest --ignore=tests/integration --ignore=tests/unit/test_solvers.py --ignore=tests/unit/test_kernels.py
     # Integration tests are slow, so only run if all other tests pass.
     - name: Test integration tests
-      run: uv run pytest tests/integration -n auto --dist worksteal
+      run: uv run pytest tests/integration
