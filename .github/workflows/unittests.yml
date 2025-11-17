@@ -42,5 +42,6 @@ jobs:
     - name: Test with pytest
       run: uv run pytest --ignore=tests/integration -n auto --dist worksteal
     # Integration tests are slow, so only run if all other tests pass.
+    # To reduce memory consumption, don't use parallel pytest for these tests.
     - name: Test integration tests
-      run: uv run pytest tests/integration -n auto --dist worksteal
+      run: uv run pytest tests/integration
