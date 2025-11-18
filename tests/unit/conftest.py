@@ -17,6 +17,7 @@
 from collections.abc import Callable
 
 import equinox as eqx
+import jax
 import pytest
 
 
@@ -24,7 +25,8 @@ import pytest
 def jit_variant(request: pytest.FixtureRequest) -> Callable[[Callable], Callable]:
     """Return a callable that (may) JIT compile a passed callable."""
     if request.param == "without_jit":
-        return lambda x: x
+        return jax.tree_util.Partial
     if request.param == "with_jit":
+        jax.clear_caches()
         return eqx.filter_jit
     raise ValueError("Invalid fixture parametrization.")

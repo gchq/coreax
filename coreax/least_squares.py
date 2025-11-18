@@ -280,7 +280,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             raise ValueError("'power_iterations' must be a non-negative integer")
         if self.rcond is not None:
             if self.rcond < 0 and self.rcond != -1:
-                raise ValueError("'rcond' must be non-negative, except for value of -1")
+                raise ValueError("'rcond' must be non-negative or -1")
 
     def randomised_eigendecomposition(
         self, array: Shaped[Array, " n n"]
