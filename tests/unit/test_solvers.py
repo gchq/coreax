@@ -2440,7 +2440,6 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         params=[
             "well-sized",
             "under-sized",
-            "over-sized",
             "random-unweighted",
             "random-weighted",
         ],
@@ -2490,15 +2489,12 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         initial_coresubset = Coresubset(indices, dataset)
         return _RefineProblem(initial_coresubset, solver, expected_coresubset)
 
-    @override
+    @pytest.mark.parametrize("refine_problem", ["over-sized"], indirect=True)
     @pytest.mark.parametrize("use_cached_state", (False, True))
-    def test_refine(self, jit_variant, refine_problem, use_cached_state):
-        initial_coresubset, solver, _ = refine_problem
-        context = does_not_raise()
-        if solver.coreset_size < len(initial_coresubset):
-            context = pytest.warns(SizeWarning)
-        with context:
-            return super().test_refine(jit_variant, refine_problem, use_cached_state)
+    def test_oversized_refine(self, jit_variant, refine_problem, use_cached_state):
+        """Special case to check a size warning is raised for an undersized problem."""
+        with pytest.warns(SizeWarning):
+            return self.test_refine(jit_variant, refine_problem, use_cached_state)
 
     def test_greedy_kernel_inducing_point_state(
         self, reduce_problem: _ReduceProblem

@@ -211,14 +211,17 @@ def test_solver_instances() -> None:
     solvers_with_leaf = initialise_solvers(
         mock_data, key, cpp_oversampling_factor, leaf_size
     )
-    for solver_name, solver_function in solvers_with_leaf.items():
+
+    def should_warn(solver_name):
         expected_solver_type = expected_solver_types_with_leaf[solver_name]
-        context = does_not_warn()
         if expected_solver_type == MapReduce:
             base_solver = expected_solver_types_no_leaf[solver_name]
             if not issubclass(base_solver, PaddingInvariantSolver):
-                context = pytest.warns(UserWarning)
-        with context:
+                return True
+        return False
+
+    for solver_name, solver_function in solvers_with_leaf.items():
+        with pytest.warns(UserWarning) if should_warn(solver_name) else does_not_warn():
             solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
 
