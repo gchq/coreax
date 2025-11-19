@@ -107,7 +107,7 @@ jobs:
       - name: Install test dependencies
         run: |
           uv venv
-          uv pip install $WHEEL_FILENAME[test]
+          uv pip install --group test $WHEEL_FILENAME
       - name: Debug - uv pip freeze
         run: uv pip freeze
       - name: Test with pytest

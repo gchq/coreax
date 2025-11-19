@@ -42,33 +42,20 @@ dependencies = [
     "typing-extensions>=4.12",
 ]
 
-[project.optional-dependencies]
-# Example scripts
-example = [
-    "imageio>=2",
-    "matplotlib>=3",
-    "numpy>=2",
-    "opencv-python-headless>=4",  # WARNING: Incompatible with other versions of opencv
-]
-# Benchmarking - runs very similar code to examples with same dependencies plus more
-benchmark = [
-    "coreax[example]",
-    "torch>=2.5",
-    "torchvision>=0.20",
-    "umap-learn>=0.5.7",  # Earlier versions are incompatible.
-    # Required for umap-learn - we constrain this so dependency solvers don't
-    # erroneously backtrack.
-    "llvmlite>=0.40.0",
-]
-# Run unit tests with coverage assessment
-test = [
-    "coreax[benchmark]",
-    "beartype>=0.19",
-    "pytest>=8",
-    "pytest-cov>=6",
-    "pytest-rerunfailures>=15",
-    "pytest-xdist>=3",
-    "scipy>=1.13",
+[dependency-groups]
+# All tools for a developer including those for running pylint
+dev = [
+    # These dependencies are constrained more tightly as they're only used by package
+    # developers, so compatibility is less of a concern
+    {include-group = "doc"},
+    {include-group = "test"},
+    "jupyter>=1.1.1",  # Include as developers may wish to write their own notebooks
+    "ruff>=0.8.6",
+    "pre-commit>=4.0.1",
+    "pylint>=3.3.3",
+    "pyright>=1.1.391",
+    "pyroma>=4.2",
+
 ]
 # Compile documentation
 doc = [
@@ -79,19 +66,32 @@ doc = [
     "sphinxcontrib-bibtex>=2",
     "sphobjinv>=2",
 ]
-
-[dependency-groups]
-# All tools for a developer including those for running pylint
-dev = [
-    # These dependencies are constrained more tightly as they're only used by package
-    # developers, so compatibility is less of a concern
-    "coreax[example, benchmark, test, doc]",
-    "jupyter>=1.1.1",  # Include as developers may wish to write their own notebooks
-    "ruff>=0.8.6",
-    "pre-commit>=4.0.1",
-    "pylint>=3.3.3",
-    "pyright>=1.1.391",
-    "pyroma>=4.2",
+# Run unit tests with coverage assessment
+test = [
+    {include-group = "benchmark"},
+    "beartype>=0.19",
+    "pytest>=8",
+    "pytest-cov>=6",
+    "pytest-rerunfailures>=15",
+    "pytest-xdist>=3",
+    "scipy>=1.13",
+]
+# Benchmarking - runs very similar code to examples with same dependencies plus more
+benchmark = [
+    {include-group = "example"},
+    "torch>=2.5",
+    "torchvision>=0.20",
+    "umap-learn>=0.5.7",  # Earlier versions are incompatible.
+    # Required for umap-learn - we constrain this so dependency solvers don't
+    # erroneously backtrack.
+    "llvmlite>=0.40.0",
+]
+# Example scripts
+example = [
+    "imageio>=2",
+    "matplotlib>=3",
+    "numpy>=2",
+    "opencv-python-headless>=4",  # WARNING: Incompatible with other versions of opencv
 ]
 
 [tool.uv]

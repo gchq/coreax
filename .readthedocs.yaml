@@ -34,7 +34,7 @@ build:
     install:
       # We use the `--frozen` option instead of `--locked`, as we want RTD to build the
       # documentation according to the repository state, even if `uv.lock` is outdated.
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --extra doc --no-dev --frozen
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --group doc --no-dev --frozen
 
 sphinx:
   configuration: documentation/source/conf.py
