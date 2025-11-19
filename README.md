@@ -82,7 +82,7 @@ have an NVIDIA GPU on Linux, add `jax[cuda12]` to your project dependencies or r
 pip install jax[cuda12]
 ```
 
-There are additional dependency groups:
+There are additional [dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/):
 * `dev` includes all the tools and packages a developer of Coreax might need (includes all the below groups).
 * `doc` is for compiling the Sphinx documentation;
 * `tests` is used to run the tests (includes benchmark);

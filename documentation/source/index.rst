@@ -23,6 +23,7 @@ version of JAX for your system.
 
 .. code:: shell
 
+   $ pip install --upgrade pip  # `--group` requires pip>=25.1
    $ python3 -m pip install --group test
 
 Should the installation fail, try again using stable pinned package versions. Note that
