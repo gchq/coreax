@@ -69,7 +69,7 @@ doc = [
 test = [
     {include-group = "benchmark"},
     "beartype>=0.19",
-    "pytest>=8",
+    "pytest>=9",
     "pytest-cov>=6",
     "pytest-rerunfailures>=15",
     "pytest-xdist>=3",
@@ -132,7 +132,9 @@ venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
+minversion = "9.0"
 filterwarnings = [
+    "error",
     "ignore::ImportWarning:umap",
     "ignore::DeprecationWarning:jaxopt",
 ]

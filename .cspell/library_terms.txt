@@ -80,6 +80,7 @@ meshgrid
 mimread
 mimsave
 minval
+minversion
 mmd
 modindex
 myst
