@@ -21,7 +21,7 @@ the codebase produce the expected results on simple examples.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, Literal, NamedTuple, TypeVar, Union
+from typing import Generic, Literal, NamedTuple, TypeVar
 from unittest.mock import MagicMock
 
 import equinox as eqx
@@ -113,8 +113,8 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
         self,
         jit_variant: Callable[[Callable], Callable],
         kernel: _ScalarValuedKernel,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int, None],
+        block_size: int | None | tuple[int | None, int | None],
+        axis: int | None,
     ) -> None:
         """
         Test the `compute_mean` methods.
@@ -234,19 +234,19 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
     @abstractmethod
     def expected_grad_x(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``x``."""
 
     @abstractmethod
     def expected_grad_y(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected gradient of the kernel w.r.t ``y``."""
 
     @abstractmethod
     def expected_divergence_x_grad_y(
         self, x: Array, y: Array, kernel: _ScalarValuedKernel
-    ) -> Union[Array, np.ndarray]:
+    ) -> Array | np.ndarray:
         """Compute expected divergence of the kernel w.r.t ``x`` gradient ``y``."""
 
 
@@ -1069,8 +1069,8 @@ class TestPoissonKernel(
         self,
         jit_variant: Callable[[Callable], Callable],
         kernel: PoissonKernel,
-        block_size: Union[int, None, tuple[Union[int, None], Union[int, None]]],
-        axis: Union[int, None],
+        block_size: int | None | tuple[int | None, int | None],
+        axis: int | None,
     ) -> None:
         """
         Test the `compute_mean` methods with data from the domain.

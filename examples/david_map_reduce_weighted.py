@@ -37,7 +37,6 @@ uniform random sampling. Coreset quality is measured using maximum mean discrepa
 """
 
 from pathlib import Path
-from typing import Optional
 
 import cv2
 import equinox as eqx
@@ -98,7 +97,7 @@ def downsample_opencv(image_path: str, downsampling_factor: int) -> np.ndarray:
 
 def main(
     in_path: Path = Path("../examples/data/david_orig.png"),
-    out_path: Optional[Path] = None,
+    out_path: Path | None = None,
     downsampling_factor: int = 1,
 ) -> tuple[float, float]:
     """

@@ -40,7 +40,7 @@ GPUs, 48 virtual CPUs and 192 GiB memory.
 import json
 import os
 import time
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple
 
 import equinox as eqx
 import jax
@@ -143,7 +143,7 @@ class MLP(nn.Module):
 class TrainState(train_state.TrainState):
     """Custom train state with batch statistics and dropout RNG."""
 
-    batch_stats: Optional[dict[str, jnp.ndarray]]
+    batch_stats: dict[str, jnp.ndarray] | None
     dropout_rng: KeyArrayLike
 
 
@@ -416,7 +416,7 @@ def prepare_datasets() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarr
 def train_model(
     data_bundle: dict[str, jnp.ndarray],
     key: KeyArrayLike,
-    config: dict[str, Union[int, float]],
+    config: dict[str, int | float],
 ) -> dict[str, float]:
     """
     Train the model and return the results.

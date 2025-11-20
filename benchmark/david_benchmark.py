@@ -38,7 +38,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import math
 import time
 from pathlib import Path
-from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -60,7 +59,7 @@ MAX_8BIT = 255
 # (disable line too long and too many statements ruff)
 def benchmark_coreset_algorithms(
     in_path: Path = Path("../examples/data/david_orig.png"),
-    out_path: Optional[Path] = Path(
+    out_path: Path | None = Path(
         "../examples/benchmarking_images/david_benchmark_results.png"
     ),
     downsampling_factor: int = 1,

@@ -23,8 +23,8 @@ all `n`-variate polynomials of, at most, some given degree `m`, over the `n`-cub
 
 import functools as ft
 import itertools
-from collections.abc import Iterable
-from typing import Callable, Literal
+from collections.abc import Callable, Iterable
+from typing import Literal
 
 import jax
 import jax.numpy as jnp

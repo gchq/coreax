@@ -28,9 +28,7 @@ from typing import (
     Generic,
     Literal,
     NamedTuple,
-    Optional,
     TypeVar,
-    Union,
     cast,
 )
 from unittest.mock import MagicMock, patch
@@ -91,30 +89,30 @@ _Solver = TypeVar("_Solver", bound=Solver)
 _RefinementSolver = TypeVar("_RefinementSolver", bound=RefinementSolver)
 
 if TYPE_CHECKING:
-    # In Python 3.9-3.10, this raises
+    # In Python 3.10, this raises
     # `TypeError: Multiple inheritance with NamedTuple is not supported`.
     # Thus, we have to do the actual full typing here, and a non-generic one
     # below to be used at runtime.
     class _ReduceProblem(NamedTuple, Generic[_Data, _Solver]):
         dataset: _Data
         solver: _Solver
-        expected_coreset: Optional[AbstractCoreset] = None
+        expected_coreset: AbstractCoreset | None = None
 
     class _RefineProblem(NamedTuple, Generic[_RefinementSolver]):
         initial_coresubset: Coresubset
         solver: _RefinementSolver
-        expected_coresubset: Optional[Coresubset] = None
+        expected_coresubset: Coresubset | None = None
 else:
     # This is the implementation that's used at runtime.
     class _ReduceProblem(NamedTuple):
         dataset: _Data
         solver: _Solver
-        expected_coreset: Optional[AbstractCoreset] = None
+        expected_coreset: AbstractCoreset | None = None
 
     class _RefineProblem(NamedTuple):
         initial_coresubset: Coresubset
         solver: _RefinementSolver
-        expected_coresubset: Optional[Coresubset] = None
+        expected_coresubset: Coresubset | None = None
 
 
 class SolverTest:
@@ -151,7 +149,7 @@ class SolverTest:
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         """
         Check that a coreset obeys certain expected invariant properties.
@@ -796,7 +794,7 @@ class RecombinationSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         r"""
         Check that a coreset obeys certain expected invariant properties.
@@ -1006,7 +1004,7 @@ class ExplicitSizeSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = problem.solver
@@ -1026,7 +1024,7 @@ class ExplicitSizeSolverTest(SolverTest):
     def test_check_init(
         self,
         solver_factory: jtu.Partial,
-        coreset_size: Union[int, float, str],
+        coreset_size: int | float | str,
         context: AbstractContextManager,
     ) -> None:
         """
@@ -1073,7 +1071,7 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
-        solver_factory: Union[type[Solver], jtu.Partial],
+        solver_factory: type[Solver] | jtu.Partial,
     ) -> _ReduceProblem:
         if request.param == "random":
             dataset = jr.uniform(self.random_key, self.shape)
@@ -1707,7 +1705,7 @@ class TestRandomSample(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         super().check_solution_invariants(coreset, problem)
         solver = cast(RandomSample, problem.solver)
@@ -1730,7 +1728,7 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -2044,7 +2042,7 @@ class TestSteinThinning(RefinementSolverTest, ExplicitSizeSolverTest):
         ],
     )
     def test_regulariser_lambda(
-        self, test_lambda: Optional[Union[float, int]], reduce_problem: _ReduceProblem
+        self, test_lambda: float | int | None, reduce_problem: _ReduceProblem
     ) -> None:
         """Basic checks for the regularisation parameter, lambda."""
         dataset, base_solver, _ = reduce_problem
@@ -2411,7 +2409,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
     def reduce_problem(
         self,
         request: pytest.FixtureRequest,
-        solver_factory: Union[type[Solver], jtu.Partial],
+        solver_factory: type[Solver] | jtu.Partial,
     ) -> _ReduceProblem:
         if request.param == "random":
             data_key, supervision_key = jr.split(self.random_key)
@@ -2427,7 +2425,7 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: Union[_RefineProblem, _ReduceProblem]
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
         super().check_solution_invariants(coreset, problem)
@@ -2796,7 +2794,7 @@ class TestMapReduce(SolverTest):
                 del kwargs
                 self.data = _data
 
-            def get_arrays(self) -> tuple[Union[np.ndarray, None], ...]:
+            def get_arrays(self) -> tuple[np.ndarray | None, ...]:
                 """Mock sklearn.neighbours.BinaryTree.get_arrays method."""
                 return None, np.arange(len(self.data)), None, None
 

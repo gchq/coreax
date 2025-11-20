@@ -95,7 +95,7 @@ repos:
     rev: v0.14.5
     hooks:
       # Run the linter.
-      - id: ruff
+      - id: ruff-check
         args: [ --fix ]
         # Abort if ruff linter fails as there is some duplication of functionality with
         # the slow pylint hook

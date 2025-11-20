@@ -53,7 +53,7 @@ block.
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import equinox as eqx
 import jax
@@ -103,7 +103,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         regularisation_parameter: float,
         targets: Shaped[Array, " l n m"],
         identity: Shaped[Array, " n n"],
-        in_axes: Union[int, None, Sequence[Any]] = (0, None, 0, None),
+        in_axes: int | None | Sequence[Any] = (0, None, 0, None),
     ) -> Shaped[Array, " l n n"]:
         r"""
         Compute least-squares solutions to stack of regularised linear matrix equations.
@@ -144,7 +144,7 @@ class MinimalEuclideanNormSolver(RegularisedLeastSquaresSolver):
         of the ``array``. An alternate value of -1 will use machine precision.
     """
 
-    rcond: Optional[float] = None
+    rcond: float | None = None
 
     @override
     def solve(
@@ -268,7 +268,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
     random_key: KeyArrayLike
     oversampling_parameter: int = 25
     power_iterations: int = 1
-    rcond: Optional[float] = None
+    rcond: float | None = None
 
     def __check_init__(self):
         """Validate inputs."""
