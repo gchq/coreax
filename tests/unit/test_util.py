@@ -242,7 +242,6 @@ class TestUtil:
         assert format_time(0.00000000113) == "1.13 ns"
         assert format_time(10.15) == "10.15 s"
 
-    @pytest.mark.flaky(reruns=3)
     @pytest.mark.parametrize(
         "args, kwargs, jit_kwargs",
         [
@@ -259,7 +258,7 @@ class TestUtil:
         JIT compiling and executing the passed function, the latter is the time for
         dispatching the JIT compiled function.
         """
-        wait_time = 0.2
+        wait_time = 1.0
         trace_counter = Mock()
 
         x_in = jnp.ones(1000)

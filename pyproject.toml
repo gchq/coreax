@@ -71,7 +71,6 @@ test = [
     "beartype>=0.19",
     "pytest>=9",
     "pytest-cov>=6",
-    "pytest-rerunfailures>=15",
     "pytest-xdist>=3",
     "scipy>=1.13",
 ]
