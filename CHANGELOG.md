@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- -
+ - `KernelThinning.kt_half_recursive` now returns the correct partitions. (https://github.com/gchq/coreax/pull/1088)
 
 ### Changed
 

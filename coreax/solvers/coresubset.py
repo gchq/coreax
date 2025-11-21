@@ -1401,10 +1401,10 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
         """
         # If m == 0, do not do anything just convert to original data to type Coresubset
         if m == 0:
-            return [
-                Coresubset(Data(jnp.arange(len(current_coreset))), original_dataset)
-            ]
-
+            if isinstance(current_coreset, Coresubset):
+                return [current_coreset]
+            default_indices = Data(jnp.arange(len(current_coreset)))
+            return [Coresubset(default_indices, original_dataset)]
         # Recursively call self.kt_half on the coreset (or the dataset)
         if isinstance(current_coreset, Coresubset):
             subset1, subset2 = self.kt_half(current_coreset.points)
