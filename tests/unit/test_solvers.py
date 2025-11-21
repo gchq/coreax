@@ -3370,6 +3370,10 @@ class TestKernelThinning(ExplicitSizeSolverTest):
         result = thinning_solver.kt_half_recursive(dataset, m, dataset)
         expected_result = [Coresubset(Data(jnp.arange(dataset_size)), dataset)]
         assert eqx.tree_equal(expected_result, result)
+        coresubset = Coresubset(Data(jnp.array([1, 4, 3])), dataset)
+        result = thinning_solver.kt_half_recursive(coresubset, m, dataset)
+        expected_result = [coresubset]
+        assert eqx.tree_equal(expected_result, result)
 
 
 class TestCompressPlusPlus(ExplicitSizeSolverTest):
