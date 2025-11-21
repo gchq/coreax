@@ -3334,6 +3334,42 @@ class TestKernelThinning(ExplicitSizeSolverTest):
             coresets[1], jnp.array([[0.7], [0.6], [0.1], [0.12]])
         )
 
+    def test_kt_half_recursive(self, solver_factory: jtu.Partial):
+        """Test that kt_half_recursive returns valid Coresubsets."""
+        m = 2
+        coreset_size = 3
+        dataset_size = coreset_size * 2**m
+        thinning_solver = cast(
+            KernelThinning, solver_factory(coreset_size=coreset_size)
+        )
+        dataset = Data(jnp.ones((dataset_size, 1)))
+        result = thinning_solver.kt_half_recursive(dataset, m, dataset)
+        indices = jnp.hstack(
+            jax.tree.map(
+                lambda x: x.unweighted_indices,
+                result,
+                is_leaf=lambda x: isinstance(x, Coresubset),
+            )
+        )
+        unique_indices = jnp.unique(indices, return_counts=True)
+        expected_sorted_indices = jnp.arange(dataset_size)
+        expected_counts = jnp.ones(dataset_size, dtype=expected_sorted_indices.dtype)
+        expected_unique_indices = (expected_sorted_indices, expected_counts)
+        assert eqx.tree_equal(unique_indices, expected_unique_indices)
+
+    def test_kt_half_recursive_zero_depth(self, solver_factory: jtu.Partial):
+        """Test that kt_half_recursive returns valid Coresubsets when m=0."""
+        m = 0
+        coreset_size = 3
+        dataset_size = coreset_size * 2**m
+        thinning_solver = cast(
+            KernelThinning, solver_factory(coreset_size=coreset_size)
+        )
+        dataset = Data(jnp.ones((dataset_size, 1)))
+        result = thinning_solver.kt_half_recursive(dataset, m, dataset)
+        expected_result = [Coresubset(Data(jnp.arange(dataset_size)), dataset)]
+        assert eqx.tree_equal(expected_result, result)
+
 
 class TestCompressPlusPlus(ExplicitSizeSolverTest):
     """Test cases for :class:`coreax.solvers.coresubset.KernelThinning`."""
