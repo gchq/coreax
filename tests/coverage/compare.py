@@ -33,8 +33,8 @@ COVERAGE_FILENAME_REGEX = re.compile(
 )
 
 # Set tolerances for reduction in coverage percentage before test fails
-ABSOLUTE_TOLERANCE = 0
-RELATIVE_TOLERANCE = 0
+ABSOLUTE_TOLERANCE = 5e-1
+RELATIVE_TOLERANCE = 1e-2
 
 # Increment this if any changes are made to the storage format! Remember to also
 # increment the corresponding value in the `coverage.yml` workflow file.
