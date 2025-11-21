@@ -211,9 +211,10 @@ class SolverTest:
         """
         del kwargs
         dataset, solver, _ = reduce_problem
-        coreset, state = jit_variant(solver.reduce)(dataset)
+        _reduce = jit_variant(solver.reduce)
+        coreset, state = _reduce(dataset)
         if use_cached_state:
-            coreset_with_state, recycled_state = solver.reduce(dataset, state)
+            coreset_with_state, recycled_state = _reduce(dataset, state)
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
         self.check_solution_invariants(coreset, reduce_problem)
