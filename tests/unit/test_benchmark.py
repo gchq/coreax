@@ -20,6 +20,8 @@ module. It tests the conversion of PyTorch datasets to JAX arrays and the traini
 evaluation of a neural network model using these datasets.
 """
 
+from contextlib import nullcontext as does_not_warn
+
 import jax.numpy as jnp
 import pytest
 import torch
@@ -44,6 +46,7 @@ from coreax.solvers import (
     KernelHerding,
     KernelThinning,
     MapReduce,
+    PaddingInvariantSolver,
     RandomSample,
     RPCholesky,
     SteinThinning,
@@ -176,8 +179,6 @@ def test_solver_instances() -> None:
     key = random.PRNGKey(42)
     cpp_oversampling_factor = 1
     # Case 1: When leaf_size is not provided
-    solvers_no_leaf = initialise_solvers(mock_data, key, cpp_oversampling_factor)
-
     expected_solver_types_no_leaf = {
         "Random Sample": RandomSample,
         "RP Cholesky": RPCholesky,
@@ -189,17 +190,13 @@ def test_solver_instances() -> None:
         "Iterative Probabilistic Herding (constant)": IterativeKernelHerding,
         "Iterative Probabilistic Herding (cubic)": IterativeKernelHerding,
     }
-
+    solvers_no_leaf = initialise_solvers(mock_data, key, cpp_oversampling_factor)
     for solver_name, solver_function in solvers_no_leaf.items():
         solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_no_leaf[solver_name])
 
     # Case 2: When leaf_size is provided
     leaf_size = 2
-    solvers_with_leaf = initialise_solvers(
-        mock_data, key, cpp_oversampling_factor, leaf_size
-    )
-
     expected_solver_types_with_leaf = {
         "Random Sample": RandomSample,
         "RP Cholesky": RPCholesky,
@@ -211,9 +208,21 @@ def test_solver_instances() -> None:
         "Iterative Probabilistic Herding (constant)": MapReduce,
         "Iterative Probabilistic Herding (cubic)": MapReduce,
     }
+    solvers_with_leaf = initialise_solvers(
+        mock_data, key, cpp_oversampling_factor, leaf_size
+    )
+
+    def should_warn(solver_name):
+        expected_solver_type = expected_solver_types_with_leaf[solver_name]
+        if expected_solver_type == MapReduce:
+            base_solver = expected_solver_types_no_leaf[solver_name]
+            if not issubclass(base_solver, PaddingInvariantSolver):
+                return True
+        return False
 
     for solver_name, solver_function in solvers_with_leaf.items():
-        solver_instance = solver_function(1)
+        with pytest.warns(UserWarning) if should_warn(solver_name) else does_not_warn():
+            solver_instance = solver_function(1)
         assert isinstance(solver_instance, expected_solver_types_with_leaf[solver_name])
 
     # For SteinThinning, run reduce to make sure the score function works
