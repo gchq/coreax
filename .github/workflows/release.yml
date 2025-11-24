@@ -13,7 +13,7 @@ jobs:
     name: Build package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
       - name: Set up base Python
@@ -62,7 +62,7 @@ jobs:
       UV_NO_SYNC: true
     steps:
       - name: Check out only the test files
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           # Only check out the test files; this ensures we don't get any

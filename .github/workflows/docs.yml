@@ -16,7 +16,7 @@ jobs:
       # Disable implicitly syncing before running - we run an explicit sync first.
       UV_NO_SYNC: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
