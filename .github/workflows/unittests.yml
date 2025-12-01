@@ -22,6 +22,9 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-latest
+        resolution-strategy:
+          - "highest"
+          - "lowest-direct"
     runs-on: ${{ matrix.os }}
     env:
       # Disable implicitly syncing before running - we run an explicit sync first.
@@ -34,6 +37,7 @@ jobs:
         version: "latest"
         python-version: ${{ matrix.python-version }}
         enable-cache: true
+        resolution-strategy: ${{ matrix.resolution-strategy }}
     - name: Install test dependencies
       run: uv sync --group test --no-dev --locked
     - name: Debug - uv pip freeze

@@ -30,15 +30,17 @@ dependencies = [
     # should not be taken to imply that Coreax is *known* to be incompatible with
     # earlier versions; they are just there to prevent extremely out-of-date versions
     # of dependencies being used (which would almost certainly have incompatibilities).
-    "equinox>=0.11.5",  # Earlier versions are incompatible.
-    "flax>=0.8",
-    "jax>=0.4",
-    "jaxopt>=0.8",
-    "jaxtyping>0.2.31",  # Earlier versions are incompatible.
-    "optax>=0.2",
-    "scikit-learn>=1",
-    "tqdm>=4",
-    "typing-extensions>=4.12",
+    # NOTE: lower bounds are the lowest supported version when using the lowest-direct
+    # resolution mode of uv on the latest supported version of python.
+    "equinox>=0.11.11",  # Earlier versions are incompatible.
+    "flax>=0.10.0",
+    "jax>=0.4.38",
+    "jaxopt>=0.8.4",
+    "jaxtyping>0.2.30",  # Earlier versions are incompatible.
+    "optax>=0.1.5",
+    "scikit-learn>=1.5.0",
+    "tqdm>=4.27",
+    "typing-extensions>=4.12",  # Earlier versions are incompatible.
 ]
 
 [dependency-groups]
@@ -72,13 +74,13 @@ test = [
     "pytest>=9",
     "pytest-cov>=6",
     "pytest-xdist>=3",
-    "scipy>=1.13",
+    "scipy>=1.14.1",
 ]
 # Benchmarking - runs very similar code to examples with same dependencies plus more
 benchmark = [
     {include-group = "example"},
     "torch>=2.5",
-    "torchvision>=0.20",
+    "torchvision>=0.21",
     "umap-learn>=0.5.7",  # Earlier versions are incompatible.
     # Required for umap-learn - we constrain this so dependency solvers don't
     # erroneously backtrack.
@@ -86,10 +88,10 @@ benchmark = [
 ]
 # Example scripts
 example = [
-    "imageio>=2",
-    "matplotlib>=3",
+    "imageio>=2.19.4",
+    "matplotlib>=3.7.3",
     "numpy>=2",
-    "opencv-python-headless>=4",  # WARNING: Incompatible with other versions of opencv
+    "opencv-python-headless>=4.10.0.84",  # WARNING: Incompatible with other versions of opencv
 ]
 
 [tool.uv]
