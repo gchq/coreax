@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- -
+ - Unit tests workflow now runs the test suite with both the `lowest` and `highest` supported direct and transitive
+ dependencies for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)
 
 ### Fixed
 
@@ -17,12 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- -
+ - `uv sync --resolution lowest` should now install the lowest supported versions of direct and transitive dependencies
+ for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)
+ - Updated the following dependency lower bounds: `equinox[0.11.5 -> 0.11.11]`, `flax[>=0.8 -> >=0.10.0]`, `jax[>=0.4 -> >=0.4.38]`, `jaxopt[>=0.8 -> >=0.8.4]`, `jaxtyping[>0.2.31 -> >=0.2.31]`, `optax[>=0.2 -> >=0.1.5]`, `scikit-learn[>=1 -> >=1.5.0]` and `tqdm[>=4 -> >=4.27]`.
 
 ### Removed
 
  - Internal `SilentTQDM` class has been removed; all user-facing functionality has been preserved.
- - Dropped support for python 3.9 which is near end-of-life.
+ - Dropped support for Python 3.9 which is end-of-life.
+ - Removed `jupyter`, `ruff`, and `pyroma` from the `dev` dependency group; we don't use jupyter at any point in the
+ repository, and both `ruff` and `pyroma` should be run with `pre-commit` which has its own versioning.
 
 ### Deprecated
 
