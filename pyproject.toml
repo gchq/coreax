@@ -26,18 +26,17 @@ authors = [
     {name = "GCHQ", email = "oss@gchq.gov.uk"},
 ]
 dependencies = [
-    # Unless explicitly noted, lower bounds on these dependencies are guesses, and
-    # should not be taken to imply that Coreax is *known* to be incompatible with
-    # earlier versions; they are just there to prevent extremely out-of-date versions
-    # of dependencies being used (which would almost certainly have incompatibilities).
-    "equinox>=0.11.5",  # Earlier versions are incompatible.
-    "flax>=0.8",
-    "jax>=0.4",
-    "jaxopt>=0.8",
-    "jaxtyping>0.2.31",  # Earlier versions are incompatible.
-    "optax>=0.2",
-    "scikit-learn>=1",
-    "tqdm>=4",
+    # NOTE: lower bounds are the lowest supported version when using the 'lowest'
+    # resolution mode of uv on the latest supported version of Python - the bounds
+    # are only sharp for the latest supported Python version.
+    "equinox>=0.11.11",
+    "flax>=0.10.0",
+    "jax>=0.4.38",
+    "jaxopt>=0.8.4",
+    "jaxtyping>=0.2.31",
+    "optax>=0.1.5",
+    "scikit-learn>=1.5.0",
+    "tqdm>=4.27",
     "typing-extensions>=4.12",
 ]
 
@@ -48,13 +47,9 @@ dev = [
     # developers, so compatibility is less of a concern
     {include-group = "doc"},
     {include-group = "test"},
-    "jupyter>=1.1.1",  # Include as developers may wish to write their own notebooks
-    "ruff>=0.8.6",
-    "pre-commit>=4.0.1",
-    "pylint>=3.3.3",
-    "pyright>=1.1.391",
-    "pyroma>=4.2",
-
+    "pre-commit>=4.2.0",
+    "pylint>=4.0.4",
+    "pyright>=1.1.407",
 ]
 # Compile documentation
 doc = [
@@ -63,7 +58,7 @@ doc = [
     "sphinx-autodoc-typehints>=2",
     "sphinx-toolbox>=3",
     "sphinxcontrib-bibtex>=2",
-    "sphobjinv>=2",
+    "sphobjinv>=2.1.0",
 ]
 # Run unit tests with coverage assessment
 test = [
@@ -71,14 +66,14 @@ test = [
     "beartype>=0.19",
     "pytest>=9",
     "pytest-cov>=6",
-    "pytest-xdist>=3",
-    "scipy>=1.13",
+    "pytest-xdist>=3.2.0",
+    "scipy>=1.14.1",
 ]
 # Benchmarking - runs very similar code to examples with same dependencies plus more
 benchmark = [
     {include-group = "example"},
     "torch>=2.5",
-    "torchvision>=0.20",
+    "torchvision>=0.21",
     "umap-learn>=0.5.7",  # Earlier versions are incompatible.
     # Required for umap-learn - we constrain this so dependency solvers don't
     # erroneously backtrack.
@@ -86,13 +81,51 @@ benchmark = [
 ]
 # Example scripts
 example = [
-    "imageio>=2",
-    "matplotlib>=3",
+    "imageio>=2.19.4",
+    "matplotlib>=3.9.0",
     "numpy>=2",
-    "opencv-python-headless>=4",  # WARNING: Incompatible with other versions of opencv
+    "opencv-python-headless>=4.10.0.84",  # WARNING: Incompatible with other versions of opencv
 ]
 
 [tool.uv]
+# Provide lower bounds for transitive packages when using '--resolution lowest'. There
+# are a lot of packages here as some of our dependencies don't provide lower bounds.
+# These 'doc' dependency group is not constrained by this.
+constraint-dependencies = [
+    # Unconstrained (only specified to suppress uv warnings)
+    "future>0",
+    "orbax-checkpoint>=0",
+    "sphinx-basic-ng>0",
+    "sphinxcontrib-applehelp>0",
+    "sphinxcontrib-devhelp>0",
+    "sphinxcontrib-jsmath>0",
+    "sphinxcontrib-qthelp>0",
+    "tomli>0",
+    "webencodings>0",
+    # Constrained to the required lower-bounds on our highest supported Python version.
+    "absl-py>=1.0.0",  # via optax
+    "attrs>=18.1.0",  # via rich via flax
+    "chex>=0.1.84",  # via optax
+    "dm-tree>=0.1.8",  # via chex via optax
+    "fsspec>=0.5.0",  # via torch
+    "identify>=1.5.10",  # via pre-commit
+    "isort>=5.1.0",  # via pylint
+    "joblib>=1.4.0",  # via sklearn
+    "ml-dtypes>=0.4.1",  # via jax
+    "mpmath>=1.2.1",  # via torch
+    "networkx>=1.3",  # via torch
+    "numba>=0.61.0",  # via umap-learn
+    "opt-einsum>=3.2.0",  # via jax
+    "pillow>=11.0.0",  # via torchvision
+    "pybtex>=0.22.0",  # via sphinxcontrib-bibtex
+    "pynndescent>=0.5.13",  # via umap
+    "pyparsing>=3.0.8",  # via matplotlib
+    "python-dateutil>=2.9.0",  # via matplotlib
+    "pyyaml>=6.0.1",  # via flax
+    "setuptools>=5.0",  # via torch
+    "six>=1.16.0",  # via absl-py via flax
+    "tensorstore>=0.1.70",  # via flax
+]
 # Ensure we get the latest package versions available for each Python version
 environments = [
     "python_version>='3.13'",
