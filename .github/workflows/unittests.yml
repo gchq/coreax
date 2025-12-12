@@ -29,6 +29,9 @@ jobs:
     env:
       # Disable implicitly syncing before running - we run an explicit sync first.
       UV_NO_SYNC: true
+      # Interaction is not required here - use static backend for speed and reliability.
+      # https://matplotlib.org/stable/users/explain/figure/backends.html#static-backends
+      MPLBACKEND: Agg
     steps:
     - uses: actions/checkout@v6
     - name: Set up uv
