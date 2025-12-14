@@ -41,7 +41,7 @@ repos:
         args:
           - --ignore-case
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.16
+    rev: 0.9.17
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -82,7 +82,7 @@ repos:
 
   # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
-    rev: "5.0"
+    rev: "5.0.1"
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
@@ -92,7 +92,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.8
+    rev: v0.14.9
     hooks:
       # Run the linter.
       - id: ruff-check
