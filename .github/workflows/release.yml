@@ -93,7 +93,7 @@ jobs:
       - name: Restore uv cache (read-only)
         # We don't save the cache here, as we expect this job to be run only very
         # infrequently.
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ env.UV_CACHE_DIR }}
           key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-test
