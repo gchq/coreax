@@ -41,7 +41,7 @@ repos:
         args:
           - --ignore-case
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.18
+    rev: 0.9.21
     hooks:
       # Keep lock file up to date
       - id: uv-lock
