@@ -142,66 +142,35 @@ class SlicedScoreMatching(ScoreMatching):
         tracking the training of the neural network. Defaults to :data:`False`.
     """
 
+    # TODO: refactor this to require fewer arguments
+    # https://github.com/gchq/coreax/issues/782
     random_key: KeyArrayLike
     random_generator: _RandomGenerator
-    noise_conditioning: bool
-    use_analytic: bool
-    num_random_vectors: int
-    learning_rate: float
-    num_epochs: int
-    batch_size: int
-    hidden_dims: Sequence[int]
-    optimiser: _LearningRateOptimiser
-    num_noise_models: int
-    sigma: float
-    gamma: float
-    progress_bar: bool
+    noise_conditioning: bool = True
+    use_analytic: bool = False
+    num_random_vectors: int = 1
+    learning_rate: float = 1e-3
+    num_epochs: int = 10
+    batch_size: int = 64
+    hidden_dims: Sequence[int] = (128, 128, 128)
+    optimiser: _LearningRateOptimiser = optax.adamw
+    num_noise_models: int = 100
+    sigma: float = 1.0
+    gamma: float = 0.95
+    progress_bar: bool = False
 
-    # TODO: refactor this to require use of keyword arguments
-    # https://github.com/gchq/coreax/issues/782
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
-    def __init__(  # noqa: PLR0913, PLR0917
-        self,
-        random_key: KeyArrayLike,
-        random_generator: _RandomGenerator,
-        noise_conditioning: bool = True,
-        use_analytic: bool = False,
-        num_random_vectors: int = 1,
-        learning_rate: float = 1e-3,
-        num_epochs: int = 10,
-        batch_size: int = 64,
-        hidden_dims: Sequence[int] = (128, 128, 128),
-        optimiser: _LearningRateOptimiser = optax.adamw,
-        num_noise_models: int = 100,
-        sigma: float = 1.0,
-        gamma: float = 0.95,
-        progress_bar: bool = False,
-    ):
-        """Define a sliced score matching class and update invalid inputs."""
-        # JAX will not error if we have num_random_vectors set to 0, but this approach
-        # is fundamentally about projecting along random vectors, so we cap the lower
-        # value for this at 1. Similarly, there must be at-least one noise model for
-        # the code to do the projections.
-        num_random_vectors = max(num_random_vectors, 1)
-        num_noise_models = max(num_noise_models, 1)
-
-        # Assign all inputs
-        self.random_key = random_key
-        self.random_generator = random_generator
-        self.noise_conditioning = noise_conditioning
-        self.use_analytic = use_analytic
-        self.num_random_vectors = num_random_vectors
-        self.learning_rate = learning_rate
-        self.num_epochs = num_epochs
-        self.batch_size = batch_size
-        self.hidden_dims = hidden_dims
-        self.optimiser = optimiser
-        self.num_noise_models = num_noise_models
-        self.sigma = sigma
-        self.gamma = gamma
-        self.progress_bar = progress_bar
-
-    # pylint: enable=too-many-arguments
+    def __check_init__(self):
+        """Check attributes are positive integers."""
+        non_negative_integer_attrs = ("num_epochs", "batch_size")
+        for attr in non_negative_integer_attrs:
+            val = getattr(self, attr)
+            if not isinstance(val, int) or val < 0:
+                raise ValueError(f"'{attr}' must be a non-negative integer")
+        positive_integer_attrs = ("num_random_vectors", "num_noise_models")
+        for attr in positive_integer_attrs:
+            val = getattr(self, attr)
+            if not isinstance(val, int) or val < 1:
+                raise ValueError(f"'{attr}' must be a positive integer")
 
     def _objective_function(
         self,
@@ -417,7 +386,7 @@ class SlicedScoreMatching(ScoreMatching):
         return state, val
 
     @override
-    def match(self, x):  # noqa: C901, PLR0912
+    def match(self, x):
         r"""
         Learn a sliced score matching function via :cite:`song2020ssm`.
 
@@ -450,47 +419,23 @@ class SlicedScoreMatching(ScoreMatching):
 
         # Define random projection vectors
         generator_key, state_key, batch_key = jr.split(self.random_key, 3)
-        try:
-            random_vectors = self.random_generator(
-                generator_key,
-                (num_points, self.num_random_vectors, data_dimension),
-                float,
-            )
-        except TypeError as exception:
-            if isinstance(self.num_random_vectors, float):
-                raise ValueError("num_random_vectors must be an integer") from exception
-            raise
+        random_vectors = self.random_generator(
+            generator_key,
+            (num_points, self.num_random_vectors, data_dimension),
+            float,
+        )
 
         # Define a training state
         state = create_train_state(
             state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
-
-        try:
-            loop_keys = jr.split(batch_key, self.num_epochs)
-        except TypeError as exception:
-            if self.num_epochs < 0:
-                raise ValueError("num_epochs must be a positive integer") from exception
-            if isinstance(self.num_epochs, float):
-                raise TypeError("num_epochs must be a positive integer") from exception
-            raise
+        loop_keys = jr.split(batch_key, self.num_epochs)
 
         # Carry out main training loop to fit the neural network
         tqdm_progress_bar = tqdm(range(self.num_epochs), disable=not self.progress_bar)
         for i in tqdm_progress_bar:
             # Sample some data-points to pass for this step
-            try:
-                idx = jr.randint(loop_keys[i], (self.batch_size,), 0, num_points)
-            except TypeError as exception:
-                if self.batch_size < 0:
-                    raise ValueError(
-                        "batch_size must be a positive integer"
-                    ) from exception
-                if isinstance(self.batch_size, float):
-                    raise TypeError(
-                        "batch_size must be a positive integer"
-                    ) from exception
-                raise
+            idx = jr.randint(loop_keys[i], (self.batch_size,), 0, num_points)
             # Apply training step
             state, val = train_step(state, x[idx, :], random_vectors[idx, :])
 

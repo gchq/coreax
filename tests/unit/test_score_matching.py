@@ -894,208 +894,64 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.8)
 
-    def test_sliced_score_matching_no_noise_conditioning(self):
-        """
-        Test  SlicedScoreMatching does not raise an error with no 'noise_conditioning'.
-        """
+    def test_match_no_noise_conditioning(self):
+        """Test  match does not raise an error with no 'noise_conditioning'."""
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key, random_generator=jr.rademacher, noise_conditioning=False
         )
         sliced_score_matcher.match(self.samples)
 
-    def test_sliced_score_matching_unexpected_num_random_vectors(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_random_vectors.
-        """
-        # Define a sliced score matching object with num_random_vectors set to 0. This
-        # should get capped to a minimum of 1
+    def test_match_zero_epochs_and_batch_size(self):
+        """Test 'match' with zero valued 'num_epochs' and 'batch_size'."""
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=0,
-            num_epochs=1,
-            num_noise_models=1,
+            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
         )
-        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
+        sliced_score_matcher.match(self.samples)
 
-        # Define a sliced score matching object with num_random_vectors set to -4. This
-        # should get capped to a minimum of 1
+    def test_check_init(self):
+        """Test the `__check_init__` magic of `SlicedScoreMatching`."""
         score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=-4,
-            num_epochs=1,
-            num_noise_models=1,
+        # Test non-negative integer attributes
+        coreax.score_matching.SlicedScoreMatching(
+            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
         )
-        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
-
-        # Define a sliced score matching object with num_random_vectors set to a float.
-        # This should give rise to an error when indexing arrays with a float.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=1.0,  # pyright:ignore
-            num_epochs=1,
-            num_noise_models=1,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_random_vectors must be an integer",
-        )
-
-    def test_sliced_score_matching_unexpected_num_epochs(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_epochs.
-        """
-        # Define a sliced score matching object with num_epochs set to 0. This should
-        # just give a randomly initialised neural network.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=0,
-        )
-        learned_score = sliced_score_matcher.match(self.samples)
-        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
-
-        # Define a sliced score matching object with num_epochs set to -5. This should
-        # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=-5,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_epochs must be a positive integer",
-        )
-
-        # Define a sliced score matching object with num_epochs set to a float. This
-        # should raise an error as we try to create an array with a non-integer
-        # dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_epochs must be a positive integer",
-        )
-
-    def test_sliced_score_matching_unexpected_batch_size(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for batch_size.
-        """
-        # Define a sliced score matching object with batch_size set to 0. This should
-        # just give a randomly initialised neural network that has not been updated.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=0,
-        )
-        learned_score = sliced_score_matcher.match(self.samples)
-        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
-
-        # Define a sliced score matching object with batch_size set to -5. This should
-        # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=-5,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "batch_size must be a positive integer",
-        )
-
-        # Define a sliced score matching object with batch_size set to a float. This
-        # should raise an error as we try to create an array with a non-integer
-        # dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "batch_size must be a positive integer",
-        )
-
-    def test_sliced_score_matching_unexpected_num_noise_models(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_noise_models.
-        """
-        # Define a sliced score matching object with num_noise_models set to 0. This
-        # should get capped at 1 to allow the code to function.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=0,
-        )
-        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
-
-        # Define a sliced score matching object with num_noise_models set to -5. This
-        # should get capped at 1 to allow the code to function.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=-5,
-        )
-        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
-
-        # Define a sliced score matching object with num_noise_models set to a float.
-        # This should raise an error as we try to create an array with a non-integer
-        # dimension - but hte internal JAX error is human-readable and the full text
-        # highlights the variable in question.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        # cSpell:disable
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "lower and upper arguments to fori_loop must have equal types, got "
-            "int32 and float32",
-        )
-        # cSpell:enable
+        for i in (-1, 1.0):
+            with pytest.raises(
+                ValueError, match="'num_epochs' must be a non-negative integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_epochs=i,  # type: ignore[reportArgumentType]
+                )
+            with pytest.raises(
+                ValueError, match="'batch_size' must be a non-negative integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    batch_size=i,  # type: ignore[reportArgumentType]
+                )
+        # Test positive integer attributes
+        for i in (-1, 0, 1.0):
+            with pytest.raises(
+                ValueError, match="'num_random_vectors' must be a positive integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_random_vectors=i,  # type: ignore[reportArgumentType]
+                )
+            with pytest.raises(
+                ValueError, match="'num_noise_models' must be a positive integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_noise_models=i,  # type: ignore[reportArgumentType]
+                )
 
 
 class TestConvertSteinKernel:
