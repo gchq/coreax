@@ -584,7 +584,7 @@ dev = [
     { name = "opencv-python-headless", specifier = ">=4.10.0.84" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pylint", specifier = ">=4.0.4" },
-    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pyright", specifier = ">=1.1.408" },
     { name = "pytest", specifier = ">=9" },
     { name = "pytest-cov", specifier = ">=6" },
     { name = "pytest-xdist", specifier = ">=3.2.0" },

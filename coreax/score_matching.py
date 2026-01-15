@@ -31,9 +31,9 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
+import functools as ft
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from functools import partial
 from typing import overload
 
 import equinox as eqx
@@ -43,7 +43,7 @@ import jax.random as jr
 import numpy as np
 import optax
 from flax.training import train_state
-from jaxtyping import Array, DTypeLike, Shaped
+from jaxtyping import Array, DTypeLike, Float, Shaped
 from tqdm import tqdm
 from typing_extensions import override
 
@@ -102,7 +102,7 @@ class ScoreMatching(eqx.Module):
 # pylint: disable=too-many-instance-attributes
 class SlicedScoreMatching(ScoreMatching):
     r"""
-    Implementation of slice score matching, defined in :cite:`song2020ssm`.
+    Implementation of sliced score matching, defined in :cite:`song2020ssm`.
 
     The score function of some data is the derivative of the log-PDF. Score matching
     aims to determine a model by 'matching' the score function of the model to that
@@ -112,10 +112,6 @@ class SlicedScoreMatching(ScoreMatching):
     With sliced score matching, we train a neural network to directly approximate
     the score function of the data. The approach is outlined in detail in
     :cite:`song2020ssm`.
-
-    .. note::
-        The inputs `num_random_vectors` and `num_noise_models` are set to 1 if they are
-        given any smaller than this.
 
     :param random_key: Key for random number generation
     :param random_generator: Distribution sampler (``key``, ``shape``, ``dtype``)
@@ -172,105 +168,6 @@ class SlicedScoreMatching(ScoreMatching):
             if not isinstance(val, int) or val < 1:
                 raise ValueError(f"'{attr}' must be a positive integer")
 
-    def _objective_function(
-        self,
-        random_direction_vector: Shaped[Array, " d"],
-        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d"],
-    ) -> float:
-        """
-        Compute the score matching loss function.
-
-        Two objectives are proposed in :cite:`song2020ssm`, a general objective, and a
-        simplification with reduced variance that holds for particular assumptions. The
-        choice between the two is determined by the boolean ``use_analytic`` defined
-        when the class is initiated.
-
-        :param random_direction_vector: :math:`d`-dimensional random vector
-        :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. ``x``) and the random_direction_vector
-        :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equations 7 and 8 in
-            :cite:`song2020ssm`
-        """
-        return jax.lax.cond(
-            self.use_analytic,
-            self._analytic_objective,
-            self._general_objective,
-            random_direction_vector,
-            grad_score_times_random_direction_matrix,
-            score_matrix,
-        )
-
-    @staticmethod
-    def _analytic_objective(
-        random_direction_vector: Shaped[Array, " d"],
-        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d"],
-    ) -> Shaped[Array, ""]:
-        """
-        Compute reduced variance score matching loss function.
-
-        This is for use with certain random measures, e.g. normal and Rademacher. If
-        this assumption is not true, then
-        :meth:`SlicedScoreMatching._general_objective` should be used instead.
-
-        :param random_direction_vector: :math:`d`-dimensional random vector
-        :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. ``x``) and the random_direction_vector
-        :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 8 in
-            :cite:`song2020ssm`
-        """
-        result = (
-            random_direction_vector @ grad_score_times_random_direction_matrix
-            + 0.5 * score_matrix @ score_matrix
-        )
-        return result
-
-    @staticmethod
-    def _general_objective(
-        random_direction_vector: Shaped[Array, " d"],
-        grad_score_times_random_direction_matrix: Shaped[Array, " d"],
-        score_matrix: Shaped[Array, " d"],
-    ) -> Shaped[Array, ""]:
-        """
-        Compute general score matching loss function.
-
-        This is to be used when one cannot assume normal or Rademacher random measures
-        when using score matching, but has higher variance than
-        :meth:`SlicedScoreMatching._analytic_objective` if these assumptions hold.
-
-        :param random_direction_vector: :math:`d`-dimensional random vector
-        :param grad_score_times_random_direction_matrix: Product of the gradient of
-            score_matrix (w.r.t. ``x``) and the random_direction_vector
-        :param score_matrix: Gradients of log-density
-        :return: Evaluation of score matching objective, see equation 7 in
-            :cite:`song2020ssm`
-        """
-        result = (
-            random_direction_vector @ grad_score_times_random_direction_matrix
-            + 0.5 * (random_direction_vector @ score_matrix) ** 2
-        )
-        return result
-
-    def _loss_element(
-        self, x: Shaped[Array, " d"], v: Shaped[Array, " d"], score_network: Callable
-    ) -> float:
-        """
-        Compute element-wise loss function.
-
-        Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
-        score matching :cite:`song2020ssm`.
-
-        :param x: :math:`d`-dimensional data vector
-        :param v: :math:`d`-dimensional random vector
-        :param score_network: Function that calls the neural network on ``x``
-        :return: Objective function output for single ``x`` and ``v`` inputs
-        """
-        s, u = jax.jvp(score_network, (x,), (v,))
-        return self._objective_function(v, u, s)
-
     def _loss(self, score_network: Callable) -> Callable:
         """
         Compute vector mapped loss function for arbitrary many ``X`` and ``V`` vectors.
@@ -282,12 +179,24 @@ class SlicedScoreMatching(ScoreMatching):
         :param score_network: Function that calls the neural network on ``x``
         :return: Callable vectorised sliced score matching loss function
         """
-        inner = jax.vmap(
-            lambda x, v: self._loss_element(x, v, score_network),
-            (None, 0),
-            0,
-        )
-        return jax.vmap(inner, (0, 0), 0)
+
+        def _loss_element(x: Shaped[Array, " d"], v: Shaped[Array, " d"]):
+            """
+            Compute element-wise loss function.
+
+            Computes the loss function from Section 3.2 of Song el al.'s paper on sliced
+            score matching :cite:`song2020ssm`.
+
+            :param x: :math:`d`-dimensional data vector
+            :param v: :math:`d`-dimensional random vector
+            :return: Objective function output for single ``x`` and ``v`` inputs
+            """
+            s, u = jax.jvp(score_network, (x,), (v,))
+            if self.use_analytic:
+                return v @ u + 0.5 * s @ s  # Equation 8 of song2020ssm
+            return v @ u + 0.5 * (v @ s) ** 2  # Equation 7 of song2020ssm
+
+        return jax.vmap(jax.vmap(_loss_element, in_axes=(None, 0)), in_axes=(0, 0))
 
     @eqx.filter_jit
     def _train_step(
@@ -295,7 +204,7 @@ class SlicedScoreMatching(ScoreMatching):
         state: train_state.TrainState,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
-    ) -> tuple[train_state.TrainState, float]:
+    ) -> tuple[train_state.TrainState, Float[Array, ""]]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
@@ -305,85 +214,27 @@ class SlicedScoreMatching(ScoreMatching):
         :return: The updated :class:`~flax.training.train_state.TrainState` object
         """
 
-        def loss(params):
-            return self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
-                x, random_vectors
-            ).mean()
+        def standard_loss(model_params, _x):
+            model = ft.partial(state.apply_fn, {"params": model_params})
+            model_conditioned_loss = self._loss(model)
+            return model_conditioned_loss(_x, random_vectors).mean()
 
-        val, grads = jax.value_and_grad(loss)(state.params)
-        state = state.apply_gradients(grads=grads)
-        return state, val
+        def loss(model_params, _x):
+            if self.noise_conditioning:
 
-    def _noise_conditional_loop_body(
-        self,
-        i: int,
-        obj: float,
-        state: train_state.TrainState,
-        params: dict,
-        x: Shaped[Array, " n d"],
-        random_vectors: Shaped[Array, " n m d"],
-        sigmas: Shaped[Array, " num_noise_models"],
-    ) -> float:
-        r"""
-        Sum objective function with noise perturbations.
+                def noise_conditioned_loss(i, loss):
+                    sigma = self.sigma * self.gamma**i
+                    x_perturbed = x + sigma * jr.normal(jr.key(0), x.shape)
+                    return loss + sigma**2 * standard_loss(model_params, x_perturbed)
 
-        Inputs are perturbed by Gaussian random noise to improve performance of score
-        matching. See :cite:`song2020improved_sgm` for details.
+                return jax.lax.fori_loop(
+                    0, self.num_noise_models, noise_conditioned_loss, 0.0
+                )
+            return standard_loss(model_params, _x)
 
-        :param i: Loop index
-        :param obj: Running objective, i.e. the current partial sum
-        :param state: The :class:`~flax.training.train_state.TrainState` object
-        :param params: The current iterate parameter settings
-        :param x: The :math:`n \times d` data vectors
-        :param random_vectors: The :math:`n \times m \times d` random vectors
-        :param sigmas: The geometric progression of noise standard deviations
-        :return: The updated objective, i.e. partial sum
-        """
-        # This will generate the same set of random numbers on each function call. We
-        #  might want to replace this with random.key(i) to get a unique set each
-        #  time.
-        # Perturb the inputs with Gaussian noise
-        x_perturbed = x + sigmas[i] * jr.normal(jr.key(0), x.shape)
-        obj += (
-            sigmas[i] ** 2
-            * self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
-                x_perturbed, random_vectors
-            ).mean()
-        )
-        return obj
-
-    @eqx.filter_jit
-    def _noise_conditional_train_step(
-        self,
-        state: train_state.TrainState,
-        x: Shaped[Array, " n d"],
-        random_vectors: Shaped[Array, " n m d"],
-        sigmas: Shaped[Array, " num_noise_models"],
-    ) -> tuple[train_state.TrainState, float]:
-        r"""
-        Apply a single training step that updates model parameters using loss gradient.
-
-        :param state: The :class:`~flax.training.train_state.TrainState` object
-        :param x: The :math:`n \times d` data vectors
-        :param random_vectors: The :math:`n \times m \times d` random vectors
-        :param sigmas: Array of noise standard deviations to use in objective function
-        :return: The updated :class:`~flax.training.train_state.TrainState` object
-        """
-
-        def loss(params):
-            body = partial(
-                self._noise_conditional_loop_body,
-                state=state,
-                params=params,
-                x=x,
-                random_vectors=random_vectors,
-                sigmas=sigmas,
-            )
-            return jax.lax.fori_loop(0, self.num_noise_models, body, 0.0)
-
-        val, grads = jax.value_and_grad(loss)(state.params)
-        state = state.apply_gradients(grads=grads)
-        return state, val
+        val, grads = eqx.filter_value_and_grad(loss)(state.params, x)
+        updated_state = state.apply_gradients(grads=grads)
+        return updated_state, val
 
     @override
     def match(self, x):
@@ -402,20 +253,11 @@ class SlicedScoreMatching(ScoreMatching):
         # whereas this handling differs if we instead used the custom function
         # _atleast_2d_consistent in coreax.data.
         x = jnp.atleast_2d(x)
+        generator_key, state_key, batch_key = jr.split(self.random_key, 3)
 
         # Setup neural network that will approximate the score function
         num_points, data_dimension = x.shape
         score_network = ScoreNetwork(self.hidden_dims, data_dimension)
-
-        # Define what a training step consists of - dependent on if we want to include
-        # noise perturbations
-        if self.noise_conditioning:
-            gammas = self.gamma ** jnp.arange(self.num_noise_models)
-            sigmas = self.sigma * gammas
-            train_step = partial(self._noise_conditional_train_step, sigmas=sigmas)
-
-        else:
-            train_step = self._train_step
 
         # Define random projection vectors
         generator_key, state_key, batch_key = jr.split(self.random_key, 3)
@@ -437,7 +279,7 @@ class SlicedScoreMatching(ScoreMatching):
             # Sample some data-points to pass for this step
             idx = jr.randint(loop_keys[i], (self.batch_size,), 0, num_points)
             # Apply training step
-            state, val = train_step(state, x[idx, :], random_vectors[idx, :])
+            state, val = self._train_step(state, x[idx, :], random_vectors[idx, :])
 
             # Print progress (limited to avoid excessive output)
             if i % 10 == 0 and self.progress_bar:
