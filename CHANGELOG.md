@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - `KernelThinning.kt_half_recursive` now returns the correct partitions. (https://github.com/gchq/coreax/pull/1088)
 
 ### Changed
-
+ - `ScoreNetwork` now requires `num_random_vectors` and `num_noise_models` to be provided as positive integers.
  - `uv sync --resolution lowest` should now install the lowest supported versions of direct and transitive dependencies
  for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)
  - Updated the following dependency lower bounds: `equinox[0.11.5 -> 0.11.11]`, `flax[>=0.8 -> >=0.10.0]`, `jax[>=0.4 -> >=0.4.38]`, `jaxopt[>=0.8 -> >=0.8.4]`, `jaxtyping[>0.2.31 -> >=0.2.31]`, `optax[>=0.2 -> >=0.1.5]`, `scikit-learn[>=1 -> >=1.5.0]` and `tqdm[>=4 -> >=4.27]`.
