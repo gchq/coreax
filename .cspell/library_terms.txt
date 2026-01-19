@@ -82,6 +82,8 @@ mimsave
 minval
 minversion
 mmd
+amcmd
+AMCMD
 modindex
 MPLBACKEND
 myst

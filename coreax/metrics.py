@@ -33,9 +33,9 @@ import jax.tree_util as jtu
 from jax import Array, jacfwd, vmap
 from jaxtyping import Shaped
 
-import coreax.kernels
 import coreax.util
-from coreax.data import Data
+from coreax.data import Data, SupervisedData
+from coreax.kernels import ScalarValuedKernel
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
 
 _Data = TypeVar("_Data", bound=Data)
@@ -84,7 +84,7 @@ class MMD(Metric[Data]):
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     """
 
-    kernel: coreax.kernels.ScalarValuedKernel
+    kernel: ScalarValuedKernel
 
     def compute(
         self,
@@ -194,7 +194,7 @@ class KSD(Metric[Data]):
         are rounded to zero (accommodates precision loss)
     """
 
-    kernel: coreax.kernels.ScalarValuedKernel
+    kernel: ScalarValuedKernel
     score_matching: ScoreMatching | None = None
     precision_threshold: float = 1e-12
 
@@ -276,3 +276,155 @@ class KSD(Metric[Data]):
             self.precision_threshold,
         )
         return jnp.sqrt(squared_ksd_threshold_applied)
+
+
+class AMCMD(Metric[SupervisedData]):
+    r"""
+    Computation of the average maximum conditional mean discrepancy metric.
+
+    Given datasets :math:`\mathcal{D}_1 = \{(x_i, y_i)\}_{i=1}^n` with
+    :math:`x \in \mathbb{R}^d` and :math:`y \in \mathbb{R}^p`, and
+    :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m` with
+    :math:`x^\prime \in \mathbb{R}^d` and :math:`y^\prime \in \mathbb{R}^p`,
+    one can compute the average maximum conditional mean discrepancy with respect to a
+    weighting distribution :math:`\mathbb{P}` over the feature space as:
+
+    .. math::
+        \mathrm{AMCMD}^2(\mathcal{D}_1, \mathcal{D}_2) =
+        \mathbb{E}_{x\sim\mathbb{P}}\left[
+        \left\Vert\hat{\mu}^{(1)}_{Y|X=x} -
+        \hat{\mu}^{(2)}_{Y|X=x}}\right\Vert^2_{\mathcal{H}_l}\right]
+
+    where :math:`\hat{\mu}^{(1)}_{Y|X}, \hat{\mu}^{(2)}_{Y|X}` are the conditional mean
+    embeddings (:cite:`muandet2016rkhs`) estimated with :math:`\mathcal{D}_1` and
+    :math:`\mathcal{D}_2` respectively, and :math:`\mathcal{H}_k, \mathcal{H}_l` is
+    the RKHS induced by the kernel :math:`l: \mathbb{R}^p \times \mathbb{R}^p
+    \rightarrow \mathbb{R}` respectively.
+
+    In order to compute the AMCMD, one must additionally draw samples from the weighting
+    distribution :math:`\mathbb{P}`. This can be done by passing a
+    :class:`~coreax.data.Data` instance containing samples from :math:`\mathbb{P}` as
+    the ``weighting_data`` keyword argument to :meth:`compute`.
+
+    .. note::
+        The AMCMD gives us a way to measure if two supervised datasets have
+        the same conditional distributions.
+
+    :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the
+        feature space
+    :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
+        response space
+    :param regularisation_parameter: Regularisation parameter for stable inversion
+            of arrays, negative values will be converted to positive
+    :param precision_threshold: Positive threshold we compare against for precision
+    :param least_squares_solver: Instance of
+        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, defaults to
+        :class:`coreax.least_squares.ExactSolver` which solves a linear
+        system at cost :math:`\mathcal{O}(n^3)`
+    """
+
+    feature_kernel: ScalarValuedKernel
+    response_kernel: ScalarValuedKernel
+    regularisation_parameter: float
+    precision_threshold: float = 1e-2
+
+    def compute(
+        self,
+        reference_data: SupervisedData,
+        comparison_data: SupervisedData,
+        *,
+        weighting_data: Data | None = None,
+        **kwargs: Any,
+    ) -> Shaped[Array, ""]:
+        r"""
+        Estimate the the average maximum conditional mean discrepancy.
+
+        .. math::
+            \mathrm{AMCMD}^2(\mathcal{D}_1, \mathcal{D}_2) =
+            \mathbb{E}_{x\sim\mathbb{P}}\left[
+            \left\Vert\hat{\mu}^{(1)}_{Y|X=x} -
+            \hat{\mu}^{(2)}_{Y|X=x}}\right\Vert^2_{\mathcal{H}_l}\right]
+
+        .. warning::
+            Computing :math:`\text{AMCMD}^2` may yield small negative values due to
+            numerical imprecision when using JAX single precision (float32). These
+            values are clamped to non-negative, indicating the true AMCMD is likely near
+            zero. For higher precision, enable double precision using the
+            `jax_enable_x64` flag.
+
+        :param reference_data: Supervised dataset :math:`\mathcal{D}_1 =
+            \{(x_i, y_i)\}_{i=1}^n` with :math:`x\in\mathbb{R}^d` and
+            :math:`y\in\mathbb{R}^p`
+        :param comparison_data: Supervised dataset
+            :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m` with
+            :math:`x^\prime \in\ mathbb{R}^d` and :math:`y^\prime \in \mathbb{R}^p`
+        :param weighting_data: Dataset
+            :math:`\mathcal{D}_3 = \{(x^{\prime\prime}_i\}_{i=1}^q` with
+            :math:`x^{\prime\prime} \in\ mathbb{R}^d` sampled from the weighting
+            distribution :math:`\mathbb{P}`. Defaults to :data:`None`, which uses
+            ``reference_data.data`` as samples from :math:`\mathbb{P}`.
+
+        :return: Average maximum conditional mean discrepancy as a 0-dimensional array
+        """
+        del kwargs
+
+        # Extract data from datasets
+        x1, y1 = reference_data.data, reference_data.supervision
+        x2, y2 = comparison_data.data, comparison_data.supervision
+        if weighting_data is None:
+            x3 = reference_data.data
+        else:
+            x3 = weighting_data.data
+
+        # Compute feature kernel gramians and regularise
+        feature_gramian_1 = (
+            self.feature_kernel.compute(x1, x1)
+            + jnp.eye(x1.shape[0]) * self.regularisation_parameter
+        )
+        feature_gramian_2 = (
+            self.feature_kernel.compute(x2, x2)
+            + jnp.eye(x2.shape[0]) * self.regularisation_parameter
+        )
+
+        # Compute cross feature kernel gramians
+        cross_feature_gramian_1 = self.feature_kernel.compute(x1, x3)
+        cross_feature_gramian_2 = self.feature_kernel.compute(x2, x3)
+
+        # Solve least squares problems to estimate conditional mean embeddings
+        least_square_solution_1 = jnp.linalg.solve(
+            feature_gramian_1, cross_feature_gramian_1
+        ).T
+
+        least_square_solution_2 = jnp.linalg.solve(
+            feature_gramian_2, cross_feature_gramian_2
+        ).T
+
+        # Compute each term in the AMCMD
+        term_1 = jnp.sum(
+            least_square_solution_1
+            @ self.response_kernel.compute(y1, y1)
+            * least_square_solution_1
+        )
+        term_2 = jnp.sum(
+            least_square_solution_2
+            @ self.response_kernel.compute(y2, y2)
+            * least_square_solution_2
+        )
+        term_3 = jnp.sum(
+            least_square_solution_1
+            @ self.response_kernel.compute(y1, y2)
+            * least_square_solution_2
+        )
+
+        # Compute the AMCMD
+        squared_amcmd_threshold_applied = (
+            coreax.util.apply_negative_precision_threshold(
+                1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3),
+                self.precision_threshold,
+            )
+        )
+        return jnp.sqrt(squared_amcmd_threshold_applied)
