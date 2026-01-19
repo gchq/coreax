@@ -24,8 +24,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from flax.linen import Module
 from flax.training import train_state
-from jax import Array
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 from optax import GradientTransformation
 
 from coreax.util import KeyArrayLike

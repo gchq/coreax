@@ -28,9 +28,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax import (
@@ -90,7 +90,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     length_scale = median_heuristic(x[idx])
 
     # Define a kernel to use
-    approximator_key, sample_key = random.split(random.key(random_seed), 2)
+    approximator_key, sample_key = jr.split(jr.key(random_seed), 2)
     herding_kernel = ANNchorApproximateKernel(
         SquaredExponentialKernel(length_scale=length_scale),
         approximator_key,

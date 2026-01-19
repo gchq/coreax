@@ -37,20 +37,13 @@ from functools import partial
 from typing import overload
 
 import equinox as eqx
+import jax
+import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import optax
 from flax.training import train_state
-from jax import (
-    Array,
-    jvp,
-    numpy as jnp,
-    random,
-    value_and_grad,
-    vmap,
-)
-from jax.lax import cond, fori_loop
-from jax.typing import DTypeLike
-from jaxtyping import Shaped
+from jaxtyping import Array, DTypeLike, Shaped
 from tqdm import tqdm
 from typing_extensions import override
 
@@ -231,7 +224,7 @@ class SlicedScoreMatching(ScoreMatching):
         :return: Evaluation of score matching objective, see equations 7 and 8 in
             :cite:`song2020ssm`
         """
-        return cond(
+        return jax.lax.cond(
             self.use_analytic,
             self._analytic_objective,
             self._general_objective,
@@ -306,7 +299,7 @@ class SlicedScoreMatching(ScoreMatching):
         :param score_network: Function that calls the neural network on ``x``
         :return: Objective function output for single ``x`` and ``v`` inputs
         """
-        s, u = jvp(score_network, (x,), (v,))
+        s, u = jax.jvp(score_network, (x,), (v,))
         return self._objective_function(v, u, s)
 
     def _loss(self, score_network: Callable) -> Callable:
@@ -320,12 +313,12 @@ class SlicedScoreMatching(ScoreMatching):
         :param score_network: Function that calls the neural network on ``x``
         :return: Callable vectorised sliced score matching loss function
         """
-        inner = vmap(
+        inner = jax.vmap(
             lambda x, v: self._loss_element(x, v, score_network),
             (None, 0),
             0,
         )
-        return vmap(inner, (0, 0), 0)
+        return jax.vmap(inner, (0, 0), 0)
 
     @eqx.filter_jit
     def _train_step(
@@ -348,7 +341,7 @@ class SlicedScoreMatching(ScoreMatching):
                 x, random_vectors
             ).mean()
 
-        val, grads = value_and_grad(loss)(state.params)
+        val, grads = jax.value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
         return state, val
 
@@ -381,7 +374,7 @@ class SlicedScoreMatching(ScoreMatching):
         #  might want to replace this with random.key(i) to get a unique set each
         #  time.
         # Perturb the inputs with Gaussian noise
-        x_perturbed = x + sigmas[i] * random.normal(random.key(0), x.shape)
+        x_perturbed = x + sigmas[i] * jr.normal(jr.key(0), x.shape)
         obj += (
             sigmas[i] ** 2
             * self._loss(lambda x_: state.apply_fn({"params": params}, x_))(
@@ -417,9 +410,9 @@ class SlicedScoreMatching(ScoreMatching):
                 random_vectors=random_vectors,
                 sigmas=sigmas,
             )
-            return fori_loop(0, self.num_noise_models, body, 0.0)
+            return jax.lax.fori_loop(0, self.num_noise_models, body, 0.0)
 
-        val, grads = value_and_grad(loss)(state.params)
+        val, grads = jax.value_and_grad(loss)(state.params)
         state = state.apply_gradients(grads=grads)
         return state, val
 
@@ -456,7 +449,7 @@ class SlicedScoreMatching(ScoreMatching):
             train_step = self._train_step
 
         # Define random projection vectors
-        generator_key, state_key, batch_key = random.split(self.random_key, 3)
+        generator_key, state_key, batch_key = jr.split(self.random_key, 3)
         try:
             random_vectors = self.random_generator(
                 generator_key,
@@ -474,7 +467,7 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         try:
-            loop_keys = random.split(batch_key, self.num_epochs)
+            loop_keys = jr.split(batch_key, self.num_epochs)
         except TypeError as exception:
             if self.num_epochs < 0:
                 raise ValueError("num_epochs must be a positive integer") from exception
@@ -487,7 +480,7 @@ class SlicedScoreMatching(ScoreMatching):
         for i in tqdm_progress_bar:
             # Sample some data-points to pass for this step
             try:
-                idx = random.randint(loop_keys[i], (self.batch_size,), 0, num_points)
+                idx = jr.randint(loop_keys[i], (self.batch_size,), 0, num_points)
             except TypeError as exception:
                 if self.batch_size < 0:
                     raise ValueError(

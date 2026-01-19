@@ -21,8 +21,8 @@ the codebase produce the expected results on simple examples.
 
 import unittest
 
+import jax.random as jr
 import optax
-from jax import random
 
 import coreax.networks
 import coreax.util
@@ -44,7 +44,7 @@ class TestTrainState(unittest.TestCase):
         """
         self.hidden_dimensions = [2, 2, 2]
         self.data_dimension = 5
-        self.state_key = random.key(1989)
+        self.state_key = jr.key(1989)
         self.learning_rate = 0.1
         self.optimiser = optax.adamw
 
