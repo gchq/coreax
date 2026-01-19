@@ -35,9 +35,9 @@ from pathlib import Path
 import equinox as eqx
 import imageio
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.decomposition import PCA
 
 from coreax.data import Data
@@ -113,10 +113,10 @@ def main(
     length_scale = median_heuristic(principle_components_data[idx])
 
     # Learn a score function
-    score_key, sample_key = random.split(random.key(random_seed), 2)
+    score_key, sample_key = jr.split(jr.key(random_seed), 2)
     sliced_score_matcher = SlicedScoreMatching(
         score_key,
-        random_generator=random.rademacher,
+        random_generator=jr.rademacher,
         use_analytic=True,
         num_epochs=100,
         num_random_vectors=1,

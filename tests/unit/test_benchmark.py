@@ -23,9 +23,9 @@ evaluation of a neural network model using these datasets.
 from contextlib import nullcontext as does_not_warn
 
 import jax.numpy as jnp
+import jax.random as jr
 import pytest
 import torch
-from jax import random
 from torchvision.datasets import VisionDataset
 
 from benchmark.mnist_benchmark import (
@@ -122,7 +122,7 @@ def test_train_and_evaluate() -> None:
     train_set = DataSet(features=train_data, labels=train_labels)
     test_set = DataSet(features=test_data, labels=test_labels)
 
-    rng = random.PRNGKey(0)
+    rng = jr.PRNGKey(0)
     model = MLP(2)
 
     config = {
@@ -150,7 +150,7 @@ def test_initialise_solvers() -> None:
     """
     # Create a mock dataset (UMAP-transformed) with arbitrary values
     mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
-    key = random.PRNGKey(42)
+    key = jr.PRNGKey(42)
     cpp_oversampling_factor = 1
 
     # Initialise solvers
@@ -176,7 +176,7 @@ def test_solver_instances() -> None:
     Test :func:`initialise_solvers` returns an instance of the expected solver type.
     """
     mock_data = Data(jnp.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]]))
-    key = random.PRNGKey(42)
+    key = jr.PRNGKey(42)
     cpp_oversampling_factor = 1
     # Case 1: When leaf_size is not provided
     expected_solver_types_no_leaf = {
@@ -244,8 +244,8 @@ def test_calculate_delta(n):
 
 def test_iterative_kernel_herding_reduce() -> None:
     """Check that `IterativeKernelHerding.reduce` = `KernelHerding.reduce_iterative`."""
-    random_key = random.key(0)
-    dataset = Data(random.uniform(random_key, (100, 5)))
+    random_key = jr.key(0)
+    dataset = Data(jr.uniform(random_key, (100, 5)))
 
     solver_params = {
         "coreset_size": 10,

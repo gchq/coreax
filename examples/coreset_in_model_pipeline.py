@@ -28,7 +28,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import Array
+from jaxtyping import Array
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler

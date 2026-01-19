@@ -41,9 +41,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 
 from coreax import Data
 from coreax.benchmark_util import initialise_solvers
@@ -95,7 +95,7 @@ def benchmark_coreset_algorithms(
     over_sampling_factor = math.floor(math.log(data.shape[0], 4))
     coreset_size = 8_000 // (downsampling_factor**2)
     # Initialize each coreset solver
-    key = random.PRNGKey(0)
+    key = jr.PRNGKey(0)
     solver_factories = initialise_solvers(
         data, key, cpp_oversampling_factor=over_sampling_factor
     )

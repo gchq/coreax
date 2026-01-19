@@ -18,9 +18,9 @@ from collections.abc import Sequence
 from typing import overload
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import jit
 from jaxtyping import Array, Shaped
 from typing_extensions import Self
 
@@ -63,7 +63,7 @@ def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
 ]: ...
 
 
-@jit
+@jax.jit
 def _atleast_2d_consistent(  # pyright:ignore[reportOverlappingOverload]
     *arrays: Shaped[Array, " n d *p"]
     | Shaped[Array, " n"]
