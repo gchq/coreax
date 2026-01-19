@@ -38,7 +38,8 @@ from typing import overload
 
 import equinox as eqx
 import numpy as np
-from flax.training.train_state import TrainState
+import optax
+from flax.training import train_state
 from jax import (
     Array,
     jvp,
@@ -50,7 +51,6 @@ from jax import (
 from jax.lax import cond, fori_loop
 from jax.typing import DTypeLike
 from jaxtyping import Shaped
-from optax import adamw
 from tqdm import tqdm
 from typing_extensions import override
 
@@ -178,7 +178,7 @@ class SlicedScoreMatching(ScoreMatching):
         num_epochs: int = 10,
         batch_size: int = 64,
         hidden_dims: Sequence[int] = (128, 128, 128),
-        optimiser: _LearningRateOptimiser = adamw,
+        optimiser: _LearningRateOptimiser = optax.adamw,
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
@@ -330,10 +330,10 @@ class SlicedScoreMatching(ScoreMatching):
     @eqx.filter_jit
     def _train_step(
         self,
-        state: TrainState,
+        state: train_state.TrainState,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
-    ) -> tuple[TrainState, float]:
+    ) -> tuple[train_state.TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
@@ -356,7 +356,7 @@ class SlicedScoreMatching(ScoreMatching):
         self,
         i: int,
         obj: float,
-        state: TrainState,
+        state: train_state.TrainState,
         params: dict,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
@@ -393,11 +393,11 @@ class SlicedScoreMatching(ScoreMatching):
     @eqx.filter_jit
     def _noise_conditional_train_step(
         self,
-        state: TrainState,
+        state: train_state.TrainState,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
         sigmas: Shaped[Array, " num_noise_models"],
-    ) -> tuple[TrainState, float]:
+    ) -> tuple[train_state.TrainState, float]:
         r"""
         Apply a single training step that updates model parameters using loss gradient.
 
