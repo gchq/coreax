@@ -25,7 +25,6 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jax import lax
 from jaxtyping import Array, ArrayLike, Bool, Float, Scalar, Shaped
 from typing_extensions import override
 
@@ -1560,7 +1559,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
             swap_probability = 1 / 2 * (1 - alpha / a)
             should_swap = jax.random.uniform(key1) <= swap_probability
-            return lax.cond(
+            return jax.lax.cond(
                 should_swap,
                 lambda _: (2 * i + 1, 2 * i),  # do swap: val1 = x2, val2 = x1
                 lambda _: (2 * i, 2 * i + 1),  # don't swap: val1 = x1, val2 = x2
@@ -1634,7 +1633,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 new_random_key,
             )
 
-        (final_arr1, final_arr2, _, _, _, _) = lax.fori_loop(
+        (final_arr1, final_arr2, _, _, _, _) = jax.lax.fori_loop(
             0,  # start index
             n,  # end index
             kernel_thinning_body_fun,  # body function

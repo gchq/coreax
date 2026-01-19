@@ -25,14 +25,14 @@ from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
 from flax import linen as nn
-from jax import Array, vjp
 from jax.scipy.stats import multivariate_normal, norm
-from jax.typing import ArrayLike
+from jaxtyping import Array, ArrayLike
 from optax import sgd
 from typing_extensions import override
 
@@ -184,7 +184,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
+                y, g_vjp = jax.vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -236,7 +236,7 @@ class TestKernelDensityMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x_, *rest), x_)
+                y, g_vjp = jax.vjp(lambda x__: g(x_, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -803,7 +803,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
+                y, g_vjp = jax.vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 
@@ -858,7 +858,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         def e_grad(g: Callable) -> Callable:
             def wrapped(x_, *rest):
-                y, g_vjp = vjp(lambda x__: g(x__, *rest), x_)
+                y, g_vjp = jax.vjp(lambda x__: g(x__, *rest), x_)
                 (x_bar,) = g_vjp(np.ones_like(y))
                 return x_bar
 

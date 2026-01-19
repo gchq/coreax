@@ -30,9 +30,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax.data import Data
@@ -99,7 +99,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
 
     print("Computing herding coreset...")
     # Compute a coreset using kernel herding with a squared exponential kernel.
-    sample_key, rp_key, stein_key = random.split(random.key(random_seed), num=3)
+    sample_key, rp_key, stein_key = jr.split(jr.key(random_seed), num=3)
     herding_solver = KernelHerding(
         coreset_size,
         kernel=kernel,
@@ -112,7 +112,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
     base_kernel = PCIMQKernel(length_scale=length_scale)
     sliced_score_matcher = SlicedScoreMatching(
         stein_key,
-        random.rademacher,
+        jr.rademacher,
         use_analytic=True,
         num_random_vectors=100,
         learning_rate=0.001,
