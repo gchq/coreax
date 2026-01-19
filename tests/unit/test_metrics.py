@@ -30,16 +30,17 @@ import numpy as np
 import pytest
 from jaxtyping import Array, ArrayLike
 
-from coreax.data import Data
+from coreax.data import Data, SupervisedData
 from coreax.kernels import (
     LaplacianKernel,
+    LinearKernel,
     PCIMQKernel,
     RationalQuadraticKernel,
     ScalarValuedKernel,
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.metrics import KSD, MMD
+from coreax.metrics import AMCMD, KSD, MMD
 from coreax.score_matching import convert_stein_kernel
 from coreax.util import pairwise
 
@@ -47,6 +48,12 @@ from coreax.util import pairwise
 class _MetricProblem(NamedTuple):
     reference_data: Data
     comparison_data: Data
+
+
+class _SupervisedMetricProblem(NamedTuple):
+    reference_data: SupervisedData
+    comparison_data: SupervisedData
+    weighting_data: Data | None = None
 
 
 class TestMMD:
@@ -394,3 +401,191 @@ class TestKSD:
             raise ValueError("Invalid mode parameterization")
         # Compute the KSD using the metric object
         assert output == pytest.approx(expected_ksd, abs=1e-6, rel=1e-3)
+
+
+class TestAMCMD:
+    """
+    Tests for average maximum conditional mean discrepancy (AMCMD) class in metrics.py.
+    """
+
+    @pytest.fixture
+    def problem(self) -> _SupervisedMetricProblem:
+        """Generate an example problem for testing AMCMD."""
+        num_points = 250, 125, 200
+        keys = tuple(jr.split(jr.key(0), 3))
+
+        def _generate_supervised_data(_num_points: int, _key: Array) -> SupervisedData:
+            point_key, noise_key = jr.split(_key, 2)
+            points = jr.uniform(point_key, (_num_points, 1))
+            supervision = points + 0.1 * jr.normal(noise_key, (points.shape))
+            return SupervisedData(points, supervision)
+
+        reference_data, comparison_data, weighting_data = jtu.tree_map(
+            _generate_supervised_data, num_points, keys
+        )
+        return _SupervisedMetricProblem(reference_data, comparison_data, weighting_data)
+
+    @pytest.mark.parametrize(
+        "feature_kernel,response_kernel",
+        [
+            (SquaredExponentialKernel(), SquaredExponentialKernel()),
+            (SquaredExponentialKernel(), LaplacianKernel()),
+            (SquaredExponentialKernel(), PCIMQKernel()),
+            (LaplacianKernel(), SquaredExponentialKernel()),
+            (LaplacianKernel(), LaplacianKernel()),
+            (LaplacianKernel(), PCIMQKernel()),
+            (PCIMQKernel(), SquaredExponentialKernel()),
+            (PCIMQKernel(), LaplacianKernel()),
+            (PCIMQKernel(), PCIMQKernel()),
+        ],
+    )
+    def test_amcmd_compare_same_data(
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: ScalarValuedKernel,
+        response_kernel: ScalarValuedKernel,
+    ):
+        """Check AMCMD of a dataset with itself is approximately zero."""
+        x, w = problem.reference_data, problem.weighting_data
+        metric = AMCMD(feature_kernel, response_kernel, regularisation_parameter=1e-3)
+        assert metric.compute(x, x, weighting_data=w) == pytest.approx(0.0)
+        assert metric.compute(x, x) == pytest.approx(0.0)
+
+    def test_amcmd_analytically_known(self):
+        r"""
+        Test AMCMD computation against an analytically derived solution.
+
+        For the following datasets with features and responses each in 1 dimension:
+
+        .. math::
+
+            \mathcal{D}_1 = [(0,0)]
+
+            \mathcal{D}_2 = [(1, 1), (2, 2)]
+
+            \mathcal{D}_3 = [1]
+
+        taking the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2)` for the feature
+        and the linear kernel :math:`l(x,y) = xy` for the response, gives:
+
+        .. math::
+
+            k(\mathcal{D}_3,\mathcal{D}_1) = \begin{bmatrix} e^{-1} \end{bmatrix}.
+
+            k(\mathcal{D}_1,\mathcal{D}_1) = \begin{bmatrix} 1 \end{bmatrix}.
+
+            k(\mathcal{D}_3,\mathcal{D}_2) = \begin{bmatrix} 1 & e^{-1} \end{bmatrix}.
+
+            k(\mathcal{D}_2,\mathcal{D}_1) =
+                \begin{bmatrix}
+                    1 & e^{-1} \\
+                    e^{-1} & 1
+                \end{bmatrix}.
+
+            l(\mathcal{D}_1,\mathcal{D}_1) = \begin{bmatrix} 0 \end{bmatrix}.
+
+            l(\mathcal{D}_2,\mathcal{D}_2) =
+                \begin{bmatrix}
+                    1 & 2 \\
+                    2 & 4
+                \end{bmatrix}.
+
+            l(\mathcal{D}_1,\mathcal{D}_2) = \begin{bmatrix} 0 & 0 \end{bmatrix}.
+
+
+        Then it is easy to see that the first and third terms in the AMCMD formula are
+        zero. Then, using the inverse of K_22 given by
+
+        .. math::
+
+            R_22 = \frac{1}{1 - e^{-2}} \begin{bmatrix} 1 & -e^{-1} \\ -e^{-1} & 1
+            \end{bmatrix},
+
+        we have that the second term is given by:
+
+
+        .. math::
+
+            \mathrm{Tr}(K_32 R_22 L_22 R_22 K_23) = \frac{1}{(1 - e^{-2})^2}
+            \mathrm{Tr}\left(\begin{bmatrix} 1 & e^{-1} \end{bmatrix}
+            \begin{bmatrix} 1 & -e^{-1} \\ -e^{-1} & 1 \end{bmatrix}
+            \begin{bmatrix} 1 & 2 \\ 2 & 4 \end{bmatrix}
+            \begin{bmatrix} 1 & -e^{-1} \\ -e^{-1} & 1 \end{bmatrix}
+            \begin{bmatrix} 1 \\ e^{-1} \end{bmatrix}\right) = 1
+
+        after a few lines of computation.
+
+        """
+        reference_data = SupervisedData(jnp.array([[0]]), jnp.array([[0]]))
+        comparison_data = SupervisedData(jnp.array([[1], [2]]), jnp.array([[1], [2]]))
+        weighting_data = Data(jnp.array([[1]]))
+        expected_output = 1
+
+        # Compute AMCMD using the metric object
+        metric = AMCMD(
+            SquaredExponentialKernel(1 / jnp.sqrt(2)),
+            LinearKernel(),
+            regularisation_parameter=0,
+        )
+        output = metric.compute(
+            reference_data, comparison_data, weighting_data=weighting_data
+        )
+        assert output == pytest.approx(expected_output)
+
+    def test_amcmd_random_data(self, problem: _SupervisedMetricProblem):
+        r"""
+        Test AMCD computed from randomly generated test data agrees with method result.
+        """
+        feature_kernel = SquaredExponentialKernel()
+        response_kernel = SquaredExponentialKernel()
+        regularisation_parameter = 1e-3
+        d1, d2, d3 = problem
+
+        x1, y1 = d1.data, d1.supervision
+        x2, y2 = d2.data, d2.supervision
+        if d3 is not None:
+            x3 = d3.data
+        else:
+            x3 = x1
+
+        # Compute each term in the AMCD formula to obtain an expected AMCD.
+        least_square_solution_1 = jnp.linalg.solve(
+            (
+                feature_kernel.compute(x1, x1)
+                + jnp.eye(x1.shape[0]) * regularisation_parameter
+            ),
+            feature_kernel.compute(x1, x3),
+        ).T
+
+        least_square_solution_2 = jnp.linalg.solve(
+            (
+                feature_kernel.compute(x2, x2)
+                + jnp.eye(x2.shape[0]) * regularisation_parameter
+            ),
+            feature_kernel.compute(x2, x3),
+        ).T
+        term_1 = jnp.sum(
+            least_square_solution_1
+            @ response_kernel.compute(y1, y1)
+            * least_square_solution_1
+        )
+        term_2 = jnp.sum(
+            least_square_solution_2
+            @ response_kernel.compute(y2, y2)
+            * least_square_solution_2
+        )
+        term_3 = jnp.sum(
+            least_square_solution_1
+            @ response_kernel.compute(y1, y2)
+            * least_square_solution_2
+        )
+        expected_amcmd = jnp.sqrt(1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3))
+
+        # Compute the AMCMD using the metric object
+        metric = AMCMD(
+            feature_kernel=feature_kernel,
+            response_kernel=response_kernel,
+            regularisation_parameter=regularisation_parameter,
+        )
+        output = metric.compute(d1, d2, weighting_data=d3)
+        assert output == pytest.approx(expected_amcmd, abs=1e-6)
