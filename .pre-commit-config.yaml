@@ -41,7 +41,7 @@ repos:
         args:
           - --ignore-case
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.24
+    rev: 0.9.26
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -58,7 +58,7 @@ repos:
             examples/.+/.+.(gif|png)
           )$
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.5
+    rev: v1.5.6
     hooks:
       # No tabs, only spaces
       - id: forbid-tabs
@@ -92,7 +92,7 @@ repos:
       # Enforce that type annotations are used instead of type comments
       - id: python-use-type-annotations
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.14.13
     hooks:
       # Run the linter.
       - id: ruff-check
