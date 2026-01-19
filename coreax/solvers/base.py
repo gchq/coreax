@@ -103,11 +103,11 @@ class ExplicitSizeSolver(
     :param coreset_size: The desired size of the solved coreset
     """
 
-    coreset_size: int = eqx.field(converter=int)
+    coreset_size: int
 
     def __check_init__(self):
         """Check that 'coreset_size' is feasible."""
-        if self.coreset_size <= 0:
+        if not isinstance(self.coreset_size, int) or self.coreset_size <= 0:
             raise ValueError("'coreset_size' must be a positive integer")
 
 
