@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - `KernelThinning.kt_half_recursive` now returns the correct partitions. (https://github.com/gchq/coreax/pull/1088)
 
 ### Changed
+ - `KSD` and `solve_qp` now truncate all negative solutions to zero, rather than using the more complex `apply_negative_precision_threshold` utility to achieve a similar behaviour.
  - `ScoreNetwork` now requires `num_random_vectors` and `num_noise_models` to be provided as positive integers, and requires the `optimiser` to be an `optax.GradientTransformation`.
  - `uv sync --resolution lowest` should now install the lowest supported versions of direct and transitive dependencies
  for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)

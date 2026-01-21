@@ -106,7 +106,7 @@ class MMD(Metric[Data]):
         .. warning::
             Computing :math:`\text{MMD}^2` may yield small negative values due to
             numerical imprecision when using JAX single precision (float32). These
-            values are clamped to non-negative, indicating the true MMD is likely near
+            values are truncated to zero, indicating the true MMD is likely near
             zero. For higher precision, enable double precision using the
             `jax_enable_x64` flag.
 
@@ -136,11 +136,8 @@ class MMD(Metric[Data]):
         kernel_xx_mean = self.kernel.compute_mean(x, x, block_size=bs_xx, unroll=u_xx)
         kernel_yy_mean = self.kernel.compute_mean(y, y, block_size=bs_yy, unroll=u_yy)
         kernel_xy_mean = self.kernel.compute_mean(x, y, block_size=bs_xy, unroll=u_xy)
-        squared_mmd_threshold_applied = jnp.maximum(
-            kernel_xx_mean + kernel_yy_mean - 2 * kernel_xy_mean,
-            0.0,
-        )
-        return jnp.sqrt(squared_mmd_threshold_applied)
+        squared_mmd = kernel_xx_mean + kernel_yy_mean - 2 * kernel_xy_mean
+        return jnp.sqrt(jnp.maximum(0.0, squared_mmd))
 
 
 class KSD(Metric[Data]):
@@ -213,12 +210,18 @@ class KSD(Metric[Data]):
         Compute the (regularised) (Laplace-corrected) kernel Stein discrepancy.
 
         .. math::
-
             KSD_{\lambda}^2(\mathbb{P}, \mathbb{Q})
             =  \frac{1}{m^2}\sum_{i \neq j}^m k_{\mathbb{P}}(x_i, x_j)
             + \frac{1}{m^2}\sum_{i = 1}^m [k_{\mathbb{P}}(x_i, x_i)
             + \Delta^+ \log(\mathbb{P}(x_i))]
             - \lambda \frac{1}{m}\sum_{i = 1}^m \log(\mathbb{P}(x_i))
+
+        .. warning::
+            Computing :math:`\text{KSD}^2` may yield small negative values due to
+            numerical imprecision when using JAX single precision (float32). These
+            values are truncated to zero, indicating the true KSD is likely near
+            zero. For higher precision, enable double precision using the
+            `jax_enable_x64` flag.
 
         :param reference_data: An instance of the class :class:`coreax.data.Data`,
             containing an :math:`n \times d` array of data sampled from
@@ -271,8 +274,5 @@ class KSD(Metric[Data]):
 
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
 
-        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
-            squared_ksd + laplace_correction - entropic_regularisation,
-            self.precision_threshold,
-        )
-        return jnp.sqrt(squared_ksd_threshold_applied)
+        squared_ksd = squared_ksd + laplace_correction - entropic_regularisation
+        return jnp.sqrt(jnp.maximum(0.0, squared_ksd))
