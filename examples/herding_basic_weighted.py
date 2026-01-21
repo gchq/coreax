@@ -30,6 +30,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
+import optax
 from sklearn.datasets import make_blobs
 
 from coreax import (
@@ -107,7 +108,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
         jr.rademacher,
         use_analytic=True,
         num_random_vectors=100,
-        learning_rate=0.001,
+        optimiser=optax.adamw(0.001),
         num_epochs=50,
     )
     estimated_score_function = sliced_score_matcher.match(jnp.asarray(data))

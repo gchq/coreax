@@ -128,8 +128,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param batch_size: Size of mini-batch. Defaults to 64.
     :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
-    :param optimiser: The name of the optax optimiser to use, or a function which maps a
-        learning rate to an :class:`optax.GradientTransformation`. Defaults to 'adamw'.
+    :param optimiser: The name of the optax optimiser. Defaults to 'optax.adamw(1e-3)'.
     :param num_noise_models: Number of noise models to use in noise
         conditional score matching. Defaults to 100.
     :param sigma: Initial noise standard deviation for noise geometric progression
@@ -139,28 +138,72 @@ class SlicedScoreMatching(ScoreMatching):
         tracking the training of the neural network. Defaults to :data:`False`.
     """
 
-    # TODO: refactor this to require fewer arguments
-    # https://github.com/gchq/coreax/issues/782
     random_key: KeyArrayLike
     random_generator: _RandomGenerator
-    noise_conditioning: bool = True
-    use_analytic: bool = False
-    num_random_vectors: int = 1
-    learning_rate: float = 1e-3
-    num_epochs: int = 10
-    batch_size: int = 64
-    hidden_dims: Sequence[int] = (128, 128, 128)
-    optimiser: _LearningRateOptimiser | str = "adamw"
-    num_noise_models: int = 100
-    sigma: float = 1.0
-    gamma: float = 0.95
-    progress_bar: bool = False
+    noise_conditioning: bool
+    use_analytic: bool
+    num_random_vectors: int
+    learning_rate: float
+    num_epochs: int
+    batch_size: int
+    hidden_dims: Sequence[int]
+    optimiser: optax.GradientTransformation
+    num_noise_models: int
+    sigma: float
+    gamma: float
+    progress_bar: bool
+
+    # TODO: refactor this to require use of keyword arguments
+    # https://github.com/gchq/coreax/issues/782
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(  # noqa: PLR0913, PLR0917
+        self,
+        random_key: KeyArrayLike,
+        random_generator: _RandomGenerator,
+        noise_conditioning: bool = True,
+        use_analytic: bool = False,
+        num_random_vectors: int = 1,
+        learning_rate: float | None = None,
+        num_epochs: int = 10,
+        batch_size: int = 64,
+        hidden_dims: Sequence[int] = (128, 128, 128),
+        optimiser: _LearningRateOptimiser | optax.GradientTransformation | None = None,
+        num_noise_models: int = 100,
+        sigma: float = 1.0,
+        gamma: float = 0.95,
+        progress_bar: bool = False,
+    ):
+        """Define a sliced score matching class and update invalid inputs."""
+        if learning_rate is not None:
+            raise DeprecationWarning(
+                "'learning_rate' is deprecated and will be removed in v1.2.0."
+            )
+        optimiser = optimiser or optax.adamw(1e-3)
+        if not isinstance(optimiser, optax.GradientTransformation):
+            raise DeprecationWarning(
+                "Passing an 'optimiser' as a '_LearningRateOptimiser' is deprecated and"
+                " will be removed in v1.2.0. Pass an optax.GradientTransformation"
+                " instead. E.G. `optimiser = optax.adamw(learning_rate=1e-3)."
+            )
+        self.random_key = random_key
+        self.random_generator = random_generator
+        self.noise_conditioning = noise_conditioning
+        self.use_analytic = use_analytic
+        self.num_random_vectors = num_random_vectors
+        self.learning_rate = learning_rate or 1e-3
+        self.num_epochs = num_epochs
+        self.batch_size = batch_size
+        self.hidden_dims = hidden_dims
+        self.optimiser = optimiser
+        self.num_noise_models = num_noise_models
+        self.sigma = sigma
+        self.gamma = gamma
+        self.progress_bar = progress_bar
+
+    # pylint: enable=too-many-arguments
 
     def __check_init__(self):
         """Check attributes are positive integers."""
-        optimiser = self.optimiser
-        if isinstance(optimiser, str) and not hasattr(optax, optimiser):
-            raise ValueError(f"'{optimiser}' is not the name of an optax optimiser")
         non_negative_integer_attrs = ("num_epochs", "batch_size")
         for attr in non_negative_integer_attrs:
             val = getattr(self, attr)
@@ -272,12 +315,8 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         # Define a training state
-        if isinstance(self.optimiser, str):
-            optimiser = getattr(optax, self.optimiser)
-        else:
-            optimiser = self.optimiser
         state = create_train_state(
-            state_key, score_network, self.learning_rate, data_dimension, optimiser
+            state_key, score_network, self.learning_rate, data_dimension, self.optimiser
         )
         loop_keys = jr.split(batch_key, self.num_epochs)
 

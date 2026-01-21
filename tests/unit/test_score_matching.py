@@ -29,11 +29,11 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
+import optax
 import pytest
 from flax import linen as nn
 from jax.scipy.stats import multivariate_normal, norm
 from jaxtyping import Array, ArrayLike
-from optax import sgd
 from typing_extensions import override
 
 import coreax.networks
@@ -366,7 +366,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = coreax.networks.create_train_state(
-            state_key, score_network, 1e-3, 2, sgd
+            state_key, score_network, 1e-3, 2, optax.sgd
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
@@ -602,16 +602,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
     def test_check_init(self):
         """Test the `__check_init__` magic of `SlicedScoreMatching`."""
         score_key, _ = jr.split(self.random_key)
-        # Test invalid optimiser string
-        invalid_optimiser = "INVALID_OPTIMISER"
-        with pytest.raises(
-            ValueError,
-            match=f"'{invalid_optimiser}' is not the name of an optax optimiser",
-        ):
-            coreax.score_matching.SlicedScoreMatching(
-                score_key, random_generator=jr.rademacher, optimiser=invalid_optimiser
-            )
-
         # Test non-negative integer attributes
         coreax.score_matching.SlicedScoreMatching(
             score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
@@ -651,6 +641,24 @@ class TestSlicedScoreMatching(unittest.TestCase):
                     random_generator=jr.rademacher,
                     num_noise_models=i,  # type: ignore[reportArgumentType]
                 )
+
+    def test_init_deprecated(self):
+        """Check that the deprecation warnings are triggered."""
+        with pytest.raises(DeprecationWarning, match="'learning_rate' is deprecated"):
+            coreax.score_matching.SlicedScoreMatching(
+                self.random_key,
+                random_generator=jr.rademacher,
+                learning_rate=1e-3,
+            )
+        with pytest.raises(
+            DeprecationWarning,
+            match="Passing an 'optimiser' as a '_LearningRateOptimiser' is deprecated",
+        ):
+            coreax.score_matching.SlicedScoreMatching(
+                self.random_key,
+                random_generator=jr.rademacher,
+                optimiser=optax.adamw,
+            )
 
 
 class TestConvertSteinKernel:
