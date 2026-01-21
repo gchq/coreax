@@ -128,7 +128,8 @@ class SlicedScoreMatching(ScoreMatching):
     :param batch_size: Size of mini-batch. Defaults to 64.
     :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
-    :param optimiser: The name of the optax optimiser. Defaults to 'optax.adamw(1e-3)'.
+    :param optimiser: An instance of an :class:`optax.GradientTransformation`. Defaults
+        to 'optax.adamw(1e-3)'.
     :param num_noise_models: Number of noise models to use in noise
         conditional score matching. Defaults to 100.
     :param sigma: Initial noise standard deviation for noise geometric progression
