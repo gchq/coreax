@@ -18,6 +18,8 @@ from coreax.solvers.base import (
     CoresubsetSolver,
     ExplicitSizeSolver,
     PaddingInvariantSolver,
+    PseudoCoresetSolver,
+    PseudoRefinementSolver,
     RefinementSolver,
     Solver,
 )
@@ -48,6 +50,8 @@ __all__ = [
     "ExplicitSizeSolver",
     "GradientFlow",
     "PaddingInvariantSolver",
+    "PseudoCoresetSolver",
+    "PseudoRefinementSolver",
     "CompositeSolver",
     "MapReduce",
     "RandomSample",

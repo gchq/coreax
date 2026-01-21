@@ -27,23 +27,31 @@ from optax import OptState
 from coreax.coreset import PseudoCoreset
 from coreax.data import Data
 from coreax.kernels import ScalarValuedKernel
-from coreax.solvers.base import ExplicitSizeSolver
+from coreax.solvers.base import ExplicitSizeSolver, PseudoRefinementSolver
 from coreax.util import KeyArrayLike
 
 
 class UnsupervisedState(eqx.Module):
     """
-    Optimisation results for :class:`_UnsupervisedSolver`.
+    Optimisation information for :class:`_UnsupervisedSolver`.
 
-    :param losses: Array of loss values at each iteration
-    :param gradient_norms: Array of gradient norms at each iteration
+    :param losses: Array of loss values at each iteration. Note that due to early
+        stopping, not all entries may be filled. To remove :data:`nan` values, use
+        ``losses[~jnp.isnan(losses)]``.
+    :param gradient_norms: Array of gradient norms at each iteration. Note that due to
+        early  stopping, not all entries may be filled. To remove :data:`nan` values,
+        use ``gradient_norms[~jnp.isnan(gradient_norms)]``.
+    :param opt_state: Optimiser state
     """
 
     losses: Array
     gradient_norms: Array
+    opt_state: OptState
 
 
-class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedState]):
+class _UnsupervisedSolver(
+    PseudoRefinementSolver[Data, UnsupervisedState], ExplicitSizeSolver
+):
     r"""
     Generic class for solving unlabelled coreset problems via gradient descent.
 
@@ -56,8 +64,7 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
         implementing a kernel function
         :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
     :param optimiser: A :class:`~optax.GradientTransformation` optimiser.
-        Defaults to the Adam optimiser with a constant step schedule of 1e-2. Input of
-        :data:`None` corresponds to no optimisation.
+        Defaults to the Adam optimiser with a constant step schedule of 1e-2.
     :param max_iterations: An integer representing the maximum permitted number of
         gradient steps. Defaults to :math:`100`.
     :param num_seeds: Number of initial seeds to check for optimisation. Defaults to
@@ -71,9 +78,7 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
     coreset_size: int = eqx.field(converter=int)
     random_key: KeyArrayLike
     kernel: ScalarValuedKernel
-    optimiser: optax.GradientTransformation | None = optax.adam(
-        optax.constant_schedule(1e-2)
-    )
+    optimiser: optax.GradientTransformation = optax.adam(optax.constant_schedule(1e-2))
     convergence_parameter: float = 1e-3
     max_iterations: int = 100
     num_seeds: int | None = None
@@ -96,11 +101,11 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
         self,
         target: Shaped[Array, "n d"],
         coreset: Shaped[Array, "m d"],
-        opt_state: OptState | None,
+        opt_state: OptState,
     ) -> tuple[
         Shaped[Array, "M d"],
         Shaped[Array, "M d"],
-        OptState | None,
+        OptState,
     ]:
         """
         Do a gradient step.
@@ -112,33 +117,20 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
         :return: Tuple containing updated coreset, gradient of loss wrt coreset points
             and updated optimiser state.
         """
-        # Do feature step according to chosen solver
-        if (
-            isinstance(self.optimiser, optax.GradientTransformation)
-            and opt_state is not None
-        ):
-            points_grad = grad(self._loss_function, argnums=1)(target, coreset)
-            update, opt_state = self.optimiser.update(
-                updates=points_grad, state=opt_state, params=coreset
-            )
-            coreset_ = jnp.array(optax.apply_updates(coreset, update))
-        else:
-            # Default is to do nothing
-            coreset_, points_grad = (
-                coreset,
-                jnp.zeros((coreset.shape[0], coreset.shape[1])),
-            )
+        coreset_grad = grad(self._loss_function, argnums=1)(target, coreset)
+        update, opt_state = self.optimiser.update(
+            updates=coreset_grad, state=opt_state, params=coreset
+        )
+        coreset_ = jnp.array(optax.apply_updates(coreset, update))
 
-        return coreset_, points_grad, opt_state
+        return coreset_, coreset_grad, opt_state
 
-    def _initialise(
-        self, dataset: Shaped[Array, "n d"]
-    ) -> tuple[Shaped[Array, "m d"], Shaped[Array, ""]]:
+    def _initialise(self, dataset: Shaped[Array, "n d"]) -> Shaped[Array, "m d"]:
         """
         Initialise the coreset from the dataset.
 
         :param dataset: The data to initialise the coreset from.
-        :return: A two-dimensional array containing the initial coreset and its loss.
+        :return: A two-dimensional array containing the initial coreset
         """
         dataset_size = dataset.shape[0]
 
@@ -146,9 +138,6 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
             # Initialise the coreset with a random subset
             initialisation_indices = jr.choice(
                 self.random_key, dataset_size, shape=(self.coreset_size,), replace=False
-            )
-            initial_loss = self._loss_function(
-                target=dataset, coreset=dataset[initialisation_indices]
             )
         else:
             # Get keys to choose seeds for optimisation
@@ -173,11 +162,18 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
 
             # Choose the best coreset and store the loss
             initialisation_indices = seed_indices[jnp.argmin(seed_losses)]
-            initial_loss = jnp.nanmin(seed_losses)
-        return dataset[initialisation_indices], initial_loss
+        return dataset[initialisation_indices]
 
     def reduce(
         self, dataset: Data, solver_state: UnsupervisedState | None = None
+    ) -> tuple[PseudoCoreset[Data], UnsupervisedState]:
+        initial_coreset = self._initialise(dataset=dataset.data)
+        return self.refine(PseudoCoreset.build(initial_coreset, dataset), solver_state)
+
+    def refine(
+        self,
+        coreset: PseudoCoreset[Data],
+        solver_state: UnsupervisedState | None = None,
     ) -> tuple[PseudoCoreset[Data], UnsupervisedState]:
         r"""
         Reduce 'dataset' to a coreset - solve the coreset problem.
@@ -187,23 +183,20 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
             expensive intermediate solution step information.
         :return: a tuple of the solved coreset and intermediate solver state information
         """
-        del solver_state
+        # Unpack current corset and target dataset
+        coreset_, data = coreset.points.data, coreset.pre_coreset_data.data
 
-        # Extract data from container
-        data = dataset.data
-
-        # Initialise the coreset
-        coreset, initial_loss = self._initialise(dataset=data)
-
-        # Initialise trackers
-        losses = jnp.full((self.max_iterations + 1,), jnp.nan)
+        # Initialise storage for optimisation information
+        losses = jnp.full((self.max_iterations), jnp.nan)
         gradient_norms = jnp.full((self.max_iterations), jnp.nan)
-        losses = losses.at[0].set(initial_loss)
 
-        # Initialise optimiser
-        opt_state = None
-        if isinstance(self.optimiser, optax.GradientTransformation):
-            opt_state = self.optimiser.init(coreset)
+        # Initialise optimiser state
+        if solver_state is None:
+            opt_state = self.optimiser.init(coreset_)
+            initial_loss = self._loss_function(target=data, coreset=coreset_)
+        else:
+            opt_state = solver_state.opt_state
+            initial_loss = jnp.array([])
 
         def cond_fun(carry):
             """Check when to stop optimisation."""
@@ -222,23 +215,30 @@ class _UnsupervisedSolver(ExplicitSizeSolver[PseudoCoreset, Data, UnsupervisedSt
             grad_norm = jnp.linalg.norm(grads)
 
             if self.track_info:
-                losses = losses.at[i + 1].set(
+                losses = losses.at[i].set(
                     self._loss_function(target=data, coreset=coreset)
                 )
                 gradient_norms = gradient_norms.at[i].set(grad_norm)
 
             return i + 1, coreset, opt_state, losses, gradient_norms, grad_norm
 
-        init_carry = (0, coreset, opt_state, losses, gradient_norms, jnp.inf)
-        _, coreset, opt_state, losses, gradient_norms, _ = lax.while_loop(
+        init_carry = (0, coreset_, opt_state, losses, gradient_norms, jnp.inf)
+        _, coreset_, opt_state, losses, gradient_norms, _ = lax.while_loop(
             cond_fun, body_fun, init_carry
         )
 
-        state = UnsupervisedState(jnp.array([]), jnp.array([]))
-        if self.track_info:
-            state = UnsupervisedState(losses, gradient_norms)
+        if solver_state is None:
+            state = UnsupervisedState(
+                jnp.hstack((initial_loss, losses)), gradient_norms, opt_state
+            )
+        else:
+            state = UnsupervisedState(
+                jnp.hstack((solver_state.losses, losses)),
+                jnp.hstack((solver_state.gradient_norms, gradient_norms)),
+                opt_state,
+            )
 
-        return PseudoCoreset(Data(coreset), dataset), state
+        return PseudoCoreset.build(coreset_, data), state
 
 
 class GradientFlow(_UnsupervisedSolver):

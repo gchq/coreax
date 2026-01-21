@@ -19,7 +19,7 @@ from typing import Generic, TypeVar
 
 import equinox as eqx
 
-from coreax.coreset import AbstractCoreset, Coresubset
+from coreax.coreset import AbstractCoreset, Coresubset, PseudoCoreset
 from coreax.data import Data, SupervisedData
 
 _Data = TypeVar("_Data", Data, SupervisedData)
@@ -126,3 +126,44 @@ class PaddingInvariantSolver(
     Inheriting from this class is only a promise by the solver to obey the invariance
     property. Conformity with the property is not checked at runtime.
     """
+
+
+class PseudoCoresetSolver(
+    Solver[PseudoCoreset[_Data], _Data, _State], Generic[_Data, _State]
+):
+    """Solver which returns a :class:`coreax.coreset.PseudoCoreset`."""
+
+
+class PseudoRefinementSolver(
+    PseudoCoresetSolver[_Data, _State], Generic[_Data, _State]
+):
+    """
+    A :class:`~coreax.solvers.PseudoCoresetSolver` which supports refinement.
+
+    Some solvers assume implicitly/explicitly an initial coreset on which the
+    solution is dependent. Such solvers can be interpreted as refining the initial
+    coreset to produce another (solution) coreset.
+
+    By providing a 'refine' method, one can compose the results of different solvers
+    together, and/or repeatedly apply/chain the result of a refinement based solve.
+
+    .. code-block:: python
+
+        # An example of repeated application/chaining of solutions/solvers.
+        result, state = solver.reduce(dataset)
+        refined_result, state = refine_solver.refine(result, state)
+        re_refined_result, state = refine_solver.refine(refined_result, state)
+    """
+
+    @abstractmethod
+    def refine(
+        self, coreset: PseudoCoreset[_Data], solver_state: _State | None = None
+    ) -> tuple[PseudoCoreset[_Data], _State]:
+        """
+        Refine a coreset.
+
+        :param coreset: The coreset to refine
+        :param solver_state: Solution state information, primarily used to cache
+            expensive intermediate solution step values.
+        :return: a refined coreset and relevant intermediate solver state information
+        """
