@@ -22,6 +22,7 @@ from coreax.solvers.base import (
     Solver,
 )
 from coreax.solvers.composite import CompositeSolver, MapReduce
+from coreax.solvers.coreset import GradientFlow
 from coreax.solvers.coresubset import (
     CompressPlusPlus,
     GreedyKernelPoints,
@@ -45,6 +46,7 @@ __all__ = [
     "CoresubsetSolver",
     "RefinementSolver",
     "ExplicitSizeSolver",
+    "GradientFlow",
     "PaddingInvariantSolver",
     "CompositeSolver",
     "MapReduce",
