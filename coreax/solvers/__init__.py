@@ -22,7 +22,6 @@ from coreax.solvers.base import (
     Solver,
 )
 from coreax.solvers.composite import CompositeSolver, MapReduce
-from coreax.solvers.coreset import GradientFlow
 from coreax.solvers.coresubset import (
     CompressPlusPlus,
     GreedyKernelPoints,
@@ -35,6 +34,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.pseudocoreset import GradientFlow
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
