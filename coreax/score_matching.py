@@ -128,7 +128,8 @@ class SlicedScoreMatching(ScoreMatching):
     :param batch_size: Size of mini-batch. Defaults to 64.
     :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
-    :param optimiser: The optax optimiser to use. Defaults to optax.adam.
+    :param optimiser: The name of the optax optimiser to use, or a function which maps a
+        learning rate to an :class:`optax.GradientTransformation`. Defaults to 'adamw'.
     :param num_noise_models: Number of noise models to use in noise
         conditional score matching. Defaults to 100.
     :param sigma: Initial noise standard deviation for noise geometric progression
@@ -149,7 +150,7 @@ class SlicedScoreMatching(ScoreMatching):
     num_epochs: int = 10
     batch_size: int = 64
     hidden_dims: Sequence[int] = (128, 128, 128)
-    optimiser: _LearningRateOptimiser = optax.adamw
+    optimiser: _LearningRateOptimiser | str = "adamw"
     num_noise_models: int = 100
     sigma: float = 1.0
     gamma: float = 0.95
@@ -157,6 +158,9 @@ class SlicedScoreMatching(ScoreMatching):
 
     def __check_init__(self):
         """Check attributes are positive integers."""
+        optimiser = self.optimiser
+        if isinstance(optimiser, str) and not hasattr(optax, optimiser):
+            raise ValueError(f"'{optimiser}' is not the name of an optax optimiser")
         non_negative_integer_attrs = ("num_epochs", "batch_size")
         for attr in non_negative_integer_attrs:
             val = getattr(self, attr)
@@ -268,8 +272,12 @@ class SlicedScoreMatching(ScoreMatching):
         )
 
         # Define a training state
+        if isinstance(self.optimiser, str):
+            optimiser = getattr(optax, self.optimiser)
+        else:
+            optimiser = self.optimiser
         state = create_train_state(
-            state_key, score_network, self.learning_rate, data_dimension, self.optimiser
+            state_key, score_network, self.learning_rate, data_dimension, optimiser
         )
         loop_keys = jr.split(batch_key, self.num_epochs)
 

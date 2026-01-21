@@ -21,15 +21,15 @@ Neural networks are used throughout the codebase as functional approximators.
 from collections.abc import Callable, Sequence
 
 import jax.numpy as jnp
+import optax
 from flax import linen as nn
 from flax.linen import Module
 from flax.training import train_state
 from jaxtyping import Array, Shaped
-from optax import GradientTransformation
 
 from coreax.util import KeyArrayLike
 
-_LearningRateOptimiser = Callable[[float], GradientTransformation]
+_LearningRateOptimiser = Callable[[float], optax.GradientTransformation]
 
 
 class ScoreNetwork(nn.Module):

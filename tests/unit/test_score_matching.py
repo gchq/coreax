@@ -602,6 +602,16 @@ class TestSlicedScoreMatching(unittest.TestCase):
     def test_check_init(self):
         """Test the `__check_init__` magic of `SlicedScoreMatching`."""
         score_key, _ = jr.split(self.random_key)
+        # Test invalid optimiser string
+        invalid_optimiser = "INVALID_OPTIMISER"
+        with pytest.raises(
+            ValueError,
+            match=f"'{invalid_optimiser}' is not the name of an optax optimiser",
+        ):
+            coreax.score_matching.SlicedScoreMatching(
+                score_key, random_generator=jr.rademacher, optimiser=invalid_optimiser
+            )
+
         # Test non-negative integer attributes
         coreax.score_matching.SlicedScoreMatching(
             score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
