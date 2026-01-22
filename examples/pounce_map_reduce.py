@@ -38,9 +38,10 @@ from pathlib import Path
 import equinox as eqx
 import imageio
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import Array, random
+from jaxtyping import Array
 from sklearn.decomposition import PCA
 
 from coreax.data import Data
@@ -127,7 +128,7 @@ def main(
     )
 
     # Run kernel herding with a Stein kernel
-    sample_key = random.key(random_seed)
+    sample_key = jr.key(random_seed)
     herding_solver = KernelHerding(
         coreset_size,
         kernel=SteinKernel(

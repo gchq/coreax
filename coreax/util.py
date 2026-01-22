@@ -34,11 +34,11 @@ from typing import (
 )
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
-from jax import Array, block_until_ready, jit, vmap
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 
 _logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -185,8 +185,8 @@ def pairwise(
     ) -> Shaped[Array, " n m *d"]:
         x = jnp.atleast_2d(x)
         y = jnp.atleast_2d(y)
-        return vmap(
-            vmap(fn, in_axes=(0, None), out_axes=0),
+        return jax.vmap(
+            jax.vmap(fn, in_axes=(0, None), out_axes=0),
             in_axes=(None, 0),
             out_axes=1,
         )(x, y)
@@ -194,7 +194,7 @@ def pairwise(
     return pairwise_fn
 
 
-@jit
+@jax.jit
 def squared_distance(
     x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
@@ -212,7 +212,7 @@ def squared_distance(
     return jnp.dot(x - y, x - y)
 
 
-@jit
+@jax.jit
 def difference(
     x: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
     y: Shaped[Array, " d"] | Shaped[Array, ""] | float | int,
@@ -253,7 +253,7 @@ def sample_batch_indices(
         raise ValueError("'batch_size' must be non-negative")
 
     batch_keys = jr.split(random_key, num_batches)
-    batch_permutation = vmap(jr.permutation, in_axes=(0, None))
+    batch_permutation = jax.vmap(jr.permutation, in_axes=(0, None))
     return batch_permutation(batch_keys, max_index)[:, :batch_size]
 
 
@@ -283,17 +283,17 @@ def jit_test(
     if jit_kwargs is None:
         jit_kwargs = {}
 
-    @partial(jit, **jit_kwargs)
+    @partial(jax.jit, **jit_kwargs)
     def _fn(*args, **kwargs):
         return fn(*args, **kwargs)
 
     start_time = time.perf_counter()
-    block_until_ready(_fn(*fn_args, **fn_kwargs))
+    jax.block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.perf_counter()
     pre_delta = end_time - start_time
 
     start_time = time.perf_counter()
-    block_until_ready(_fn(*fn_args, **fn_kwargs))
+    jax.block_until_ready(_fn(*fn_args, **fn_kwargs))
     end_time = time.perf_counter()
     post_delta = end_time - start_time
 

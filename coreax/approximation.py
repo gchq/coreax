@@ -35,8 +35,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from jax import Array
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 from typing_extensions import override
 
 from coreax.data import Data, _atleast_2d_consistent

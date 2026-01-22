@@ -28,9 +28,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax.data import Data
@@ -95,7 +95,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     print("Computing herding coreset...")
     # Compute a coreset using kernel herding
-    sample_key, _ = random.split(random.key(random_seed))
+    sample_key, _ = jr.split(jr.key(random_seed))
     herding_solver = KernelHerding(coreset_size, kernel)
     herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(data)
 

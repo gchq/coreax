@@ -21,14 +21,14 @@ verify that metric computations produce the expected results on simple examples.
 
 from typing import Literal, NamedTuple
 
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import jax.scipy as jsp
 import jax.tree_util as jtu
 import numpy as np
 import pytest
-from jax import Array, jacfwd, vmap
-from jax.typing import ArrayLike
+from jaxtyping import Array, ArrayLike
 
 from coreax.data import Data, SupervisedData
 from coreax.kernels import (
@@ -375,10 +375,10 @@ class TestKSD:
             )
         elif mode == "laplace-corrected":
             # pylint: disable=duplicate-code
-            @vmap
+            @jax.vmap
             def _laplace_positive(x_: Array) -> Array:
                 r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
-                hessian = jacfwd(kernel.score_function)(x_)
+                hessian = jax.jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()
 
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2

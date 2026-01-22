@@ -56,8 +56,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import Array, grad, jacrev
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 from typing_extensions import override
 
 from coreax.data import Data
@@ -293,7 +292,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         :return: Jacobian
             :math:`\nabla_\mathbf{x} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return grad(self.compute_elementwise, 0)(x, y)
+        return jax.grad(self.compute_elementwise, 0)(x, y)
 
     @overload
     def grad_y_elementwise(
@@ -326,7 +325,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         :return: Jacobian
             :math:`\nabla_\mathbf{y} k(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^d`
         """
-        return grad(self.compute_elementwise, 1)(x, y)
+        return jax.grad(self.compute_elementwise, 1)(x, y)
 
     @overload
     def divergence_x_grad_y(
@@ -387,7 +386,7 @@ class ScalarValuedKernel(eqx.Module):  # noqa: PLR0904
         :param y: Second vector :math:`\mathbf{y} \in \mathbb{R}^d`
         :return: Trace of the Laplace-style operator; a real number
         """
-        pseudo_hessian = jacrev(self.grad_y_elementwise, 0)(x, y)
+        pseudo_hessian = jax.jacrev(self.grad_y_elementwise, 0)(x, y)
         return pseudo_hessian.trace()
 
     def gramian_row_mean(
