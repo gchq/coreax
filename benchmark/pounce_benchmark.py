@@ -26,9 +26,9 @@ from pathlib import Path
 
 import imageio
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import umap
-from jax import random
 from matplotlib import pyplot as plt
 
 from coreax.benchmark_util import initialise_solvers
@@ -96,7 +96,7 @@ def benchmark_coreset_algorithms(
     print("umap_data_shape", umap_data.shape)
 
     solver_factories = initialise_solvers(
-        Data(umap_data), random.PRNGKey(45), cpp_oversampling_factor=3
+        Data(umap_data), jr.PRNGKey(45), cpp_oversampling_factor=3
     )
     for solver_name, solver_creator in solver_factories.items():
         solver = solver_creator(coreset_size)

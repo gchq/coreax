@@ -26,7 +26,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
-from jax import Array
+from jaxtyping import Array
 
 from coreax.approximation import (
     ANNchorApproximateKernel,

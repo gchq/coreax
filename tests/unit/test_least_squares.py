@@ -26,7 +26,7 @@ from typing import Generic, NamedTuple, TypeVar
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-from jax import Array
+from jaxtyping import Array
 from typing_extensions import override
 
 from coreax.kernels import SquaredExponentialKernel

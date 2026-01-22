@@ -28,7 +28,7 @@ weighted (size of point) to optimally reconstruct the underlying distribution. R
 :mod:`examples.herding_stein_weighted` to replicate.
 
 We compare the coreset to the full original dataset by calculating the maximum mean
-discrepancy :wikipedia:`MMD <Kernel_embedding_of_distributions#Measuring_distance_between_distributions>`.
+discrepancy `MMD <https://en.wikipedia.org/wiki/Kernel_embedding_of_distributions#Measuring_distance_between_distributions>`__.
 This key property is an integral probability metric, measuring the distance between the
 empirical distributions of the full dataset and the coreset. A good coreset algorithm
 produces a coreset that has significantly smaller MMD than randomly sampling the same

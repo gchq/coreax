@@ -59,8 +59,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from jax import Array
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 from typing_extensions import override
 
 from coreax.util import KeyArrayLike

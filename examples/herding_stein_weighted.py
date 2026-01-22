@@ -33,9 +33,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax.data import Data
@@ -114,7 +114,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     print("Computing coreset...")
     # Compute a coreset using kernel herding with a Stein kernel
-    sample_key = random.key(random_seed)
+    sample_key = jr.key(random_seed)
     herding_solver = KernelHerding(coreset_size, kernel=herding_kernel)
     herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(data)
     re_weighted_herding_coreset = herding_coreset.solve_weights(weights_optimiser)

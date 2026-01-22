@@ -21,16 +21,15 @@ Neural networks are used throughout the codebase as functional approximators.
 from collections.abc import Callable, Sequence
 
 import jax.numpy as jnp
+import optax
 from flax import linen as nn
 from flax.linen import Module
-from flax.training.train_state import TrainState
-from jax import Array
-from jaxtyping import Shaped
-from optax import GradientTransformation
+from flax.training import train_state
+from jaxtyping import Array, Shaped
 
 from coreax.util import KeyArrayLike
 
-_LearningRateOptimiser = Callable[[float], GradientTransformation]
+_LearningRateOptimiser = Callable[[float], optax.GradientTransformation]
 
 
 class ScoreNetwork(nn.Module):
@@ -68,8 +67,8 @@ def create_train_state(
     module: Module,
     learning_rate: float,
     data_dimension: int,
-    optimiser: _LearningRateOptimiser,
-) -> TrainState:
+    optimiser: _LearningRateOptimiser | optax.GradientTransformation,
+) -> train_state.TrainState:
     """
     Create a flax :class:`~flax.training.train_state.TrainState` for learning with.
 
@@ -81,5 +80,8 @@ def create_train_state(
     :return: :class:`~flax.training.train_state.TrainState` object
     """
     params = module.init(random_key, jnp.ones((1, data_dimension)))["params"]
-    tx = optimiser(learning_rate)
-    return TrainState.create(apply_fn=module.apply, params=params, tx=tx)
+    if isinstance(optimiser, optax.GradientTransformation):
+        tx = optimiser
+    else:
+        tx = optimiser(learning_rate)
+    return train_state.TrainState.create(apply_fn=module.apply, params=params, tx=tx)

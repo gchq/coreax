@@ -42,9 +42,9 @@ import cv2
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 
 from coreax import (
     MMD,
@@ -177,7 +177,7 @@ def main(
     # Compute a coreset using kernel herding with a Stein kernel. To reduce compute
     # time, we apply MapReduce, which partitions the input into blocks for independent
     # coreset solving. We also reduce memory requirements by specifying block size
-    _, sample_key = random.split(random.key(random_seed))
+    _, sample_key = jr.split(jr.key(random_seed))
     herding_solver = KernelHerding(
         coreset_size,
         kernel=herding_kernel,
