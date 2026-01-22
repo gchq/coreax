@@ -29,11 +29,11 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
+import optax
 import pytest
 from flax import linen as nn
 from jax.scipy.stats import multivariate_normal, norm
 from jaxtyping import Array, ArrayLike
-from optax import sgd
 from typing_extensions import override
 
 import coreax.networks
@@ -311,318 +311,6 @@ class TestSlicedScoreMatching(unittest.TestCase):
             self.mu, self.std_dev, size=(self.num_data_points, 1)
         )
 
-    def test_analytic_objective_orthogonal(self) -> None:
-        r"""
-        Test the core objective function, analytic version.
-
-        We consider two orthogonal vectors, ``u`` and ``v``, and a score vector of ones.
-        The analytic objective is given by:
-
-        .. math::
-
-            v' u + 0.5 * ||s||^2
-
-        In the case of ``v`` and ``u`` being orthogonal, this reduces to:
-
-        .. math::
-
-            0.5 * ||s||^2
-
-        which equals 1.0 in the case of ``s`` being a vector of ones.
-        """
-        # Define data
-        u = jnp.array([0.0, 1.0])
-        v = jnp.array([[1.0, 0.0]])
-        s = jnp.ones(2, dtype=float)
-
-        # Define expected output - orthogonal u and v vectors should give back
-        # half-length squared s
-        expected_output = 1.0
-
-        # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=True
-        )
-
-        # Evaluate the analytic objective function
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output = sliced_score_matcher._objective_function(v, u, s)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
-
-    def test_analytic_objective(self) -> None:
-        r"""
-        Test the core objective function, analytic version.
-
-        We consider the following vectors:
-
-        .. math::
-
-            u = [0, 1, 2]
-
-            v = [3, 4, 5]
-
-            s = [9, 10, 11]
-
-        and the analytic objective
-
-        .. math::
-
-            v' u + 0.5 * ||s||^2
-
-        Evaluating this gives a result of 165.0. We compare this to the general
-        objective, which has the form:
-
-        .. math::
-
-            v' u + 0.5 * (v' s)^2
-
-        which evaluates to 7456.0 when substituting in the given values of ``u``, ``v``
-        and ``s``.
-        """
-        # Define data
-        u = jnp.arange(3, dtype=float)
-        v = jnp.arange(3, 6, dtype=float)
-        s = jnp.arange(9, 12, dtype=float)
-
-        # Define expected outputs
-        expected_output_analytic = 165.0
-        expected_output_general = 7456.0
-
-        # Define a sliced score matching object - with the analytic objective
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=True
-        )
-
-        # Evaluate the analytic objective function
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output = sliced_score_matcher._objective_function(v, u, s)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output_analytic, places=3)
-
-        # Mutate the objective, and check that the result changes
-        sliced_score_matcher = eqx.tree_at(
-            lambda x: x.use_analytic, sliced_score_matcher, False
-        )
-
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output = sliced_score_matcher._objective_function(v, u, s)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output_general, places=3)
-
-    def test_general_objective_orthogonal(self) -> None:
-        r"""
-        Test the core objective function, non-analytic version.
-
-        We consider the following vectors:
-
-        .. math::
-
-            u = [0, 1]
-
-            v = [1, 0]
-
-            s = [1, 1]
-
-
-        The general objective has the form:
-
-        .. math::
-
-            v' u + 0.5 * (v' s)^2
-
-        We consider orthogonal vectors ``v`` and ``u``, meaning we only evaluate the
-        second term to get the expected output.
-        """
-        # Define data - orthogonal u and v vectors should give back half squared dot
-        # product of v and s
-        u = jnp.array([0.0, 1.0])
-        v = jnp.array([[1.0, 0.0]])
-        s = jnp.ones(2, dtype=float)
-
-        # Define expected outputs
-        expected_output = 0.5
-
-        # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=False
-        )
-
-        # Evaluate the analytic objective function
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output = sliced_score_matcher._objective_function(v, u, s)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
-
-    def test_general_objective(self) -> None:
-        r"""
-        Test the core objective function, non-analytic version.
-
-        We consider the following vectors:
-
-        .. math::
-
-            u = [0, 1, 2]
-
-            v = [3, 4, 5]
-
-            s = [9, 10, 11]
-
-        The general objective has the form:
-
-        .. math::
-
-            v' u + 0.5 * (v' s)^2
-
-        Evaluating this gives a result of 7456.0.
-        """
-        # Define data
-        u = jnp.arange(3, dtype=float)
-        v = jnp.arange(3, 6, dtype=float)
-        s = jnp.arange(9, 12, dtype=float)
-
-        # Define expected outputs
-        expected_output = 7456.0
-
-        # Define a sliced score matching object - with the non-analytic objective
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=False
-        )
-
-        # Evaluate the analytic objective function
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output = sliced_score_matcher._objective_function(v, u, s)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
-
-    def test_sliced_score_matching_loss_element_analytic(self) -> None:
-        """
-        Test the loss function elementwise.
-
-        We use the analytic loss function in this example.
-        """
-
-        def score_function(y: Array) -> Array:
-            """
-            Score function, implicitly multivariate vector valued.
-
-            :param y: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at ``y``
-            """
-            return y**2
-
-        # Define an arbitrary input
-        x = jnp.array([2.0, 7.0])
-        s = score_function(x)
-
-        # Defined the Hessian (grad of score function)
-        hessian = 2.0 * jnp.diag(x)
-
-        # Define some arbitrary random vector
-        random_vector = jnp.ones(2, dtype=float)
-
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=True
-        )
-
-        # Determine the expected output - using the analytic objective function tested
-        # elsewhere
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        expected_output = sliced_score_matcher._objective_function(
-            random_vector[None, :], hessian @ random_vector, s
-        )
-
-        # Evaluate the loss element
-        output = sliced_score_matcher._loss_element(x, random_vector, score_function)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
-
-        # Call the loss element with a different objective function, and check that the
-        # JIT compilation recognises this change
-        sliced_score_matcher = eqx.tree_at(
-            lambda x: x.use_analytic, sliced_score_matcher, False
-        )
-
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        output_changed_objective = sliced_score_matcher._loss_element(
-            x, random_vector, score_function
-        )
-        # pylint: enable=protected-access
-        self.assertNotAlmostEqual(output, output_changed_objective)
-
-    def test_sliced_score_matching_loss_element_general(self) -> None:
-        """
-        Test the loss function elementwise.
-
-        We use the non-analytic loss function in this example.
-        """
-
-        def score_function(x_: Array) -> Array:
-            """
-            Score function, implicitly multivariate vector valued.
-
-            :param x_: point at which to evaluate the score function
-            :return: score function (gradient of log density) evaluated at ``x_``
-            """
-            return x_**2
-
-        # Define an arbitrary input
-        x = jnp.array([2.0, 7.0])
-        s = score_function(x)
-
-        # Defined the Hessian (grad of score function)
-        hessian = 2.0 * jnp.diag(x)
-
-        # Define some arbitrary random vector
-        random_vector = jnp.ones(2, dtype=float)
-
-        # Define a sliced score matching object
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            self.random_key, random_generator=jr.rademacher, use_analytic=False
-        )
-
-        # Determine the expected output
-        # Disable pylint warning for protected-access as we are testing a single part of
-        # the over-arching algorithm
-        # pylint: disable=protected-access
-        expected_output = sliced_score_matcher._objective_function(
-            random_vector, hessian @ random_vector, s
-        )
-
-        # Evaluate the loss element
-        output = sliced_score_matcher._loss_element(x, random_vector, score_function)
-        # pylint: enable=protected-access
-
-        # Check output matches expected
-        self.assertAlmostEqual(output, expected_output, places=3)
-
     def test_sliced_score_matching_loss(self) -> None:
         """
         Test the loss function with vmap.
@@ -661,7 +349,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
     def test_train_step(self) -> None:
         """
-        Test the basic training step.
+        Test the basic training step (without noise conditioning).
         """
         # Define a simple linear model that we can compute the gradients for by hand
         score_network = SimpleNetwork(2, 2)
@@ -672,12 +360,13 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
+            noise_conditioning=False,
         )
 
         # Create a train state. setting the PRNG with fixed seed means initialisation is
         # consistent for testing using SGD
         state = coreax.networks.create_train_state(
-            state_key, score_network, 1e-3, 2, sgd
+            state_key, score_network, 1e-3, 2, optax.sgd
         )
 
         # Jax is row-based, so we have to work with the kernel transpose
@@ -894,208 +583,82 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Check learned score and true score align
         self.assertLessEqual(np.abs(true_score_result - score_result).mean(), 0.8)
 
-    def test_sliced_score_matching_no_noise_conditioning(self):
-        """
-        Test  SlicedScoreMatching does not raise an error with no 'noise_conditioning'.
-        """
+    def test_match_no_noise_conditioning(self):
+        """Test  match does not raise an error with no 'noise_conditioning'."""
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
             score_key, random_generator=jr.rademacher, noise_conditioning=False
         )
         sliced_score_matcher.match(self.samples)
 
-    def test_sliced_score_matching_unexpected_num_random_vectors(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_random_vectors.
-        """
-        # Define a sliced score matching object with num_random_vectors set to 0. This
-        # should get capped to a minimum of 1
+    def test_match_zero_epochs_and_batch_size(self):
+        """Test 'match' with zero valued 'num_epochs' and 'batch_size'."""
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=0,
-            num_epochs=1,
-            num_noise_models=1,
+            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
         )
-        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
+        sliced_score_matcher.match(self.samples)
 
-        # Define a sliced score matching object with num_random_vectors set to -4. This
-        # should get capped to a minimum of 1
+    def test_check_init(self):
+        """Test the `__check_init__` magic of `SlicedScoreMatching`."""
         score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=-4,
-            num_epochs=1,
-            num_noise_models=1,
+        # Test non-negative integer attributes
+        coreax.score_matching.SlicedScoreMatching(
+            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
         )
-        self.assertEqual(sliced_score_matcher.num_random_vectors, 1)
+        for i in (-1, 1.0):
+            with pytest.raises(
+                ValueError, match="'num_epochs' must be a non-negative integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_epochs=i,  # type: ignore[reportArgumentType]
+                )
+            with pytest.raises(
+                ValueError, match="'batch_size' must be a non-negative integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    batch_size=i,  # type: ignore[reportArgumentType]
+                )
+        # Test positive integer attributes
+        for i in (-1, 0, 1.0):
+            with pytest.raises(
+                ValueError, match="'num_random_vectors' must be a positive integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_random_vectors=i,  # type: ignore[reportArgumentType]
+                )
+            with pytest.raises(
+                ValueError, match="'num_noise_models' must be a positive integer"
+            ):
+                coreax.score_matching.SlicedScoreMatching(
+                    score_key,
+                    random_generator=jr.rademacher,
+                    num_noise_models=i,  # type: ignore[reportArgumentType]
+                )
 
-        # Define a sliced score matching object with num_random_vectors set to a float.
-        # This should give rise to an error when indexing arrays with a float.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_random_vectors=1.0,  # pyright:ignore
-            num_epochs=1,
-            num_noise_models=1,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_random_vectors must be an integer",
-        )
-
-    def test_sliced_score_matching_unexpected_num_epochs(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_epochs.
-        """
-        # Define a sliced score matching object with num_epochs set to 0. This should
-        # just give a randomly initialised neural network.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=0,
-        )
-        learned_score = sliced_score_matcher.match(self.samples)
-        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
-
-        # Define a sliced score matching object with num_epochs set to -5. This should
-        # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=-5,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_epochs must be a positive integer",
-        )
-
-        # Define a sliced score matching object with num_epochs set to a float. This
-        # should raise an error as we try to create an array with a non-integer
-        # dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "num_epochs must be a positive integer",
-        )
-
-    def test_sliced_score_matching_unexpected_batch_size(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for batch_size.
-        """
-        # Define a sliced score matching object with batch_size set to 0. This should
-        # just give a randomly initialised neural network that has not been updated.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=0,
-        )
-        learned_score = sliced_score_matcher.match(self.samples)
-        self.assertEqual(len(learned_score(self.samples)), self.num_data_points)
-
-        # Define a sliced score matching object with batch_size set to -5. This should
-        # raise an error as we try to create an array with a negative dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=-5,
-        )
-        with self.assertRaises(ValueError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "batch_size must be a positive integer",
-        )
-
-        # Define a sliced score matching object with batch_size set to a float. This
-        # should raise an error as we try to create an array with a non-integer
-        # dimension.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            batch_size=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "batch_size must be a positive integer",
-        )
-
-    def test_sliced_score_matching_unexpected_num_noise_models(self):
-        """
-        Test how SlicedScoreMatching handles unexpected inputs for num_noise_models.
-        """
-        # Define a sliced score matching object with num_noise_models set to 0. This
-        # should get capped at 1 to allow the code to function.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=0,
-        )
-        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
-
-        # Define a sliced score matching object with num_noise_models set to -5. This
-        # should get capped at 1 to allow the code to function.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=-5,
-        )
-        self.assertEqual(sliced_score_matcher.num_noise_models, 1)
-
-        # Define a sliced score matching object with num_noise_models set to a float.
-        # This should raise an error as we try to create an array with a non-integer
-        # dimension - but hte internal JAX error is human-readable and the full text
-        # highlights the variable in question.
-        score_key, _ = jr.split(self.random_key)
-        sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key,
-            random_generator=jr.rademacher,
-            num_epochs=1,
-            num_noise_models=5.0,  # pyright:ignore
-        )
-        with self.assertRaises(TypeError) as error_raised:
-            sliced_score_matcher.match(self.samples)
-
-        # cSpell:disable
-        self.assertEqual(
-            error_raised.exception.args[0],
-            "lower and upper arguments to fori_loop must have equal types, got "
-            "int32 and float32",
-        )
-        # cSpell:enable
+    def test_init_deprecated(self):
+        """Check that the deprecation warnings are triggered."""
+        with pytest.raises(DeprecationWarning, match="'learning_rate' is deprecated"):
+            coreax.score_matching.SlicedScoreMatching(
+                self.random_key,
+                random_generator=jr.rademacher,
+                learning_rate=1e-3,
+            )
+        with pytest.raises(
+            DeprecationWarning,
+            match="Passing an 'optimiser' as a '_LearningRateOptimiser' is deprecated",
+        ):
+            coreax.score_matching.SlicedScoreMatching(
+                self.random_key,
+                random_generator=jr.rademacher,
+                optimiser=optax.adamw,
+            )
 
 
 class TestConvertSteinKernel:
