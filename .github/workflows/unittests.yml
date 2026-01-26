@@ -4,9 +4,24 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'benchmark/**/*.py'
+      - 'coreax/**/*.py'
+      - 'examples/**/*.py'
+      - 'tests/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'benchmark/**/*.py'
+      - 'coreax/**/*.py'
+      - 'examples/**/*.py'
+      - 'tests/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
 
 jobs:
   tests:
