@@ -72,6 +72,8 @@ logpdf
 lstsq
 mathbb
 mathbf
+JMMD
+jmmd
 mathcal
 mathrm
 matplotlib
