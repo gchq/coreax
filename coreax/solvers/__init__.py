@@ -18,6 +18,8 @@ from coreax.solvers.base import (
     CoresubsetSolver,
     ExplicitSizeSolver,
     PaddingInvariantSolver,
+    PseudoCoresetSolver,
+    PseudoRefinementSolver,
     RefinementSolver,
     Solver,
 )
@@ -34,6 +36,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.pseudocoreset import GradientFlow
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -45,7 +48,10 @@ __all__ = [
     "CoresubsetSolver",
     "RefinementSolver",
     "ExplicitSizeSolver",
+    "GradientFlow",
     "PaddingInvariantSolver",
+    "PseudoCoresetSolver",
+    "PseudoRefinementSolver",
     "CompositeSolver",
     "MapReduce",
     "RandomSample",
