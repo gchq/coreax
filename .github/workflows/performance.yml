@@ -8,6 +8,11 @@ on:
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'coreax/**/*.py'
+      - 'tests/performance/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
 
 jobs:
   performance-check:
