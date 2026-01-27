@@ -1,0 +1,83 @@
+name: Performance comment
+# Comment on the results of the performance workflow
+
+on:
+  workflow_run:
+    workflows:
+      - "Performance"
+    types:
+      - completed
+permissions:
+  checks: read
+  pull-requests: write
+
+jobs:
+  comment-performance:
+    name: Comment on PR
+    runs-on: ubuntu-latest
+    # Only act on successful PR runs
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Read performance check and post comment on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const checks = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: context.payload.workflow_run.head_sha,
+            });
+            const perfCheck = checks.data.check_runs.find(
+              c => c.name === 'Performance comparison'
+            );
+            if (!perfCheck || !perfCheck.output?.summary) {
+              core.info('No performance check found; skipping comment');
+              return;
+            }
+            // Construct comment markdown
+            const marker = '<!-- performance-comment -->';
+            const body = [
+              marker,
+              '',
+              `${perfCheck.output.summary}`,
+              '',
+              `_Last updated: ${new Date(perfCheck.completed_at).toUTCString()}_`,
+            ].join('\n');
+
+            const prs = context.payload.workflow_run.pull_requests ?? [];
+            if (prs.length === 0) {
+              core.warning('No PRs associated with workflow run');
+              return;
+            }
+
+            for (const pr of prs) {
+              // Find an existing comment created by the bot
+              const comments = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: pr.number,
+              });
+              const existing = comments.data.find(
+                c =>
+                  c.user?.login === 'github-actions[bot]' &&
+                  c.body?.includes(marker)
+              );
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  body,
+                });
+              }
+            }
