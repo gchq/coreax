@@ -9,6 +9,13 @@ on:
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'benchmark/**/*.py'
+      - 'coreax/**/*.py'
+      - 'examples/**/*.py'
+      - 'tests/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
 
 jobs:
   coverage:
