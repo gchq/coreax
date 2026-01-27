@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'coreax/**/*.py'
+      - 'tests/performance/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
   pull_request:
     branches:
       - "**"
@@ -14,9 +19,12 @@ on:
       - 'uv.lock'
       - 'pyproject.toml'
 
+permissions:
+  contents: read
+
 jobs:
   performance-check:
-    name: Check performance
+    name: Check and compare performance
     runs-on: ubuntu-latest
     env:
       # Disable implicitly syncing before running - we run an explicit sync first.
@@ -64,20 +72,14 @@ jobs:
             --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
             > $RUNNER_TEMP/comment.md
           cat $RUNNER_TEMP/comment.md
-      - name: Comment performance update on PR
+      - name: Upload performance comment artifact
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/upload-artifact@v6
         with:
-          script: |
-            var fs = require('fs');
-            const RUNNER_TEMP = process.env.RUNNER_TEMP
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: fs.readFileSync(`${RUNNER_TEMP}/comment.md`, "utf8")
-            })
+          name: performance-comment
+          path: ${{ runner.temp }}/comment.md
       - name: Generate a token for saving performance data
+        if: github.event_name == 'push'
         id: generate-token
         uses: actions/create-github-app-token@v2
         with:
