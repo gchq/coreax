@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "coreax"
 dynamic = ["version"]
-description = "Jax coreset algorithms."
+description = "Test change to pyproject."
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = [
