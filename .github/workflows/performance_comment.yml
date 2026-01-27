@@ -1,0 +1,49 @@
+name: Performance comment
+# Comment on the results of the performance workflow
+
+on:
+  workflow_run:
+    workflows:
+      - "Performance"
+    types:
+      - completed
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment-performance:
+    name: Comment on PR
+    runs-on: ubuntu-latest
+    # Only act on successful PR runs
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Download performance comment
+        uses: actions/download-artifact@v7
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          name: performance-comment
+          path: $RUNNER_TEMP
+      - name: Post comment on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const prs = github.event.workflow_run.pull_requests ?? [];
+            // It is possible for 'workflow_run.pull_requests' to be empty if, for
+            // example, the workflow is re-run manually.
+            if (prs.length === 0) {
+              core.warning('No PRs associated with this workflow run');
+              return;
+            }
+            for (const pr of prs) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: fs.readFileSync(`${process.env.RUNNER_TEMP}/comment.md`, "utf8")
+              });
+            }
