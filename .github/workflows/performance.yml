@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: performance-comment
-          path: $RUNNER_TEMP/comment.md
+          path: ${{ runner.temp }}/comment.md
           retention-days: 1
 
   save-performance:
