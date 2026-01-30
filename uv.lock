@@ -1217,14 +1217,14 @@ wheels = [
 
 [[package]]
 name = "jaxtyping"
-version = "0.3.5"
+version = "0.3.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "wadler-lindig" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/30/0e29eab664d33127a7a30aebd7a845a95fbfa1887ede692676769820acea/jaxtyping-0.3.5.tar.gz", hash = "sha256:8150ad5b72b62fa63f573d492a79e9e455f070abe3b260f7dc15270b3eb9bba6", size = 45482, upload-time = "2026-01-05T10:51:34.486Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/25/0b2c2cd048fe03561d3ed8aa9d0242903606c31ee0ef329b2adae79ebc79/jaxtyping-0.3.6.tar.gz", hash = "sha256:88e5450c96a1bcaf37c74ae5ef60084b5d307727a198d31cc7eaeba9db3f42e7", size = 45681, upload-time = "2026-01-24T17:37:48.131Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/19/a29de61c7ada0edf4eacfc19355ab8560091b65ea5d2450bcb984e203259/jaxtyping-0.3.5-py3-none-any.whl", hash = "sha256:862c39fa2e526274e82dc96ee8dbe9369dadb651ab1e05d95bd685acb4e2ef02", size = 55824, upload-time = "2026-01-05T10:51:33.523Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/87/944bcf3cb5b82a1f7fb86e825e866eb3a72220d4bb0f2c163d7b122772f2/jaxtyping-0.3.6-py3-none-any.whl", hash = "sha256:179df02f6b5b704d2ebafd1946cc857e745b489328d668ff4f8555b02e8aa944", size = 56053, upload-time = "2026-01-24T17:37:46.472Z" },
 ]
 
 [[package]]
