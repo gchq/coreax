@@ -8,10 +8,18 @@ on:
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'coreax/**/*.py'
+      - 'tests/performance/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+
+permissions:
+  checks: write
 
 jobs:
   performance-check:
-    name: Check performance
+    name: Check and compare performance
     runs-on: ubuntu-latest
     env:
       # Disable implicitly syncing before running - we run an explicit sync first.
@@ -59,36 +67,62 @@ jobs:
             --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
             > $RUNNER_TEMP/comment.md
           cat $RUNNER_TEMP/comment.md
-      - name: Comment performance update on PR
+      - name: Publish performance result as check summary
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
         with:
           script: |
-            var fs = require('fs');
-            const RUNNER_TEMP = process.env.RUNNER_TEMP
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const fs = require('fs');
+
+            const summaryPath = `${process.env.RUNNER_TEMP}/comment.md`;
+            if (!fs.existsSync(summaryPath)) {
+              core.info('No performance comment to publish');
+              return;
+            }
+
+            const body = fs.readFileSync(summaryPath, 'utf8');
+            const conclusion = body.includes('No significant changes to performance.')
+              ? 'success'
+              : 'action_required';
+
+            await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: fs.readFileSync(`${RUNNER_TEMP}/comment.md`, "utf8")
-            })
-      - name: Generate a token for saving performance data
-        id: generate-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
-          private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
-          repositories: coreax-metadata
-      - name: Save performance data
-        if: github.event_name == 'push'
-        env:
-          # this is the only step that should actually need write permissions
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: |
-          export message="chore: update performance for $GITHUB_SHA"
-          export content=$( base64 -i $RUNNER_TEMP/performance.json )
-          OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
-          gh api --method PUT \
-            /repos/:owner/coreax-metadata/contents/$OUT_NAME \
-            -f message="$message" \
-            -f content="$content"
+              name: 'Performance comparison',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion,
+              output: {
+                title: 'Performance comparison',
+                summary: body
+              }
+            });
+
+
+  save-performance:
+    needs: performance-check
+    name: Save latest performance results to the metadata repo.
+    runs-on: ubuntu-latest
+    # Only save the performance data to the metadata repo on push.
+    if: github.event_name == 'push'
+    steps:
+    - name: Generate a token for saving performance data
+      id: generate-token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
+        private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
+        repositories: coreax-metadata
+    - name: Save performance data
+      if: github.event_name == 'push'
+      env:
+         # This is the only step that should actually need write permissions
+        GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+      run: |
+        export message="chore: update performance for $GITHUB_SHA"
+        export content=$( base64 -i $RUNNER_TEMP/performance.json )
+        OUT_NAME="performance/performance-$(date --utc +%Y-%m-%d--%H-%M-%S)--$GITHUB_SHA--v1.json"
+        gh api --method PUT \
+          /repos/:owner/coreax-metadata/contents/$OUT_NAME \
+          -f message="$message" \
+          -f content="$content"
