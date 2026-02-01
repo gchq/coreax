@@ -41,7 +41,7 @@ repos:
         args:
           - --ignore-case
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.9.26
+    rev: 0.9.28
     hooks:
       # Keep lock file up to date
       - id: uv-lock
@@ -64,7 +64,7 @@ repos:
       - id: forbid-tabs
         exclude: documentation/make.bat|documentation/Makefile
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.4.0
+    rev: v9.6.0
     hooks:
       # Run a spellcheck (words pulled from cspell.config.yaml)
       - id: cspell
