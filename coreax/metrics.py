@@ -293,13 +293,14 @@ class AMCMD(Metric[SupervisedData]):
         \mathrm{AMCMD}^2(\mathcal{D}_1, \mathcal{D}_2) =
         \mathbb{E}_{x\sim\mathbb{P}}\left[
         \left\Vert\hat{\mu}^{(1)}_{Y|X=x} -
-        \hat{\mu}^{(2)}_{Y|X=x}\right\Vert^2_{\mathcal{H}_l}\right]
+        \hat{\mu}^{(2)}_{Y|X=x}\right\Vert^2_{\mathcal{H}_r}\right]
 
     where :math:`\hat{\mu}^{(1)}_{Y|X}, \hat{\mu}^{(2)}_{Y|X}` are the conditional mean
     embeddings (:cite:`muandet2016rkhs`) estimated with :math:`\mathcal{D}_1` and
-    :math:`\mathcal{D}_2` respectively, and :math:`\mathcal{H}_k, \mathcal{H}_l` is
-    the RKHS induced by the kernel :math:`l: \mathbb{R}^p \times \mathbb{R}^p
-    \rightarrow \mathbb{R}` respectively.
+    :math:`\mathcal{D}_2` respectively, and :math:`\mathcal{H}_k, \mathcal{H}_r` are
+    the RKHSs induced by the feature kernel :math:`k: \mathbb{R}^d \times \mathbb{R}^d
+    \rightarrow \mathbb{R}` and the response kernel :math:`r: \mathbb{R}^p \times
+    \mathbb{R}^p \rightarrow \mathbb{R}` respectively.
 
     In order to compute the AMCMD, one must additionally draw samples from the weighting
     distribution :math:`\mathbb{P}`. This can be done by passing a
@@ -316,7 +317,7 @@ class AMCMD(Metric[SupervisedData]):
         feature space
     :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
         implementing a kernel function
-        :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
+        :math:`r: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
         response space
     :param regularisation_parameter: Regularisation parameter for stable inversion
             of arrays, should be non-negative.
@@ -348,7 +349,7 @@ class AMCMD(Metric[SupervisedData]):
             \mathrm{AMCMD}^2(\mathcal{D}_1, \mathcal{D}_2) =
             \mathbb{E}_{x\sim\mathbb{P}}\left[
             \left\Vert\hat{\mu}^{(1)}_{Y|X=x} -
-            \hat{\mu}^{(2)}_{Y|X=x}}\right\Vert^2_{\mathcal{H}_l}\right]
+            \hat{\mu}^{(2)}_{Y|X=x}}\right\Vert^2_{\mathcal{H}_r}\right]
 
         .. warning::
             Computing :math:`\text{AMCMD}^2` may yield small negative values due to
@@ -399,24 +400,24 @@ class AMCMD(Metric[SupervisedData]):
         # Solve least squares problems to estimate conditional mean embeddings
         least_square_solution_1 = jnp.linalg.solve(
             feature_gramian_1, cross_feature_gramian_1
-        ).T
+        )
 
         least_square_solution_2 = jnp.linalg.solve(
             feature_gramian_2, cross_feature_gramian_2
-        ).T
+        )
 
         # Compute each term in the AMCMD
         response_kernel_1 = self.response_kernel.compute(y1, y1)
         term_1 = jnp.sum(
-            least_square_solution_1 @ response_kernel_1 * least_square_solution_1
+            least_square_solution_1.T @ response_kernel_1 * least_square_solution_1.T
         )
         response_kernel_2 = self.response_kernel.compute(y2, y2)
         term_2 = jnp.sum(
-            least_square_solution_2 @ response_kernel_2 * least_square_solution_2
+            least_square_solution_2.T @ response_kernel_2 * least_square_solution_2.T
         )
         response_kernel_12 = self.response_kernel.compute(y1, y2)
         term_3 = jnp.sum(
-            least_square_solution_1 @ response_kernel_12 * least_square_solution_2
+            least_square_solution_1.T @ response_kernel_12 * least_square_solution_2.T
         )
 
         # Compute the AMCMD

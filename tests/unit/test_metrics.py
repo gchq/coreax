@@ -542,21 +542,24 @@ class TestAMCMD:
             x3 = x1
 
         # Compute each term in the AMCMD formula to obtain an expected AMCMD.
+        feature_kernel_1 = feature_kernel.compute(x1, x1)
+        feature_gramian_1 = (
+            feature_kernel_1 + jnp.eye(x1.shape[0]) * regularisation_parameter
+        )
+
+        feature_kernel_2 = feature_kernel.compute(x2, x2)
+        feature_gramian_2 = (
+            feature_kernel_2 + jnp.eye(x2.shape[0]) * regularisation_parameter
+        )
+        cross_feature_gramian_1 = feature_kernel.compute(x1, x3)
+        cross_feature_gramian_2 = feature_kernel.compute(x2, x3)
         least_square_solution_1 = jnp.linalg.solve(
-            (
-                feature_kernel.compute(x1, x1)
-                + jnp.eye(x1.shape[0]) * regularisation_parameter
-            ),
-            feature_kernel.compute(x1, x3),
-        ).T
+            feature_gramian_1, cross_feature_gramian_1
+        )
 
         least_square_solution_2 = jnp.linalg.solve(
-            (
-                feature_kernel.compute(x2, x2)
-                + jnp.eye(x2.shape[0]) * regularisation_parameter
-            ),
-            feature_kernel.compute(x2, x3),
-        ).T
+            feature_gramian_2, cross_feature_gramian_2
+        )
         response_kernel_1 = response_kernel.compute(y1, y1)
         term_1 = jnp.sum(
             least_square_solution_1 @ response_kernel_1 * least_square_solution_1
