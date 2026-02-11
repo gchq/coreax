@@ -128,17 +128,13 @@ class PaddingInvariantSolver(
     """
 
 
-class PseudoCoresetSolver(
-    Solver[PseudoCoreset[_Data], _Data, _State], Generic[_Data, _State]
-):
+class PseudoSolver(Solver[PseudoCoreset[_Data], _Data, _State], Generic[_Data, _State]):
     """Solver which returns a :class:`coreax.coreset.PseudoCoreset`."""
 
 
-class PseudoRefinementSolver(
-    PseudoCoresetSolver[_Data, _State], Generic[_Data, _State]
-):
+class PseudoRefinementSolver(PseudoSolver[_Data, _State], Generic[_Data, _State]):
     """
-    A :class:`~coreax.solvers.PseudoCoresetSolver` which supports refinement.
+    A :class:`~coreax.solvers.PseudoSolver` which supports refinement.
 
     Some solvers assume implicitly/explicitly an initial coreset on which the
     solution is dependent. Such solvers can be interpreted as refining the initial

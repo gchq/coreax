@@ -23,6 +23,7 @@ import optax
 from jax import grad, lax, vmap
 from jaxtyping import Array, Shaped
 from optax import OptState
+from typing_extensions import override
 
 from coreax.coreset import PseudoCoreset
 from coreax.data import Data
@@ -164,6 +165,7 @@ class _UnsupervisedSolver(
             initialisation_indices = seed_indices[jnp.argmin(seed_losses)]
         return dataset[initialisation_indices]
 
+    @override
     def reduce(
         self, dataset: Data, solver_state: UnsupervisedState | None = None
     ) -> tuple[PseudoCoreset[Data], UnsupervisedState]:
@@ -176,12 +178,11 @@ class _UnsupervisedSolver(
         solver_state: UnsupervisedState | None = None,
     ) -> tuple[PseudoCoreset[Data], UnsupervisedState]:
         r"""
-        Reduce 'dataset' to a coreset - solve the coreset problem.
+        Refine a coreset via gradient descent.
 
-        :param dataset: The data to generate the coreset from.
-        :param solver_state: Solution state information, primarily used to cache
-            expensive intermediate solution step information.
-        :return: a tuple of the solved coreset and intermediate solver state information
+        :param coreset: Coreset to refine.
+        :param solver_state: Solution state information, including optimiser state.
+        :return: A refined coreset; Relevant solver state information.
         """
         # Unpack current coreset and target dataset
         coreset_, data = coreset.points.data, coreset.pre_coreset_data.data
@@ -190,7 +191,7 @@ class _UnsupervisedSolver(
         losses = jnp.full((self.max_iterations), jnp.nan)
         gradient_norms = jnp.full((self.max_iterations), jnp.nan)
 
-        # Initialise optimiser state
+        # Initialise optimiser state and loss
         if solver_state is None:
             opt_state = self.optimiser.init(coreset_)
             initial_loss = self._loss_function(target=data, coreset=coreset_)

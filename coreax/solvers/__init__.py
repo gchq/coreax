@@ -18,8 +18,8 @@ from coreax.solvers.base import (
     CoresubsetSolver,
     ExplicitSizeSolver,
     PaddingInvariantSolver,
-    PseudoCoresetSolver,
     PseudoRefinementSolver,
+    PseudoSolver,
     RefinementSolver,
     Solver,
 )
@@ -50,7 +50,7 @@ __all__ = [
     "ExplicitSizeSolver",
     "GradientFlow",
     "PaddingInvariantSolver",
-    "PseudoCoresetSolver",
+    "PseudoSolver",
     "PseudoRefinementSolver",
     "CompositeSolver",
     "MapReduce",
