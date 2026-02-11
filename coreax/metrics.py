@@ -334,6 +334,7 @@ class AMCMD(Metric[SupervisedData]):
         if self.regularisation_parameter < 0:
             raise ValueError("'regularisation_parameter' should be non-negative")
 
+    # pylint:disable=too-many-locals
     def compute(
         self,
         reference_data: SupervisedData,
@@ -423,3 +424,5 @@ class AMCMD(Metric[SupervisedData]):
         # Compute the AMCMD
         squared_amcmd = 1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3)
         return jnp.sqrt(jnp.maximum(0.0, squared_amcmd))
+
+    # pylint:enable=too-many-locals
