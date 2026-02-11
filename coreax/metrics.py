@@ -324,13 +324,11 @@ class AMCMD(Metric[SupervisedData]):
         response space
     :param regularisation_parameter: Regularisation parameter for stable inversion
             of arrays, should be non-negative.
-    :param precision_threshold: Positive threshold we compare against for precision
     """
 
     feature_kernel: ScalarValuedKernel
     response_kernel: ScalarValuedKernel
     regularisation_parameter: float
-    precision_threshold: float = 1e-2
 
     def __check_init__(self):
         """Check that 'regularisation_parameter' is non-negative."""
