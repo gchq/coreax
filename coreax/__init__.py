@@ -63,4 +63,5 @@ __all__ = [
     "MMD",
     "KernelDensityMatching",
     "SlicedScoreMatching",
+    "AMCMD",
 ]

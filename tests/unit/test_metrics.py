@@ -525,9 +525,9 @@ class TestAMCMD:
         )
         assert output == pytest.approx(expected_output)
 
-    def test_amcmd_random_data(self, problem: _SupervisedMetricProblem):
+    def test_amcmd_random_data(self, problem: _SupervisedMetricProblem):  # noqa: PLR0914
         r"""
-        Test AMCD computed from randomly generated test data agrees with method result.
+        Test AMCMD computed from randomly generated test data agrees with method result.
         """
         feature_kernel = SquaredExponentialKernel()
         response_kernel = SquaredExponentialKernel()
@@ -541,7 +541,7 @@ class TestAMCMD:
         else:
             x3 = x1
 
-        # Compute each term in the AMCD formula to obtain an expected AMCD.
+        # Compute each term in the AMCMD formula to obtain an expected AMCMD.
         least_square_solution_1 = jnp.linalg.solve(
             (
                 feature_kernel.compute(x1, x1)
