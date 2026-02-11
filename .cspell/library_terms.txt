@@ -1,6 +1,8 @@
 abstractmethods
 adamw
 allclose
+amcmd
+AMCMD
 amsmath
 arange
 argmax
