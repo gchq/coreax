@@ -36,7 +36,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
-from coreax.solvers.gradient import GradientFlow
+from coreax.solvers.gradient import GradientFlow, JointKernelInducingPoints
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -49,6 +49,7 @@ __all__ = [
     "RefinementSolver",
     "ExplicitSizeSolver",
     "GradientFlow",
+    "JointKernelInducingPoints",
     "PaddingInvariantSolver",
     "PseudoSolver",
     "PseudoRefinementSolver",
