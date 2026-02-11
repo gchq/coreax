@@ -428,12 +428,12 @@ class TestJMMD:
         return _SupervisedMetricProblem(reference_data, comparison_data)
 
     @pytest.mark.parametrize(
-        "feature_kernel,response_kernel",
-        [
-            (SquaredExponentialKernel(), LaplacianKernel()),
-            (LaplacianKernel(), PCIMQKernel()),
-            (PCIMQKernel(), SquaredExponentialKernel()),
-        ],
+        "feature_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_jmmd_compare_same_data(
         self,

@@ -315,15 +315,12 @@ class JMMD(Metric[SupervisedData]):
         feature space
     :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
         implementing a kernel function
-        :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
+        :math:`h: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
         response space
-    :param precision_threshold: Threshold above which negative values of the squared
-        JMMD are rounded to zero (accommodates precision loss)
     """
 
     feature_kernel: ScalarValuedKernel
     response_kernel: ScalarValuedKernel
-    precision_threshold: float = 1e-12
 
     def compute(
         self,
@@ -391,8 +388,5 @@ class JMMD(Metric[SupervisedData]):
             w2,
         )
 
-        squared_mmd_threshold_applied = jnp.maximum(
-            kernel_1_mean + kernel_2_mean - 2 * kernel_12_mean,
-            0.0,
-        )
-        return jnp.sqrt(squared_mmd_threshold_applied)
+        squared_jmmd = kernel_1_mean + kernel_2_mean - 2 * kernel_12_mean
+        return jnp.sqrt(jnp.maximum(0.0, squared_jmmd))

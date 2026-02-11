@@ -61,6 +61,8 @@ jaxlib
 jaxopt
 jaxtyped
 jaxtyping
+JMMD
+jmmd
 jumanjihouse
 keepends
 leggauss
@@ -72,8 +74,6 @@ logpdf
 lstsq
 mathbb
 mathbf
-JMMD
-jmmd
 mathcal
 mathrm
 matplotlib
