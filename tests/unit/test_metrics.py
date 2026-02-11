@@ -469,7 +469,7 @@ class TestAMCMD:
 
             k(\mathcal{D}_3,\mathcal{D}_2) = \begin{bmatrix} 1 & e^{-1} \end{bmatrix}.
 
-            k(\mathcal{D}_2,\mathcal{D}_1) =
+            k(\mathcal{D}_2,\mathcal{D}_2) =
                 \begin{bmatrix}
                     1 & e^{-1} \\
                     e^{-1} & 1
