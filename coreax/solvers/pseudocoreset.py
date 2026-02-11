@@ -183,7 +183,7 @@ class _UnsupervisedSolver(
             expensive intermediate solution step information.
         :return: a tuple of the solved coreset and intermediate solver state information
         """
-        # Unpack current corset and target dataset
+        # Unpack current coreset and target dataset
         coreset_, data = coreset.points.data, coreset.pre_coreset_data.data
 
         # Initialise storage for optimisation information

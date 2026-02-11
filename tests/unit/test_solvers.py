@@ -74,7 +74,6 @@ from coreax.solvers import (
 from coreax.solvers.base import (
     ExplicitSizeSolver,
     PaddingInvariantSolver,
-    PseudoRefinementSolver,
     RefinementSolver,
 )
 from coreax.solvers.coresubset import (
@@ -89,9 +88,6 @@ from coreax.util import KeyArrayLike, tree_zero_pad_leading_axis
 _Data = TypeVar("_Data", Data, SupervisedData)
 _Solver = TypeVar("_Solver", bound=Solver)
 _RefinementSolver = TypeVar("_RefinementSolver", bound=RefinementSolver)
-_PseudoRefinementSolver = TypeVar(
-    "_PseudoRefinementSolver", bound=PseudoRefinementSolver
-)
 
 if TYPE_CHECKING:
     # In Python 3.10, this raises
@@ -107,11 +103,6 @@ if TYPE_CHECKING:
         initial_coresubset: Coresubset
         solver: _RefinementSolver
         expected_coresubset: Coresubset | None = None
-
-    class _PseudoRefineProblem(NamedTuple, Generic[_PseudoRefinementSolver]):
-        initial_coreset: PseudoCoreset
-        solver: _PseudoRefinementSolver
-        expected_coreset: PseudoCoreset | None = None
 else:
     # This is the implementation that's used at runtime.
     class _ReduceProblem(NamedTuple):
@@ -123,11 +114,6 @@ else:
         initial_coresubset: Coresubset
         solver: _RefinementSolver
         expected_coresubset: Coresubset | None = None
-
-    class _PseudoRefineProblem(NamedTuple):
-        initial_coreset: PseudoCoreset
-        solver: _PseudoRefinementSolver
-        expected_coreset: PseudoCoreset | None = None
 
 
 class SolverTest:
@@ -164,9 +150,7 @@ class SolverTest:
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     def check_solution_invariants(
-        self,
-        coreset: AbstractCoreset,
-        problem: _RefineProblem | _ReduceProblem | _PseudoRefineProblem,
+        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
     ) -> None:
         """
         Check that a coreset obeys certain expected invariant properties.
@@ -183,8 +167,6 @@ class SolverTest:
         dataset, solver, expected_coreset = problem
         if isinstance(problem, _RefineProblem):
             dataset = problem.initial_coresubset.pre_coreset_data
-        if isinstance(problem, _PseudoRefineProblem):
-            dataset = problem.initial_coreset.pre_coreset_data
         assert isinstance(dataset, Data)
         assert eqx.tree_equal(coreset.pre_coreset_data, dataset)
         if expected_coreset is not None:
@@ -1073,89 +1055,6 @@ class ExplicitSizeSolverTest(SolverTest):
         )
         with pytest.raises(ValueError, match=re.escape(self.OVERSIZE_MSG)):
             modified_solver.reduce(dataset)
-
-
-class PseudoRefinementSolverTest(SolverTest):
-    """Test cases for pseudocoreset solvers that provide a 'refine' method."""
-
-    @pytest.fixture(
-        params=[
-            "well-sized",
-            "under-sized",
-            "over-sized",
-            "random",
-            "random-zero-weights",
-        ],
-        scope="class",
-    )
-    def refine_problem(
-        self, request: pytest.FixtureRequest, reduce_problem: _ReduceProblem
-    ) -> _PseudoRefineProblem:
-        """
-        Pytest fixture that returns a problem dataset and the expected coreset.
-
-        An expected coreset of 'None' implies the expected coreset for this solver and
-        dataset combination is unknown.
-
-        We expect the '{well,under,over}-sized' and the 'random-zero-weights' cases to
-        return the same result as a call to 'reduce'. The 'random' case we only expect
-        to pass without raising an error.
-        """
-        dataset, solver, expected_coreset = reduce_problem
-        indices_key, weights_key = jr.split(self.random_key)
-        solver = cast(KernelHerding, solver)
-        coreset_size = min(len(dataset), solver.coreset_size)
-        # We expect 'refine' to produce the same result as 'reduce' when the initial
-        # coresubset has all its indices equal to zero.
-        expected_coresubset = None
-        if expected_coreset is None:
-            expected_coresubset, _ = solver.reduce(dataset)
-        elif isinstance(expected_coreset, Coresubset):
-            expected_coresubset = expected_coreset
-        if request.param == "well-sized":
-            indices = Data(jnp.zeros(coreset_size, jnp.int32), 0)
-        elif request.param == "under-sized":
-            indices = Data(jnp.zeros(coreset_size - 1, jnp.int32), 0)
-        elif request.param == "over-sized":
-            indices = Data(jnp.zeros(coreset_size + 1, jnp.int32), 0)
-        elif request.param == "random":
-            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
-            random_weights = jr.uniform(weights_key, (coreset_size,))
-            indices = Data(random_indices, random_weights)
-            expected_coresubset = None
-        elif request.param == "random-zero-weights":
-            random_indices = jr.choice(indices_key, len(dataset), (coreset_size,))
-            indices = Data(random_indices, 0)
-        else:
-            raise ValueError("Invalid fixture parametrization")
-        initial_coresubset = Coresubset.build(indices, dataset)
-        return _RefineProblem(initial_coresubset, solver, expected_coresubset)
-
-    @pytest.mark.parametrize("use_cached_state", (False, True))
-    def test_refine(
-        self,
-        jit_variant: Callable[[Callable], Callable],
-        refine_problem: _RefineProblem,
-        use_cached_state: bool,
-    ) -> None:
-        """
-        Check 'refine' raises no errors and is resultant 'solver_state' invariant.
-
-        By resultant 'solver_state' invariant we mean the following procedure succeeds:
-        1. Call 'reduce' with the default 'solver_state' to get the initial coresubset
-        2. Call 'refine' with the default 'solver_state' to get the resultant state
-        3. Call 'refine' again, this time passing the 'solver_state' from the previous
-            run, and keeping all other arguments the same.
-        4. Check the two calls to 'refine' yield that same result.
-        """
-        initial_coresubset, solver, _ = refine_problem
-        _refine = jit_variant(solver.refine)
-        coresubset, state = _refine(initial_coresubset)
-        if use_cached_state:
-            coresubset_cached_state, recycled_state = _refine(initial_coresubset, state)
-            assert eqx.tree_equal(recycled_state, state)
-            assert eqx.tree_equal(coresubset_cached_state, coresubset)
-        self.check_solution_invariants(coresubset, refine_problem)
 
 
 class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
