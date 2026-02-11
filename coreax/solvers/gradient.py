@@ -50,7 +50,7 @@ class UnsupervisedState(eqx.Module):
     opt_state: OptState
 
 
-class _UnsupervisedSolver(
+class _UnsupervisedGradientSolver(
     PseudoRefinementSolver[Data, UnsupervisedState], ExplicitSizeSolver
 ):
     r"""
@@ -180,12 +180,26 @@ class _UnsupervisedSolver(
         r"""
         Refine a coreset via gradient descent.
 
+        .. warning::
+
+            If the input ``coreset`` is smaller than the requested ``coreset_size``,
+            it will be padded with extra points. If the input ``coreset`` is larger than
+            the requested ``coreset_size``, the extra points will not be optimised and
+            will be clipped from the return ``coreset``.
+
         :param coreset: Coreset to refine.
         :param solver_state: Solution state information, including optimiser state.
         :return: A refined coreset; Relevant solver state information.
         """
         # Unpack current coreset and target dataset
-        coreset_, data = coreset.points.data, coreset.pre_coreset_data.data
+        coreset_points, data = coreset.points.data, coreset.pre_coreset_data.data
+
+        # Pad or clip the coreset if size is incorrect
+        if coreset_points.shape[0] > self.coreset_size:
+            coreset_points = coreset_points[: self.coreset_size - 1]
+        elif coreset_points.shape[0] < self.coreset_size:
+            initial_coreset = self._initialise(dataset=data)
+            coreset_points = jnp.vstack((coreset_points, initial_coreset[-1]))
 
         # Initialise storage for optimisation information
         losses = jnp.full((self.max_iterations), jnp.nan)
@@ -193,8 +207,8 @@ class _UnsupervisedSolver(
 
         # Initialise optimiser state and loss
         if solver_state is None:
-            opt_state = self.optimiser.init(coreset_)
-            initial_loss = self._loss_function(target=data, coreset=coreset_)
+            opt_state = self.optimiser.init(coreset_points)
+            initial_loss = self._loss_function(target=data, coreset=coreset_points)
         else:
             opt_state = solver_state.opt_state
             initial_loss = jnp.array([])
@@ -223,8 +237,8 @@ class _UnsupervisedSolver(
 
             return i + 1, coreset, opt_state, losses, gradient_norms, grad_norm
 
-        init_carry = (0, coreset_, opt_state, losses, gradient_norms, jnp.inf)
-        _, coreset_, opt_state, losses, gradient_norms, _ = lax.while_loop(
+        init_carry = (0, coreset_points, opt_state, losses, gradient_norms, jnp.inf)
+        _, coreset_points, opt_state, losses, gradient_norms, _ = lax.while_loop(
             cond_fun, body_fun, init_carry
         )
 
@@ -239,10 +253,10 @@ class _UnsupervisedSolver(
                 opt_state,
             )
 
-        return PseudoCoreset.build(coreset_, data), state
+        return PseudoCoreset.build(coreset_points, data), state
 
 
-class GradientFlow(_UnsupervisedSolver):
+class GradientFlow(_UnsupervisedGradientSolver):
     r"""
     Gradient Flow - a gradient descent coreset solver.
 

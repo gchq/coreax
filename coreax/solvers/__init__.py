@@ -36,7 +36,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
-from coreax.solvers.pseudocoreset import GradientFlow
+from coreax.solvers.gradient import GradientFlow
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
