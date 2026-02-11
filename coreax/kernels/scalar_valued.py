@@ -17,10 +17,10 @@
 from collections.abc import Callable
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
-from jax import Array, vmap
 from jax.scipy.special import factorial
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 from typing_extensions import override
 
 from coreax.kernels.base import ProductKernel, ScalarValuedKernel, UniCompositeKernel
@@ -517,7 +517,7 @@ class MaternKernel(ScalarValuedKernel):
 
         summation = 1.0
         if self.degree > 0:
-            mapped_function = vmap(self._compute_summation_term, in_axes=(None, 0))
+            mapped_function = jax.vmap(self._compute_summation_term, in_axes=(None, 0))
             summation = mapped_function(body, jnp.arange(self.degree + 1)).sum()
         return factor * summation
 

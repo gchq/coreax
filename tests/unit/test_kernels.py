@@ -29,8 +29,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
-from jax import Array
-from jax.typing import ArrayLike
+from jaxtyping import Array, ArrayLike
 from scipy.stats import norm as scipy_norm
 from typing_extensions import override
 

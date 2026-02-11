@@ -36,9 +36,8 @@ from typing import Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
-from jax import Array
 from jaxopt import OSQP
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 
 from coreax.data import Data, as_data
 from coreax.kernels import ScalarValuedKernel

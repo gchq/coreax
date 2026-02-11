@@ -20,11 +20,9 @@ These were adapted from the `test_herding_basic` integration test.
 
 import functools
 
+import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
-from jax import (
-    numpy as jnp,
-    random,
-)
 from sklearn.datasets import make_blobs
 
 from coreax import (
@@ -114,7 +112,7 @@ def setup_rpc():
     data, length_scale = _setup_dataset()
     rpc_solver = RPCholesky(
         CORESET_SIZE,
-        random.key(1_234),
+        jr.key(1_234),
         SquaredExponentialKernel(length_scale=length_scale),
     )
     return JITCompilableFunction(

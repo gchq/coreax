@@ -24,8 +24,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import pytest
 from beartype.door import is_bearable
-from jax import Array
-from jaxtyping import Float, Int, Shaped
+from jaxtyping import Array, Float, Int, Shaped
 
 import coreax.data
 

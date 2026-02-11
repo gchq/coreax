@@ -23,8 +23,7 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
-from jax import Array
-from jaxtyping import Integer
+from jaxtyping import Array, Integer
 from sklearn.neighbors import BallTree, KDTree
 from typing_extensions import override
 

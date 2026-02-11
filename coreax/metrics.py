@@ -27,11 +27,11 @@ from itertools import product
 from typing import Any, Generic, TypeVar
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jax import Array, jacfwd, vmap
-from jaxtyping import Shaped
+from jaxtyping import Array, Shaped
 
 import coreax.kernels
 import coreax.util
@@ -263,10 +263,10 @@ class KSD(Metric[Data]):
 
         if laplace_correct:
 
-            @vmap
+            @jax.vmap
             def _laplace_positive(x_: Shaped[Array, " m d"]) -> Shaped[Array, ""]:
                 r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
-                hessian = jacfwd(kernel.score_function)(x_)
+                hessian = jax.jacfwd(kernel.score_function)(x_)
                 return jnp.clip(jnp.diag(hessian), min=0.0).sum()
 
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2

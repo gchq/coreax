@@ -14,11 +14,9 @@
 
 """A simple test that serves to normalise other performance test results."""
 
-from jax import (
-    Array,
-    numpy as jnp,
-    random as jr,
-)
+import jax.numpy as jnp
+import jax.random as jr
+from jaxtyping import Array
 
 from coreax.util import JITCompilableFunction
 

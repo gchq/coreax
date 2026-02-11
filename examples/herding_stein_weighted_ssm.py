@@ -35,9 +35,9 @@ from pathlib import Path
 
 import equinox as eqx
 import jax.numpy as jnp
+import jax.random as jr
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
 from sklearn.datasets import make_blobs
 
 from coreax.data import Data
@@ -101,12 +101,12 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     idx = generator.choice(num_data_points, num_samples_length_scale, replace=False)
     length_scale = median_heuristic(x[idx])
 
-    score_key, sample_key = random.split(random.key(random_seed), 2)
+    score_key, sample_key = jr.split(jr.key(random_seed), 2)
     # Learn a score function via sliced score matching (this is required for
     # evaluation of the Stein kernel)
     sliced_score_matcher = SlicedScoreMatching(
         score_key,
-        random_generator=random.rademacher,
+        random_generator=jr.rademacher,
         use_analytic=True,
         num_epochs=10,
         num_random_vectors=1,
