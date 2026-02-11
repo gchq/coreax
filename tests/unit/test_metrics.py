@@ -426,18 +426,11 @@ class TestAMCMD:
         return _SupervisedMetricProblem(reference_data, comparison_data, weighting_data)
 
     @pytest.mark.parametrize(
-        "feature_kernel,response_kernel",
-        [
-            (SquaredExponentialKernel(), SquaredExponentialKernel()),
-            (SquaredExponentialKernel(), LaplacianKernel()),
-            (SquaredExponentialKernel(), PCIMQKernel()),
-            (LaplacianKernel(), SquaredExponentialKernel()),
-            (LaplacianKernel(), LaplacianKernel()),
-            (LaplacianKernel(), PCIMQKernel()),
-            (PCIMQKernel(), SquaredExponentialKernel()),
-            (PCIMQKernel(), LaplacianKernel()),
-            (PCIMQKernel(), PCIMQKernel()),
-        ],
+        "feature_kernel", [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()]
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
     )
     def test_amcmd_compare_same_data(
         self,
@@ -564,20 +557,17 @@ class TestAMCMD:
             ),
             feature_kernel.compute(x2, x3),
         ).T
+        response_kernel_1 = response_kernel.compute(y1, y1)
         term_1 = jnp.sum(
-            least_square_solution_1
-            @ response_kernel.compute(y1, y1)
-            * least_square_solution_1
+            least_square_solution_1 @ response_kernel_1 * least_square_solution_1
         )
+        response_kernel_2 = response_kernel.compute(y2, y2)
         term_2 = jnp.sum(
-            least_square_solution_2
-            @ response_kernel.compute(y2, y2)
-            * least_square_solution_2
+            least_square_solution_2 @ response_kernel_2 * least_square_solution_2
         )
+        response_kernel_12 = response_kernel.compute(y1, y2)
         term_3 = jnp.sum(
-            least_square_solution_1
-            @ response_kernel.compute(y1, y2)
-            * least_square_solution_2
+            least_square_solution_1 @ response_kernel_12 * least_square_solution_2
         )
         expected_amcmd = jnp.sqrt(1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3))
 
@@ -589,3 +579,13 @@ class TestAMCMD:
         )
         output = metric.compute(d1, d2, weighting_data=d3)
         assert output == pytest.approx(expected_amcmd, abs=1e-6)
+
+    def test_negative_regularisation_parameter(self):
+        """Check that error message is raised for negative regularisation."""
+        expected_msg = "'regularisation_parameter' should be non-negative"
+        with pytest.raises(ValueError, match=expected_msg):
+            AMCMD(
+                feature_kernel=SquaredExponentialKernel(),
+                response_kernel=SquaredExponentialKernel(),
+                regularisation_parameter=-1,
+            )

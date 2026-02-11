@@ -293,7 +293,7 @@ class AMCMD(Metric[SupervisedData]):
         \mathrm{AMCMD}^2(\mathcal{D}_1, \mathcal{D}_2) =
         \mathbb{E}_{x\sim\mathbb{P}}\left[
         \left\Vert\hat{\mu}^{(1)}_{Y|X=x} -
-        \hat{\mu}^{(2)}_{Y|X=x}}\right\Vert^2_{\mathcal{H}_l}\right]
+        \hat{\mu}^{(2)}_{Y|X=x}\right\Vert^2_{\mathcal{H}_l}\right]
 
     where :math:`\hat{\mu}^{(1)}_{Y|X}, \hat{\mu}^{(2)}_{Y|X}` are the conditional mean
     embeddings (:cite:`muandet2016rkhs`) estimated with :math:`\mathcal{D}_1` and
@@ -319,18 +319,19 @@ class AMCMD(Metric[SupervisedData]):
         :math:`k: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
         response space
     :param regularisation_parameter: Regularisation parameter for stable inversion
-            of arrays, negative values will be converted to positive
+            of arrays, should be non-negative.
     :param precision_threshold: Positive threshold we compare against for precision
-    :param least_squares_solver: Instance of
-        :class:`coreax.least_squares.RegularisedLeastSquaresSolver`, defaults to
-        :class:`coreax.least_squares.ExactSolver` which solves a linear
-        system at cost :math:`\mathcal{O}(n^3)`
     """
 
     feature_kernel: ScalarValuedKernel
     response_kernel: ScalarValuedKernel
     regularisation_parameter: float
     precision_threshold: float = 1e-2
+
+    def __check_init__(self):
+        """Check that 'regularisation_parameter' is non-negative."""
+        if self.regularisation_parameter < 0:
+            raise ValueError("'regularisation_parameter' should be non-negative")
 
     def compute(
         self,
@@ -361,10 +362,10 @@ class AMCMD(Metric[SupervisedData]):
             :math:`y\in\mathbb{R}^p`
         :param comparison_data: Supervised dataset
             :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m` with
-            :math:`x^\prime \in\ mathbb{R}^d` and :math:`y^\prime \in \mathbb{R}^p`
+            :math:`x^\prime \in \mathbb{R}^d` and :math:`y^\prime \in \mathbb{R}^p`
         :param weighting_data: Dataset
-            :math:`\mathcal{D}_3 = \{(x^{\prime\prime}_i\}_{i=1}^q` with
-            :math:`x^{\prime\prime} \in\ mathbb{R}^d` sampled from the weighting
+            :math:`\mathcal{D}_3 = \{x^{\prime\prime}_i\}_{i=1}^q` with
+            :math:`x^{\prime\prime} \in \mathbb{R}^d` sampled from the weighting
             distribution :math:`\mathbb{P}`. Defaults to :data:`None`, which uses
             ``reference_data.data`` as samples from :math:`\mathbb{P}`.
 
@@ -381,13 +382,14 @@ class AMCMD(Metric[SupervisedData]):
             x3 = weighting_data.data
 
         # Compute feature kernel gramians and regularise
+        feature_kernel_1 = self.feature_kernel.compute(x1, x1)
         feature_gramian_1 = (
-            self.feature_kernel.compute(x1, x1)
-            + jnp.eye(x1.shape[0]) * self.regularisation_parameter
+            feature_kernel_1 + jnp.eye(x1.shape[0]) * self.regularisation_parameter
         )
+
+        feature_kernel_2 = self.feature_kernel.compute(x2, x2)
         feature_gramian_2 = (
-            self.feature_kernel.compute(x2, x2)
-            + jnp.eye(x2.shape[0]) * self.regularisation_parameter
+            feature_kernel_2 + jnp.eye(x2.shape[0]) * self.regularisation_parameter
         )
 
         # Compute cross feature kernel gramians
@@ -404,27 +406,19 @@ class AMCMD(Metric[SupervisedData]):
         ).T
 
         # Compute each term in the AMCMD
+        response_kernel_1 = self.response_kernel.compute(y1, y1)
         term_1 = jnp.sum(
-            least_square_solution_1
-            @ self.response_kernel.compute(y1, y1)
-            * least_square_solution_1
+            least_square_solution_1 @ response_kernel_1 * least_square_solution_1
         )
+        response_kernel_2 = self.response_kernel.compute(y2, y2)
         term_2 = jnp.sum(
-            least_square_solution_2
-            @ self.response_kernel.compute(y2, y2)
-            * least_square_solution_2
+            least_square_solution_2 @ response_kernel_2 * least_square_solution_2
         )
+        response_kernel_12 = self.response_kernel.compute(y1, y2)
         term_3 = jnp.sum(
-            least_square_solution_1
-            @ self.response_kernel.compute(y1, y2)
-            * least_square_solution_2
+            least_square_solution_1 @ response_kernel_12 * least_square_solution_2
         )
 
         # Compute the AMCMD
-        squared_amcmd_threshold_applied = (
-            coreax.util.apply_negative_precision_threshold(
-                1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3),
-                self.precision_threshold,
-            )
-        )
-        return jnp.sqrt(squared_amcmd_threshold_applied)
+        squared_amcmd = 1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3)
+        return jnp.sqrt(jnp.maximum(0.0, squared_amcmd))
