@@ -19,6 +19,7 @@ from abc import abstractmethod
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
+import jax.scipy as jsp
 import optax
 from jax import grad, lax, vmap
 from jaxtyping import Array, Shaped
@@ -744,3 +745,84 @@ class JointKernelInducingPoints(_SupervisedGradientSolver):
             * self.response_kernel.compute(target_responses, coreset_responses)
         ).mean()
         return term_1 - 2 * term_2
+
+
+class AverageConditionalKernelInducingPoints(_SupervisedGradientSolver):
+    r"""
+    Average Conditional Kernel Inducing Points - a gradient descent coreset solver.
+
+    Average Conditional Kernel Inducing Points (:cite:`broadbent2026conditional`) is a
+    gradient descent algorithm which learns a coreset by targeting the Average Maximum
+    Conditional Mean Discrepancy (AMCMD) between the true conditional distribution, and
+    the conditional distribution of the coreset.
+
+    :param coreset_size: The desired size of the solved coreset
+    :param random_key: Key for random number generation
+    :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}`
+    :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`r: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}`
+    :param feature_optimiser: A :class:`~optax.GradientTransformation` optimiser.
+        Defaults to the Adam optimiser with a constant step schedule of 1e-2.
+    :param response_optimiser: A :class:`~optax.GradientTransformation` optimiser.
+        Defaults to the Adam optimiser with a constant step schedule of 1e-2.
+    :param max_iterations: An integer representing the maximum permitted number of
+        gradient steps. Defaults to :math:`100`.
+    :param num_seeds: Number of initial seeds to check for optimisation. Defaults to
+        :data:`None`, indicating  a single random sample is used.
+    :param convergence_parameter: Parameter to decide when gradient descent has
+        converged. Defaults to :math:`1e-3`.
+    :param track_info: Whether or not to print store optimisation information.
+        Defaults to :data:`False`.
+    :param regularisation_parameter: Regularisation parameter for stable inversion
+            of arrays, should be non-negative.
+    """
+
+    regularisation_parameter: float = 1e-3
+
+    def __check_init__(self):
+        """Check that 'regularisation_parameter' is non-negative."""
+        if self.regularisation_parameter < 0:
+            raise ValueError("'regularisation_parameter' should be non-negative")
+
+    def _loss_function(
+        self,
+        target_features: Shaped[Array, "n d"],
+        target_responses: Shaped[Array, "n p"],
+        coreset_features: Shaped[Array, "m d"],
+        coreset_responses: Shaped[Array, "m p"],
+    ) -> Shaped[Array, ""]:
+        """
+        Compute the Joint Kernel Inducing Points loss function.
+
+        :param target_features: A two-dimensional array containing the target features.
+        :param target_responses: A two-dimensional array containing the target
+            responses.
+        :param coreset_features: A two-dimensional array containing the current coreset
+        features.
+        :param coreset_responses: A two-dimensional array containing the current coreset
+        responses.
+        :return: Estimated value of loss as a two-dimensional array.
+        """
+        # Solve X(K + \lambda I) = K for X
+        common_term = jsp.linalg.solve(
+            a=self.feature_kernel.compute(coreset_features, coreset_features)
+            + self.regularisation_parameter
+            * jnp.eye(coreset_features.shape[0]),  # m x m
+            b=self.feature_kernel.compute(coreset_features, target_features),
+            assume_a="sym",
+        )
+
+        coreset_response_gramian = self.response_kernel.compute(
+            coreset_responses, coreset_responses
+        )
+        cross_response_gramian = self.response_kernel.compute(
+            coreset_responses, target_responses
+        )
+
+        term_1 = (coreset_response_gramian.dot(common_term) * common_term).sum()
+        term_2 = (cross_response_gramian * common_term).sum()
+
+        return (term_1 - 2 * term_2) / target_features.shape[0]
