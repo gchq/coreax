@@ -74,6 +74,7 @@ supp
 TLDR
 typecheck
 venv
+vmapped
 WMMD
 wspace
 xlarge

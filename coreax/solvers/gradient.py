@@ -787,6 +787,128 @@ class AverageConditionalKernelInducingPoints(_SupervisedGradientSolver):
         if self.regularisation_parameter < 0:
             raise ValueError("'regularisation_parameter' should be non-negative")
 
+    # pylint:disable = too-many-arguments
+    # pylint:disable = too-many-locals
+    # pylint:disable = too-many-positional-arguments
+    @staticmethod
+    def _cross_validate(  # noqa: PLR0913, PLR0917
+        random_key: KeyArrayLike,
+        regularisation_parameters: list,
+        feature_kernel: ScalarValuedKernel,
+        response_kernel: ScalarValuedKernel,
+        target_features: Shaped[Array, "n d"],
+        target_responses: Shaped[Array, "n p"],
+        validation_features: Shaped[Array, "m d"],
+        validation_responses: Shaped[Array, "m p"],
+        batch_size: int = 1000,
+        num_batches: int = 10,
+        zoom_size: int = 25,
+    ):
+        """Cross-validate the regularisation parameter."""
+
+        # Define the validation loss and vmap it over the grid of regularisations
+        @eqx.filter_jit
+        def validation_loss(
+            regularisation_parameter,
+            feature_gramian,
+            cross_feature_gramian,
+            response_gramian,
+            cross_response_gramian,
+        ):
+            """Compute the loss on a validation set."""
+            # Compute the coefficients
+            coefficients = jnp.linalg.solve(
+                a=feature_gramian
+                + regularisation_parameter * jnp.eye(feature_gramian.shape[0]),
+                b=cross_feature_gramian,
+            )
+
+            # Compute the terms of the validation loss
+            term_2 = (coefficients * cross_response_gramian).sum()
+            term_3 = (coefficients.T.dot(response_gramian) * coefficients.T).sum()
+
+            return (1 / cross_feature_gramian.shape[1]) * (-2 * term_2 + term_3)
+
+        vmapped_validation_loss = vmap(
+            validation_loss, in_axes=(0, None, None, None, None)
+        )
+
+        # Iterate over the rough grid
+        rough_losses = jnp.zeros((num_batches, len(regularisation_parameters)))
+        rough_keys = jr.split(random_key, (num_batches,))
+        for i in range(num_batches):
+            # Sample the batch
+            batch_indices = jr.choice(
+                rough_keys[i],
+                target_features.shape[0],
+                shape=(batch_size,),
+                replace=False,
+            )
+
+            # Compute the validation loss over the coarse grid
+            rough_losses = rough_losses.at[i, :].set(
+                vmapped_validation_loss(
+                    regularisation_parameters,
+                    feature_kernel.compute(
+                        target_features[batch_indices], target_features[batch_indices]
+                    ),
+                    feature_kernel.compute(
+                        target_features[batch_indices], validation_features
+                    ),
+                    response_kernel.compute(
+                        target_responses[batch_indices], target_responses[batch_indices]
+                    ),
+                    response_kernel.compute(
+                        target_responses[batch_indices], validation_responses
+                    ),
+                )
+            )
+
+        # Average the losses and choose the region to zoom into that contains the minima
+        averaged_rough_losses = rough_losses.mean(axis=0)
+        min_idx = jnp.nanargmin(averaged_rough_losses) - 1
+
+        fine_losses = jnp.zeros((num_batches, zoom_size))
+        fine_grid = jnp.linspace(
+            regularisation_parameters[min_idx],
+            regularisation_parameters[min_idx + 2],
+            zoom_size,
+        )
+        fine_keys = jr.split(rough_keys[-1], (num_batches,))
+        print("Finding average fine minima...")
+        for i in range(num_batches):
+            # Get indices
+            batch_indices = jr.choice(
+                fine_keys[i],
+                target_features.shape[0],
+                shape=(batch_size,),
+                replace=False,
+            )
+            # Compute the validation loss over the coarse grid
+            fine_losses = fine_losses.at[i, :].set(
+                vmapped_validation_loss(
+                    fine_grid,
+                    feature_kernel.compute(
+                        target_features[batch_indices], target_features[batch_indices]
+                    ),
+                    feature_kernel.compute(
+                        target_features[batch_indices], validation_features
+                    ),
+                    response_kernel.compute(
+                        target_responses[batch_indices], target_responses[batch_indices]
+                    ),
+                    response_kernel.compute(
+                        target_responses[batch_indices], validation_responses
+                    ),
+                )
+            )
+
+        # Set the optimal regularisation parameter
+        optimal_regularisation_parameter = fine_grid[
+            jnp.nanargmin(fine_losses.mean(axis=0))
+        ].item()
+        return optimal_regularisation_parameter, fine_grid, fine_losses
+
     def _loss_function(
         self,
         target_features: Shaped[Array, "n d"],
