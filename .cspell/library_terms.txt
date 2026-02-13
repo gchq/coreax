@@ -129,6 +129,7 @@ rcond
 rect
 rerunfailures
 rightarrow
+RMMD
 rtol
 samp
 scikit
@@ -139,6 +140,7 @@ sklearn
 softplus
 sphinxcontrib
 sphobjinv
+Stiefel
 tensordot
 texttt
 toctree

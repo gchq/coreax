@@ -23,6 +23,7 @@ from coreax.solvers.base import (
     RefinementSolver,
     Solver,
 )
+from coreax.solvers.bilateral import UnsupervisedBilateralLinear
 from coreax.solvers.composite import CompositeSolver, MapReduce
 from coreax.solvers.coresubset import (
     CompressPlusPlus,
@@ -36,7 +37,11 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
-from coreax.solvers.gradient import GradientFlow, JointKernelInducingPoints
+from coreax.solvers.gradient import (
+    GradientFlow,
+    JointKernelInducingPoints,
+    UnsupervisedGradientState,
+)
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -53,6 +58,7 @@ __all__ = [
     "PaddingInvariantSolver",
     "PseudoSolver",
     "PseudoRefinementSolver",
+    "UnsupervisedGradientState",
     "CompositeSolver",
     "MapReduce",
     "RandomSample",
@@ -68,4 +74,5 @@ __all__ = [
     "CaratheodoryRecombination",
     "TreeRecombination",
     "CompressPlusPlus",
+    "UnsupervisedBilateralLinear",
 ]
