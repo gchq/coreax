@@ -61,6 +61,7 @@ jaxlib
 jaxopt
 jaxtyped
 jaxtyping
+JMMD
 jumanjihouse
 keepends
 leggauss
@@ -103,6 +104,8 @@ OSQP
 params_ineq
 pinv
 polyval
+pseudocoreset
+pseudocoresets
 pvalue
 pybtex
 pycodestyle
