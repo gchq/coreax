@@ -90,7 +90,7 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
 
 
 class PseudoCoreset(
-    AbstractCoreset[Data, _TOriginalData_co], Generic[_TOriginalData_co]
+    AbstractCoreset[_TOriginalData_co, _TOriginalData_co], Generic[_TOriginalData_co]
 ):
     r"""
     Data structure for representing a pseudo-coreset.
@@ -107,15 +107,17 @@ class PseudoCoreset(
     # Pylint here, Pylint then just complains when they're assigned to in __init__
     # instead!
     # pylint: disable=invalid-name
-    _nodes: Final[Data]
+    _nodes: Final[_TOriginalData_co]
     _pre_coreset_data: Final[_TOriginalData_co]
     # pylint: enable=invalid-name
 
-    def __init__(self, nodes: Data, pre_coreset_data: _TOriginalData_co) -> None:
+    def __init__(
+        self, nodes: _TOriginalData_co, pre_coreset_data: _TOriginalData_co
+    ) -> None:
         """Initialise self."""
         if not isinstance(nodes, Data):
             raise TypeError(
-                "`nodes` must be of type `Data`. "
+                "`nodes` must be of type `Data` or `SupervisedData`. "
                 "To use an array, use PseudoCoreset.build() instead."
             )
         if not isinstance(pre_coreset_data, Data):
@@ -137,7 +139,15 @@ class PseudoCoreset(
     @overload
     def build(
         cls,
-        nodes: Data | Array,
+        nodes: tuple[Array, Array],
+        pre_coreset_data: SupervisedData,
+    ) -> "PseudoCoreset[SupervisedData]": ...
+
+    @classmethod
+    @overload
+    def build(
+        cls,
+        nodes: SupervisedData | tuple[Array, Array],
         pre_coreset_data: tuple[Array, Array],
     ) -> "PseudoCoreset[SupervisedData]": ...
 
@@ -152,7 +162,7 @@ class PseudoCoreset(
     @classmethod
     def build(
         cls,
-        nodes: Data | Array,
+        nodes: _TOriginalData | Array | tuple[Array, Array],
         pre_coreset_data: _TOriginalData | Array | tuple[Array, Array],
     ) -> "PseudoCoreset[Data]\
         | PseudoCoreset[SupervisedData]\
@@ -161,9 +171,11 @@ class PseudoCoreset(
         """
         Construct a PseudoCoreset from Data or raw Arrays.
 
-        :param nodes: The (weighted) coreset nodes, :math:`I`; these can be
-            accessed via :meth:`Coresubset.points`. :class:`jax.Array` instances are
-            automatically converted into :class:`~coreax.data.Data`.
+        :param nodes: The (weighted) coreset nodes, :math:`I`.
+            :class:`jax.Array` instances are automatically converted into
+            :class:`~coreax.data.Data`.
+            :class:`tuple` [:class:`jax.Array`, :class:`jax.Array`]
+            is automatically converted into :class:`~coreax.data.SupervisedData`.
         :param pre_coreset_data: The dataset :math:`X` used to construct the coreset.
             :class:`jax.Array` instances are automatically converted into
             :class:`~coreax.data.Data`.
@@ -177,11 +189,18 @@ class PseudoCoreset(
         else:
             converted_pre_coreset_data = pre_coreset_data
 
-        return PseudoCoreset(as_data(nodes), converted_pre_coreset_data)
+        if isinstance(nodes, Array):
+            converted_nodes = as_data(nodes)
+        elif isinstance(nodes, tuple):
+            converted_nodes = SupervisedData(*nodes)
+        else:
+            converted_nodes = nodes
+
+        return PseudoCoreset(converted_nodes, converted_pre_coreset_data)
 
     @property
     @override
-    def points(self) -> Data:
+    def points(self) -> _TOriginalData_co:
         """Materialised coreset."""
         return self._nodes
 
