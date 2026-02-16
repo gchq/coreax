@@ -49,7 +49,7 @@ jobs:
         uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b  # v7.3.0
         with:
           version: "latest"
-          python-version: 3.13
+          python-version: 3.14
       - name: Store hash of baseline pre-commit config for comparison
         id: old_file
         run: echo "hash=$( sha256sum $config_path )" >> $GITHUB_OUTPUT

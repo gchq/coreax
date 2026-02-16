@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 license = "Apache-2.0"
@@ -127,7 +128,8 @@ constraint-dependencies = [
 ]
 # Ensure we get the latest package versions available for each Python version
 environments = [
-    "python_version>='3.13'",
+    "python_version>='3.14'",
+    "python_version=='3.13.*'",
     "python_version=='3.12.*'",
     "python_version=='3.11.*'",
     "python_version=='3.10.*'",
