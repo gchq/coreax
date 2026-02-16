@@ -299,7 +299,7 @@ class JMMD(Metric[SupervisedData]):
 
     .. note::
         Assuming that the feature and response kernels are characteristic
-        (:cite:`muandet2016rkhs`), it can be shown
+        (:cite:`muandet2017rkhs`), it can be shown
         that :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
         :math:`\mathbb{P}^{(1)}_(X, Y) = \mathbb{P}^{(2)}_(X, Y)`, i.e. the joint
         distributions are the same. Therefore, the JMMD gives us a way to measure if two
