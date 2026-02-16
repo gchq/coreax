@@ -1,5 +1,6 @@
 Abhishek
 Benard
+Bharath
 Caratheodory
 Chatalic
 Duvenaud
@@ -8,6 +9,7 @@ Epperly
 Ermon
 Ferenc
 Frobenius
+Fukumizu
 Garg
 Garreau
 Goaoc
@@ -18,6 +20,7 @@ Jaehoon
 Jiaxin
 Jitkrittum
 Kanagawa
+Krikamol
 Litterer
 Loera
 Lyons
@@ -37,10 +40,12 @@ Rosasco
 Rudi
 Sahaj
 Schreuder
+Schölkopf
 Shetty
 Smirnov
 Smola
 Sperner
+Sriperumbudur
 Staber
 Tchakaloff
 Tchernychova

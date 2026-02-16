@@ -299,7 +299,7 @@ class AMCMD(Metric[SupervisedData]):
         \hat{\mu}^{(2)}_{Y|X=x}\right\Vert^2_{\mathcal{H}_r}\right]
 
     where :math:`\hat{\mu}^{(1)}_{Y|X}, \hat{\mu}^{(2)}_{Y|X}` are the conditional mean
-    embeddings (:cite:`muandet2016rkhs`) estimated with :math:`\mathcal{D}_1` and
+    embeddings (:cite:`muandet2017rkhs`) estimated with :math:`\mathcal{D}_1` and
     :math:`\mathcal{D}_2` respectively, and :math:`\mathcal{H}_k, \mathcal{H}_r` are
     the RKHSs induced by the feature kernel :math:`k: \mathbb{R}^d \times \mathbb{R}^d
     \rightarrow \mathbb{R}` and the response kernel :math:`r: \mathbb{R}^p \times
