@@ -1,5 +1,8 @@
 Abhishek
+Adil
+Arbel
 Benard
+Broadbent
 Caratheodory
 Chatalic
 Duvenaud
@@ -18,6 +21,7 @@ Jaehoon
 Jiaxin
 Jitkrittum
 Kanagawa
+Korba
 Litterer
 Loera
 Lyons
@@ -35,6 +39,7 @@ Rademacher
 Rosasco
 Rudi
 Sahaj
+Salim
 Schreuder
 Shetty
 Smirnov
