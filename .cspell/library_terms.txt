@@ -62,7 +62,6 @@ jaxopt
 jaxtyped
 jaxtyping
 JMMD
-jmmd
 jumanjihouse
 keepends
 leggauss
