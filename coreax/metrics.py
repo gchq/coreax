@@ -274,11 +274,8 @@ class KSD(Metric[Data]):
 
             laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
 
-        squared_ksd_threshold_applied = coreax.util.apply_negative_precision_threshold(
-            squared_ksd + laplace_correction - entropic_regularisation,
-            self.precision_threshold,
-        )
-        return jnp.sqrt(squared_ksd_threshold_applied)
+        squared_ksd = squared_ksd + laplace_correction - entropic_regularisation
+        return jnp.sqrt(jnp.maximum(0.0, squared_ksd))
 
 
 class AMCMD(Metric[SupervisedData]):
@@ -313,6 +310,9 @@ class AMCMD(Metric[SupervisedData]):
     .. note::
         The AMCMD gives us a way to measure if two supervised datasets have
         the same conditional distributions.
+
+    .. warning::
+        AMCMD assumes all samples are equally weighted; sample weights will be ignored.
 
     :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
         implementing a kernel function

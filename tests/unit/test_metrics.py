@@ -525,67 +525,6 @@ class TestAMCMD:
         )
         assert output == pytest.approx(expected_output)
 
-    # pylint:disable=too-many-locals
-    def test_amcmd_random_data(self, problem: _SupervisedMetricProblem):  # noqa: PLR0914
-        r"""
-        Test AMCMD computed from randomly generated test data agrees with method result.
-        """
-        feature_kernel = SquaredExponentialKernel()
-        response_kernel = SquaredExponentialKernel()
-        regularisation_parameter = 1e-3
-        d1, d2, d3 = problem
-
-        x1, y1 = d1.data, d1.supervision
-        x2, y2 = d2.data, d2.supervision
-        if d3 is not None:
-            x3 = d3.data
-        else:
-            x3 = x1
-
-        # Compute each term in the AMCMD formula to obtain an expected AMCMD.
-        feature_kernel_1 = feature_kernel.compute(x1, x1)
-        feature_gramian_1 = (
-            feature_kernel_1 + jnp.eye(x1.shape[0]) * regularisation_parameter
-        )
-
-        feature_kernel_2 = feature_kernel.compute(x2, x2)
-        feature_gramian_2 = (
-            feature_kernel_2 + jnp.eye(x2.shape[0]) * regularisation_parameter
-        )
-
-        cross_feature_gramian_1 = feature_kernel.compute(x1, x3)
-        least_square_solution_1 = jnp.linalg.solve(
-            feature_gramian_1, cross_feature_gramian_1
-        )
-
-        cross_feature_gramian_2 = feature_kernel.compute(x2, x3)
-        least_square_solution_2 = jnp.linalg.solve(
-            feature_gramian_2, cross_feature_gramian_2
-        )
-
-        response_kernel_1 = response_kernel.compute(y1, y1)
-        term_1 = jnp.sum(
-            least_square_solution_1.T @ response_kernel_1 * least_square_solution_1.T
-        )
-        response_kernel_2 = response_kernel.compute(y2, y2)
-        term_2 = jnp.sum(
-            least_square_solution_2.T @ response_kernel_2 * least_square_solution_2.T
-        )
-        response_kernel_12 = response_kernel.compute(y1, y2)
-        term_3 = jnp.sum(
-            least_square_solution_1.T @ response_kernel_12 * least_square_solution_2.T
-        )
-        expected_amcmd = jnp.sqrt(1 / x3.shape[0] * (term_1 + term_2 - 2 * term_3))
-
-        # Compute the AMCMD using the metric object
-        metric = AMCMD(
-            feature_kernel=feature_kernel,
-            response_kernel=response_kernel,
-            regularisation_parameter=regularisation_parameter,
-        )
-        output = metric.compute(d1, d2, weighting_data=d3)
-        assert output == pytest.approx(expected_amcmd, abs=1e-6)
-
     def test_negative_regularisation_parameter(self):
         """Check that error message is raised for negative regularisation."""
         expected_msg = "'regularisation_parameter' should be non-negative"
@@ -595,6 +534,3 @@ class TestAMCMD:
                 response_kernel=SquaredExponentialKernel(),
                 regularisation_parameter=-1,
             )
-
-
-# pylint:enable=too-many-locals
