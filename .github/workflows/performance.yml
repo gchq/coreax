@@ -5,24 +5,37 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'coreax/**/*.py'
+      - 'tests/performance/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'coreax/**/*.py'
+      - 'tests/performance/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
 
 jobs:
   performance-check:
-    name: Check performance
+    name: Check and compare performance
     runs-on: ubuntu-latest
     env:
       # Disable implicitly syncing before running - we run an explicit sync first.
       UV_NO_SYNC: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b  # v7.3.0
         with:
           version: "latest"
-          python-version: 3.13
+          python-version: 3.14
           enable-cache: true
           cache-suffix: "performance"
       - name: Install package dependencies
@@ -33,7 +46,7 @@ jobs:
         run: uv run tests/performance/run.py --output-file $RUNNER_TEMP/performance.json
       - name: Download historic performance data
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: gchq/coreax-metadata
           # GitHub Actions require check out destination to be within coreax/coreax. To
@@ -59,22 +72,16 @@ jobs:
             --commit-subject-file $RUNNER_TEMP/commit_subject.txt \
             > $RUNNER_TEMP/comment.md
           cat $RUNNER_TEMP/comment.md
-      - name: Comment performance update on PR
+      - name: Upload performance comment artifact
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          script: |
-            var fs = require('fs');
-            const RUNNER_TEMP = process.env.RUNNER_TEMP
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: fs.readFileSync(`${RUNNER_TEMP}/comment.md`, "utf8")
-            })
+          name: performance-comment
+          path: ${{ runner.temp }}/comment.md
       - name: Generate a token for saving performance data
+        if: github.event_name == 'push'
         id: generate-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf  # v2.2.1
         with:
           app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}

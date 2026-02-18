@@ -40,7 +40,7 @@ from coreax.kernels import (
     SteinKernel,
     UniCompositeKernel,
 )
-from coreax.metrics import JMMD, KSD, MMD
+from coreax.metrics import AMCMD, JMMD, KSD, MMD
 from coreax.score_matching import KernelDensityMatching, SlicedScoreMatching
 
 __all__ = [
@@ -63,5 +63,6 @@ __all__ = [
     "MMD",
     "KernelDensityMatching",
     "SlicedScoreMatching",
+    "AMCMD",
     "JMMD",
 ]

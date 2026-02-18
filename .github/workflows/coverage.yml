@@ -9,6 +9,16 @@ on:
   pull_request:
     branches:
       - "**"
+    paths:
+      - 'benchmark/**/*.py'
+      - 'coreax/**/*.py'
+      - 'examples/**/*.py'
+      - 'tests/**/*.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
 
 jobs:
   coverage:
@@ -20,12 +30,12 @@ jobs:
       percentage_int: ${{ steps.cov.outputs.percentage_int }}
       percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b  # v7.3.0
         with:
           version: "latest"
-          python-version: 3.13
+          python-version: 3.14
           enable-cache: true
       - name: Install test dependencies
         run: uv sync --group test --no-dev --locked
@@ -41,7 +51,7 @@ jobs:
           cat $GITHUB_OUTPUT
       - name: Check out metadata repo
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: gchq/coreax-metadata
           # GitHub Actions require check out destination to be within coreax/coreax. To
@@ -75,13 +85,13 @@ jobs:
     steps:
       - name: Generate a GitHub token
         id: generate-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf  # v2.2.1
         with:
           app-id: ${{ vars.WRITE_CONTENTS_PR_APP }}
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
           repositories: coreax-metadata
       - name: Check out metadata repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: gchq/coreax-metadata
       - name: Generate high-precision coverage JSON

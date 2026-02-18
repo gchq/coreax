@@ -41,7 +41,6 @@ from jaxtyping import Array, Shaped
 
 from coreax.data import Data, as_data
 from coreax.kernels import ScalarValuedKernel
-from coreax.util import apply_negative_precision_threshold
 
 _Data = TypeVar("_Data", bound=Data)
 
@@ -98,7 +97,7 @@ def solve_qp(
     ).params
 
     # Ensure conditions of solution are met
-    solution = apply_negative_precision_threshold(sol.primal, jnp.inf)
+    solution = jnp.maximum(0.0, sol.primal)
     return solution / jnp.sum(solution)
 
 

@@ -8,18 +8,21 @@ on:
         description: Which branch to use to build the release
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           ref: ${{ inputs.branch }}
       - name: Set up base Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
-          python-version: 3.13
+          python-version: 3.14
       - name: Install and upgrade build tools
         run: |
           python -m pip install --upgrade pip
@@ -27,7 +30,7 @@ jobs:
       - name: Build the package
         run: python -m build --verbose --outdir $RUNNER_TEMP/dist
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
         with:
           name: build-latest
           path: ${{ runner.temp }}/dist
@@ -49,6 +52,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
         os:
           - ubuntu-latest
           - windows-latest
@@ -62,7 +66,7 @@ jobs:
       UV_NO_SYNC: true
     steps:
       - name: Check out only the test files
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           ref: ${{ inputs.branch }}
           # Only check out the test files; this ensures we don't get any
@@ -74,7 +78,7 @@ jobs:
           # set to true, it checks out files in the repo root as well.)
           sparse-checkout-cone-mode: false
       - name: Download built package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7.0.0
         with:
          name: build-latest
          path: ${{ runner.temp }}/dist
@@ -93,7 +97,7 @@ jobs:
       - name: Restore uv cache (read-only)
         # We don't save the cache here, as we expect this job to be run only very
         # infrequently.
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
         with:
           path: ${{ env.UV_CACHE_DIR }}
           key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-test
