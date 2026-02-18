@@ -444,17 +444,17 @@ class JMMD(Metric[SupervisedData]):
         \mathcal{D}_1)) + \mathbb{E}(r(\mathcal{D}_2,\mathcal{D}_2))
         - 2\mathbb{E}(r(\mathcal{D}_1,\mathcal{D}_2))
 
-    where :math:`r` is a tensor-product kernel, defined as the product of a feature
+    where :math:`r` is a tensor-product kernel, defined here as the product of a feature
     kernel and a response kernel, and the expectation is with respect to
     the normalised data weights.
 
     .. note::
-        Assuming that the feature and response kernels are characteristic
-        (:cite:`muandet2017rkhs`), it can be shown
-        that :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
+        Assuming that the tensor-product kernel is characteristic
+        (:cite:`muandet2017rkhs`), it can be shown that
+        :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
         :math:`\mathbb{P}^{(1)}_(X, Y) = \mathbb{P}^{(2)}_(X, Y)`, i.e. the joint
         distributions are the same. Therefore, the JMMD gives us a way to measure if two
-        supervised datasets have the same (in the sense above) joint distribution.
+        labelled datasets have the same (in the sense above) joint distribution.
 
     Common uses of JMMD include comparing a reduced representation of a dataset to the
     original dataset, comparing different original datasets to one another, or
