@@ -40,7 +40,7 @@ from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
 )
-from coreax.metrics import AMCMD, KSD, MMD
+from coreax.metrics import AMCMD, JMMD, KSD, MMD
 from coreax.score_matching import convert_stein_kernel
 from coreax.util import pairwise
 
@@ -534,3 +534,218 @@ class TestAMCMD:
                 response_kernel=SquaredExponentialKernel(),
                 regularisation_parameter=-1,
             )
+
+
+class TestJMMD:
+    """
+    Tests related to the joint maximum mean discrepancy (JMMD) class in metrics.py.
+    """
+
+    @pytest.fixture
+    def problem(self) -> _SupervisedMetricProblem:
+        """Generate an example problem for testing MMD."""
+        dimension = 2
+        num_points = 30, 5
+        keys = tuple(jr.split(jr.key(0), 2))
+
+        def _generate_supervised_data(_num_points: int, _key: Array) -> SupervisedData:
+            point_key, weight_key = jr.split(_key, 2)
+            points = jr.uniform(point_key, (_num_points, dimension))
+            supervision = points + 0.1 * jr.normal(point_key, (_num_points, dimension))
+            weights = jr.uniform(weight_key, (_num_points,))
+            return SupervisedData(points, supervision, weights)
+
+        reference_data, comparison_data = jtu.tree_map(
+            _generate_supervised_data, num_points, keys
+        )
+        return _SupervisedMetricProblem(reference_data, comparison_data)
+
+    @pytest.mark.parametrize(
+        "feature_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    @pytest.mark.parametrize(
+        "response_kernel",
+        [SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+    )
+    def test_jmmd_compare_same_data(
+        self,
+        problem: _SupervisedMetricProblem,
+        feature_kernel: ScalarValuedKernel,
+        response_kernel: ScalarValuedKernel,
+    ):
+        """Check JMMD of a dataset with itself is approximately zero."""
+        x = problem.reference_data
+        metric = JMMD(feature_kernel, response_kernel)
+        assert metric.compute(x, x) == pytest.approx(0.0)
+
+    def test_jmmd_analytically_known(self):
+        r"""
+        Test JMMD computation against an analytically derived solution.
+
+        For the following datasets with features and responses each in 1 dimension:
+
+        .. math::
+
+            \mathcal{D}_1 = [(-1, -1), (0, 0), (1, 1)]
+
+            \mathcal{D}_2 = [(1, 1), (2, 2)]
+
+        taking the RBF kernel, :math:`k(x,y) = \exp (-||x-y||^2)` for the feature
+        and the linear kernel :math:`l(x,y) = xy` for the response, gives:
+
+        .. math::
+
+            k(\mathcal{D}_1,\mathcal{D}_1) =
+                \begin{bmatrix}
+                       1 & e^{-1} & e^{-4}
+                    \\ e^{-1} & 1 & e^{-1}
+                    \\ e^{-4} & e^{-1} & 1
+                \end{bmatrix}.
+
+            k(\mathcal{D}_1,\mathcal{D}_2)  =
+                \begin{bmatrix}
+                       e^{-4} & e^{-9}
+                    \\ e^{-1} & e^{-4}
+                    \\ 1 & e^{-1}
+                \end{bmatrix}.
+
+            k(\mathcal{D}_2,\mathcal{D}_2)  =
+                \begin{bmatrix}
+                       1 & e^{-1}
+                    \\ e^{-1} & 1
+                \end{bmatrix}.
+
+            l(\mathcal{D}_1,\mathcal{D}_1) =
+                \begin{bmatrix}
+                       1 & 0 & -1
+                    \\ 0 & 0 & 0
+                    \\ -1 & 0 & 1
+                \end{bmatrix}.
+
+            l(\mathcal{D}_1,\mathcal{D}_2)  =
+                \begin{bmatrix}
+                       -1 & -2
+                    \\ 0 & 0
+                    \\ 1 & 2
+                \end{bmatrix}
+
+            l(\mathcal{D}_2,\mathcal{D}_2)  =
+                \begin{bmatrix}
+                       1 & 2
+                    \\ 2 & 4
+                \end{bmatrix}.
+
+        Then
+
+        .. math::
+
+            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) =
+            \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)
+            \circ
+            l(\mathcal{D}_1,\mathcal{D}_1))
+
+            + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2)
+            \circ
+            l(\mathcal{D}_2,\mathcal{D}_2))
+
+            - 2 \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2)
+            \circ
+            l(\mathcal{D}_1,\mathcal{D}_2))
+
+            = \frac{5 + 4e^{-1}}{4}
+            + \frac{2 - 2e^{-4}}{9}
+            - \frac{1 + 2e^{-1} - e^{-4} - 2e^{-9}}{3}.
+        """
+        reference_data = jnp.array([[-1], [0], [1]])
+        reference_supervision = jnp.array([[-1], [0], [1]])
+        reference_dataset = SupervisedData(
+            data=reference_data, supervision=reference_supervision
+        )
+        comparison_data = jnp.array([[1], [2]])
+        comparison_supervision = jnp.array([[1], [2]])
+        comparison_dataset = SupervisedData(
+            data=comparison_data, supervision=comparison_supervision
+        )
+        expected_output = jnp.sqrt(
+            (5 + 4 * jnp.e**-1) / 4
+            - (1 + 2 * jnp.e**-1 - jnp.e**-4 - 2 * jnp.e**-9) / 3
+            + (2 - 2 * jnp.e**-4) / 9
+        )
+        # Compute MMD using the metric object
+        metric = JMMD(SquaredExponentialKernel(1 / jnp.sqrt(2)), LinearKernel())
+        output = metric.compute(reference_dataset, comparison_dataset)
+        assert output == pytest.approx(expected_output)
+
+    def test_jmmd_analytically_known_weighted(self) -> None:
+        r"""
+        Test JMMD computation against an analytically derived weighted solution.
+
+        Weighted jmmd is calculated if and only if comparison_weights are provided. When
+        `comparison_weights` = :data:`None`, the JMMD class computes the standard,
+        non-weighted MMD.
+
+        For the following datasets with features and responses each in 1 dimension:
+
+        .. math::
+
+            \mathcal{D}_1 = [(-1, -1), (0, 0), (1, 1)]
+
+            w_1 = [\frac{1}{3}, \frac{1}{6}, \frac{1}{2}]
+
+            \mathcal{D}_2 = [(1, 1), (2, 2)]
+
+            w_2 = [\frac{1}{4}, \frac{3}{4}]
+
+        we use the same kernels as in the previous test. Then, the weighted joint
+        maximum mean discrepancy is calculated as:
+
+        .. math::
+
+            \text{WMMD}^2(\mathcal{D}_1,\mathcal{D}_2) =
+
+            \frac{1}{||w_1||**2}w_1^T \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_1)
+            \circ
+            l(\mathcal{D}_1,\mathcal{D}_1)) w_1
+
+             + \frac{1}{||w_2||**2}w_2^T \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2)
+            \circ
+            l(\mathcal{D}_2,\mathcal{D}_2)) w_2
+
+             - \frac{2}{||w_1||||w_2||} w_1
+            \mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2)
+            \circ
+            l(\mathcal{D}_1,\mathcal{D}_2)) w_2
+
+            = (\frac{37}{16} + \frac{12}{16} * e^{-1})
+            + (\frac{13}{36} - \frac{1}{3} * e^{-4})
+            - 2 * (\frac{1}{8} + \frac{6}{8} * e^{-1} - \frac{1}{12} * e^{-4} -
+            \frac{6}{12} * e^{-9})
+        """
+        reference_data = jnp.array([[-1], [0], [1]])
+        reference_supervision = jnp.array([[-1], [0], [1]])
+        reference_weights = jnp.array([1 / 3, 1 / 6, 1 / 2])
+        reference_dataset = SupervisedData(
+            data=reference_data,
+            supervision=reference_supervision,
+            weights=reference_weights,
+        )
+
+        comparison_data = jnp.array([[1], [2]])
+        comparison_supervision = jnp.array([[1], [2]])
+        comparison_weights = jnp.array([1 / 4, 3 / 4])
+        comparison_dataset = SupervisedData(
+            data=comparison_data,
+            supervision=comparison_supervision,
+            weights=comparison_weights,
+        )
+
+        expected_output = jnp.sqrt(
+            (37 / 16 + 12 / 16 * jnp.e**-1)
+            + (13 / 36 - 1 / 3 * jnp.e**-4)
+            - 2 * (1 / 8 + 6 / 8 * jnp.e**-1 - 1 / 12 * jnp.e**-4 - 6 / 12 * jnp.e**-9)
+        )
+        # Compute the weighted MMD using the metric object
+        metric = JMMD(SquaredExponentialKernel(1 / jnp.sqrt(2)), LinearKernel())
+        output = metric.compute(reference_dataset, comparison_dataset)
+        assert output == pytest.approx(expected_output)
