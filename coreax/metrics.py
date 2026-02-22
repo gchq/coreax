@@ -483,15 +483,15 @@ class JMMD(Metric[SupervisedData]):
         Compute the (weighted) joint maximum mean discrepancy.
 
         .. math::
-            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(k(\mathcal{D}_1,
-            \mathcal{D}_1)) + \mathbb{E}(k(\mathcal{D}_2,\mathcal{D}_2))
-            - 2\mathbb{E}(k(\mathcal{D}_1,\mathcal{D}_2))
+            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(r(\mathcal{D}_1,
+            \mathcal{D}_1)) + \mathbb{E}(r(\mathcal{D}_2,\mathcal{D}_2))
+            - 2\mathbb{E}(r(\mathcal{D}_1,\mathcal{D}_2))
 
         :param reference_data: Supervised dataset :math:`\mathcal{D}_1 =
             \{(x_i, y_i)\}_{i=1}^n` with :math:`x \in \mathbb{R}^d` and
             :math:`y \in \mathbb{R}^p`
         :param comparison_data: Supervised dataset
-            :math:`\mathcal{D}_" = \{(x^\prime_i, y^\prime_i)\}_{i=1}^n` with
+            :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^n` with
             :math:`x^\prime \in \mathbb{R}^d` and
             :math:`y^\prime \in \mathbb{R}^p`
         :return: Joint maximum mean discrepancy as a 0-dimensional array
@@ -514,30 +514,17 @@ class JMMD(Metric[SupervisedData]):
             comparison_data.weights,
         )
 
-        kernel_1_mean = jnp.dot(
-            jnp.dot(
-                w1,
-                self.feature_kernel.compute(x1, x1)
-                * self.response_kernel.compute(y1, y1),
-            ),
-            w1,
-        )
-        kernel_2_mean = jnp.dot(
-            jnp.dot(
-                w2,
-                self.feature_kernel.compute(x2, x2)
-                * self.response_kernel.compute(y2, y2),
-            ),
-            w2,
-        )
-        kernel_12_mean = jnp.dot(
-            jnp.dot(
-                w1,
-                self.feature_kernel.compute(x1, x2)
-                * self.response_kernel.compute(y1, y2),
-            ),
-            w2,
-        )
+        feature_kernel_1 = self.feature_kernel.compute(x1, x1)
+        response_kernel_1 = self.response_kernel.compute(y1, y1)
+        kernel_1_mean = w1 @ (feature_kernel_1 * response_kernel_1) @ w1
+
+        feature_kernel_2 = self.feature_kernel.compute(x2, x2)
+        response_kernel_2 = self.response_kernel.compute(y2, y2)
+        kernel_2_mean = w2 @ (feature_kernel_2 * response_kernel_2) @ w2
+
+        feature_kernel_12 = self.feature_kernel.compute(x1, x2)
+        response_kernel_12 = self.response_kernel.compute(y1, y2)
+        kernel_12_mean = w1 @ (feature_kernel_12 * response_kernel_12) @ w2
 
         squared_jmmd = kernel_1_mean + kernel_2_mean - 2 * kernel_12_mean
         return jnp.sqrt(jnp.maximum(0.0, squared_jmmd))

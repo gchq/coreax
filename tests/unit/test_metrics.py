@@ -691,7 +691,7 @@ class TestJMMD:
 
             \mathcal{D}_1 = [(-1, -1), (0, 0), (1, 1)]
 
-            w_1 = [\frac{1}{3}, \frac{1}{6}, \frac{1}{2}]
+            w_1 = [\frac{1}{3}, \frac{1}{3}, \frac{1}{2}]
 
             \mathcal{D}_2 = [(1, 1), (2, 2)]
 
@@ -749,3 +749,21 @@ class TestJMMD:
         metric = JMMD(SquaredExponentialKernel(1 / jnp.sqrt(2)), LinearKernel())
         output = metric.compute(reference_dataset, comparison_dataset)
         assert output == pytest.approx(expected_output)
+
+    def test_jmmd_weights_zero_norm(self):
+        """Check that zero norm weights return zero output."""
+        reference_data = SupervisedData(
+            data=jnp.array([[-1], [0], [1]]),
+            supervision=jnp.array([[-1], [0], [1]]),
+            weights=jnp.array([0, 0, 0]),
+        )
+        comparison_data = SupervisedData(
+            data=jnp.array([[1], [2]]),
+            supervision=jnp.array([[1], [2]]),
+            weights=jnp.array([0, 0]),
+        )
+        assert 0 == pytest.approx(
+            JMMD(SquaredExponentialKernel(), SquaredExponentialKernel()).compute(
+                reference_data, comparison_data
+            )
+        )
