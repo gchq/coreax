@@ -724,7 +724,7 @@ class TestJMMD:
         """
         reference_data = jnp.array([[-1], [0], [1]])
         reference_supervision = jnp.array([[-1], [0], [1]])
-        reference_weights = jnp.array([1 / 3, 1 / 6, 1 / 2])
+        reference_weights = jnp.array([2 / 3, 1 / 3, 1])
         reference_dataset = SupervisedData(
             data=reference_data,
             supervision=reference_supervision,
