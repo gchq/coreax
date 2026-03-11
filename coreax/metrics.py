@@ -491,7 +491,7 @@ class JMMD(Metric[SupervisedData]):
             \{(x_i, y_i)\}_{i=1}^n` with :math:`x \in \mathbb{R}^d` and
             :math:`y \in \mathbb{R}^p`
         :param comparison_data: Supervised dataset
-            :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^n` with
+            :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m` with
             :math:`x^\prime \in \mathbb{R}^d` and
             :math:`y^\prime \in \mathbb{R}^p`
         :return: Joint maximum mean discrepancy as a 0-dimensional array

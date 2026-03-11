@@ -543,7 +543,7 @@ class TestJMMD:
 
     @pytest.fixture
     def problem(self) -> _SupervisedMetricProblem:
-        """Generate an example problem for testing MMD."""
+        """Generate an example problem for testing JMMD."""
         dimension = 2
         num_points = 30, 5
         keys = tuple(jr.split(jr.key(0), 2))
@@ -691,7 +691,7 @@ class TestJMMD:
 
             \mathcal{D}_1 = [(-1, -1), (0, 0), (1, 1)]
 
-            w_1 = [\frac{1}{3}, \frac{1}{3}, \frac{1}{2}]
+            w_1 = [\frac{2}{3}, \frac{1}{3}, 1]
 
             \mathcal{D}_2 = [(1, 1), (2, 2)]
 
@@ -745,7 +745,6 @@ class TestJMMD:
             + (13 / 36 - 1 / 3 * jnp.e**-4)
             - 2 * (1 / 8 + 6 / 8 * jnp.e**-1 - 1 / 12 * jnp.e**-4 - 6 / 12 * jnp.e**-9)
         )
-        # Compute the weighted MMD using the metric object
         metric = JMMD(SquaredExponentialKernel(1 / jnp.sqrt(2)), LinearKernel())
         output = metric.compute(reference_dataset, comparison_dataset)
         assert output == pytest.approx(expected_output)
