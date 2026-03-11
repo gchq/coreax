@@ -57,6 +57,7 @@ primaryclass
 PRNG
 prob
 propto
+pypa
 rcond
 recomb
 refs
