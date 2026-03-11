@@ -672,7 +672,6 @@ class TestJMMD:
             - (1 + 2 * jnp.e**-1 - jnp.e**-4 - 2 * jnp.e**-9) / 3
             + (2 - 2 * jnp.e**-4) / 9
         )
-        # Compute MMD using the metric object
         metric = JMMD(SquaredExponentialKernel(1 / jnp.sqrt(2)), LinearKernel())
         output = metric.compute(reference_dataset, comparison_dataset)
         assert output == pytest.approx(expected_output)
