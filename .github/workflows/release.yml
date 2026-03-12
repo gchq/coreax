@@ -1,12 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        type: string
-        description: Which branch to use to build the release
-        required: true
+  push:
+    tags:
+      - "v*" # Tag protection ensures tests and doc build pass before tags can be created.
 
 permissions:
   contents: read
@@ -15,113 +12,36 @@ jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          ref: ${{ inputs.branch }}
-      - name: Set up base Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b  # v7.3.0
         with:
           python-version: 3.14
-      - name: Install and upgrade build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade build
       - name: Build the package
-        run: python -m build --verbose --outdir $RUNNER_TEMP/dist
-      - name: Upload artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+        run: uv build
+      - name: Smoke test (wheel)
+        run: uv run --isolated --no-project --with dist/*.whl python -c "import coreax; print(coreax.__version__)"
+      - name: Smoke test (source distribution)
+        run: uv run --isolated --no-project --with dist/*.tar.gz python -c "import coreax; print(coreax.__version__)"
+      - name: Attest build provenance to GitHub
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26  # v4.1.0
         with:
-          name: build-latest
-          path: ${{ runner.temp }}/dist
-          if-no-files-found: error
-          overwrite: true
-  test:
-    name: Test package
-    needs: build
-    defaults:
-      run:
-        # Use Bash by default to avoid complications - PowerShell and Bash have
-        # different syntax for environment variables.
-        shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-          - "3.14"
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-    runs-on: ${{ matrix.os }}
-    env:
-      # Set the Python version that `uv` will use for its virtual environment.
-      UV_PYTHON: ${{ matrix.python-version }}
-      # Disable implicitly syncing before running - we want to install only from the
-      # built wheel, not from the project.
-      UV_NO_SYNC: true
-    steps:
-      - name: Check out only the test files
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          ref: ${{ inputs.branch }}
-          # Only check out the test files; this ensures we don't get any
-          # cross-contamination from the source code.
-          sparse-checkout: |
-            tests/**
-            examples/**
-          # Don't check out any files other than those specified above. (If this is
-          # set to true, it checks out files in the repo root as well.)
-          sparse-checkout-cone-mode: false
-      - name: Download built package
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3  # v8.0.0
-        with:
-         name: build-latest
-         path: ${{ runner.temp }}/dist
-      - name: Get wheel filename to install
+          subject-path: dist/*
+      - name: Publish to PyPI via trusted publishing
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1.13.0
+      - name: Create Draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          # Save a list of all wheel files found in the downloaded artifact
-          find $RUNNER_TEMP/dist -type f -name '*.whl' > $RUNNER_TEMP/wheel_filename.txt
-          cat $RUNNER_TEMP/wheel_filename.txt
-          # Check that we only found one wheel file (we pipe the input in via cat to
-          # avoid printing the file name, so we can test against it)
-          test $(cat $RUNNER_TEMP/wheel_filename.txt | wc -l) -eq 1
-          # Save its location to an environment variable
-          echo "WHEEL_FILENAME=$(<$RUNNER_TEMP/wheel_filename.txt)" >> $GITHUB_ENV
-      - name: Set up uv cache directory location
-        run: echo "UV_CACHE_DIR=${{ runner.temp }}/.uv-cache" >> $GITHUB_ENV
-      - name: Restore uv cache (read-only)
-        # We don't save the cache here, as we expect this job to be run only very
-        # infrequently.
-        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
-        with:
-          path: ${{ env.UV_CACHE_DIR }}
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}-test
-          restore-keys: |
-            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ matrix.python-version }}
-            uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-            uv-${{ runner.os }}
-      - name: Install latest versions of pip and uv
-        run: python -m pip install --upgrade pip uv
-      - name: Install test dependencies
-        run: |
-          uv venv
-          uv pip install --group test $WHEEL_FILENAME
-      - name: Debug - uv pip freeze
-        run: uv pip freeze
-      - name: Test with pytest
-        # Do not test benchmarking as not part of Coreax package.
-        # Integration tests are slow, so only run if all other tests pass.
-        run: uv run pytest tests --ignore=tests/integration --ignore=tests/unit/test_benchmark.py
-      - name: Test integration tests
-        run: uv run pytest tests/integration
-  release-github:
-    name: Create GitHub draft release
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo TODO
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --generate-notes \
+            dist/*
