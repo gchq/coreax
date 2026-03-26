@@ -3405,16 +3405,16 @@ wheels = [
 
 [[package]]
 name = "sphobjinv"
-version = "2.3.1.3"
+version = "2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "certifi" },
     { name = "jsonschema" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/9a/4887ebe7b46f4669a896dc286a3ac559101d2ceadbbea4614472960c2222/sphobjinv-2.3.1.3.tar.gz", hash = "sha256:a1d51e4cf3d968b9e0d3ed1cbccea0071e5e5795f24a2d7401a4e37d6bd75717", size = 268835, upload-time = "2025-05-26T15:18:16.994Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/67/19f33eeb4ffff0e2fd39afd4783a6ee38a6d58bcc1ddade779712a7e2e49/sphobjinv-2.4.tar.gz", hash = "sha256:44d57e7e87e17d8c7b053c853dcc36f80cbf7d1fc152d57634fd7bcae38ca48a", size = 249997, upload-time = "2026-03-23T05:04:54.011Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/f9/f48a8f489c8ae8930f12c558b4dd26da96791837747fca87e9da2643f12d/sphobjinv-2.3.1.3-py3-none-any.whl", hash = "sha256:41fc39f6f740a707cfe5b24c1a3a4a6e4ddbdd6429a59bf21f0b5ef1fddf932a", size = 50812, upload-time = "2025-05-26T15:18:10.636Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/97/840be4a99531292f8f41069bfcd0654f68296ef4089bfe828607d63ee0ff/sphobjinv-2.4-py3-none-any.whl", hash = "sha256:35f3239e9a6161c20d60146c16645687d06d43e5875d2bda71010c3ee7fd54bc", size = 51315, upload-time = "2026-03-23T05:04:42.434Z" },
 ]
 
 [[package]]
