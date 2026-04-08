@@ -6,6 +6,7 @@ archiveprefix
 axhline
 binom
 cand
+cooldown
 coreax
 coreset
 coresets

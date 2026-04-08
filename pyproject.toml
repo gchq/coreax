@@ -88,6 +88,9 @@ example = [
 ]
 
 [tool.uv]
+# Exclude packages published less than 14 days ago from dependency resolution as a
+# supply-chain security measure.
+exclude-newer = "14 days"
 # Provide lower bounds for transitive packages when using '--resolution lowest'. There
 # are a lot of packages here as some of our dependencies don't provide lower bounds.
 # These 'doc' dependency group is not constrained by this.
