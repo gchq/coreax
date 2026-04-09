@@ -440,11 +440,11 @@ class JMMD(Metric[SupervisedData]):
     the joint maximum mean discrepancy is given by:
 
     .. math::
-        \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(r(\mathcal{D}_1,
-        \mathcal{D}_1)) + \mathbb{E}(r(\mathcal{D}_2,\mathcal{D}_2))
-        - 2\mathbb{E}(r(\mathcal{D}_1,\mathcal{D}_2))
+        \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(h(\mathcal{D}_1,
+        \mathcal{D}_1)) + \mathbb{E}(h(\mathcal{D}_2,\mathcal{D}_2))
+        - 2\mathbb{E}(h(\mathcal{D}_1,\mathcal{D}_2))
 
-    where :math:`r` is a tensor-product kernel, defined here as the product of a feature
+    where :math:`h` is a tensor-product kernel, defined here as the product of a feature
     kernel and a response kernel, and the expectation is with respect to
     the normalised data weights.
 
@@ -452,7 +452,7 @@ class JMMD(Metric[SupervisedData]):
         Assuming that the tensor-product kernel is characteristic
         (:cite:`muandet2017rkhs`), it can be shown that
         :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
-        :math:`\mathbb{P}^{(1)}_(X, Y) = \mathbb{P}^{(2)}_(X, Y)`, i.e. the joint
+        :math:`\mathbb{P}^{(1)}_{X, Y} = \mathbb{P}^{(2)}_{X, Y}`, i.e. the joint
         distributions are the same. Therefore, the JMMD gives us a way to measure if two
         labelled datasets have the same (in the sense above) joint distribution.
 
@@ -466,7 +466,7 @@ class JMMD(Metric[SupervisedData]):
         feature space
     :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
         implementing a kernel function
-        :math:`h: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
+        :math:`r: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
         response space
     """
 
@@ -478,7 +478,7 @@ class JMMD(Metric[SupervisedData]):
         reference_data: SupervisedData,
         comparison_data: SupervisedData,
         **kwargs,
-    ) -> Array:
+    ) -> Shaped["", Array]:
         r"""
         Compute the (weighted) joint maximum mean discrepancy.
 
