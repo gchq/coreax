@@ -680,10 +680,6 @@ class TestJMMD:
         r"""
         Test JMMD computation against an analytically derived weighted solution.
 
-        Weighted jmmd is calculated if and only if comparison_weights are provided. When
-        `comparison_weights` = :data:`None`, the JMMD class computes the standard,
-        non-weighted MMD.
-
         For the following datasets with features and responses each in 1 dimension:
 
         .. math::
