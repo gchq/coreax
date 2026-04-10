@@ -88,13 +88,19 @@ example = [
 ]
 
 [tool.uv]
+# Exclude packages published less than 14 days ago from dependency resolution as a
+# supply-chain security measure.
+exclude-newer = "14 days"
 # Provide lower bounds for transitive packages when using '--resolution lowest'. There
 # are a lot of packages here as some of our dependencies don't provide lower bounds.
 # These 'doc' dependency group is not constrained by this.
 constraint-dependencies = [
     # Unconstrained (only specified to suppress uv warnings)
+    "beautifulsoup4>0",
     "future>0",
-    "orbax-checkpoint>=0",
+    "msgpack>0",
+    "orbax-checkpoint>=0,!=0.11.33; sys_platform == 'win32'",
+    "orbax-checkpoint>=0; sys_platform != 'win32'",
     "sphinx-basic-ng>0",
     "sphinxcontrib-applehelp>0",
     "sphinxcontrib-devhelp>0",

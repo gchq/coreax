@@ -16,7 +16,7 @@
 
 import math
 from collections.abc import Callable
-from typing import Literal, TypeVar, overload
+from typing import Any, Literal, TypeVar, overload
 from warnings import warn
 
 import equinox as eqx
@@ -469,7 +469,7 @@ class SteinThinning(
     regulariser_lambda: float | None = None
     block_size: int | tuple[int | None, int | None] | None = None
     unroll: int | bool | tuple[int | bool, int | bool] = 1
-    kde_bw_method: str | int | Callable | None = None
+    kde_bw_method: None | str | Array | Callable[[Any], Array] = None
 
     @override
     def reduce(

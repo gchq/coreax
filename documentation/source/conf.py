@@ -169,24 +169,14 @@ nitpick_ignore = [
     ("py:class", "Array"),
     ("py:class", "typing.Self"),
     ("py:class", "jaxtyping.Shaped"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n *d']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n *d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n d']"),
-    ("py:class", "jaxtyping.Real[Array, 'm-1']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n d']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n *p']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n p']"),
-    ("py:class", "jaxtyping.Shaped[Array, 'n']"),
-    ("py:class", "jaxtyping.Shaped[ndarray, 'n']"),
     ("py:class", "jax._src.typing.SupportsDType"),
-    ("py:class", "'n d'"),
-    ("py:class", "'n p'"),
     ("py:class", "equinox._module.Module"),
     ("py:class", "coreax.coreset._Data"),
     ("py:obj", "coreax.coreset._TPointsData"),
     ("py:obj", "coreax.coreset._TPointsData_co"),
     ("py:class", "coreax.coreset._TPointsData_co"),
     ("py:obj", "coreax.coreset._TOriginalData_co"),
+    ("py:class", "coreax.coreset._TOriginalData"),
     ("py:class", "coreax.coreset._TOriginalData_co"),
     ("py:obj", "coreax.solvers.composite._Data"),
     ("py:obj", "coreax.solvers.composite._Coreset"),
@@ -206,7 +196,8 @@ nitpick_ignore = [
 ]
 
 nitpick_ignore_regex = [
-    ("py:class", r"jaxtyping\.Shaped\[Array, '.*']"),
+    ("py:class", r"jaxtyping\.\w+\[(Array|ndarray), '.*']"),
+    ("py:class", r"'[a-z0-9 *]*'"),  # jaxtyping dimension strings
 ]
 
 autodoc_custom_types: dict[Any, str] = {  # Specify custom types for autodoc_type_hints

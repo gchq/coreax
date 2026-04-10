@@ -391,7 +391,8 @@ class TestKSD:
                 Data(x.data), Data(y.data), laplace_correct=True, regularise=False
             )
         elif mode == "regularised":
-            kde = jsp.stats.gaussian_kde(x.data.T, bw_method=base_kernel.length_scale)
+            length_scale = jnp.asarray(base_kernel.length_scale)
+            kde = jsp.stats.gaussian_kde(x.data.T, bw_method=length_scale)
             entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
             expected_ksd = jnp.sqrt(jnp.mean(kernel_mm) - entropic_regularisation)
             output = metric.compute(
