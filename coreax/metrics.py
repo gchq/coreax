@@ -478,7 +478,7 @@ class JMMD(Metric[SupervisedData]):
         reference_data: SupervisedData,
         comparison_data: SupervisedData,
         **kwargs,
-    ) -> Shaped["", Array]:
+    ) -> Shaped[Array, ""]:
         r"""
         Compute the (weighted) joint maximum mean discrepancy.
 
