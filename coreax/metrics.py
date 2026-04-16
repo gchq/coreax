@@ -427,3 +427,104 @@ class AMCMD(Metric[SupervisedData]):
         return jnp.sqrt(jnp.maximum(0.0, squared_amcmd))
 
     # pylint:enable=too-many-locals
+
+
+class JMMD(Metric[SupervisedData]):
+    r"""
+    Definition and calculation of the (weighted) joint maximum mean discrepancy metric.
+
+    For a dataset :math:`\mathcal{D}^{(1)} = \{(x_i, y_i)\}_{i=1}^n` with
+    :math:`x\in\mathbb{R}^d` and :math:`y\in\mathbb{R}^p`, and another dataset
+    :math:`\mathcal{D}^{(2)} = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m`
+    with :math:`x^\prime\in\mathbb{R}^d` and :math:`y^\prime\in\mathbb{R}^p`,
+    the joint maximum mean discrepancy is given by:
+
+    .. math::
+        \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(h(\mathcal{D}_1,
+        \mathcal{D}_1)) + \mathbb{E}(h(\mathcal{D}_2,\mathcal{D}_2))
+        - 2\mathbb{E}(h(\mathcal{D}_1,\mathcal{D}_2))
+
+    where :math:`h` is a tensor-product kernel, defined here as the product of a feature
+    kernel and a response kernel, and the expectation is with respect to
+    the normalised data weights.
+
+    .. note::
+        Assuming that the tensor-product kernel is characteristic
+        (:cite:`muandet2017rkhs`), it can be shown that
+        :math:`\text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = 0` if and only if
+        :math:`\mathbb{P}^{(1)}_{X, Y} = \mathbb{P}^{(2)}_{X, Y}`, i.e. the joint
+        distributions are the same. Therefore, the JMMD gives us a way to measure if two
+        labelled datasets have the same (in the sense above) joint distribution.
+
+    Common uses of JMMD include comparing a reduced representation of a dataset to the
+    original dataset, comparing different original datasets to one another, or
+    comparing reduced representations of different original datasets to one another.
+
+    :param feature_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`k: \mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}` on the
+        feature space
+    :param response_kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance
+        implementing a kernel function
+        :math:`r: \mathbb{R}^p \times \mathbb{R}^p \rightarrow \mathbb{R}` on the
+        response space
+    """
+
+    feature_kernel: ScalarValuedKernel
+    response_kernel: ScalarValuedKernel
+
+    def compute(
+        self,
+        reference_data: SupervisedData,
+        comparison_data: SupervisedData,
+        **kwargs,
+    ) -> Shaped[Array, ""]:
+        r"""
+        Compute the (weighted) joint maximum mean discrepancy.
+
+        .. math::
+            \text{JMMD}^2(\mathcal{D}_1,\mathcal{D}_2) = \mathbb{E}(r(\mathcal{D}_1,
+            \mathcal{D}_1)) + \mathbb{E}(r(\mathcal{D}_2,\mathcal{D}_2))
+            - 2\mathbb{E}(r(\mathcal{D}_1,\mathcal{D}_2))
+
+        :param reference_data: Supervised dataset :math:`\mathcal{D}_1 =
+            \{(x_i, y_i)\}_{i=1}^n` with :math:`x \in \mathbb{R}^d` and
+            :math:`y \in \mathbb{R}^p`
+        :param comparison_data: Supervised dataset
+            :math:`\mathcal{D}_2 = \{(x^\prime_i, y^\prime_i)\}_{i=1}^m` with
+            :math:`x^\prime \in \mathbb{R}^d` and
+            :math:`y^\prime \in \mathbb{R}^p`
+        :return: Joint maximum mean discrepancy as a 0-dimensional array
+        """
+        del kwargs
+
+        # Normalise the weights to allow for computation of weighted means
+        reference_data = reference_data.normalize(preserve_zeros=True)
+        comparison_data = comparison_data.normalize(preserve_zeros=True)
+
+        # Variable rename allows for nicer automatic formatting
+        x1, y1, w1 = (
+            reference_data.data,
+            reference_data.supervision,
+            reference_data.weights,
+        )
+        x2, y2, w2 = (
+            comparison_data.data,
+            comparison_data.supervision,
+            comparison_data.weights,
+        )
+
+        feature_kernel_1 = self.feature_kernel.compute(x1, x1)
+        response_kernel_1 = self.response_kernel.compute(y1, y1)
+        kernel_1_mean = w1 @ (feature_kernel_1 * response_kernel_1) @ w1
+
+        feature_kernel_2 = self.feature_kernel.compute(x2, x2)
+        response_kernel_2 = self.response_kernel.compute(y2, y2)
+        kernel_2_mean = w2 @ (feature_kernel_2 * response_kernel_2) @ w2
+
+        feature_kernel_12 = self.feature_kernel.compute(x1, x2)
+        response_kernel_12 = self.response_kernel.compute(y1, y2)
+        kernel_12_mean = w1 @ (feature_kernel_12 * response_kernel_12) @ w2
+
+        squared_jmmd = kernel_1_mean + kernel_2_mean - 2 * kernel_12_mean
+        return jnp.sqrt(jnp.maximum(0.0, squared_jmmd))
