@@ -883,7 +883,7 @@ wheels = [
 
 [[package]]
 name = "equinox"
-version = "0.13.7"
+version = "0.13.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jax", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -893,9 +893,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wadler-lindig" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/54/9655a0546bbff95f93f6c81bdc6ecefecc7d92761b25fbbf4442d14491be/equinox-0.13.7.tar.gz", hash = "sha256:fcba83317fd53ee4505cfe32f919c13f9d4c3a68c266696dfa115129ed8c465f", size = 142098, upload-time = "2026-04-20T13:21:13.651Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/ff/522336d2f8264f2ad97119710b76e2cddf66145d03a1e89899175d26b192/equinox-0.13.8.tar.gz", hash = "sha256:dd075050018e2dd02e252e9d29d3060f7e67f085622d8d27a8e89e24bb8523db", size = 145257, upload-time = "2026-05-05T10:03:43.258Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/5e/28df919a8d5741a96fe7f56ac19493389f7a3de9c819c7a1ec3b2c557852/equinox-0.13.7-py3-none-any.whl", hash = "sha256:f2c8f4713ccdb0db117937d27dc6572a643bd2a15a1213e379cc6065e38a1731", size = 182093, upload-time = "2026-04-20T13:21:12.302Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/d6/69a76c8ccdef14af687c497040292a46e59fc7a0ab24724b60e50ca61030/equinox-0.13.8-py3-none-any.whl", hash = "sha256:ca004348533cc30a63ebe8823d7dd4bb626dce17743d40bbddb89b402ef2a240", size = 185813, upload-time = "2026-05-05T10:03:41.673Z" },
 ]
 
 [[package]]
