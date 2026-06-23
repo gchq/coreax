@@ -82,7 +82,7 @@ repos:
 
   # Python specific Hooks
   - repo: https://github.com/regebro/pyroma
-    rev: "5.1b1"
+    rev: "5.0.1"
     hooks:
       # Ensure that necessary package information is provided
       - id: pyroma
