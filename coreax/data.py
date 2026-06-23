@@ -191,12 +191,12 @@ class Data(eqx.Module):
 
     @property
     def dtype(self):
-        """Return dtype of data; used for jaxtyping annotations."""
+        """Dtype of data; used for jaxtyping annotations."""
         return self.data.dtype
 
     @property
     def shape(self):
-        """Return shape of data; used for jaxtyping annotations."""
+        """Shape of data; used for jaxtyping annotations."""
         return self.data.shape
 
     def normalize(self, *, preserve_zeros: bool = False) -> Self:
