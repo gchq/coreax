@@ -11,10 +11,9 @@ on:
       - 'tests/**/*.py'
       - 'uv.lock'
       - 'pyproject.toml'
+      - '.github/workflows/unittests.yml'
 
   pull_request:
-    branches:
-      - "**"
     paths:
       - 'benchmark/**/*.py'
       - 'coreax/**/*.py'
@@ -22,12 +21,19 @@ on:
       - 'tests/**/*.py'
       - 'uv.lock'
       - 'pyproject.toml'
+      - '.github/workflows/unittests.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   tests:
+    # If tests take this long we can assume something has gone wrong.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -53,16 +59,21 @@ jobs:
       MPLBACKEND: Agg
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        persist-credentials: false
     - name: Set up uv
       uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
       with:
-        version: "latest"
+        version-file: "pyproject.toml"
         python-version: ${{ matrix.python-version }}
         resolution-strategy: ${{ matrix.resolution-strategy }}
         enable-cache: true
         cache-suffix: ${{ matrix.resolution-strategy }}
+    - name: Re-Lock if using lowest resolution-strategy
+      if: matrix.resolution-strategy != 'highest'
+      run: uv lock --resolution ${{ matrix.resolution-strategy }}
     - name: Install test dependencies
-      run: uv sync --group test --no-dev --locked
+      run: uv sync --group test --no-dev --locked --resolution ${{ matrix.resolution-strategy }}
     - name: Debug - uv pip freeze
       run: uv pip freeze
     - name: Test with pytest

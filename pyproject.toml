@@ -88,6 +88,8 @@ example = [
 ]
 
 [tool.uv]
+# First version that includes support for "exclude-newer" option.
+required-version = ">=0.9.17"
 # Exclude packages published less than 14 days ago from dependency resolution as a
 # supply-chain security measure.
 exclude-newer = "14 days"
