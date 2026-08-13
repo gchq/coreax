@@ -30,7 +30,7 @@ jobs:
       percentage_int: ${{ steps.cov.outputs.percentage_int }}
       percentage_float: ${{ steps.cov.outputs.percentage_float }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Set up uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
         with:
@@ -51,7 +51,7 @@ jobs:
           cat $GITHUB_OUTPUT
       - name: Check out metadata repo
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           repository: gchq/coreax-metadata
           # GitHub Actions require check out destination to be within coreax/coreax. To
@@ -91,7 +91,7 @@ jobs:
           private-key: ${{ secrets.WRITE_CONTENTS_PR_KEY }}
           repositories: coreax-metadata
       - name: Check out metadata repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           repository: gchq/coreax-metadata
       - name: Generate high-precision coverage JSON
