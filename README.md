@@ -68,6 +68,10 @@ Run `examples/pounce.py` to replicate.
 
 # Setup
 
+> [!IMPORTANT]
+> To clone this repository, you need to have git lfs installed. You can install it from [here](https://git-lfs.github.com/).
+
+
 Install Coreax from PyPI by adding `coreax` to your project dependencies or running
 ```shell
 pip install coreax
