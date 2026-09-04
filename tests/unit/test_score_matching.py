@@ -31,12 +31,9 @@ import jax.random as jr
 import numpy as np
 import optax
 import pytest
-from flax import linen as nn
 from jax.scipy.stats import multivariate_normal, norm
 from jaxtyping import Array, ArrayLike
-from typing_extensions import override
 
-import coreax.networks
 import coreax.score_matching
 from coreax.kernels import (
     LaplacianKernel,
@@ -48,21 +45,6 @@ from coreax.kernels import (
     median_heuristic,
 )
 from coreax.score_matching import KernelDensityMatching, convert_stein_kernel
-
-
-class SimpleNetwork(nn.Module):
-    """
-    A simple neural network for use in testing of sliced score matching.
-    """
-
-    num_hidden_dim: int
-    num_output_dim: int
-
-    @nn.compact
-    @override
-    def __call__(self, x: ArrayLike) -> ArrayLike:
-        x = nn.Dense(self.num_hidden_dim)(x)
-        return x
 
 
 class TestKernelDensityMatching(unittest.TestCase):
@@ -352,8 +334,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         Test the basic training step (without noise conditioning).
         """
         # Define a simple linear model that we can compute the gradients for by hand
-        score_network = SimpleNetwork(2, 2)
-        score_key, state_key = jr.split(self.random_key)
+        score_key, _ = jr.split(self.random_key)
+        score_network = eqx.nn.Sequential(
+            [eqx.nn.Linear(2, 2, key=jr.key(0), use_bias=True)]
+        )
 
         # Define a sliced score matching object
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
@@ -363,23 +347,13 @@ class TestSlicedScoreMatching(unittest.TestCase):
             noise_conditioning=False,
         )
 
-        # Create a train state. setting the PRNG with fixed seed means initialisation is
-        # consistent for testing using SGD
-        state = coreax.networks.create_train_state(
-            state_key, score_network, 1e-3, 2, optax.sgd
-        )
-
-        # Jax is row-based, so we have to work with the kernel transpose
-        # Disable pylint warning for unsubscriptable-object as we are able to
-        # subscript this and use this for testing purposes only
-        # pylint: disable=unsubscriptable-object
-        weights = state.params["Dense_0"]["kernel"].T  # pyright: ignore[reportAttributeAccessIssue]
-        bias = state.params["Dense_0"]["bias"]
-        # pylint: enable=unsubscriptable-object
-
         # Define input data
         x = jnp.array([2.0, 7.0])
         v = jnp.ones((1, 2), dtype=float)
+
+        weights = score_network.layers[0].weight
+        bias = score_network.layers[0].bias
+        assert bias is not None
         s = weights @ x.T + bias
 
         # Reformat for the vector mapped input to loss
@@ -396,19 +370,25 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Disable pylint warning for protected-access as we are testing a single part of
         # the over-arching algorithm
         # pylint: disable=protected-access
-        state, _ = sliced_score_matcher._train_step(
-            state, x_to_vector_map, v_to_vector_map
+        optimiser = optax.sgd(1e-3)
+        opt_state = optimiser.init(eqx.filter(score_network, eqx.is_array))
+        updated_score_network, _, _ = sliced_score_matcher._train_step(
+            score_network,
+            optimiser,
+            opt_state,
+            x_to_vector_map,
+            v_to_vector_map,
         )
         # pylint: enable=protected-access
 
         # Jax is row based, so transpose W_
         np.testing.assert_array_almost_equal(
-            state.params["Dense_0"]["kernel"],  # pyright: ignore[reportArgumentType]
-            weights_.T,
+            updated_score_network.layers[0].weight,
+            weights_,
             decimal=3,
         )
         np.testing.assert_array_almost_equal(
-            state.params["Dense_0"]["bias"],  # pyright: ignore[reportArgumentType]
+            updated_score_network.layers[0].bias,
             bias_,
             decimal=3,
         )
@@ -431,6 +411,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
+            num_epochs=10,
         )
 
         # Extract the score function
@@ -468,6 +449,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
+            num_epochs=10,
         )
 
         # Extract the score function
@@ -505,7 +487,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             return e_grad(log_pdf)(x_)
 
         # Define data
-        x = np.linspace(-5, 5).reshape(-1, 1)
+        x = jnp.linspace(-5, 5).reshape(-1, 1)
         true_score_result = true_score(x)
 
         # Define a sliced score matching object
@@ -564,7 +546,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
 
         # Define data
         coords = np.meshgrid(*[np.linspace(-7.5, 7.5) for _ in range(dimension)])
-        x_stacked = np.vstack([c.ravel() for c in coords]).T
+        x_stacked = jnp.vstack([c.ravel() for c in coords]).T
         true_score_result = true_score(x_stacked)
 
         # Define a sliced score matching object
@@ -573,7 +555,7 @@ class TestSlicedScoreMatching(unittest.TestCase):
             score_key,
             random_generator=jr.rademacher,
             use_analytic=True,
-            num_epochs=5,
+            num_epochs=10,
         )
 
         # Extract the score function
@@ -595,7 +577,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         """Test 'match' with zero valued 'num_epochs' and 'batch_size'."""
         score_key, _ = jr.split(self.random_key)
         sliced_score_matcher = coreax.score_matching.SlicedScoreMatching(
-            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
+            score_key,
+            random_generator=jr.rademacher,
+            num_epochs=0,
+            batch_size=0,
         )
         sliced_score_matcher.match(self.samples)
 
@@ -604,7 +589,10 @@ class TestSlicedScoreMatching(unittest.TestCase):
         score_key, _ = jr.split(self.random_key)
         # Test non-negative integer attributes
         coreax.score_matching.SlicedScoreMatching(
-            score_key, random_generator=jr.rademacher, num_epochs=0, batch_size=0
+            score_key,
+            random_generator=jr.rademacher,
+            num_epochs=0,
+            batch_size=0,
         )
         for i in (-1, 1.0):
             with pytest.raises(
@@ -626,7 +614,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
         # Test positive integer attributes
         for i in (-1, 0, 1.0):
             with pytest.raises(
-                ValueError, match="'num_random_vectors' must be a positive integer"
+                ValueError,
+                match="'num_random_vectors' must be a positive integer",
             ):
                 coreax.score_matching.SlicedScoreMatching(
                     score_key,
@@ -634,7 +623,8 @@ class TestSlicedScoreMatching(unittest.TestCase):
                     num_random_vectors=i,  # type: ignore[reportArgumentType]
                 )
             with pytest.raises(
-                ValueError, match="'num_noise_models' must be a positive integer"
+                ValueError,
+                match="'num_noise_models' must be a positive integer",
             ):
                 coreax.score_matching.SlicedScoreMatching(
                     score_key,
@@ -667,7 +657,12 @@ class TestConvertSteinKernel:
     @pytest.mark.parametrize("score_matching", [None, MagicMock()])
     @pytest.mark.parametrize(
         "kernel",
-        [LinearKernel(), SquaredExponentialKernel(), LaplacianKernel(), PCIMQKernel()],
+        [
+            LinearKernel(),
+            SquaredExponentialKernel(),
+            LaplacianKernel(),
+            PCIMQKernel(),
+        ],
     )
     def test_convert_stein_kernel(
         self,
