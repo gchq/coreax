@@ -31,7 +31,6 @@ dependencies = [
     # resolution mode of uv on the latest supported version of Python - the bounds
     # are only sharp for the latest supported Python version.
     "equinox>=0.11.11",
-    "flax>=0.10.0",
     "jax>=0.4.38",
     "jaxopt>=0.8.4",
     "jaxtyping>=0.2.31",
@@ -99,8 +98,6 @@ constraint-dependencies = [
     "beautifulsoup4>0",
     "future>0",
     "msgpack>0",
-    "orbax-checkpoint>=0,!=0.11.33; sys_platform == 'win32'",
-    "orbax-checkpoint>=0; sys_platform != 'win32'",
     "sphinx-basic-ng>0",
     "sphinxcontrib-applehelp>0",
     "sphinxcontrib-devhelp>0",
@@ -110,7 +107,7 @@ constraint-dependencies = [
     "webencodings>0",
     # Constrained to the required lower-bounds on our highest supported Python version.
     "absl-py>=1.0.0",  # via optax
-    "attrs>=18.1.0",  # via rich via flax
+    "attrs>=18.1.0",  # via sphobjinv, jsonschema
     "chex>=0.1.84",  # via optax
     "dm-tree>=0.1.8",  # via chex via optax
     "fsspec>=0.5.0",  # via torch
@@ -127,10 +124,9 @@ constraint-dependencies = [
     "pynndescent>=0.5.13",  # via umap
     "pyparsing>=3.0.8",  # via matplotlib
     "python-dateutil>=2.9.0",  # via matplotlib
-    "pyyaml>=6.0.1",  # via flax
+    "pyyaml>=6.0.1",  # via pybtex
     "setuptools>=5.0",  # via torch
-    "six>=1.16.0",  # via absl-py via flax
-    "tensorstore>=0.1.70",  # via flax
+    "six>=1.16.0",  # via python-dateutil
 ]
 # Ensure we get the latest package versions available for each Python version
 environments = [
