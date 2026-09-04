@@ -45,12 +45,12 @@ from typing import Any, NamedTuple
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jax.random as jr
 import numpy as np
 import optax
 import torchvision
 import umap
-from flax import linen as nn
-from flax.training import train_state
+from equinox.nn import State
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import VisionDataset
@@ -102,201 +102,221 @@ def compute_metrics(logits: jnp.ndarray, labels: jnp.ndarray) -> dict[str, jnp.n
     :return: A dictionary containing 'loss' and 'accuracy' as keys.
     """
     loss = cross_entropy_loss(logits, labels)
-    _accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
-    return {"loss": loss, "accuracy": _accuracy}
+    accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
+    return {"loss": loss, "accuracy": accuracy}
 
 
-class MLP(nn.Module):
+class MLP(eqx.Module):
     """
-    Multi-layer perceptron with optional batch normalisation and dropout.
+    Multi-layer perceptron with batch normalisation and dropout.
 
+    :param random_key: The random key.
+    :param input_size: Number of dimensions in input space.
     :param hidden_size: Number of units in the hidden layer.
     :param output_size: Number of output units.
-    :param use_batchnorm: Whether to apply batch norm.
     :param dropout_rate: Dropout rate to use during training.
     """
 
-    hidden_size: int
-    output_size: int = 10
-    use_batchnorm: bool = True
-    dropout_rate: float = 0.2
+    linear_1: eqx.nn.Linear
+    linear_2: eqx.nn.Linear
+    dropout: eqx.nn.Dropout
+    batch_norm: eqx.nn.BatchNorm
 
-    @nn.compact
-    def __call__(self, x: jnp.ndarray, training: bool = True) -> jnp.ndarray:
+    def __init__(
+        self,
+        random_key: KeyArrayLike,
+        input_size: int,
+        hidden_size: int,
+        output_size: int = 10,
+        dropout_rate: float = 0.2,
+    ) -> None:
+        """Initialise MLP."""
+        key_1, key_2 = jr.split(random_key)
+        self.linear_1 = eqx.nn.Linear(input_size, hidden_size, key=key_1)
+        self.dropout = eqx.nn.Dropout(dropout_rate)
+        self.batch_norm = eqx.nn.BatchNorm(
+            input_size=hidden_size, axis_name="batch", mode="batch"
+        )
+        self.linear_2 = eqx.nn.Linear(hidden_size, output_size, key=key_2)
+
+    def __call__(
+        self, x: jnp.ndarray, state: State, key: KeyArrayLike | None = None
+    ) -> tuple[jnp.ndarray, State]:
         """
         Forward pass of the MLP.
 
         :param x: Input data.
-        :param training: Whether the model is in training mode (default is True).
         :return: Output logits of the network.
         """
-        x = nn.Dense(self.hidden_size)(x)
-        if training:
-            x = nn.Dropout(rate=self.dropout_rate, deterministic=False)(x)
-        if self.use_batchnorm:
-            x = nn.BatchNorm(use_running_average=not training)(x)
-        x = nn.relu(x)
-        x = nn.Dense(self.output_size)(x)
-        return x
+        x = self.linear_1(x)
+        x = self.dropout(x, key=key)
+        x, state = self.batch_norm(x, state)
+        x = jax.nn.relu(x)
+        x = self.linear_2(x)
+        return x, state
 
 
-class TrainState(train_state.TrainState):
-    """Custom train state with batch statistics and dropout RNG."""
-
-    batch_stats: dict[str, jnp.ndarray] | None
-    dropout_rng: KeyArrayLike
-
-
-def create_train_state(
-    rng: jnp.ndarray, _model: nn.Module, learning_rate: float, weight_decay: float
-) -> TrainState:
+def compute_loss(
+    model: MLP,
+    state: State,
+    batch_data: jnp.ndarray,
+    batch_labels: jnp.ndarray,
+    key: KeyArrayLike,
+):
     """
-    Create and initialise the train state.
+    Compute cross-entropy.
 
-    :param rng: Random number generator key.
-    :param _model: The model to initialise.
-    :param learning_rate: Learning rate for the optimiser.
-    :param weight_decay: Weight decay for the optimiser.
-    :return: The initialised TrainState.
-    """
-    dropout_rng, params_rng = jax.random.split(rng)
-    params = _model.init(
-        {"params": params_rng, "dropout": dropout_rng},
-        jnp.ones([1, 784]),
-        training=False,
-    )
-    tx = optax.adamw(learning_rate, weight_decay=weight_decay)
-    return TrainState.create(
-        apply_fn=_model.apply,
-        params=params["params"],
-        tx=tx,
-        batch_stats=params["batch_stats"],
-        dropout_rng=dropout_rng,
-    )
-
-
-@jax.jit
-def train_step(
-    state: TrainState, batch_data: jnp.ndarray, batch_labels: jnp.ndarray
-) -> tuple[TrainState, dict[str, jnp.ndarray]]:
-    """
-    Perform a single training step.
-
-    :param state: The current state of the model and optimiser.
+    :param model: The current model.
+    :param state: The current state of the model.
     :param batch_data: Batch of input data.
     :param batch_labels: Batch of ground truth labels.
-    :return: Updated TrainState and a dictionary of metrics (loss and accuracy).
+    :param key: Random key for dropout.
+
+    :return: cross-entropy, (model state, logits)
     """
-    dropout_rng, new_dropout_rng = jax.random.split(state.dropout_rng)
-
-    def loss_fn(
-        params: dict[str, jnp.ndarray],
-    ) -> tuple[jnp.ndarray, tuple[jnp.ndarray, dict[str, jnp.ndarray]]]:
-        """
-        Compute the cross-entropy loss for the given batch.
-
-        :param params: Model parameters.
-        :return: Tuple containing the loss and a tuple of (logits, updated model state).
-        """
-        variables = {"params": params, "batch_stats": state.batch_stats}
-        logits, new_model_state = state.apply_fn(
-            variables,
-            batch_data,
-            training=True,
-            mutable=["batch_stats"],
-            rngs={"dropout": dropout_rng},
-        )
-        loss = cross_entropy_loss(logits, batch_labels)
-        return loss, (logits, new_model_state)
-
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (_, (logits, new_model_state)), grads = grad_fn(state.params)
-    state = state.apply_gradients(
-        grads=grads,
-        batch_stats=new_model_state["batch_stats"],
-        dropout_rng=new_dropout_rng,
+    keys = jr.split(key, batch_data.shape[0])
+    batch_model = jax.vmap(
+        model, axis_name="batch", in_axes=(0, None, 0), out_axes=(0, None)
     )
-    metrics = compute_metrics(logits, batch_labels)
-    return state, metrics
+    logits, state = batch_model(batch_data, state, keys)
+    loss = cross_entropy_loss(logits, batch_labels)
+    return loss, (state, logits)
 
 
-@jax.jit
+@eqx.filter_jit
+def train_step(
+    model: MLP,
+    state: State,
+    optimiser: optax.GradientTransformation,
+    opt_state: optax.OptState,
+    batch_data: jnp.ndarray,
+    batch_labels: jnp.ndarray,
+    key: KeyArrayLike,
+) -> tuple[MLP, State, optax.OptState, jnp.ndarray]:
+    """
+    Make a training step.
+
+    :param model: The current model.
+    :param state: The current state of the model.
+    :param optimiser: The optimiser.
+    :param opt_state: The current state of the optimiser.
+    :param batch_data: Batch of input data.
+    :param batch_labels: Batch of ground truth labels.
+    :param key: Random key for dropout.
+    :return: Updated model, updated model state, updated optimiser state, and logits.
+    """
+    grads, (state, logits) = eqx.filter_grad(compute_loss, has_aux=True)(
+        model, state, batch_data, batch_labels, key
+    )
+    updates, opt_state = optimiser.update(
+        grads, opt_state, eqx.filter(model, eqx.is_array)
+    )
+    model = eqx.apply_updates(model, updates)
+    return model, state, opt_state, logits
+
+
+@eqx.filter_jit
 def eval_step(
-    state: TrainState, batch_data: jnp.ndarray, batch_labels: jnp.ndarray
+    model: MLP, state: State, batch_data: jnp.ndarray, batch_labels: jnp.ndarray
 ) -> dict[str, jnp.ndarray]:
     """
     Perform a single evaluation step.
 
+    :param model: The current model.
     :param state: The current state of the model.
     :param batch_data: Batch of input data.
     :param batch_labels: Batch of ground truth labels.
     :return: A dictionary of evaluation metrics (loss and accuracy).
     """
-    variables = {"params": state.params, "batch_stats": state.batch_stats}
-    logits = state.apply_fn(
-        variables, batch_data, training=False, rngs={"dropout": state.dropout_rng}
-    )
+    inference_model = eqx.Partial(eqx.nn.inference_mode(model), state=state)
+    logits, _ = jax.vmap(inference_model)(batch_data)
     return compute_metrics(logits, batch_labels)
 
 
 def train_epoch(
-    state: TrainState,
+    model: MLP,
+    state: State,
+    optimiser: optax.GradientTransformation,
+    opt_state: optax.OptState,
     train_data: jnp.ndarray,
     train_labels: jnp.ndarray,
     batch_size: int,
-) -> tuple[TrainState, dict[str, float]]:
+    key: KeyArrayLike,
+) -> tuple[MLP, State, optax.OptState, dict[str, jnp.ndarray]]:
     """
     Train for one epoch and return updated state and metrics.
 
-    :param state: The current state of the model and optimiser.
+    :param model: The current model.
+    :param state: The current state of the model.
+    :param optimiser: The optimiser.
+    :param opt_state: The current state of the optimiser.
     :param train_data: Training input data.
     :param train_labels: Training labels.
     :param batch_size: Size of each training batch.
-    :return: Updated TrainState and a dictionary containing 'loss' and 'accuracy'.
+    :param key: Random key for dropout.
+    :return: Updated model, model state, optimiser state, and a dictionary containing
+        'loss' and 'accuracy'.
     """
     num_batches = train_data.shape[0] // batch_size
-    total_loss, total_accuracy = 0.0, 0.0
+    total_loss, total_accuracy = jnp.array(0.0), jnp.array(0.0)
 
     for batch_idx in range(num_batches):
+        key, subkey = jr.split(key)
         start_idx = batch_idx * batch_size
         end_idx = start_idx + batch_size
         batch_data = train_data[start_idx:end_idx]
         batch_labels = train_labels[start_idx:end_idx]
-        state, metrics = train_step(state, batch_data, batch_labels)
+        model, state, opt_state, logits = train_step(
+            model, state, optimiser, opt_state, batch_data, batch_labels, subkey
+        )
+        metrics = compute_metrics(logits, batch_labels)
         total_loss += metrics["loss"]
         total_accuracy += metrics["accuracy"]
 
-    return state, {
-        "loss": total_loss / num_batches,
-        "accuracy": total_accuracy / num_batches,
-    }
+    return (
+        model,
+        state,
+        opt_state,
+        {
+            "loss": total_loss / num_batches,
+            "accuracy": total_accuracy / num_batches,
+        },
+    )
 
 
 def evaluate(
-    state: TrainState, _data: jnp.ndarray, labels: jnp.ndarray, batch_size: int
-) -> dict[str, float]:
+    model: MLP,
+    state: State,
+    test_data: jnp.ndarray,
+    test_labels: jnp.ndarray,
+    batch_size: int,
+) -> dict[str, jnp.ndarray]:
     """
     Evaluate the model on given data and return metrics.
 
+    :param model: The current model.
     :param state: The current state of the model.
-    :param _data: Input data for evaluation.
-    :param labels: Ground truth labels for evaluation.
-    :param batch_size: Size of each evaluation batch.
+    :param test_data: Test input data.
+    :param test_labels: Test labels.
+    :param batch_size: Size of each training batch.
     :return: A dictionary containing 'loss' and 'accuracy' metrics.
     """
-    num_batches = _data.shape[0] // batch_size
-    total_loss, total_accuracy = 0.0, 0.0
+    num_batches = test_data.shape[0] // batch_size
+    total_loss, total_accuracy = jnp.array(0.0), jnp.array(0.0)
 
     for batch_idx in range(num_batches):
         start_idx = batch_idx * batch_size
         end_idx = start_idx + batch_size
-        batch_data = _data[start_idx:end_idx]
-        batch_labels = labels[start_idx:end_idx]
-        metrics = eval_step(state, batch_data, batch_labels)
+        batch_data = test_data[start_idx:end_idx]
+        batch_labels = test_labels[start_idx:end_idx]
+        metrics = eval_step(model, state, batch_data, batch_labels)
         total_loss += metrics["loss"]
         total_accuracy += metrics["accuracy"]
 
-    return {"loss": total_loss / num_batches, "accuracy": total_accuracy / num_batches}
+    return {
+        "loss": total_loss / num_batches,
+        "accuracy": total_accuracy / num_batches,
+    }
 
 
 class DataSet(NamedTuple):
@@ -309,17 +329,19 @@ class DataSet(NamedTuple):
 def train_and_evaluate(
     train_set: DataSet,
     test_set: DataSet,
-    _model: nn.Module,
-    rng: jnp.ndarray,
+    model: MLP,
+    state: State,
+    key: KeyArrayLike,
     config: dict[str, Any],
-) -> dict[str, float]:
+) -> dict[str, jnp.ndarray]:
     """
     Train and evaluate the model with early stopping.
 
     :param train_set: The training dataset containing features and labels.
     :param test_set: The test dataset containing features and labels.
-    :param _model: The model to be trained.
-    :param rng: Random number generator key for parameter initialisation and dropout.
+    :param model: The model to be trained.
+    :param state: The initial state of the model to be trained.
+    :param key: Random key for dropout.
     :param config: A dictionary of training configuration parameters, including:
                    - "learning_rate": Learning rate for the optimiser.
                    - "weight_decay": Weight decay for the optimiser.
@@ -329,23 +351,39 @@ def train_and_evaluate(
                    - "min_delta": Minimum change in accuracy to qualify as improvement.
     :return: A dictionary containing the final test loss and accuracy after training.
     """
-    state = create_train_state(
-        rng, _model, config["learning_rate"], config["weight_decay"]
-    )
-    best_accuracy, best_state = 0.0, None
+    best_accuracy, best_state, best_model = 0.0, None, None
     patience_counter = 0
 
+    optimiser = optax.adamw(
+        learning_rate=config["learning_rate"],
+        weight_decay=config["weight_decay"],
+    )
+    opt_state = optimiser.init(eqx.filter(model, eqx.is_inexact_array))
+
     for epoch in range(config["epochs"]):
-        state, _ = train_epoch(
-            state, train_set.features, train_set.labels, config["batch_size"]
+        key, subkey = jr.split(key)
+        model, state, opt_state, _ = train_epoch(
+            model,
+            state,
+            optimiser,
+            opt_state,
+            train_set.features,
+            train_set.labels,
+            config["batch_size"],
+            subkey,
         )
         test_metrics = evaluate(
-            state, test_set.features, test_set.labels, config["batch_size"]
+            model,
+            state,
+            test_set.features,
+            test_set.labels,
+            config["batch_size"],
         )
 
         if test_metrics["accuracy"] > best_accuracy + config["min_delta"]:
             best_accuracy = test_metrics["accuracy"]
             best_state = state
+            best_model = model
             patience_counter = 0
         else:
             patience_counter += 1
@@ -355,8 +393,13 @@ def train_and_evaluate(
             break
 
     final_state = best_state or state
+    final_model = best_model or model
     final_metrics = evaluate(
-        final_state, test_set.features, test_set.labels, config["batch_size"]
+        final_model,
+        final_state,
+        test_set.features,
+        test_set.labels,
+        config["batch_size"],
     )
     print(
         f"Final Test Loss: {final_metrics['loss']:.4f},"
@@ -381,7 +424,9 @@ def density_preserving_umap(x: jnp.ndarray, n_components: int = 16) -> jnp.ndarr
     x_np = np.array(x)
 
     # Initialize UMAP with density-preserving option
-    umap_model = umap.UMAP(densmap=True, n_components=n_components, random_state=0)
+    umap_model = umap.UMAP(
+        densmap=True, n_components=n_components, random_state=0, n_jobs=1
+    )
 
     # Fit and transform the data
     x_umap = umap_model.fit_transform(x_np)
@@ -417,7 +462,7 @@ def train_model(
     data_bundle: dict[str, jnp.ndarray],
     key: KeyArrayLike,
     config: dict[str, int | float],
-) -> dict[str, float]:
+) -> dict[str, jnp.ndarray]:
     """
     Train the model and return the results.
 
@@ -436,7 +481,9 @@ def train_model(
                    - "min_delta": Minimum change in accuracy to qualify as improvement.
     :return: A dictionary containing the final test loss and accuracy after training.
     """
-    model = MLP(hidden_size=64)
+    model, state = eqx.nn.make_with_state(MLP)(  # pylint: disable=assignment-from-no-return
+        key, 784, hidden_size=64
+    )
 
     # Access the values from the data_bundle dictionary
     data = data_bundle["data"]
@@ -448,6 +495,7 @@ def train_model(
         DataSet(data, targets),
         DataSet(test_data, test_targets),
         model,
+        state,
         key,
         config,
     )
@@ -509,7 +557,7 @@ def main() -> None:
     5. Train the model and evaluate its performance on the test set.
     6. Save the results, which include test accuracy for each solver and coreset size.
     """
-    (train_data_jax, train_targets_jax, test_data_jax, test_targets_jax) = (
+    train_data_jax, train_targets_jax, test_data_jax, test_targets_jax = (
         prepare_datasets()
     )
     train_data_umap = Data(density_preserving_umap(train_data_jax))
@@ -542,7 +590,7 @@ def main() -> None:
 
                 coreset_indices = coreset.indices.data
 
-                train_data_coreset = train_data_jax[coreset_indices]
+                train_data_coreset = train_data_jax[coreset_indices][:, 0, :]
                 train_targets_coreset = train_targets_jax[coreset_indices]
 
                 # Adjust batch size based on size
