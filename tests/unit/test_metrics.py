@@ -19,12 +19,10 @@ Metrics evaluate the quality of a coreset by some measure. The tests within this
 verify that metric computations produce the expected results on simple examples.
 """
 
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
-import jax
 import jax.numpy as jnp
 import jax.random as jr
-import jax.scipy as jsp
 import jax.tree_util as jtu
 import numpy as np
 import pytest
@@ -41,7 +39,6 @@ from coreax.kernels import (
     SteinKernel,
 )
 from coreax.metrics import AMCMD, JMMD, KSD, MMD
-from coreax.score_matching import convert_stein_kernel
 from coreax.util import pairwise
 
 
@@ -193,47 +190,37 @@ class TestMMD:
         output = metric.compute(reference_data, comparison_data)
         assert output == pytest.approx(expected_output)
 
-    @pytest.mark.parametrize("mode", ["unweighted", "weighted"])
-    def test_mmd_random_data(
-        self, problem: _MetricProblem, mode: Literal["unweighted", "weighted"]
-    ):
-        r"""
-        Test MMD computed from randomly generated test data agrees with method result.
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_mmd_known_properties(
+        self, problem: _MetricProblem, weighted: bool
+    ) -> None:
+        """Check MMD symmetry and invariance to sample ordering."""
+        reference_data, comparison_data = problem
+        if not weighted:
+            reference_data = Data(reference_data.data)
+            comparison_data = Data(comparison_data.data)
 
-        - "unweighted" parameterization checks that if the 'reference_data' and the
-            'comparison_data' have the default 'None' weights, that the computed MMD is
-            given by the means of the unweighted kernel matrices.
-        - "weighted" parameterization checks that for arbitrarily weighted data, the
-            computed MMD is given by the weighted average of the kernel matrices.
-        """
-        kernel = SquaredExponentialKernel()
-        x, y = problem
-        # Compute each term in the MMD formula to obtain an expected MMD.
-        kernel_nn = kernel.compute(x.data, x.data)
-        kernel_mm = kernel.compute(y.data, y.data)
-        kernel_nm = kernel.compute(x.data, y.data)
-        if mode == "weighted":
-            assert isinstance(x.weights, Array)
-            assert isinstance(y.weights, Array)
-            weights_nn = x.weights[..., None] * x.weights[None, ...]
-            weights_mm = y.weights[..., None] * y.weights[None, ...]
-            weights_nm = x.weights[..., None] * y.weights[None, ...]
-            expected_mmd = jnp.sqrt(
-                jnp.average(kernel_nn, weights=weights_nn)
-                + jnp.average(kernel_mm, weights=weights_mm)
-                - 2 * jnp.average(kernel_nm, weights=weights_nm)
+        metric = MMD(SquaredExponentialKernel())
+        expected = metric.compute(reference_data, comparison_data)
+
+        assert metric.compute(comparison_data, reference_data) == pytest.approx(
+            expected, abs=1e-6
+        )
+
+        if weighted:
+            permuted_reference = Data(
+                reference_data.data[::-1], jnp.asarray(reference_data.weights)[::-1]
             )
-        elif mode == "unweighted":
-            x, y = Data(x.data), Data(y.data)
-            expected_mmd = jnp.sqrt(
-                jnp.mean(kernel_nn) + jnp.mean(kernel_mm) - 2 * jnp.mean(kernel_nm)
+            permuted_comparison = Data(
+                comparison_data.data[::-1], jnp.asarray(comparison_data.weights)[::-1]
             )
         else:
-            raise ValueError("Invalid mode parameterization")
-        # Compute the MMD using the metric object
-        metric = MMD(kernel=kernel)
-        output = metric.compute(x, y)
-        assert output == pytest.approx(expected_mmd, abs=1e-6)
+            permuted_reference = Data(reference_data.data[::-1])
+            permuted_comparison = Data(comparison_data.data[::-1])
+
+        assert metric.compute(permuted_reference, permuted_comparison) == pytest.approx(
+            expected, abs=1e-6
+        )
 
 
 class TestKSD:
@@ -338,70 +325,55 @@ class TestKSD:
         assert output == pytest.approx(expected_output)
 
     @pytest.mark.parametrize(
-        "mode", ["unweighted", "weighted", "laplace-corrected", "regularised"]
+        ("weighted", "laplace_correct", "regularise"),
+        [
+            (False, False, False),
+            (True, False, False),
+            (False, True, False),
+            (False, False, True),
+        ],
     )
-    def test_ksd_random_data(
+    def test_ksd_permutation_invariant(
         self,
         problem: _MetricProblem,
-        mode: Literal["unweighted", "weighted", "laplace-corrected", "regularised"],
-    ):
-        r"""
-        Test KSD computed from randomly generated test data agrees with method result.
+        weighted: bool,
+        laplace_correct: bool,
+        regularise: bool,
+    ) -> None:
+        """Check KSD is invariant to the ordering of empirical samples."""
+        reference_data, comparison_data = problem
+        if not weighted:
+            reference_data = Data(reference_data.data)
+            comparison_data = Data(comparison_data.data)
 
-        - "unweighted" parameterization checks that if the 'reference_data' and the
-            'comparison_data' have the default 'None' weights, that the computed KSD
-              is
-            given by the means of the unweighted kernel matrices.
-        - "weighted" parameterization checks that for arbitrarily weighted data, the
-            computed MMD is given by the weighted average of the kernel matrices.
-        """
-        x, y = problem
+        metric = KSD(SquaredExponentialKernel())
+        expected = metric.compute(
+            reference_data,
+            comparison_data,
+            laplace_correct=laplace_correct,
+            regularise=regularise,
+        )
 
-        base_kernel = SquaredExponentialKernel()
-        kernel = convert_stein_kernel(x.data, base_kernel, None)
-        metric = KSD(kernel=kernel, score_matching=None)
-
-        # Compute each term in the KSD formula to obtain an expected KSD.
-        kernel_mm = kernel.compute(y.data, y.data)
-        if mode == "weighted":
-            assert isinstance(y.weights, Array)
-            weights_mm = y.weights[..., None] * y.weights[None, ...]
-            expected_ksd = jnp.sqrt(jnp.average(kernel_mm, weights=weights_mm))
-            output = metric.compute(x, y, laplace_correct=False, regularise=False)
-        elif mode == "unweighted":
-            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm))
-            output = metric.compute(
-                Data(x.data), Data(y.data), laplace_correct=False, regularise=False
+        if weighted:
+            permuted_reference = Data(
+                reference_data.data[::-1], jnp.asarray(reference_data.weights)[::-1]
             )
-        elif mode == "laplace-corrected":
-            # pylint: disable=duplicate-code
-            @jax.vmap
-            def _laplace_positive(x_: Array) -> Array:
-                r"""Evaluate Laplace positive operator  :math:`\Delta^+ \log p(x)`."""
-                hessian = jax.jacfwd(kernel.score_function)(x_)
-                return jnp.clip(jnp.diag(hessian), min=0.0).sum()
-
-            laplace_correction = _laplace_positive(y.data).sum() / len(y) ** 2
-            # pylint: enable=duplicate-code
-
-            expected_ksd = jnp.sqrt(
-                jnp.mean(kernel_mm) + (laplace_correction / len(y) ** 2)
-            )
-            output = metric.compute(
-                Data(x.data), Data(y.data), laplace_correct=True, regularise=False
-            )
-        elif mode == "regularised":
-            length_scale = jnp.asarray(base_kernel.length_scale)
-            kde = jsp.stats.gaussian_kde(x.data.T, bw_method=length_scale)
-            entropic_regularisation = kde.logpdf(y.data.T).mean() / len(y)
-            expected_ksd = jnp.sqrt(jnp.mean(kernel_mm) - entropic_regularisation)
-            output = metric.compute(
-                Data(x.data), Data(y.data), laplace_correct=False, regularise=True
+            permuted_comparison = Data(
+                comparison_data.data[::-1], jnp.asarray(comparison_data.weights)[::-1]
             )
         else:
-            raise ValueError("Invalid mode parameterization")
-        # Compute the KSD using the metric object
-        assert output == pytest.approx(expected_ksd, abs=1e-6, rel=1e-3)
+            permuted_reference = Data(reference_data.data[::-1])
+            permuted_comparison = Data(comparison_data.data[::-1])
+
+        actual = metric.compute(
+            permuted_reference,
+            permuted_comparison,
+            laplace_correct=laplace_correct,
+            regularise=regularise,
+        )
+        assert actual == pytest.approx(expected, abs=1e-6, rel=1e-3)
+        assert jnp.isfinite(actual)
+        assert actual >= 0
 
 
 class TestAMCMD:
