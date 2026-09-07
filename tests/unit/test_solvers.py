@@ -150,7 +150,10 @@ class SolverTest:
         return _ReduceProblem(Data(dataset), solver, expected_coreset)
 
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
         """
         Check that a coreset obeys certain expected invariant properties.
@@ -185,9 +188,11 @@ class SolverTest:
                     problem.initial_coresubset,
                     padded_dataset,
                 )
-                coreset_from_padded, _ = solver.refine(padded_initial_coreset)
+                coreset_from_padded, _ = jit_variant(solver.refine)(
+                    padded_initial_coreset
+                )
             else:
-                coreset_from_padded, _ = solver.reduce(padded_dataset)
+                coreset_from_padded, _ = jit_variant(solver.reduce)(padded_dataset)
             assert eqx.tree_equal(coreset_from_padded.points, coreset.points)
 
     @pytest.mark.parametrize(
@@ -217,7 +222,7 @@ class SolverTest:
             coreset_with_state, recycled_state = _reduce(dataset, state)
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coreset_with_state, coreset)
-        self.check_solution_invariants(coreset, reduce_problem)
+        self.check_solution_invariants(coreset, reduce_problem, jit_variant)
 
 
 class TestHelperFunctions:
@@ -796,7 +801,10 @@ class RecombinationSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
         r"""
         Check that a coreset obeys certain expected invariant properties.
@@ -810,7 +818,7 @@ class RecombinationSolverTest(SolverTest):
             the pushed-forward dataset (with implicit and explicit zero weight removal).
         5. Check the default value of 'test_functions' is the identity map.
         """
-        super().check_solution_invariants(coreset, problem)
+        super().check_solution_invariants(coreset, problem, jit_variant)
         dataset, solver, _ = problem
         assert isinstance(dataset, Data)
         coreset_nodes, coreset_weights = coreset.points.data, coreset.points.weights
@@ -822,7 +830,7 @@ class RecombinationSolverTest(SolverTest):
                 lambda x: x,
                 is_leaf=lambda x: x is None,
             )
-            expected_default_coreset, _ = solver.reduce(dataset)
+            expected_default_coreset, _ = jit_variant(solver.reduce)(dataset)
             assert eqx.tree_equal(coreset, expected_default_coreset)
 
         vmap_test_functions = jax.vmap(solver.test_functions)
@@ -912,7 +920,7 @@ class RecombinationSolverTest(SolverTest):
                 coreset_with_state, recycled_state = _reduce(dataset, state)
                 assert eqx.tree_equal(recycled_state, state)
                 assert eqx.tree_equal(coreset_with_state, coreset)
-            self.check_solution_invariants(coreset, updated_problem)
+            self.check_solution_invariants(coreset, updated_problem, jit_variant)
 
 
 class RefinementSolverTest(SolverTest):
@@ -995,7 +1003,7 @@ class RefinementSolverTest(SolverTest):
             coresubset_cached_state, recycled_state = _refine(initial_coresubset, state)
             assert eqx.tree_equal(recycled_state, state)
             assert eqx.tree_equal(coresubset_cached_state, coresubset)
-        self.check_solution_invariants(coresubset, refine_problem)
+        self.check_solution_invariants(coresubset, refine_problem, jit_variant)
 
 
 class ExplicitSizeSolverTest(SolverTest):
@@ -1006,9 +1014,12 @@ class ExplicitSizeSolverTest(SolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
-        super().check_solution_invariants(coreset, problem)
+        super().check_solution_invariants(coreset, problem, jit_variant)
         solver = problem.solver
         if isinstance(solver, ExplicitSizeSolver):
             assert len(coreset) == solver.coreset_size
@@ -1707,9 +1718,12 @@ class TestRandomSample(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
-        super().check_solution_invariants(coreset, problem)
+        super().check_solution_invariants(coreset, problem, jit_variant)
         solver = cast(RandomSample, problem.solver)
         assert isinstance(coreset, Coresubset)
         if solver.unique:
@@ -1730,10 +1744,13 @@ class TestRPCholesky(ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
-        super().check_solution_invariants(coreset, problem)
+        super().check_solution_invariants(coreset, problem, jit_variant)
         solver = cast(RPCholesky, problem.solver)
         assert isinstance(coreset, Coresubset)
         if solver.unique:
@@ -2427,10 +2444,13 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
 
     @override
     def check_solution_invariants(
-        self, coreset: AbstractCoreset, problem: _RefineProblem | _ReduceProblem
+        self,
+        coreset: AbstractCoreset,
+        problem: _RefineProblem | _ReduceProblem,
+        jit_variant: Callable[[Callable], Callable],
     ) -> None:
         """Check functionality of 'unique' in addition to the default checks."""
-        super().check_solution_invariants(coreset, problem)
+        super().check_solution_invariants(coreset, problem, jit_variant)
         solver = cast(GreedyKernelPoints, problem.solver)
         assert isinstance(coreset, Coresubset)
         if solver.unique:
