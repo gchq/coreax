@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+ - Added `Metric.compute_on_coreset`, `WeightsOptimiser.solve_on_coreset` and immutable
+   `AbstractCoreset.with_weights`. The coreset-level `compute_metric` and `solve_weights`
+   methods remain as deprecated compatibility wrappers until 2.0.0.
+   (https://github.com/gchq/coreax/issues/1023)
+
  - Support for Python 3.14. (...)
  - Unit tests workflow now runs the test suite with both the `lowest` and `highest` supported direct and transitive
  dependencies for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)
