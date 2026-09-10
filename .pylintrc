@@ -295,9 +295,8 @@ ignored-parents=
 # Maximum number of arguments for function / method.
 max-args=10
 
-# TODO: reduce this number if possible
-# https://github.com/gchq/coreax/issues/782
-max-positional-arguments=8
+# Limit long call signatures; pass solver options explicitly by keyword.
+max-positional-arguments=5
 
 # Maximum number of attributes for a class (see R0902).
 max-attributes=7

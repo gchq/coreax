@@ -353,7 +353,8 @@ if not TQDM_CUSTOM_PATH.exists():
 # pylint: disable=protected-access
 
 
-def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):
+# Sphinx calls this event handler with six positional arguments.
+def remove_namedtuple_attrib_docstring(app, what, name, obj, skip, options):  # pylint: disable=too-many-positional-arguments
     """Combine fields and parameters into a single entry for NamedTuple classes."""
     if type(obj) is collections._tuplegetter:  # pyright: ignore [reportAttributeAccessIssue]
         return True

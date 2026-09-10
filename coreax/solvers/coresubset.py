@@ -127,6 +127,7 @@ def _greedy_kernel_selection(
     selection_function: Callable[[int, Shaped[Array, " n"], Scalar], Scalar],
     output_size: int,
     kernel: ScalarValuedKernel,
+    *,
     unique: bool,
     block_size: int | tuple[int | None, int | None] | None,
     unroll: int | bool | tuple[int | bool, int | bool],
@@ -355,9 +356,9 @@ class KernelHerding(
             selection_function,
             self.coreset_size,
             self.kernel,
-            self.unique,
-            self.block_size,
-            self.unroll,
+            unique=self.unique,
+            block_size=self.block_size,
+            unroll=self.unroll,
         )
         return refined_coreset, HerdingState(gramian_row_mean)
 
@@ -544,9 +545,9 @@ class SteinThinning(
             selection_function,
             self.coreset_size,
             self.kernel,
-            self.unique,
-            self.block_size,
-            self.unroll,
+            unique=self.unique,
+            block_size=self.block_size,
+            unroll=self.unroll,
         )
         return refined_coreset, solver_state
 
@@ -700,6 +701,7 @@ def _setup_batch_solver(  # pragma: no cover # pyright: ignore reportOverlapping
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
+    *,
     candidate_batch_size: int | None,
     loss_batch_size: int | None,
     random_key: KeyArrayLike,
@@ -715,6 +717,7 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
+    *,
     candidate_batch_size: int | None,
     loss_batch_size: int | None,
     random_key: KeyArrayLike,
@@ -730,6 +733,7 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
+    *,
     candidate_batch_size: int | None,
     loss_batch_size: int | None,
     random_key: KeyArrayLike,
@@ -745,6 +749,7 @@ def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
+    *,
     candidate_batch_size: int | None,
     loss_batch_size: int | None,
     random_key: KeyArrayLike,
@@ -757,6 +762,7 @@ def _setup_batch_solver(
     coreset_size: int,
     coresubset: Coresubset,
     num_data_pairs: int,
+    *,
     candidate_batch_size: int | None,
     loss_batch_size: int | None,
     random_key: KeyArrayLike,
@@ -965,6 +971,7 @@ def _setup_batch_solver(
 
 def _update_candidate_coresets_and_coreset_indices(
     i: int,
+    *,
     unique: bool,
     candidate_coresets: Shaped[Array, " p n"],
     coreset_indices: Shaped[Array, " n"],
@@ -1033,6 +1040,7 @@ def _greedy_kernel_points_loss(
     candidate_coresets: Shaped[Array, " batch_size coreset_size"],
     responses: Shaped[Array, " n+1 1"],
     feature_gramian: Shaped[Array, " n+1 n+1"],
+    *,
     regularisation_parameter: float,
     identity: Shaped[Array, " coreset_size coreset_size"],
     least_squares_solver: RegularisedLeastSquaresSolver,
@@ -1283,10 +1291,10 @@ class GreedyKernelPoints(
                 candidate_coresets,
                 padded_responses,
                 padded_feature_gramian,
-                self.regularisation_parameter,
-                updated_identity,
-                least_squares_solver,
-                loss_batch_indices[i],
+                regularisation_parameter=self.regularisation_parameter,
+                identity=updated_identity,
+                least_squares_solver=least_squares_solver,
+                loss_batch=loss_batch_indices[i],
             )
 
             # See _update_candidate_coresets_and_coreset_indices for an
@@ -1294,11 +1302,11 @@ class GreedyKernelPoints(
             updated_candidate_coresets, updated_coreset_indices = (
                 _update_candidate_coresets_and_coreset_indices(
                     i,
-                    self.unique,
-                    candidate_coresets,
-                    coreset_indices,
-                    loss,
-                    candidate_batch_indices,
+                    unique=self.unique,
+                    candidate_coresets=candidate_coresets,
+                    coreset_indices=coreset_indices,
+                    loss=loss,
+                    candidate_batch_indices=candidate_batch_indices,
                 )
             )
             return updated_coreset_indices, updated_identity, updated_candidate_coresets
@@ -1484,6 +1492,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
             x1: Float[Array, "1 d"],
             x2: Float[Array, "1 d"],
             i: int,
+            *,
             current_first_coreset: Float[Array, "n d"],
             original_dataset_masking: Bool[Array, "2n d"],
             coreset_masking: Bool[Array, "n d"],
@@ -1615,9 +1624,9 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
                 x1,
                 x2,
                 i,
-                first_coreset_indices,
-                original_array_masking,
-                coresets_masking,
+                current_first_coreset=first_coreset_indices,
+                original_dataset_masking=original_array_masking,
+                coreset_masking=coresets_masking,
             )
             # Step 4: Get final values
             (val1, val2), new_random_key = probabilistic_swap(i, a, alpha, random_key)
