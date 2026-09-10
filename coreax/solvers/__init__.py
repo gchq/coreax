@@ -39,8 +39,10 @@ from coreax.solvers.recombination import (
     RecombinationSolver,
     TreeRecombination,
 )
+from coreax.solvers.twinning import DataTwinning
 
 __all__ = [
+    "DataTwinning",
     "Solver",
     "CoresubsetSolver",
     "RefinementSolver",
