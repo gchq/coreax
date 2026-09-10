@@ -1,4 +1,6 @@
 Abhishek
+Adil
+Arbel
 Benard
 Bharath
 Caratheodory
@@ -20,6 +22,7 @@ Jaehoon
 Jiaxin
 Jitkrittum
 Kanagawa
+Korba
 Krikamol
 Litterer
 Loera
@@ -39,6 +42,7 @@ Rademacher
 Rosasco
 Rudi
 Sahaj
+Salim
 Schreuder
 Schölkopf
 Shetty
