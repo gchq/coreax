@@ -207,16 +207,8 @@ class TestMMD:
             expected, abs=1e-6
         )
 
-        if weighted:
-            permuted_reference = Data(
-                reference_data.data[::-1], jnp.asarray(reference_data.weights)[::-1]
-            )
-            permuted_comparison = Data(
-                comparison_data.data[::-1], jnp.asarray(comparison_data.weights)[::-1]
-            )
-        else:
-            permuted_reference = Data(reference_data.data[::-1])
-            permuted_comparison = Data(comparison_data.data[::-1])
+        permuted_reference = reference_data[::-1]
+        permuted_comparison = comparison_data[::-1]
 
         assert metric.compute(permuted_reference, permuted_comparison) == pytest.approx(
             expected, abs=1e-6
@@ -354,16 +346,8 @@ class TestKSD:
             regularise=regularise,
         )
 
-        if weighted:
-            permuted_reference = Data(
-                reference_data.data[::-1], jnp.asarray(reference_data.weights)[::-1]
-            )
-            permuted_comparison = Data(
-                comparison_data.data[::-1], jnp.asarray(comparison_data.weights)[::-1]
-            )
-        else:
-            permuted_reference = Data(reference_data.data[::-1])
-            permuted_comparison = Data(comparison_data.data[::-1])
+        permuted_reference = reference_data[::-1]
+        permuted_comparison = comparison_data[::-1]
 
         actual = metric.compute(
             permuted_reference,
