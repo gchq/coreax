@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+ - `SteinKernel.from_log_density` derives a score by automatic differentiation and retains
+   access to the supplied log density. (https://github.com/gchq/coreax/issues/624)
  - Support for Python 3.14. (...)
  - Unit tests workflow now runs the test suite with both the `lowest` and `highest` supported direct and transitive
  dependencies for all Python versions supported by Coreax. (https://github.com/gchq/coreax/pull/#1092)

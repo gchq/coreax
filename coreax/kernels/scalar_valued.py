@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.special import factorial
 from jaxtyping import Array, Shaped
-from typing_extensions import override
+from typing_extensions import Self, override
 
 from coreax.kernels.base import ProductKernel, ScalarValuedKernel, UniCompositeKernel
 from coreax.util import squared_distance
@@ -723,6 +723,16 @@ class PoissonKernel(ScalarValuedKernel):
         return first_term - second_term
 
 
+class _LogDensityScore(eqx.Module):
+    """Differentiate a log density while retaining its PyTree parameters."""
+
+    log_density: Callable[[Array], Array]
+
+    def __call__(self, point: Array | float | int) -> Array:
+        point = jnp.asarray(point, dtype=jnp.result_type(point, 0.0))
+        return jax.grad(self.log_density)(point)
+
+
 class SteinKernel(UniCompositeKernel):
     r"""
     Define the Stein kernel, i.e. the application of the Stein operator.
@@ -766,7 +776,8 @@ class SteinKernel(UniCompositeKernel):
     :math:`\nabla_\mathbf{x} \log f_X: \mathbb{R}^d \to \mathbb{R}^d` can be any
     suitable Lipschitz score function, e.g. one that is learned from score matching
     (:class:`~coreax.score_matching.ScoreMatching`), computed explicitly from a density
-    function, or known analytically.
+    function, or known analytically. Alternatively, :meth:`from_log_density` derives
+    the score by automatic differentiation and retains the supplied log density.
 
     :param base_kernel: Initialised kernel object with which to evaluate
         the Stein kernel
@@ -778,6 +789,39 @@ class SteinKernel(UniCompositeKernel):
         [Shaped[Array, " n d"] | Shaped[Array, ""] | float | int],
         Shaped[Array, " n d"] | Shaped[Array, " 1 1"],
     ]
+
+    @classmethod
+    def from_log_density(
+        cls,
+        base_kernel: ScalarValuedKernel,
+        log_density: Callable[[Array], Array],
+    ) -> Self:
+        """
+        Construct a Stein kernel from a differentiable log-density function.
+
+        The function must return a scalar for one floating-point input vector.
+        It need not be normalised: additive constants do not affect the score.
+        The density and any array parameters remain part of the kernel's PyTree.
+
+        :param base_kernel: Kernel to which the Stein operator is applied
+        :param log_density: Scalar log density, differentiable with :func:`jax.grad`
+        :return: Stein kernel whose score is the gradient of the log density
+
+        .. code-block:: python
+
+            kernel = SteinKernel.from_log_density(
+                SquaredExponentialKernel(),
+                lambda point: -jnp.sum(point**2) / 2,
+            )
+        """
+        return cls(base_kernel, _LogDensityScore(log_density))
+
+    @property
+    def log_density(self) -> Callable[[Array], Array] | None:
+        """The supplied log density, or None for a score-only kernel."""
+        if isinstance(self.score_function, _LogDensityScore):
+            return self.score_function.log_density
+        return None
 
     @override
     def compute_elementwise(self, x, y):
