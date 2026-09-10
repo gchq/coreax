@@ -91,6 +91,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx_autodoc_typehints",
+    "inherited_typehints",
     "sphinxcontrib.bibtex",
 ]
 
