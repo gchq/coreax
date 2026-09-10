@@ -52,6 +52,7 @@ imwrite
 inproceedings
 intercal
 intersphinx
+iscomplexobj
 isin
 isort
 issubdtype
