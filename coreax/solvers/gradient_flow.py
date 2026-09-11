@@ -15,11 +15,13 @@
 """Particle approximations to maximum mean discrepancy gradient flow."""
 
 import math
+from typing import Any
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+import optax
 from jaxtyping import Array
 from typing_extensions import override
 
@@ -32,12 +34,16 @@ from coreax.util import KeyArrayLike
 
 class GradientFlowState(eqx.Module):
     """
-    Random state for continuing a noisy gradient flow without repeating its noise.
+    State for continuing a gradient flow without resetting stochastic state.
 
     :param random_key: Next unused random key
+    :param optimiser_state: Optax state for continuing adaptive optimisation
+    :param iteration: Number of completed optimisation steps, used by noise schedules
     """
 
     random_key: KeyArrayLike
+    optimiser_state: Any = None
+    iteration: int | Array = 0
 
 
 class GradientFlow(ExplicitSizeSolver[PseudoCoreset[Data], Data, GradientFlowState]):
@@ -50,7 +56,7 @@ class GradientFlow(ExplicitSizeSolver[PseudoCoreset[Data], Data, GradientFlowSta
 
     .. math::
 
-        x_i' = x_i - \gamma \left[
+        x_i^\prime = x_i - \gamma \left[
             \sum_j a_j \nabla_1 k(x_i + \beta u_i, x_j)
             - \sum_j b_j \nabla_1 k(x_i + \beta u_i, y_j)\right].
 
@@ -59,36 +65,38 @@ class GradientFlow(ExplicitSizeSolver[PseudoCoreset[Data], Data, GradientFlowSta
     location, not the current particle measure or the resulting points directly.
     Point weights are kept fixed; their normalised values determine the flow.
 
-    The kernel must be symmetric and differentiable. A suitable step size depends
-    on the kernel and data; arbitrary step sizes need not decrease the MMD.
-    Each iteration computes all particle-particle and particle-target gradients.
+    The kernel must be symmetric and differentiable. The default optimiser is
+    ``optax.sgd(0.1)``, which reproduces the fixed-step update above. Adaptive
+    Optax optimisers can be supplied instead, and their state is preserved across
+    calls to :meth:`refine`. Each iteration computes all particle-particle and
+    particle-target gradients.
 
     :param coreset_size: Number of particles, no larger than the target dataset
     :param random_key: Key for initial sampling and optional gradient noise
     :param kernel: Differentiable scalar-valued kernel
-    :param step_size: Non-negative finite Euler step size
-    :param num_iterations: Non-negative number of Euler steps per call
-    :param noise_scale: Non-negative finite gradient noise scale
+    :param optimiser: Optax optimiser used to update particle locations
+    :param num_iterations: Non-negative number of optimisation steps per call
+    :param noise_scale: Non-negative finite gradient noise scale, or an Optax schedule
+        evaluated at the cumulative optimisation step
     """
 
     random_key: KeyArrayLike
     kernel: ScalarValuedKernel
-    step_size: float = 0.1
+    optimiser: optax.GradientTransformation = optax.sgd(0.1)
     num_iterations: int = 100
-    noise_scale: float = 0.0
+    noise_scale: float | optax.Schedule = 0.0
 
     def __check_init__(self) -> None:
         """Validate the flow parameters."""
         if not isinstance(self.kernel, ScalarValuedKernel):
             raise TypeError("'kernel' must be a ScalarValuedKernel")
+        if not isinstance(self.optimiser, optax.GradientTransformation):
+            raise TypeError("'optimiser' must be an optax.GradientTransformation")
         if not isinstance(self.num_iterations, int) or self.num_iterations < 0:
             raise ValueError("'num_iterations' must be a non-negative integer")
-        for name, value in (
-            ("step_size", self.step_size),
-            ("noise_scale", self.noise_scale),
-        ):
-            if not math.isfinite(value) or value < 0:
-                raise ValueError(f"'{name}' must be finite and non-negative")
+        if not callable(self.noise_scale):
+            if not math.isfinite(self.noise_scale) or self.noise_scale < 0:
+                raise ValueError("'noise_scale' must be finite and non-negative")
 
     @override
     def reduce(
@@ -149,12 +157,35 @@ class GradientFlow(ExplicitSizeSolver[PseudoCoreset[Data], Data, GradientFlowSta
         points = initial.data.astype(dtype)
         target_points = target.data.astype(dtype)
         key = self.random_key if solver_state is None else solver_state.random_key
+        optimiser_state = (
+            self.optimiser.init(points)
+            if solver_state is None or solver_state.optimiser_state is None
+            else solver_state.optimiser_state
+        )
+        iteration = jnp.asarray(
+            0 if solver_state is None else solver_state.iteration, dtype=jnp.int32
+        )
 
-        def step(_: int, carry: tuple[Array, KeyArrayLike]):
-            current_points, current_key = carry
+        def step(
+            _: int,
+            carry: tuple[Array, KeyArrayLike, Any, Array],
+        ):
+            current_points, current_key, current_optimiser_state, current_iteration = (
+                carry
+            )
             current_key, noise_key = jr.split(current_key)
             evaluation_points = current_points
-            if self.noise_scale != 0:
+            if callable(self.noise_scale):
+                scale = jnp.asarray(self.noise_scale(current_iteration), dtype=dtype)  # pylint: disable=not-callable
+                current_points = eqx.error_if(
+                    current_points,
+                    ~jnp.isfinite(scale) | (scale < 0),
+                    "Noise scale schedule must return a finite non-negative value",
+                )
+                evaluation_points = current_points + scale * jr.normal(
+                    noise_key, current_points.shape, dtype=dtype
+                )
+            elif self.noise_scale != 0:
                 evaluation_points = current_points + self.noise_scale * jr.normal(
                     noise_key, current_points.shape, dtype=dtype
                 )
@@ -168,16 +199,27 @@ class GradientFlow(ExplicitSizeSolver[PseudoCoreset[Data], Data, GradientFlowSta
                 self.kernel.grad_x(evaluation_points, target_points),
                 target.weights,
             )
+            gradient = repulsion - attraction
+            updates, next_optimiser_state = self.optimiser.update(
+                gradient, current_optimiser_state, current_points
+            )
             return (
-                current_points - self.step_size * (repulsion - attraction),
+                optax.apply_updates(current_points, updates),
                 current_key,
+                next_optimiser_state,
+                current_iteration + 1,
             )
 
-        points, key = jax.lax.fori_loop(0, self.num_iterations, step, (points, key))
+        points, key, optimiser_state, iteration = jax.lax.fori_loop(
+            0,
+            self.num_iterations,
+            step,
+            (points, key, optimiser_state, iteration),
+        )
         result = PseudoCoreset(
             Data(points, coreset.points.weights), coreset.pre_coreset_data
         )
-        return result, GradientFlowState(key)
+        return result, GradientFlowState(key, optimiser_state, iteration)
 
 
 def _normalised_data(data: Data) -> Data:

@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
+import optax
 import pytest
 
 from coreax.coreset import Coresubset, PseudoCoreset
@@ -45,7 +46,9 @@ def test_linear_step(
     jit_variant: Callable[[Callable], Callable], initial_coreset: PseudoCoreset[Data]
 ) -> None:
     """Linear-kernel velocity is the difference between the two weighted means."""
-    solver = GradientFlow(2, jr.key(1), LinearKernel(), step_size=0.2, num_iterations=1)
+    solver = GradientFlow(
+        2, jr.key(1), LinearKernel(), optimiser=optax.sgd(0.2), num_iterations=1
+    )
     result, _ = jit_variant(solver.refine)(initial_coreset)
     expected = np.array([[1.0, 0.0], [2.0, 2.0]]) - 0.2 * (
         np.array([1.25, 0.5]) - np.array([3.0, 2.5])
@@ -79,7 +82,7 @@ def test_gaussian_step(
         2,
         key,
         SquaredExponentialKernel(1.5, 2.0),
-        step_size=0.2,
+        optimiser=optax.sgd(0.2),
         num_iterations=1,
         noise_scale=noise_scale,
     )
@@ -106,11 +109,15 @@ def test_gaussian_step(
     np.testing.assert_array_equal(jr.key_data(state.random_key), jr.key_data(next_key))
 
 
-@pytest.mark.parametrize("noise_scale", [0.0, 0.25])
+@pytest.mark.parametrize(
+    "noise_scale",
+    [0.0, 0.25, optax.linear_schedule(0.05, 0.3, 4)],
+    ids=["zero", "constant", "schedule"],
+)
 def test_refinement_continues_noise_sequence(
     jit_variant: Callable[[Callable], Callable],
     initial_coreset: PseudoCoreset[Data],
-    noise_scale: float,
+    noise_scale: float | optax.Schedule,
 ) -> None:
     """Two refinements with state match an uninterrupted run of the same length."""
     solver = GradientFlow(
@@ -120,29 +127,57 @@ def test_refinement_continues_noise_sequence(
         num_iterations=4,
         noise_scale=noise_scale,
     )
+    total_iterations = 8
     first, state = jit_variant(solver.refine)(initial_coreset)
     second, state = jit_variant(solver.refine)(first, state)
-    long_solver = eqx.tree_at(lambda item: item.num_iterations, solver, 8)
+    long_solver = eqx.tree_at(
+        lambda item: item.num_iterations, solver, total_iterations
+    )
     expected, expected_state = jit_variant(long_solver.refine)(initial_coreset)
     np.testing.assert_allclose(second.points.data, expected.points.data, atol=1e-6)
     np.testing.assert_array_equal(
         jr.key_data(state.random_key), jr.key_data(expected_state.random_key)
     )
+    assert int(state.iteration) == total_iterations
 
 
-@pytest.mark.parametrize(("step_size", "num_iterations"), [(0.0, 5), (0.1, 0)])
+def test_refinement_continues_adaptive_optimiser_state(
+    jit_variant: Callable[[Callable], Callable],
+    initial_coreset: PseudoCoreset[Data],
+) -> None:
+    """Adaptive optimiser state is preserved across refinement calls."""
+    solver = GradientFlow(
+        2,
+        jr.key(13),
+        SquaredExponentialKernel(),
+        optimiser=optax.adam(0.05),
+        num_iterations=4,
+    )
+    total_iterations = 8
+    first, state = jit_variant(solver.refine)(initial_coreset)
+    second, state = jit_variant(solver.refine)(first, state)
+    long_solver = eqx.tree_at(
+        lambda item: item.num_iterations, solver, total_iterations
+    )
+    expected, expected_state = jit_variant(long_solver.refine)(initial_coreset)
+    np.testing.assert_allclose(second.points.data, expected.points.data, atol=1e-6)
+    assert state.optimiser_state is not None
+    assert int(state.iteration) == int(expected_state.iteration) == total_iterations
+
+
+@pytest.mark.parametrize(("learning_rate", "num_iterations"), [(0.0, 5), (0.1, 0)])
 def test_zero_update_preserves_points(
     jit_variant: Callable[[Callable], Callable],
     initial_coreset: PseudoCoreset[Data],
-    step_size: float,
+    learning_rate: float,
     num_iterations: int,
 ) -> None:
-    """Check that zero step size or iteration count preserves particle values."""
+    """Check that zero learning rate or iteration count preserves particle values."""
     solver = GradientFlow(
         2,
         jr.key(0),
         SquaredExponentialKernel(),
-        step_size=step_size,
+        optimiser=optax.sgd(learning_rate),
         num_iterations=num_iterations,
         noise_scale=1.0,
     )
@@ -199,7 +234,9 @@ def test_small_steps_reduce_mmd(jit_variant: Callable[[Callable], Callable]) -> 
     target = Data(jnp.linspace(-1, 1, 20))
     initial = PseudoCoreset(Data(jnp.array([[2.0], [3.0]])), target)
     kernel = SquaredExponentialKernel()
-    solver = GradientFlow(2, jr.key(5), kernel, step_size=0.1, num_iterations=1)
+    solver = GradientFlow(
+        2, jr.key(5), kernel, optimiser=optax.sgd(0.1), num_iterations=1
+    )
     refine = jit_variant(solver.refine)
     result = initial
     losses = [float(MMD(kernel).compute(target, initial.points))]
@@ -237,9 +274,6 @@ def test_rejects_non_finite_coordinates(value: float) -> None:
 @pytest.mark.parametrize(
     ("name", "value"),
     [
-        ("step_size", -1.0),
-        ("step_size", float("inf")),
-        ("step_size", float("nan")),
         ("noise_scale", -1.0),
         ("noise_scale", float("inf")),
         ("num_iterations", -1),
@@ -257,6 +291,35 @@ def test_invalid_parameters(name: str, value: float) -> None:
     }
     with pytest.raises(ValueError, match=name):
         GradientFlow(**kwargs)
+
+
+def test_rejects_invalid_optimiser() -> None:
+    """The optimiser must be an instantiated Optax gradient transformation."""
+    kwargs: dict[str, Any] = {
+        "coreset_size": 1,
+        "random_key": jr.key(0),
+        "kernel": LinearKernel(),
+        "optimiser": None,
+    }
+    with pytest.raises(TypeError, match="optimiser"):
+        GradientFlow(**kwargs)
+
+
+@pytest.mark.parametrize("scheduled_scale", [-0.1, float("inf")])
+def test_rejects_invalid_noise_schedule_values(
+    jit_variant: Callable[[Callable], Callable], scheduled_scale: float
+) -> None:
+    """Noise schedules are validated at the optimisation step where they are used."""
+    solver = GradientFlow(
+        1,
+        jr.key(0),
+        LinearKernel(),
+        num_iterations=1,
+        noise_scale=optax.constant_schedule(scheduled_scale),
+    )
+    with pytest.raises(RuntimeError, match="Noise scale schedule"):
+        result, _ = jit_variant(solver.reduce)(Data(jnp.array([[0.0], [1.0]])))
+        result.points.data.block_until_ready()
 
 
 def test_invalid_shapes_and_supervision() -> None:
