@@ -22,6 +22,7 @@ evaluation of a neural network model using these datasets.
 
 from contextlib import nullcontext as does_not_warn
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -123,7 +124,7 @@ def test_train_and_evaluate() -> None:
     test_set = DataSet(features=test_data, labels=test_labels)
 
     rng = jr.PRNGKey(0)
-    model = MLP(2)
+    model, state = eqx.nn.make_with_state(MLP)(rng, 784, hidden_size=2)  # pylint: disable=assignment-from-no-return
 
     config = {
         "learning_rate": 0.001,
@@ -134,7 +135,7 @@ def test_train_and_evaluate() -> None:
         "min_delta": 0.01,
     }
 
-    result = train_and_evaluate(train_set, test_set, model, rng, config)
+    result = train_and_evaluate(train_set, test_set, model, state, rng, config)
 
     assert "final_test_loss" in result
     assert "final_test_accuracy" in result
