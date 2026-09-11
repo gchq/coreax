@@ -16,6 +16,7 @@
 
 import json
 import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -242,8 +243,17 @@ def plot_performance(
     plt.tight_layout()
 
 
-def main() -> None:
-    """Load benchmark results and visualise the algorithm performance."""
+def main(output_dir: Path | None = None) -> None:
+    """
+    Load benchmark results and visualise the algorithm performance.
+
+    :param output_dir: Image directory; defaults to the repository benchmark images.
+    """
+    output_dir = (
+        output_dir
+        or Path(__file__).resolve().parents[1] / "examples" / "benchmarking_images"
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_by_solver = load_benchmark_data(
         os.path.join(base_dir, "mnist_benchmark_results.json")
@@ -274,7 +284,7 @@ def main() -> None:
         "Algorithm Performance (Accuracy) for Different Coreset Sizes",
     )
     plt.savefig(
-        "../examples/benchmarking_images/mnist_benchmark_accuracy.png",
+        output_dir / "mnist_benchmark_accuracy.png",
         bbox_inches="tight",
     )
 
@@ -312,7 +322,7 @@ def main() -> None:
         fontsize=12,
     )
     plt.savefig(
-        "../examples/benchmarking_images/mnist_benchmark_time_taken.png",
+        output_dir / "mnist_benchmark_time_taken.png",
         bbox_inches="tight",
     )
 
