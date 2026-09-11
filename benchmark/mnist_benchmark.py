@@ -63,7 +63,7 @@ from coreax.util import KeyArrayLike
 # Convert PyTorch dataset to JAX arrays
 def convert_to_jax_arrays(
     pytorch_data: VisionDataset,
-) -> (tuple)[jnp.ndarray, jnp.ndarray]:
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Convert a PyTorch dataset to JAX arrays.
 
