@@ -21,6 +21,7 @@ functions for computing solver parameters and retrieving solver names.
 """
 
 from collections.abc import Callable
+from functools import cache
 from typing import TypeVar
 
 import jax
@@ -114,7 +115,7 @@ def calculate_delta(n: int) -> Float[Array, "1"]:
     return jnp.array(1 / n)
 
 
-def initialise_solvers(  # noqa: C901
+def initialise_solvers(
     train_data_umap: Data,
     key: KeyArrayLike,
     cpp_oversampling_factor: int,
@@ -147,6 +148,69 @@ def initialise_solvers(  # noqa: C901
     kernel = SquaredExponentialKernel(length_scale=length_scale)
     sqrt_kernel = kernel.get_sqrt_kernel(16)
 
+    @cache
+    def stein_kernel_factory() -> SteinKernel:
+        """Fit the fixed score model once per dataset, shared across coreset sizes."""
+        kde = jsp.stats.gaussian_kde(train_data_umap.data[idx].T)
+
+        # Define the score function as the gradient of log density given by the KDE
+        def score_function(
+            x: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int,
+        ) -> Shaped[Array, " n d"] | Shaped[Array, " 1 1"]:
+            """
+            Compute the score function (gradient of log density) for a single point.
+
+            :param x: Input point represented as array.
+            :return: Gradient of log probability density at the given point.
+            """
+
+            def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
+                return kde.logpdf(x.reshape(1, -1))[0]
+
+            return jax.grad(logpdf_single)(x)
+
+        return SteinKernel(
+            base_kernel=kernel,
+            score_function=score_function,
+        )
+
+    return build_solver_factories(
+        kernel,
+        stein_kernel_factory,
+        key,
+        sqrt_kernel=sqrt_kernel,
+        delta=calculate_delta(num_data_points).item(),
+        cpp_oversampling_factor=cpp_oversampling_factor,
+        leaf_size=leaf_size,
+    )
+
+
+def build_solver_factories(  # noqa: C901
+    kernel: SquaredExponentialKernel,
+    stein_kernel_factory: Callable[[], SteinKernel],
+    key: KeyArrayLike,
+    *,
+    sqrt_kernel: SquaredExponentialKernel,
+    delta: float,
+    cpp_oversampling_factor: int,
+    leaf_size: int | None = None,
+) -> dict[str, Callable[[int], Solver]]:
+    """
+    Construct the shared benchmark solver registry from explicit kernel settings.
+
+    Keep dataset calibration separate so each benchmark retains its sampling,
+    dimensionality and random-state settings. The score kernel is requested lazily.
+
+    :param kernel: Base kernel for the benchmark.
+    :param stein_kernel_factory: Factory for the calibrated Stein kernel.
+    :param key: Random key used by stochastic solvers.
+    :param sqrt_kernel: Dimension-specific square-root kernel for thinning.
+    :param delta: Failure-probability parameter for thinning and compression.
+    :param cpp_oversampling_factor: Oversampling factor for Compress++.
+    :param leaf_size: Optional MapReduce leaf size for supported solvers.
+    :return: Existing display names mapped to factories accepting a coreset size.
+    """
+
     def _get_thinning_solver(_size: int) -> KernelThinning | MapReduce:
         """
         Set up kernel thinning solver.
@@ -162,7 +226,7 @@ def initialise_solvers(  # noqa: C901
             coreset_size=_size,
             kernel=kernel,
             random_key=key,
-            delta=calculate_delta(num_data_points).item(),
+            delta=delta,
             sqrt_kernel=sqrt_kernel,
         )
         if leaf_size is None:
@@ -196,28 +260,7 @@ def initialise_solvers(  # noqa: C901
         :return: A `SteinThinning` solver if `leaf_size` is `None`, otherwise a
              `MapReduce` solver with `SteinThinning` as the base solver.
         """
-        kde = jsp.stats.gaussian_kde(train_data_umap.data[idx].T)
-
-        # Define the score function as the gradient of log density given by the KDE
-        def score_function(
-            x: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int,
-        ) -> Shaped[Array, " n d"] | Shaped[Array, " 1 1"]:
-            """
-            Compute the score function (gradient of log density) for a single point.
-
-            :param x: Input point represented as array.
-            :return: Gradient of log probability density at the given point.
-            """
-
-            def logpdf_single(x: Shaped[Array, " d"]) -> Shaped[Array, ""]:
-                return kde.logpdf(x.reshape(1, -1))[0]
-
-            return jax.grad(logpdf_single)(x)
-
-        stein_kernel = SteinKernel(
-            base_kernel=kernel,
-            score_function=score_function,
-        )
+        stein_kernel = stein_kernel_factory()
         stein_solver = SteinThinning(
             coreset_size=_size, kernel=stein_kernel, regularise=True
         )
@@ -256,7 +299,7 @@ def initialise_solvers(  # noqa: C901
             coreset_size=_size,
             kernel=kernel,
             random_key=key,
-            delta=calculate_delta(num_data_points).item(),
+            delta=delta,
             sqrt_kernel=sqrt_kernel,
             g=cpp_oversampling_factor,
         )
