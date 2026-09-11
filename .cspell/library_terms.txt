@@ -62,6 +62,7 @@ jaxlib
 jaxopt
 jaxtyped
 jaxtyping
+JKIP
 JMMD
 jumanjihouse
 keepends
@@ -158,6 +159,7 @@ vars
 viewcode
 vmap
 vmaps
+widetilde
 worksteal
 writebytes
 xlabel

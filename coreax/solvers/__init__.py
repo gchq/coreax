@@ -34,6 +34,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.inducing_points import JointKernelInducingPoints
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -61,4 +62,5 @@ __all__ = [
     "CaratheodoryRecombination",
     "TreeRecombination",
     "CompressPlusPlus",
+    "JointKernelInducingPoints",
 ]
