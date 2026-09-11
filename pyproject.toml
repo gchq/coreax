@@ -33,7 +33,6 @@ dependencies = [
     "equinox>=0.11.11",
     "flax>=0.10.0",
     "jax>=0.4.38",
-    "jaxopt>=0.8.4",
     "jaxtyping>=0.2.31",
     "optax>=0.1.5",
     "scikit-learn>=1.5.0",
@@ -175,7 +174,6 @@ minversion = "9.0"
 filterwarnings = [
     "error",
     "ignore::ImportWarning:umap",
-    "ignore::DeprecationWarning:jaxopt",
 ]
 
 [tool.ruff]
