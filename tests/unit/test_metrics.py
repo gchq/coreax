@@ -214,6 +214,76 @@ class TestMMD:
             expected, abs=1e-6
         )
 
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_mmd_translation_invariance(
+        self, problem: _MetricProblem, weighted: bool
+    ) -> None:
+        """Check MMD is unchanged by a common translation of both datasets."""
+        reference_data, comparison_data = problem
+        if not weighted:
+            reference_data = Data(reference_data.data)
+            comparison_data = Data(comparison_data.data)
+
+        metric = MMD(SquaredExponentialKernel())
+        expected = metric.compute(reference_data, comparison_data)
+        translation = jnp.arange(reference_data.data.shape[1])
+        translated_reference = Data(
+            reference_data.data + translation, reference_data.weights
+        )
+        translated_comparison = Data(
+            comparison_data.data + translation, comparison_data.weights
+        )
+
+        assert metric.compute(
+            translated_reference, translated_comparison
+        ) == pytest.approx(expected, abs=1e-6)
+
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_mmd_rotation_invariance(
+        self, problem: _MetricProblem, weighted: bool
+    ) -> None:
+        """Check MMD is unchanged by an orthogonal rotation for a 2-norm kernel."""
+        reference_data, comparison_data = problem
+        if not weighted:
+            reference_data = Data(reference_data.data)
+            comparison_data = Data(comparison_data.data)
+
+        metric = MMD(SquaredExponentialKernel())
+        expected = metric.compute(reference_data, comparison_data)
+        rotation = jnp.eye(reference_data.data.shape[1])
+        rotation = rotation.at[:2, :2].set(jnp.array([[0.0, -1.0], [1.0, 0.0]]))
+        rotated_reference = Data(reference_data.data @ rotation, reference_data.weights)
+        rotated_comparison = Data(
+            comparison_data.data @ rotation, comparison_data.weights
+        )
+
+        assert metric.compute(rotated_reference, rotated_comparison) == pytest.approx(
+            expected, abs=1e-6
+        )
+
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_mmd_scale_length_scale_invariance(
+        self, problem: _MetricProblem, weighted: bool
+    ) -> None:
+        """Check joint scaling of data and kernel length scale preserves MMD."""
+        reference_data, comparison_data = problem
+        if not weighted:
+            reference_data = Data(reference_data.data)
+            comparison_data = Data(comparison_data.data)
+
+        length_scale = 0.75
+        scale = 3.0
+        expected = MMD(SquaredExponentialKernel(length_scale=length_scale)).compute(
+            reference_data, comparison_data
+        )
+        scaled_reference = Data(reference_data.data * scale, reference_data.weights)
+        scaled_comparison = Data(comparison_data.data * scale, comparison_data.weights)
+        scaled_metric = MMD(SquaredExponentialKernel(length_scale=length_scale * scale))
+
+        assert scaled_metric.compute(
+            scaled_reference, scaled_comparison
+        ) == pytest.approx(expected, abs=1e-6)
+
 
 class TestKSD:
     """
