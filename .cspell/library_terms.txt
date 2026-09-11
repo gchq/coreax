@@ -33,6 +33,7 @@ dtype
 dtypes
 dunder
 eigh
+eigvalsh
 emibcn
 eprint
 errstate
@@ -77,6 +78,7 @@ mathbf
 mathcal
 mathrm
 matplotlib
+maxiter
 maxval
 meshgrid
 mimread

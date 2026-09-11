@@ -24,7 +24,6 @@ import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any, TypeVar
-from unittest import mock
 
 import sphinx.config
 import sphobjinv
@@ -48,9 +47,6 @@ sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER
 
 
 # pylint: disable=wrong-import-position
-for module_name in ("jaxopt",):
-    # only needed to import coreax, not actually used on import
-    sys.modules[module_name] = mock.Mock()
 from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
 
 import coreax  # Cannot import until after package has been added to path
@@ -147,7 +143,6 @@ if RUNNING_IN_GITHUB_ACTIONS:
 intersphinx_mapping = {  # linking to external documentation
     "python": ("https://docs.python.org/3", None),
     "jax": ("https://docs.jax.dev/en/latest", None),
-    "jaxopt": ("https://jaxopt.github.io/stable", None),
     "jaxtyping": ("https://docs.kidger.site/jaxtyping", None),
     "flax": ("https://flax-linen.readthedocs.io/en/latest", None),
     "optax": ("https://optax.readthedocs.io/en/latest", None),
