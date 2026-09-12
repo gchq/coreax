@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+ - UTF-8 pre-commit hook reports accurate line numbers for invalid byte sequences.
+   (https://github.com/gchq/coreax/issues/1251)
  - `KernelThinning.kt_half_recursive` now returns the correct partitions. (https://github.com/gchq/coreax/pull/1088)
 
 ### Changed
