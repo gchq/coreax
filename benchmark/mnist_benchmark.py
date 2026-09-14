@@ -209,7 +209,7 @@ def train_step(
         model, state, batch_data, batch_labels, key
     )
     updates, opt_state = optimiser.update(
-        grads, opt_state, eqx.filter(model, eqx.is_array)
+        grads, opt_state, eqx.filter(model, eqx.is_inexact_array)
     )
     model = eqx.apply_updates(model, updates)
     return model, state, opt_state, logits
@@ -588,9 +588,9 @@ def main() -> None:
                 # pylint: enable=duplicate-code
                 coreset, _ = eqx.filter_jit(solver.reduce)(train_data_umap)
 
-                coreset_indices = coreset.indices.data
+                coreset_indices = coreset.unweighted_indices
 
-                train_data_coreset = train_data_jax[coreset_indices][:, 0, :]
+                train_data_coreset = train_data_jax[coreset_indices]
                 train_targets_coreset = train_targets_jax[coreset_indices]
 
                 # Adjust batch size based on size
