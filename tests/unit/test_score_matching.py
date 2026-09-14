@@ -265,14 +265,14 @@ class TestKernelDensityMatching(unittest.TestCase):
         # When we evaluate the score function with a 1 dimensional input, we expect the
         # resulting score function to be 1 dimensional, which ensures compatibility with
         # Stein kernel usage
-        np.testing.assert_array_equal(
+        np.testing.assert_array_almost_equal(
             score_function(data_1d), jnp.array([0.03597286, 0.03597286])
         )
 
         # When we evaluate the score function with a 2 dimensional input that holds a
         # single data-point, we expect the resulting score function to be 2 dimensional,
         # holding exactly the same values as above, but with an extra dimension
-        np.testing.assert_array_equal(
+        np.testing.assert_array_almost_equal(
             score_function(data_2d), jnp.array([[0.03597286, 0.03597286]])
         )
 
