@@ -69,7 +69,7 @@ class RegularisedLeastSquaresSolver(eqx.Module):
     r"""
     Base class for solving regularised linear matrix equations via least-squares.
 
-    Given an array :math:`A \in \mathbb{R}^{n \times n}`, a regularisation parameter
+    Given an array :math:`A \in \mathbb{C}^{n \times n}`, a regularisation parameter
     :math:`\lambda \in \mathbb{R}_{\ge 0}`, and an array of targets
     :math:`B \in \mathbb{R}^{n \times m}` the least-squares solution to the regularised
     linear equation :math:`(A + \lambda I_n)B = X` has solution
@@ -170,7 +170,7 @@ def _gaussian_range_finder(
     Produce an orthonormal matrix whose range captures the action of an input ``array``.
 
     :param random_key: Key for random number generation
-    :param array: Array :math:`A \in \mathbb{R}^{n \times n}` to be decomposed
+    :param array: Array :math:`A \in \mathbb{C}^{n \times n}` to be decomposed
     :param oversampling_parameter: Number of random columns to sample; the larger the
         oversampling_parameter, the more accurate, but slower the method will be
     :param power_iterations: Number of power iterations to do; the larger the
@@ -195,7 +195,7 @@ def _gaussian_range_finder(
 
     # Power iterations for improved accuracy
     for _ in range(power_iterations):
-        approximate_range_ = array.T @ q
+        approximate_range_ = jnp.conjugate(array).T @ q
         q_, _ = jnp.linalg.qr(approximate_range_)
         approximate_range = array @ q_
         q, _ = jnp.linalg.qr(approximate_range)
@@ -203,12 +203,12 @@ def _gaussian_range_finder(
 
 
 def _eigendecomposition_invert(
-    eigenvalues: Shaped[Array, " n r"],
-    eigenvectors: Shaped[Array, " r"],
+    eigenvalues: Shaped[Array, " r"],
+    eigenvectors: Shaped[Array, " n r"],
     rcond: float,
 ) -> Shaped[Array, " n n"]:
     r"""
-    Given an array's rank-:math:`r` eigendecomposition, return the inverse of the array.
+    Return a Hermitian pseudo-inverse from a rank-:math:`r` eigendecomposition.
 
     .. warning::
         We assume the order of the ``eigenvalues`` and ``eigenvectors`` correspond, i.e.
@@ -217,19 +217,21 @@ def _eigendecomposition_invert(
 
     :param eigenvalues: Vector of :math:`r` eigenvalues
     :param eigenvectors: :math:`n \times r` array of eigenvectors
-    :param rcond: Cut-off ratio for small eigenvalues
+    :param rcond: Cut-off ratio relative to the largest eigenvalue magnitude;
+        eigenvalues at or below the cut-off are discarded
     :return: Approximate inverse of array using its eigendecomposition
     """
     # Mask the eigenvalues that are zero or almost zero according to value of rcond
     # for safe inversion.
-    mask = eigenvalues >= jnp.array(rcond) * jnp.max(eigenvalues)
+    magnitudes = jnp.abs(eigenvalues)
+    mask = magnitudes > jnp.asarray(rcond) * jnp.max(magnitudes)
     safe_eigenvalues = jnp.where(mask, eigenvalues, 1)
 
     # Invert the eigenvalues safely and extend array for broadcasting
     inverse_eigenvalues = jnp.where(mask, 1 / safe_eigenvalues, 0)[:, jnp.newaxis]
 
-    # Solve Ax = I, x = A^-1 = UL^-1U^T
-    return eigenvectors.dot(inverse_eigenvalues * eigenvectors.T)
+    # Solve Ax = I, x = A^-1 = UL^-1U^H
+    return eigenvectors.dot(inverse_eigenvalues * jnp.conjugate(eigenvectors).T)
 
 
 class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
@@ -296,11 +298,11 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         See :cite:`halko2009randomness` for discussion on choosing sensible parameters,
         the defaults chosen here are cautious.
 
-        Given the matrix :math:`A \in \mathbb{R}^{n\times n}` and
+        Given the matrix :math:`A \in \mathbb{C}^{n\times n}` and
         :math:`r=` ``oversampling_parameter``, we return a diagonal array of eigenvalues
         :math:`\Lambda \in \mathbb{R}^{r \times r}` and a rectangular array of
-        eigenvectors :math:`U\in\mathbb{R}^{n\times r}` such that we have
-        :math:`A \approx U\Lambda U^T`.
+        eigenvectors :math:`U\in\mathbb{C}^{n\times r}` such that we have
+        :math:`A \approx U\Lambda U^H`.
 
         :param array: Array to be decomposed
         :return: Eigenvalues and eigenvectors that approximately decompose the ``array``
@@ -314,7 +316,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
         )
         # Form the low rank array, compute its exact eigendecomposition and
         # ortho-normalise the eigenvectors.
-        array_approximation = q.T @ array @ q
+        array_approximation = jnp.conjugate(q).T @ array @ q
         approximate_eigenvalues, eigenvectors = jnp.linalg.eigh(array_approximation)
         approximate_eigenvectors = q @ eigenvectors
         return approximate_eigenvalues, approximate_eigenvectors
@@ -344,7 +346,7 @@ class RandomisedEigendecompositionSolver(RegularisedLeastSquaresSolver):
             )
         )
 
-        # Solve AX = B, X = A^-1B = UL^-1U^TB
+        # Solve AX = B, X = A^-1B = UL^-1U^HB
         return _eigendecomposition_invert(
             approximate_eigenvalues, approximate_eigenvectors, rcond
         ).dot(target)
