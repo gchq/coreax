@@ -96,6 +96,8 @@ class RegularisedLeastSquaresSolver(eqx.Module):
         :return: Approximation of the regularised least-squares solution :math:`X`
         """
 
+    # Keep the established public solver signature.
+    # pylint: disable-next=too-many-positional-arguments
     def solve_stack(
         self,
         arrays: Shaped[Array, " l n n"],

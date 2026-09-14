@@ -635,6 +635,8 @@ class LocallyPeriodicKernel(ProductKernel):
         constant
     """
 
+    # Keep the established public constructor signature.
+    # pylint: disable-next=too-many-positional-arguments
     def __init__(
         self,
         periodic_length_scale: float = 1.0,

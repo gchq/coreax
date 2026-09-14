@@ -295,7 +295,8 @@ ignored-parents=
 # Maximum number of arguments for function / method.
 max-args=10
 
-# Limit long call signatures; pass solver options explicitly by keyword.
+# Keep positional call sites small by default. Internal helper exceptions are
+# documented at the function definitions where required.
 max-positional-arguments=5
 
 # Maximum number of attributes for a class (see R0902).
