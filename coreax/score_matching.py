@@ -128,7 +128,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
     :param batch_size: Size of mini-batch. Defaults to 64.
-    :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
+    :param hidden_dims: Sequence of score network hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
     :param optimiser: An instance of an :class:`optax.GradientTransformation`. Defaults
         to 'optax.adamw(1e-3)'.
@@ -280,7 +280,7 @@ class SlicedScoreMatching(ScoreMatching):
 
                 def noise_conditioned_loss(i, loss):
                     sigma = self.sigma * self.gamma**i
-                    x_perturbed = x + sigma * jr.normal(jr.key(0), x.shape)
+                    x_perturbed = x + sigma * jr.normal(jr.key(i), x.shape)
                     return loss + sigma**2 * standard_loss(score_network, x_perturbed)
 
                 return jax.lax.fori_loop(
