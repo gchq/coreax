@@ -41,7 +41,6 @@ Based on jumanjihouse/pre-commit-hooks require-ascii hook. Original copyright:
     THE SOFTWARE.
 """
 
-import itertools
 import sys
 
 
@@ -50,17 +49,13 @@ def main() -> None:
     failed = False
 
     for file_path in sys.argv[1:]:
-        with open(file_path, encoding="UTF-8") as rf:
-            for line_number in itertools.count(start=1):
+        with open(file_path, "rb") as rf:
+            for line_number, line in enumerate(rf, start=1):
                 try:
-                    line = rf.readline()
+                    line.decode("UTF-8")
                 except UnicodeDecodeError as error:
-                    line = ""  # avoid being unbound
                     print(f"{file_path}: line {line_number} {error!s}")
                     failed = True
-
-                if not line:
-                    break
 
     sys.exit(failed)
 
