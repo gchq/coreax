@@ -281,7 +281,7 @@ class TestRandomisedEigendecompositionSolver(
         matrix = jnp.diag(eigenvalues)
         identity = jnp.eye(len(eigenvalues))
         solver = RandomisedEigendecompositionSolver(
-            jr.key(5), oversampling_parameter=len(eigenvalues), rcond=0.0625
+            jr.key(5), oversampling_parameter=len(eigenvalues), rcond=0.1
         )
         actual = jit_variant(solver.solve)(matrix, 0.0, identity, identity)
         expected = np.diag([-0.125, -0.5, 0.0, 0.0, 0.0, 1.0])
