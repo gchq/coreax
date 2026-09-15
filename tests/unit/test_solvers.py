@@ -3465,16 +3465,27 @@ class TestGradientFlow(ExplicitSizeSolverTest):
         )
 
     @override
+    @pytest.mark.parametrize(
+        "use_cached_state", (False, True), ids=["not_cached", "cached"]
+    )
     def test_reduce(
         self,
         jit_variant: Callable[[Callable], Callable],
         reduce_problem: _ReduceProblem,
+        use_cached_state: bool,
+        **kwargs: Any,
     ) -> None:
-        """Check reduction and the continuing gradient-flow state."""
+        """Check reduction and continuation with gradient-flow state."""
+        del kwargs
         dataset, solver, _ = reduce_problem
-        coreset, state = jit_variant(solver.reduce)(dataset)
+        _reduce = jit_variant(solver.reduce)
+        coreset, state = _reduce(dataset)
         assert isinstance(state, GradientFlowState)
         self.check_solution_invariants(coreset, reduce_problem)
+        if use_cached_state:
+            continued_coreset, continued_state = _reduce(dataset, state)
+            assert isinstance(continued_state, GradientFlowState)
+            self.check_solution_invariants(continued_coreset, reduce_problem)
 
     @pytest.fixture
     def initial_coreset(self) -> PseudoCoreset[Data]:
