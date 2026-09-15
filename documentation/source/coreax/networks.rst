@@ -1,4 +1,0 @@
-Networks
-========
-
-.. automodule:: coreax.networks
