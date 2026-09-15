@@ -190,6 +190,8 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
     @pytest.mark.parametrize("mode", ["grad_x", "grad_y", "divergence_x_grad_y"])
     @pytest.mark.parametrize("elementwise", [False, True])
     @pytest.mark.parametrize("auto_diff", [False, True])
+    # Pytest injects fixtures and parametrized arguments positionally.
+    # pylint: disable-next=too-many-positional-arguments
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],

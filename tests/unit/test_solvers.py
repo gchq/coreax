@@ -2639,6 +2639,8 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         ),
         ids=("standalone", "integration[0]", "integration[1]", "padding"),
     )
+    # Pytest injects parametrized arguments positionally.
+    # pylint: disable-next=too-many-positional-arguments
     def test_analytic_greedy_kernel_points_loss(
         self,
         candidate_coresets: jax.Array,
