@@ -122,6 +122,7 @@ class HerdingState(eqx.Module):
     gramian_row_mean: Array
 
 
+# pylint: disable-next=too-many-positional-arguments
 def _greedy_kernel_selection(
     coresubset: Coresubset[_Data],
     selection_function: Callable[[int, Shaped[Array, " n"], Scalar], Scalar],
@@ -696,6 +697,7 @@ class GreedyKernelPointsState(eqx.Module):
 # Overload for the case where we want to construct both the identity array and the
 # loss_batch_indices array.
 @overload
+# pylint: disable-next=too-many-positional-arguments
 def _setup_batch_solver(  # pragma: no cover # pyright: ignore reportOverlappingOverload
     coreset_size: int,
     coresubset: Coresubset,
@@ -711,6 +713,7 @@ def _setup_batch_solver(  # pragma: no cover # pyright: ignore reportOverlapping
 # Overload for the case where we want to construct neither the identity array or the
 # loss_batch_indices array.
 @overload
+# pylint: disable-next=too-many-positional-arguments
 def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
@@ -726,6 +729,7 @@ def _setup_batch_solver(  # pragma: no cover
 # Overload for the case where we want to construct just the identity array and not the
 # loss_batch_indices array.
 @overload
+# pylint: disable-next=too-many-positional-arguments
 def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
@@ -741,6 +745,7 @@ def _setup_batch_solver(  # pragma: no cover
 # Overload for the case where we do not want to construct the identity array but we do
 # the loss_batch_indices array.
 @overload
+# pylint: disable-next=too-many-positional-arguments
 def _setup_batch_solver(  # pragma: no cover
     coreset_size: int,
     coresubset: Coresubset,
@@ -753,6 +758,7 @@ def _setup_batch_solver(  # pragma: no cover
 ) -> tuple[Array, Array, Array, Array, None]: ...
 
 
+# pylint: disable-next=too-many-positional-arguments
 def _setup_batch_solver(
     coreset_size: int,
     coresubset: Coresubset,
@@ -963,6 +969,7 @@ def _setup_batch_solver(
     )
 
 
+# pylint: disable-next=too-many-positional-arguments
 def _update_candidate_coresets_and_coreset_indices(
     i: int,
     unique: bool,
@@ -1029,6 +1036,7 @@ def _update_candidate_coresets_and_coreset_indices(
     return updated_candidate_coresets, updated_coreset_indices
 
 
+# pylint: disable-next=too-many-positional-arguments
 def _greedy_kernel_points_loss(
     candidate_coresets: Shaped[Array, " batch_size coreset_size"],
     responses: Shaped[Array, " n+1 1"],
@@ -1480,6 +1488,7 @@ class KernelThinning(CoresubsetSolver[_Data, None], ExplicitSizeSolver):
 
             return a, new_sigma
 
+        # pylint: disable-next=too-many-positional-arguments
         def get_alpha(
             x1: Float[Array, "1 d"],
             x2: Float[Array, "1 d"],
