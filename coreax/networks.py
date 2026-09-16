@@ -18,6 +18,7 @@ Classes and associated functionality to define neural networks.
 Neural networks are used throughout the codebase as functional approximators.
 """
 
+import warnings
 from collections.abc import Callable, Sequence
 
 import jax.numpy as jnp
@@ -28,6 +29,12 @@ from flax.training import train_state
 from jaxtyping import Array, Shaped
 
 from coreax.util import KeyArrayLike
+
+warnings.warn(
+    "The 'coreax.networks' module is deprecated and will be removed in version 1.2.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 _LearningRateOptimiser = Callable[[float], optax.GradientTransformation]
 

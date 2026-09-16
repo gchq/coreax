@@ -31,7 +31,6 @@ neural network, whereas in :class:`KernelDensityMatching`, it is approximated by
 and then differentiating a kernel density estimate to the data.
 """
 
-import functools as ft
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from typing import overload
@@ -42,16 +41,19 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import optax
-from flax.training import train_state
 from jaxtyping import Array, DTypeLike, Float, Shaped
 from tqdm import tqdm
 from typing_extensions import override
 
-from coreax.kernels import ScalarValuedKernel, SquaredExponentialKernel, SteinKernel
-from coreax.networks import ScoreNetwork, _LearningRateOptimiser, create_train_state
+from coreax.kernels import (
+    ScalarValuedKernel,
+    SquaredExponentialKernel,
+    SteinKernel,
+)
 from coreax.util import KeyArrayLike
 
 _RandomGenerator = Callable[[KeyArrayLike, Sequence[int], DTypeLike], Array]
+_LearningRateOptimiser = Callable[[float], optax.GradientTransformation]
 
 
 class ScoreMatching(eqx.Module):
@@ -126,7 +128,7 @@ class SlicedScoreMatching(ScoreMatching):
     :param learning_rate: Optimiser learning rate. Defaults to 1e-3.
     :param num_epochs: Number of epochs for training. Defaults to 10.
     :param batch_size: Size of mini-batch. Defaults to 64.
-    :param hidden_dims: Sequence of ScoreNetwork hidden layer sizes. Defaults to
+    :param hidden_dims: Sequence of score network hidden layer sizes. Defaults to
         [128, 128, 128] denoting 3 hidden layers each composed of 128 nodes.
     :param optimiser: An instance of an :class:`optax.GradientTransformation`. Defaults
         to 'optax.adamw(1e-3)'.
@@ -168,7 +170,9 @@ class SlicedScoreMatching(ScoreMatching):
         num_epochs: int = 10,
         batch_size: int = 64,
         hidden_dims: Sequence[int] = (128, 128, 128),
-        optimiser: _LearningRateOptimiser | optax.GradientTransformation | None = None,
+        optimiser: (
+            _LearningRateOptimiser | optax.GradientTransformation | None
+        ) = None,
         num_noise_models: int = 100,
         sigma: float = 1.0,
         gamma: float = 0.95,
@@ -249,92 +253,115 @@ class SlicedScoreMatching(ScoreMatching):
     @eqx.filter_jit
     def _train_step(
         self,
-        state: train_state.TrainState,
+        score_network: eqx.nn.Sequential,
+        optimiser: optax.GradientTransformation,
+        opt_state: optax.OptState,
         x: Shaped[Array, " n d"],
         random_vectors: Shaped[Array, " n m d"],
-    ) -> tuple[train_state.TrainState, Float[Array, ""]]:
+    ) -> tuple[eqx.nn.Sequential, optax.OptState, Float[Array, ""]]:
         r"""
-        Apply a single training step that updates model parameters using loss gradient.
+        Apply a single training step on the score network weights via gradient descent.
 
-        :param state: The :class:`~flax.training.train_state.TrainState` object
-        :param x: The :math:`n \times d` data vectors
-        :param random_vectors: The :math:`n \times m \times d` random vectors
-        :return: The updated :class:`~flax.training.train_state.TrainState` object
+        :param score_network: The current model.
+        :param optimiser: The optimiser.
+        :param opt_state: The current state of the optimiser.
+        :param x: The :math:`n \times d` data vectors.
+        :param random_vectors: The :math:`n \times m \times d` random vectors.
+        :return: The updated model, optimiser state, and loss value
         """
 
-        def standard_loss(model_params, _x):
-            model = ft.partial(state.apply_fn, {"params": model_params})
-            model_conditioned_loss = self._loss(model)
-            return model_conditioned_loss(_x, random_vectors).mean()
+        def standard_loss(score_network: eqx.nn.Sequential, _x: Float[Array, "n d"]):
+            """Evaluate loss and compute mean."""
+            return self._loss(score_network)(_x, random_vectors).mean()
 
-        def loss(model_params, _x):
+        def loss(score_network: eqx.nn.Sequential, _x: Float[Array, "n d"]):
+            """Handle case where we condition the loss."""
             if self.noise_conditioning:
 
                 def noise_conditioned_loss(i, loss):
                     sigma = self.sigma * self.gamma**i
-                    x_perturbed = x + sigma * jr.normal(jr.key(0), x.shape)
-                    return loss + sigma**2 * standard_loss(model_params, x_perturbed)
+                    x_perturbed = x + sigma * jr.normal(jr.key(i), x.shape)
+                    return loss + sigma**2 * standard_loss(score_network, x_perturbed)
 
                 return jax.lax.fori_loop(
                     0, self.num_noise_models, noise_conditioned_loss, 0.0
                 )
-            return standard_loss(model_params, _x)
+            return standard_loss(score_network, _x)
 
-        val, grads = eqx.filter_value_and_grad(loss)(state.params, x)
-        updated_state = state.apply_gradients(grads=grads)
-        return updated_state, val
+        val, grads = eqx.filter_value_and_grad(loss)(score_network, x)
+        updates, opt_state = optimiser.update(
+            grads, opt_state, eqx.filter(score_network, eqx.is_array)
+        )
+        score_network = eqx.apply_updates(score_network, updates)
+        return score_network, opt_state, val
 
     @override
     def match(self, x):
         r"""
         Learn a sliced score matching function via :cite:`song2020ssm`.
 
-        We currently use the :class:`~coreax.networks.ScoreNetwork` neural network to
-        approximate the score function. Alternative network architectures can be
+        We currently use a neural network built with :class:`equinox.nn.Sequential`
+        to approximate the score function. Alternative network architectures can be
         considered.
 
         :param x: The :math:`n \times d` data vectors
         :return: A function that applies the learned score function to input ``x``
         """
-        # Check format of input array. We use atleast_2d from JAX to perform
-        # conversions here which provides the desired handling of 1 dimensional arrays,
-        # whereas this handling differs if we instead used the custom function
-        # _atleast_2d_consistent in coreax.data.
+        # Ensure n x d is 1 x n if d = 1
         x = jnp.atleast_2d(x)
-        generator_key, state_key, batch_key = jr.split(self.random_key, 3)
+        generator_key, net_key, batch_key = jr.split(self.random_key, 3)
 
         # Setup neural network that will approximate the score function
-        num_points, data_dimension = x.shape
-        score_network = ScoreNetwork(self.hidden_dims, data_dimension)
+        dims = [x.shape[1], *self.hidden_dims, x.shape[1]]
+        keys = jr.split(net_key, len(dims) - 1)
+        layers = []
+        for i, (d_in, d_out) in enumerate(zip(dims[:-1], dims[1:], strict=True)):
+            layers.append(eqx.nn.Linear(d_in, d_out, key=keys[i]))
+            if i < len(dims) - 2:
+                layers.append(eqx.nn.Lambda(jax.nn.softplus))
+        score_network = eqx.nn.Sequential(layers)
 
         # Define random projection vectors
-        generator_key, state_key, batch_key = jr.split(self.random_key, 3)
         random_vectors = self.random_generator(
             generator_key,
-            (num_points, self.num_random_vectors, data_dimension),
+            (x.shape[0], self.num_random_vectors, x.shape[1]),
             float,
         )
 
-        # Define a training state
-        state = create_train_state(
-            state_key, score_network, self.learning_rate, data_dimension, self.optimiser
-        )
+        # Define the optimiser state
+        opt_state = self.optimiser.init(eqx.filter(score_network, eqx.is_array))
         loop_keys = jr.split(batch_key, self.num_epochs)
 
         # Carry out main training loop to fit the neural network
         tqdm_progress_bar = tqdm(range(self.num_epochs), disable=not self.progress_bar)
         for i in tqdm_progress_bar:
             # Sample some data-points to pass for this step
-            idx = jr.randint(loop_keys[i], (self.batch_size,), 0, num_points)
-            # Apply training step
-            state, val = self._train_step(state, x[idx, :], random_vectors[idx, :])
+            idx = jr.randint(loop_keys[i], (self.batch_size,), 0, x.shape[0])
+            score_network, opt_state, val = self._train_step(
+                score_network,
+                self.optimiser,
+                opt_state,
+                x[idx, :],
+                random_vectors[idx, :],
+            )
 
             # Print progress (limited to avoid excessive output)
             if i % 10 == 0 and self.progress_bar:
                 tqdm_progress_bar.write(f"{i:>6}/{self.num_epochs}: loss {val:<.5f}")
 
         # Return the learned score function, which is a callable
-        return lambda x_: state.apply_fn({"params": state.params}, x_)
+        batched_network = jax.vmap(score_network)
+
+        def score_function(
+            x_: Shaped[Array, " n d"] | Shaped[Array, ""] | float | int,
+        ) -> Shaped[Array, " n d"] | Shaped[Array, " 1 1"]:
+            original_ndim = jnp.asarray(x_).ndim
+            result = batched_network(jnp.atleast_2d(x_))
+            if original_ndim < 2:  # noqa: PLR2004
+                return result[0]
+            return result
+
+        return score_function
 
 
 # pylint: enable=too-many-instance-attributes
