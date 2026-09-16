@@ -52,6 +52,7 @@ imwrite
 inproceedings
 intercal
 intersphinx
+iscomplexobj
 isin
 isort
 issubdtype
@@ -68,6 +69,7 @@ keepends
 leggauss
 linalg
 linkcheck
+linspace
 literalinclude
 llvmlite
 logpdf
