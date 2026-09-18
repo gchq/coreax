@@ -14,6 +14,7 @@
 
 """Solvers for generating coresets."""
 
+from coreax.kernels.anisotropic import AnisotropicKernel
 from coreax.kernels.base import (
     AdditiveKernel,
     DuoCompositeKernel,
@@ -41,6 +42,7 @@ from coreax.kernels.util import median_heuristic
 __all__ = [
     "median_heuristic",
     "ScalarValuedKernel",
+    "AnisotropicKernel",
     "UniCompositeKernel",
     "PowerKernel",
     "DuoCompositeKernel",
