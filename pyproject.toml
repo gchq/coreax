@@ -31,6 +31,7 @@ dependencies = [
     # resolution mode of uv on the latest supported version of Python - the bounds
     # are only sharp for the latest supported Python version.
     "equinox>=0.13.0",
+    "flax>=0.10.0",
     "jax>=0.4.38",
     "jaxopt>=0.8.4",
     "jaxtyping>=0.2.31",
