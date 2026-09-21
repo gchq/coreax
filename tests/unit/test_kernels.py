@@ -149,7 +149,9 @@ class KernelMeanTest(Generic[_ScalarValuedKernel]):
         np.testing.assert_allclose(mean_output, expected, atol=1e-4, rtol=1e-6)
 
     def test_gramian_row_mean(
-        self, jit_variant: Callable[[Callable], Callable], kernel: ScalarValuedKernel
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: ScalarValuedKernel,
     ) -> None:
         """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
         bs = None
@@ -191,7 +193,6 @@ class KernelGradientTest(ABC, Generic[_ScalarValuedKernel]):
     @pytest.mark.parametrize("elementwise", [False, True])
     @pytest.mark.parametrize("auto_diff", [False, True])
     # Pytest injects fixtures and parametrized arguments positionally.
-    # pylint: disable-next=too-many-positional-arguments
     def test_gradients(
         self,
         gradient_problem: tuple[Array, Array],
@@ -271,9 +272,7 @@ class TestKernelMagicMethods:
             "invalid_kernel_inputs",
         ],
     )
-    def test_magic_methods(  # noqa: C901
-        self, mode: str
-    ):
+    def test_magic_methods(self, mode: str):  # noqa: C901
         """Test kernel magic methods produce correct paired Kernels."""
         kernel = LinearKernel()
         if mode == "add_int":
@@ -823,7 +822,9 @@ class TestLinearKernel(
         else:
             raise ValueError("Invalid problem mode")
         modified_kernel = eqx.tree_at(
-            lambda x: x.output_scale, eqx.tree_at(lambda x: x.constant, kernel, 0), 1.0
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.constant, kernel, 0),
+            1.0,
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
@@ -936,7 +937,9 @@ class TestPoissonKernel(
         else:
             raise ValueError("Invalid problem mode")
         modified_kernel = eqx.tree_at(
-            lambda x: x.output_scale, eqx.tree_at(lambda x: x.index, kernel, 0.5), 1.0
+            lambda x: x.output_scale,
+            eqx.tree_at(lambda x: x.index, kernel, 0.5),
+            1.0,
         )
         return _Problem(x, y, expected_distances, modified_kernel)
 
@@ -1106,7 +1109,9 @@ class TestPoissonKernel(
         np.testing.assert_array_almost_equal(mean_output, expected, decimal=5)
 
     def test_gramian_row_mean(
-        self, jit_variant: Callable[[Callable], Callable], kernel: ScalarValuedKernel
+        self,
+        jit_variant: Callable[[Callable], Callable],
+        kernel: ScalarValuedKernel,
     ) -> None:
         """Test `gramian_row_mean` behaves as a specialized alias of `compute_mean`."""
         bs = None

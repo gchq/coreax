@@ -184,6 +184,7 @@ def compute_loss(
 
 
 @eqx.filter_jit
+# pylint: disable-next=too-many-positional-arguments
 def train_step(
     model: MLP,
     state: State,
@@ -233,6 +234,7 @@ def eval_step(
     return compute_metrics(logits, batch_labels)
 
 
+# pylint: disable-next=too-many-positional-arguments
 def train_epoch(
     model: MLP,
     state: State,
@@ -326,6 +328,7 @@ class DataSet(NamedTuple):
     labels: jnp.ndarray
 
 
+# pylint: disable-next=too-many-positional-arguments
 def train_and_evaluate(
     train_set: DataSet,
     test_set: DataSet,
