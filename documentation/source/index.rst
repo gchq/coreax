@@ -70,6 +70,7 @@ Contents
     coreax/kernel
     coreax/least_squares
     coreax/metrics
+    coreax/networks
     coreax/score_matching
     coreax/solvers
     coreax/utils
