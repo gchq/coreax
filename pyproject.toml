@@ -176,8 +176,6 @@ filterwarnings = [
     "error",
     "ignore::ImportWarning:umap",
     "ignore::DeprecationWarning:jaxopt",
-    "ignore:The 'coreax\\.networks' module is deprecated:DeprecationWarning",
-    "ignore:ScoreNetwork will be removed in version 1\\.2\\.0\\.:DeprecationWarning",
 ]
 
 [tool.ruff]
