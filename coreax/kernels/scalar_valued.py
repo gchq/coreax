@@ -23,7 +23,11 @@ from jax.scipy.special import factorial
 from jaxtyping import Array, Shaped
 from typing_extensions import override
 
-from coreax.kernels.base import ProductKernel, ScalarValuedKernel, UniCompositeKernel
+from coreax.kernels.base import (
+    ProductKernel,
+    ScalarValuedKernel,
+    UniCompositeKernel,
+)
 from coreax.util import squared_distance
 
 
@@ -636,7 +640,6 @@ class LocallyPeriodicKernel(ProductKernel):
     """
 
     # Keep the established public constructor signature.
-    # pylint: disable-next=too-many-positional-arguments
     def __init__(
         self,
         periodic_length_scale: float = 1.0,

@@ -131,7 +131,9 @@ class TestData:
 
     def test_invalid_weight_dimensions(self, data_type):
         """Test that __init__ raises expected errors."""
-        with pytest.raises(ValueError, match="Incompatible shapes for broadcasting"):
+        with pytest.raises(
+            ValueError, match=r"Incompatible (shapes|types) for broadcasting"
+        ):
             invalid_weights = jnp.ones(DATA_ARRAY.shape[0] + 1)
             data_type(weights=invalid_weights)
 

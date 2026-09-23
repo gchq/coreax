@@ -30,7 +30,9 @@ import sphinx.config
 import sphobjinv
 import tqdm
 from jax.typing import ArrayLike
-from sphinx_autodoc_typehints import format_annotation as default_format_annotation
+from sphinx_autodoc_typehints import (
+    format_annotation as default_format_annotation,
+)
 
 # https://docs.github.com/en/actions/learn-github-actions/variables,
 # see the "Default environment variables" section
@@ -51,7 +53,9 @@ sys.path.extend([str(DOCS_FOLDER_PATH), str(SOURCE_FOLDER_PATH), str(REPO_FOLDER
 for module_name in ("jaxopt",):
     # only needed to import coreax, not actually used on import
     sys.modules[module_name] = mock.Mock()
-from ref_style import STYLE_NAME  # needed to fix citations within the docstrings
+from ref_style import (
+    STYLE_NAME,
+)  # needed to fix citations within the docstrings
 
 import coreax  # Cannot import until after package has been added to path
 
@@ -162,6 +166,8 @@ intersphinx_mapping = {  # linking to external documentation
 nitpick_ignore = [
     ("py:class", "flax.core.scope.Scope"),
     ("py:class", "flax.linen.module._Sentinel"),
+    ("py:class", "flax.linen.module.Module"),
+    ("py:class", "flax.training.train_state.TrainState"),
     ("py:class", "coreax.solvers.coresubset._Data"),
     ("py:class", "coreax.solvers.composite._Coreset"),
     ("py:class", "coreax.solvers.composite._Data"),

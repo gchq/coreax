@@ -52,6 +52,9 @@ coverage.xml
 cover/
 .scannerwork
 
+# Data from benchmarks
+data/
+
 # Translations
 *.mo
 *.pot

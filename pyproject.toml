@@ -30,7 +30,7 @@ dependencies = [
     # NOTE: lower bounds are the lowest supported version when using the 'lowest'
     # resolution mode of uv on the latest supported version of Python - the bounds
     # are only sharp for the latest supported Python version.
-    "equinox>=0.11.11",
+    "equinox>=0.13.0",
     "flax>=0.10.0",
     "jax>=0.4.38",
     "jaxopt>=0.8.4",
@@ -64,7 +64,7 @@ doc = [
 test = [
     {include-group = "benchmark"},
     "beartype>=0.19",
-    "pytest>=9",
+    "pytest >= 9,!= 9.1,!= 9.1.1", # Versions 9.1 and 9.1.1 implement changes which break many tests
     "pytest-cov>=6",
     "pytest-xdist>=3.2.0",
     "scipy>=1.14.1",
@@ -110,7 +110,7 @@ constraint-dependencies = [
     "webencodings>0",
     # Constrained to the required lower-bounds on our highest supported Python version.
     "absl-py>=1.0.0",  # via optax
-    "attrs>=18.1.0",  # via rich via flax
+    "attrs>=18.1.0",  # via sphobjinv, jsonschema
     "chex>=0.1.84",  # via optax
     "dm-tree>=0.1.8",  # via chex via optax
     "fsspec>=0.5.0",  # via torch
@@ -127,9 +127,9 @@ constraint-dependencies = [
     "pynndescent>=0.5.13",  # via umap
     "pyparsing>=3.0.8",  # via matplotlib
     "python-dateutil>=2.9.0",  # via matplotlib
-    "pyyaml>=6.0.1",  # via flax
+    "pyyaml>=6.0.1",  # via pybtex
     "setuptools>=5.0",  # via torch
-    "six>=1.16.0",  # via absl-py via flax
+    "six>=1.16.0",  # via python-dateutil
     "tensorstore>=0.1.70",  # via flax
 ]
 # Ensure we get the latest package versions available for each Python version

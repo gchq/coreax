@@ -26,12 +26,14 @@ from flax import linen as nn
 from flax.linen import Module
 from flax.training import train_state
 from jaxtyping import Array, Shaped
+from typing_extensions import deprecated
 
 from coreax.util import KeyArrayLike
 
 _LearningRateOptimiser = Callable[[float], optax.GradientTransformation]
 
 
+@deprecated("ScoreNetwork will be removed in version 1.2.0.")
 class ScoreNetwork(nn.Module):
     """
     A feed-forward neural network for use in sliced score matching.

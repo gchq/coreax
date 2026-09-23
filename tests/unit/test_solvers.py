@@ -108,6 +108,7 @@ if TYPE_CHECKING:
         initial_coresubset: Coresubset
         solver: _RefinementSolver
         expected_coresubset: Coresubset | None = None
+
 else:
     # This is the implementation that's used at runtime.
     class _ReduceProblem(NamedTuple):
@@ -531,7 +532,9 @@ class TestHelperFunctions:
         assert updated_coreset_indices[0] == first_optimal_index
         assert updated_coreset_indices[1] == second_optimal_index
 
-    def test_update_candidate_coresets_and_coreset_indices_duplicate(self) -> None:
+    def test_update_candidate_coresets_and_coreset_indices_duplicate(
+        self,
+    ) -> None:
         """
         Test integration of update functions for batched solvers with repeated indices.
 
@@ -818,7 +821,10 @@ class RecombinationSolverTest(SolverTest):
         super().check_solution_invariants(coreset, problem)
         dataset, solver, _ = problem
         assert isinstance(dataset, Data)
-        coreset_nodes, coreset_weights = coreset.points.data, coreset.points.weights
+        coreset_nodes, coreset_weights = (
+            coreset.points.data,
+            coreset.points.weights,
+        )
         assert eqx.tree_equal(jnp.sum(coreset_weights), jnp.asarray(1.0), rtol=5e-5)
         if solver.test_functions is None:
             solver = eqx.tree_at(
@@ -859,10 +865,14 @@ class RecombinationSolverTest(SolverTest):
         )
         assert eqx.tree_equal(pushed_forward_com, coreset_pushed_forward_com, rtol=1e-5)
         explicit_coreset_pushed_forward_com = jnp.average(
-            pushed_forward_coreset_nodes[non_zero], 0, weights=coreset_weights[non_zero]
+            pushed_forward_coreset_nodes[non_zero],
+            0,
+            weights=coreset_weights[non_zero],
         )
         assert eqx.tree_equal(
-            coreset_pushed_forward_com, explicit_coreset_pushed_forward_com, rtol=1e-5
+            coreset_pushed_forward_com,
+            explicit_coreset_pushed_forward_com,
+            rtol=1e-5,
         )
 
     @override
@@ -1703,7 +1713,8 @@ class TestKernelHerding(RefinementSolverTest, ExplicitSizeSolverTest):
         # Check that reduce_iterative() outputs the same coreset as when applying
         # refine num_iter times
         np.testing.assert_array_equal(
-            coreset_prob.unweighted_indices, coreset_prob_iter.unweighted_indices
+            coreset_prob.unweighted_indices,
+            coreset_prob_iter.unweighted_indices,
         )
 
 
@@ -2427,7 +2438,9 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         else:
             raise ValueError("Invalid fixture parametrization")
         return _ReduceProblem(
-            SupervisedData(data=data, supervision=supervision), solver, expected_coreset
+            SupervisedData(data=data, supervision=supervision),
+            solver,
+            expected_coreset,
         )
 
     @override
@@ -2611,7 +2624,13 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         solver.reduce(dataset)
 
     @pytest.mark.parametrize(
-        ("candidate_coresets", "feature_gramian", "responses", "identity", "expect"),
+        (
+            "candidate_coresets",
+            "feature_gramian",
+            "responses",
+            "identity",
+            "expect",
+        ),
         (
             (
                 jnp.array([[1, 0], [1, 2]]),
@@ -2645,7 +2664,6 @@ class TestGreedyKernelPoints(RefinementSolverTest, ExplicitSizeSolverTest):
         ids=("standalone", "integration[0]", "integration[1]", "padding"),
     )
     # Pytest injects parametrized arguments positionally.
-    # pylint: disable-next=too-many-positional-arguments
     def test_analytic_greedy_kernel_points_loss(
         self,
         candidate_coresets: jax.Array,
@@ -2825,7 +2843,10 @@ class TestMapReduce(SolverTest):
                     dataset: Data, solver_state: None = None
                 ) -> tuple[AbstractCoreset[Data, Data], None]:
                     indices = jnp.arange(base_solver.coreset_size)
-                    return PseudoCoreset(dataset[indices], dataset), solver_state
+                    return (
+                        PseudoCoreset(dataset[indices], dataset),
+                        solver_state,
+                    )
 
             elif flavour == "coresubset":
                 # Do essentially the same as for "original", just make it an actual
@@ -2926,7 +2947,10 @@ class TestMapReduce(SolverTest):
                 MagicMock(ExplicitSizeSolver),
                 pytest.warns(UserWarning, match="PaddingInvariantSolver"),
             ),
-            (MagicMock(Solver), pytest.raises(ValueError, match="ExplicitSizeSolver")),
+            (
+                MagicMock(Solver),
+                pytest.raises(ValueError, match="ExplicitSizeSolver"),
+            ),
         ),
     )
     @pytest.mark.filterwarnings("error")
@@ -3121,7 +3145,10 @@ class TestTreeRecombination(RecombinationSolverTest):
     def solver_factory(self, request: pytest.FixtureRequest) -> jtu.Partial:
         del request
         return jtu.Partial(
-            TreeRecombination, test_functions=None, rcond=None, tree_reduction_factor=3
+            TreeRecombination,
+            test_functions=None,
+            rcond=None,
+            tree_reduction_factor=3,
         )
 
 
