@@ -348,3 +348,39 @@ maintainers decide the codebase is ready for another release:
 [unittest]: https://docs.python.org/3/library/unittest.html
 [pytest]: https://docs.pytest.org/
 [cspell]: https://cspell.org/
+
+## Updating benchmark results
+
+Install the benchmark dependencies with `uv sync --group benchmark`. Run from the
+repository root using module commands:
+
+```sh
+uv run python -m benchmark.blobs_benchmark
+uv run python -m benchmark.blobs_benchmark_visualiser
+uv run python -m benchmark.mnist_benchmark
+uv run python -m benchmark.mnist_benchmark_coresets_only
+uv run python -m benchmark.mnist_benchmark_visualiser
+```
+
+The MNIST visualiser needs both the full and coreset-only runs. These benchmarks can
+be expensive; they are not part of a normal unit-test run. JSON files remain beside
+the benchmark scripts. Both visualisers create images under
+`examples/benchmarking_images`, independently of the current working directory.
+Their Python entry points also accept an explicit `output_dir`.
+
+Add solver factories to `coreax.benchmark_util.build_solver_factories`. Keep
+benchmark-specific kernel calibration in the existing setup functions. In particular,
+the blobs and UMAP benchmarks use different median-heuristic sample limits and
+square-root kernel dimensions. Preserve these settings and the result labels when
+comparing against previous runs. The blobs label mapping in `setup_solvers` retains
+its historical JSON keys; newly registered algorithms are included automatically.
+Score-model fitting is lazy and cached per UMAP dataset,
+not shared between different benchmark runs.
+
+The blobs runner now passes the dataset seed as `random_seed` and computes `delta`
+from the dataset size. Previously the seed was passed as the failure probability
+while the solver key stayed at its default. Regenerate results before making
+numerical comparisons with runs made before that correction.
+
+Review the generated tables and images before updating `documentation/source/benchmark.rst`.
+Do not replace published benchmark results with timings from unit tests or a smoke run.
