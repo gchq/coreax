@@ -89,18 +89,18 @@ class BaseWeightsOptimiserTest(ABC, Generic[_Data]):
         problem: _Problem,
     ) -> None:
         """
-        Test if :meth:`~coreax.coreset.Coreset.solve_weights` reduces `target_metric`.
+        Test if weight optimisation reduces the target metric.
         """
         coreset, optimiser, target_metric = problem
 
         # Compute the value of the target metric before we weight the coreset, solve for
         # optimal weights, then compute the metric again, asserting that it has reduced
         if target_metric is not None:
-            metric_before_weighting = coreset.compute_metric(target_metric)
-            weighted_coreset = jit_variant(coreset.solve_weights)(
-                optimiser, epsilon=1e-4
+            metric_before_weighting = target_metric.compute_on_coreset(coreset)
+            weighted_coreset = jit_variant(optimiser.solve_on_coreset)(
+                coreset, epsilon=1e-4
             )
-            metric_after_weighting = weighted_coreset.compute_metric(target_metric)
+            metric_after_weighting = target_metric.compute_on_coreset(weighted_coreset)
 
             assert metric_after_weighting < metric_before_weighting
 
