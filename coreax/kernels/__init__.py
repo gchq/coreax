@@ -16,6 +16,7 @@
 
 from coreax.kernels.base import (
     AdditiveKernel,
+    AnisotropicKernel,
     DuoCompositeKernel,
     PowerKernel,
     ProductKernel,
@@ -41,6 +42,7 @@ from coreax.kernels.util import median_heuristic
 __all__ = [
     "median_heuristic",
     "ScalarValuedKernel",
+    "AnisotropicKernel",
     "UniCompositeKernel",
     "PowerKernel",
     "DuoCompositeKernel",
