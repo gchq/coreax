@@ -34,6 +34,7 @@ from coreax.solvers.coresubset import (
     RPCholeskyState,
     SteinThinning,
 )
+from coreax.solvers.gradient_flow import GradientFlow, GradientFlowState
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -61,4 +62,6 @@ __all__ = [
     "CaratheodoryRecombination",
     "TreeRecombination",
     "CompressPlusPlus",
+    "GradientFlow",
+    "GradientFlowState",
 ]
