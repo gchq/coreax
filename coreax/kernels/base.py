@@ -654,11 +654,19 @@ class AnisotropicKernel(UniCompositeKernel):
     r"""
     Apply independent length scales to the input features of a base kernel.
 
-    For positive scales :math:`l`, define
-    :math:`k_l(x, y) = k(x / l, y / l)`, with elementwise division.
-    A scalar scale is shared by all features. A vector must contain exactly one
-    scale per feature. This preserves the positive semi-definiteness of the base
-    kernel and supports the usual kernel evaluation and derivative methods.
+    For :math:`x, y \in \mathbb{R}^d` and
+    :math:`l \in \mathbb{R}_{>0}^d`, let
+    :math:`D_l = \operatorname{diag}(l)` and define
+
+    .. math::
+
+        k_l(x, y) = k(D_l^{-1} x, D_l^{-1} y).
+
+    A scalar :math:`l > 0` is interpreted as :math:`D_l = l I_d`, so the
+    same scale is shared by all :math:`d` features. A vector length scale must
+    therefore contain exactly :math:`d` entries. This preserves the positive
+    semi-definiteness of the base kernel and supports the usual kernel evaluation
+    and derivative methods.
 
     Existing base-kernel parameters are retained. For an anisotropic radial kernel,
     leave its own length scale at one and supply the feature scales here. When
