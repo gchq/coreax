@@ -56,7 +56,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jaxtyping import Array, Shaped
+from jaxtyping import Array, ArrayLike, Shaped
 from typing_extensions import override
 
 from coreax.data import Data
@@ -635,6 +635,86 @@ class UniCompositeKernel(ScalarValuedKernel):
                 "'base_kernel' must be an instance of "
                 + f"'{ScalarValuedKernel.__module__}.{ScalarValuedKernel.__qualname__}'"
             )
+
+
+def _convert_length_scale(value: ArrayLike) -> Array:
+    """Convert a positive scalar or feature vector without hiding traced values."""
+    scale = jnp.asarray(value)
+    if scale.ndim > 1 or scale.size == 0 or jnp.iscomplexobj(scale):
+        raise ValueError("'length_scale' must be a real scalar or non-empty vector")
+    scale = scale.astype(jnp.result_type(scale, 0.0))
+    return eqx.error_if(
+        scale,
+        jnp.any(~jnp.isfinite(scale) | (scale <= 0)),
+        "'length_scale' must contain only finite, positive values",
+    )
+
+
+class AnisotropicKernel(UniCompositeKernel):
+    r"""
+    Apply independent length scales to the input features of a base kernel.
+
+    For :math:`x, y \in \mathbb{R}^d` and
+    :math:`l \in \mathbb{R}_{>0}^d`, let
+    :math:`D_l = \operatorname{diag}(l)` and define
+
+    .. math::
+
+        k_l(x, y) = k(D_l^{-1} x, D_l^{-1} y).
+
+    A scalar :math:`l > 0` is interpreted as :math:`D_l = l I_d`, so the
+    same scale is shared by all :math:`d` features. A vector length scale must
+    therefore contain exactly :math:`d` entries. This preserves the positive
+    semi-definiteness of the base kernel and supports the usual kernel evaluation
+    and derivative methods.
+
+    Existing base-kernel parameters are retained. For an anisotropic radial kernel,
+    leave its own length scale at one and supply the feature scales here. When
+    constructing a Stein kernel, wrap its base kernel before applying the Stein
+    operator so the score remains expressed in the original coordinates.
+
+    :param base_kernel: Kernel evaluated on scaled inputs
+    :param length_scale: Positive finite scalar or vector of feature length scales
+    """
+
+    length_scale: Shaped[Array, " d"] | Shaped[Array, ""] = eqx.field(
+        converter=_convert_length_scale
+    )
+
+    @override
+    def compute_elementwise(self, x, y):
+        return self.base_kernel.compute_elementwise(self._scale(x), self._scale(y))
+
+    @override
+    def grad_x_elementwise(self, x, y):
+        gradient = (
+            self.base_kernel.grad_x_elementwise(self._scale(x), self._scale(y))
+            / self.length_scale
+        )
+        return jnp.reshape(gradient, jnp.shape(x))
+
+    @override
+    def grad_y_elementwise(self, x, y):
+        gradient = (
+            self.base_kernel.grad_y_elementwise(self._scale(x), self._scale(y))
+            / self.length_scale
+        )
+        return jnp.reshape(gradient, jnp.shape(y))
+
+    @override
+    def divergence_x_grad_y_elementwise(self, x, y):
+        x = jnp.atleast_1d(jnp.asarray(x, dtype=jnp.result_type(x, 0.0)))
+        y = jnp.atleast_1d(jnp.asarray(y, dtype=jnp.result_type(y, 0.0)))
+        return super().divergence_x_grad_y_elementwise(x, y)
+
+    def _scale(self, point: ArrayLike) -> Array:
+        """Check feature dimensions before permitting NumPy broadcasting."""
+        point = jnp.asarray(point)
+        if jnp.ndim(self.length_scale) and jnp.atleast_1d(point).shape != jnp.shape(
+            self.length_scale
+        ):
+            raise ValueError("'length_scale' must have one entry per input feature")
+        return point / self.length_scale
 
 
 class PowerKernel(UniCompositeKernel, ScalarValuedKernel):
