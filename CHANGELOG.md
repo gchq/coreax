@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Added MMD gradient flow for pseudo-coresets, with weighted targets, configurable Optax optimisers and optional scheduled gradient noise.
    (https://github.com/gchq/coreax/issues/1105)
+ - Added Joint Kernel Inducing Points for jointly optimising supervised pseudo-coresets. (https://github.com/gchq/coreax/issues/1106)
 
  - Support for Python 3.14. (...)
  - Unit tests workflow now runs the test suite with both the `lowest` and `highest` supported direct and transitive
