@@ -204,11 +204,11 @@ def main(
 
     # Compute the MMD between the original data and the coreset generated via herding
     mmd_metric = MMD(kernel=mmd_kernel)
-    herding_mmd = herding_coreset.compute_metric(mmd_metric, block_size=block_size)
+    herding_mmd = mmd_metric.compute_on_coreset(herding_coreset, block_size=block_size)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    random_mmd = random_coreset.compute_metric(mmd_metric, block_size=block_size)
+    random_mmd = mmd_metric.compute_on_coreset(random_coreset, block_size=block_size)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {random_mmd}")

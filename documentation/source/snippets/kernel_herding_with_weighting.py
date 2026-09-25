@@ -27,4 +27,4 @@ herding_solver = KernelHerding(coreset_size, kernel=kernel)
 herding_coreset, _ = herding_solver.reduce(data)
 
 # Determine optimal weights for the coreset
-re_weighted_herding_coreset = herding_coreset.solve_weights(weights_optimiser)
+re_weighted_herding_coreset = weights_optimiser.solve_on_coreset(herding_coreset)
