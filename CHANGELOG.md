@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
  - Fixed randomised Hermitian eigendecomposition solver handling of negative, zero and complex eigenvalues. (#1236)
+ - Restore inherited method type annotations and overloads in the generated kernel
+   documentation without changing runtime method signatures.
+   (https://github.com/gchq/coreax/issues/795)
+
  - `KernelThinning.kt_half_recursive` now returns the correct partitions. (https://github.com/gchq/coreax/pull/1088)
 
 ### Changed
