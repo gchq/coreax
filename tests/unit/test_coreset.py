@@ -171,7 +171,8 @@ class TestCoresetCommon:
         coreset = setup.coreset_type(setup.coreset_input, setup.pre_coreset_data)
         coreset_expected = setup.coreset_type(re_weighted_nodes, setup.pre_coreset_data)
         kwargs = {"test": None}
-        coreset_solved_weights = coreset.solve_weights(solver, **kwargs)
+        with pytest.warns(DeprecationWarning, match="solve_on_coreset"):
+            coreset_solved_weights = coreset.solve_weights(solver, **kwargs)
         assert eqx.tree_equal(coreset_solved_weights, coreset_expected)
         solver.solve.assert_called_with(
             coreset.pre_coreset_data, coreset.points, **kwargs
@@ -184,7 +185,8 @@ class TestCoresetCommon:
         metric.compute = Mock(return_value=expected_metric)
         coreset = setup.coreset_type(setup.coreset_input, setup.pre_coreset_data)
         kwargs = {"test": None}
-        coreset_metric = coreset.compute_metric(metric, **kwargs)
+        with pytest.warns(DeprecationWarning, match="compute_on_coreset"):
+            coreset_metric = coreset.compute_metric(metric, **kwargs)
         assert eqx.tree_equal(coreset_metric, expected_metric)
         metric.compute.assert_called_with(
             coreset.pre_coreset_data, coreset.points, **kwargs

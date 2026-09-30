@@ -98,7 +98,7 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
     sample_key, rpc_key, stein_key = jr.split(jr.key(random_seed), num=3)
     herding_solver = KernelHerding(coreset_size, kernel)
     herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(data)
-    re_weighted_herding_coreset = herding_coreset.solve_weights(weights_optimiser)
+    re_weighted_herding_coreset = weights_optimiser.solve_on_coreset(herding_coreset)
 
     print("Computing Stein thinning coreset...")
     # Compute a coreset using Stein thinning with a PCIMQ base kernel.
@@ -115,13 +115,13 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
     stein_kernel = SteinKernel(base_kernel, estimated_score_function)
     stein_solver = SteinThinning(coreset_size, kernel=stein_kernel)
     stein_coreset, _ = eqx.filter_jit(stein_solver.reduce)(data)
-    re_weighted_stein_coreset = stein_coreset.solve_weights(weights_optimiser)
+    re_weighted_stein_coreset = weights_optimiser.solve_on_coreset(stein_coreset)
 
     print("Computing RPC coreset...")
     # Compute a coreset using RPC with a squared exponential kernel.
     rpc_solver = RPCholesky(coreset_size, rpc_key, kernel=kernel)
     rpc_coreset, _ = eqx.filter_jit(rpc_solver.reduce)(data)
-    re_weighted_rpc_coreset = rpc_coreset.solve_weights(weights_optimiser)
+    re_weighted_rpc_coreset = weights_optimiser.solve_on_coreset(rpc_coreset)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -138,16 +138,16 @@ def main(out_path: Path | None = None) -> tuple[float, float, float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     mmd_metric = MMD(kernel=mmd_kernel)
-    herding_mmd = re_weighted_herding_coreset.compute_metric(mmd_metric)
+    herding_mmd = mmd_metric.compute_on_coreset(re_weighted_herding_coreset)
 
     # Compute the MMD between the original data and the coreset generated via RPC
-    rpc_mmd = re_weighted_rpc_coreset.compute_metric(mmd_metric)
+    rpc_mmd = mmd_metric.compute_on_coreset(re_weighted_rpc_coreset)
 
     # Compute the MMD between the original data and the coreset generated via ST
-    stein_mmd = re_weighted_stein_coreset.compute_metric(mmd_metric)
+    stein_mmd = mmd_metric.compute_on_coreset(re_weighted_stein_coreset)
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    random_mmd = random_coreset.compute_metric(mmd_metric)
+    random_mmd = mmd_metric.compute_on_coreset(random_coreset)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {random_mmd}")

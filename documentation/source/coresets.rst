@@ -78,3 +78,24 @@ video is preserved. Run :mod:`examples.pounce` to replicate.
       - Coreset
     * - .. image:: ../../examples/pounce/pounce.gif
       - .. image:: ../../examples/pounce/pounce_coreset.gif
+
+Metrics and weights
+-------------------
+
+Metrics and weight optimisers accept a coreset directly::
+
+    metric_value = metric.compute_on_coreset(coreset)
+    re_weighted_coreset = weights_optimiser.solve_on_coreset(coreset, epsilon=1e-6)
+
+Both methods forward keyword arguments to the underlying ``compute`` or ``solve``
+method. Weight optimisation returns a new coreset of the same type. It preserves the
+original dataset, subset indices and any supervision arrays.
+
+To replace weights that have already been computed, use::
+
+    re_weighted_coreset = coreset.with_weights(weights)
+
+Custom coreset classes should implement ``with_weights`` to update their own weight
+storage without changing the original dataset. The older ``coreset.compute_metric``
+and ``coreset.solve_weights`` calls continue to work, but emit a
+``DeprecationWarning`` and are scheduled for removal in version 2.0.0.

@@ -117,7 +117,7 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
     sample_key = jr.key(random_seed)
     herding_solver = KernelHerding(coreset_size, kernel=herding_kernel)
     herding_coreset, _ = eqx.filter_jit(herding_solver.reduce)(data)
-    re_weighted_herding_coreset = herding_coreset.solve_weights(weights_optimiser)
+    re_weighted_herding_coreset = weights_optimiser.solve_on_coreset(herding_coreset)
 
     print("Choosing random subset...")
     # Generate a coreset via uniform random sampling for comparison
@@ -134,11 +134,11 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     mmd_metric = MMD(kernel=mmd_kernel)
-    herding_mmd = re_weighted_herding_coreset.compute_metric(mmd_metric)
+    herding_mmd = mmd_metric.compute_on_coreset(re_weighted_herding_coreset)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    random_mmd = random_coreset.compute_metric(mmd_metric)
+    random_mmd = mmd_metric.compute_on_coreset(random_coreset)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {random_mmd}")

@@ -156,11 +156,11 @@ def main(
 
     # Compute the MMD between the original data and the coreset generated via herding
     mmd_metric = MMD(kernel=mmd_kernel)
-    maximum_mean_discrepancy_herding = herding_coreset.compute_metric(mmd_metric)
+    maximum_mean_discrepancy_herding = mmd_metric.compute_on_coreset(herding_coreset)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    maximum_mean_discrepancy_random = random_coreset.compute_metric(mmd_metric)
+    maximum_mean_discrepancy_random = mmd_metric.compute_on_coreset(random_coreset)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {maximum_mean_discrepancy_random}")

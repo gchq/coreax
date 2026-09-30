@@ -138,7 +138,7 @@ def iterative_refine_experiment(
             random_key=key,
         )
         coreset, _ = solver.refine(coreset)
-        mmd_data = mmd_data.at[i].set(coreset.compute_metric(mmd_metric))
+        mmd_data = mmd_data.at[i].set(mmd_metric.compute_on_coreset(coreset))
         return coreset, mmd_data
 
     coreset, mmd_data = jax.lax.fori_loop(

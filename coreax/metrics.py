@@ -24,7 +24,7 @@ module, all of which implement :class:`Metric`.
 
 from abc import abstractmethod
 from itertools import product
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 import equinox as eqx
 import jax
@@ -34,6 +34,7 @@ import jax.tree_util as jtu
 from jaxtyping import Array, Shaped
 
 import coreax.util
+from coreax.coreset import AbstractCoreset
 from coreax.data import Data, SupervisedData
 from coreax.kernels import ScalarValuedKernel
 from coreax.score_matching import ScoreMatching, convert_stein_kernel
@@ -43,6 +44,20 @@ _Data = TypeVar("_Data", bound=Data)
 
 class Metric(eqx.Module, Generic[_Data]):
     """Base class for calculating metrics."""
+
+    def compute_on_coreset(
+        self, coreset: AbstractCoreset[_Data, _Data], **kwargs: Any
+    ) -> Shaped[Array, ""]:
+        """
+        Compare a coreset with its original dataset.
+
+        :param coreset: The coreset to evaluate
+        :param kwargs: Keyword arguments passed to :meth:`compute`
+        :return: The metric value as a zero-dimensional array
+        """
+        return self.compute(
+            cast(_Data, coreset.pre_coreset_data), cast(_Data, coreset.points), **kwargs
+        )
 
     @abstractmethod
     def compute(
