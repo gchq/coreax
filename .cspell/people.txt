@@ -1,8 +1,10 @@
 Abhishek
 Adil
+Allison
 Arbel
 Benard
 Bharath
+Broadbent
 Caratheodory
 Chatalic
 Duvenaud
@@ -26,6 +28,7 @@ Korba
 Krikamol
 Litterer
 Loera
+Lovett
 Lyons
 Mackey
 Martinsson
@@ -57,6 +60,7 @@ Teichmann
 Tropp
 Tverberg
 Veiga
+Whiteley
 Wittawat
 Yifan
 Yutian
