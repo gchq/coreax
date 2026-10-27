@@ -1,5 +1,9 @@
 # Contributing to coreax
 
+> [!IMPORTANT]
+>We have temporarily paused external contributions. During this pause, repository interactions are restricted to existing collaborators, so other users cannot open issues, submit pull requests or comment.
+> We appreciate your understanding and the contributions the community has made. We will update this guidance as soon as the position changes.
+
 ## Getting started
 
 If you would like to contribute to the development of coreax, you can do so in a number
