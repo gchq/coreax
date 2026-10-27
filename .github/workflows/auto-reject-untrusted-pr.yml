@@ -1,12 +1,12 @@
 name: Auto Reject Untrusted PRs
 on:
   # Runs against the target of the PR
-  # This workflow uses the 'pull_request_target' trigger. 
-  # To use it you need to configure a custom Actions Policy. 
-  # To do this, go to your Repository, Settings, Actions, Policies. 
-  # New Policy Dropdown, Import a ruleset, 
-  # Download & import 'https://github.com/gchq/.github/blob/main/enable-pull_request_target.json'. 
-  # Make sure this workflow is located at ".github/workflows/auto-reject-untrusted-pr.yml". 
+  # This workflow uses the 'pull_request_target' trigger.
+  # To use it you need to configure a custom Actions Policy.
+  # To do this, go to your Repository, Settings, Actions, Policies.
+  # New Policy Dropdown, Import a ruleset,
+  # Download & import 'https://github.com/gchq/.github/blob/main/enable-pull_request_target.json'.
+  # Make sure this workflow is located at ".github/workflows/auto-reject-untrusted-pr.yml".
   pull_request_target:
 
 permissions:
