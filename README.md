@@ -1,8 +1,6 @@
-<div align="center">
-    <img alt="Coreax logo" src="https://raw.githubusercontent.com/gchq/coreax/main/documentation/assets/Logo.svg">
-</div>
 
-# Coreax
+<img alt="Coreax logo" src="https://raw.githubusercontent.com/gchq/coreax/main/documentation/assets/Logo.svg" width="250px" height="auto">
+<hr>
 
 [![Unit Tests](https://github.com/gchq/coreax/actions/workflows/unittests.yml/badge.svg)](https://github.com/gchq/coreax/actions/workflows/unittests.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgchq%2Fcoreax-metadata%2Frefs%2Fheads%2Fmain%2Fcoverage%2Fcoreax_coverage.json)](https://github.com/gchq/coreax/actions/workflows/coverage.yml)
