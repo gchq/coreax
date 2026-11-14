@@ -12,6 +12,7 @@ atleast
 atleast_2d
 autodiff
 autodoc
+automethod
 automodule
 autosectionlabel
 autoupdate
@@ -120,6 +121,7 @@ pyqt
 pyright
 pyroma
 pytest
+pytestmark
 pytorch
 pytree
 pytrees
