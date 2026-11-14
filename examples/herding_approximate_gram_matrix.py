@@ -118,11 +118,11 @@ def main(out_path: Path | None = None) -> tuple[float, float]:
 
     # Compute the MMD between the original data and the coreset generated via herding
     mmd_metric = MMD(kernel=mmd_kernel)
-    herding_mmd = herding_coreset.compute_metric(mmd_metric)
+    herding_mmd = mmd_metric.compute_on_coreset(herding_coreset)
 
     # Compute the MMD between the original data and the coreset generated via random
     # sampling
-    random_mmd = random_coreset.compute_metric(mmd_metric)
+    random_mmd = mmd_metric.compute_on_coreset(random_coreset)
 
     # Print the MMD values
     print(f"Random sampling coreset MMD: {random_mmd}")

@@ -247,9 +247,9 @@ def compute_solver_metrics(
     unweighted_ksd = float(ksd_metric.compute(dataset, coresubset.points))
 
     # Weighted metrics
-    weighted_coresubset = coresubset.solve_weights(weights_optimiser)
-    weighted_mmd = float(weighted_coresubset.compute_metric(mmd_metric))
-    weighted_ksd = float(weighted_coresubset.compute_metric(ksd_metric))
+    weighted_coresubset = weights_optimiser.solve_on_coreset(coresubset)
+    weighted_mmd = float(mmd_metric.compute_on_coreset(weighted_coresubset))
+    weighted_ksd = float(ksd_metric.compute_on_coreset(weighted_coresubset))
 
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time

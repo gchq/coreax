@@ -14,6 +14,7 @@
 
 """Module for defining coreset data structures."""
 
+import warnings
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -29,11 +30,12 @@ from jaxtyping import Array, Shaped
 from typing_extensions import Self, override
 
 from coreax.data import Data, SupervisedData, as_data
-from coreax.metrics import Metric
-from coreax.weights import WeightsOptimiser
 
 if TYPE_CHECKING:
     from typing import Any  # noqa: F401
+
+    from coreax.metrics import Metric
+    from coreax.weights import WeightsOptimiser
 
 # `_co` is a well-established suffix for covariant TypeVars
 # pylint: disable=invalid-name
@@ -66,14 +68,56 @@ class AbstractCoreset(eqx.Module, Generic[_TPointsData_co, _TOriginalData_co]):
     def pre_coreset_data(self) -> _TOriginalData_co:
         """The original data that this coreset is based on."""
 
-    @abstractmethod
-    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
-        """Return a copy of 'self' with weights solved by 'solver'."""
+    def with_weights(self, weights: Shaped[Array, " n"]) -> Self:
+        """
+        Return a copy with replacement coreset weights.
+
+        Subclasses should implement this without changing the original dataset.
+
+        :param weights: Replacement weight for each coreset point
+        :return: A new coreset of the same type
+        """
+        raise NotImplementedError("Coreset subclasses must implement with_weights.")
+
+    def solve_weights(self, solver: "WeightsOptimiser[Data]", **solver_kwargs) -> Self:
+        """
+        Return a re-weighted copy using the deprecated coreset interface.
+
+        Use :meth:`~coreax.weights.WeightsOptimiser.solve_on_coreset` instead.
+        This compatibility method will be removed in version 2.0.0.
+
+        :param solver: Weight optimiser to use
+        :param solver_kwargs: Keyword arguments passed to the optimiser
+        :return: A new coreset with optimised weights
+        """
+        warnings.warn(
+            "Coreset.solve_weights is deprecated; use "
+            "WeightsOptimiser.solve_on_coreset instead. Removal is planned for 2.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+        return self.with_weights(weights)
 
     def compute_metric(
-        self, metric: Metric[Data], **metric_kwargs
+        self, metric: "Metric[Data]", **metric_kwargs
     ) -> Shaped[Array, ""]:
-        """Return metric-distance between `self.pre_coreset_data` and `self.coreset`."""
+        """
+        Evaluate a metric using the deprecated coreset interface.
+
+        Use :meth:`~coreax.metrics.Metric.compute_on_coreset` instead.
+        This compatibility method will be removed in version 2.0.0.
+
+        :param metric: Metric to compute
+        :param metric_kwargs: Keyword arguments passed to the metric
+        :return: The metric value
+        """
+        warnings.warn(
+            "Coreset.compute_metric is deprecated; use Metric.compute_on_coreset "
+            "instead. Removal is planned for 2.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return metric.compute(self.pre_coreset_data, self.points, **metric_kwargs)
 
     def __len__(self) -> int:
@@ -191,9 +235,8 @@ class PseudoCoreset(
         return self._pre_coreset_data
 
     @override
-    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
-        """Return a copy of 'self' with weights solved by 'solver'."""
-        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+    def with_weights(self, weights: Shaped[Array, " n"]) -> Self:
+        """Return a copy with new weights, retaining the original data."""
         return eqx.tree_at(lambda x: x.points.weights, self, weights)
 
 
@@ -323,7 +366,6 @@ class Coresubset(
         return self._indices
 
     @override
-    def solve_weights(self, solver: WeightsOptimiser[Data], **solver_kwargs) -> Self:
-        """Return a copy of 'self' with weights solved by 'solver'."""
-        weights = solver.solve(self.pre_coreset_data, self.points, **solver_kwargs)
+    def with_weights(self, weights: Shaped[Array, " n"]) -> Self:
+        """Return a copy with new weights, retaining the original data."""
         return eqx.tree_at(lambda x: x.indices.weights, self, weights)
