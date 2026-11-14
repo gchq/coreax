@@ -194,6 +194,7 @@ nitpick_ignore = [
     ("py:obj", "coreax.solvers.coresubset._State"),
     ("py:obj", "coreax.solvers.coresubset._Coreset"),
     ("py:obj", "coreax.solvers.recombination._Data"),
+    ("py:obj", "coreax.solvers.twinning._Data"),
     ("py:obj", "coreax.solvers.recombination._State"),
     ("py:obj", "coreax.weights._Data"),
     ("py:obj", "coreax.metrics._Data"),
