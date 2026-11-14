@@ -22,8 +22,9 @@ written produce the expected results on simple examples.
 import cmath
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, NamedTuple, TypeVar
+from typing import Any, Generic, NamedTuple, TypeVar
 
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -289,6 +290,68 @@ class TestHelperFunctions:
     """
     Tests for the helper functions `solve_qp` and `_prepare_kernel_system`.
     """
+
+    def test_solve_qp_known_boundary_solution(self) -> None:
+        """Solve a problem whose constrained optimum lies on a simplex boundary."""
+        solution = solve_qp(jnp.eye(3), jnp.array([2.0, 0.0, 0.0]))
+
+        assert solution == pytest.approx(jnp.array([1.0, 0.0, 0.0]), abs=1e-6)
+        assert jnp.sum(solution) == pytest.approx(1.0)
+        assert jnp.all(solution >= 0)
+
+    def test_solve_qp_satisfies_optimality_conditions(self) -> None:
+        """Check simplex feasibility and KKT conditions for a positive definite QP."""
+        matrix = jnp.array([[2.0, 0.2, 0.1], [0.2, 1.5, 0.3], [0.1, 0.3, 1.0]])
+        linear = jnp.array([0.8, 0.3, 0.2])
+        solution = solve_qp(matrix, linear, tolerance=1e-9)
+        gradient = matrix @ solution - linear
+        optimality_tolerance = 1e-5
+        active = solution > optimality_tolerance
+        active_gradient = gradient[active]
+
+        assert jnp.sum(solution) == pytest.approx(1.0, abs=1e-6)
+        assert jnp.all(solution >= 0)
+        assert (
+            jnp.max(active_gradient) - jnp.min(active_gradient) < optimality_tolerance
+        )
+        assert jnp.all(
+            gradient[~active] >= jnp.min(active_gradient) - optimality_tolerance
+        )
+
+    def test_solve_qp_compiles(self) -> None:
+        """Compile the dependency-free solver without changing its result."""
+        matrix = jnp.array([[1.0, 0.25], [0.25, 1.0]])
+        linear = jnp.array([0.4, 0.6])
+
+        expected = solve_qp(matrix, linear)
+        actual = jax.jit(solve_qp)(matrix, linear)
+
+        assert actual == pytest.approx(expected, abs=1e-6)
+
+    def test_solve_qp_accepts_previous_iteration_aliases(self) -> None:
+        """Retain the previous iteration and tolerance keyword spellings."""
+        matrix = jnp.eye(2)
+        linear = jnp.array([0.2, 0.8])
+
+        assert solve_qp(matrix, linear, maxiter=100, tol=1e-8) == pytest.approx(
+            solve_qp(matrix, linear, max_iter=100, tolerance=1e-8), abs=1e-6
+        )
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"max_iter": 0}, "positive integer"),
+            ({"maxiter": -1}, "positive integer"),
+            ({"tolerance": -1e-3}, "non-negative"),
+            ({"tol": -1e-3}, "non-negative"),
+        ],
+    )
+    def test_solve_qp_invalid_solver_configuration(
+        self, kwargs: dict[str, Any], message: str
+    ) -> None:
+        """Reject invalid convergence settings before entering the JAX loop."""
+        with pytest.raises(ValueError, match=message):
+            solve_qp(jnp.eye(2), jnp.ones(2), **kwargs)
 
     def test_solve_qp_invalid_kernel_mm(self) -> None:
         """
