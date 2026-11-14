@@ -35,6 +35,7 @@ from coreax.solvers.coresubset import (
     SteinThinning,
 )
 from coreax.solvers.gradient_flow import GradientFlow, GradientFlowState
+from coreax.solvers.inducing_points import JointKernelInducingPoints
 from coreax.solvers.recombination import (
     CaratheodoryRecombination,
     RecombinationSolver,
@@ -64,4 +65,5 @@ __all__ = [
     "CompressPlusPlus",
     "GradientFlow",
     "GradientFlowState",
+    "JointKernelInducingPoints",
 ]
