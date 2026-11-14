@@ -16,14 +16,16 @@
 
 import json
 import os
+from pathlib import Path
 
 from matplotlib import pyplot as plt
 
 
-def plot_benchmarking_results(data):
+def plot_benchmarking_results(data, output_dir: Path | None = None):
     """
     Visualise the benchmarking results in five separate plots.
 
+    :param output_dir: Image directory; defaults to the repository benchmark images.
     :param data: A dictionary where keys are the coreset sizes (as strings) and values
                  are dictionaries containing the metrics for each algorithm.
 
@@ -45,6 +47,12 @@ def plot_benchmarking_results(data):
                  }
 
     """
+    output_dir = (
+        output_dir
+        or Path(__file__).resolve().parents[1] / "examples" / "benchmarking_images"
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     title_size = 22
     label_size = 20
     tick_size = 18
@@ -93,9 +101,10 @@ def plot_benchmarking_results(data):
         plt.grid(True, linestyle="--", alpha=0.7)
 
         plt.savefig(
-            f"../examples/benchmarking_images/blobs_{metric.lower()}.png",
+            output_dir / f"blobs_{metric.lower()}.png",
             bbox_inches="tight",
         )
+        plt.close()
 
 
 # Function to print metrics table for each sample size

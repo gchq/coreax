@@ -40,22 +40,14 @@ from jaxtyping import Array, Shaped
 from sklearn.datasets import make_blobs
 
 from coreax import Data
-from coreax.benchmark_util import IterativeKernelHerding
+from coreax.benchmark_util import build_solver_factories, calculate_delta
 from coreax.kernels import (
     SquaredExponentialKernel,
     SteinKernel,
     median_heuristic,
 )
 from coreax.metrics import KSD, MMD
-from coreax.solvers import (
-    CompressPlusPlus,
-    KernelHerding,
-    KernelThinning,
-    RandomSample,
-    RPCholesky,
-    Solver,
-    SteinThinning,
-)
+from coreax.solvers import Solver
 from coreax.weights import MMDWeightsOptimiser
 
 
@@ -135,89 +127,30 @@ def setup_solvers(
     :return: A list of tuples, where each tuple contains the name of the solver
              and the corresponding solver object.
     """
-    random_key = jax.random.PRNGKey(random_seed)
-    sqrt_kernel = sq_exp_kernel.get_sqrt_kernel(dim=2)
-    return [
-        (
-            "KernelHerding",
-            KernelHerding(coreset_size=coreset_size, kernel=sq_exp_kernel),
-        ),
-        (
-            "RandomSample",
-            RandomSample(coreset_size=coreset_size, random_key=random_key),
-        ),
-        (
-            "RPCholesky",
-            RPCholesky(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                random_key=random_key,
-            ),
-        ),
-        (
-            "SteinThinning",
-            SteinThinning(
-                coreset_size=coreset_size,
-                kernel=stein_kernel,
-                regularise=True,
-            ),
-        ),
-        (
-            "KernelThinning",
-            KernelThinning(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                random_key=random_key,
-                delta=delta,
-                sqrt_kernel=sqrt_kernel,
-            ),
-        ),
-        (
-            "CompressPlusPlus",
-            CompressPlusPlus(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                random_key=random_key,
-                delta=delta,
-                sqrt_kernel=sqrt_kernel,
-                g=4,
-            ),
-        ),
-        (
-            "ProbabilisticIterativeHerding",
-            IterativeKernelHerding(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                probabilistic=True,
-                temperature=0.001,
-                random_key=random_key,
-                num_iterations=5,
-            ),
-        ),
-        (
-            "IterativeHerding",
-            IterativeKernelHerding(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                probabilistic=False,
-                temperature=0.001,
-                random_key=random_key,
-                num_iterations=5,
-            ),
-        ),
-        (
-            "CubicProbIterativeHerding",
-            IterativeKernelHerding(
-                coreset_size=coreset_size,
-                kernel=sq_exp_kernel,
-                probabilistic=True,
-                temperature=0.001,
-                random_key=random_key,
-                num_iterations=10,
-                t_schedule=1 / jnp.linspace(10, 100, 10) ** 3,
-            ),
-        ),
-    ]
+    factories = build_solver_factories(
+        sq_exp_kernel,
+        lambda: stein_kernel,
+        jax.random.PRNGKey(random_seed),
+        sqrt_kernel=sq_exp_kernel.get_sqrt_kernel(dim=2),
+        delta=delta,
+        cpp_oversampling_factor=4,
+    )
+    # Preserve historical result labels and order for existing JSON consumers.
+    labels = {
+        "KernelHerding": "Kernel Herding",
+        "RandomSample": "Random Sample",
+        "RPCholesky": "RP Cholesky",
+        "SteinThinning": "Stein Thinning",
+        "KernelThinning": "Kernel Thinning",
+        "CompressPlusPlus": "Compress++",
+        "ProbabilisticIterativeHerding": "Iterative Probabilistic Herding (constant)",
+        "IterativeHerding": "Iterative Herding",
+        "CubicProbIterativeHerding": "Iterative Probabilistic Herding (cubic)",
+    }
+    # Pick up newly registered algorithms without duplicating their configuration here.
+    known_names = set(labels.values())
+    labels.update({name: name for name in factories if name not in known_names})
+    return [(label, factories[name](coreset_size)) for label, name in labels.items()]
 
 
 def compute_solver_metrics(
@@ -331,7 +264,13 @@ def main() -> None:  # pylint: disable=too-many-locals
         weights_optimiser = MMDWeightsOptimiser(kernel=sq_exp_kernel)
 
         for size in coreset_sizes:
-            solvers = setup_solvers(size, sq_exp_kernel, stein_kernel, seed)
+            solvers = setup_solvers(
+                size,
+                sq_exp_kernel,
+                stein_kernel,
+                delta=calculate_delta(n_samples).item(),
+                random_seed=seed,
+            )
 
             # Compute metrics for this size and seed
             results = compute_metrics(
