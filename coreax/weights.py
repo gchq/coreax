@@ -39,8 +39,8 @@ import jax.numpy as jnp
 from jaxopt import OSQP
 from jaxtyping import Array, Shaped
 
-from coreax.data import Data, as_data
-from coreax.kernels import ScalarValuedKernel
+from coreax.data import Data, SupervisedData, as_data
+from coreax.kernels import ScalarValuedKernel, SteinKernel
 
 _Data = TypeVar("_Data", bound=Data)
 
@@ -310,3 +310,97 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
             unroll=unroll,
         )
         return solve_qp(kernel_cc, kernel_cd, **solver_kwargs)
+
+
+def _normalised_stein_weights(gramian: Shaped[Array, "m m"]) -> Shaped[Array, " m"]:
+    """Minimise a positive semidefinite quadratic form with unit-sum weights."""
+    size = gramian.shape[0]
+    scale = jnp.max(jnp.abs(gramian))
+    scaled = gramian / jnp.where(scale > 0, scale, 1)
+    eigenvalues, eigenvectors = jnp.linalg.eigh(scaled)
+    tolerance = 10 * size * jnp.finfo(eigenvalues.dtype).eps
+    retained = eigenvalues > tolerance * jnp.max(jnp.abs(eigenvalues))
+    coefficients = eigenvectors.T @ jnp.ones(size, dtype=gramian.dtype)
+
+    null_coefficients = jnp.asarray(jnp.where(retained, 0, coefficients))
+    null_mass = jnp.sum(null_coefficients**2)
+    null_solution = eigenvectors @ null_coefficients
+    null_solution /= jnp.where(null_mass > 0, null_mass, 1)
+
+    inverse_coefficients = jnp.asarray(
+        jnp.where(retained, coefficients / jnp.where(retained, eigenvalues, 1), 0)
+    )
+    inverse_mass = jnp.dot(coefficients, inverse_coefficients)
+    inverse_solution = eigenvectors @ inverse_coefficients
+    inverse_solution /= jnp.where(inverse_mass > 0, inverse_mass, 1)
+
+    weights = jnp.where(
+        null_mass > size * tolerance**2, null_solution, inverse_solution
+    )
+    return weights / jnp.sum(weights)
+
+
+class KSDWeightsOptimiser(WeightsOptimiser[Data]):
+    r"""
+    Minimise kernel Stein discrepancy with weights constrained to sum to one.
+
+    For a Stein kernel the target kernel mean is zero. This optimiser minimises
+    :math:`w^T K w` subject to :math:`\mathbf{1}^T w = 1`, allowing negative weights.
+    For an invertible Gram matrix, the solution is
+    :math:`K^{-1}\mathbf{1} / (\mathbf{1}^T K^{-1}\mathbf{1})`.
+
+    Singular systems use the minimum-norm solution. If the null space contains a
+    unit-sum vector, that vector gives zero objective; otherwise the pseudo-inverse
+    gives the solution. Eigenvalues below a relative cut-off of
+    ``10 * coreset_size * machine_epsilon`` are treated as zero. Kernel scaling is
+    removed before decomposition to improve numerical stability.
+
+    This optimises KSD without corrections or regularisation, with an optional
+    diagonal penalty on the weights. Laplace corrections and entropic regularisation
+    from :class:`~coreax.metrics.KSD` are not included. Dense eigendecomposition uses
+    cubic time and quadratic storage in the coreset size.
+
+    :param kernel: A positive semidefinite :class:`~coreax.kernels.SteinKernel`
+        with a score function for the target distribution
+    """
+
+    kernel: SteinKernel
+
+    def __check_init__(self) -> None:
+        """Require a Stein kernel with a zero target mean embedding."""
+        if not isinstance(self.kernel, SteinKernel):
+            raise ValueError("KSDWeightsOptimiser requires a SteinKernel")
+
+    def solve(
+        self,
+        dataset: Data,
+        coreset: Data,
+        epsilon: float = 1e-10,
+    ) -> Shaped[Array, " m"]:
+        """
+        Compute unit-sum weights from the coreset Stein Gram matrix.
+
+        :param dataset: Original unsupervised data, retained for interface
+            compatibility; its values are unused because the score defines the target
+        :param coreset: Non-empty unsupervised data to weight
+        :param epsilon: Finite, non-negative diagonal regularisation; zero permits
+            a singular system without imposing a penalty on the weights
+        :return: Weights for the coreset, summing to one and possibly negative
+        :raises ValueError: If the data is supervised or the coreset is empty
+        """
+        dataset, coreset = as_data(dataset), as_data(coreset)
+        if isinstance(dataset, SupervisedData) or isinstance(coreset, SupervisedData):
+            raise ValueError("KSDWeightsOptimiser requires unsupervised Data")
+        if len(coreset) == 0:
+            raise ValueError("The coreset must contain at least one point")
+        diagonal = eqx.error_if(
+            jnp.asarray(epsilon),
+            ~jnp.isfinite(epsilon) | (jnp.asarray(epsilon) < 0),
+            "epsilon must be finite and non-negative",
+        )
+        gramian = self.kernel.compute(coreset.data, coreset.data)
+        gramian += diagonal * jnp.eye(len(coreset), dtype=gramian.dtype)
+        gramian = eqx.error_if(
+            gramian, jnp.any(~jnp.isfinite(gramian)), "Stein Gram matrix must be finite"
+        )
+        return _normalised_stein_weights(gramian)
