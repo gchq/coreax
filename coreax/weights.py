@@ -32,17 +32,19 @@ the dataset.
 """
 
 from abc import abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 import equinox as eqx
 import jax.numpy as jnp
 from jaxopt import OSQP
 from jaxtyping import Array, Shaped
 
+from coreax.coreset import AbstractCoreset
 from coreax.data import Data, as_data
 from coreax.kernels import ScalarValuedKernel
 
 _Data = TypeVar("_Data", bound=Data)
+_Coreset = TypeVar("_Coreset", bound=AbstractCoreset[Data, Data])
 
 INVALID_KERNEL_DATA_COMBINATION = (
     "Invalid combination of 'kernel' and 'dataset' or 'coreset'; if solving weights for"
@@ -152,6 +154,23 @@ def _prepare_kernel_system(
 
 class WeightsOptimiser(eqx.Module, Generic[_Data]):
     r"""Base class for optimising weights."""
+
+    def solve_on_coreset(self, coreset: _Coreset, **kwargs: Any) -> _Coreset:
+        """
+        Return a copy of a coreset with optimised weights.
+
+        The original dataset, point ordering and coreset type are preserved.
+        Custom coresets should implement
+        :meth:`~coreax.coreset.AbstractCoreset.with_weights`.
+
+        :param coreset: The coreset to re-weight
+        :param kwargs: Keyword arguments passed to :meth:`solve`
+        :return: A new coreset with optimised weights
+        """
+        weights = self.solve(
+            cast(_Data, coreset.pre_coreset_data), cast(_Data, coreset.points), **kwargs
+        )
+        return coreset.with_weights(weights)
 
     @abstractmethod
     def solve(
