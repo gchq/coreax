@@ -36,7 +36,7 @@ from typing import Generic, TypeVar
 
 import equinox as eqx
 import jax.numpy as jnp
-from jaxopt import OSQP
+from jax import lax
 from jaxtyping import Array, Shaped
 
 from coreax.data import Data, as_data
@@ -51,53 +51,101 @@ INVALID_KERNEL_DATA_COMBINATION = (
 )
 
 
+def _project_simplex(values: Shaped[Array, " m"]) -> Shaped[Array, " m"]:
+    """Project a vector onto the probability simplex."""
+    sorted_values = jnp.sort(values)[::-1]
+    cumulative = jnp.cumsum(sorted_values) - 1
+    ranks = jnp.arange(1, values.shape[0] + 1, dtype=values.dtype)
+    active = sorted_values - cumulative / ranks > 0
+    last_active = jnp.sum(active) - 1
+    threshold = cumulative[last_active] / (last_active + 1)
+    return jnp.maximum(values - threshold, 0)
+
+
 def solve_qp(
     kernel_mm: Shaped[Array, "m m"],
     gramian_row_mean: Shaped[Array, " m 1"],
-    **osqp_kwargs,
+    *,
+    max_iter: int = 10_000,
+    tolerance: float = 1e-7,
+    maxiter: int | None = None,
+    tol: float | None = None,
 ) -> Shaped[Array, " m"]:
     r"""
-    Solve quadratic programs with the :class:`jaxopt.OSQP` solver.
+    Solve a convex quadratic program on the probability simplex.
+
+    Uses projected gradient descent with a step size derived from the largest
+    eigenvalue of the symmetrised quadratic term. The implementation is entirely
+    JAX-native and can be compiled with :func:`jax.jit`.
 
     Solves simplex weight problems of the form:
 
     .. math::
 
-        \mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} +
-        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w} = 0
+        \frac{1}{2}\mathbf{w}^{\mathrm{T}} \mathbf{k} \mathbf{w} -
+        \bar{\mathbf{k}}^{\mathrm{T}} \mathbf{w}
 
     subject to
 
     .. math::
 
-        \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
+        \mathbf{1}^{\mathrm{T}}\mathbf{w} = 1, \qquad \mathbf{w} \ge 0.
+
+    For compatibility with the previous solver wrapper, ``maxiter`` and ``tol``
+    are accepted as aliases for ``max_iter`` and ``tolerance`` respectively.
 
     :param kernel_mm: :math:`m \times m` coreset Gram matrix
     :param gramian_row_mean: :math:`m \times 1` array of Gram matrix means
-    :return: Optimised solution for the quadratic program
+    :param max_iter: Maximum projected-gradient iterations
+    :param tolerance: Infinity-norm change used as the convergence threshold
+    :param maxiter: Compatibility alias for ``max_iter``
+    :param tol: Compatibility alias for ``tolerance``
+    :return: Non-negative weights summing to one
     """
-    # Setup optimisation problem - all variable names are consistent with the OSQP
-    # terminology. Begin with the objective parameters.
-    q_array = jnp.asarray(kernel_mm)
-    c = -jnp.asarray(gramian_row_mean)
+    if maxiter is not None:
+        max_iter = maxiter
+    if tol is not None:
+        tolerance = tol
+    if max_iter < 1:
+        raise ValueError("'max_iter' must be a positive integer")
+    if tolerance < 0:
+        raise ValueError("'tolerance' must be non-negative")
 
-    # Define the equality constraint parameters
-    num_points = q_array.shape[0]
-    a_array = jnp.ones((1, num_points))
-    b = jnp.array([1.0])
+    quadratic = jnp.asarray(kernel_mm)
+    linear = jnp.asarray(gramian_row_mean)
+    matrix_ndim = 2
+    if quadratic.ndim != matrix_ndim or quadratic.shape[0] != quadratic.shape[1]:
+        raise ValueError("'kernel_mm' must be a non-empty square matrix")
+    if quadratic.shape[0] == 0:
+        raise ValueError("'kernel_mm' must be a non-empty square matrix")
+    if linear.size != quadratic.shape[0]:
+        raise ValueError("'gramian_row_mean' must contain one value per matrix row")
 
-    # Define the inequality constraint parameters
-    g_array = jnp.eye(num_points) * -1.0
-    h = jnp.zeros(num_points)
+    dtype = jnp.result_type(quadratic, linear, 0.0)
+    quadratic = quadratic.astype(dtype)
+    linear = linear.astype(dtype).reshape(-1)
+    quadratic = (quadratic + quadratic.T) / 2
 
-    # Define solver object and run solver
-    qp = OSQP(**osqp_kwargs)
-    sol = qp.run(
-        params_obj=(q_array, c), params_eq=(a_array, b), params_ineq=(g_array, h)
-    ).params
+    largest_eigenvalue = jnp.max(jnp.linalg.eigvalsh(quadratic))
+    step_size = 1 / jnp.maximum(largest_eigenvalue, jnp.finfo(dtype).eps)
+    initial = jnp.ones(quadratic.shape[0], dtype=dtype) / quadratic.shape[0]
 
-    # Ensure conditions of solution are met
-    solution = jnp.maximum(0.0, sol.primal)
+    def continue_iteration(state: tuple[Array, Array, Array]) -> Array:
+        iteration, _, change = state
+        return (iteration < max_iter) & (change > tolerance)
+
+    def iteration(state: tuple[Array, Array, Array]) -> tuple[Array, Array, Array]:
+        count, weights, _ = state
+        gradient = quadratic @ weights - linear
+        updated = _project_simplex(weights - step_size * gradient)
+        change = jnp.max(jnp.abs(updated - weights))
+        return count + 1, updated, change
+
+    _, solution, _ = lax.while_loop(
+        continue_iteration,
+        iteration,
+        (jnp.array(0), initial, jnp.asarray(jnp.inf, dtype=dtype)),
+    )
     return solution / jnp.sum(solution)
 
 
@@ -268,7 +316,7 @@ class MMDWeightsOptimiser(WeightsOptimiser[_Data]):
 
         \mathbf{Aw} = \mathbf{1}, \qquad \mathbf{Gx} \le 0.
 
-    using the OSQP quadratic programming solver.
+    using a JAX-native projected-gradient quadratic-program solver.
 
     :param kernel: :class:`~coreax.kernels.ScalarValuedKernel` instance implementing a
         kernel function
