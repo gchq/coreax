@@ -2452,7 +2452,7 @@ wheels = [
 
 [[package]]
 name = "optax"
-version = "0.2.8"
+version = "0.2.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py" },
@@ -2465,9 +2465,9 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/f9/e3d11ae6f298ee941a0690e353a323d158ba5dedc436e75621c310845c5c/optax-0.2.8.tar.gz", hash = "sha256:5b225b35066fc3eebaa4d798f1b4173b4d57d1a480610908981f8343b50af0b0", size = 301193, upload-time = "2026-03-20T23:30:05.465Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/45/103ec6ed4594cf8dec67e29ef3f72bb5530a86db4e28a354110e8fc8425b/optax-0.2.9.tar.gz", hash = "sha256:fcaa7e34c37ab2875c72d91e55374ff02a7ef6463b79fdb45bd3d65c6d4d61c5", size = 314052, upload-time = "2026-11-11T18:36:36.667Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/69/6a93d8600c339d7687a05857c7907bd4dd8cf88691a5ea106d7a50af90a1/optax-0.2.8-py3-none-any.whl", hash = "sha256:e3ca2d36c99daab1800ae9dbc0545034382d6bc780b24d969e1b0df65fa31cb4", size = 402960, upload-time = "2026-03-20T23:30:03.886Z" },
+    { url = "https://files.pythonhosted.org/packages/07/18/3ebc9263daccd4c41a5d90785f467eb24d450355f8c7089906d154677797/optax-0.2.9-py3-none-any.whl", hash = "sha256:ec037b3975685e2550f9cc4994feda1492162ff9b812a0ea5face18c8fdf2948", size = 416967, upload-time = "2026-11-11T18:36:35.084Z" },
 ]
 
 [[package]]
